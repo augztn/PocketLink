@@ -77,7 +77,10 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
             if (widget.isVideo)
               AspectRatio(
                 aspectRatio: 16 / 9,
-                child: Video(controller: _videoController),
+                child: Video(
+                  controller: _videoController,
+                  controls: NoVideoControls,
+                ),
               )
             else
               Container(
