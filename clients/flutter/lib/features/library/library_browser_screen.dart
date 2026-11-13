@@ -143,24 +143,44 @@ class _LibraryBrowserScreenState extends State<LibraryBrowserScreen> {
   }
 
   Future<void> _openImage(({FileEntry entry, String path}) file) async {
-    await showDialog<void>(
-      context: context,
-      builder: (context) => Dialog.fullscreen(
-        child: Scaffold(
-          appBar: AppBar(title: Text(file.entry.name)),
-          body: Center(
-            child: InteractiveViewer(
-              child: Image.network(
-                widget.api.mediaStreamUrl(file.path),
-                headers: widget.api.mediaHeaders,
-                fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) =>
-                    const Text('This image could not be previewed.'),
+    if (file.entry.size > 20 * 1024 * 1024) {
+      _message('Image preview is limited to 20 MB. Download it instead.');
+      return;
+    }
+    try {
+      final bytes = await widget.api.downloadFile(file.path);
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (context) => Dialog.fullscreen(
+          child: Scaffold(
+            appBar: AppBar(title: Text(file.entry.name)),
+            body: Center(
+              child: InteractiveViewer(
+                child: Image.memory(
+                  bytes,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) =>
+                      const Text('This image format could not be previewed.'),
+                ),
               ),
             ),
           ),
         ),
-      ),
+      );
+    } on DioException catch (error) {
+      _message(error.response?.statusCode == 401
+          ? 'Login expired or credentials are incorrect.'
+          : error.message ?? 'Could not load image.');
+    } catch (_) {
+      _message('Could not preview this image.');
+    }
+  }
+
+  void _message(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
     );
   }
 
