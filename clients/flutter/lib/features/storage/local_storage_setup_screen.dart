@@ -27,7 +27,10 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> {
     if (call.method == 'storageChanged') {
       await _refresh();
     } else if (call.method == 'storageError') {
-      setState(() => _error = call.arguments?.toString() ?? 'Could not save storage permission.');
+      setState(() {
+        _busy = false;
+        _error = call.arguments?.toString() ?? 'Could not save storage permission.';
+      });
     } else if (call.method == 'selectionCancelled') {
       setState(() => _busy = false);
     }
