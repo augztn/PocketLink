@@ -158,6 +158,53 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     }
   }
 
+  bool _isImage(FileEntry item) {
+    final extension = item.name.toLowerCase().split('.').last;
+    return const {'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'}.contains(extension);
+  }
+
+  Future<void> _previewImage(FileEntry item) async {
+    if (item.size > 20 * 1024 * 1024) {
+      _showError('Image preview is limited to 20 MB. Download the file instead.');
+      return;
+    }
+    try {
+      final bytes = await widget.api.downloadFile(_itemPath(item.name));
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (context) => Dialog(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(item.name, style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 12),
+                Flexible(
+                  child: InteractiveViewer(
+                    child: Image.memory(
+                      bytes,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => const Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Text('This image format could not be previewed.'),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    } on DioException catch (error) {
+      _showError(_messageFor(error));
+    } catch (_) {
+      _showError('Unable to preview this image.');
+    }
+  }
+
   Future<void> _createFolder() async {
     final name = await _askName('Create folder');
     if (name == null) return;
