@@ -187,7 +187,8 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
   @override
   Widget build(BuildContext context) {
     final items = _listing?.items ?? const <FileEntry>[];
-    final matches = _volumes.where((item) => item.id == _volume);\n    final selected = matches.isEmpty ? null : matches.first;
+    final matches = _volumes.where((item) => item.id == _volume);
+    final selected = matches.isEmpty ? null : matches.first;
     return Scaffold(
       appBar: AppBar(
         title: const Text('External SSDs'),
@@ -202,7 +203,7 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
             child: DropdownButtonFormField<String>(
-              value: _volume,
+              initialValue: _volume,
               decoration: const InputDecoration(labelText: 'Storage location'),
               items: _volumes.map((item) => DropdownMenuItem(
                 value: item.id,
@@ -228,7 +229,7 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
             tooltip: 'Go up',
             onPressed: _path.isEmpty ? null : () {
               final parts = _path.split('/')..removeLast();
-              _loadDirectory(parts.join(''));
+              _loadDirectory(parts.join('/'));
             },
             icon: const Icon(Icons.arrow_upward),
           ),
