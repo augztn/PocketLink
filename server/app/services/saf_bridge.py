@@ -35,10 +35,13 @@ def _raise_bridge_error(response: httpx.Response) -> None:
 
 
 async def bridge_json(method: str, endpoint: str, *, params: dict | None = None) -> dict:
-    async with httpx.AsyncClient(timeout=60) as client:
-        response = await client.request(
-            method, f"{BRIDGE_URL}{endpoint}", params=params, headers=_headers()
-        )
+    try:
+        async with httpx.AsyncClient(timeout=60) as client:
+            response = await client.request(
+                method, f"{BRIDGE_URL}{endpoint}", params=params, headers=_headers()
+            )
+    except httpx.RequestError as error:
+        raise HTTPException(503, "Cannot connect to the Android SSD bridge") from error
     _raise_bridge_error(response)
     return response.json()
 
@@ -48,13 +51,16 @@ async def upload_document(volume: str, path: str, upload: UploadFile) -> dict:
         while chunk := await upload.read(1024 * 1024):
             yield chunk
 
-    async with httpx.AsyncClient(timeout=None) as client:
-        response = await client.put(
-            f"{BRIDGE_URL}/v1/write",
-            params={"volume": volume, "path": path},
-            content=chunks(),
-            headers=_headers({"Content-Type": "application/octet-stream"}),
-        )
+    try:
+        async with httpx.AsyncClient(timeout=None) as client:
+            response = await client.put(
+                f"{BRIDGE_URL}/v1/write",
+                params={"volume": volume, "path": path},
+                content=chunks(),
+                headers=_headers({"Content-Type": "application/octet-stream"}),
+            )
+    except httpx.RequestError as error:
+        raise HTTPException(503, "Cannot connect to the Android SSD bridge") from error
     _raise_bridge_error(response)
     return response.json()
 
@@ -73,7 +79,12 @@ async def open_document_stream(volume: str, path: str, range_header: str | None)
         await client.aclose()
         raise HTTPException(503, "Cannot connect to the Android SSD bridge")
     if response.is_error:
-        _raise_bridge_error(response)
+        try:
+            await response.aread()
+            _raise_bridge_error(response)
+        finally:
+            await response.aclose()
+            await client.aclose()
     async def body() -> AsyncIterator[bytes]:
         try:
             async for chunk in response.aiter_bytes():
