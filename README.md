@@ -37,6 +37,19 @@ sudo apt install libmpv-dev mpv
 Use HTTPS when connecting over an untrusted network. A private VPN such as Tailscale
 is recommended for remote access.
 
+## File manager libraries
+
+The Flutter home screen provides category shortcuts for Images, Audio, Videos and
+Documents, alongside the general file browser. Images are discovered recursively in
+`/sdcard/Pictures`, `/sdcard/DCIM` and `/sdcard/Download`. Documents are discovered
+in `/sdcard/Documents` and `/sdcard/Download`. Both libraries support search and
+refresh; images can be previewed and documents can be downloaded. Scans are limited
+to 2,000 directories and 20 folder levels.
+
+Supported image formats: JPG, JPEG, PNG, WebP, GIF and BMP.
+Supported document formats: PDF, DOC/DOCX, ODT, RTF, TXT, Markdown, CSV,
+XLS/XLSX, ODS, PPT/PPTX and ODP.
+
 ## Linux AppImage
 
 GitHub Actions builds a portable x86_64 AppImage for Linux. Open the latest successful
