@@ -51,13 +51,21 @@ async def upload_document(volume: str, path: str, upload: UploadFile) -> dict:
         while chunk := await upload.read(1024 * 1024):
             yield chunk
 
+    # NanoHTTPD requires a known request length; avoid chunked transfer encoding.
+    upload.file.seek(0, os.SEEK_END)
+    content_length = upload.file.tell()
+    upload.file.seek(0)
+
     try:
         async with httpx.AsyncClient(timeout=None) as client:
             response = await client.put(
                 f"{BRIDGE_URL}/v1/write",
                 params={"volume": volume, "path": path},
                 content=chunks(),
-                headers=_headers({"Content-Type": "application/octet-stream"}),
+                headers=_headers({
+                    "Content-Type": "application/octet-stream",
+                    "Content-Length": str(content_length),
+                }),
             )
     except httpx.RequestError as error:
         raise HTTPException(503, "Cannot connect to the Android SSD bridge") from error
