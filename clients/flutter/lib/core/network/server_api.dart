@@ -80,14 +80,6 @@ class ServerApi {
     return uri.replace(path: '', query: null, fragment: null).toString();
   }
 
-  Future<bool> checkHealth() async {
-    final response = await _dio.get<dynamic>(
-      '/health',
-      options: Options(headers: {'Authorization': null}),
-    );
-    return response.statusCode == 200;
-  }
-
   Future<DirectoryListing> authenticate() async => listDirectory('');
 
   Future<DirectoryListing> listDirectory(String path) async {
