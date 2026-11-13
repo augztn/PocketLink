@@ -20,11 +20,11 @@ class SafHttpServer(private val context: Context, private val token: String) : N
 
         return try {
             val q = session.parms
+            if (session.uri == "/v1/volumes" && session.method == Method.GET) return volumes()
             val volume = q["volume"] ?: return bad("volume is required")
             val root = rootFor(volume) ?: return jsonError(Response.Status.NOT_FOUND, "Storage permission not granted")
             val path = q["path"].orEmpty()
             when {
-                session.uri == "/v1/volumes" && session.method == Method.GET -> volumes()
                 session.uri == "/v1/list" && session.method == Method.GET -> {
                     val dir = resolve(root, path) ?: return jsonError(Response.Status.NOT_FOUND, "Folder not found")
                     if (!dir.isDirectory) return jsonError(Response.Status.BAD_REQUEST, "Not a directory")
