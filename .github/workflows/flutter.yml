@@ -173,8 +173,8 @@ jobs:
                       continue
                   content = gradle.read_text()
                   updated, count = re.subn(
-                      r"(?m)^(\\s*compileSdk(?:Version)?\\s*(?:=\\s*)?)(?:flutter\\.compileSdkVersion|\\d+)",
-                      r"\\g<1>36",
+                      r"(?m)^(\s*compileSdk(?:Version)?\s*(?:=\s*)?)(?:flutter\.compileSdkVersion|\d+)",
+                      r"\g<1>36",
                       content,
                       count=1,
                   )
