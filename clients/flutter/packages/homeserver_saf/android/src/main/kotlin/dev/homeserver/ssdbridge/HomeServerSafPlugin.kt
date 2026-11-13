@@ -87,19 +87,19 @@ class HomeServerSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
         activity = binding.activity
         this.binding = binding
-        binding.addActivityResultListener(::onActivityResult)
+        binding.addActivityResultListener(this)
     }
 
     override fun onDetachedFromActivityForConfigChanges() = detachActivity()
     override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) = onAttachedToActivity(binding)
     override fun onDetachedFromActivity() = detachActivity()
     private fun detachActivity() {
-        binding?.removeActivityResultListener(::onActivityResult)
+        binding?.removeActivityResultListener(this)
         binding = null
         activity = null
     }
 
-    private fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
         if (requestCode != REQUEST_TREE) return false
         val slot = pendingSlot
         pendingSlot = null
