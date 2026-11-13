@@ -6,18 +6,11 @@ import 'media_player_screen.dart';
 
 enum MediaLibraryType { music, video }
 
-class MediaBrowserScreen extends StatefulWidget {
-  const MediaBrowserScreen({
-    required this.api,
-    required this.type,
-    super.key,
-  });
+class _MediaFile {
+  const _MediaFile({required this.entry, required this.path});
 
-  final ServerApi api;
-  final MediaLibraryType type;
-
-  @override
-  State<MediaBrowserScreen> createState() => _MediaBrowserScreenState();
+  final FileEntry entry;
+  final String path;
 }
 
 class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
@@ -29,51 +22,24 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     'mp4', 'm4v', 'mov', 'mkv', 'webm', 'avi', 'wmv',
     'mpeg', 'mpg', '3gp', 'ts',
   };
+  static const _maxDirectories = 2000;
+  static const _maxDepth = 20;
 
-  String _path = '';
-  DirectoryListing? _listing;
+  List<_MediaFile> _media = const [];
   bool _loading = true;
   String? _error;
+  int _scannedDirectories = 0;
+  int _skippedDirectories = 0;
 
   bool get _isMusic => widget.type == MediaLibraryType.music;
   String get _title => _isMusic ? 'Music' : 'Videos';
+  List<String> get _roots =>
+      _isMusic ? const ['Music'] : const ['Movies', 'Videos'];
 
   @override
   void initState() {
     super.initState();
-    _load();
-  }
-
-  Future<void> _load([String? path]) async {
-    final target = path ?? _path;
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final listing = await widget.api.listDirectory(target);
-      if (!mounted) return;
-      setState(() {
-        _path = listing.path == '.' ? '' : listing.path;
-        _listing = listing;
-      });
-    } on DioException catch (error) {
-      if (!mounted) return;
-      final status = error.response?.statusCode;
-      setState(() {
-        _error = status == 401
-            ? 'Login expired or credentials are incorrect.'
-            : status == 403
-                ? 'Access denied.'
-                : status == 404
-                    ? 'Folder not found.'
-                    : error.message ?? 'Could not load media.';
-      });
-    } catch (_) {
-      if (mounted) setState(() => _error = 'Could not load this folder.');
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
+    _scan();
   }
 
   bool _isMedia(FileEntry item) {
@@ -84,41 +50,104 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         .contains(extension);
   }
 
-  String _itemPath(String name) => _path.isEmpty ? name : '$_path/$name';
+  Future<void> _scan() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+      _media = const [];
+      _scannedDirectories = 0;
+      _skippedDirectories = 0;
+    });
 
-  Future<void> _openMedia(FileEntry item) async {
+    final found = <_MediaFile>[];
+    final visited = <String>{};
+    final pending = <({String path, int depth})>[
+      for (final root in _roots) (path: root, depth: 0),
+    ];
+
+    try {
+      while (pending.isNotEmpty && visited.length < _maxDirectories) {
+        final current = pending.removeLast();
+        if (!visited.add(current.path)) continue;
+
+        DirectoryListing listing;
+        try {
+          listing = await widget.api.listDirectory(current.path);
+          _scannedDirectories++;
+        } on DioException catch (error) {
+          if (error.response?.statusCode == 404) continue;
+          if (error.response?.statusCode == 403) {
+            _skippedDirectories++;
+            continue;
+          }
+          rethrow;
+        }
+
+        for (final item in listing.items) {
+          final itemPath = '${current.path}/${item.name}';
+          if (item.isDirectory) {
+            if (current.depth < _maxDepth) {
+              pending.add((path: itemPath, depth: current.depth + 1));
+            } else {
+              _skippedDirectories++;
+            }
+          } else if (_isMedia(item)) {
+            found.add(_MediaFile(entry: item, path: itemPath));
+          }
+        }
+
+        if (mounted) {
+          setState(() {
+            _media = List.unmodifiable(found);
+          });
+        }
+      }
+
+      if (pending.isNotEmpty) _skippedDirectories++;
+      found.sort((a, b) =>
+          a.entry.name.toLowerCase().compareTo(b.entry.name.toLowerCase()));
+    } on DioException catch (error) {
+      if (!mounted) return;
+      final status = error.response?.statusCode;
+      setState(() {
+        _error = status == 401
+            ? 'Login expired or credentials are incorrect.'
+            : error.message ?? 'Could not scan media folders.';
+      });
+    } catch (_) {
+      if (mounted) setState(() => _error = 'Could not scan media folders.');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _media = List.unmodifiable(found);
+          _loading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _openMedia(_MediaFile media) async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => MediaPlayerScreen(
           api: widget.api,
-          title: item.name,
-          path: _itemPath(item.name),
+          title: media.entry.name,
+          path: media.path,
           isVideo: !_isMusic,
         ),
       ),
     );
   }
 
-  Future<void> _goUp() async {
-    if (_path.isEmpty) return;
-    final parts = _path.split('/');
-    parts.removeLast();
-    await _load(parts.join('/'));
-  }
-
   @override
   Widget build(BuildContext context) {
-    final items = _listing?.items ?? const <FileEntry>[];
-    final folders = items.where((item) => item.isDirectory).toList();
-    final media = items.where(_isMedia).toList();
-
     return Scaffold(
       appBar: AppBar(
         title: Text(_title),
         actions: [
           IconButton(
-            tooltip: 'Refresh',
-            onPressed: _loading ? null : () => _load(),
+            tooltip: 'Scan again',
+            onPressed: _loading ? null : _scan,
             icon: const Icon(Icons.refresh),
           ),
         ],
@@ -126,15 +155,14 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       body: Column(
         children: [
           ListTile(
-            leading: IconButton(
-              tooltip: 'Go up',
-              onPressed: _path.isEmpty ? null : _goUp,
-              icon: const Icon(Icons.arrow_upward),
+            leading: Icon(_isMusic ? Icons.library_music : Icons.video_library),
+            title: Text(_roots.join(' + ')),
+            subtitle: Text(
+              _loading
+                  ? 'Scanning folders…'
+                  : '$_scannedDirectories folders scanned'
+                    '${_skippedDirectories > 0 ? ' · $_skippedDirectories skipped' : ''}',
             ),
-            title: Text(_path.isEmpty ? 'All storage' : _path),
-            subtitle: Text(_isMusic
-                ? 'Browse folders and play audio'
-                : 'Browse folders and play videos'),
           ),
           if (_loading) const LinearProgressIndicator(),
           if (_error != null)
@@ -149,46 +177,57 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
             child: _error != null
                 ? Center(
                     child: FilledButton(
-                      onPressed: () => _load(),
-                      child: const Text('Retry'),
+                      onPressed: _scan,
+                      child: const Text('Retry scan'),
                     ),
                   )
-                : _loading && _listing == null
-                    ? const SizedBox.shrink()
-                    : folders.isEmpty && media.isEmpty
+                : _loading && _media.isEmpty
+                    ? const Center(child: Text('Searching media folders…'))
+                    : _media.isEmpty
                         ? Center(
                             child: Text(
-                              _path.isEmpty
-                                  ? 'No ${_title.toLowerCase()} found in storage.'
-                                  : 'No ${_title.toLowerCase()} in this folder.',
+                              'No ${_title.toLowerCase()} files found.\n'
+                              'Add files to ${_roots.join(' or ')} and scan again.',
+                              textAlign: TextAlign.center,
                             ),
                           )
-                        : ListView(
-                            children: [
-                              for (final folder in folders)
-                                ListTile(
-                                  leading: const Icon(Icons.folder_outlined),
-                                  title: Text(folder.name),
-                                  subtitle: const Text('Folder'),
-                                  onTap: () => _load(_itemPath(folder.name)),
+                        : ListView.builder(
+                            itemCount: _media.length,
+                            itemBuilder: (context, index) {
+                              final media = _media[index];
+                              return ListTile(
+                                leading: Icon(_isMusic
+                                    ? Icons.audio_file
+                                    : Icons.play_circle_outline),
+                                title: Text(media.entry.name),
+                                subtitle: Text(
+                                  '${media.path} · '
+                                  '${(media.entry.size / (1024 * 1024)).toStringAsFixed(1)} MB',
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                              for (final item in media)
-                                ListTile(
-                                  leading: Icon(_isMusic
-                                      ? Icons.audio_file
-                                      : Icons.play_circle_outline),
-                                  title: Text(item.name),
-                                  subtitle: Text(
-                                    '${(item.size / (1024 * 1024)).toStringAsFixed(1)} MB',
-                                  ),
-                                  trailing: const Icon(Icons.play_arrow),
-                                  onTap: () => _openMedia(item),
-                                ),
-                            ],
+                                trailing: const Icon(Icons.play_arrow),
+                                onTap: () => _openMedia(media),
+                              );
+                            },
                           ),
           ),
         ],
       ),
     );
   }
+}
+
+class MediaBrowserScreen extends StatefulWidget {
+  const MediaBrowserScreen({
+    required this.api,
+    required this.type,
+    super.key,
+  });
+
+  final ServerApi api;
+  final MediaLibraryType type;
+
+  @override
+  State<MediaBrowserScreen> createState() => _MediaBrowserScreenState();
 }
