@@ -24,7 +24,7 @@ class FileEntry {
         size: (json['size'] as num?)?.toInt() ?? 0,
         modified: json['modified'] as String? ?? '',
       );
-
+}
 
 class DirectoryListing {
   const DirectoryListing({required this.path, required this.items});
@@ -40,7 +40,6 @@ class DirectoryListing {
             .toList(growable: false),
       );
 }
-
 
 class StorageVolume {
   const StorageVolume({
@@ -178,14 +177,19 @@ class ServerApi {
       queryParameters: {'path': path},
     );
   }
+
   Future<List<StorageVolume>> listStorageVolumes() async {
-    final response = await _dio.get<Map<String, dynamic>>('/api/storage/volumes');
+    final response =
+        await _dio.get<Map<String, dynamic>>('/api/storage/volumes');
     return (response.data?['items'] as List<dynamic>? ?? const [])
         .map((item) => StorageVolume.fromJson(item as Map<String, dynamic>))
         .toList(growable: false);
   }
 
-  Future<DirectoryListing> listStorageDirectory(String volume, String path) async {
+  Future<DirectoryListing> listStorageDirectory(
+    String volume,
+    String path,
+  ) async {
     final response = await _dio.get<Map<String, dynamic>>(
       '/api/storage/$volume/',
       queryParameters: {'path': path},
@@ -225,14 +229,22 @@ class ServerApi {
     return Uint8List.fromList(response.data ?? const <int>[]);
   }
 
-  Future<void> createStorageFolder(String volume, String path, String name) async {
+  Future<void> createStorageFolder(
+    String volume,
+    String path,
+    String name,
+  ) async {
     await _dio.post<void>(
       '/api/storage/$volume/mkdir',
       queryParameters: {'path': path, 'name': name},
     );
   }
 
-  Future<void> renameStorageItem(String volume, String path, String name) async {
+  Future<void> renameStorageItem(
+    String volume,
+    String path,
+    String name,
+  ) async {
     await _dio.post<void>(
       '/api/storage/$volume/rename',
       queryParameters: {'path': path, 'name': name},
@@ -245,5 +257,4 @@ class ServerApi {
       queryParameters: {'path': path},
     );
   }
-
 }
