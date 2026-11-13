@@ -156,6 +156,35 @@ jobs:
           print(f"Configured {gradle} to compile against Android API 36")
           PY
       - run: flutter pub get
+      - name: Align Android plugin compile SDK
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          plugin_dirs = sorted(Path.home().glob(".pub-cache/hosted/pub.dev/file_picker-*/android"))
+          if not plugin_dirs:
+              raise SystemExit("file_picker Android plugin was not found in the pub cache")
+
+          patched = []
+          for plugin_dir in plugin_dirs:
+              for gradle in (plugin_dir / "build.gradle", plugin_dir / "build.gradle.kts"):
+                  if not gradle.exists():
+                      continue
+                  content = gradle.read_text()
+                  updated, count = re.subn(
+                      r"(?m)^(\\s*compileSdk(?:Version)?\\s*(?:=\\s*)?)(?:flutter\\.compileSdkVersion|\\d+)",
+                      r"\\g<1>36",
+                      content,
+                      count=1,
+                  )
+                  if count:
+                      gradle.write_text(updated)
+                      patched.append(str(gradle))
+          if not patched:
+              raise SystemExit("Could not update file_picker compileSdk to 36")
+          print("Updated plugin compile SDK: " + ", ".join(patched))
+          PY
       - run: flutter build apk --release
       - uses: actions/upload-artifact@v4
         with:
