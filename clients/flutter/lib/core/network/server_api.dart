@@ -22,7 +22,7 @@ class FileEntry {
         name: json['name'] as String,
         type: json['type'] as String,
         size: (json['size'] as num?)?.toInt() ?? 0,
-        modified: json['modified'] as String? ?? '',
+        modified: json['modified']?.toString() ?? '',
       );
 }
 
