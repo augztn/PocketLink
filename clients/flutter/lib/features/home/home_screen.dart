@@ -4,6 +4,7 @@ import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
 import '../media/media_browser_screen.dart';
 import '../library/library_browser_screen.dart';
+import '../storage/storage_browser_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({required this.api, super.key});
@@ -207,6 +208,24 @@ class _HomeDashboard extends StatelessWidget {
               subtitle: const Text('Browse folders, upload, download and organize files'),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => onOpenTab(1),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Card(
+            child: ListTile(
+              leading: CircleAvatar(
+                backgroundColor: colors.tertiaryContainer,
+                child: Icon(Icons.usb_rounded,
+                    color: colors.onTertiaryContainer),
+              ),
+              title: const Text('External SSDs'),
+              subtitle: const Text('USB Storage 1 and USB Storage 2'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => StorageBrowserScreen(api: api),
+                ),
+              ),
             ),
           ),
         ],
