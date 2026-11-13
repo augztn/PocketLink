@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 
@@ -88,6 +89,36 @@ class ServerApi {
       queryParameters: {'path': path},
     );
     return DirectoryListing.fromJson(response.data ?? const {});
+  }
+
+  Future<void> uploadFile(
+    String path,
+    String filename,
+    Uint8List bytes, {
+    ProgressCallback? onSendProgress,
+  }) async {
+    final form = FormData.fromMap({
+      'file': MultipartFile.fromBytes(bytes, filename: filename),
+    });
+    await _dio.post<void>(
+      '/api/files/upload',
+      queryParameters: {'path': path},
+      data: form,
+      onSendProgress: onSendProgress,
+    );
+  }
+
+  Future<Uint8List> downloadFile(
+    String path, {
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final response = await _dio.get<List<int>>(
+      '/api/files/download',
+      queryParameters: {'path': path},
+      options: Options(responseType: ResponseType.bytes),
+      onReceiveProgress: onReceiveProgress,
+    );
+    return Uint8List.fromList(response.data ?? const <int>[]);
   }
 
   Future<void> createFolder(String path, String name) async {
