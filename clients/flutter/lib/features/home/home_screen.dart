@@ -97,7 +97,7 @@ class _HomeDashboard extends StatelessWidget {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.14),
+                    color: color.withOpacity(0.14),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Icon(icon, color: color, size: 26),
@@ -154,7 +154,7 @@ class _HomeDashboard extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text('Browse and manage files stored on your HomeServer.',
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colors.onPrimary.withValues(alpha: 0.9),
+                      color: colors.onPrimary.withOpacity(0.9),
                     )),
                 const SizedBox(height: 18),
                 FilledButton.tonalIcon(
