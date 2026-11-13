@@ -21,6 +21,10 @@ The client includes separate Music and Videos libraries. It streams supported au
 video files directly from the server with HTTP Basic Authentication and byte-range
 requests, so seeking does not require downloading the entire file first.
 
+The Music library recursively scans `/sdcard/Music`. The Videos library recursively
+scans `/sdcard/Movies` and `/sdcard/Videos`. Missing folders are skipped; inaccessible
+subfolders are reported as skipped. Use the refresh action to scan again after adding files.
+
 Supported extensions include MP3, M4A, AAC, WAV, FLAC, OGG, MP4, MKV, WebM, MOV and AVI.
 Actual playback depends on the codecs available in the media file and the target device.
 
