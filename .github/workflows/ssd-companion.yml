@@ -1,0 +1,37 @@
+name: Android SSD companion
+
+on:
+  push:
+    paths:
+      - "clients/android-ssd-companion/**"
+      - ".github/workflows/ssd-companion.yml"
+  pull_request:
+    paths:
+      - "clients/android-ssd-companion/**"
+      - ".github/workflows/ssd-companion.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+      - name: Build release APK
+        working-directory: clients/android-ssd-companion
+        run: gradle --no-daemon assembleRelease
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HomeServer-SSD-Bridge-Android
+          path: clients/android-ssd-companion/app/build/outputs/apk/release/app-release-unsigned.apk
+          if-no-files-found: error
+          retention-days: 14
