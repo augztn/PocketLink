@@ -37,7 +37,7 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
       final available = volumes.where((item) => item.available).toList();
       setState(() {
         _volumes = volumes;
-        _volume = available.isNotEmpty ? available.first.id : volumes.firstOrNull?.id;
+        _volume = available.isNotEmpty ? available.first.id : (volumes.isEmpty ? null : volumes.first.id);
       });
       if (_volume != null) await _loadDirectory('');
     } on DioException catch (error) {
@@ -187,7 +187,7 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
   @override
   Widget build(BuildContext context) {
     final items = _listing?.items ?? const <FileEntry>[];
-    final selected = _volumes.where((item) => item.id == _volume).firstOrNull;
+    final matches = _volumes.where((item) => item.id == _volume);\n    final selected = matches.isEmpty ? null : matches.first;
     return Scaffold(
       appBar: AppBar(
         title: const Text('External SSDs'),
@@ -227,7 +227,7 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
           leading: IconButton(
             tooltip: 'Go up',
             onPressed: _path.isEmpty ? null : () {
-              final parts = _path.split('')..removeLast();
+              final parts = _path.split('/')..removeLast();
               _loadDirectory(parts.join(''));
             },
             icon: const Icon(Icons.arrow_upward),
