@@ -11,9 +11,22 @@ HomeServer is designed to make self-hosted servers approachable: enter a server 
 ## Planned platforms
 
 - Android
-- Linux
+- Linux (portable AppImage)
 - Windows
 - iOS (where supported by Flutter and platform dependencies)
+
+## Linux AppImage
+
+GitHub Actions builds a portable x86_64 AppImage for Linux. Open the latest successful
+[Flutter CI workflow](https://github.com/augztn/syslab/actions/workflows/flutter.yml),
+download the `HomeServer-Linux-x86_64-AppImage` artifact, then run:
+
+```sh
+chmod +x HomeServer-x86_64.AppImage
+./HomeServer-x86_64.AppImage
+```
+
+The AppImage is currently built for x86_64 Linux desktops. ARM64 Linux packaging is not included yet.
 
 ## Development
 
