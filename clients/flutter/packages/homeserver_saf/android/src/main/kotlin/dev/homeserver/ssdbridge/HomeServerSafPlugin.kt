@@ -11,9 +11,10 @@ import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.plugin.common.PluginRegistry
 
 class HomeServerSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler,
-    ActivityPluginBinding.OnSaveInstanceStateListener {
+    PluginRegistry.ActivityResultListener {
     private lateinit var channel: MethodChannel
     private lateinit var context: Context
     private var activity: Activity? = null
@@ -34,7 +35,7 @@ class HomeServerSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
             "selectVolume" -> {
                 val slot = call.argument<Int>("slot")
                 val current = activity
-                if (slot !in 1..2 || current == null || pendingSlot != null) {
+                if (slot == null || slot !in 1..2 || current == null || pendingSlot != null) {
                     result.error("UNAVAILABLE", "Storage picker is unavailable.", null)
                     return
                 }
@@ -118,7 +119,6 @@ class HomeServerSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
         return true
     }
 
-    override fun onSaveInstanceState(outState: android.os.Bundle) = Unit
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         channel.setMethodCallHandler(null)
     }
