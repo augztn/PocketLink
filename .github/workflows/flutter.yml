@@ -89,3 +89,54 @@ jobs:
           path: clients/flutter/HomeServer-x86_64.AppImage
           if-no-files-found: error
           retention-days: 14
+
+  android-apk:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: clients/flutter
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Generate Android project
+        run: flutter create --platforms=android --project-name homeserver_client .
+      - name: Enable network access for HTTP and HTTPS servers
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          manifest = Path("android/app/src/main/AndroidManifest.xml")
+          content = manifest.read_text()
+          if "android.permission.INTERNET" not in content:
+              content = content.replace(
+                  "<application",
+                  '<uses-permission android:name="android.permission.INTERNET" />\\n\\n    <application',
+                  1,
+              )
+          if "android:usesCleartextTraffic=" not in content:
+              content = re.sub(
+                  r"<application\\b",
+                  '<application\\n        android:usesCleartextTraffic="true"',
+                  content,
+                  count=1,
+              )
+          manifest.write_text(content)
+          if "android.permission.INTERNET" not in content or "android:usesCleartextTraffic=" not in content:
+              raise SystemExit("Android network configuration was not applied")
+          PY
+      - run: flutter pub get
+      - run: flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HomeServer-Android-APK
+          path: clients/flutter/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 14
