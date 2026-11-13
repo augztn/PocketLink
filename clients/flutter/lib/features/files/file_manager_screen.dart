@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/network/server_api.dart';
@@ -17,6 +18,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   DirectoryListing? _listing;
   bool _loading = true;
   String? _error;
+  double? _transferProgress;
 
   @override
   void initState() {
@@ -85,6 +87,75 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     controller.dispose();
     if (result == null || result.trim().isEmpty) return null;
     return result.trim();
+  }
+
+  Future<void> _uploadFile() async {
+    try {
+      final selection = await FilePicker.platform.pickFiles(
+        allowMultiple: false,
+        withData: true,
+      );
+      if (selection == null || selection.files.isEmpty) return;
+      final file = selection.files.single;
+      final bytes = file.bytes;
+      if (bytes == null) {
+        _showError('Could not read the selected file on this device.');
+        return;
+      }
+      if (bytes.length > 100 * 1024 * 1024) {
+        _showError('File exceeds the server 100 MB upload limit.');
+        return;
+      }
+
+      setState(() => _transferProgress = 0);
+      await widget.api.uploadFile(
+        _path,
+        file.name,
+        bytes,
+        onSendProgress: (sent, total) {
+          if (mounted && total > 0) {
+            setState(() => _transferProgress = sent / total);
+          }
+        },
+      );
+      if (!mounted) return;
+      _showError('Upload complete: ${file.name}');
+      await _load();
+    } on DioException catch (error) {
+      _showError(_messageFor(error));
+    } catch (_) {
+      _showError('Unable to select or upload this file.');
+    } finally {
+      if (mounted) setState(() => _transferProgress = null);
+    }
+  }
+
+  Future<void> _downloadFile(FileEntry item) async {
+    try {
+      setState(() => _transferProgress = 0);
+      final bytes = await widget.api.downloadFile(
+        _itemPath(item.name),
+        onReceiveProgress: (received, total) {
+          if (mounted && total > 0) {
+            setState(() => _transferProgress = received / total);
+          }
+        },
+      );
+      if (!mounted) return;
+      final savedPath = await FilePicker.platform.saveFile(
+        dialogTitle: 'Save ${item.name}',
+        fileName: item.name,
+        bytes: bytes,
+      );
+      if (!mounted) return;
+      if (savedPath != null) _showError('Downloaded: $savedPath');
+    } on DioException catch (error) {
+      _showError(_messageFor(error));
+    } catch (_) {
+      _showError('Unable to download this file.');
+    } finally {
+      if (mounted) setState(() => _transferProgress = null);
+    }
   }
 
   Future<void> _createFolder() async {
@@ -192,7 +263,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
             title: Text(_path.isEmpty ? 'HomeServer storage' : _path),
             subtitle: const Text('Files are restricted to the server storage folder'),
           ),
-          if (_loading) const LinearProgressIndicator(),
+          if (_loading) const LinearProgressIndicator(),\n          if (_transferProgress != null)\n            LinearProgressIndicator(value: _transferProgress),
           if (_error != null)
             Padding(
               padding: const EdgeInsets.all(20),
