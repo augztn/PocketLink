@@ -35,6 +35,36 @@ void main() {
         throwsFormatException,
       );
     });
+    test('parses SAF listings with numeric modified timestamps', () {
+      final listing = DirectoryListing.fromJson({
+        'path': '',
+        'items': [
+          {
+            'name': 'movie.mp4',
+            'type': 'file',
+            'size': 1024,
+            'modified': 1794528000000,
+          },
+        ],
+      });
+
+      expect(listing.items.single.modified, '1794528000000');
+      expect(listing.items.single.size, 1024);
+    });
+
+    test('parses separate external storage volume status', () {
+      final volume = StorageVolume.fromJson({
+        'id': 'usb1',
+        'name': 'USB Storage 1',
+        'available': true,
+        'writable': true,
+      });
+
+      expect(volume.id, 'usb1');
+      expect(volume.available, isTrue);
+      expect(volume.writable, isTrue);
+    });
+
     test('parses the existing backend file listing format', () {
       final listing = DirectoryListing.fromJson({
         'path': '.',
