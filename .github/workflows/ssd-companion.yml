@@ -26,12 +26,12 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.9"
-      - name: Build release APK
+      - name: Build installable debug APK
         working-directory: clients/android-ssd-companion
-        run: gradle --no-daemon assembleRelease
+        run: gradle --no-daemon assembleDebug
       - uses: actions/upload-artifact@v4
         with:
           name: HomeServer-SSD-Bridge-Android
-          path: clients/android-ssd-companion/app/build/outputs/apk/release/app-release-unsigned.apk
+          path: clients/android-ssd-companion/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
