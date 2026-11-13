@@ -241,6 +241,11 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
         title: const Text('Files'),
         actions: [
           IconButton(
+            tooltip: 'Upload file',
+            onPressed: _transferProgress != null ? null : _uploadFile,
+            icon: const Icon(Icons.upload_file),
+          ),
+          IconButton(
             tooltip: 'New folder',
             onPressed: _createFolder,
             icon: const Icon(Icons.create_new_folder_outlined),
@@ -263,7 +268,9 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
             title: Text(_path.isEmpty ? 'HomeServer storage' : _path),
             subtitle: const Text('Files are restricted to the server storage folder'),
           ),
-          if (_loading) const LinearProgressIndicator(),\n          if (_transferProgress != null)\n            LinearProgressIndicator(value: _transferProgress),
+          if (_loading) const LinearProgressIndicator(),
+          if (_transferProgress != null)
+            LinearProgressIndicator(value: _transferProgress),
           if (_error != null)
             Padding(
               padding: const EdgeInsets.all(20),
@@ -302,11 +309,19 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                                     : null,
                                 trailing: PopupMenuButton<String>(
                                   onSelected: (action) {
+                                    if (action == 'download' && !item.isDirectory) {
+                                      _downloadFile(item);
+                                    }
                                     if (action == 'rename') _rename(item);
                                     if (action == 'delete') _delete(item);
                                   },
-                                  itemBuilder: (_) => const [
-                                    PopupMenuItem(
+                                  itemBuilder: (_) => [
+                                    if (!item.isDirectory)
+                                      const PopupMenuItem(
+                                        value: 'download',
+                                        child: Text('Download'),
+                                      ),
+                                    const PopupMenuItem(
                                       value: 'rename',
                                       child: Text('Rename'),
                                     ),
