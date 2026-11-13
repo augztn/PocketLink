@@ -71,10 +71,14 @@ class ServerApi {
     final uri = Uri.tryParse(withScheme);
 
     if (uri == null ||
+        trimmed.isEmpty ||
+        trimmed.contains(RegExp(r'\\s')) ||
         !uri.hasAuthority ||
         uri.host.isEmpty ||
+        uri.host.contains('%') ||
         (uri.scheme != 'http' && uri.scheme != 'https') ||
-        uri.userInfo.isNotEmpty) {
+        uri.userInfo.isNotEmpty ||
+        (uri.hasPort && (uri.port < 1 || uri.port > 65535))) {
       throw const FormatException('Enter a valid server address and port.');
     }
 
