@@ -41,8 +41,41 @@ class SafHttpServer(private val context: Context, private val token: String) : N
                 session.uri == "/v1/read" && session.method == Method.GET -> {
                     val file = resolve(root, path) ?: return jsonError(Response.Status.NOT_FOUND, "File not found")
                     if (!file.isFile) return jsonError(Response.Status.BAD_REQUEST, "Not a file")
-                    val input = context.contentResolver.openInputStream(file.uri) ?: return jsonError(Response.Status.INTERNAL_ERROR, "Cannot open file")
-                    newChunkedResponse(Response.Status.OK, file.type ?: "application/octet-stream", input)
+                    val length = file.length()
+                    val range = session.headers["range"]
+                    val input = context.contentResolver.openInputStream(file.uri)
+                        ?: return jsonError(Response.Status.INTERNAL_ERROR, "Cannot open file")
+                    if (range == null) {
+                        return newFixedLengthResponse(
+                            Response.Status.OK, file.type ?: "application/octet-stream", input, length
+                        ).apply { addHeader("Accept-Ranges", "bytes") }
+                    }
+                    val match = Regex("bytes=(\\d*)-(\\d*)").matchEntire(range)
+                        ?: run { input.close(); return jsonError(Response.Status.RANGE_NOT_SATISFIABLE, "Invalid byte range") }
+                    val start = match.groupValues[1].toLongOrNull() ?: 0L
+                    val requestedEnd = match.groupValues[2].toLongOrNull() ?: (length - 1)
+                    if (start >= length || requestedEnd < start) {
+                        input.close()
+                        return jsonError(Response.Status.RANGE_NOT_SATISFIABLE, "Range outside file")
+                    }
+                    val end = minOf(requestedEnd, length - 1)
+                    var skipped = 0L
+                    while (skipped < start) {
+                        val count = input.skip(start - skipped)
+                        if (count <= 0) break
+                        skipped += count
+                    }
+                    if (skipped != start) {
+                        input.close()
+                        return jsonError(Response.Status.RANGE_NOT_SATISFIABLE, "Could not seek to byte range")
+                    }
+                    return newFixedLengthResponse(
+                        Response.Status.PARTIAL_CONTENT, file.type ?: "application/octet-stream",
+                        input, end - start + 1
+                    ).apply {
+                        addHeader("Accept-Ranges", "bytes")
+                        addHeader("Content-Range", "bytes $start-$end/$length")
+                    }
                 }
                 session.uri == "/v1/write" && session.method == Method.PUT -> {
                     val name = path.substringAfterLast('/')
