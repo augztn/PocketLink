@@ -50,7 +50,7 @@ async def download_storage_file(
         if key in response.headers
     }
     return StreamingResponse(
-        body(),
+        body,
         status_code=response.status_code,
         media_type=response.headers.get("content-type", "application/octet-stream"),
         headers=headers,
