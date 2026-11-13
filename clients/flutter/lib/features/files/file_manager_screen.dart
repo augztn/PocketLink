@@ -353,7 +353,9 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                                     : _formatSize(item.size)),
                                 onTap: item.isDirectory
                                     ? () => _load(_itemPath(item.name))
-                                    : null,
+                                    : _isImage(item)
+                                        ? () => _previewImage(item)
+                                        : null,
                                 trailing: PopupMenuButton<String>(
                                   onSelected: (action) {
                                     if (action == 'download' && !item.isDirectory) {
