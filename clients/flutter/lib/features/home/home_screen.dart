@@ -5,6 +5,7 @@ import '../files/file_manager_screen.dart';
 import '../media/media_browser_screen.dart';
 import '../library/library_browser_screen.dart';
 import '../storage/storage_browser_screen.dart';
+import '../storage/local_storage_setup_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({required this.api, super.key});
@@ -224,6 +225,24 @@ class _HomeDashboard extends StatelessWidget {
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (_) => StorageBrowserScreen(api: api),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Card(
+            child: ListTile(
+              leading: CircleAvatar(
+                backgroundColor: colors.primaryContainer,
+                child: Icon(Icons.settings_input_component,
+                    color: colors.onPrimaryContainer),
+              ),
+              title: const Text('Set up USB storage on this device'),
+              subtitle: const Text('Grant Android access to connected SSD partitions'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const LocalStorageSetupScreen(),
                 ),
               ),
             ),
