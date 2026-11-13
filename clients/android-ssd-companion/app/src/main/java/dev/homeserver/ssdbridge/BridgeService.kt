@@ -22,7 +22,7 @@ class BridgeService : Service() {
         val notification: Notification = NotificationCompat.Builder(this, channelId)
             .setContentTitle("HomeServer SSD bridge")
             .setContentText("USB storage access is available on this device")
-            .setSmallIcon(android.R.drawable.stat_sys_data_usb)
+            .setSmallIcon(android.R.drawable.ic_menu_info_details)
             .setOngoing(true)
             .build()
         startForeground(8765, notification)
