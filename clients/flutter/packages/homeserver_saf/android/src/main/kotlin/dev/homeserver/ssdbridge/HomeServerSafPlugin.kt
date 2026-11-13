@@ -45,8 +45,13 @@ class HomeServerSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
                         Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
                         Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
                 }
-                current.startActivityForResult(intent, REQUEST_TREE)
-                result.success(null)
+                try {
+                    current.startActivityForResult(intent, REQUEST_TREE)
+                    result.success(null)
+                } catch (error: Exception) {
+                    pendingSlot = null
+                    result.error("PICKER_FAILED", error.message ?: "Could not open Android storage picker.", null)
+                }
             }
             "start" -> {
                 val intent = Intent(context, BridgeService::class.java)
@@ -95,6 +100,10 @@ class HomeServerSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
     override fun onDetachedFromActivity() = detachActivity()
     private fun detachActivity() {
         binding?.removeActivityResultListener(this)
+        if (pendingSlot != null) {
+            pendingSlot = null
+            channel.invokeMethod("selectionCancelled", null)
+        }
         binding = null
         activity = null
     }
