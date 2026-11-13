@@ -118,13 +118,13 @@ jobs:
           if "android.permission.INTERNET" not in content:
               content = content.replace(
                   "<application",
-                  '<uses-permission android:name="android.permission.INTERNET" />\\n\\n    <application',
+                  '<uses-permission android:name="android.permission.INTERNET" />\n\n    <application',
                   1,
               )
           if "android:usesCleartextTraffic=" not in content:
               content = re.sub(
-                  r"<application\\b",
-                  '<application\\n        android:usesCleartextTraffic="true"',
+                  r"<application\b",
+                  '<application\n        android:usesCleartextTraffic="true"',
                   content,
                   count=1,
               )
