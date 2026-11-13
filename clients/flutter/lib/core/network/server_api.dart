@@ -85,6 +85,17 @@ class ServerApi {
     return uri.replace(path: '', query: null, fragment: null).toString();
   }
 
+  /// Builds an authenticated streaming URL without downloading media into memory.
+  String mediaStreamUrl(String path) => Uri.parse(_dio.options.baseUrl)
+      .resolve('/api/files/stream')
+      .replace(queryParameters: {'path': path})
+      .toString();
+
+  /// Headers required by the native media player for authenticated requests.
+  Map<String, String> get mediaHeaders => {
+        'Authorization': _dio.options.headers['Authorization'] as String,
+      };
+
   Future<DirectoryListing> authenticate() async => listDirectory('');
 
   Future<DirectoryListing> listDirectory(String path) async {
