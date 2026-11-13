@@ -24,6 +24,75 @@ class FileEntry {
         size: (json['size'] as num?)?.toInt() ?? 0,
         modified: json['modified'] as String? ?? '',
       );
+
+  Future<List<StorageVolume>> listStorageVolumes() async {
+    final response = await _dio.get<Map<String, dynamic>>('/api/storage/volumes');
+    return (response.data?['items'] as List<dynamic>? ?? const [])
+        .map((item) => StorageVolume.fromJson(item as Map<String, dynamic>))
+        .toList(growable: false);
+  }
+
+  Future<DirectoryListing> listStorageDirectory(String volume, String path) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/storage/$volume/',
+      queryParameters: {'path': path},
+    );
+    return DirectoryListing.fromJson(response.data ?? const {});
+  }
+
+  Future<void> uploadStorageFile(
+    String volume,
+    String path,
+    String filename,
+    Uint8List bytes, {
+    ProgressCallback? onSendProgress,
+  }) async {
+    final form = FormData.fromMap({
+      'file': MultipartFile.fromBytes(bytes, filename: filename),
+    });
+    await _dio.put<void>(
+      '/api/storage/$volume/upload',
+      queryParameters: {'path': path},
+      data: form,
+      onSendProgress: onSendProgress,
+    );
+  }
+
+  Future<Uint8List> downloadStorageFile(
+    String volume,
+    String path, {
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final response = await _dio.get<List<int>>(
+      '/api/storage/$volume/download',
+      queryParameters: {'path': path},
+      options: Options(responseType: ResponseType.bytes),
+      onReceiveProgress: onReceiveProgress,
+    );
+    return Uint8List.fromList(response.data ?? const <int>[]);
+  }
+
+  Future<void> createStorageFolder(String volume, String path, String name) async {
+    await _dio.post<void>(
+      '/api/storage/$volume/mkdir',
+      queryParameters: {'path': path, 'name': name},
+    );
+  }
+
+  Future<void> renameStorageItem(String volume, String path, String name) async {
+    await _dio.post<void>(
+      '/api/storage/$volume/rename',
+      queryParameters: {'path': path, 'name': name},
+    );
+  }
+
+  Future<void> deleteStorageItem(String volume, String path) async {
+    await _dio.delete<void>(
+      '/api/storage/$volume/item',
+      queryParameters: {'path': path},
+    );
+  }
+
 }
 
 class DirectoryListing {
@@ -38,6 +107,28 @@ class DirectoryListing {
         items: (json['items'] as List<dynamic>? ?? const [])
             .map((item) => FileEntry.fromJson(item as Map<String, dynamic>))
             .toList(growable: false),
+      );
+}
+
+
+class StorageVolume {
+  const StorageVolume({
+    required this.id,
+    required this.name,
+    required this.available,
+    required this.writable,
+  });
+
+  final String id;
+  final String name;
+  final bool available;
+  final bool writable;
+
+  factory StorageVolume.fromJson(Map<String, dynamic> json) => StorageVolume(
+        id: json['id'] as String,
+        name: json['name'] as String,
+        available: json['available'] as bool? ?? false,
+        writable: json['writable'] as bool? ?? false,
       );
 }
 
