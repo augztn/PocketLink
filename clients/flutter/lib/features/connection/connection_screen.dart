@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../core/network/server_api.dart';
-import '../files/file_manager_screen.dart';
+import '../home/home_screen.dart';
 
 class ConnectionScreen extends StatefulWidget {
   const ConnectionScreen({super.key});
@@ -83,7 +83,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       if (!mounted) return;
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => FileManagerScreen(api: api),
+          builder: (_) => HomeScreen(api: api),
         ),
       );
     } on DioException catch (error) {
