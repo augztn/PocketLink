@@ -92,6 +92,7 @@ class SafHttpServer(private val context: Context, private val token: String) : N
                     json(JSONObject().put("ok", true).put("name", created.name))
                 }
                 session.uri == "/v1/rename" && session.method == Method.POST -> {
+                    if (path.isBlank()) return bad("Cannot rename a storage root")
                     val name = q["name"] ?: return bad("name is required")
                     if (!validName(name)) return bad("Invalid name")
                     val item = resolve(root, path) ?: return jsonError(Response.Status.NOT_FOUND, "Item not found")
@@ -99,6 +100,7 @@ class SafHttpServer(private val context: Context, private val token: String) : N
                     json(JSONObject().put("ok", true).put("name", name))
                 }
                 session.uri == "/v1/item" && session.method == Method.DELETE -> {
+                    if (path.isBlank()) return bad("Cannot delete a storage root")
                     val item = resolve(root, path) ?: return jsonError(Response.Status.NOT_FOUND, "Item not found")
                     if (!item.delete()) return jsonError(Response.Status.INTERNAL_ERROR, "Delete failed")
                     json(JSONObject().put("ok", true))
