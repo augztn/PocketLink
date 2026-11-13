@@ -6,7 +6,7 @@ import androidx.documentfile.provider.DocumentFile
 import fi.iki.elonen.NanoHTTPD
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.InputStream
+import java.security.MessageDigest
 
 class SafHttpServer(private val context: Context, private val token: String) : NanoHTTPD("127.0.0.1", 8765) {
     private val prefs = context.getSharedPreferences("ssd-bridge", Context.MODE_PRIVATE)
@@ -16,7 +16,10 @@ class SafHttpServer(private val context: Context, private val token: String) : N
             return json(JSONObject().put("status", "ok").put("service", "saf-bridge"))
         }
         val supplied = session.headers["authorization"] ?: ""
-        if (token.isBlank() || supplied != "Bearer $token") return text(Response.Status.UNAUTHORIZED, "Unauthorized")
+        if (token.isBlank() || !MessageDigest.isEqual(
+                supplied.toByteArray(Charsets.UTF_8),
+                "Bearer $token".toByteArray(Charsets.UTF_8)
+            )) return text(Response.Status.UNAUTHORIZED, "Unauthorized")
 
         return try {
             val q = session.parms
@@ -52,9 +55,27 @@ class SafHttpServer(private val context: Context, private val token: String) : N
                     }
                     val match = Regex("bytes=(\\d*)-(\\d*)").matchEntire(range)
                         ?: run { input.close(); return jsonError(Response.Status.RANGE_NOT_SATISFIABLE, "Invalid byte range") }
-                    val start = match.groupValues[1].toLongOrNull() ?: 0L
-                    val requestedEnd = match.groupValues[2].toLongOrNull() ?: (length - 1)
-                    if (start >= length || requestedEnd < start) {
+                    if (length <= 0L) {
+                        input.close()
+                        return jsonError(Response.Status.RANGE_NOT_SATISFIABLE, "Range outside empty file")
+                    }
+                    val startText = match.groupValues[1]
+                    val endText = match.groupValues[2]
+                    val start: Long
+                    val requestedEnd: Long
+                    if (startText.isEmpty()) {
+                        val suffixLength = endText.toLongOrNull()
+                        if (suffixLength == null || suffixLength <= 0L) {
+                            input.close()
+                            return jsonError(Response.Status.RANGE_NOT_SATISFIABLE, "Invalid suffix range")
+                        }
+                        start = (length - suffixLength).coerceAtLeast(0L)
+                        requestedEnd = length - 1
+                    } else {
+                        start = startText.toLongOrNull() ?: -1L
+                        requestedEnd = endText.toLongOrNull() ?: (length - 1)
+                    }
+                    if (start < 0L || start >= length || requestedEnd < start) {
                         input.close()
                         return jsonError(Response.Status.RANGE_NOT_SATISFIABLE, "Range outside file")
                     }
