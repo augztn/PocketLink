@@ -132,6 +132,29 @@ jobs:
           if "android.permission.INTERNET" not in content or "android:usesCleartextTraffic=" not in content:
               raise SystemExit("Android network configuration was not applied")
           PY
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          candidates = [
+              Path("android/app/build.gradle.kts"),
+              Path("android/app/build.gradle"),
+          ]
+          gradle = next((path for path in candidates if path.exists()), None)
+          if gradle is None:
+              raise SystemExit("Android app Gradle file not found")
+          content = gradle.read_text()
+          updated, count = re.subn(
+              r"compileSdk\\s*(?:=)?\\s*flutter\\.compileSdkVersion",
+              "compileSdk = 36" if gradle.suffix == ".kts" else "compileSdkVersion 36",
+              content,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit("Could not set Android compileSdk to 36")
+          gradle.write_text(updated)
+          print(f"Configured {gradle} to compile against Android API 36")
+          PY
       - run: flutter pub get
       - run: flutter build apk --release
       - uses: actions/upload-artifact@v4
