@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../core/network/server_api.dart';
+import '../files/file_manager_screen.dart';
 
 class ConnectionScreen extends StatefulWidget {
   const ConnectionScreen({super.key});
@@ -15,10 +16,12 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
   static const _storage = FlutterSecureStorage();
   final _addressController = TextEditingController();
   final _portController = TextEditingController(text: '8000');
+  final _usernameController = TextEditingController(text: 'admin');
+  final _passwordController = TextEditingController();
 
   bool _isConnecting = false;
+  bool _obscurePassword = true;
   String? _message;
-  bool _connected = false;
 
   @override
   void initState() {
@@ -37,58 +40,71 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     if (uri == null) return;
     _addressController.text = uri.host;
     if (uri.hasPort) _portController.text = uri.port.toString();
+    _usernameController.text =
+        await _storage.read(key: 'last_server_username') ?? 'admin';
+    _passwordController.text =
+        await _storage.read(key: 'last_server_password') ?? '';
+    if (mounted) setState(() {});
   }
 
   Future<void> _connect() async {
     final host = _addressController.text.trim();
     final port = int.tryParse(_portController.text.trim());
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text;
 
-    if (host.isEmpty || port == null || port < 1 || port > 65535) {
-      setState(() {
-        _connected = false;
-        _message = 'Enter a valid server address and port.';
-      });
+    if (host.isEmpty ||
+        port == null ||
+        port < 1 ||
+        port > 65535 ||
+        username.isEmpty ||
+        password.isEmpty) {
+      setState(() => _message = 'Enter the server, port, username, and password.');
       return;
     }
 
     setState(() {
       _isConnecting = true;
-      _connected = false;
       _message = null;
     });
 
     try {
-      final api = ServerApi(baseUrl: '$host:$port');
-      final healthy = await api.checkHealth();
-      if (!healthy) throw StateError('Server health check failed.');
-
-      await _storage.write(
-        key: 'last_server_address',
-        value: '$host:$port',
+      final api = ServerApi(
+        baseUrl: '$host:$port',
+        username: username,
+        password: password,
       );
+      await api.authenticate();
+
+      await _storage.write(key: 'last_server_address', value: '$host:$port');
+      await _storage.write(key: 'last_server_username', value: username);
+      await _storage.write(key: 'last_server_password', value: password);
 
       if (!mounted) return;
-      setState(() {
-        _connected = true;
-        _message = 'Server is reachable. Authentication setup is next.';
-      });
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => FileManagerScreen(api: api),
+        ),
+      );
     } on DioException catch (error) {
       if (!mounted) return;
+      final status = error.response?.statusCode;
       setState(() {
-        _message = error.type == DioExceptionType.connectionTimeout ||
-                error.type == DioExceptionType.receiveTimeout
-            ? 'Connection timed out. Check the address, port, and network.'
-            : 'Could not reach the server. Check the address and port.';
+        _message = status == 401
+            ? 'Incorrect username or password.'
+            : status == 403
+                ? 'The server denied access.'
+                : status == 404
+                    ? 'File API not found on this server.'
+                    : error.type == DioExceptionType.connectionTimeout ||
+                            error.type == DioExceptionType.receiveTimeout
+                        ? 'Connection timed out. Check the address, port, and network.'
+                        : 'Could not connect. Check the server address and credentials.';
       });
     } on FormatException catch (error) {
-      if (!mounted) return;
-      setState(() => _message = error.message);
-    } on StateError catch (error) {
-      if (!mounted) return;
-      setState(() => _message = error.message);
+      if (mounted) setState(() => _message = error.message);
     } catch (_) {
-      if (!mounted) return;
-      setState(() => _message = 'Unexpected connection error.');
+      if (mounted) setState(() => _message = 'Unexpected connection error.');
     } finally {
       if (mounted) setState(() => _isConnecting = false);
     }
@@ -98,6 +114,8 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
   void dispose() {
     _addressController.dispose();
     _portController.dispose();
+    _usernameController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
@@ -114,11 +132,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
               padding: const EdgeInsets.all(24),
               shrinkWrap: true,
               children: [
-                Icon(
-                  Icons.dns_rounded,
-                  size: 52,
-                  color: colorScheme.primary,
-                ),
+                Icon(Icons.dns_rounded, size: 52, color: colorScheme.primary),
                 const SizedBox(height: 20),
                 Text(
                   'HomeServer',
@@ -127,8 +141,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Connect to your server and manage it from one place.',
-                  style: Theme.of(context).textTheme.bodyMedium,
+                  'Connect to your server and manage your files.',
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
@@ -151,6 +164,32 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                     prefixIcon: Icon(Icons.settings_ethernet),
                   ),
                 ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: _usernameController,
+                  autocorrect: false,
+                  decoration: const InputDecoration(
+                    labelText: 'Username',
+                    prefixIcon: Icon(Icons.person_outline),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: _passwordController,
+                  obscureText: _obscurePassword,
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    suffixIcon: IconButton(
+                      onPressed: () => setState(
+                        () => _obscurePassword = !_obscurePassword,
+                      ),
+                      icon: Icon(_obscurePassword
+                          ? Icons.visibility
+                          : Icons.visibility_off),
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 20),
                 FilledButton.icon(
                   onPressed: _isConnecting ? null : _connect,
@@ -170,19 +209,14 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                     child: Text(
                       _message!,
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: _connected
-                            ? colorScheme.primary
-                            : colorScheme.error,
-                      ),
+                      style: TextStyle(color: colorScheme.error),
                     ),
                   ),
                 ],
                 const SizedBox(height: 24),
                 Text(
-                  'Connection check only: secure login and file operations '
-                  'will be enabled after the backend API contract is verified. '
-                  'Use HTTPS for connections over untrusted networks.',
+                  'Use the admin username and the password configured on your server. '
+                  'Use HTTPS on untrusted networks.',
                   style: Theme.of(context).textTheme.bodySmall,
                   textAlign: TextAlign.center,
                 ),
