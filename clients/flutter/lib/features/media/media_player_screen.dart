@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
@@ -46,6 +47,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
   PlaylistMode _repeatMode = PlaylistMode.none;
   double _playbackRate = 1;
   StreamSubscription<Playlist>? _playlistSubscription;
+  Timer? _sleepTimer;
 
   List<MediaQueueItem> get _queue => widget.queue.isEmpty
       ? [MediaQueueItem(title: widget.title, path: widget.path, volume: widget.volume)]
@@ -136,8 +138,134 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
     );
   }
 
+  Future<void> _chooseSleepTimer() async {
+    final minutes = await showModalBottomSheet<int>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const ListTile(title: Text('Sleep timer')),
+            for (final value in [15, 30, 45, 60])
+              ListTile(
+                leading: const Icon(Icons.bedtime_outlined),
+                title: Text(value.toString() + ' minutes'),
+                onTap: () => Navigator.pop(context, value),
+              ),
+            if (_sleepTimer != null)
+              ListTile(
+                leading: const Icon(Icons.timer_off_outlined),
+                title: const Text('Cancel timer'),
+                onTap: () => Navigator.pop(context, 0),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (minutes == null) return;
+    _sleepTimer?.cancel();
+    if (minutes == 0) {
+      if (mounted) setState(() {});
+      return;
+    }
+    _sleepTimer = Timer(Duration(minutes: minutes), () async {
+      await _player.pause();
+      _sleepTimer = null;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Sleep timer paused playback.')),
+        );
+        setState(() {});
+      }
+    });
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _showLyrics() async {
+    final track = _queue[_currentIndex.clamp(0, _queue.length - 1).toInt()];
+    final withoutExtension = track.path.replaceAll(RegExp(r'\.[^.]+$'), '');
+    final lyricsPath = withoutExtension + '.lrc';
+    try {
+      final bytes = track.volume == null
+          ? await widget.api.downloadFile(lyricsPath)
+          : await widget.api.downloadStorageFile(track.volume!, lyricsPath);
+      final raw = utf8.decode(bytes, allowMalformed: true);
+      final pattern = RegExp(
+        r'^\[(\d{2}):(\d{2})(?:\.(\d{1,3}))?\](.*)$',
+        multiLine: true,
+      );
+      final lines = pattern.allMatches(raw).map((match) {
+        final minutes = int.parse(match.group(1)!);
+        final seconds = int.parse(match.group(2)!);
+        final fraction = (match.group(3) ?? '0').padRight(3, '0').substring(0, 3);
+        return (
+          time: Duration(
+            minutes: minutes,
+            seconds: seconds,
+            milliseconds: int.parse(fraction),
+          ),
+          text: match.group(4)!.trim(),
+        );
+      }).toList()..sort((a, b) => a.time.compareTo(b.time));
+
+      if (!mounted) return;
+      if (lines.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No synchronized lyrics found in the matching .lrc file.')),
+        );
+        return;
+      }
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        showDragHandle: true,
+        backgroundColor: const Color(0xFF171421),
+        builder: (context) => SafeArea(
+          child: SizedBox(
+            height: MediaQuery.of(context).size.height * 0.68,
+            child: StreamBuilder<Duration>(
+              stream: _player.stream.position,
+              initialData: _player.state.position,
+              builder: (context, snapshot) {
+                final position = snapshot.data ?? Duration.zero;
+                var active = -1;
+                for (var i = 0; i < lines.length; i++) {
+                  if (lines[i].time <= position) active = i;
+                }
+                return ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                  itemCount: lines.length,
+                  itemBuilder: (context, index) => ListTile(
+                    title: Text(
+                      lines[index].text,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: index == active ? Colors.white : Colors.white54,
+                        fontSize: index == active ? 19 : 15,
+                        fontWeight: index == active ? FontWeight.w800 : FontWeight.w500,
+                      ),
+                    ),
+                    onTap: () => _player.seek(lines[index].time),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Lyrics not found. Add a matching .lrc file beside the song.')),
+        );
+      }
+    }
+  }
+
   @override
   void dispose() {
+    _sleepTimer?.cancel();
     unawaited(_playlistSubscription?.cancel());
     unawaited(_player.dispose());
     super.dispose();
@@ -486,6 +614,18 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                           color: _repeatMode == PlaylistMode.none ? Colors.white54 : const Color(0xFFD8C9FF),
                           icon: Icon(_repeatMode == PlaylistMode.single
                               ? Icons.repeat_one_rounded : Icons.repeat_rounded),
+                        ),
+                        IconButton(
+                          tooltip: 'Lyrics',
+                          onPressed: _showLyrics,
+                          color: Colors.white70,
+                          icon: const Icon(Icons.lyrics_outlined),
+                        ),
+                        IconButton(
+                          tooltip: 'Sleep timer',
+                          onPressed: _chooseSleepTimer,
+                          color: _sleepTimer == null ? Colors.white70 : const Color(0xFFD8C9FF),
+                          icon: const Icon(Icons.bedtime_outlined),
                         ),
                         IconButton(
                           tooltip: 'Up next',
