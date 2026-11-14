@@ -281,7 +281,9 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                         ? Center(
                             child: Text(
                               'No ${_title.toLowerCase()} files found.\n'
-                              'Add files to ${_roots.join(' or ')} and scan again.',
+                              _media.isEmpty
+                                  ? 'Check internal storage and granted USB/OTG folders, then scan again.'
+                                  : 'No matching files. Try another search or storage location.',
                               textAlign: TextAlign.center,
                             ),
                           )
