@@ -375,8 +375,8 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
   @override
   Widget build(BuildContext context) {
     final currentTrack = _queue[_currentIndex.clamp(0, _queue.length - 1)];
-    final title = currentTrack.title.replaceAll(RegExp(r'\.[^.]+
-    final folder = widget.path.split('/').take(widget.path.split('/').length - 1).join('/');
+    final title = currentTrack.title.replaceAll(RegExp(r'\.[^.]+$'), '');
+    final folder = currentTrack.path.split('/').take(currentTrack.path.split('/').length - 1).join('/');
     return Scaffold(
       backgroundColor: const Color(0xFF0B0A12),
       appBar: AppBar(
