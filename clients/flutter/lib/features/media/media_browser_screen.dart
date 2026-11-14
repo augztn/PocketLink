@@ -431,31 +431,13 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
             ),
             children: items.map((media) => ListTile(
               contentPadding: const EdgeInsets.only(left: 28, right: 16),
-              leading: _isMusic
-                  ? const Icon(Icons.audio_file_outlined)
-                  : SizedBox(
-                      width: 56,
-                      height: 48,
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: _buildVideoArtwork(media, fit: BoxFit.cover),
-                      ),
-                    ),
+              leading: Icon(_isMusic ? Icons.audio_file_outlined : Icons.movie_outlined),
               title: Text(
                 media.entry.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              subtitle: _isMusic
-                  ? Text(_formatBytes(media.entry.size))
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(_formatBytes(media.entry.size)),
-                        _videoMetadataLabel(media),
-                      ],
-                    ),
+              subtitle: Text(_formatBytes(media.entry.size)),
               trailing: const Icon(Icons.play_arrow_rounded),
               onTap: () => _openMedia(media, items),
             )).toList(growable: false),
