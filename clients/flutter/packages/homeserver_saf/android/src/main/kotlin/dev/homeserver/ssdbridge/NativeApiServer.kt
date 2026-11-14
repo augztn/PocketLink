@@ -308,7 +308,8 @@ internal class NativeApiServer(
 
     private fun externalRoot(volume: String?): DocumentFile? {
         val id = volume?.takeIf {
-            it == "usb1" || it == "usb2" || Regex("usb-[a-f0-9]{16}").matches(it)
+            it == "usb1" || it == "usb2" ||
+                Regex("usb-(?:[a-f0-9]{16}|manual-[a-f0-9]{16})").matches(it)
         } ?: return null
         val raw = prefs.getString("volume_uri_$id", null)
             ?: prefs.getString(id, null)
