@@ -1,6 +1,10 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../core/network/server_api.dart';
 
@@ -133,6 +137,40 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
     }
   }
 
+  Future<void> _openFile(FileEntry item) async {
+    final volume = _volume;
+    if (volume == null) return;
+    try {
+      setState(() => _progress = 0);
+      final bytes = await widget.api.downloadStorageFile(
+        volume,
+        _itemPath(item.name),
+        onReceiveProgress: (received, total) {
+          if (mounted && total > 0) setState(() => _progress = received / total);
+        },
+      );
+      if (!mounted) return;
+
+      final temp = await getTemporaryDirectory();
+      final openDirectory = Directory('${temp.path}/homeserver-open');
+      await openDirectory.create(recursive: true);
+      final localFile = File('${openDirectory.path}/${item.name}');
+      await localFile.writeAsBytes(bytes, flush: true);
+      final result = await OpenFilex.open(localFile.path);
+      if (result.type != ResultType.done && mounted) {
+        _message(result.message.isNotEmpty
+            ? result.message
+            : 'No installed app can open this file type.');
+      }
+    } on DioException catch (error) {
+      _message(error.message ?? 'Could not download file for opening.');
+    } catch (error) {
+      _message('Could not open file: $error');
+    } finally {
+      if (mounted) setState(() => _progress = null);
+    }
+  }
+
   Future<void> _download(FileEntry item) async {
     if (_volume == null) return;
     try {
@@ -260,14 +298,18 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
                               leading: Icon(item.isDirectory ? Icons.folder : Icons.insert_drive_file_outlined),
                               title: Text(item.name),
                               subtitle: Text(item.isDirectory ? 'Folder' : '${item.size} bytes'),
-                              onTap: item.isDirectory ? () => _loadDirectory(_itemPath(item.name)) : null,
+                              onTap: item.isDirectory
+                                  ? () => _loadDirectory(_itemPath(item.name))
+                                  : () => _openFile(item),
                               trailing: PopupMenuButton<String>(
                                 onSelected: (action) {
+                                  if (action == 'open' && !item.isDirectory) _openFile(item);
                                   if (action == 'download' && !item.isDirectory) _download(item);
                                   if (action == 'rename') _rename(item);
                                   if (action == 'delete') _delete(item);
                                 },
                                 itemBuilder: (_) => [
+                                  if (!item.isDirectory) const PopupMenuItem(value: 'open', child: Text('Open')),
                                   if (!item.isDirectory) const PopupMenuItem(value: 'download', child: Text('Download')),
                                   const PopupMenuItem(value: 'rename', child: Text('Rename')),
                                   const PopupMenuItem(value: 'delete', child: Text('Delete')),
