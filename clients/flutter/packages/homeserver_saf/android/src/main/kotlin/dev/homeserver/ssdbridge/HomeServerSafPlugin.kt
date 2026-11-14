@@ -56,7 +56,6 @@ class HomeServerSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
             "start" -> {
                 ensureToken()
                 BridgeService.lastError = null
-                BridgeService.isRunning = false
                 val intent = Intent(context, BridgeService::class.java)
                 try {
                     ContextCompat.startForegroundService(context, intent)
