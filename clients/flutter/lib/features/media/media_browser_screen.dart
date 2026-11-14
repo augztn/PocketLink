@@ -7,10 +7,11 @@ import 'media_player_screen.dart';
 enum MediaLibraryType { music, video }
 
 class _MediaFile {
-  const _MediaFile({required this.entry, required this.path});
+  const _MediaFile({required this.entry, required this.path, this.volume});
 
   final FileEntry entry;
   final String path;
+  final String? volume;
 }
 
 class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
@@ -61,18 +62,26 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
 
     final found = <_MediaFile>[];
     final visited = <String>{};
-    final pending = <({String path, int depth})>[
-      for (final root in _roots) (path: root, depth: 0),
+    final pending = <({String path, int depth, String? volume})>[
+      for (final root in _roots) (path: root, depth: 0, volume: null),
     ];
 
     try {
+      final volumes = await widget.api.listStorageVolumes();
+      for (final volume in volumes.where((item) => item.available)) {
+        pending.add((path: '', depth: 0, volume: volume.id));
+      }
+
       while (pending.isNotEmpty && visited.length < _maxDirectories) {
         final current = pending.removeLast();
-        if (!visited.add(current.path)) continue;
+        final visitKey = '${current.volume ?? 'internal'}:${current.path}';
+        if (!visited.add(visitKey)) continue;
 
         DirectoryListing listing;
         try {
-          listing = await widget.api.listDirectory(current.path);
+          listing = current.volume == null
+              ? await widget.api.listDirectory(current.path)
+              : await widget.api.listStorageDirectory(current.volume!, current.path);
           _scannedDirectories++;
         } on DioException catch (error) {
           if (error.response?.statusCode == 404) continue;
@@ -87,12 +96,12 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
           final itemPath = '${current.path}/${item.name}';
           if (item.isDirectory) {
             if (current.depth < _maxDepth) {
-              pending.add((path: itemPath, depth: current.depth + 1));
+              pending.add((path: itemPath, depth: current.depth + 1, volume: current.volume));
             } else {
               _skippedDirectories++;
             }
           } else if (_isMedia(item)) {
-            found.add(_MediaFile(entry: item, path: itemPath));
+            found.add(_MediaFile(entry: item, path: itemPath, volume: current.volume));
           }
         }
 
@@ -133,6 +142,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
           api: widget.api,
           title: media.entry.name,
           path: media.path,
+          volume: media.volume,
           isVideo: !_isMusic,
         ),
       ),
