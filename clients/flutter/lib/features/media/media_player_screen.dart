@@ -135,9 +135,9 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
         child: ListView(
           shrinkWrap: true,
           children: [
-            const Padding(
-              padding: EdgeInsets.all(20),
-              child: Text(widget.isVideo ? 'VIDEO QUEUE' : 'UP NEXT', style: TextStyle(
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Text(widget.isVideo ? 'VIDEO QUEUE' : 'UP NEXT', style: const TextStyle(
                 color: Colors.white70, fontWeight: FontWeight.w800,
                 letterSpacing: 1.5,
               )),
