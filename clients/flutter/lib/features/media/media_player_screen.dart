@@ -374,7 +374,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final currentTrack = _queue[_currentIndex.clamp(0, _queue.length - 1)];
+    final currentTrack = _queue[_currentIndex.clamp(0, _queue.length - 1).toInt()];
     final title = currentTrack.title.replaceAll(RegExp(r'\.[^.]+$'), '');
     final folder = currentTrack.path.split('/').take(currentTrack.path.split('/').length - 1).join('/');
     return Scaffold(
