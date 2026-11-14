@@ -6,7 +6,7 @@ HomeServer is designed to make self-hosted servers approachable: enter a server 
 
 ## Project status
 
-**Early development.** The Flutter client foundation is being added first. The existing FastAPI server is maintained separately and will be integrated against its actual API contract; this client does not assume authentication or file-operation endpoints that have not yet been verified.
+**Early development.** The Flutter client supports authenticated file management and HTTP byte-range media streaming against the existing FastAPI backend.
 
 ## Planned platforms
 
@@ -14,6 +14,41 @@ HomeServer is designed to make self-hosted servers approachable: enter a server 
 - Linux (portable AppImage)
 - Windows
 - iOS (where supported by Flutter and platform dependencies)
+
+## Media streaming
+
+The client includes separate Music and Videos libraries. It streams supported audio and
+video files directly from the server with HTTP Basic Authentication and byte-range
+requests, so seeking does not require downloading the entire file first.
+
+The Music library recursively scans `/sdcard/Music`. The Videos library recursively
+scans `/sdcard/Movies` and `/sdcard/Videos`. Missing folders are skipped; inaccessible
+subfolders are reported as skipped. Use the refresh action to scan again after adding files.
+
+Supported extensions include MP3, M4A, AAC, WAV, FLAC, OGG, MP4, MKV, WebM, MOV and AVI.
+Actual playback depends on the codecs available in the media file and the target device.
+
+Linux desktop builds use libmpv. Install the runtime dependency on Ubuntu/Debian with:
+
+```sh
+sudo apt install libmpv-dev mpv
+```
+
+Use HTTPS when connecting over an untrusted network. A private VPN such as Tailscale
+is recommended for remote access.
+
+## File manager libraries
+
+The Flutter home screen provides category shortcuts for Images, Audio, Videos and
+Documents, alongside the general file browser. Images are discovered recursively in
+`/sdcard/Pictures`, `/sdcard/DCIM` and `/sdcard/Download`. Documents are discovered
+in `/sdcard/Documents` and `/sdcard/Download`. Both libraries support search and
+refresh; images can be previewed and documents can be downloaded. Scans are limited
+to 2,000 directories and 20 folder levels.
+
+Supported image formats: JPG, JPEG, PNG, WebP, GIF and BMP.
+Supported document formats: PDF, DOC/DOCX, ODT, RTF, TXT, Markdown, CSV,
+XLS/XLSX, ODS, PPT/PPTX and ODP.
 
 ## Linux AppImage
 

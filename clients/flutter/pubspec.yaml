@@ -13,6 +13,11 @@ dependencies:
   dio: ^5.7.0
   file_picker: ^8.1.7
   flutter_secure_storage: ^9.2.2
+  media_kit: ^1.2.6
+  media_kit_video: ^2.0.1
+  media_kit_libs_video: ^1.0.7
+  homeserver_saf:
+    path: packages/homeserver_saf
 
 dev_dependencies:
   flutter_test:
