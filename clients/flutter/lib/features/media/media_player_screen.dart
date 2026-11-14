@@ -137,7 +137,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
           children: [
             const Padding(
               padding: EdgeInsets.all(20),
-              child: Text('UP NEXT', style: TextStyle(
+              child: Text(widget.isVideo ? 'VIDEO QUEUE' : 'UP NEXT', style: TextStyle(
                 color: Colors.white70, fontWeight: FontWeight.w800,
                 letterSpacing: 1.5,
               )),
@@ -145,7 +145,11 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
             for (var index = 0; index < _queue.length; index++)
               ListTile(
                 leading: Icon(
-                  index == _currentIndex ? Icons.equalizer_rounded : Icons.music_note_rounded,
+                  index == _currentIndex
+                      ? Icons.equalizer_rounded
+                      : widget.isVideo
+                          ? Icons.movie_outlined
+                          : Icons.music_note_rounded,
                   color: index == _currentIndex ? const Color(0xFFD8C9FF) : Colors.white54,
                 ),
                 title: Text(_queue[index].title,
@@ -818,6 +822,11 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                           color: Colors.white70,
                           icon: const Icon(Icons.queue_music_rounded),
                         ),
+                        IconButton(
+                          tooltip: 'Video queue',
+                          onPressed: _showQueue,
+                          icon: const Icon(Icons.queue_play_next_rounded, color: Colors.white),
+                        ),
                         PopupMenuButton<double>(
                           tooltip: 'Playback speed',
                           initialValue: _playbackRate,
@@ -913,11 +922,16 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             IconButton(
+                              tooltip: 'Previous video',
+                              onPressed: _queue.length > 1 ? _player.previous : null,
+                              icon: const Icon(Icons.skip_previous_rounded, color: Colors.white, size: 32),
+                            ),
+                            IconButton(
                               tooltip: 'Back 10 seconds',
                               onPressed: () => _seekRelative(const Duration(seconds: -10)),
                               icon: const Icon(Icons.replay_10_rounded, color: Colors.white, size: 38),
                             ),
-                            const SizedBox(width: 18),
+                            const SizedBox(width: 10),
                             IconButton.filled(
                               tooltip: playing ? 'Pause' : 'Play',
                               onPressed: () async {
@@ -932,11 +946,16 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                               iconSize: 36,
                               icon: Icon(playing ? Icons.pause_rounded : Icons.play_arrow_rounded),
                             ),
-                            const SizedBox(width: 18),
+                            const SizedBox(width: 10),
                             IconButton(
                               tooltip: 'Forward 10 seconds',
                               onPressed: () => _seekRelative(const Duration(seconds: 10)),
                               icon: const Icon(Icons.forward_10_rounded, color: Colors.white, size: 38),
+                            ),
+                            IconButton(
+                              tooltip: 'Next video',
+                              onPressed: _queue.length > 1 ? _player.next : null,
+                              icon: const Icon(Icons.skip_next_rounded, color: Colors.white, size: 32),
                             ),
                           ],
                         );
