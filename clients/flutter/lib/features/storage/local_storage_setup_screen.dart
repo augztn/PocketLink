@@ -12,6 +12,8 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> {
   static const _channel = MethodChannel('homeserver/saf');
   Map<String, dynamic> _status = const {};
   String? _token;
+  final _serverPasswordController = TextEditingController();
+  bool _serverPasswordConfigured = false;
   String? _error;
   bool _busy = false;
 
@@ -44,6 +46,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> {
       setState(() {
         _status = status ?? const {};
         _token = token;
+        _serverPasswordConfigured = status?['serverPasswordConfigured'] == true;
         _error = status?['error']?.toString();
         _busy = false;
       });
@@ -51,6 +54,30 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> {
       if (mounted) setState(() => _error = 'Native Android storage support is unavailable in this build.');
     } on PlatformException catch (error) {
       if (mounted) setState(() => _error = error.message ?? 'Could not read storage status.');
+    }
+  }
+
+  Future<void> _saveServerPassword() async {
+    final password = _serverPasswordController.text;
+    if (password.length < 12) {
+      setState(() => _error = 'Use at least 12 characters for the server password.');
+      return;
+    }
+    setState(() { _busy = true; _error = null; });
+    try {
+      await _channel.invokeMethod<bool>(
+        'setServerPassword',
+        {'password': password},
+      );
+      _serverPasswordController.clear();
+      await _refresh();
+      if (mounted) {
+        setState(() => _error = 'Native server password saved. It is stored as a salted verifier.');
+      }
+    } on PlatformException catch (error) {
+      if (mounted) setState(() => _error = error.message ?? 'Could not save server password.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -127,6 +154,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> {
 
   @override
   void dispose() {
+    _serverPasswordController.dispose();
     _channel.setMethodCallHandler(null);
     super.dispose();
   }
@@ -167,6 +195,40 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> {
             onPressed: _busy ? null : _refresh,
             icon: const Icon(Icons.refresh),
             label: const Text('Refresh permission status'),
+          ),
+          const SizedBox(height: 16),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Native server password',
+                      style: TextStyle(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 6),
+                  Text(_serverPasswordConfigured
+                      ? 'A password verifier is saved on this device.'
+                      : 'Set a password of at least 12 characters for remote access.'),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _serverPasswordController,
+                    obscureText: true,
+                    enabled: !_busy,
+                    decoration: const InputDecoration(
+                      labelText: 'New server password',
+                      helperText: 'Not uploaded or stored in plaintext.',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  FilledButton(
+                    onPressed: _busy ? null : _saveServerPassword,
+                    child: Text(_serverPasswordConfigured
+                        ? 'Update server password'
+                        : 'Save server password'),
+                  ),
+                ],
+              ),
+            ),
           ),
           const SizedBox(height: 16),
           const Text(
