@@ -49,6 +49,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
   StreamSubscription<Playlist>? _playlistSubscription;
   StreamSubscription<bool>? _playingSubscription;
   StreamSubscription<Tracks>? _tracksSubscription;
+  StreamSubscription<Track>? _trackSubscription;
   Timer? _sleepTimer;
   Timer? _videoControlsTimer;
   bool _showVideoControls = true;
@@ -83,6 +84,9 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
       }
     });
     _tracksSubscription = _player.stream.tracks.listen((_) {
+      if (mounted) setState(() {});
+    });
+    _trackSubscription = _player.stream.track.listen((_) {
       if (mounted) setState(() {});
     });
     _playingSubscription = _player.stream.playing.listen((playing) {
@@ -470,6 +474,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
     unawaited(_playlistSubscription?.cancel());
     unawaited(_playingSubscription?.cancel());
     unawaited(_tracksSubscription?.cancel());
+    unawaited(_trackSubscription?.cancel());
     unawaited(_persistent.closePlayerScreen(isVideo: widget.isVideo));
     super.dispose();
   }
@@ -587,15 +592,38 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                           onPressed: _showQueue,
                           icon: const Icon(Icons.queue_play_next_rounded, color: Colors.white),
                         ),
-                        IconButton(
-                          tooltip: 'Audio tracks',
-                          onPressed: _showAudioTracks,
-                          icon: const Icon(Icons.audiotrack_rounded, color: Colors.white),
-                        ),
-                        IconButton(
-                          tooltip: 'Subtitles',
-                          onPressed: _showSubtitleTracks,
-                          icon: const Icon(Icons.closed_caption_rounded, color: Colors.white),
+                        PopupMenuButton<String>(
+                          tooltip: 'Audio and subtitles',
+                          color: const Color(0xFF24202E),
+                          onSelected: (value) {
+                            if (value == 'audio') {
+                              _showAudioTracks();
+                            } else {
+                              _showSubtitleTracks();
+                            }
+                          },
+                          itemBuilder: (_) => const [
+                            PopupMenuItem(
+                              value: 'audio',
+                              child: Row(children: [
+                                Icon(Icons.audiotrack_rounded, color: Colors.white70),
+                                SizedBox(width: 12),
+                                Text('Audio tracks', style: TextStyle(color: Colors.white)),
+                              ]),
+                            ),
+                            PopupMenuItem(
+                              value: 'subtitles',
+                              child: Row(children: [
+                                Icon(Icons.closed_caption_rounded, color: Colors.white70),
+                                SizedBox(width: 12),
+                                Text('Subtitles', style: TextStyle(color: Colors.white)),
+                              ]),
+                            ),
+                          ],
+                          child: const Padding(
+                            padding: EdgeInsets.all(12),
+                            child: Icon(Icons.tune_rounded, color: Colors.white),
+                          ),
                         ),
                         PopupMenuButton<double>(
                           tooltip: 'Playback speed',
