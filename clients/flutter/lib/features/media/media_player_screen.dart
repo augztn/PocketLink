@@ -7,13 +7,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
 import '../../core/network/server_api.dart';
-
-class MediaQueueItem {
-  const MediaQueueItem({required this.title, required this.path, this.volume});
-  final String title;
-  final String path;
-  final String? volume;
-}
+import 'persistent_audio_player.dart';
 
 class MediaPlayerScreen extends StatefulWidget {
   const MediaPlayerScreen({
@@ -24,6 +18,7 @@ class MediaPlayerScreen extends StatefulWidget {
     required this.isVideo,
     this.queue = const [],
     this.initialIndex = 0,
+    this.resumeExisting = false,
     super.key,
   });
 
@@ -34,12 +29,14 @@ class MediaPlayerScreen extends StatefulWidget {
   final bool isVideo;
   final List<MediaQueueItem> queue;
   final int initialIndex;
+  final bool resumeExisting;
 
   @override
   State<MediaPlayerScreen> createState() => _MediaPlayerScreenState();
 }
 
 class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
+  late final PersistentAudioPlayer _persistent;
   late final Player _player;
   late final VideoController _videoController;
   String? _openError;
@@ -60,31 +57,36 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
   @override
   void initState() {
     super.initState();
-    _player = Player();
+    _persistent = PersistentAudioPlayer.instance;
+    _player = _persistent.player;
     _videoController = VideoController(_player);
-    _currentIndex = widget.initialIndex.clamp(0, _queue.length - 1).toInt();
+    _currentIndex = widget.resumeExisting
+        ? _persistent.currentIndex
+        : widget.initialIndex.clamp(0, _queue.length - 1).toInt();
+    _persistent.setFullScreen(true);
     _playlistSubscription = _player.stream.playlist.listen((playlist) {
-      if (mounted) {
+      if (mounted && _queue.isNotEmpty) {
+        final index = playlist.index.clamp(0, _queue.length - 1).toInt();
         setState(() {
-          _currentIndex = playlist.index;
+          _currentIndex = index;
           _coverBytes = null;
           _coverForTrack = null;
         });
-        unawaited(_loadArtwork(_queue[playlist.index.clamp(0, _queue.length - 1)]));
+        unawaited(_loadArtwork(_queue[index]));
       }
     });
     unawaited(_loadArtwork(_queue[_currentIndex]));
-    _open();
+    if (!widget.resumeExisting) _open();
   }
 
   Future<void> _open() async {
     try {
-      final tracks = _queue.map((item) => Media(
-        widget.api.mediaStreamUrl(item.path, volume: item.volume),
-        httpHeaders: widget.api.mediaHeaders,
-        extras: {'title': item.title},
-      )).toList(growable: false);
-      await _player.open(Playlist(tracks, index: _currentIndex));
+      await _persistent.openQueue(
+        api: widget.api,
+        queue: _queue,
+        initialIndex: _currentIndex,
+        isMusic: !widget.isVideo,
+      );
     } catch (error) {
       if (mounted) setState(() => _openError = error.toString());
     }
@@ -279,7 +281,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
   void dispose() {
     _sleepTimer?.cancel();
     unawaited(_playlistSubscription?.cancel());
-    unawaited(_player.dispose());
+    unawaited(_persistent.closePlayerScreen(isVideo: widget.isVideo));
     super.dispose();
   }
 
