@@ -19,6 +19,45 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   bool _loading = true;
   String? _error;
   double? _transferProgress;
+  final TextEditingController _searchController = TextEditingController();
+
+  String _searchQuery = '';
+  String _category = 'All';
+
+  static const Map<String, Set<String>> _categoryExtensions = {
+    'Images': {'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'heic', 'heif', 'avif'},
+    'Videos': {'mp4', 'mkv', 'mov', 'avi', 'webm', 'm4v', '3gp', 'mpeg', 'mpg'},
+    'Music': {'mp3', 'm4a', 'aac', 'flac', 'wav', 'ogg', 'opus', 'wma'},
+    'Documents': {'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'md', 'rtf', 'csv'},
+  };
+
+  String _extension(FileEntry item) {
+    final dot = item.name.lastIndexOf('.');
+    return dot < 0 ? '' : item.name.substring(dot + 1).toLowerCase();
+  }
+
+  bool _matchesCategory(FileEntry item) {
+    if (item.isDirectory || _category == 'All') return true;
+    return _categoryExtensions[_category]?.contains(_extension(item)) ?? false;
+  }
+
+  IconData _iconFor(FileEntry item) {
+    if (item.isDirectory) return Icons.folder_rounded;
+    final extension = _extension(item);
+    if (_categoryExtensions['Images']!.contains(extension)) {
+      return Icons.image_outlined;
+    }
+    if (_categoryExtensions['Videos']!.contains(extension)) {
+      return Icons.video_file_outlined;
+    }
+    if (_categoryExtensions['Music']!.contains(extension)) {
+      return Icons.audio_file_outlined;
+    }
+    if (_categoryExtensions['Documents']!.contains(extension)) {
+      return Icons.description_outlined;
+    }
+    return Icons.insert_drive_file_outlined;
+  }
 
   @override
   void initState() {
@@ -281,8 +320,19 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   }
 
   @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final items = _listing?.items ?? const <FileEntry>[];
+    final allItems = _listing?.items ?? const <FileEntry>[];
+    final query = _searchQuery.trim().toLowerCase();
+    final items = allItems.where((item) {
+      if (!_matchesCategory(item)) return false;
+      return query.isEmpty || item.name.toLowerCase().contains(query);
+    }).toList(growable: false);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Files'),
@@ -313,7 +363,49 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
               icon: const Icon(Icons.arrow_upward),
             ),
             title: Text(_path.isEmpty ? 'HomeServer storage' : _path),
-            subtitle: const Text('Files are restricted to the server storage folder'),
+            subtitle: Text('${allItems.length} items'),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: TextField(
+              controller: _searchController,
+              onChanged: (value) => setState(() => _searchQuery = value),
+              decoration: InputDecoration(
+                hintText: 'Search this folder',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchQuery.isEmpty
+                    ? null
+                    : IconButton(
+                        tooltip: 'Clear search',
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _searchQuery = '');
+                        },
+                        icon: const Icon(Icons.close),
+                      ),
+                isDense: true,
+              ),
+            ),
+          ),
+          SizedBox(
+            height: 48,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              children: [
+                for (final category in const [
+                  'All', 'Images', 'Videos', 'Music', 'Documents'
+                ])
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: ChoiceChip(
+                      label: Text(category),
+                      selected: _category == category,
+                      onSelected: (_) => setState(() => _category = category),
+                    ),
+                  ),
+              ],
+            ),
           ),
           if (_loading) const LinearProgressIndicator(),
           if (_transferProgress != null)
@@ -336,7 +428,13 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                 : _loading && _listing == null
                     ? const SizedBox.shrink()
                     : items.isEmpty
-                        ? const Center(child: Text('This folder is empty.'))
+                        ? Center(
+                            child: Text(
+                              allItems.isEmpty
+                                  ? 'This folder is empty.'
+                                  : 'No matching files.',
+                            ),
+                          )
                         : ListView.separated(
                             itemCount: items.length,
                             separatorBuilder: (_, __) =>
@@ -344,9 +442,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                             itemBuilder: (context, index) {
                               final item = items[index];
                               return ListTile(
-                                leading: Icon(item.isDirectory
-                                    ? Icons.folder
-                                    : Icons.insert_drive_file_outlined),
+                                leading: Icon(_iconFor(item)),
                                 title: Text(item.name),
                                 subtitle: Text(item.isDirectory
                                     ? 'Folder'
