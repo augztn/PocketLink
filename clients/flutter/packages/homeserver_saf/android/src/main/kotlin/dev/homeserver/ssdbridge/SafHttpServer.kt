@@ -81,19 +81,19 @@ class SafHttpServer(private val context: Context, private val token: String) : N
                     session.parseBody(bodyFiles)
                     val bodyPath = bodyFiles["content"]
                         ?: return jsonError(Response.Status.BAD_REQUEST, "Upload body is missing")
-                    val bodyFile = java.io.File(bodyPath)
+                    val bodyFile = bodyPath.takeIf { it.isNotBlank() }?.let { java.io.File(it) }
                     val temporaryName = ".homeserver-upload-${java.util.UUID.randomUUID()}.part"
-                    val temporary = parent.createFile("application/octet-stream", temporaryName)
+                    val temporary = parent.createFile(mimeFor(name), temporaryName)
                         ?: return jsonError(Response.Status.INTERNAL_ERROR, "Could not stage upload")
                     try {
                         context.contentResolver.openOutputStream(temporary.uri, "wt")?.use { output ->
-                            bodyFile.inputStream().use { input -> input.copyTo(output) }
+                            bodyFile?.inputStream()?.use { input -> input.copyTo(output) }
                         } ?: return jsonError(Response.Status.INTERNAL_ERROR, "Cannot write file")
                         if (!temporary.renameTo(name)) {
                             return jsonError(Response.Status.INTERNAL_ERROR, "Could not finalize uploaded file")
                         }
                     } finally {
-                        bodyFile.delete()
+                        bodyFile?.delete()
                         if (temporary.exists()) temporary.delete()
                     }
                     json(JSONObject().put("ok", true).put("name", name))
