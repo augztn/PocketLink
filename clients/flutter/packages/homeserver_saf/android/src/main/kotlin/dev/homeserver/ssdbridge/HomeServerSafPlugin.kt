@@ -90,8 +90,9 @@ class HomeServerSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
                 val volume = discoverVolumes().firstOrNull { it.first == requestedId }
                 val id = requestedId ?: slot?.takeIf { it in 1..2 }?.let { "usb$it" }
                 val current = activity
+                val manualPicker = requestedId?.matches(Regex("usb-manual-[a-f0-9]{16}")) == true
                 if (id == null || current == null || pendingVolumeId != null ||
-                    (requestedId != null && volume == null)) {
+                    (requestedId != null && volume == null && !manualPicker)) {
                     result.error("UNAVAILABLE", "Storage picker is unavailable or the drive is no longer connected.", null)
                     return
                 }
