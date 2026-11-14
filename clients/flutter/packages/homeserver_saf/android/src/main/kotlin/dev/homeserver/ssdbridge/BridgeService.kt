@@ -39,7 +39,7 @@ class BridgeService : Service() {
             server = null
             isRunning = false
             lastError = error.message ?: "Could not start the Android storage bridge."
-            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopForeground(true)
             stopSelf()
         }
     }
