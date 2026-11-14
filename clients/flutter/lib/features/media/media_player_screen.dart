@@ -50,7 +50,8 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
   StreamSubscription<Playlist>? _playlistSubscription;
   Timer? _sleepTimer;
   Uint8List? _coverBytes;
-  String? _coverForPath;
+  String? _coverForTrack;
+  int _artworkRequestId = 0;
 
   List<MediaQueueItem> get _queue => widget.queue.isEmpty
       ? [MediaQueueItem(title: widget.title, path: widget.path, volume: widget.volume)]
@@ -67,7 +68,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
         setState(() {
           _currentIndex = playlist.index;
           _coverBytes = null;
-          _coverForPath = null;
+          _coverForTrack = null;
         });
         unawaited(_loadArtwork(_queue[playlist.index.clamp(0, _queue.length - 1)]));
       }
@@ -293,30 +294,43 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
   }
 
   Future<void> _loadArtwork(MediaQueueItem track) async {
+    final requestId = ++_artworkRequestId;
+    final trackKey = '${track.volume ?? 'internal'}:${track.path}';
     final folder = track.path.contains('/')
         ? track.path.substring(0, track.path.lastIndexOf('/') + 1)
         : '';
-    // Sidecar artwork works consistently for internal and SAF-backed USB
-    // storage without downloading or caching the audio file itself.
-    for (final name in const ['cover.jpg', 'cover.png', 'folder.jpg', 'album.jpg']) {
+
+    // Ignore slow responses belonging to a track that is no longer active.
+    for (final name in const [
+      'cover.jpg', 'cover.jpeg', 'cover.png', 'cover.webp',
+      'folder.jpg', 'folder.png', 'album.jpg', 'album.png', 'front.jpg',
+    ]) {
       try {
         final path = '$folder$name';
         final bytes = track.volume == null
             ? await widget.api.downloadFile(path)
             : await widget.api.downloadStorageFile(track.volume!, path);
-        if (bytes.isNotEmpty && mounted) {
+        if (requestId != _artworkRequestId || !mounted) return;
+        if (bytes.isNotEmpty) {
           setState(() {
             _coverBytes = bytes;
-            _coverForPath = track.path;
+            _coverForTrack = trackKey;
           });
           return;
         }
       } catch (_) {
         // Try the next conventional artwork filename.
       }
+      if (requestId != _artworkRequestId || !mounted) return;
+    }
+
+    if (requestId == _artworkRequestId && mounted) {
+      setState(() {
+        _coverBytes = null;
+        _coverForTrack = trackKey;
+      });
     }
   }
-
   Widget _artwork() {
     return AspectRatio(
       aspectRatio: 1,
@@ -341,7 +355,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
           fit: StackFit.expand,
           alignment: Alignment.center,
           children: [
-            if (_coverBytes != null && _coverForPath == _queue[_currentIndex.clamp(0, _queue.length - 1)].path)
+            if (_coverBytes != null && _coverForTrack == '${_queue[_currentIndex.clamp(0, _queue.length - 1)].volume ?? 'internal'}:${_queue[_currentIndex.clamp(0, _queue.length - 1)].path}')
               ClipRRect(
                 borderRadius: BorderRadius.circular(28),
                 child: Image.memory(
@@ -350,7 +364,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                   errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                 ),
               ),
-            if (_coverBytes == null || _coverForPath != _queue[_currentIndex.clamp(0, _queue.length - 1)].path)
+            if (_coverBytes == null || _coverForTrack != '${_queue[_currentIndex.clamp(0, _queue.length - 1)].volume ?? 'internal'}:${_queue[_currentIndex.clamp(0, _queue.length - 1)].path}')
               Positioned(
               top: -42,
               right: -28,
@@ -375,7 +389,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                 ),
               ),
             ),
-            if (_coverBytes == null || _coverForPath != _queue[_currentIndex.clamp(0, _queue.length - 1)].path)
+            if (_coverBytes == null || _coverForTrack != '${_queue[_currentIndex.clamp(0, _queue.length - 1)].volume ?? 'internal'}:${_queue[_currentIndex.clamp(0, _queue.length - 1)].path}')
               Container(
               width: 174,
               height: 174,
@@ -408,7 +422,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                 ],
               ),
             ),
-            if (_coverBytes == null || _coverForPath != _queue[_currentIndex.clamp(0, _queue.length - 1)].path)
+            if (_coverBytes == null || _coverForTrack != '${_queue[_currentIndex.clamp(0, _queue.length - 1)].volume ?? 'internal'}:${_queue[_currentIndex.clamp(0, _queue.length - 1)].path}')
               Positioned(
               left: 22,
               bottom: 20,
