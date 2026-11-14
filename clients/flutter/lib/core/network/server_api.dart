@@ -107,8 +107,10 @@ class ServerApi {
   }
 
   /// Builds an authenticated streaming URL without downloading media into memory.
-  String mediaStreamUrl(String path) => Uri.parse(_dio.options.baseUrl)
-      .resolve('/api/files/stream')
+  String mediaStreamUrl(String path, {String? volume}) => Uri.parse(_dio.options.baseUrl)
+      .resolve(volume == null
+          ? '/api/files/stream'
+          : '/api/storage/$volume/download')
       .replace(queryParameters: {'path': path})
       .toString();
 
@@ -191,8 +193,8 @@ class ServerApi {
     String path,
   ) async {
     final response = await _dio.get<Map<String, dynamic>>(
-      '/api/storage/list',
-      queryParameters: {'volume': volume, 'path': path},
+      '/api/storage/$volume/',
+      queryParameters: {'path': path},
     );
     return DirectoryListing.fromJson(response.data ?? const {});
   }
@@ -221,8 +223,8 @@ class ServerApi {
     ProgressCallback? onReceiveProgress,
   }) async {
     final response = await _dio.get<List<int>>(
-      '/api/storage/download',
-      queryParameters: {'volume': volume, 'path': path},
+      '/api/storage/$volume/download',
+      queryParameters: {'path': path},
       options: Options(responseType: ResponseType.bytes),
       onReceiveProgress: onReceiveProgress,
     );
