@@ -20,7 +20,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
   PersistentAudioPlayer._() {
     player = Player();
     _playlistSubscription = player.stream.playlist.listen((playlist) {
-      _currentIndex = playlist.index.clamp(0, _queue.isEmpty ? 0 : _queue.length - 1);
+      _currentIndex = playlist.index.clamp(0, _queue.isEmpty ? 0 : _queue.length - 1).toInt();
       notifyListeners();
     });
     _playingSubscription = player.stream.playing.listen((_) => notifyListeners());
@@ -63,7 +63,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
     if (queue.isEmpty) return;
     _api = api;
     _queue = List.unmodifiable(queue);
-    _currentIndex = initialIndex.clamp(0, _queue.length - 1);
+    _currentIndex = initialIndex.clamp(0, _queue.length - 1).toInt();
     _music = isMusic;
     _active = true;
     _fullScreen = true;
