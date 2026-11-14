@@ -4,6 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../core/network/server_api.dart';
 import '../home/home_screen.dart';
+import '../storage/local_storage_setup_screen.dart';
 
 class ConnectionScreen extends StatefulWidget {
   const ConnectionScreen({super.key});
@@ -212,6 +213,18 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                     ),
                   ),
                 ],
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: _isConnecting
+                      ? null
+                      : () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const LocalStorageSetupScreen(),
+                            ),
+                          ),
+                  icon: const Icon(Icons.dns_outlined),
+                  label: const Text('Set up this phone as a HomeServer'),
+                ),
                 const SizedBox(height: 24),
                 Text(
                   'Use the admin username and the password configured on your server. '
