@@ -5,7 +5,11 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.Context
 import android.content.Intent
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
@@ -26,6 +30,29 @@ class MediaPlaybackService : Service() {
     private var playing = false
     private var positionMs = 0L
     private var durationMs = 0L
+    private var audioFocusRequest: AudioFocusRequest? = null
+    private var resumeAfterFocus = false
+    private val audioManager by lazy { getSystemService(Context.AUDIO_SERVICE) as AudioManager }
+    private val audioFocusListener = AudioManager.OnAudioFocusChangeListener { change ->
+        when (change) {
+            AudioManager.AUDIOFOCUS_GAIN -> {
+                if (resumeAfterFocus) {
+                    resumeAfterFocus = false
+                    playing = true
+                    MediaPlaybackBridge.commandHandler?.invoke(ACTION_PLAY, null)
+                    updateSessionAndNotification()
+                }
+            }
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
+                resumeAfterFocus = playing
+                pauseForFocusLoss()
+            }
+            AudioManager.AUDIOFOCUS_LOSS, AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
+                resumeAfterFocus = false
+                pauseForFocusLoss()
+            }
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -64,13 +91,77 @@ class MediaPlaybackService : Service() {
             positionMs = it.getLongExtra(EXTRA_POSITION, positionMs).coerceAtLeast(0)
             durationMs = it.getLongExtra(EXTRA_DURATION, durationMs).coerceAtLeast(0)
         }
+        if (playing && !requestAudioFocus()) {
+            playing = false
+            MediaPlaybackBridge.commandHandler?.invoke(ACTION_PAUSE, null)
+        } else if (!playing) {
+            abandonAudioFocus()
+        }
         updateSession()
         startForeground(NOTIFICATION_ID, buildNotification())
         return START_NOT_STICKY
     }
 
     private fun dispatch(action: String) {
+        when (action) {
+            ACTION_PLAY -> {
+                if (!requestAudioFocus()) return
+                playing = true
+            }
+            ACTION_PAUSE, ACTION_STOP -> {
+                playing = false
+                resumeAfterFocus = false
+                abandonAudioFocus()
+            }
+        }
         MediaPlaybackBridge.commandHandler?.invoke(action, null)
+        updateSessionAndNotification()
+    }
+
+    private fun requestAudioFocus(): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val request = audioFocusRequest ?: AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                .setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                        .build()
+                )
+                .setOnAudioFocusChangeListener(audioFocusListener)
+                .setWillPauseWhenDucked(true)
+                .build()
+                .also { audioFocusRequest = it }
+            return audioManager.requestAudioFocus(request) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+        }
+        @Suppress("DEPRECATION")
+        return audioManager.requestAudioFocus(
+            audioFocusListener,
+            AudioManager.STREAM_MUSIC,
+            AudioManager.AUDIOFOCUS_GAIN
+        ) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+    }
+
+    private fun abandonAudioFocus() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            audioFocusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
+        } else {
+            @Suppress("DEPRECATION")
+            audioManager.abandonAudioFocus(audioFocusListener)
+        }
+    }
+
+    private fun pauseForFocusLoss() {
+        if (playing) {
+            playing = false
+            MediaPlaybackBridge.commandHandler?.invoke(ACTION_PAUSE, null)
+            updateSessionAndNotification()
+        }
+    }
+
+    private fun updateSessionAndNotification() {
+        updateSession()
+        val manager = getSystemService(NotificationManager::class.java)
+        manager.notify(NOTIFICATION_ID, buildNotification())
     }
 
     private fun updateSession() {
@@ -148,6 +239,8 @@ class MediaPlaybackService : Service() {
     }
 
     override fun onDestroy() {
+        abandonAudioFocus()
+        resumeAfterFocus = false
         session?.isActive = false
         session?.release()
         session = null
