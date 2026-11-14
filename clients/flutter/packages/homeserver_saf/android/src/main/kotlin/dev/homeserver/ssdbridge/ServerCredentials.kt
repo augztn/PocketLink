@@ -32,9 +32,9 @@ internal class ServerCredentials(context: Context) {
     }
 
     fun verify(password: CharArray): Boolean {
-        val saltText = prefs.getString("password_salt", null) ?: return false
-        val hashText = prefs.getString("password_hash", null) ?: return false
         return try {
+            val saltText = prefs.getString("password_salt", null) ?: return false
+            val hashText = prefs.getString("password_hash", null) ?: return false
             val salt = Base64.decode(saltText, Base64.NO_WRAP)
             val expected = Base64.decode(hashText, Base64.NO_WRAP)
             MessageDigest.isEqual(expected, derive(String(password), salt))
