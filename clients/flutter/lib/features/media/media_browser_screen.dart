@@ -89,7 +89,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       var cursor = 0;
       while (cursor < pending.length && visited.length < _maxDirectories) {
         final current = pending[cursor++];
-        final visitKey = '\${current.volume ?? 'internal'}:\${current.path}';
+        final visitKey = '${current.volume ?? 'internal'}:${current.path}';
         if (!visited.add(visitKey)) continue;
 
         DirectoryListing listing;
@@ -113,7 +113,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         for (final item in listing.items) {
           final itemPath = current.path.isEmpty
               ? item.name
-              : '\${current.path}/\${item.name}';
+              : '${current.path}/${item.name}';
           if (item.isDirectory) {
             if (current.depth < _maxDepth) {
               pending.add((
@@ -189,11 +189,11 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
 
   String _formatBytes(int bytes) {
     if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) return '\${(bytes / 1024).toStringAsFixed(0)} KB';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(0)} KB';
     if (bytes < 1024 * 1024 * 1024) {
-      return '\${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
     }
-    return '\${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
+    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
   }
 
   String _sourceLabel(_MediaFile media) =>
@@ -205,7 +205,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       final folder = media.path.contains('/')
           ? media.path.substring(0, media.path.lastIndexOf('/'))
           : _sourceLabel(media);
-      final key = '\${media.volume ?? 'internal'}::\${folder}';
+      final key = '${media.volume ?? 'internal'}::${folder}';
       groups.putIfAbsent(key, () => <_MediaFile>[]).add(media);
     }
     return groups;
@@ -349,7 +349,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
               overflow: TextOverflow.ellipsis,
             ),
             subtitle: Text(
-              '$extension · \${_formatBytes(media.entry.size)} · \${_sourceLabel(media)}',
+              '$extension · ${_formatBytes(media.entry.size)} · ${_sourceLabel(media)}',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -383,7 +383,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
               overflow: TextOverflow.ellipsis,
             ),
             subtitle: Text(
-              '\${items.length} \${_isMusic ? 'tracks' : 'videos'} · \${_formatBytes(bytes)} · \${_sourceLabel(first)}',
+              '${items.length} ${_isMusic ? 'tracks' : 'videos'} · ${_formatBytes(bytes)} · ${_sourceLabel(first)}',
             ),
             children: items.map((media) => ListTile(
               contentPadding: const EdgeInsets.only(left: 28, right: 16),
@@ -456,14 +456,14 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '\${_media.length} \${_isMusic ? 'tracks' : 'videos'}',
+                        '${_media.length} ${_isMusic ? 'tracks' : 'videos'}',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       Text(
                         _loading
                             ? 'Scanning storage…'
                             : '$_scannedDirectories folders scanned'
-                                '\${_skippedDirectories > 0 ? ' · $_skippedDirectories skipped' : ''}',
+                                '${_skippedDirectories > 0 ? ' · $_skippedDirectories skipped' : ''}',
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],
@@ -541,7 +541,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                         value: volume.id,
                         enabled: volume.available,
                         child: Text(
-                          '\${volume.name}\${volume.available ? '' : ' · unavailable'}',
+                          '${volume.name}${volume.available ? '' : ' · unavailable'}',
                           overflow: TextOverflow.ellipsis,
                         ),
                       )),
@@ -610,7 +610,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                                   const SizedBox(height: 12),
                                   Text(
                                     _media.isEmpty
-                                        ? 'No \${_title.toLowerCase()} found. Check internal storage and granted USB/OTG folders, then scan again.'
+                                        ? 'No ${_title.toLowerCase()} found. Check internal storage and granted USB/OTG folders, then scan again.'
                                         : 'No matching files. Try another search or storage source.',
                                     textAlign: TextAlign.center,
                                   ),
@@ -648,7 +648,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                                               overflow: TextOverflow.ellipsis,
                                             ),
                                             subtitle: Text(
-                                              '\${_sourceLabel(media)} · \${media.path} · \${_formatBytes(media.entry.size)}',
+                                              '${_sourceLabel(media)} · ${media.path} · ${_formatBytes(media.entry.size)}',
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                             ),
