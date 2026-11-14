@@ -22,7 +22,8 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   };
   static const _videoExtensions = {
     'mp4', 'm4v', 'mov', 'mkv', 'webm', 'avi', 'wmv',
-    'mpeg', 'mpg', '3gp', 'ts',
+    'mpeg', 'mpg', '3gp', 'ts', 'm2ts', 'mts', 'flv', 'f4v',
+    '3g2', 'm2v', 'ogv', 'vob', 'rmvb',
   };
   static const _maxDirectories = 10000;
   static const _maxDepth = 24;
@@ -41,8 +42,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
 
   bool get _isMusic => widget.type == MediaLibraryType.music;
   String get _title => _isMusic ? 'Music' : 'Videos';
-  List<String> get _roots =>
-      _isMusic ? const ['Music'] : const ['Movies', 'Videos'];
+  List<String> get _roots => _isMusic ? const ['Music'] : const [''];
 
   @override
   void initState() {
