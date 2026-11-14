@@ -345,15 +345,21 @@ internal class NativeApiServer(
             val frame = retriever.getFrameAtTime(1_000_000L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
                 ?: retriever.getFrameAtTime(0L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
                 ?: return@withVideoSource notFound("Video thumbnail unavailable")
+            val thumbnail = if (frame.width > 640) {
+                Bitmap.createScaledBitmap(
+                    frame, 640, (frame.height * 640f / frame.width).toInt().coerceAtLeast(1), true
+                )
+            } else frame
             val output = ByteArrayOutputStream()
             try {
-                if (!frame.compress(Bitmap.CompressFormat.JPEG, 78, output)) {
+                if (!thumbnail.compress(Bitmap.CompressFormat.JPEG, 78, output)) {
                     return@withVideoSource jsonError(Response.Status.INTERNAL_ERROR, "Could not encode thumbnail")
                 }
                 val bytes = output.toByteArray()
                 newFixedLengthResponse(Response.Status.OK, "image/jpeg", ByteArrayInputStream(bytes), bytes.size.toLong())
                     .apply { addHeader("Cache-Control", "private, max-age=86400") }
             } finally {
+                if (thumbnail !== frame) thumbnail.recycle()
                 frame.recycle()
                 output.close()
             }
