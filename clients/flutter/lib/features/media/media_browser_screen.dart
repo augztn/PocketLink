@@ -656,8 +656,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                                             onTap: () => _openMedia(media, visibleMedia),
                                           );
                                         },
-                                      )
-                                    : _buildVideoList(visibleMedia),
+                                      ),
           ),
         ],
       ),
@@ -673,7 +672,7 @@ class _VideoTag extends StatelessWidget {
   @override
   Widget build(BuildContext context) => DecoratedBox(
         decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.68),
+          color: Colors.black.withOpacity(0.68),
           borderRadius: BorderRadius.circular(6),
         ),
         child: Padding(
