@@ -46,6 +46,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
   PlaylistMode _repeatMode = PlaylistMode.none;
   double _playbackRate = 1;
   StreamSubscription<Playlist>? _playlistSubscription;
+  StreamSubscription<bool>? _playingSubscription;
   Timer? _sleepTimer;
   Timer? _videoControlsTimer;
   bool _showVideoControls = true;
@@ -77,6 +78,14 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
           _coverForTrack = null;
         });
         unawaited(_loadArtwork(_queue[index]));
+      }
+    });
+    _playingSubscription = _player.stream.playing.listen((playing) {
+      if (playing) {
+        _scheduleVideoControlsHide();
+      } else if (mounted && widget.isVideo) {
+        _videoControlsTimer?.cancel();
+        if (!_showVideoControls) setState(() => _showVideoControls = true);
       }
     });
     unawaited(_loadArtwork(_queue[_currentIndex]));
@@ -290,6 +299,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
       unawaited(SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]));
     }
     unawaited(_playlistSubscription?.cancel());
+    unawaited(_playingSubscription?.cancel());
     unawaited(_persistent.closePlayerScreen(isVideo: widget.isVideo));
     super.dispose();
   }
@@ -696,7 +706,9 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
           style: const TextStyle(fontSize: 11, letterSpacing: 2.0, fontWeight: FontWeight.w700),
         ),
       ),
-      body: Container(
+      body: widget.isVideo && _isVideoFullscreen
+          ? _videoSurface()
+          : Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
