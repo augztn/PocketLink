@@ -26,19 +26,37 @@ class BridgeService : Service() {
             .setOngoing(true)
             .build()
         startForeground(8765, notification)
-        val prefs = getSharedPreferences("ssd-bridge", MODE_PRIVATE)
-        server = SafHttpServer(this, prefs.getString("token", "") ?: "").also { it.start() }
-        isRunning = true
+
+        try {
+            val prefs = getSharedPreferences("ssd-bridge", MODE_PRIVATE)
+            val token = prefs.getString("token", null).orEmpty()
+            check(token.isNotBlank()) { "Storage bridge token is missing. Reopen USB storage setup and try again." }
+            server = SafHttpServer(this, token).also { it.start() }
+            lastError = null
+            isRunning = true
+        } catch (error: Exception) {
+            server?.stop()
+            server = null
+            isRunning = false
+            lastError = error.message ?: "Could not start the Android storage bridge."
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
+
     override fun onDestroy() {
         server?.stop()
         server = null
         isRunning = false
         super.onDestroy()
     }
+
     override fun onBind(intent: Intent?): IBinder? = null
 
-    companion object { @Volatile var isRunning: Boolean = false }
+    companion object {
+        @Volatile var isRunning: Boolean = false
+        @Volatile var lastError: String? = null
+    }
 }
