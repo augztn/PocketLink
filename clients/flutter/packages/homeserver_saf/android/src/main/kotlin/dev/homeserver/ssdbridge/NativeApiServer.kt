@@ -158,21 +158,24 @@ internal class NativeApiServer(
     private fun mutateInternal(session: IHTTPSession, operation: String): Response {
         val body = jsonBody(session) ?: return bad("Invalid JSON body")
         val relative = body.optString("path")
-        val parent = internalFile(relative) ?: return notFound("Folder not found")
-        if (!parent.isDirectory) return bad("Not a directory")
         val name = if (operation == "mkdir") body.optString("name") else body.optString("new_name")
         if (!validName(name)) return bad("Invalid name")
-        val target = File(parent, name)
+
         if (operation == "mkdir") {
+            val parent = internalFile(relative) ?: return notFound("Folder not found")
+            if (!parent.isDirectory) return bad("Not a directory")
+            val target = File(parent, name)
             if (target.exists()) return jsonError(Response.Status.CONFLICT, "Name already exists")
             return if (target.mkdir()) json(JSONObject().put("ok", true).put("name", name))
                 else jsonError(Response.Status.INTERNAL_ERROR, "Could not create folder")
         }
-        val old = body.optString("path")
-        val oldFile = internalFile(old) ?: return notFound("Item not found")
-        if (oldFile.parentFile?.canonicalFile != parent.canonicalFile) return bad("Rename must remain in the same folder")
-        if (File(parent, name).exists()) return jsonError(Response.Status.CONFLICT, "Name already exists")
-        return if (oldFile.renameTo(File(parent, name))) json(JSONObject().put("ok", true).put("name", name))
+
+        val oldFile = internalFile(relative) ?: return notFound("Item not found")
+        if (oldFile == internalRoot) return bad("Cannot rename storage root")
+        val parent = oldFile.parentFile ?: return bad("Invalid parent folder")
+        val target = File(parent, name)
+        if (target.exists()) return jsonError(Response.Status.CONFLICT, "Name already exists")
+        return if (oldFile.renameTo(target)) json(JSONObject().put("ok", true).put("name", name))
             else jsonError(Response.Status.INTERNAL_ERROR, "Rename failed")
     }
 
