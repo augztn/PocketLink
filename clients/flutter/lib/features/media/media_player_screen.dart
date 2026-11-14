@@ -181,7 +181,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
         ? track.path.substring(0, extensionIndex)
         : track.path;
     for (final extension in const ['srt', 'ass', 'ssa', 'vtt']) {
-      final subtitlePath = '\$withoutExtension.\$extension';
+      final subtitlePath = '$withoutExtension.$extension';
       try {
         final bytes = track.volume == null
             ? await widget.api.downloadFile(subtitlePath)
@@ -597,9 +597,9 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                           color: const Color(0xFF24202E),
                           onSelected: (value) {
                             if (value == 'audio') {
-                              _showAudioTracks();
+                              unawaited(_showAudioTracks());
                             } else {
-                              _showSubtitleTracks();
+                              unawaited(_showSubtitleTracks());
                             }
                           },
                           itemBuilder: (_) => const [
