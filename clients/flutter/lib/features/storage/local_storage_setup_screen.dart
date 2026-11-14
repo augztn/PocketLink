@@ -54,6 +54,26 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> {
     }
   }
 
+  Future<void> _requestInternalStorageAccess() async {
+    setState(() { _busy = true; _error = null; });
+    try {
+      await _channel.invokeMethod<bool>('requestInternalStorageAccess');
+      // Android opens its special-access settings page. Refresh after the user
+      // returns; never assume the permission was granted just because settings opened.
+      if (mounted) {
+        setState(() {
+          _error = 'Enable “Allow access to manage all files” for HomeServer, return here, then refresh status.';
+          _busy = false;
+        });
+      }
+    } on PlatformException catch (error) {
+      if (mounted) setState(() {
+        _busy = false;
+        _error = error.message ?? 'Could not open Android storage permission settings.';
+      });
+    }
+  }
+
   Future<void> _select(int slot) async {
     setState(() { _busy = true; _error = null; });
     try {
@@ -67,8 +87,6 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> {
     setState(() { _busy = true; _error = null; });
     try {
       await _channel.invokeMethod<bool>('start');
-      // Android starts foreground services asynchronously. Wait for the native
-      // server socket to bind (or report its startup error) before showing success.
       for (var attempt = 0; attempt < 20; attempt++) {
         await Future<void>.delayed(const Duration(milliseconds: 150));
         final status = await _channel.invokeMapMethod<String, dynamic>('status');
@@ -118,16 +136,46 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> {
     final first = _status['usb1']?.toString() ?? 'Not selected';
     final second = _status['usb2']?.toString() ?? 'Not selected';
     final running = _status['running'] == true;
+    final internalGranted = _status['internalStorageGranted'] == true;
     return Scaffold(
-      appBar: AppBar(title: const Text('This device · USB storage')),
+      appBar: AppBar(title: const Text('This device · Storage setup')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           const Text(
-            'Use this screen on the Android phone running HomeServer and connected to your SSD. '
-            'Grant each partition once; Android remembers the permissions.',
+            'Set up the Android phone that will host HomeServer. Internal storage access is needed for shared folders such as Music, Movies, Pictures, DCIM and Download.',
           ),
           const SizedBox(height: 16),
+          Card(
+            child: ListTile(
+              leading: Icon(
+                internalGranted ? Icons.check_circle : Icons.folder_special,
+                color: internalGranted ? Colors.green : null,
+              ),
+              title: const Text('Internal shared storage'),
+              subtitle: Text(internalGranted
+                  ? 'All-files access is enabled.'
+                  : 'Android requires you to approve “Allow access to manage all files”.'),
+              trailing: internalGranted
+                  ? const Icon(Icons.verified)
+                  : const Icon(Icons.chevron_right),
+              onTap: _busy || internalGranted ? null : _requestInternalStorageAccess,
+            ),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: _busy ? null : _refresh,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Refresh permission status'),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'USB / SSD storage',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          const Text('Select each USB partition once. Android remembers the folder permissions.'),
+          const SizedBox(height: 12),
           _VolumeTile(title: 'USB Storage 1', value: first, onTap: _busy ? null : () => _select(1)),
           _VolumeTile(title: 'USB Storage 2', value: second, onTap: _busy ? null : () => _select(2)),
           const SizedBox(height: 12),
@@ -138,7 +186,9 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> {
           ],
           const SizedBox(height: 12),
           FilledButton.icon(
-            onPressed: _busy || (first == 'Not selected' && second == 'Not selected') ? null : (running ? _stop : _start),
+            onPressed: _busy || (!internalGranted && first == 'Not selected' && second == 'Not selected')
+                ? null
+                : (running ? _stop : _start),
             icon: Icon(running ? Icons.stop : Icons.play_arrow),
             label: Text(running ? 'Stop local storage service' : 'Start local storage service'),
           ),
@@ -155,12 +205,9 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> {
             ),
           ),
           const Text(
-            'Keep this token private. Configure the HomeServer backend with this token in its private '
-            'ssd-bridge-token.txt file. The bridge listens only on this device’s loopback address.',
+            'Temporary compatibility setting for the current Termux backend. This token will no longer be needed once the native HomeServer API is enabled.',
             style: TextStyle(fontSize: 12),
           ),
-          const SizedBox(height: 12),
-          OutlinedButton.icon(onPressed: _busy ? null : _refresh, icon: const Icon(Icons.refresh), label: const Text('Refresh status')),
         ],
       ),
     );
