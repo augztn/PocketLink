@@ -35,6 +35,22 @@ class HomeServerSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
         when (call.method) {
             "status" -> result.success(status())
             "token" -> result.success(ensureToken())
+            "serverPasswordConfigured" -> result.success(ServerCredentials(context).isConfigured())
+            "setServerPassword" -> {
+                val password = call.argument<String>("password")
+                if (password.isNullOrEmpty()) {
+                    result.error("INVALID_PASSWORD", "A server password is required.", null)
+                    return
+                }
+                try {
+                    ServerCredentials(context).setPassword(password)
+                    result.success(true)
+                } catch (error: IllegalArgumentException) {
+                    result.error("INVALID_PASSWORD", error.message, null)
+                } catch (error: Exception) {
+                    result.error("PASSWORD_SAVE_FAILED", error.message ?: "Could not save server password.", null)
+                }
+            }
             "internalStorageStatus" -> result.success(internalStorageGranted())
             "requestInternalStorageAccess" -> {
                 val current = activity
@@ -115,7 +131,8 @@ class HomeServerSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
         "usb2" to volumeName("usb2"),
         "running" to BridgeService.isRunning,
         "error" to BridgeService.lastError,
-        "internalStorageGranted" to internalStorageGranted()
+        "internalStorageGranted" to internalStorageGranted(),
+        "serverPasswordConfigured" to ServerCredentials(context).isConfigured()
     )
 
     private fun volumeName(key: String): String {
