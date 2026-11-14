@@ -155,7 +155,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     }
   }
 
-  Future<void> _openMedia(_MediaFile media) async {
+  Future<void> _openMedia(_MediaFile media, List<_MediaFile> queueItems) async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => MediaPlayerScreen(
@@ -165,14 +165,14 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
           volume: media.volume,
           isVideo: !_isMusic,
           queue: _isMusic
-              ? _media.map((item) => MediaQueueItem(
+              ? queueItems.map((item) => MediaQueueItem(
                     title: item.entry.name,
                     path: item.path,
                     volume: item.volume,
                   )).toList(growable: false)
               : const [],
           initialIndex: _isMusic
-              ? _media.indexWhere((item) =>
+              ? queueItems.indexWhere((item) =>
                   item.path == media.path && item.volume == media.volume)
               : 0,
         ),
@@ -314,7 +314,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 trailing: const Icon(Icons.play_arrow),
-                                onTap: () => _openMedia(media),
+                                onTap: () => _openMedia(media, visibleMedia),
                               );
                             },
                           ),
