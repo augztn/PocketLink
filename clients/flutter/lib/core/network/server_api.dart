@@ -41,6 +41,22 @@ class DirectoryListing {
       );
 }
 
+class VideoMetadata {
+  const VideoMetadata({required this.durationMs, required this.width, required this.height});
+
+  final int durationMs;
+  final int width;
+  final int height;
+
+  factory VideoMetadata.fromJson(Map<String, dynamic> json) => VideoMetadata(
+        durationMs: (json['duration_ms'] as num?)?.toInt() ?? 0,
+        width: (json['width'] as num?)?.toInt() ?? 0,
+        height: (json['height'] as num?)?.toInt() ?? 0,
+      );
+
+  String get resolution => width > 0 && height > 0 ? '${width}×${height}' : '';
+}
+
 class StorageVolume {
   const StorageVolume({
     required this.id,
@@ -125,6 +141,42 @@ class ServerApi {
         'Authorization': _dio.options.headers['Authorization'] as String,
       };
 
+  final Map<String, Future<Uint8List?>> _thumbnailCache = {};
+  final Map<String, Future<VideoMetadata?>> _metadataCache = {};
+
+  String _mediaCacheKey(String path, String? volume) => '${volume ?? 'internal'}:$path';
+
+  Future<VideoMetadata?> videoMetadata(String path, {String? volume}) {
+    final key = _mediaCacheKey(path, volume);
+    return _metadataCache.putIfAbsent(key, () async {
+      try {
+        final response = await _dio.get<Map<String, dynamic>>(
+          '/api/media/metadata',
+          queryParameters: {'path': path, if (volume != null) 'volume': volume},
+        );
+        return VideoMetadata.fromJson(response.data ?? const {});
+      } on DioException {
+        return null;
+      }
+    });
+  }
+
+  Future<Uint8List?> videoThumbnail(String path, {String? volume}) {
+    final key = _mediaCacheKey(path, volume);
+    return _thumbnailCache.putIfAbsent(key, () async {
+      try {
+        final response = await _dio.get<List<int>>(
+          '/api/media/thumbnail',
+          queryParameters: {'path': path, if (volume != null) 'volume': volume},
+          options: Options(responseType: ResponseType.bytes),
+        );
+        final bytes = response.data;
+        return bytes == null || bytes.isEmpty ? null : Uint8List.fromList(bytes);
+      } on DioException {
+        return null;
+      }
+    });
+  }
   Future<DirectoryListing> authenticate() async => listDirectory('');
 
   Future<DirectoryListing> listDirectory(String path) async {
