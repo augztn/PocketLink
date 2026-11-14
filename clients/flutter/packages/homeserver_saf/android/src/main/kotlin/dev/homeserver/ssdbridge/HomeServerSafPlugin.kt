@@ -130,6 +130,8 @@ class HomeServerSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
         "usb1" to volumeName("usb1"),
         "usb2" to volumeName("usb2"),
         "running" to BridgeService.isRunning,
+        "apiRunning" to BridgeService.apiRunning,
+        "bridgeRunning" to BridgeService.bridgeRunning,
         "error" to BridgeService.lastError,
         "internalStorageGranted" to internalStorageGranted(),
         "serverPasswordConfigured" to ServerCredentials(context).isConfigured()
