@@ -121,9 +121,8 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
       final bytes = file.bytes;
       if (bytes == null) { _message('Could not read the selected file.'); return; }
       setState(() => _progress = 0);
-      final target = _path.isEmpty ? file.name : '$_path/${file.name}';
       await widget.api.uploadStorageFile(
-        _volume!, target, file.name, bytes,
+        _volume!, _path, file.name, bytes,
         onSendProgress: (sent, total) {
           if (mounted && total > 0) setState(() => _progress = sent / total);
         },
