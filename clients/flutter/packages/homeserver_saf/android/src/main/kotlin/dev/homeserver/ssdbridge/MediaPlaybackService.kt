@@ -94,7 +94,7 @@ class MediaPlaybackService : Service() {
         if (playing && !requestAudioFocus()) {
             playing = false
             MediaPlaybackBridge.commandHandler?.invoke(ACTION_PAUSE, null)
-        } else if (!playing) {
+        } else if (!playing && !resumeAfterFocus) {
             abandonAudioFocus()
         }
         updateSession()
