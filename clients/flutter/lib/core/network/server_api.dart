@@ -93,7 +93,7 @@ class ServerApi {
 
     if (uri == null ||
         trimmed.isEmpty ||
-        trimmed.contains(RegExp(r'\\s')) ||
+        trimmed.contains(RegExp(r'\s')) ||
         !uri.hasAuthority ||
         uri.host.isEmpty ||
         uri.host.contains('%') ||
