@@ -144,6 +144,11 @@ class ServerApi {
   final Map<String, Future<Uint8List?>> _thumbnailCache = {};
   final Map<String, Future<VideoMetadata?>> _metadataCache = {};
 
+  void clearMediaCache() {
+    _thumbnailCache.clear();
+    _metadataCache.clear();
+  }
+
   String _mediaCacheKey(String path, String? volume) => '${volume ?? 'internal'}:$path';
 
   Future<VideoMetadata?> videoMetadata(String path, {String? volume}) {
