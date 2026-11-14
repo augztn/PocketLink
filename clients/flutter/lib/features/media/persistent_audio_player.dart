@@ -173,13 +173,13 @@ class PersistentAudioPlayer extends ChangeNotifier {
     final track = currentItem;
     if (track == null) return;
     final args = <String, Object>{
-      'title': track.title.replaceAll(RegExp(r'\\.[^.]+
+      'title': track.title.replaceAll(RegExp(r'\.[^.]+
     unawaited(_playlistSubscription?.cancel());
     unawaited(_playingSubscription?.cancel());
     unawaited(_completedSubscription?.cancel());
     unawaited(_positionSubscription?.cancel());
     unawaited(_durationSubscription?.cancel());
-    unawaited(_mediaChannel.setMethodCallHandler(null));
+    _mediaChannel.setMethodCallHandler(null);
     unawaited(player.dispose());
     super.dispose();
   }
