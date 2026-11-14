@@ -51,7 +51,11 @@ class HomeServerSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
                     putExtra(MediaPlaybackService.EXTRA_DURATION, call.argument<Number>("durationMs")?.toLong() ?: 0L)
                 }
                 try {
-                    ContextCompat.startForegroundService(context, intent)
+                    if (call.method == "mediaStart") {
+                        ContextCompat.startForegroundService(context, intent)
+                    } else {
+                        context.startService(intent)
+                    }
                     result.success(true)
                 } catch (error: Exception) {
                     result.error("MEDIA_SERVICE_START_FAILED", error.message ?: "Could not start media controls.", null)
