@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
@@ -229,6 +231,58 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     return result;
   }
 
+  Widget _buildVideoArtwork(_MediaFile media, {required BoxFit fit}) {
+    return FutureBuilder<Uint8List?>(
+      future: widget.api.videoThumbnail(media.path, volume: media.volume),
+      builder: (context, snapshot) {
+        final bytes = snapshot.data;
+        if (bytes != null && bytes.isNotEmpty) {
+          return Image.memory(bytes, fit: fit, gaplessPlayback: true);
+        }
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Theme.of(context).colorScheme.primaryContainer,
+                Theme.of(context).colorScheme.surfaceContainerHighest,
+              ],
+            ),
+          ),
+          child: Icon(Icons.movie_creation_outlined, size: 42,
+            color: Theme.of(context).colorScheme.onSurfaceVariant),
+        );
+      },
+    );
+  }
+
+  Widget _videoMetadataLabel(_MediaFile media) {
+    return FutureBuilder<VideoMetadata?>(
+      future: widget.api.videoMetadata(media.path, volume: media.volume),
+      builder: (context, snapshot) {
+        final metadata = snapshot.data;
+        if (metadata == null) return const SizedBox.shrink();
+        final parts = <String>[
+          if (metadata.resolution.isNotEmpty) metadata.resolution,
+          if (metadata.durationMs > 0) _formatDuration(metadata.durationMs),
+        ];
+        if (parts.isEmpty) return const SizedBox.shrink();
+        return Text(parts.join(' · '), maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.bodySmall);
+      },
+    );
+  }
+
+  String _formatDuration(int milliseconds) {
+    final totalSeconds = milliseconds ~/ 1000;
+    final hours = totalSeconds ~/ 3600;
+    final minutes = (totalSeconds % 3600) ~/ 60;
+    final seconds = totalSeconds % 60;
+    final two = (int value) => value.toString().padLeft(2, '0');
+    return hours > 0 ? '${hours}:${two(minutes)}:${two(seconds)}' : '${minutes}:${two(seconds)}';
+  }
   Widget _buildVideoGrid(List<_MediaFile> items) {
     return GridView.builder(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
@@ -253,23 +307,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              Theme.of(context).colorScheme.primaryContainer,
-                              Theme.of(context).colorScheme.surfaceContainerHighest,
-                            ],
-                          ),
-                        ),
-                        child: Icon(
-                          Icons.movie_creation_outlined,
-                          size: 54,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
+                      _buildVideoArtwork(media, fit: BoxFit.cover),
                       Positioned(
                         left: 8,
                         top: 8,
@@ -304,6 +342,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                         style: Theme.of(context).textTheme.titleSmall,
                       ),
                       const SizedBox(height: 3),
+                      _videoMetadataLabel(media),
                       Text(
                         _sourceLabel(media),
                         maxLines: 1,
@@ -340,17 +379,22 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                 color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.movie_outlined, size: 30),
+              clipBehavior: Clip.antiAlias,
+              child: _buildVideoArtwork(media, fit: BoxFit.cover),
             ),
             title: Text(
               media.entry.name,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-            subtitle: Text(
-              '$extension · ${_formatBytes(media.entry.size)} · ${_sourceLabel(media)}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('$extension · ${_formatBytes(media.entry.size)} · ${_sourceLabel(media)}',
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
+                _videoMetadataLabel(media),
+              ],
             ),
             trailing: const Icon(Icons.play_circle_outline_rounded),
             onTap: () => _openMedia(media, items),
