@@ -41,9 +41,12 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
       });
       if (_volume != null) await _loadDirectory('');
     } on DioException catch (error) {
-      if (mounted) setState(() => _error = error.response?.statusCode == 404
-          ? 'SSD support is not enabled on the HomeServer backend yet.'
-          : error.message ?? 'Could not detect external storage.');
+      if (mounted) setState(() => _error = switch (error.response?.statusCode) {
+        401 => 'HomeServer rejected the saved login (401). Go back to the connection screen and enter the current server admin password. The SAF bridge token is separate.',
+        403 => 'HomeServer denied access to external storage (403). Check the server account permissions.',
+        404 => 'SSD support is not enabled on the HomeServer backend yet.',
+        _ => error.message ?? 'Could not detect external storage.',
+      });
     } catch (_) {
       if (mounted) setState(() => _error = 'Could not detect external storage.');
     } finally {
@@ -64,11 +67,12 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
       });
     } on DioException catch (error) {
       if (!mounted) return;
-      setState(() => _error = error.response?.statusCode == 403
-          ? 'Android denied access to this SSD.'
-          : error.response?.statusCode == 404
-              ? 'Storage folder not found or permission not granted.'
-              : error.message ?? 'Could not read this folder.');
+      setState(() => _error = switch (error.response?.statusCode) {
+        401 => 'HomeServer rejected the saved login (401). Go back to the connection screen and enter the current server admin password. The SAF bridge token is separate.',
+        403 => 'Android denied access to this SSD.',
+        404 => 'Storage folder not found or permission not granted.',
+        _ => error.message ?? 'Could not read this folder.',
+      });
     } catch (_) {
       if (mounted) setState(() => _error = 'Could not read this folder.');
     } finally {
