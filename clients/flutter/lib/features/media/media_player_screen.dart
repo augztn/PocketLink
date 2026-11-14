@@ -384,10 +384,10 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      Colors.black.withValues(alpha: 0.68),
+                      Colors.black.withOpacity(0.68),
                       Colors.transparent,
                       Colors.transparent,
-                      Colors.black.withValues(alpha: 0.78),
+                      Colors.black.withOpacity(0.78),
                     ],
                     stops: const [0, 0.28, 0.58, 1],
                   ),
