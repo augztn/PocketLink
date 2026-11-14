@@ -4,6 +4,9 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.Settings
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -32,6 +35,37 @@ class HomeServerSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
         when (call.method) {
             "status" -> result.success(status())
             "token" -> result.success(ensureToken())
+            "internalStorageStatus" -> result.success(internalStorageGranted())
+            "requestInternalStorageAccess" -> {
+                val current = activity
+                if (current == null) {
+                    result.error("UNAVAILABLE", "Android settings cannot be opened right now.", null)
+                    return
+                }
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+                    result.success(true)
+                    return
+                }
+                if (internalStorageGranted()) {
+                    result.success(true)
+                    return
+                }
+                try {
+                    val intent = Intent(
+                        Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                        Uri.parse("package:${context.packageName}")
+                    )
+                    current.startActivity(intent)
+                    result.success(false)
+                } catch (_: Exception) {
+                    try {
+                        current.startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+                        result.success(false)
+                    } catch (error: Exception) {
+                        result.error("PERMISSION_SETTINGS_FAILED", error.message ?: "Could not open all-files access settings.", null)
+                    }
+                }
+            }
             "selectVolume" -> {
                 val slot = call.argument<Int>("slot")
                 val current = activity
@@ -73,11 +107,15 @@ class HomeServerSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
         }
     }
 
+    private fun internalStorageGranted(): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.R || Environment.isExternalStorageManager()
+
     private fun status(): Map<String, Any?> = mapOf(
         "usb1" to volumeName("usb1"),
         "usb2" to volumeName("usb2"),
         "running" to BridgeService.isRunning,
-        "error" to BridgeService.lastError
+        "error" to BridgeService.lastError,
+        "internalStorageGranted" to internalStorageGranted()
     )
 
     private fun volumeName(key: String): String {
