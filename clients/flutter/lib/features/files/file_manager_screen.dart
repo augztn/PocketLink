@@ -19,6 +19,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   bool _loading = true;
   String? _error;
   double? _transferProgress;
+  final TextEditingController _searchController = TextEditingController();
 
   String _searchQuery = '';
   String _category = 'All';
@@ -319,6 +320,12 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   }
 
   @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final allItems = _listing?.items ?? const <FileEntry>[];
     final query = _searchQuery.trim().toLowerCase();
@@ -361,6 +368,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: TextField(
+              controller: _searchController,
               onChanged: (value) => setState(() => _searchQuery = value),
               decoration: InputDecoration(
                 hintText: 'Search this folder',
@@ -369,7 +377,10 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                     ? null
                     : IconButton(
                         tooltip: 'Clear search',
-                        onPressed: () => setState(() => _searchQuery = ''),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _searchQuery = '');
+                        },
                         icon: const Icon(Icons.close),
                       ),
                 isDense: true,
