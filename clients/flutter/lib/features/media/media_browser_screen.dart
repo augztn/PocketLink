@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/network/server_api.dart';
 import 'media_player_screen.dart';
+import 'persistent_audio_player.dart';
 
 enum MediaLibraryType { music, video }
 
