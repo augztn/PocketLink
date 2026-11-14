@@ -78,9 +78,18 @@ class SafHttpServer(private val context: Context, private val token: String) : N
                     if (existing?.isDirectory == true) return bad("A folder already uses this name")
                     val target = existing ?: parent.createFile(mimeFor(name), name)
                         ?: return jsonError(Response.Status.INTERNAL_ERROR, "Could not create file")
-                    val output = context.contentResolver.openOutputStream(target.uri, "wt")
-                        ?: return jsonError(Response.Status.INTERNAL_ERROR, "Cannot write file")
-                    session.inputStream.use { input -> output.use { input.copyTo(it) } }
+                    val bodyFiles = HashMap<String, String>()
+                    session.parseBody(bodyFiles)
+                    val bodyPath = bodyFiles["content"]
+                        ?: return jsonError(Response.Status.BAD_REQUEST, "Upload body is missing")
+                    val bodyFile = java.io.File(bodyPath)
+                    try {
+                        context.contentResolver.openOutputStream(target.uri, "wt")?.use { output ->
+                            bodyFile.inputStream().use { input -> input.copyTo(output) }
+                        } ?: return jsonError(Response.Status.INTERNAL_ERROR, "Cannot write file")
+                    } finally {
+                        bodyFile.delete()
+                    }
                     json(JSONObject().put("ok", true).put("name", name))
                 }
                 session.uri == "/v1/mkdir" && session.method == Method.POST -> {
