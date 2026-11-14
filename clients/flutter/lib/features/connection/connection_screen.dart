@@ -75,11 +75,6 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
         password: password,
       );
       await api.authenticate();
-      // The file-browser endpoint may be available while the protected SSD
-      // router rejects stale credentials. Verify the endpoint the user is
-      // trying to open before persisting credentials or navigating onward.
-      await api.listStorageVolumes();
-
       await _storage.write(key: 'last_server_address', value: '$host:$port');
       await _storage.write(key: 'last_server_username', value: username);
       await _storage.write(key: 'last_server_password', value: password);
