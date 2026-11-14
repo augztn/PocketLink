@@ -213,19 +213,18 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
 
   List<_MediaFile> _sortMedia(List<_MediaFile> items) {
     final result = List<_MediaFile>.of(items);
-    switch (_sortBy) {
-      case 'largest':
-        result.sort((a, b) => b.entry.size.compareTo(a.entry.size));
-      case 'newest':
-        result.sort((a, b) {
-          final aDate = DateTime.tryParse(a.entry.modified);
-          final bDate = DateTime.tryParse(b.entry.modified);
-          return (bDate?.millisecondsSinceEpoch ?? 0)
-              .compareTo(aDate?.millisecondsSinceEpoch ?? 0);
-        });
-      default:
-        result.sort((a, b) =>
-            a.entry.name.toLowerCase().compareTo(b.entry.name.toLowerCase()));
+    if (_sortBy == 'largest') {
+      result.sort((a, b) => b.entry.size.compareTo(a.entry.size));
+    } else if (_sortBy == 'newest') {
+      result.sort((a, b) {
+        final aDate = DateTime.tryParse(a.entry.modified);
+        final bDate = DateTime.tryParse(b.entry.modified);
+        return (bDate?.millisecondsSinceEpoch ?? 0)
+            .compareTo(aDate?.millisecondsSinceEpoch ?? 0);
+      });
+    } else {
+      result.sort((a, b) =>
+          a.entry.name.toLowerCase().compareTo(b.entry.name.toLowerCase()));
     }
     return result;
   }
@@ -422,15 +421,16 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       appBar: AppBar(
         title: Text(_title),
         actions: [
-          IconButton(
-            tooltip: _layoutMode == 'grid' ? 'List view' : 'Grid view',
-            onPressed: () => setState(() {
-              _layoutMode = _layoutMode == 'grid' ? 'list' : 'grid';
-            }),
-            icon: Icon(_layoutMode == 'grid'
-                ? Icons.view_list_rounded
-                : Icons.grid_view_rounded),
-          ),
+          if (!_isMusic)
+            IconButton(
+              tooltip: _layoutMode == 'grid' ? 'List view' : 'Grid view',
+              onPressed: () => setState(() {
+                _layoutMode = _layoutMode == 'grid' ? 'list' : 'grid';
+              }),
+              icon: Icon(_layoutMode == 'grid'
+                  ? Icons.view_list_rounded
+                  : Icons.grid_view_rounded),
+            ),
           IconButton(
             tooltip: 'Scan again',
             onPressed: _loading ? null : _scan,
