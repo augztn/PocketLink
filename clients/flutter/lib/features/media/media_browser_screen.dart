@@ -629,8 +629,9 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                             ? _buildFolders(folders)
                             : !_isMusic && _layoutMode == 'grid'
                                 ? _buildVideoGrid(visibleMedia)
-                                : _isMusic || _layoutMode == 'list'
-                                    ? ListView.builder(
+                                : !_isMusic
+                                    ? _buildVideoList(visibleMedia)
+                                    : ListView.builder(
                                         padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
                                         itemCount: visibleMedia.length,
                                         itemBuilder: (context, index) {
