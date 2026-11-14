@@ -6,6 +6,8 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.os.storage.StorageManager
+import android.os.storage.StorageVolume
 import android.provider.Settings
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
@@ -22,7 +24,7 @@ class HomeServerSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
     private lateinit var context: Context
     private var activity: Activity? = null
     private var binding: ActivityPluginBinding? = null
-    private var pendingSlot: Int? = null
+    private var pendingVolumeId: String? = null
     private val prefs by lazy { context.getSharedPreferences("ssd-bridge", Context.MODE_PRIVATE) }
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
@@ -83,14 +85,22 @@ class HomeServerSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
                 }
             }
             "selectVolume" -> {
+                val requestedId = call.argument<String>("volumeId")
                 val slot = call.argument<Int>("slot")
+                val volume = discoverVolumes().firstOrNull { it.first == requestedId }
+                val id = requestedId ?: slot?.takeIf { it in 1..2 }?.let { "usb$it" }
                 val current = activity
-                if (slot == null || slot !in 1..2 || current == null || pendingSlot != null) {
-                    result.error("UNAVAILABLE", "Storage picker is unavailable.", null)
+                if (id == null || current == null || pendingVolumeId != null ||
+                    (requestedId != null && volume == null)) {
+                    result.error("UNAVAILABLE", "Storage picker is unavailable or the drive is no longer connected.", null)
                     return
                 }
-                pendingSlot = slot
-                val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+                pendingVolumeId = id
+                val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && volume != null) {
+                    volume.second.createOpenDocumentTreeIntent()
+                } else {
+                    Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
+                }.apply {
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or
                         Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
                         Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
@@ -99,7 +109,7 @@ class HomeServerSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
                     current.startActivityForResult(intent, REQUEST_TREE)
                     result.success(null)
                 } catch (error: Exception) {
-                    pendingSlot = null
+                    pendingVolumeId = null
                     result.error("PICKER_FAILED", error.message ?: "Could not open Android storage picker.", null)
                 }
             }
@@ -129,6 +139,14 @@ class HomeServerSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
     private fun status(): Map<String, Any?> = mapOf(
         "usb1" to volumeName("usb1"),
         "usb2" to volumeName("usb2"),
+        "discoveredVolumes" to discoverVolumes().map { (id, volume) ->
+            mapOf(
+                "id" to id,
+                "name" to volume.getDescription(context),
+                "selected" to (prefs.getString("volume_uri_$id", null) != null),
+                "state" to volume.state
+            )
+        },
         "running" to BridgeService.isRunning,
         "apiRunning" to BridgeService.apiRunning,
         "bridgeRunning" to BridgeService.bridgeRunning,
@@ -136,6 +154,20 @@ class HomeServerSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
         "internalStorageGranted" to internalStorageGranted(),
         "serverPasswordConfigured" to ServerCredentials(context).isConfigured()
     )
+
+    private fun discoverVolumes(): List<Pair<String, StorageVolume>> {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return emptyList()
+        val manager = context.getSystemService(Context.STORAGE_SERVICE) as? StorageManager
+            ?: return emptyList()
+        return manager.storageVolumes.mapIndexedNotNull { index, volume ->
+            if (!volume.isRemovable || volume.state != Environment.MEDIA_MOUNTED) return@mapIndexedNotNull null
+            val identity = volume.uuid?.lowercase() ?: "${volume.getDescription(context)}-$index"
+            val suffix = java.security.MessageDigest.getInstance("SHA-256")
+                .digest(identity.toByteArray(Charsets.UTF_8))
+                .take(8).joinToString("") { "%02x".format(it) }
+            "usb-$suffix" to volume
+        }
+    }
 
     private fun volumeName(key: String): String {
         val raw = prefs.getString(key, null) ?: return "Not selected"
@@ -165,8 +197,8 @@ class HomeServerSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
     override fun onDetachedFromActivity() = detachActivity()
     private fun detachActivity() {
         binding?.removeActivityResultListener(this)
-        if (pendingSlot != null) {
-            pendingSlot = null
+        if (pendingVolumeId != null) {
+            pendingVolumeId = null
             channel.invokeMethod("selectionCancelled", null)
         }
         binding = null
@@ -175,9 +207,9 @@ class HomeServerSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
         if (requestCode != REQUEST_TREE) return false
-        val slot = pendingSlot
-        pendingSlot = null
-        if (slot == null || resultCode != Activity.RESULT_OK || data?.data == null) {
+        val volumeId = pendingVolumeId
+        pendingVolumeId = null
+        if (volumeId == null || resultCode != Activity.RESULT_OK || data?.data == null) {
             channel.invokeMethod("selectionCancelled", null)
             return true
         }
@@ -185,7 +217,11 @@ class HomeServerSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
         val flags = data.flags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
         try {
             context.contentResolver.takePersistableUriPermission(uri, flags)
-            prefs.edit().putString("usb$slot", uri.toString()).apply()
+            val rootName = DocumentFile.fromTreeUri(context, uri)?.name ?: volumeId
+            prefs.edit()
+                .putString("volume_uri_$volumeId", uri.toString())
+                .putString("volume_name_$volumeId", rootName)
+                .apply()
             channel.invokeMethod("storageChanged", status())
         } catch (error: SecurityException) {
             channel.invokeMethod("storageError", error.message ?: "Could not persist storage permission.")
