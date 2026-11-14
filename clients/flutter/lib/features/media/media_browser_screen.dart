@@ -23,8 +23,10 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     'mp4', 'm4v', 'mov', 'mkv', 'webm', 'avi', 'wmv',
     'mpeg', 'mpg', '3gp', 'ts',
   };
-  static const _maxDirectories = 2000;
-  static const _maxDepth = 20;
+  // Breadth-first traversal ensures every storage source is visited before
+  // deeply nested folders on one large USB volume consume the scan budget.
+  static const _maxDirectories = 10000;
+  static const _maxDepth = 24;
 
   List<_MediaFile> _media = const [];
   bool _loading = true;
@@ -62,9 +64,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
 
     final found = <_MediaFile>[];
     final visited = <String>{};
-    final pending = <({String path, int depth, String? volume})>[
-      for (final root in _roots) (path: root, depth: 0, volume: null),
-    ];
+    final pending = <({String path, int depth, String? volume})>[];
 
     try {
       try {
@@ -77,8 +77,17 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         _skippedDirectories++;
       }
 
-      while (pending.isNotEmpty && visited.length < _maxDirectories) {
-        final current = pending.removeLast();
+      // Always include internal storage, even when the USB bridge is offline.
+      pending.addAll(
+        _roots.map((root) => (path: root, depth: 0, volume: null)),
+      );
+
+      // Use a queue (cursor) rather than a stack: depth-first traversal can
+      // spend the entire scan budget inside one USB folder tree and never
+      // inspect the other OTG volume or internal Music directory.
+      var cursor = 0;
+      while (cursor < pending.length && visited.length < _maxDirectories) {
+        final current = pending[cursor++];
         final visitKey = '${current.volume ?? 'internal'}:${current.path}';
         if (!visited.add(visitKey)) continue;
 
