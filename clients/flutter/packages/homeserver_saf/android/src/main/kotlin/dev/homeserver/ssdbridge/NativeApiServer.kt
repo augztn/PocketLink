@@ -1,6 +1,10 @@
 package dev.homeserver.ssdbridge
 
 import android.content.Context
+import android.media.MediaMetadataRetriever
+import android.graphics.Bitmap
+import java.io.ByteArrayOutputStream
+import java.io.ByteArrayInputStream
 import android.os.Environment
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
@@ -68,6 +72,10 @@ internal class NativeApiServer(
                     mutateExternal(session, "rename")
                 session.uri == "/api/storage/item" && session.method == Method.DELETE ->
                     deleteExternal(query["volume"], path)
+                session.uri == "/api/media/metadata" && session.method == Method.GET ->
+                    videoMetadata(query["volume"], path)
+                session.uri == "/api/media/thumbnail" && session.method == Method.GET ->
+                    videoThumbnail(query["volume"], path)
                 else -> jsonError(Response.Status.NOT_FOUND, "Endpoint not found")
             }
         } catch (error: SecurityException) {
@@ -297,6 +305,65 @@ internal class NativeApiServer(
             else jsonError(Response.Status.INTERNAL_ERROR, "Delete failed")
     }
 
+    private fun withVideoSource(volume: String?, relative: String, action: (MediaMetadataRetriever) -> Response): Response {
+        if (relative.isBlank()) return bad("Video path is required")
+        val retriever = MediaMetadataRetriever()
+        return try {
+            if (volume.isNullOrBlank()) {
+                val file = internalFile(relative) ?: return notFound("Video not found")
+                if (!file.isFile || !file.canRead() || !isVideoFile(file.name)) return bad("Not a readable video")
+                retriever.setDataSource(file.absolutePath)
+            } else {
+                val root = externalRoot(volume) ?: return notFound("Storage permission not granted")
+                val document = resolveDocument(root, relative) ?: return notFound("Video not found")
+                if (!document.isFile || !isVideoFile(document.name.orEmpty())) return bad("Not a video file")
+                retriever.setDataSource(context, document.uri)
+            }
+            action(retriever)
+        } catch (_: SecurityException) {
+            jsonError(Response.Status.FORBIDDEN, "Storage permission was revoked")
+        } catch (_: Exception) {
+            notFound("Video metadata is unavailable")
+        } finally {
+            try { retriever.release() } catch (_: Exception) { }
+        }
+    }
+
+    private fun videoMetadata(volume: String?, relative: String): Response =
+        withVideoSource(volume, relative) { retriever ->
+            val duration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
+            val width = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 0
+            val height = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: 0
+            val rotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
+            json(JSONObject().put("duration_ms", duration)
+                .put("width", if (rotation == 90 || rotation == 270) height else width)
+                .put("height", if (rotation == 90 || rotation == 270) width else height))
+        }
+
+    private fun videoThumbnail(volume: String?, relative: String): Response =
+        withVideoSource(volume, relative) { retriever ->
+            val frame = retriever.getFrameAtTime(1_000_000L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                ?: retriever.getFrameAtTime(0L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                ?: return@withVideoSource notFound("Video thumbnail unavailable")
+            val output = ByteArrayOutputStream()
+            try {
+                if (!frame.compress(Bitmap.CompressFormat.JPEG, 78, output)) {
+                    return@withVideoSource jsonError(Response.Status.INTERNAL_ERROR, "Could not encode thumbnail")
+                }
+                val bytes = output.toByteArray()
+                newFixedLengthResponse(Response.Status.OK, "image/jpeg", ByteArrayInputStream(bytes), bytes.size.toLong())
+                    .apply { addHeader("Cache-Control", "private, max-age=86400") }
+            } finally {
+                frame.recycle()
+                output.close()
+            }
+        }
+
+    private fun isVideoFile(name: String): Boolean =
+        name.substringAfterLast(".", "").lowercase(Locale.ROOT) in setOf(
+            "mp4", "m4v", "mov", "mkv", "webm", "avi", "wmv", "mpeg", "mpg",
+            "3gp", "ts", "m2ts", "mts", "flv", "f4v", "3g2", "m2v", "ogv", "vob", "rmvb"
+        )
     private fun internalFile(relative: String): File? {
         if (relative.isBlank()) return internalRoot
         val parts = relative.split('/')
