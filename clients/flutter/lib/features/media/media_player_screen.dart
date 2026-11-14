@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
@@ -48,6 +49,8 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
   double _playbackRate = 1;
   StreamSubscription<Playlist>? _playlistSubscription;
   Timer? _sleepTimer;
+  Uint8List? _coverBytes;
+  String? _coverForPath;
 
   List<MediaQueueItem> get _queue => widget.queue.isEmpty
       ? [MediaQueueItem(title: widget.title, path: widget.path, volume: widget.volume)]
@@ -60,8 +63,16 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
     _videoController = VideoController(_player);
     _currentIndex = widget.initialIndex.clamp(0, _queue.length - 1).toInt();
     _playlistSubscription = _player.stream.playlist.listen((playlist) {
-      if (mounted) setState(() => _currentIndex = playlist.index);
+      if (mounted) {
+        setState(() {
+          _currentIndex = playlist.index;
+          _coverBytes = null;
+          _coverForPath = null;
+        });
+        unawaited(_loadArtwork(_queue[playlist.index.clamp(0, _queue.length - 1)]));
+      }
     });
+    unawaited(_loadArtwork(_queue[_currentIndex]));
     _open();
   }
 
@@ -281,6 +292,31 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
         : '${two(minutes)}:${two(seconds)}';
   }
 
+  Future<void> _loadArtwork(MediaQueueItem track) async {
+    final folder = track.path.contains('/')
+        ? track.path.substring(0, track.path.lastIndexOf('/') + 1)
+        : '';
+    // Sidecar artwork works consistently for internal and SAF-backed USB
+    // storage without downloading or caching the audio file itself.
+    for (final name in const ['cover.jpg', 'cover.png', 'folder.jpg', 'album.jpg']) {
+      try {
+        final path = '$folder$name';
+        final bytes = track.volume == null
+            ? await widget.api.downloadFile(path)
+            : await widget.api.downloadStorageFile(track.volume!, path);
+        if (bytes.isNotEmpty && mounted) {
+          setState(() {
+            _coverBytes = bytes;
+            _coverForPath = track.path;
+          });
+          return;
+        }
+      } catch (_) {
+        // Try the next conventional artwork filename.
+      }
+    }
+  }
+
   Widget _artwork() {
     return AspectRatio(
       aspectRatio: 1,
@@ -302,9 +338,20 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
           ],
         ),
         child: Stack(
+          fit: StackFit.expand,
           alignment: Alignment.center,
           children: [
-            Positioned(
+            if (_coverBytes != null && _coverForPath == _queue[_currentIndex.clamp(0, _queue.length - 1)].path)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(28),
+                child: Image.memory(
+                  _coverBytes!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                ),
+              ),
+            if (_coverBytes == null || _coverForPath != _queue[_currentIndex.clamp(0, _queue.length - 1)].path)
+              Positioned(
               top: -42,
               right: -28,
               child: Container(
@@ -328,7 +375,8 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                 ),
               ),
             ),
-            Container(
+            if (_coverBytes == null || _coverForPath != _queue[_currentIndex.clamp(0, _queue.length - 1)].path)
+              Container(
               width: 174,
               height: 174,
               decoration: BoxDecoration(
@@ -360,7 +408,8 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                 ],
               ),
             ),
-            Positioned(
+            if (_coverBytes == null || _coverForPath != _queue[_currentIndex.clamp(0, _queue.length - 1)].path)
+              Positioned(
               left: 22,
               bottom: 20,
               child: Text(
