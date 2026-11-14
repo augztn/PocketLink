@@ -33,6 +33,9 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   String? _error;
   int _scannedDirectories = 0;
   int _skippedDirectories = 0;
+  List<StorageVolume> _volumes = const [];
+  String? _selectedVolume;
+  String _searchQuery = '';
 
   bool get _isMusic => widget.type == MediaLibraryType.music;
   String get _title => _isMusic ? 'Music' : 'Videos';
@@ -69,6 +72,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     try {
       try {
         final volumes = await widget.api.listStorageVolumes();
+        _volumes = volumes;
         for (final volume in volumes.where((item) => item.available)) {
           pending.add((path: '', depth: 0, volume: volume.id));
         }
@@ -167,6 +171,16 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final query = _searchQuery.trim().toLowerCase();
+    final visibleMedia = _media.where((media) {
+      final matchesQuery = query.isEmpty ||
+          media.entry.name.toLowerCase().contains(query) ||
+          media.path.toLowerCase().contains(query);
+      final matchesVolume = _selectedVolume == null ||
+          media.volume == _selectedVolume;
+      return matchesQuery && matchesVolume;
+    }).toList(growable: false);
+
     return Scaffold(
       appBar: AppBar(
         title: Text(_title),
@@ -190,6 +204,60 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                     '${_skippedDirectories > 0 ? ' · $_skippedDirectories skipped' : ''}',
             ),
           ),
+          if (_isMusic) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+              child: TextField(
+                onChanged: (value) => setState(() => _searchQuery = value),
+                decoration: InputDecoration(
+                  hintText: 'Search songs or folders',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchQuery.isEmpty
+                      ? null
+                      : IconButton(
+                          tooltip: 'Clear search',
+                          onPressed: () => setState(() => _searchQuery = ''),
+                          icon: const Icon(Icons.close),
+                        ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  isDense: true,
+                ),
+              ),
+            ),
+            if (_volumes.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: DropdownButtonFormField<String>(
+                  initialValue: _selectedVolume ?? 'all',
+                  decoration: const InputDecoration(
+                    labelText: 'Music source',
+                    prefixIcon: Icon(Icons.storage_outlined),
+                    isDense: true,
+                  ),
+                  items: [
+                    const DropdownMenuItem(
+                      value: 'all',
+                      child: Text('All storage locations'),
+                    ),
+                    ..._volumes.map((volume) => DropdownMenuItem(
+                      value: volume.id,
+                      enabled: volume.available,
+                      child: Text(
+                        '${volume.name}${volume.available ? '' : ' · unavailable'}',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    )),
+                  ],
+                  onChanged: (value) => setState(() {
+                    _selectedVolume = value == null || value == 'all'
+                        ? null
+                        : value;
+                  }),
+                ),
+              ),
+          ],
           if (_loading) const LinearProgressIndicator(),
           if (_error != null)
             Padding(
@@ -209,7 +277,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                   )
                 : _loading && _media.isEmpty
                     ? const Center(child: Text('Searching media folders…'))
-                    : _media.isEmpty
+                    : visibleMedia.isEmpty
                         ? Center(
                             child: Text(
                               'No ${_title.toLowerCase()} files found.\n'
@@ -218,9 +286,9 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                             ),
                           )
                         : ListView.builder(
-                            itemCount: _media.length,
+                            itemCount: visibleMedia.length,
                             itemBuilder: (context, index) {
-                              final media = _media[index];
+                              final media = visibleMedia[index];
                               return ListTile(
                                 leading: Icon(_isMusic
                                     ? Icons.audio_file
