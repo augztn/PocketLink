@@ -36,6 +36,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   List<StorageVolume> _volumes = const [];
   String? _selectedVolume;
   String _searchQuery = '';
+  String _libraryView = 'songs';
 
   bool get _isMusic => widget.type == MediaLibraryType.music;
   String get _title => _isMusic ? 'Music' : 'Videos';
@@ -191,6 +192,13 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
           media.volume == _selectedVolume;
       return matchesQuery && matchesVolume;
     }).toList(growable: false);
+    final folders = <String, List<_MediaFile>>{};
+    for (final media in visibleMedia) {
+      final folder = media.path.contains('/')
+          ? media.path.substring(0, media.path.lastIndexOf('/'))
+          : (media.volume == null ? 'Internal storage' : 'USB storage');
+      folders.putIfAbsent(folder, () => <_MediaFile>[]).add(media);
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -216,6 +224,18 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
             ),
           ),
           if (_isMusic) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+              child: SegmentedButton<String>(
+                segments: const [
+                  ButtonSegment(value: 'songs', label: Text('Songs'), icon: Icon(Icons.music_note)),
+                  ButtonSegment(value: 'folders', label: Text('Folders'), icon: Icon(Icons.folder_outlined)),
+                ],
+                selected: {_libraryView},
+                onSelectionChanged: (selection) => setState(() => _libraryView = selection.first),
+                showSelectedIcon: false,
+              ),
+            ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
               child: TextField(
@@ -297,26 +317,43 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                               textAlign: TextAlign.center,
                             ),
                           )
-                        : ListView.builder(
-                            itemCount: visibleMedia.length,
-                            itemBuilder: (context, index) {
-                              final media = visibleMedia[index];
-                              return ListTile(
-                                leading: Icon(_isMusic
-                                    ? Icons.audio_file
-                                    : Icons.play_circle_outline),
-                                title: Text(media.entry.name),
-                                subtitle: Text(
-                                  '${media.path} · '
-                                  '${(media.entry.size / (1024 * 1024)).toStringAsFixed(1)} MB',
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                trailing: const Icon(Icons.play_arrow),
-                                onTap: () => _openMedia(media, visibleMedia),
-                              );
-                            },
-                          ),
+                        : _isMusic && _libraryView == 'folders'
+                            ? ListView(
+                                children: folders.entries.map((entry) {
+                                  final totalBytes = entry.value.fold<int>(
+                                    0, (sum, media) => sum + media.entry.size,
+                                  );
+                                  return ExpansionTile(
+                                    leading: const Icon(Icons.folder_rounded),
+                                    title: Text(entry.key, maxLines: 1, overflow: TextOverflow.ellipsis),
+                                    subtitle: Text('${entry.value.length} tracks · ${(totalBytes / (1024 * 1024)).toStringAsFixed(1)} MB'),
+                                    children: entry.value.map((media) => ListTile(
+                                      contentPadding: const EdgeInsets.only(left: 32, right: 16),
+                                      leading: const Icon(Icons.audio_file_outlined),
+                                      title: Text(media.entry.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                                      trailing: const Icon(Icons.play_arrow_rounded),
+                                      onTap: () => _openMedia(media, entry.value),
+                                    )).toList(growable: false),
+                                  );
+                                }).toList(growable: false),
+                              )
+                            : ListView.builder(
+                                itemCount: visibleMedia.length,
+                                itemBuilder: (context, index) {
+                                  final media = visibleMedia[index];
+                                  return ListTile(
+                                    leading: const CircleAvatar(child: Icon(Icons.music_note_rounded)),
+                                    title: Text(media.entry.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                                    subtitle: Text(
+                                      '${media.volume == null ? 'Internal storage' : 'USB'} · ${media.path}',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    trailing: const Icon(Icons.play_arrow_rounded),
+                                    onTap: () => _openMedia(media, visibleMedia),
+                                  );
+                                },
+                              ),
           ),
         ],
       ),
