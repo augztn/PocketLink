@@ -31,10 +31,33 @@ class HomeServerSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
         context = binding.applicationContext
         channel = MethodChannel(binding.binaryMessenger, "homeserver/saf")
         channel.setMethodCallHandler(this)
+        MediaPlaybackBridge.commandHandler = { action, position ->
+            channel.invokeMethod("mediaCommand", mapOf("action" to action, "position" to position))
+        }
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
+            "mediaStart", "mediaUpdate" -> {
+                val intent = Intent(context, MediaPlaybackService::class.java).apply {
+                    action = MediaPlaybackService.ACTION_UPDATE
+                    putExtra(MediaPlaybackService.EXTRA_TITLE, call.argument<String>("title") ?: "HomeServer")
+                    putExtra(MediaPlaybackService.EXTRA_ARTIST, call.argument<String>("artist") ?: "Personal music library")
+                    putExtra(MediaPlaybackService.EXTRA_PLAYING, call.argument<Boolean>("playing") ?: false)
+                    putExtra(MediaPlaybackService.EXTRA_POSITION, call.argument<Number>("positionMs")?.toLong() ?: 0L)
+                    putExtra(MediaPlaybackService.EXTRA_DURATION, call.argument<Number>("durationMs")?.toLong() ?: 0L)
+                }
+                try {
+                    ContextCompat.startForegroundService(context, intent)
+                    result.success(true)
+                } catch (error: Exception) {
+                    result.error("MEDIA_SERVICE_START_FAILED", error.message ?: "Could not start media controls.", null)
+                }
+            }
+            "mediaStop" -> {
+                context.stopService(Intent(context, MediaPlaybackService::class.java))
+                result.success(true)
+            }
             "status" -> result.success(status())
             "token" -> result.success(ensureToken())
             "serverPasswordConfigured" -> result.success(ServerCredentials(context).isConfigured())
@@ -234,6 +257,7 @@ class HomeServerSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        MediaPlaybackBridge.commandHandler = null
         channel.setMethodCallHandler(null)
     }
 
