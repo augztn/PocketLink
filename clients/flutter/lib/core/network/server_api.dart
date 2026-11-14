@@ -148,7 +148,9 @@ class ServerApi {
 
   Future<VideoMetadata?> videoMetadata(String path, {String? volume}) {
     final key = _mediaCacheKey(path, volume);
-    return _metadataCache.putIfAbsent(key, () async {
+    final cached = _metadataCache[key];
+    if (cached != null) return cached;
+    final future = () async {
       try {
         final response = await _dio.get<Map<String, dynamic>>(
           '/api/media/metadata',
@@ -158,12 +160,17 @@ class ServerApi {
       } on DioException {
         return null;
       }
-    });
+    }();
+    _metadataCache[key] = future;
+    if (_metadataCache.length > 160) _metadataCache.remove(_metadataCache.keys.first);
+    return future;
   }
 
   Future<Uint8List?> videoThumbnail(String path, {String? volume}) {
     final key = _mediaCacheKey(path, volume);
-    return _thumbnailCache.putIfAbsent(key, () async {
+    final cached = _thumbnailCache[key];
+    if (cached != null) return cached;
+    final future = () async {
       try {
         final response = await _dio.get<List<int>>(
           '/api/media/thumbnail',
@@ -175,7 +182,10 @@ class ServerApi {
       } on DioException {
         return null;
       }
-    });
+    }();
+    _thumbnailCache[key] = future;
+    if (_thumbnailCache.length > 160) _thumbnailCache.remove(_thumbnailCache.keys.first);
+    return future;
   }
   Future<DirectoryListing> authenticate() async => listDirectory('');
 
