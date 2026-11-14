@@ -50,7 +50,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
   bool get isPlaying => player.state.playing;
 
   MediaQueueItem? get currentItem =>
-      _queue.isEmpty ? null : _queue[_currentIndex.clamp(0, _queue.length - 1)];
+      _queue.isEmpty ? null : _queue[_currentIndex.clamp(0, _queue.length - 1).toInt()];
 
   bool get showMiniPlayer => _active && _music && !_fullScreen && currentItem != null;
 
