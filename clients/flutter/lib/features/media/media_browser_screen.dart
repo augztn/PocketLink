@@ -164,6 +164,17 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
           path: media.path,
           volume: media.volume,
           isVideo: !_isMusic,
+          queue: _isMusic
+              ? _media.map((item) => MediaQueueItem(
+                    title: item.entry.name,
+                    path: item.path,
+                    volume: item.volume,
+                  )).toList(growable: false)
+              : const [],
+          initialIndex: _isMusic
+              ? _media.indexWhere((item) =>
+                  item.path == media.path && item.volume == media.volume)
+              : 0,
         ),
       ),
     );
