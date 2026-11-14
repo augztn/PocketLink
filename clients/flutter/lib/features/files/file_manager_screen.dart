@@ -42,21 +42,20 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
 
   IconData _iconFor(FileEntry item) {
     if (item.isDirectory) return Icons.folder_rounded;
-    switch (_categoryExtensions.entries
-        .where((entry) => entry.value.contains(_extension(item)))
-        .map((entry) => entry.key)
-        .firstOrNull) {
-      case 'Images':
-        return Icons.image_outlined;
-      case 'Videos':
-        return Icons.video_file_outlined;
-      case 'Music':
-        return Icons.audio_file_outlined;
-      case 'Documents':
-        return Icons.description_outlined;
-      default:
-        return Icons.insert_drive_file_outlined;
+    final extension = _extension(item);
+    if (_categoryExtensions['Images']!.contains(extension)) {
+      return Icons.image_outlined;
     }
+    if (_categoryExtensions['Videos']!.contains(extension)) {
+      return Icons.video_file_outlined;
+    }
+    if (_categoryExtensions['Music']!.contains(extension)) {
+      return Icons.audio_file_outlined;
+    }
+    if (_categoryExtensions['Documents']!.contains(extension)) {
+      return Icons.description_outlined;
+    }
+    return Icons.insert_drive_file_outlined;
   }
 
   @override
