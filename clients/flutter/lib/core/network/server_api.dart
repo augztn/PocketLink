@@ -107,12 +107,18 @@ class ServerApi {
   }
 
   /// Builds an authenticated streaming URL without downloading media into memory.
-  String mediaStreamUrl(String path, {String? volume}) => Uri.parse(_dio.options.baseUrl)
-      .resolve(volume == null
-          ? '/api/files/stream'
-          : '/api/storage/$volume/download')
-      .replace(queryParameters: {'path': path})
-      .toString();
+  String mediaStreamUrl(String path, {String? volume}) {
+    final endpoint = volume == null
+        ? '/api/files/stream'
+        : '/api/storage/download';
+    final query = volume == null
+        ? <String, String>{'path': path}
+        : <String, String>{'volume': volume, 'path': path};
+    return Uri.parse(_dio.options.baseUrl)
+        .resolve(endpoint)
+        .replace(queryParameters: query)
+        .toString();
+  }
 
   /// Headers required by the native media player for authenticated requests.
   Map<String, String> get mediaHeaders => {
@@ -193,8 +199,8 @@ class ServerApi {
     String path,
   ) async {
     final response = await _dio.get<Map<String, dynamic>>(
-      '/api/storage/$volume/',
-      queryParameters: {'path': path},
+      '/api/storage/list',
+      queryParameters: {'volume': volume, 'path': path},
     );
     return DirectoryListing.fromJson(response.data ?? const {});
   }
@@ -209,9 +215,9 @@ class ServerApi {
     final form = FormData.fromMap({
       'file': MultipartFile.fromBytes(bytes, filename: filename),
     });
-    await _dio.put<void>(
-      '/api/storage/$volume/upload',
-      queryParameters: {'path': path},
+    await _dio.post<void>(
+      '/api/storage/upload',
+      queryParameters: {'volume': volume, 'path': path},
       data: form,
       onSendProgress: onSendProgress,
     );
@@ -223,8 +229,8 @@ class ServerApi {
     ProgressCallback? onReceiveProgress,
   }) async {
     final response = await _dio.get<List<int>>(
-      '/api/storage/$volume/download',
-      queryParameters: {'path': path},
+      '/api/storage/download',
+      queryParameters: {'volume': volume, 'path': path},
       options: Options(responseType: ResponseType.bytes),
       onReceiveProgress: onReceiveProgress,
     );
@@ -237,8 +243,8 @@ class ServerApi {
     String name,
   ) async {
     await _dio.post<void>(
-      '/api/storage/$volume/mkdir',
-      queryParameters: {'path': path, 'name': name},
+      '/api/storage/mkdir',
+      data: {'volume': volume, 'path': path, 'name': name},
     );
   }
 
@@ -248,15 +254,15 @@ class ServerApi {
     String name,
   ) async {
     await _dio.post<void>(
-      '/api/storage/$volume/rename',
-      queryParameters: {'path': path, 'name': name},
+      '/api/storage/rename',
+      data: {'volume': volume, 'path': path, 'new_name': name},
     );
   }
 
   Future<void> deleteStorageItem(String volume, String path) async {
     await _dio.delete<void>(
-      '/api/storage/$volume/item',
-      queryParameters: {'path': path},
+      '/api/storage/item',
+      queryParameters: {'volume': volume, 'path': path},
     );
   }
 }
