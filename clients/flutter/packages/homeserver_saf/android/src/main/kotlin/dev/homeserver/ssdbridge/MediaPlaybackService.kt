@@ -43,11 +43,12 @@ class MediaPlaybackService : Service() {
                     updateSessionAndNotification()
                 }
             }
-            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
                 resumeAfterFocus = playing
                 pauseForFocusLoss()
             }
-            AudioManager.AUDIOFOCUS_LOSS, AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
+            AudioManager.AUDIOFOCUS_LOSS -> {
                 resumeAfterFocus = false
                 pauseForFocusLoss()
             }
