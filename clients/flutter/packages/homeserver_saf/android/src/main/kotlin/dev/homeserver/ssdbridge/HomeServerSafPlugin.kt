@@ -54,9 +54,17 @@ class HomeServerSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
                 }
             }
             "start" -> {
+                ensureToken()
+                BridgeService.lastError = null
+                BridgeService.isRunning = false
                 val intent = Intent(context, BridgeService::class.java)
-                ContextCompat.startForegroundService(context, intent)
-                result.success(true)
+                try {
+                    ContextCompat.startForegroundService(context, intent)
+                    result.success(true)
+                } catch (error: Exception) {
+                    BridgeService.lastError = error.message ?: "Could not start the Android storage service."
+                    result.error("START_FAILED", BridgeService.lastError, null)
+                }
             }
             "stop" -> {
                 context.stopService(Intent(context, BridgeService::class.java))
@@ -66,10 +74,11 @@ class HomeServerSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
         }
     }
 
-    private fun status(): Map<String, Any> = mapOf(
+    private fun status(): Map<String, Any?> = mapOf(
         "usb1" to volumeName("usb1"),
         "usb2" to volumeName("usb2"),
-        "running" to BridgeService.isRunning
+        "running" to BridgeService.isRunning,
+        "error" to BridgeService.lastError
     )
 
     private fun volumeName(key: String): String {
