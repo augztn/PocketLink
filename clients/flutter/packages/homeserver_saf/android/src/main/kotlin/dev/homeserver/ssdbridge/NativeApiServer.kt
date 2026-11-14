@@ -189,11 +189,18 @@ internal class NativeApiServer(
 
     private fun listVolumes(): Response {
         val items = JSONArray()
-        listOf("usb1", "usb2").forEach { id ->
+        val ids = linkedSetOf<String>()
+        prefs.all.keys.filter { it.startsWith("volume_uri_") }.forEach {
+            ids.add(it.removePrefix("volume_uri_"))
+        }
+        if (prefs.getString("usb1", null) != null) ids.add("usb1")
+        if (prefs.getString("usb2", null) != null) ids.add("usb2")
+        ids.forEach { id ->
             val root = externalRoot(id)
+            val legacyName = when (id) { "usb1" -> "USB Storage 1"; "usb2" -> "USB Storage 2"; else -> id }
             items.put(JSONObject()
                 .put("id", id)
-                .put("name", if (id == "usb1") "USB Storage 1" else "USB Storage 2")
+                .put("name", prefs.getString("volume_name_$id", null) ?: legacyName)
                 .put("available", root?.exists() == true)
                 .put("writable", root?.canWrite() == true))
         }
@@ -300,9 +307,13 @@ internal class NativeApiServer(
     }
 
     private fun externalRoot(volume: String?): DocumentFile? {
-        val key = when (volume) { "usb1" -> "usb1"; "usb2" -> "usb2"; else -> return null }
-        val uri = prefs.getString(key, null)?.let(Uri::parse) ?: return null
-        return DocumentFile.fromTreeUri(context, uri)
+        val id = volume?.takeIf {
+            it == "usb1" || it == "usb2" || Regex("usb-[a-f0-9]{16}").matches(it)
+        } ?: return null
+        val raw = prefs.getString("volume_uri_$id", null)
+            ?: prefs.getString(id, null)
+            ?: return null
+        return DocumentFile.fromTreeUri(context, Uri.parse(raw))
     }
 
     private fun resolveDocument(root: DocumentFile, relative: String): DocumentFile? {
