@@ -32,10 +32,12 @@ class MediaPlaybackService : Service() {
     private var durationMs = 0L
     private var audioFocusRequest: AudioFocusRequest? = null
     private var resumeAfterFocus = false
+    private var hasAudioFocus = false
     private val audioManager by lazy { getSystemService(Context.AUDIO_SERVICE) as AudioManager }
     private val audioFocusListener = AudioManager.OnAudioFocusChangeListener { change ->
         when (change) {
             AudioManager.AUDIOFOCUS_GAIN -> {
+                hasAudioFocus = true
                 if (resumeAfterFocus) {
                     resumeAfterFocus = false
                     playing = true
@@ -45,10 +47,12 @@ class MediaPlaybackService : Service() {
             }
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
+                hasAudioFocus = false
                 resumeAfterFocus = playing
                 pauseForFocusLoss()
             }
             AudioManager.AUDIOFOCUS_LOSS -> {
+                hasAudioFocus = false
                 resumeAfterFocus = false
                 pauseForFocusLoss()
             }
@@ -120,7 +124,8 @@ class MediaPlaybackService : Service() {
     }
 
     private fun requestAudioFocus(): Boolean {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        if (hasAudioFocus) return true
+        val granted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val request = audioFocusRequest ?: AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
                 .setAudioAttributes(
                     AudioAttributes.Builder()
@@ -135,14 +140,18 @@ class MediaPlaybackService : Service() {
             return audioManager.requestAudioFocus(request) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
         }
         @Suppress("DEPRECATION")
-        return audioManager.requestAudioFocus(
+        audioManager.requestAudioFocus(
             audioFocusListener,
             AudioManager.STREAM_MUSIC,
             AudioManager.AUDIOFOCUS_GAIN
         ) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+        }
+        hasAudioFocus = granted
+        return granted
     }
 
     private fun abandonAudioFocus() {
+        hasAudioFocus = false
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             audioFocusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
         } else {
