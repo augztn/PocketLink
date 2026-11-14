@@ -161,7 +161,10 @@ class HomeServerSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
         val manager = context.getSystemService(Context.STORAGE_SERVICE) as? StorageManager
             ?: return emptyList()
         return manager.storageVolumes.mapIndexedNotNull { index, volume ->
-            if (!volume.isRemovable || volume.state != Environment.MEDIA_MOUNTED) return@mapIndexedNotNull null
+            if (!volume.isRemovable || volume.state !in setOf(
+                    Environment.MEDIA_MOUNTED,
+                    Environment.MEDIA_MOUNTED_READ_ONLY
+                )) return@mapIndexedNotNull null
             val identity = volume.uuid?.lowercase() ?: "${volume.getDescription(context)}-$index"
             val suffix = java.security.MessageDigest.getInstance("SHA-256")
                 .digest(identity.toByteArray(Charsets.UTF_8))
