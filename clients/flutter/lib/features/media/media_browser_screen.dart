@@ -67,9 +67,14 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     ];
 
     try {
-      final volumes = await widget.api.listStorageVolumes();
-      for (final volume in volumes.where((item) => item.available)) {
-        pending.add((path: '', depth: 0, volume: volume.id));
+      try {
+        final volumes = await widget.api.listStorageVolumes();
+        for (final volume in volumes.where((item) => item.available)) {
+          pending.add((path: '', depth: 0, volume: volume.id));
+        }
+      } on DioException {
+        // Keep internal media available when the USB bridge is offline.
+        _skippedDirectories++;
       }
 
       while (pending.isNotEmpty && visited.length < _maxDirectories) {
@@ -93,7 +98,9 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         }
 
         for (final item in listing.items) {
-          final itemPath = '${current.path}/${item.name}';
+          final itemPath = current.path.isEmpty
+              ? item.name
+              : '${current.path}/${item.name}';
           if (item.isDirectory) {
             if (current.depth < _maxDepth) {
               pending.add((path: itemPath, depth: current.depth + 1, volume: current.volume));
