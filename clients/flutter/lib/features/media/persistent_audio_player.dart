@@ -173,18 +173,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
     final track = currentItem;
     if (track == null) return;
     final args = <String, Object>{
-      'title': track.title.replaceAll(RegExp(r'\.[^.]+
-    unawaited(_playlistSubscription?.cancel());
-    unawaited(_playingSubscription?.cancel());
-    unawaited(_completedSubscription?.cancel());
-    unawaited(_positionSubscription?.cancel());
-    unawaited(_durationSubscription?.cancel());
-    _mediaChannel.setMethodCallHandler(null);
-    unawaited(player.dispose());
-    super.dispose();
-  }
-}
-), ''),
+      'title': track.title.replaceAll(RegExp(r'\.[^.]+$'), ''),
       'artist': 'HomeServer music library',
       'playing': player.state.playing,
       'positionMs': player.state.position.inMilliseconds,
@@ -208,6 +197,9 @@ class PersistentAudioPlayer extends ChangeNotifier {
     unawaited(_playlistSubscription?.cancel());
     unawaited(_playingSubscription?.cancel());
     unawaited(_completedSubscription?.cancel());
+    unawaited(_positionSubscription?.cancel());
+    unawaited(_durationSubscription?.cancel());
+    _mediaChannel.setMethodCallHandler(null);
     unawaited(player.dispose());
     super.dispose();
   }
