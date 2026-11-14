@@ -75,6 +75,10 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
         password: password,
       );
       await api.authenticate();
+      // The file-browser endpoint may be available while the protected SSD
+      // router rejects stale credentials. Verify the endpoint the user is
+      // trying to open before persisting credentials or navigating onward.
+      await api.listStorageVolumes();
 
       await _storage.write(key: 'last_server_address', value: '$host:$port');
       await _storage.write(key: 'last_server_username', value: username);
@@ -91,7 +95,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       final status = error.response?.statusCode;
       setState(() {
         _message = status == 401
-            ? 'Incorrect username or password.'
+            ? 'The server rejected these credentials for storage access. Re-enter the current server admin password. The SAF bridge token is separate.'
             : status == 403
                 ? 'The server denied access.'
                 : status == 404
