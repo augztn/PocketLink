@@ -209,9 +209,9 @@ class ServerApi {
     final form = FormData.fromMap({
       'file': MultipartFile.fromBytes(bytes, filename: filename),
     });
-    await _dio.post<void>(
-      '/api/storage/upload',
-      queryParameters: {'volume': volume, 'path': path},
+    await _dio.put<void>(
+      '/api/storage/$volume/upload',
+      queryParameters: {'path': path},
       data: form,
       onSendProgress: onSendProgress,
     );
@@ -237,8 +237,8 @@ class ServerApi {
     String name,
   ) async {
     await _dio.post<void>(
-      '/api/storage/mkdir',
-      queryParameters: {'volume': volume, 'path': path, 'name': name},
+      '/api/storage/$volume/mkdir',
+      queryParameters: {'path': path, 'name': name},
     );
   }
 
@@ -248,15 +248,15 @@ class ServerApi {
     String name,
   ) async {
     await _dio.post<void>(
-      '/api/storage/rename',
-      queryParameters: {'volume': volume, 'path': path, 'name': name},
+      '/api/storage/$volume/rename',
+      queryParameters: {'path': path, 'name': name},
     );
   }
 
   Future<void> deleteStorageItem(String volume, String path) async {
     await _dio.delete<void>(
-      '/api/storage/item',
-      queryParameters: {'volume': volume, 'path': path},
+      '/api/storage/$volume/item',
+      queryParameters: {'path': path},
     );
   }
 }
