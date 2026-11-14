@@ -139,7 +139,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
       if (language != null && language.trim().isNotEmpty && language != title) language.trim().toUpperCase(),
       if (codec != null && codec.trim().isNotEmpty) codec.trim().toUpperCase(),
     ];
-    return parts.isEmpty ? 'Track \${index + 1}' : parts.join(' · ');
+    return parts.isEmpty ? 'Track ${index + 1}' : parts.join(' · ');
   }
 
   Future<void> _showAudioTracks() async {
@@ -187,7 +187,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
         await _player.setSubtitleTrack(SubtitleTrack.data(data, title: subtitlePath.split('/').last));
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Loaded \${subtitlePath.split('/').last}')),
+            SnackBar(content: Text('Loaded ${subtitlePath.split('/').last}')),
           );
         }
         return;
@@ -219,13 +219,13 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
       await _player.setSubtitleTrack(SubtitleTrack.data(data, title: file.name));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Loaded \${file.name}')),
+          SnackBar(content: Text('Loaded ${file.name}')),
         );
       }
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not load subtitle: \$error')),
+          SnackBar(content: Text('Could not load subtitle: $error')),
         );
       }
     }
