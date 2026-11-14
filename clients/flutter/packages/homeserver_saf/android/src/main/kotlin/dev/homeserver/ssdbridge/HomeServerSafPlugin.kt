@@ -21,6 +21,7 @@ import io.flutter.plugin.common.PluginRegistry
 class HomeServerSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler,
     PluginRegistry.ActivityResultListener {
     private lateinit var channel: MethodChannel
+    private lateinit var mediaChannel: MethodChannel
     private lateinit var context: Context
     private var activity: Activity? = null
     private var binding: ActivityPluginBinding? = null
@@ -30,9 +31,11 @@ class HomeServerSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         context = binding.applicationContext
         channel = MethodChannel(binding.binaryMessenger, "homeserver/saf")
+        mediaChannel = MethodChannel(binding.binaryMessenger, "homeserver/media")
         channel.setMethodCallHandler(this)
+        mediaChannel.setMethodCallHandler(this)
         MediaPlaybackBridge.commandHandler = { action, position ->
-            channel.invokeMethod("mediaCommand", mapOf("action" to action, "position" to position))
+            mediaChannel.invokeMethod("mediaCommand", mapOf("action" to action, "position" to position))
         }
     }
 
@@ -259,6 +262,7 @@ class HomeServerSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         MediaPlaybackBridge.commandHandler = null
         channel.setMethodCallHandler(null)
+        mediaChannel.setMethodCallHandler(null)
     }
 
     companion object { private const val REQUEST_TREE = 8764 }
