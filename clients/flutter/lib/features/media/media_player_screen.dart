@@ -11,6 +11,7 @@ class MediaPlayerScreen extends StatefulWidget {
     required this.api,
     required this.title,
     required this.path,
+    this.volume,
     required this.isVideo,
     super.key,
   });
@@ -18,6 +19,7 @@ class MediaPlayerScreen extends StatefulWidget {
   final ServerApi api;
   final String title;
   final String path;
+  final String? volume;
   final bool isVideo;
 
   @override
@@ -41,7 +43,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
     try {
       await _player.open(
         Media(
-          widget.api.mediaStreamUrl(widget.path),
+          widget.api.mediaStreamUrl(widget.path, volume: widget.volume),
           httpHeaders: widget.api.mediaHeaders,
         ),
       );
