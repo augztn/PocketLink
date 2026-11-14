@@ -7,6 +7,7 @@ import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../core/network/server_api.dart';
+import '../media/media_player_screen.dart';
 
 class StorageBrowserScreen extends StatefulWidget {
   const StorageBrowserScreen({required this.api, super.key});
@@ -134,6 +135,33 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
     } finally {
       if (mounted) setState(() => _progress = null);
     }
+  }
+
+  static const _audioExtensions = {
+    'mp3', 'm4a', 'aac', 'wav', 'flac', 'ogg', 'opus', 'wma', 'aiff', 'alac',
+  };
+
+  bool _isAudio(FileEntry item) {
+    final extension = item.name.contains('.')
+        ? item.name.split('.').last.toLowerCase()
+        : '';
+    return _audioExtensions.contains(extension);
+  }
+
+  Future<void> _openAudio(FileEntry item) async {
+    final volume = _volume;
+    if (volume == null) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => MediaPlayerScreen(
+          api: widget.api,
+          title: item.name,
+          path: _itemPath(item.name),
+          volume: volume,
+          isVideo: false,
+        ),
+      ),
+    );
   }
 
   Future<void> _openFile(FileEntry item) async {
@@ -299,10 +327,12 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
                               subtitle: Text(item.isDirectory ? 'Folder' : '${item.size} bytes'),
                               onTap: item.isDirectory
                                   ? () => _loadDirectory(_itemPath(item.name))
-                                  : () => _openFile(item),
+                                  : () => _isAudio(item) ? _openAudio(item) : _openFile(item),
                               trailing: PopupMenuButton<String>(
                                 onSelected: (action) {
-                                  if (action == 'open' && !item.isDirectory) _openFile(item);
+                                  if (action == 'open' && !item.isDirectory) {
+                                    _isAudio(item) ? _openAudio(item) : _openFile(item);
+                                  }
                                   if (action == 'download' && !item.isDirectory) _download(item);
                                   if (action == 'rename') _rename(item);
                                   if (action == 'delete') _delete(item);
