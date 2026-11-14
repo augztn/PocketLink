@@ -16,6 +16,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> {
   bool _serverPasswordConfigured = false;
   String? _error;
   bool _busy = false;
+  List<Map<String, dynamic>> _discoveredVolumes = const [];
 
   @override
   void initState() {
@@ -45,6 +46,8 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> {
       if (!mounted) return;
       setState(() {
         _status = status ?? const {};
+        _discoveredVolumes = (status?['discoveredVolumes'] as List<dynamic>? ?? const [])
+            .whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList();
         _token = token;
         _serverPasswordConfigured = status?['serverPasswordConfigured'] == true;
         _error = status?['error']?.toString();
@@ -101,10 +104,10 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> {
     }
   }
 
-  Future<void> _select(int slot) async {
+  Future<void> _select(String volumeId) async {
     setState(() { _busy = true; _error = null; });
     try {
-      await _channel.invokeMethod<void>('selectVolume', {'slot': slot});
+      await _channel.invokeMethod<void>('selectVolume', {'volumeId': volumeId});
     } on PlatformException catch (error) {
       if (mounted) setState(() { _busy = false; _error = error.message ?? 'Could not open Android storage picker.'; });
     }
@@ -161,8 +164,8 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final first = _status['usb1']?.toString() ?? 'Not selected';
-    final second = _status['usb2']?.toString() ?? 'Not selected';
+    final legacySelected = (_status['usb1'] != null && _status['usb1'] != 'Not selected') ||
+        (_status['usb2'] != null && _status['usb2'] != 'Not selected');
     final running = _status['running'] == true;
     final internalGranted = _status['internalStorageGranted'] == true;
     return Scaffold(
@@ -236,10 +239,23 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> {
             style: TextStyle(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
-          const Text('Select each USB partition once. Android remembers the folder permissions.'),
+          const Text('Detected removable drives appear here automatically. Select a drive once to approve its access; Android remembers the permission.'),
           const SizedBox(height: 12),
-          _VolumeTile(title: 'USB Storage 1', value: first, onTap: _busy ? null : () => _select(1)),
-          _VolumeTile(title: 'USB Storage 2', value: second, onTap: _busy ? null : () => _select(2)),
+          if (_discoveredVolumes.isEmpty)
+            const Card(child: ListTile(
+              leading: Icon(Icons.usb_off),
+              title: Text('No removable drive detected'),
+              subtitle: Text('Connect or reconnect your USB drive, then refresh.'),
+            )),
+          ..._discoveredVolumes.map((volume) {
+            final selected = volume['selected'] == true;
+            return _VolumeTile(
+              title: volume['name']?.toString() ?? 'USB storage',
+              value: selected ? 'Access granted' : 'Detected · permission required',
+              onTap: _busy || selected ? null : () => _select(volume['id'].toString()),
+            );
+          }),
+
           const SizedBox(height: 12),
           if (_busy) const LinearProgressIndicator(),
           if (_error != null) ...[
@@ -248,7 +264,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> {
           ],
           const SizedBox(height: 12),
           FilledButton.icon(
-            onPressed: _busy || (!internalGranted && first == 'Not selected' && second == 'Not selected')
+            onPressed: _busy || (!internalGranted && !legacySelected && !_discoveredVolumes.any((v) => v['selected'] == true))
                 ? null
                 : (running ? _stop : _start),
             icon: Icon(running ? Icons.stop : Icons.play_arrow),
