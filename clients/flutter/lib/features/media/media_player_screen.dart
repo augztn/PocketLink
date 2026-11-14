@@ -887,7 +887,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                               .map((rate) => PopupMenuItem(
                                     value: rate,
                                     child: Text(
-                                      '\${rate}×',
+                                      '${rate}×',
                                       style: const TextStyle(color: Colors.white),
                                     ),
                                   ))
@@ -895,7 +895,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                           child: Padding(
                             padding: const EdgeInsets.all(12),
                             child: Text(
-                              '\${_playbackRate}×',
+                              '${_playbackRate}×',
                               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
                             ),
                           ),
