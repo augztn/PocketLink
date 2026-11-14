@@ -44,7 +44,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> {
       setState(() {
         _status = status ?? const {};
         _token = token;
-        _error = null;
+        _error = status?['error']?.toString();
         _busy = false;
       });
     } on MissingPluginException {
@@ -67,7 +67,27 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> {
     setState(() { _busy = true; _error = null; });
     try {
       await _channel.invokeMethod<bool>('start');
-      await _refresh();
+      // Android starts foreground services asynchronously. Wait for the native
+      // server socket to bind (or report its startup error) before showing success.
+      for (var attempt = 0; attempt < 20; attempt++) {
+        await Future<void>.delayed(const Duration(milliseconds: 150));
+        final status = await _channel.invokeMapMethod<String, dynamic>('status');
+        if (!mounted) return;
+        if (status?['running'] == true || status?['error'] != null) {
+          setState(() {
+            _status = status ?? const {};
+            _error = status?['error']?.toString();
+          });
+          return;
+        }
+      }
+      if (mounted) {
+        final status = await _channel.invokeMapMethod<String, dynamic>('status');
+        setState(() {
+          _status = status ?? const {};
+          _error = 'Android storage service did not become ready. Check the app notification and try again.';
+        });
+      }
     } on PlatformException catch (error) {
       if (mounted) setState(() => _error = error.message ?? 'Could not start local storage access.');
     } finally {
