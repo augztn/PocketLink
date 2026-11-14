@@ -86,7 +86,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: HomeServer-Linux-x86_64-AppImage
-          path: clients/flutter/HomeServer-x86_64.AppImage
+          path: HomeServer-x86_64.AppImage
           if-no-files-found: error
           retention-days: 14
 
@@ -189,6 +189,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: HomeServer-Android-APK
-          path: clients/flutter/build/app/outputs/flutter-apk/app-release.apk
+          path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
           retention-days: 14
