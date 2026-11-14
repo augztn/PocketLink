@@ -247,6 +247,14 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> {
               title: Text('No removable drive detected'),
               subtitle: Text('Connect or reconnect your USB drive, then refresh.'),
             )),
+          if (_discoveredVolumes.isEmpty)
+            OutlinedButton.icon(
+              onPressed: _busy ? null : () => _select(
+                'usb-manual-${DateTime.now().microsecondsSinceEpoch.toRadixString(16).padLeft(16, '0').substring(0, 16)}',
+              ),
+              icon: const Icon(Icons.folder_open),
+              label: const Text('Choose storage folder manually'),
+            ),
           ..._discoveredVolumes.map((volume) {
             final selected = volume['selected'] == true;
             return _VolumeTile(
