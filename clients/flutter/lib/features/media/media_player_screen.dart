@@ -357,7 +357,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
           fit: StackFit.expand,
           alignment: Alignment.center,
           children: [
-            if (_coverBytes != null && _coverForTrack == '${_queue[_currentIndex.clamp(0, _queue.length - 1)].volume ?? 'internal'}:${_queue[_currentIndex.clamp(0, _queue.length - 1)].path}')
+            if (_coverBytes != null && _coverForTrack == '${_queue[_currentIndex.clamp(0, _queue.length - 1).toInt()].volume ?? 'internal'}:${_queue[_currentIndex.clamp(0, _queue.length - 1).toInt()].path}')
               ClipRRect(
                 borderRadius: BorderRadius.circular(28),
                 child: Image.memory(
@@ -366,7 +366,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                   errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                 ),
               ),
-            if (_coverBytes == null || _coverForTrack != '${_queue[_currentIndex.clamp(0, _queue.length - 1)].volume ?? 'internal'}:${_queue[_currentIndex.clamp(0, _queue.length - 1)].path}')
+            if (_coverBytes == null || _coverForTrack != '${_queue[_currentIndex.clamp(0, _queue.length - 1).toInt()].volume ?? 'internal'}:${_queue[_currentIndex.clamp(0, _queue.length - 1).toInt()].path}')
               Positioned(
               top: -42,
               right: -28,
@@ -391,7 +391,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                 ),
               ),
             ),
-            if (_coverBytes == null || _coverForTrack != '${_queue[_currentIndex.clamp(0, _queue.length - 1)].volume ?? 'internal'}:${_queue[_currentIndex.clamp(0, _queue.length - 1)].path}')
+            if (_coverBytes == null || _coverForTrack != '${_queue[_currentIndex.clamp(0, _queue.length - 1).toInt()].volume ?? 'internal'}:${_queue[_currentIndex.clamp(0, _queue.length - 1).toInt()].path}')
               Container(
               width: 174,
               height: 174,
@@ -424,7 +424,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                 ],
               ),
             ),
-            if (_coverBytes == null || _coverForTrack != '${_queue[_currentIndex.clamp(0, _queue.length - 1)].volume ?? 'internal'}:${_queue[_currentIndex.clamp(0, _queue.length - 1)].path}')
+            if (_coverBytes == null || _coverForTrack != '${_queue[_currentIndex.clamp(0, _queue.length - 1).toInt()].volume ?? 'internal'}:${_queue[_currentIndex.clamp(0, _queue.length - 1).toInt()].path}')
               Positioned(
               left: 22,
               bottom: 20,
