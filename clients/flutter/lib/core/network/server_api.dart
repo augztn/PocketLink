@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -105,16 +106,61 @@ class StorageVolume {
       );
 }
 
+class _RequestGate {
+  _RequestGate(this.limit);
+
+  final int limit;
+  int _active = 0;
+  final Queue<Completer<void>> _waiters = Queue<Completer<void>>();
+
+  Future<void> acquire(CancelToken? cancelToken) async {
+    if (cancelToken?.isCancelled ?? false) {
+      throw DioException(
+        requestOptions: RequestOptions(path: ''),
+        type: DioExceptionType.cancel,
+        message: 'Request cancelled while waiting for an API slot.',
+      );
+    }
+    if (_active < limit) {
+      _active++;
+      return;
+    }
+    final waiter = Completer<void>();
+    _waiters.addLast(waiter);
+    cancelToken?.whenCancel.then<void>((error) {
+      if (_waiters.remove(waiter) && !waiter.isCompleted) {
+        waiter.completeError(error);
+      }
+    });
+    await waiter.future;
+  }
+
+  void release() {
+    if (_waiters.isNotEmpty) {
+      _waiters.removeFirst().complete();
+    } else if (_active > 0) {
+      _active--;
+    }
+  }
+}
+
+class _CacheEntry<T> {
+  const _CacheEntry(this.value, this.expiresAt);
+  final T value;
+  final DateTime expiresAt;
+}
+
 class ServerApi {
   ServerApi({
     required String baseUrl,
     required String username,
     required String password,
     HttpClientAdapter? httpClientAdapter,
-  }) : _dio = Dio(
+  })  : _requestGate = _RequestGate(4),
+        _dio = Dio(
           BaseOptions(
             baseUrl: _normalizeBaseUrl(baseUrl),
-            connectTimeout: const Duration(seconds: 8),
+            connectTimeout: const Duration(seconds: 15),
             receiveTimeout: const Duration(seconds: 30),
             sendTimeout: const Duration(seconds: 30),
             headers: {
@@ -126,7 +172,14 @@ class ServerApi {
         ) {
     if (httpClientAdapter != null) _dio.httpClientAdapter = httpClientAdapter;
     _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) {
+      onRequest: (options, handler) async {
+        try {
+          await _requestGate.acquire(options.cancelToken);
+          options.extra['homeserver.requestSlot'] = true;
+        } on DioException catch (error) {
+          handler.reject(error);
+          return;
+        }
         AppLogger.info('API request', fields: {
           'method': options.method,
           'path': options.uri.path,
@@ -134,6 +187,7 @@ class ServerApi {
         handler.next(options);
       },
       onResponse: (response, handler) {
+        _releaseRequestSlot(response.requestOptions);
         AppLogger.info('API response', fields: {
           'method': response.requestOptions.method,
           'path': response.requestOptions.uri.path,
@@ -150,6 +204,7 @@ class ServerApi {
         });
 
         final options = error.requestOptions;
+        _releaseRequestSlot(options);
         final attempts = options.extra['homeserver.retryCount'] as int? ?? 0;
         final cancelled = options.cancelToken?.isCancelled ?? false;
         final status = error.response?.statusCode;
@@ -161,7 +216,7 @@ class ServerApi {
         if (options.method.toUpperCase() == 'GET' &&
             attempts < 2 && !cancelled && (transientNetwork || transientStatus)) {
           options.extra['homeserver.retryCount'] = attempts + 1;
-          await Future<void>.delayed(Duration(milliseconds: 300 * (1 << attempts)));
+          await Future<void>.delayed(Duration(seconds: 1 << attempts));
           if (options.cancelToken?.isCancelled ?? false) {
             handler.next(error);
             return;
@@ -187,6 +242,51 @@ class ServerApi {
   }
 
   final Dio _dio;
+  final _RequestGate _requestGate;
+  static const _directoryCacheTtl = Duration(seconds: 20);
+  final Map<String, _CacheEntry<DirectoryListing>> _directoryCache = {};
+  final Map<String, Future<DirectoryListing>> _directoryRequests = {};
+  _CacheEntry<List<StorageVolume>>? _volumesCache;
+  Future<List<StorageVolume>>? _volumesRequest;
+
+  void _releaseRequestSlot(RequestOptions options) {
+    if (options.extra['homeserver.requestSlot'] == true) {
+      options.extra['homeserver.requestSlot'] = false;
+      _requestGate.release();
+    }
+  }
+
+  Future<T> _cachedGet<T>(
+    String key,
+    Map<String, _CacheEntry<T>> cache,
+    Map<String, Future<T>> requests,
+    Future<T> Function() load,
+  ) {
+    final cached = cache[key];
+    if (cached != null && cached.expiresAt.isAfter(DateTime.now())) {
+      return Future<T>.value(cached.value);
+    }
+    final existing = requests[key];
+    if (existing != null) return existing;
+
+    late final Future<T> request;
+    request = load().then((value) {
+      cache[key] = _CacheEntry(value, DateTime.now().add(_directoryCacheTtl));
+      return value;
+    }).whenComplete(() {
+      if (identical(requests[key], request)) requests.remove(key);
+    });
+    requests[key] = request;
+    return request;
+  }
+
+  /// Invalidates short-lived directory and volume snapshots after refreshes or writes.
+  void invalidateDirectoryCache() {
+    _directoryCache.clear();
+    _directoryRequests.clear();
+    _volumesCache = null;
+    _volumesRequest = null;
+  }
 
   String get baseUrl => _dio.options.baseUrl;
 
@@ -285,13 +385,18 @@ class ServerApi {
   }
   Future<DirectoryListing> authenticate() async => listDirectory('');
 
-  Future<DirectoryListing> listDirectory(String path) async {
-    final response = await _dio.get<Map<String, dynamic>>(
-      '/api/files/',
-      queryParameters: {'path': path},
-    );
-    return DirectoryListing.fromJson(response.data ?? const {});
-  }
+  Future<DirectoryListing> listDirectory(String path) => _cachedGet(
+        'files:$path',
+        _directoryCache,
+        _directoryRequests,
+        () async {
+          final response = await _dio.get<Map<String, dynamic>>(
+            '/api/files/',
+            queryParameters: {'path': path},
+          );
+          return DirectoryListing.fromJson(response.data ?? const {});
+        },
+      );
 
   /// Returns recent files from common media/document folders and connected volume roots.
   /// Scans a bounded set of directories only; it never recursively walks storage.
@@ -309,12 +414,9 @@ class ServerApi {
     ];
 
     final found = <RecentFile>[];
-    final childDirectories = <({String path, String? volume, String volumeName})>[];
-
     Future<void> scan(
-      ({String path, String? volume, String volumeName}) candidate, {
-      bool collectChildren = false,
-    }) async {
+      ({String path, String? volume, String volumeName}) candidate,
+    ) async {
       try {
         final listing = candidate.volume == null
             ? await listDirectory(candidate.path)
@@ -324,15 +426,7 @@ class ServerApi {
           final path = candidate.path.isEmpty
               ? item.name
               : '${candidate.path}/${item.name}';
-          if (item.isDirectory) {
-            if (collectChildren && childDirectories.length < 24) {
-              childDirectories.add((
-                path: path,
-                volume: candidate.volume,
-                volumeName: candidate.volumeName,
-              ));
-            }
-          } else {
+          if (!item.isDirectory) {
             found.add(RecentFile(
               file: item,
               path: path,
@@ -346,10 +440,7 @@ class ServerApi {
       }
     }
 
-    await Future.wait(candidates.map(
-      (candidate) => scan(candidate, collectChildren: true),
-    ));
-    await Future.wait(childDirectories.map(scan));
+    await Future.wait(candidates.map(scan));
 
     found.sort((a, b) => b.modifiedAt.compareTo(a.modifiedAt));
     return found.take(limit.clamp(1, 50).toInt()).toList(growable: false);
@@ -372,6 +463,7 @@ class ServerApi {
       onSendProgress: onSendProgress,
       cancelToken: cancelToken,
     );
+    invalidateDirectoryCache();
   }
 
   /// Downloads an original file directly to disk without buffering it in memory.
@@ -412,6 +504,7 @@ class ServerApi {
       '/api/files/mkdir',
       data: {'path': path, 'name': name},
     );
+    invalidateDirectoryCache();
   }
 
   Future<void> renameItem(String path, String newName) async {
@@ -419,6 +512,7 @@ class ServerApi {
       '/api/files/rename',
       data: {'path': path, 'new_name': newName},
     );
+    invalidateDirectoryCache();
   }
 
   Future<void> deleteItem(String path) async {
@@ -426,26 +520,51 @@ class ServerApi {
       '/api/files/item',
       queryParameters: {'path': path},
     );
+    invalidateDirectoryCache();
   }
 
   Future<List<StorageVolume>> listStorageVolumes() async {
-    final response =
-        await _dio.get<Map<String, dynamic>>('/api/storage/volumes');
-    return (response.data?['items'] as List<dynamic>? ?? const [])
-        .map((item) => StorageVolume.fromJson(item as Map<String, dynamic>))
-        .toList(growable: false);
+    final cached = _volumesCache;
+    if (cached != null && cached.expiresAt.isAfter(DateTime.now())) {
+      return cached.value;
+    }
+    final existing = _volumesRequest;
+    if (existing != null) return existing;
+
+    late final Future<List<StorageVolume>> request;
+    request = () async {
+      final response =
+          await _dio.get<Map<String, dynamic>>('/api/storage/volumes');
+      final volumes = (response.data?['items'] as List<dynamic>? ?? const [])
+          .map((item) => StorageVolume.fromJson(item as Map<String, dynamic>))
+          .toList(growable: false);
+      _volumesCache = _CacheEntry(
+        volumes,
+        DateTime.now().add(_directoryCacheTtl),
+      );
+      return volumes;
+    }().whenComplete(() {
+      if (identical(_volumesRequest, request)) _volumesRequest = null;
+    });
+    _volumesRequest = request;
+    return request;
   }
 
   Future<DirectoryListing> listStorageDirectory(
     String volume,
     String path,
-  ) async {
-    final response = await _dio.get<Map<String, dynamic>>(
-      '/api/storage/list',
-      queryParameters: {'volume': volume, 'path': path},
-    );
-    return DirectoryListing.fromJson(response.data ?? const {});
-  }
+  ) => _cachedGet(
+        'storage:$volume:$path',
+        _directoryCache,
+        _directoryRequests,
+        () async {
+          final response = await _dio.get<Map<String, dynamic>>(
+            '/api/storage/list',
+            queryParameters: {'volume': volume, 'path': path},
+          );
+          return DirectoryListing.fromJson(response.data ?? const {});
+        },
+      );
 
   Future<void> uploadStorageFile(
     String volume,
@@ -465,6 +584,7 @@ class ServerApi {
       onSendProgress: onSendProgress,
       cancelToken: cancelToken,
     );
+    invalidateDirectoryCache();
   }
 
   Future<Uint8List> downloadStorageFile(
@@ -492,6 +612,7 @@ class ServerApi {
       '/api/storage/mkdir',
       data: {'volume': volume, 'path': path, 'name': name},
     );
+    invalidateDirectoryCache();
   }
 
   Future<void> renameStorageItem(
@@ -503,6 +624,7 @@ class ServerApi {
       '/api/storage/rename',
       data: {'volume': volume, 'path': path, 'new_name': name},
     );
+    invalidateDirectoryCache();
   }
 
   Future<void> deleteStorageItem(String volume, String path) async {
@@ -510,5 +632,6 @@ class ServerApi {
       '/api/storage/item',
       queryParameters: {'volume': volume, 'path': path},
     );
+    invalidateDirectoryCache();
   }
 }
