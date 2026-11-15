@@ -6,6 +6,7 @@ import '../../core/network/server_api.dart';
 import '../../core/settings/app_settings.dart';
 import '../transfers/transfer_manager.dart';
 import '../transfers/transfer_manager_screen.dart';
+import '../storage/storage_browser_screen.dart';
 
 class FileManagerScreen extends StatefulWidget {
   const FileManagerScreen({
@@ -441,52 +442,73 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
         body: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [colors.primaryContainer, colors.surfaceContainerHighest],
-                  ),
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(children: [
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Material(
+                color: colors.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(18),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  child: Row(
+                    children: [
                       Container(
-                        width: 44, height: 44,
+                        width: 42,
+                        height: 42,
                         decoration: BoxDecoration(
-                          color: colors.surface.withValues(alpha: 0.72),
-                          borderRadius: BorderRadius.circular(15),
+                          color: colors.primary.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(13),
                         ),
-                        child: Icon(Icons.folder_copy_rounded, color: colors.primary, size: 25),
+                        child: Icon(Icons.folder_copy_rounded, color: colors.primary, size: 23),
                       ),
-                      const Spacer(),
-                      IconButton.filledTonal(
-                        tooltip: 'Go to parent folder',
-                        onPressed: _path.isEmpty ? null : _goUp,
-                        icon: const Icon(Icons.arrow_upward_rounded),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(10),
+                          onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                            builder: (_) => StorageBrowserScreen(api: widget.api),
+                          )),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 2),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        _path.isEmpty ? 'Internal storage' : _path.split('/').last,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                                      ),
+                                    ),
+                                    const Icon(Icons.keyboard_arrow_down_rounded, size: 21),
+                                  ],
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${allItems.where((e) => e.isDirectory).length} folders • ${allItems.where((e) => !e.isDirectory).length} files',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
-                    ]),
-                    const SizedBox(height: 14),
-                    Text(_path.isEmpty ? 'Internal storage' : _path.split('/').last,
-                      maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 4),
-                    Text(_path.isEmpty ? 'Your files, all in one place' : 'Internal storage  /  $_path',
-                      maxLines: 2, overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
-                    const SizedBox(height: 14),
-                    Row(children: [
-                      _summaryPill(Icons.folder_outlined, '${allItems.where((e) => e.isDirectory).length} folders'),
                       const SizedBox(width: 8),
-                      _summaryPill(Icons.insert_drive_file_outlined, '${allItems.where((e) => !e.isDirectory).length} files'),
-                    ]),
-                  ],
+                      Material(
+                        color: colors.secondaryContainer,
+                        shape: const CircleBorder(),
+                        child: IconButton(
+                          tooltip: 'Go to parent folder',
+                          visualDensity: VisualDensity.compact,
+                          onPressed: _path.isEmpty ? null : _goUp,
+                          icon: Icon(Icons.arrow_upward_rounded, color: colors.onSecondaryContainer, size: 19),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
