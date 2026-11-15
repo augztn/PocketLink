@@ -52,7 +52,7 @@ class HomeActivityItem {
       title: title,
       path: path,
       serverUrl: serverUrl,
-      volume: map['volume'] as String?,
+      volume: map['volume'] is String ? map['volume'] as String : null,
       updatedAt: updatedAt,
     );
   }
@@ -71,6 +71,7 @@ class HomeActivityStore extends ChangeNotifier {
       _items.where((item) => item.serverUrl == serverUrl).toList(growable: false);
 
   Future<void> load() async {
+    await _writeQueue;
     try {
       final preferences = await SharedPreferences.getInstance();
       final raw = preferences.getString(_key);
