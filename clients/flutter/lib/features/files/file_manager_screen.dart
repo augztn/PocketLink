@@ -10,7 +10,7 @@ class FileManagerScreen extends StatefulWidget {
   const FileManagerScreen({
     required this.api,
     this.initialPath = '',
-    this.isActive = true,
+    this.isActive = false,
     this.onBackAtRoot,
     super.key,
   });
