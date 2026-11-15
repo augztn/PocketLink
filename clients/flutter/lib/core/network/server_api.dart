@@ -426,9 +426,11 @@ class ServerApi {
     ];
 
     final found = <RecentFile>[];
+    final childDirectories = <({String path, String? volume, String volumeName})>[];
     Future<void> scan(
-      ({String path, String? volume, String volumeName}) candidate,
-    ) async {
+      ({String path, String? volume, String volumeName}) candidate, {
+      bool collectChildren = false,
+    }) async {
       try {
         final listing = candidate.volume == null
             ? await listDirectory(candidate.path)
@@ -438,7 +440,15 @@ class ServerApi {
           final path = candidate.path.isEmpty
               ? item.name
               : '${candidate.path}/${item.name}';
-          if (!item.isDirectory) {
+          if (item.isDirectory) {
+            if (collectChildren && childDirectories.length < 6) {
+              childDirectories.add((
+                path: path,
+                volume: candidate.volume,
+                volumeName: candidate.volumeName,
+              ));
+            }
+          } else {
             found.add(RecentFile(
               file: item,
               path: path,
@@ -452,7 +462,10 @@ class ServerApi {
       }
     }
 
-    await Future.wait(candidates.map(scan));
+    await Future.wait(candidates.map(
+      (candidate) => scan(candidate, collectChildren: true),
+    ));
+    await Future.wait(childDirectories.map(scan));
 
     found.sort((a, b) => b.modifiedAt.compareTo(a.modifiedAt));
     return found.take(limit.clamp(1, 50).toInt()).toList(growable: false);
