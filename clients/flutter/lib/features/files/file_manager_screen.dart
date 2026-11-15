@@ -41,6 +41,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   final ScrollController _scrollController = ScrollController();
   late final String _stateKey;
   String _sortBy = 'name';
+  double _pendingScrollOffset = 0;
 
   String _searchQuery = '';
   late String _category = widget.initialCategory;
@@ -98,13 +99,16 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     _category = widget.initialCategory != 'All' ? widget.initialCategory : saved.category;
     _sortBy = saved.sortBy;
     _gridView = saved.gridView;
+    _pendingScrollOffset = saved.scrollOffset;
     _scrollController.addListener(_saveScrollOffset);
     _load(_path);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _scrollController.hasClients && saved.scrollOffset > 0) {
-        _scrollController.jumpTo(saved.scrollOffset.clamp(0, _scrollController.position.maxScrollExtent).toDouble());
-      }
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _restoreScrollOffset());
+  }
+
+  void _restoreScrollOffset() {
+    if (!mounted || !_scrollController.hasClients || _pendingScrollOffset <= 0) return;
+    _scrollController.jumpTo(_pendingScrollOffset.clamp(0, _scrollController.position.maxScrollExtent).toDouble());
+    _pendingScrollOffset = 0;
   }
 
   void _saveState({String? path}) {
@@ -122,7 +126,10 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
 
   Future<void> _load([String? path]) async {
     final target = path ?? _path;
-    if (target != _path && _scrollController.hasClients) _scrollController.jumpTo(0);
+    if (target != _path) {
+      _pendingScrollOffset = 0;
+      if (_scrollController.hasClients) _scrollController.jumpTo(0);
+    }
     setState(() {
       _loading = true;
       _error = null;
@@ -142,7 +149,10 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
       if (!mounted) return;
       setState(() => _error = 'Could not read this folder.');
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+        WidgetsBinding.instance.addPostFrameCallback((_) => _restoreScrollOffset());
+      }
     }
   }
 
