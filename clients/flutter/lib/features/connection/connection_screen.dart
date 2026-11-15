@@ -160,32 +160,15 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       _message = null;
     });
 
+    final address = '$host:$port';
+    late final ServerApi api;
     try {
-      final address = '$host:$port';
-      final api = ServerApi(
+      api = ServerApi(
         baseUrl: address,
         username: username,
         password: password,
       );
       await api.authenticate();
-
-      final id = _profileId(address, username);
-      final profile = {'id': id, 'address': address, 'username': username};
-      _profiles.removeWhere((item) => item['id'] == id);
-      _profiles.insert(0, profile);
-      await _storage.write(key: 'server_password_$id', value: password);
-      await _persistProfiles();
-
-      // Keep the legacy keys for a seamless upgrade and restore path.
-      await _storage.write(key: 'last_server_address', value: address);
-      await _storage.write(key: 'last_server_username', value: username);
-      await _storage.write(key: 'last_server_password', value: password);
-
-      if (!mounted) return;
-      setState(() {});
-      await Navigator.of(context).push(
-        MaterialPageRoute<void>(builder: (_) => HomeScreen(api: api)),
-      );
     } on DioException catch (error) {
       if (!mounted) return;
       final status = error.response?.statusCode;
@@ -204,7 +187,40 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     } on FormatException catch (error) {
       if (mounted) setState(() => _message = error.message);
     } catch (_) {
-      if (mounted) setState(() => _message = 'Unexpected connection error.');
+      if (mounted) {
+        setState(() => _message = 'Could not initialize the server connection. Check the address and try again.');
+      }
+      return;
+    }
+
+    if (!mounted) return;
+    final id = _profileId(address, username);
+    final profile = {'id': id, 'address': address, 'username': username};
+    _profiles.removeWhere((item) => item['id'] == id);
+    _profiles.insert(0, profile);
+
+    // A secure-storage write failure must not turn a successful connection
+    // into a misleading connection error or block access to the server.
+    try {
+      await _storage.write(key: 'server_password_$id', value: password);
+      await _persistProfiles();
+      await _storage.write(key: 'last_server_address', value: address);
+      await _storage.write(key: 'last_server_username', value: username);
+      await _storage.write(key: 'last_server_password', value: password);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Connected, but this server could not be saved securely.')),
+        );
+      }
+    }
+
+    if (!mounted) return;
+    setState(() {});
+    try {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => HomeScreen(api: api)),
+      );
     } finally {
       if (mounted) setState(() => _isConnecting = false);
     }
