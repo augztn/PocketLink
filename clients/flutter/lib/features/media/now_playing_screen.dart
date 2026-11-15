@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -225,36 +226,50 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     switch (action) {
       case TrackOptionAction.favorite:
         await _toggleFavorite();
+        break;
       case TrackOptionAction.pin:
         await _togglePin();
+        break;
       case TrackOptionAction.share:
         await _shareTrack();
+        break;
       case TrackOptionAction.addToPlaylist:
         await _addToPlaylist();
+        break;
       case TrackOptionAction.playNext:
         await _persistent.enqueue(_track, playNext: true);
         _message('Queued to play next');
+        break;
       case TrackOptionAction.addToQueue:
         await _persistent.enqueue(_track);
         _message('Added to queue');
+        break;
       case TrackOptionAction.download:
         await _downloadTrack();
+        break;
       case TrackOptionAction.removeFromCache:
         await OfflineFileCache().remove(OfflineFileCache().serverId(widget.api), _track.volume, _track.path);
         if (mounted) setState(() => _cached = false);
         _message('Removed local cached copy');
+        break;
       case TrackOptionAction.openAlbum:
         _openAlbum();
+        break;
       case TrackOptionAction.openArtist:
         _message('Artist metadata is not available from this server file entry.');
+        break;
       case TrackOptionAction.showInFolder:
         _showInFolder();
+        break;
       case TrackOptionAction.trackInfo:
         _showTrackInfo();
+        break;
       case TrackOptionAction.sleepTimer:
         await _chooseSleepTimer();
+        break;
       case TrackOptionAction.lyricsOffset:
         await _chooseLyricsOffset();
+        break;
     }
   }
 
@@ -661,8 +676,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                Text(_formatDuration(position), style: const TextStyle(color: Colors.white54, fontSize: 11, fontFeatures: [FontFeature.tabularFigures()])),
-                Text('-${_formatDuration(duration - position)}', style: const TextStyle(color: Colors.white54, fontSize: 11, fontFeatures: [FontFeature.tabularFigures()])),
+                Text(_formatDuration(position), style: const TextStyle(color: Colors.white54, fontSize: 11)),
+                Text('-${_formatDuration(duration - position)}', style: const TextStyle(color: Colors.white54, fontSize: 11)),
               ]),
             ),
           ],
