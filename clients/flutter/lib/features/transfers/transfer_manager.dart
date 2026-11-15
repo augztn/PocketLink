@@ -58,7 +58,7 @@ class TransferManager extends ChangeNotifier {
 
     try {
       await operation(task.cancelToken, (transferred, total) {
-        if (task.status != TransferStatus.running) return;
+        if (task.status != TransferStatus.running || task.cancelToken.isCancelled) return;
         task.transferred = transferred;
         task.total = total;
         notifyListeners();
@@ -101,9 +101,10 @@ class TransferManager extends ChangeNotifier {
         break;
       }
     }
-    if (task == null || task.status != TransferStatus.running) return;
+    if (task == null ||
+        task.status != TransferStatus.running ||
+        task.cancelToken.isCancelled) return;
     task.cancelToken.cancel('Cancelled by user');
-    task.status = TransferStatus.cancelled;
     notifyListeners();
   }
 
