@@ -75,7 +75,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     _scan();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && _folderScrollController.hasClients && saved.scrollOffset > 0) {
-        _folderScrollController.jumpTo(saved.scrollOffset.clamp(0, _folderScrollController.position.maxScrollExtent));
+        _folderScrollController.jumpTo(saved.scrollOffset.clamp(0, _folderScrollController.position.maxScrollExtent).toDouble());
       }
     });
   }
