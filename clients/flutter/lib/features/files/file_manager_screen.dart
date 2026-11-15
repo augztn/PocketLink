@@ -6,6 +6,7 @@ import '../../core/widgets/home_server_app_bar.dart';
 import '../../core/widgets/compact_search_field.dart';
 
 import '../../core/network/server_api.dart';
+import '../../core/storage/home_activity_store.dart';
 import '../home/browser_state_store.dart';
 import '../../core/settings/app_settings.dart';
 import '../transfers/transfer_manager.dart';
@@ -255,7 +256,12 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
           ? await widget.api.listDirectory(target)
           : await widget.api.listStorageDirectory(_selectedVolume!, target);
       if (!mounted || generation != _loadGeneration) return;
+      final previousPath = _path;
+      final previousVolume = _selectedVolume;
       setState(() { _path = result.path == '.' ? '' : result.path; _listing = result; _saveState(path: _path); });
+      if (_path.isNotEmpty && (_path != previousPath || _selectedVolume != previousVolume)) {
+        HomeActivityStore.instance.recordFolder(serverUrl: widget.api.baseUrl, path: _path, volume: _selectedVolume);
+      }
     } on DioException catch (error) {
       if (!mounted || generation != _loadGeneration) return;
       setState(() => _error = _messageFor(error));
