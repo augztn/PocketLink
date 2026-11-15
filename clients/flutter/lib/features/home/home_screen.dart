@@ -83,8 +83,12 @@ class _HomeDashboardState extends State<_HomeDashboard> {
       } catch (_) {
         // The server can be reachable even when the optional volume endpoint fails.
       }
-      final recentFiles = await widget.api.listRecentFiles(volumes: volumes);
-      if (mounted) setState(() => _recentFiles = recentFiles);
+      try {
+        final recentFiles = await widget.api.listRecentFiles(volumes: volumes);
+        if (mounted) setState(() => _recentFiles = recentFiles);
+      } catch (_) {
+        // A recent-file scan failure must not mark a reachable server as offline.
+      }
     } catch (_) {
       online = false;
     }
