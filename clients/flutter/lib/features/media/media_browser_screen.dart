@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/network/server_api.dart';
 import 'media_player_screen.dart';
+import 'now_playing_screen.dart';
 import 'persistent_audio_player.dart';
 import '../transfers/transfer_manager_screen.dart';
 
@@ -171,6 +172,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
               title: item.entry.name,
               path: item.path,
               volume: item.volume,
+              size: item.entry.size,
             ))
         .toList(growable: false);
     final index = queueItems.indexWhere(
@@ -178,15 +180,21 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     );
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => MediaPlayerScreen(
-          api: widget.api,
-          title: media.entry.name,
-          path: media.path,
-          volume: media.volume,
-          isVideo: !_isMusic,
-          queue: queue,
-          initialIndex: index < 0 ? 0 : index,
-        ),
+        builder: (_) => _isMusic
+            ? NowPlayingScreen(
+                api: widget.api,
+                queue: queue,
+                initialIndex: index < 0 ? 0 : index,
+              )
+            : MediaPlayerScreen(
+                api: widget.api,
+                title: media.entry.name,
+                path: media.path,
+                volume: media.volume,
+                isVideo: true,
+                queue: queue,
+                initialIndex: index < 0 ? 0 : index,
+              ),
       ),
     );
   }
