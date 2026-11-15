@@ -120,6 +120,27 @@ void main() {
     restored.dispose();
   });
 
+  test('restores only the newest 100 history entries', () async {
+    final now = DateTime.now();
+    await store.save(List.generate(105, (index) => {
+      'id': 'history-$index',
+      'name': 'file-$index',
+      'direction': 'Download',
+      'location': 'Internal storage',
+      'startedAt': now.subtract(Duration(minutes: index)).toIso8601String(),
+      'transferred': 1,
+      'total': 1,
+      'status': 'completed',
+    }));
+
+    final restored = TransferManager.forTesting(store);
+    await restored.ready;
+    expect(restored.tasks, hasLength(100));
+    expect(restored.tasks.first.name, 'file-0');
+    expect(restored.tasks.last.name, 'file-99');
+    restored.dispose();
+  });
+
   test('marks interrupted transfers as failed on restore', () async {
     await store.save([{
       'id': 'interrupted-1',
