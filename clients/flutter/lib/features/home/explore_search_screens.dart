@@ -19,7 +19,6 @@ class ExploreScreen extends StatefulWidget {
     this.fileCategory = 'All',
     this.onBackAtRoot,
     this.onOpenFiles,
-    this.onOpenSearch,
     super.key,
   });
 
@@ -29,7 +28,6 @@ class ExploreScreen extends StatefulWidget {
   final String fileCategory;
   final VoidCallback? onBackAtRoot;
   final VoidCallback? onOpenFiles;
-  final VoidCallback? onOpenSearch;
 
   @override
   State<ExploreScreen> createState() => _ExploreScreenState();
