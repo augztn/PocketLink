@@ -4,6 +4,8 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import 'quick_actions_store.dart';
+import '../../core/settings/app_settings.dart';
+import '../settings/settings_screen.dart';
 import 'explore_search_screens.dart';
 import '../media/media_player_screen.dart';
 import '../media/persistent_audio_player.dart';
@@ -551,6 +553,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final availableVolumes = _volumes.where((volume) => volume.available).length;
+    final appSettings = AppSettings.instance;
 
     Widget sectionTitle(String title, {String? action, VoidCallback? onAction}) {
       return Row(
@@ -725,6 +728,18 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                   ));
                 },
               ),
+              ListTile(
+                leading: const Icon(Icons.settings_outlined),
+                title: const Text('Settings'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.of(context).push(MaterialPageRoute<void>(
+                    builder: (_) => SettingsScreen(
+                      onOpenSavedServers: widget.onReturnToConnection,
+                    ),
+                  ));
+                },
+              ),
             ],
           ),
         ),
@@ -871,6 +886,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
               ),
             ),
             const SizedBox(height: 27),
+            if (appSettings.showQuickActions) ...[
             sectionTitle(
               'Quick actions',
               action: 'Edit',
@@ -900,6 +916,8 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                   );
                 }).toList(),
               ),
+            ],
+            if (appSettings.showLibrary) ...[
             const SizedBox(height: 27),
             sectionTitle('Your library'),
             const SizedBox(height: 12),
@@ -941,6 +959,8 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                 ),
               ],
             ),
+            ],
+            if (appSettings.showRecentFiles) ...[
             const SizedBox(height: 27),
             sectionTitle(
               'Recent files',
@@ -1035,7 +1055,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                 ),
               ),
             const SizedBox(height: 27),
-
+            ],
           ],
         ),
       ),
