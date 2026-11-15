@@ -5,7 +5,6 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -41,10 +40,6 @@ class _LyricLine {
 }
 
 class _NowPlayingScreenState extends State<NowPlayingScreen> {
-  static const _storage = FlutterSecureStorage();
-  static const _favoriteKey = 'homeserver.music.favorites.v1';
-  static const _pinnedKey = 'homeserver.music.pinned.v1';
-  static const _playlistKey = 'homeserver.music.playlists.v1';
 
   late final PersistentAudioPlayer _persistent;
   late final Player _player;
@@ -52,10 +47,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   Uint8List? _artwork;
   String? _artworkKey;
   int _artworkRequest = 0;
-  Set<String> _favorites = {};
-  Set<String> _pinned = {};
-  bool _favorite = false;
-  bool _pinnedCurrent = false;
   bool _cached = false;
   bool _loadingLyrics = false;
   List<_LyricLine> _lyrics = [];
@@ -96,26 +87,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   }
 
   Future<void> _initialize() async {
-    await _loadStoredActions();
     await _refreshCacheStatus();
     await _loadArtwork();
     await _loadLyrics();
-  }
-
-  Future<void> _loadStoredActions() async {
-    try {
-      final favorites = jsonDecode(await _storage.read(key: _favoriteKey) ?? '[]') as List<dynamic>;
-      final pinned = jsonDecode(await _storage.read(key: _pinnedKey) ?? '[]') as List<dynamic>;
-      if (!mounted) return;
-      setState(() {
-        _favorites = favorites.whereType<String>().toSet();
-        _pinned = pinned.whereType<String>().toSet();
-        _favorite = _favorites.contains(_trackKey);
-        _pinnedCurrent = _pinned.contains(_trackKey);
-      });
-    } catch (_) {
-      // Invalid optional metadata must never interrupt playback.
-    }
   }
 
   Future<void> _refreshCacheStatus() async {
@@ -133,7 +107,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
       _lyrics = [];
       _lyricsOffset = Duration.zero;
     });
-    await _loadStoredActions();
     await _refreshCacheStatus();
     await _loadArtwork();
     await _loadLyrics();
@@ -210,41 +183,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     if (mounted) setState(() => _lyrics = parsed);
   }
 
-  String _keyForCurrent() => _trackKey;
-
-  Future<void> _toggleStored(Set<String> values, String key, String storageKey, bool favorite) async {
-    final updated = Set<String>.from(values);
-    if (!updated.add(key)) updated.remove(key);
-    await _storage.write(key: storageKey, value: jsonEncode(updated.toList()));
-    if (!mounted) return;
-    setState(() {
-      if (favorite) {
-        _favorites = updated;
-        _favorite = updated.contains(key);
-      } else {
-        _pinned = updated;
-        _pinnedCurrent = updated.contains(key);
-      }
-    });
-    _message(favorite ? (_favorite ? 'Added to favorites' : 'Removed from favorites') : (_pinnedCurrent ? 'Track pinned' : 'Pin removed'));
-  }
-
-  Future<void> _toggleFavorite() => _toggleStored(_favorites, _keyForCurrent(), _favoriteKey, true);
-  Future<void> _togglePin() => _toggleStored(_pinned, _keyForCurrent(), _pinnedKey, false);
-
   Future<void> _runOption(TrackOptionAction action) async {
     switch (action) {
-      case TrackOptionAction.favorite:
-        await _toggleFavorite();
-        break;
-      case TrackOptionAction.pin:
-        await _togglePin();
-        break;
       case TrackOptionAction.share:
         await _shareTrack();
-        break;
-      case TrackOptionAction.addToPlaylist:
-        await _addToPlaylist();
         break;
       case TrackOptionAction.playNext:
         await _persistent.enqueue(_track, playNext: true);
@@ -261,12 +203,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
         await OfflineFileCache().remove(OfflineFileCache().serverId(widget.api), _track.volume, _track.path);
         if (mounted) setState(() => _cached = false);
         _message('Removed local cached copy');
-        break;
-      case TrackOptionAction.openAlbum:
-        _openAlbum();
-        break;
-      case TrackOptionAction.openArtist:
-        _message('Artist metadata is not available from this server file entry.');
         break;
       case TrackOptionAction.showInFolder:
         _showInFolder();
@@ -310,40 +246,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
       await Share.shareXFiles([XFile.fromData(bytes, name: _track.title)], text: _title);
     } catch (_) {
       _message('Could not share this track.');
-    }
-  }
-
-  Future<void> _addToPlaylist() async {
-    final nameController = TextEditingController();
-    final name = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: const Color(0xFF202023),
-        title: const Text('Add to playlist', style: TextStyle(color: Colors.white)),
-        content: TextField(
-          controller: nameController,
-          autofocus: true,
-          style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(hintText: 'Playlist name', hintStyle: TextStyle(color: Colors.white38)),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(dialogContext, nameController.text.trim()), child: const Text('Save')),
-        ],
-      ),
-    );
-    nameController.dispose();
-    if (name == null || name.isEmpty) return;
-    try {
-      final raw = await _storage.read(key: _playlistKey);
-      final playlists = raw == null ? <String, dynamic>{} : jsonDecode(raw) as Map<String, dynamic>;
-      final entries = (playlists[name] as List<dynamic>? ?? const []).whereType<String>().toList();
-      if (!entries.contains(_trackKey)) entries.add(_trackKey);
-      playlists[name] = entries;
-      await _storage.write(key: _playlistKey, value: jsonEncode(playlists));
-      _message('Added to $name');
-    } catch (_) {
-      _message('Could not save this playlist.');
     }
   }
 
@@ -391,14 +293,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     );
     if (selected == null) return;
     setState(() => _lyricsOffset = Duration(milliseconds: selected.round()));
-  }
-
-  void _openAlbum() {
-    if (_folder.isEmpty) {
-      _message('No album folder is available for this track.');
-    } else {
-      _showInFolder();
-    }
   }
 
   void _showInFolder() {
@@ -544,9 +438,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     TrackOptionsSheet.show(
       context,
       onAction: (action) => unawaited(_runOption(action)),
-      isFavorite: _favorite,
-      isPinned: _pinnedCurrent,
       isCached: _cached,
+      hasLyrics: _lyrics.isNotEmpty,
     );
   }
 
@@ -572,16 +465,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     return '${value.toStringAsFixed(1)} ${units[unit]}';
   }
 
-  String get _artist {
-    final parts = _title.split(' - ');
-    if (parts.length > 1) return parts.first.trim();
-    return _folderName;
-  }
+  String get _displayTitle => _title;
 
-  String get _displayTitle {
-    final parts = _title.split(' - ');
-    return parts.length > 1 ? parts.skip(1).join(' - ').trim() : _title;
-  }
 
   String? _channelLabel(String? channels, int? count) {
     if (count == 1) return 'Mono';
@@ -823,13 +708,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                               style: const TextStyle(color: Colors.white, fontSize: 23, fontWeight: FontWeight.w800, letterSpacing: -0.4),
                             ),
                             const SizedBox(height: 4),
-                            Text(_artist, maxLines: 1, overflow: TextOverflow.ellipsis,
+                            Text(_folderName, maxLines: 1, overflow: TextOverflow.ellipsis,
                               style: const TextStyle(color: Colors.white54, fontSize: 13)),
                           ]),
                         ),
                         const SizedBox(width: 12),
-                        _roundAction(_favorite ? Icons.star_rounded : Icons.star_border_rounded, 'Favorite', _toggleFavorite, active: _favorite),
-                        const SizedBox(width: 8),
                         _roundAction(Icons.more_horiz_rounded, 'More options', _showOptions),
                       ]),
                       const SizedBox(height: 8),
@@ -844,7 +727,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                       Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
                         IconButton(tooltip: 'Lyrics', onPressed: _showLyrics,
                           icon: const Icon(Icons.lyrics_outlined, color: Colors.white70)),
-                        IconButton(tooltip: 'Audio output / Cast', onPressed: _showAudioOutput,
+                        IconButton(tooltip: 'Audio output', onPressed: _showAudioOutput,
                           icon: const Icon(Icons.speaker_group_outlined, color: Colors.white70)),
                         IconButton(tooltip: 'Queue', onPressed: _showQueue,
                           icon: const Icon(Icons.queue_music_rounded, color: Colors.white70)),
