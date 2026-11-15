@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../../core/widgets/home_server_app_bar.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -20,8 +21,9 @@ import '../media/persistent_audio_player.dart';
 import '../storage/storage_browser_screen.dart';
 
 class SearchScreen extends StatefulWidget {
-  const SearchScreen({required this.api, super.key});
+  const SearchScreen({required this.api, this.onHome, super.key});
   final ServerApi api;
+  final VoidCallback? onHome;
   @override
   State<SearchScreen> createState() => _SearchScreenState();
 }
@@ -614,7 +616,7 @@ class _SearchScreenState extends State<SearchScreen> {
       for (final v in _volumes) DropdownMenuItem(value: v.id, child: Text(v.name, overflow: TextOverflow.ellipsis)),
     ];
     return Scaffold(
-      appBar: AppBar(title: const Text('Search')),
+      appBar: HomeServerAppBar(title: const Text('Search'), onHome: widget.onHome),
       body: Column(children: [
         Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 8), child: TextField(
           controller: _controller,
