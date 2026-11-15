@@ -18,7 +18,7 @@ class TransferManagerScreen extends StatelessWidget {
   }
 
   String _status(TransferTask task) => switch (task.status) {
-    TransferStatus.running => 'Transferring',
+    TransferStatus.running => task.cancelToken.isCancelled ? 'Cancelling' : 'Transferring',
     TransferStatus.completed => 'Completed',
     TransferStatus.failed => 'Failed',
     TransferStatus.cancelled => 'Cancelled',
@@ -90,7 +90,7 @@ class TransferManagerScreen extends StatelessWidget {
                             ),
                           ),
                           Text(_status(task), style: Theme.of(context).textTheme.labelMedium),
-                          if (running)
+                          if (running && !task.cancelToken.isCancelled)
                             IconButton(
                               tooltip: 'Cancel transfer',
                               onPressed: () => manager.cancel(task.id),
