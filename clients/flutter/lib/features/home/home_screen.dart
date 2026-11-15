@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'quick_actions_store.dart';
@@ -507,9 +508,6 @@ class _HomeDashboardState extends State<_HomeDashboard> {
       case 'favorites':
         Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PhotoGalleryScreen(api: widget.api)));
         return;
-      /*
-        return;
-      */
       case 'photos':
         widget.onOpenExplore(ExploreCategory.photos);
         return;
@@ -845,48 +843,6 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                 const SizedBox(height: 8),
                 Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600)),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    Widget category({
-      required String title,
-      required String subtitle,
-      required IconData icon,
-      required Color tint,
-      required VoidCallback onTap,
-    }) {
-      return Material(
-        color: colors.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(22),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 46,
-                  height: 46,
-                  decoration: BoxDecoration(
-                    color: tint.withOpacity(0.13),
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  child: Icon(icon, color: tint, size: 25),
-                ),
-                const Spacer(),
-                Text(title, style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.2,
-                )),
-                const SizedBox(height: 3),
-                Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
               ],
             ),
           ),
