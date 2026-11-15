@@ -21,6 +21,7 @@ void main() {
     test('does not mislabel public or unknown hosts as LAN', () {
       expect(networkRouteLabel('8.8.8.8'), 'Remote');
       expect(networkRouteLabel('example.com'), 'Remote');
+      expect(networkRouteLabel('fcorp.example'), 'Remote');
       expect(networkRouteLabel('2001:4860:4860::8888'), 'Remote');
     });
   });
