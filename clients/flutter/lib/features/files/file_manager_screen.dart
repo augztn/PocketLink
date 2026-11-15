@@ -44,6 +44,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   late final BrowserStateStore _browserState;
   String _sortBy = 'name';
   double _pendingScrollOffset = 0;
+  int _loadGeneration = 0;
 
   String _searchQuery = '';
   late String _category = widget.initialCategory;
@@ -105,7 +106,6 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     _pendingScrollOffset = saved.scrollOffset;
     _scrollController.addListener(_saveScrollOffset);
     _load(_path);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _restoreScrollOffset());
   }
 
   void _restoreScrollOffset() {
@@ -128,6 +128,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   void _saveScrollOffset() => _saveState();
 
   Future<void> _load([String? path]) async {
+    final generation = ++_loadGeneration;
     final target = path ?? _path;
     if (target != _path) {
       _pendingScrollOffset = 0;
@@ -139,20 +140,20 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     });
     try {
       final result = await widget.api.listDirectory(target);
-      if (!mounted) return;
+      if (!mounted || generation != _loadGeneration) return;
       setState(() {
         _path = result.path == '.' ? '' : result.path;
         _listing = result;
         _saveState(path: _path);
       });
     } on DioException catch (error) {
-      if (!mounted) return;
+      if (!mounted || generation != _loadGeneration) return;
       setState(() => _error = _messageFor(error));
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || generation != _loadGeneration) return;
       setState(() => _error = 'Could not read this folder.');
     } finally {
-      if (mounted) {
+      if (mounted && generation == _loadGeneration) {
         setState(() => _loading = false);
         WidgetsBinding.instance.addPostFrameCallback((_) => _restoreScrollOffset());
       }
