@@ -289,6 +289,12 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
     } on DioException catch (error) { _message(error.message ?? 'Delete failed.'); }
   }
 
+  Future<void> _goUp() async {
+    if (_path.isEmpty) return;
+    final parts = _path.split('/')..removeLast();
+    await _loadDirectory(parts.join('/'));
+  }
+
   void _message(String value) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(value)));
@@ -299,7 +305,12 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
     final items = _listing?.items ?? const <FileEntry>[];
     final matches = _volumes.where((item) => item.id == _volume);
     final selected = matches.isEmpty ? null : matches.first;
-    return Scaffold(
+    return PopScope(
+      canPop: _path.isEmpty,
+      onPopInvoked: (didPop) {
+        if (!didPop && _path.isNotEmpty) _goUp();
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: const Text('External SSDs'),
         actions: [
@@ -338,10 +349,7 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
         ListTile(
           leading: IconButton(
             tooltip: 'Go up',
-            onPressed: _path.isEmpty ? null : () {
-              final parts = _path.split('/')..removeLast();
-              _loadDirectory(parts.join('/'));
-            },
+            onPressed: _path.isEmpty ? null : _goUp,
             icon: const Icon(Icons.arrow_upward),
           ),
           title: Text(_path.isEmpty ? 'Root' : _path, maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -391,6 +399,7 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
                         ),
         ),
       ]),
+      ),
     );
   }
 }
