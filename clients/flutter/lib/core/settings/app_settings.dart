@@ -32,27 +32,31 @@ class AppSettings extends ChangeNotifier {
 
   Future<void> load() async {
     if (_loaded) return;
-    final values = await Future.wait([
-      _storage.read(key: _themeKey),
-      _storage.read(key: _qualityKey),
-      _storage.read(key: _downloadKey),
-      _storage.read(key: _quickActionsKey),
-      _storage.read(key: _libraryKey),
-      _storage.read(key: _recentKey),
-    ]);
-    _themeMode = switch (values[0]) {
-      'light' => ThemeMode.light,
-      'dark' => ThemeMode.dark,
-      _ => ThemeMode.system,
-    };
-    _amoled = values[0] == 'amoled';
+    try {
+      final values = await Future.wait([
+        _storage.read(key: _themeKey),
+        _storage.read(key: _qualityKey),
+        _storage.read(key: _downloadKey),
+        _storage.read(key: _quickActionsKey),
+        _storage.read(key: _libraryKey),
+        _storage.read(key: _recentKey),
+      ]);
+      _themeMode = switch (values[0]) {
+        'light' => ThemeMode.light,
+        'dark' || 'amoled' => ThemeMode.dark,
+        _ => ThemeMode.system,
+      };
+      _amoled = values[0] == 'amoled';
     _streamingQuality = const {'Data saver', 'Balanced', 'Original'}.contains(values[1])
         ? values[1]!
         : 'Original';
     _downloadDirectory = values[2];
     _showQuickActions = values[3] != 'false';
     _showLibrary = values[4] != 'false';
-    _showRecentFiles = values[5] != 'false';
+      _showRecentFiles = values[5] != 'false';
+    } catch (_) {
+      // Keep safe defaults when secure settings storage is unavailable.
+    }
     _loaded = true;
     notifyListeners();
   }
