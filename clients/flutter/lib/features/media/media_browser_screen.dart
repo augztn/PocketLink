@@ -101,8 +101,11 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
 
   void _saveScrollOffset() => _saveState();
 
+  bool get _atFolderRoot => _currentFolderPath.isEmpty ||
+      (_isMusic && _selectedVolume == 'internal' && _currentFolderPath == 'Music');
+
   void _goUpFolder() {
-    if (_currentFolderPath.isEmpty) return;
+    if (_atFolderRoot) return;
     final parts = _currentFolderPath.split('/')..removeLast();
     final parent = parts.join('/');
     setState(() => _currentFolderPath = parent);
@@ -143,14 +146,14 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     try {
       try {
         final volumes = await widget.api.listStorageVolumes();
-        _volumes = volumes;
-        if (_selectedVolume != null && _selectedVolume != 'internal' && !volumes.any((volume) => volume.id == _selectedVolume && volume.available)) {
+        _volumes = volumes.where((volume) => volume.available).toList(growable: false);
+        if (_selectedVolume != null && _selectedVolume != 'internal' && !_volumes.any((volume) => volume.id == _selectedVolume)) {
           _selectedVolume = null;
           _currentFolderPath = '';
           _pendingScrollOffset = 0;
           _saveState(folderPath: '', clearVolume: true);
         }
-        for (final volume in volumes.where((item) => item.available)) {
+        for (final volume in _volumes) {
           pending.add((path: '', depth: 0, volume: volume.id));
         }
       } on DioException {
@@ -561,6 +564,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                       ? null
                       : () {
                           setState(() { _currentFolderPath = ''; _selectedVolume = null; });
+                          _pendingScrollOffset = 0;
                           _saveState(folderPath: '', clearVolume: true);
                           if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0);
                         },
@@ -571,7 +575,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                   TextButton(
                     onPressed: _currentFolderPath.isEmpty
                         ? null
-                        : () { setState(() => _currentFolderPath = ''); _saveState(folderPath: ''); if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0); },
+                        : () { setState(() => _currentFolderPath = _selectedVolume == 'internal' && _isMusic ? 'Music' : ''); _pendingScrollOffset = 0; _saveState(folderPath: _currentFolderPath); if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0); },
                     child: Text(_volumeName(_selectedVolume)),
                   ),
                 ],
@@ -609,6 +613,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                         _selectedVolume = folder.volume ?? 'internal';
                         _currentFolderPath = folder.path;
                       });
+                      _pendingScrollOffset = 0;
                       _saveState(folderPath: folder.path);
                       if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0);
                     },
@@ -712,9 +717,9 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     final sourceLabel = _selectedVolume == 'internal' ? 'Internal storage' : selectedVolumes.isEmpty ? 'All Storage' : selectedVolumes.first.name;
 
     return PopScope(
-      canPop: _libraryView != 'folders' || _currentFolderPath.isEmpty,
+      canPop: _libraryView != 'folders' || _atFolderRoot,
       onPopInvokedWithResult: (didPop, result) {
-        if (!didPop && _libraryView == 'folders' && _currentFolderPath.isNotEmpty) _goUpFolder();
+        if (!didPop && _libraryView == 'folders' && !_atFolderRoot) _goUpFolder();
       },
       child: Scaffold(
       appBar: HomeServerAppBar(
@@ -820,9 +825,9 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                   _menuPill(
                     label: sourceLabel,
                     items: [
-                      const PopupMenuItem(value: 'all', child: Text('All Storage')),
+                      const PopupMenuItem(value: 'all', child: Text('All storage')),
                       const PopupMenuItem(value: 'internal', child: Text('Internal storage')),
-                      ..._volumes.map((volume) => PopupMenuItem(
+                      ..._volumes.where((volume) => volume.available).map((volume) => PopupMenuItem(
                         value: volume.id,
                         enabled: volume.available,
                         child: Text(
@@ -831,10 +836,17 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                         ),
                       )),
                     ],
-                    onSelected: (value) { setState(() {
-                      _selectedVolume = value == 'all' ? null : value;
-                      _currentFolderPath = '';
-                    }); _saveState(folderPath: '', clearVolume: value == 'all'); if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0); },
+                    onSelected: (value) {
+                      final volume = value == 'all' ? null : value;
+                      final rootPath = _isMusic && volume == 'internal' ? 'Music' : '';
+                      setState(() {
+                        _selectedVolume = volume;
+                        _currentFolderPath = rootPath;
+                      });
+                      _pendingScrollOffset = 0;
+                      _saveState(folderPath: rootPath, clearVolume: volume == null);
+                      if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0);
+                    },
                   ),
                   const SizedBox(width: 8),
                   _menuPill(
