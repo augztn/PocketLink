@@ -23,9 +23,8 @@ class _Photo {
 }
 
 class PhotoGalleryScreen extends StatefulWidget {
-  const PhotoGalleryScreen({required this.api, this.embedded = false, super.key});
+  const PhotoGalleryScreen({required this.api, super.key});
   final ServerApi api;
-  final bool embedded;
   @override
   State<PhotoGalleryScreen> createState() => _PhotoGalleryScreenState();
 }
@@ -335,7 +334,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
   Widget build(BuildContext context) {
     final items=visible;final selecting=selected.isNotEmpty;
     return Scaffold(
-      appBar:widget.embedded ? null : AppBar(
+      appBar:AppBar(
         title:Text(selecting?'${selected.length} selected':['Photos','Albums','Discover','Favourites'][tab]),
         leading:selecting?IconButton(onPressed:()=>setState(selected.clear),icon:const Icon(Icons.close)):null,
         actions:[
