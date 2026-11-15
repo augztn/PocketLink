@@ -482,6 +482,14 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
       child: Scaffold(
         appBar: HomeServerAppBar(
           title: const Text('Files', style: TextStyle(fontWeight: FontWeight.w800)),
+          onHome: widget.onBackAtRoot,
+          leading: widget.isActive
+              ? IconButton(
+                  tooltip: _path.isEmpty ? 'Back to Dashboard' : 'Go to parent folder',
+                  onPressed: _path.isEmpty ? widget.onBackAtRoot : _goUp,
+                  icon: const Icon(Icons.arrow_back_rounded),
+                )
+              : null,
           actions: [
             HomeServerAppBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded, onPressed: _openTransfers),
             HomeServerAppBarAction(label: 'Upload file', icon: Icons.cloud_upload_outlined, onPressed: _uploadFile),
