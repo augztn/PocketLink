@@ -215,7 +215,7 @@ class ServerApi {
             error.type == DioExceptionType.connectionTimeout ||
             error.type == DioExceptionType.receiveTimeout;
         if (options.method.toUpperCase() == 'GET' &&
-            attempts < 2 && !cancelled && (transientNetwork || transientStatus)) {
+            attempts < 3 && !cancelled && (transientNetwork || transientStatus)) {
           options.extra['homeserver.retryCount'] = attempts + 1;
           await Future<void>.delayed(Duration(seconds: 1 << attempts));
           if (options.cancelToken?.isCancelled ?? false) {
