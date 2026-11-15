@@ -671,6 +671,2554 @@ class _HomeDashboardState extends State<_HomeDashboard> {
     }
   }
 
+  bool _isMountedDrive(StorageVolume volume) {
+    final id = volume.id.toLowerCase();
+    return id == 'usb1' || id == 'usb2' ||
+        RegExp(r'^usb-(?:manual-)?[0-9a-f]{16}
+    final host = base?.host ?? '';
+    final parts = host.split('.').map(int.tryParse).toList();
+    if (parts.length == 4 && parts.every((part) => part != null && part >= 0 && part <= 255)) {
+      final a = parts[0]!;
+      final b = parts[1]!;
+      if (a == 100 && b >= 64 && b <= 127) return 'Tailscale';
+      if (a == 192 && b == 168 || a == 10 || a == 172 && b >= 16 && b <= 31) {
+        return 'Local LAN';
+      }
+    }
+    return 'Remote';
+  }
+
+  Future<void> _quickUpload() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        allowMultiple: false,
+        withData: true,
+      );
+      if (result == null || result.files.isEmpty) return;
+      final file = result.files.single;
+      final bytes = file.bytes;
+      if (bytes == null) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not read the selected file.')),
+        );
+        return;
+      }
+      final completed = await TransferManager.instance.run(
+        name: file.name,
+        direction: 'Upload',
+        location: 'Internal storage · Root',
+        operation: (token, progress) => widget.api.uploadFile(
+          '',
+          file.name,
+          bytes,
+          cancelToken: token,
+          onSendProgress: progress,
+        ),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(completed ? 'Uploaded ${file.name}' : 'Upload did not complete. Check Transfers.'),
+      ));
+      if (completed) await _refreshStatus();
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not upload the selected file.')),
+      );
+    }
+  }
+
+  Widget _buildServerTelemetry(BuildContext context, ThemeData theme, ColorScheme colors) {
+    final transfers = TransferManager.instance;
+    final base = Uri.tryParse(widget.api.baseUrl);
+    final host = base == null ? 'Connected server' : '${base.host}:${base.hasPort ? base.port : (base.scheme == 'https' ? 443 : 80)}';
+    final route = _networkRouteLabel(base);
+    final online = _serverOnline == true;
+    final statusColor = _checking ? Colors.amber : online ? const Color(0xFF4ADE80) : const Color(0xFFF59E0B);
+    final cardColor = const Color(0xFF1E2025);
+    final foreground = Colors.white;
+    final muted = Colors.white.withValues(alpha: 0.62);
+    final mountedVolumes = _volumes.where((volume) => volume.available && _isMountedDrive(volume)).toList(growable: false);
+    return AnimatedBuilder(
+      animation: transfers,
+      builder: (context, _) {
+        final activeTransfers = transfers.tasks.where((task) => task.status == TransferStatus.running).length;
+        return Container(
+          padding: const EdgeInsets.all(15),
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: online ? Colors.white.withValues(alpha: 0.075) : statusColor.withValues(alpha: 0.42),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                const Icon(Icons.dns_rounded, color: Colors.white70, size: 18),
+                const SizedBox(width: 8),
+                Expanded(flex: 5, child: Text(host, maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleSmall?.copyWith(color: foreground, fontWeight: FontWeight.w800))),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.075), borderRadius: BorderRadius.circular(20)),
+                  child: Text(route, style: theme.textTheme.labelSmall?.copyWith(color: foreground, fontWeight: FontWeight.w700)),
+                ),
+                const SizedBox(width: 7),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Container(width: 6, height: 6, decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle)),
+                    const SizedBox(width: 5),
+                    Text(_checking ? '• Checking' : online ? '• Online' : '• Offline',
+                      style: theme.textTheme.labelSmall?.copyWith(color: statusColor, fontWeight: FontWeight.w800)),
+                  ]),
+                ),
+                const SizedBox(width: 2),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  tooltip: 'Quick upload',
+                  onPressed: online ? _quickUpload : null,
+                  icon: const Icon(Icons.arrow_upward_rounded, color: Colors.white, size: 19),
+                ),
+              ]),
+              if (!online && !_checking) ...[
+                const SizedBox(height: 8),
+                Row(children: [
+                  Expanded(child: Text('Server is unreachable. Check the network or server service.',
+                    style: theme.textTheme.bodySmall?.copyWith(color: Colors.white70))),
+                  TextButton(onPressed: _refreshStatus, child: const Text('Reconnect')),
+                  TextButton(onPressed: widget.onReturnToConnection, child: const Text('Switch')),
+                ]),
+              ],
+              const SizedBox(height: 13),
+              Row(children: [
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('STORAGE', style: theme.textTheme.labelSmall?.copyWith(color: muted, letterSpacing: 0.7)),
+                  const SizedBox(height: 5),
+                  Text('Capacity unavailable', style: theme.textTheme.labelMedium?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
+                ])),
+                const SizedBox(width: 10),
+                Expanded(child: InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen())),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('TRANSFERS', style: theme.textTheme.labelSmall?.copyWith(color: muted, letterSpacing: 0.7)),
+                    const SizedBox(height: 5),
+                    Text('$activeTransfers active', style: theme.textTheme.labelMedium?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
+                  ]),
+                )),
+                const SizedBox(width: 10),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('LATENCY', style: theme.textTheme.labelSmall?.copyWith(color: muted, letterSpacing: 0.7)),
+                  const SizedBox(height: 5),
+                  Text(_checking ? 'Checking' : (_latency == null ? '—' : '${_latency!.inMilliseconds} ms'),
+                    style: theme.textTheme.labelMedium?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
+                ])),
+              ]),
+              const SizedBox(height: 11),
+              InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: () => widget.onOpenExplore(ExploreCategory.drives),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Text('MOUNTED PARTITIONS', style: theme.textTheme.labelSmall?.copyWith(color: muted, letterSpacing: 0.65)),
+                    const Spacer(),
+                    Text('${mountedVolumes.length + 1} mounted', style: theme.textTheme.labelSmall?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
+                    const SizedBox(width: 3),
+                    const Icon(Icons.chevron_right_rounded, color: Colors.white70, size: 17),
+                  ]),
+                  const SizedBox(height: 7),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(5),
+                    child: SizedBox(
+                      height: 5,
+                      child: Container(color: Colors.white.withValues(alpha: 0.16)),
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text('Internal storage${mountedVolumes.isEmpty ? '' : ' · ${mountedVolumes.map(_mountedDriveLabel).join(' · ')}'}',
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall?.copyWith(color: muted)),
+                ]),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildContinueStrip(BuildContext context, ThemeData theme, ColorScheme colors) {
+    final player = PersistentAudioPlayer.instance;
+    final item = player.currentItem;
+    if (item == null || !player.isActive) {
+      return Container(
+        height: 82,
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(color: colors.surfaceContainerLow, borderRadius: BorderRadius.circular(18)),
+        child: Row(children: [
+          Icon(Icons.play_circle_outline_rounded, color: colors.onSurfaceVariant),
+          const SizedBox(width: 10),
+          Expanded(child: Text('Your recent playback and pinned folders will appear here.',
+            style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant))),
+        ]),
+      );
+    }
+    return SizedBox(
+      width: double.infinity,
+      height: 92,
+      child: Material(
+              color: colors.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(18),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(18),
+                onTap: () {
+                  Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => player.isMusic
+                    ? NowPlayingScreen(
+                        api: widget.api,
+                        queue: player.queue,
+                        initialIndex: player.currentIndex,
+                        resumeExisting: true,
+                      )
+                    : MediaPlayerScreen(
+                        api: widget.api, title: item.title, path: item.path, volume: item.volume,
+                        isVideo: true, queue: player.queue,
+                        initialIndex: player.currentIndex, resumeExisting: true,
+                      )));
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(13),
+                  child: Row(children: [
+                    Container(width: 48, height: 48, decoration: BoxDecoration(
+                      color: colors.primaryContainer, borderRadius: BorderRadius.circular(14)),
+                      child: Icon(player.isMusic ? Icons.music_note_rounded : Icons.movie_rounded, color: colors.primary)),
+                    const SizedBox(width: 11),
+                    Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('Continue listening', style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant)),
+                      const SizedBox(height: 3),
+                      Text(_cleanTrackTitle(item.title), maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                    ])),
+                    const Icon(Icons.play_arrow_rounded),
+                  ]),
+                ),
+              ),
+            ),
+    );
+  }
+
+  Future<void> _refreshStatus() async {
+    if (mounted) setState(() => _checking = true);
+    var online = false;
+    var volumes = <StorageVolume>[];
+    final stopwatch = Stopwatch()..start();
+    try {
+      await widget.api.authenticate();
+      stopwatch.stop();
+      online = true;
+      if (mounted) setState(() => _latency = stopwatch.elapsed);
+      try {
+        volumes = await widget.api.listStorageVolumes();
+      } catch (_) {
+        // The server can be reachable even when the optional volume endpoint fails.
+      }
+      try {
+        final recentFiles = await widget.api.listRecentFiles(volumes: volumes);
+        if (mounted) setState(() => _recentFiles = recentFiles);
+      } catch (_) {
+        // A recent-file scan failure must not mark a reachable server as offline.
+      }
+    } catch (_) {
+      stopwatch.stop();
+      online = false;
+      if (mounted) setState(() => _latency = null);
+    }
+    if (!mounted) return;
+    setState(() {
+      _serverOnline = online;
+      _volumes = volumes;
+      _checking = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final availableVolumes = _volumes.where((volume) => volume.available).length;
+    final appSettings = AppSettings.instance;
+
+    Widget sectionTitle(String title, {String? action, VoidCallback? onAction}) {
+      return Row(
+        children: [
+          Expanded(
+            child: Text(title, style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.4,
+            )),
+          ),
+          if (action != null)
+            TextButton(onPressed: onAction, child: Text(action)),
+        ],
+      );
+    }
+
+    Widget quickAction(IconData icon, String label, VoidCallback onTap) {
+      return Material(
+        color: colors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(18),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 15),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 23, color: colors.primary),
+                const SizedBox(height: 8),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(label, maxLines: 1,
+                    style: theme.textTheme.labelLarge?.copyWith(fontSize: 12, fontWeight: FontWeight.w600)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: colors.surface,
+      drawer: Drawer(
+        child: SafeArea(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: colors.primaryContainer,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Icon(Icons.cloud_rounded, color: colors.onPrimaryContainer),
+                    ),
+                    const SizedBox(height: 14),
+                    Text('HomeServer', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 3),
+                    Text('Storage & locations', style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 16, 8),
+                child: Text('STORAGE', style: theme.textTheme.labelSmall?.copyWith(
+                  color: colors.primary, fontWeight: FontWeight.w800, letterSpacing: 1.1,
+                )),
+              ),
+              ListTile(
+                leading: const Icon(Icons.phone_android_rounded),
+                title: const Text('Internal storage'),
+                subtitle: const Text('Browse server folders'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () {
+                  Navigator.pop(context);
+                  widget.onOpenExplore(ExploreCategory.files);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.usb_rounded),
+                title: const Text('USB & external drives'),
+                subtitle: Text(_checking ? 'Checking connected drives…' : '$availableVolumes of ${_volumes.length} available'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () {
+                  Navigator.pop(context);
+                  widget.onOpenExplore(ExploreCategory.drives);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.add_to_drive_rounded),
+                title: const Text('Connect a drive'),
+                subtitle: const Text('Set up USB / SSD / OTG access'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.of(context).push(MaterialPageRoute<void>(
+                    builder: (_) => const LocalStorageSetupScreen(),
+                  ));
+                },
+              ),
+              const Divider(height: 24),
+              ListTile(
+                leading: const Icon(Icons.switch_account_rounded),
+                title: const Text('Connection / Switch server'),
+                subtitle: const Text('Return to the server login screen'),
+                onTap: () {
+                  Navigator.pop(context);
+                  widget.onReturnToConnection?.call();
+                },
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 16, 8),
+                child: Text('TOOLS', style: theme.textTheme.labelSmall?.copyWith(
+                  color: colors.primary, fontWeight: FontWeight.w800, letterSpacing: 1.1,
+                )),
+              ),
+              ListTile(
+                leading: const Icon(Icons.swap_vert_rounded),
+                title: const Text('Transfers'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.of(context).push(MaterialPageRoute<void>(
+                    builder: (_) => const TransferManagerScreen(),
+                  ));
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.settings_outlined),
+                title: const Text('Settings'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.of(context).push(MaterialPageRoute<void>(
+                    builder: (_) => SettingsScreen(
+                      onOpenSavedServers: widget.onReturnToConnection,
+                    ),
+                  ));
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+      appBar: AppBar(
+        leading: Builder(
+          builder: (context) => IconButton(
+            tooltip: 'Open menu',
+            icon: const Icon(Icons.menu_rounded),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
+        backgroundColor: colors.surface,
+        surfaceTintColor: Colors.transparent,
+        titleSpacing: 20,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('HomeServer', style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.6,
+            )),
+            Text('Your private space', style: theme.textTheme.labelSmall?.copyWith(
+              color: colors.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+            )),
+          ],
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'Transfers',
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+              builder: (_) => const TransferManagerScreen(),
+            )),
+            icon: const Icon(Icons.swap_vert_rounded),
+          ),
+          IconButton(
+            tooltip: 'Refresh server status',
+            onPressed: _checking ? null : _refreshStatus,
+            icon: const Icon(Icons.refresh_rounded),
+          ),
+          const SizedBox(width: 6),
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: _refreshStatus,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.fromLTRB(18, 8, 18, 104 + MediaQuery.paddingOf(context).bottom),
+          children: [
+            _buildServerTelemetry(context, theme, colors),
+            const SizedBox(height: 18),
+            if (appSettings.showQuickActions) ...[
+            sectionTitle(
+              'Quick actions',
+              action: 'Edit',
+              onAction: _editQuickActions,
+            ),
+            const SizedBox(height: 12),
+            if (_quickActions.isEmpty)
+              OutlinedButton.icon(
+                onPressed: _editQuickActions,
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Add quick actions'),
+              )
+            else
+              GridView.count(
+                crossAxisCount: 4,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisSpacing: 9,
+                mainAxisSpacing: 9,
+                childAspectRatio: 0.88,
+                children: _quickActions.map((id) {
+                  final detail = _quickActionDetails[id]!;
+                  return quickAction(
+                    detail.icon,
+                    detail.label,
+                    () => _runQuickAction(id),
+                  );
+                }).toList(),
+              ),
+            ],
+            const SizedBox(height: 18),
+            sectionTitle('Continue'),
+            const SizedBox(height: 10),
+            AnimatedBuilder(
+              animation: PersistentAudioPlayer.instance,
+              builder: (context, _) => _buildContinueStrip(context, theme, colors),
+            ),
+            if (appSettings.showRecentFiles) ...[
+            const SizedBox(height: 18),
+            sectionTitle(
+              'Recent files',
+              action: 'Browse',
+              onAction: () => widget.onOpenExplore(ExploreCategory.files),
+            ),
+            const SizedBox(height: 10),
+            if (_recentFiles.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: colors.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.history_rounded, color: colors.onSurfaceVariant),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _checking
+                            ? 'Checking your folders for recent files…'
+                            : 'No recent files found in the scanned folders.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Material(
+                color: colors.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(20),
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  children: [
+                    for (var index = 0; index < _recentFiles.take(8).length; index++) ...[
+                      if (index > 0) const Divider(height: 1, indent: 68),
+                      ListTile(
+                        leading: Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: colors.secondaryContainer,
+                            borderRadius: BorderRadius.circular(13),
+                          ),
+                          child: Icon(
+                            _recentIcon(_recentFiles[index].file),
+                            color: colors.onSecondaryContainer,
+                          ),
+                        ),
+                        title: Text(
+                          _recentFiles[index].file.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        subtitle: Text(
+                          '${_formatBytes(_recentFiles[index].file.size)} · ${_relativeTime(_recentFiles[index].modifiedAt)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        trailing: PopupMenuButton<String>(
+                          tooltip: 'File actions',
+                          onSelected: (action) => _handleRecentAction(_recentFiles[index], action),
+                          itemBuilder: (_) => const [
+                            PopupMenuItem(value: 'download', child: Text('Download')),
+                            PopupMenuItem(value: 'share', child: Text('Share')),
+                            PopupMenuItem(value: 'rename', child: Text('Rename')),
+                            PopupMenuItem(value: 'delete', child: Text('Delete')),
+                          ],
+                        ),
+                        onTap: () {
+                          final recent = _recentFiles[index];
+                          if (recent.volume == null) {
+                            Navigator.of(context).push(MaterialPageRoute<void>(
+                              builder: (_) => FileManagerScreen(
+                                api: widget.api,
+                                initialPath: recent.parentPath,
+                              ),
+                            ));
+                          } else {
+                            Navigator.of(context).push(MaterialPageRoute<void>(
+                              builder: (_) => StorageBrowserScreen(
+                                api: widget.api,
+                                initialVolume: recent.volume,
+                                initialPath: recent.parentPath,
+                              ),
+                            ));
+                          }
+                        },
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            const SizedBox(height: 27),
+            ],
+
+          ],
+        ),
+      ),
+    );
+  }
+}
+).hasMatch(id);
+  }
+
+  String _mountedDriveLabel(StorageVolume volume) {
+    final name = volume.name.trim();
+    if (name.isEmpty || name == volume.id ||
+        RegExp(r'^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}
+    final host = base?.host ?? '';
+    final parts = host.split('.').map(int.tryParse).toList();
+    if (parts.length == 4 && parts.every((part) => part != null && part >= 0 && part <= 255)) {
+      final a = parts[0]!;
+      final b = parts[1]!;
+      if (a == 100 && b >= 64 && b <= 127) return 'Tailscale';
+      if (a == 192 && b == 168 || a == 10 || a == 172 && b >= 16 && b <= 31) {
+        return 'Local LAN';
+      }
+    }
+    return 'Remote';
+  }
+
+  Future<void> _quickUpload() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        allowMultiple: false,
+        withData: true,
+      );
+      if (result == null || result.files.isEmpty) return;
+      final file = result.files.single;
+      final bytes = file.bytes;
+      if (bytes == null) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not read the selected file.')),
+        );
+        return;
+      }
+      final completed = await TransferManager.instance.run(
+        name: file.name,
+        direction: 'Upload',
+        location: 'Internal storage · Root',
+        operation: (token, progress) => widget.api.uploadFile(
+          '',
+          file.name,
+          bytes,
+          cancelToken: token,
+          onSendProgress: progress,
+        ),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(completed ? 'Uploaded ${file.name}' : 'Upload did not complete. Check Transfers.'),
+      ));
+      if (completed) await _refreshStatus();
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not upload the selected file.')),
+      );
+    }
+  }
+
+  Widget _buildServerTelemetry(BuildContext context, ThemeData theme, ColorScheme colors) {
+    final transfers = TransferManager.instance;
+    final base = Uri.tryParse(widget.api.baseUrl);
+    final host = base == null ? 'Connected server' : '${base.host}:${base.hasPort ? base.port : (base.scheme == 'https' ? 443 : 80)}';
+    final route = _networkRouteLabel(base);
+    final online = _serverOnline == true;
+    final statusColor = _checking ? Colors.amber : online ? const Color(0xFF4ADE80) : const Color(0xFFF59E0B);
+    final cardColor = const Color(0xFF1E2025);
+    final foreground = Colors.white;
+    final muted = Colors.white.withValues(alpha: 0.62);
+    final mountedVolumes = _volumes.where((volume) => volume.available).toList(growable: false);
+    return AnimatedBuilder(
+      animation: transfers,
+      builder: (context, _) {
+        final activeTransfers = transfers.tasks.where((task) => task.status == TransferStatus.running).length;
+        return Container(
+          padding: const EdgeInsets.all(15),
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: online ? Colors.white.withValues(alpha: 0.075) : statusColor.withValues(alpha: 0.42),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                const Icon(Icons.dns_rounded, color: Colors.white70, size: 18),
+                const SizedBox(width: 8),
+                Expanded(child: Text(host, maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleSmall?.copyWith(color: foreground, fontWeight: FontWeight.w800))),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.075), borderRadius: BorderRadius.circular(20)),
+                  child: Text(route, style: theme.textTheme.labelSmall?.copyWith(color: foreground, fontWeight: FontWeight.w700)),
+                ),
+                const SizedBox(width: 7),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Container(width: 6, height: 6, decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle)),
+                    const SizedBox(width: 5),
+                    Text(_checking ? 'Checking' : online ? 'Online' : 'Offline',
+                      style: theme.textTheme.labelSmall?.copyWith(color: statusColor, fontWeight: FontWeight.w800)),
+                    if (online && _latency != null) ...[
+                      const SizedBox(width: 5),
+                      Text('${_latency!.inMilliseconds} ms',
+                        style: theme.textTheme.labelSmall?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
+                    ],
+                  ]),
+                ),
+                const SizedBox(width: 2),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  tooltip: 'Quick upload',
+                  onPressed: online ? _quickUpload : null,
+                  icon: const Icon(Icons.arrow_upward_rounded, color: Colors.white, size: 19),
+                ),
+              ]),
+              if (!online && !_checking) ...[
+                const SizedBox(height: 8),
+                Row(children: [
+                  Expanded(child: Text('Server is unreachable. Check the network or server service.',
+                    style: theme.textTheme.bodySmall?.copyWith(color: Colors.white70))),
+                  TextButton(onPressed: _refreshStatus, child: const Text('Reconnect')),
+                  TextButton(onPressed: widget.onReturnToConnection, child: const Text('Switch')),
+                ]),
+              ],
+              const SizedBox(height: 13),
+              Row(children: [
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('STORAGE', style: theme.textTheme.labelSmall?.copyWith(color: muted, letterSpacing: 0.7)),
+                  const SizedBox(height: 5),
+                  Text('Capacity unavailable', style: theme.textTheme.labelMedium?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
+                ])),
+                const SizedBox(width: 10),
+                Expanded(child: InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen())),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('TRANSFERS', style: theme.textTheme.labelSmall?.copyWith(color: muted, letterSpacing: 0.7)),
+                    const SizedBox(height: 5),
+                    Text('$activeTransfers active', style: theme.textTheme.labelMedium?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
+                  ]),
+                )),
+                const SizedBox(width: 10),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('LATENCY', style: theme.textTheme.labelSmall?.copyWith(color: muted, letterSpacing: 0.7)),
+                  const SizedBox(height: 5),
+                  Text(_checking ? 'Checking' : (_latency == null ? '—' : '${_latency!.inMilliseconds} ms'),
+                    style: theme.textTheme.labelMedium?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
+                ])),
+              ]),
+              const SizedBox(height: 11),
+              InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: () => widget.onOpenExplore(ExploreCategory.drives),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Text('MOUNTED PARTITIONS', style: theme.textTheme.labelSmall?.copyWith(color: muted, letterSpacing: 0.65)),
+                    const Spacer(),
+                    Text('${mountedVolumes.length + 1} mounted', style: theme.textTheme.labelSmall?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
+                    const SizedBox(width: 3),
+                    const Icon(Icons.chevron_right_rounded, color: Colors.white70, size: 17),
+                  ]),
+                  const SizedBox(height: 7),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(5),
+                    child: SizedBox(height: 5, child: Row(children: [
+                      Expanded(child: Container(color: const Color(0xFF60A5FA))),
+                      for (var i = 0; i < mountedVolumes.length; i++) ...[
+                        const SizedBox(width: 2),
+                        Expanded(child: Container(color: const Color(0xFF2DD4BF))),
+                      ],
+                    ])),
+                  ),
+                  const SizedBox(height: 5),
+                  Text('Internal storage${mountedVolumes.isEmpty ? '' : ' · ${mountedVolumes.map((volume) => volume.name).join(' · ')}'}',
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall?.copyWith(color: muted)),
+                ]),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildContinueStrip(BuildContext context, ThemeData theme, ColorScheme colors) {
+    final player = PersistentAudioPlayer.instance;
+    final item = player.currentItem;
+    if (item == null || !player.isActive) {
+      return Container(
+        height: 82,
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(color: colors.surfaceContainerLow, borderRadius: BorderRadius.circular(18)),
+        child: Row(children: [
+          Icon(Icons.play_circle_outline_rounded, color: colors.onSurfaceVariant),
+          const SizedBox(width: 10),
+          Expanded(child: Text('Your recent playback and pinned folders will appear here.',
+            style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant))),
+        ]),
+      );
+    }
+    return SizedBox(
+      height: 92,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          SizedBox(
+            width: 250,
+            child: Material(
+              color: colors.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(18),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(18),
+                onTap: () {
+                  Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => player.isMusic
+                    ? NowPlayingScreen(
+                        api: widget.api,
+                        queue: player.queue,
+                        initialIndex: player.currentIndex,
+                        resumeExisting: true,
+                      )
+                    : MediaPlayerScreen(
+                        api: widget.api, title: item.title, path: item.path, volume: item.volume,
+                        isVideo: true, queue: player.queue,
+                        initialIndex: player.currentIndex, resumeExisting: true,
+                      )));
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(13),
+                  child: Row(children: [
+                    Container(width: 48, height: 48, decoration: BoxDecoration(
+                      color: colors.primaryContainer, borderRadius: BorderRadius.circular(14)),
+                      child: Icon(player.isMusic ? Icons.music_note_rounded : Icons.movie_rounded, color: colors.primary)),
+                    const SizedBox(width: 11),
+                    Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('Continue listening', style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant)),
+                      const SizedBox(height: 3),
+                      Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                    ])),
+                    const Icon(Icons.play_arrow_rounded),
+                  ]),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _refreshStatus() async {
+    if (mounted) setState(() => _checking = true);
+    var online = false;
+    var volumes = <StorageVolume>[];
+    final stopwatch = Stopwatch()..start();
+    try {
+      await widget.api.authenticate();
+      stopwatch.stop();
+      online = true;
+      if (mounted) setState(() => _latency = stopwatch.elapsed);
+      try {
+        volumes = await widget.api.listStorageVolumes();
+      } catch (_) {
+        // The server can be reachable even when the optional volume endpoint fails.
+      }
+      try {
+        final recentFiles = await widget.api.listRecentFiles(volumes: volumes);
+        if (mounted) setState(() => _recentFiles = recentFiles);
+      } catch (_) {
+        // A recent-file scan failure must not mark a reachable server as offline.
+      }
+    } catch (_) {
+      stopwatch.stop();
+      online = false;
+      if (mounted) setState(() => _latency = null);
+    }
+    if (!mounted) return;
+    setState(() {
+      _serverOnline = online;
+      _volumes = volumes;
+      _checking = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final availableVolumes = _volumes.where((volume) => volume.available).length;
+    final appSettings = AppSettings.instance;
+
+    Widget sectionTitle(String title, {String? action, VoidCallback? onAction}) {
+      return Row(
+        children: [
+          Expanded(
+            child: Text(title, style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.4,
+            )),
+          ),
+          if (action != null)
+            TextButton(onPressed: onAction, child: Text(action)),
+        ],
+      );
+    }
+
+    Widget quickAction(IconData icon, String label, VoidCallback onTap) {
+      return Material(
+        color: colors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(18),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 15),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 23, color: colors.primary),
+                const SizedBox(height: 8),
+                Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: colors.surface,
+      drawer: Drawer(
+        child: SafeArea(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: colors.primaryContainer,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Icon(Icons.cloud_rounded, color: colors.onPrimaryContainer),
+                    ),
+                    const SizedBox(height: 14),
+                    Text('HomeServer', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 3),
+                    Text('Storage & locations', style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 16, 8),
+                child: Text('STORAGE', style: theme.textTheme.labelSmall?.copyWith(
+                  color: colors.primary, fontWeight: FontWeight.w800, letterSpacing: 1.1,
+                )),
+              ),
+              ListTile(
+                leading: const Icon(Icons.phone_android_rounded),
+                title: const Text('Internal storage'),
+                subtitle: const Text('Browse server folders'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () {
+                  Navigator.pop(context);
+                  widget.onOpenExplore(ExploreCategory.files);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.usb_rounded),
+                title: const Text('USB & external drives'),
+                subtitle: Text(_checking ? 'Checking connected drives…' : '$availableVolumes of ${_volumes.length} available'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () {
+                  Navigator.pop(context);
+                  widget.onOpenExplore(ExploreCategory.drives);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.add_to_drive_rounded),
+                title: const Text('Connect a drive'),
+                subtitle: const Text('Set up USB / SSD / OTG access'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.of(context).push(MaterialPageRoute<void>(
+                    builder: (_) => const LocalStorageSetupScreen(),
+                  ));
+                },
+              ),
+              const Divider(height: 24),
+              ListTile(
+                leading: const Icon(Icons.switch_account_rounded),
+                title: const Text('Connection / Switch server'),
+                subtitle: const Text('Return to the server login screen'),
+                onTap: () {
+                  Navigator.pop(context);
+                  widget.onReturnToConnection?.call();
+                },
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 16, 8),
+                child: Text('TOOLS', style: theme.textTheme.labelSmall?.copyWith(
+                  color: colors.primary, fontWeight: FontWeight.w800, letterSpacing: 1.1,
+                )),
+              ),
+              ListTile(
+                leading: const Icon(Icons.swap_vert_rounded),
+                title: const Text('Transfers'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.of(context).push(MaterialPageRoute<void>(
+                    builder: (_) => const TransferManagerScreen(),
+                  ));
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.settings_outlined),
+                title: const Text('Settings'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.of(context).push(MaterialPageRoute<void>(
+                    builder: (_) => SettingsScreen(
+                      onOpenSavedServers: widget.onReturnToConnection,
+                    ),
+                  ));
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+      appBar: AppBar(
+        leading: Builder(
+          builder: (context) => IconButton(
+            tooltip: 'Open menu',
+            icon: const Icon(Icons.menu_rounded),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
+        backgroundColor: colors.surface,
+        surfaceTintColor: Colors.transparent,
+        titleSpacing: 20,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('HomeServer', style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.6,
+            )),
+            Text('Your private space', style: theme.textTheme.labelSmall?.copyWith(
+              color: colors.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+            )),
+          ],
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'Transfers',
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+              builder: (_) => const TransferManagerScreen(),
+            )),
+            icon: const Icon(Icons.swap_vert_rounded),
+          ),
+          IconButton(
+            tooltip: 'Refresh server status',
+            onPressed: _checking ? null : _refreshStatus,
+            icon: const Icon(Icons.refresh_rounded),
+          ),
+          const SizedBox(width: 6),
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: _refreshStatus,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.fromLTRB(18, 8, 18, 104 + MediaQuery.paddingOf(context).bottom),
+          children: [
+            _buildServerTelemetry(context, theme, colors),
+            const SizedBox(height: 27),
+            if (appSettings.showQuickActions) ...[
+            sectionTitle(
+              'Quick actions',
+              action: 'Edit',
+              onAction: _editQuickActions,
+            ),
+            const SizedBox(height: 12),
+            if (_quickActions.isEmpty)
+              OutlinedButton.icon(
+                onPressed: _editQuickActions,
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Add quick actions'),
+              )
+            else
+              GridView.count(
+                crossAxisCount: 4,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisSpacing: 9,
+                mainAxisSpacing: 9,
+                childAspectRatio: 0.88,
+                children: _quickActions.map((id) {
+                  final detail = _quickActionDetails[id]!;
+                  return quickAction(
+                    detail.icon,
+                    detail.label,
+                    () => _runQuickAction(id),
+                  );
+                }).toList(),
+              ),
+            ],
+            const SizedBox(height: 22),
+            sectionTitle('Continue'),
+            const SizedBox(height: 10),
+            AnimatedBuilder(
+              animation: PersistentAudioPlayer.instance,
+              builder: (context, _) => _buildContinueStrip(context, theme, colors),
+            ),
+            if (appSettings.showRecentFiles) ...[
+            const SizedBox(height: 27),
+            sectionTitle(
+              'Recent files',
+              action: 'Browse',
+              onAction: () => widget.onOpenExplore(ExploreCategory.files),
+            ),
+            const SizedBox(height: 10),
+            if (_recentFiles.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: colors.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.history_rounded, color: colors.onSurfaceVariant),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _checking
+                            ? 'Checking your folders for recent files…'
+                            : 'No recent files found in the scanned folders.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Material(
+                color: colors.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(20),
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  children: [
+                    for (var index = 0; index < _recentFiles.take(8).length; index++) ...[
+                      if (index > 0) const Divider(height: 1, indent: 68),
+                      ListTile(
+                        leading: Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: colors.secondaryContainer,
+                            borderRadius: BorderRadius.circular(13),
+                          ),
+                          child: Icon(
+                            _recentIcon(_recentFiles[index].file),
+                            color: colors.onSecondaryContainer,
+                          ),
+                        ),
+                        title: Text(
+                          _recentFiles[index].file.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        subtitle: Text(
+                          '${_formatBytes(_recentFiles[index].file.size)} · ${_relativeTime(_recentFiles[index].modifiedAt)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        trailing: PopupMenuButton<String>(
+                          tooltip: 'File actions',
+                          onSelected: (action) => _handleRecentAction(_recentFiles[index], action),
+                          itemBuilder: (_) => const [
+                            PopupMenuItem(value: 'download', child: Text('Download')),
+                            PopupMenuItem(value: 'share', child: Text('Share')),
+                            PopupMenuItem(value: 'rename', child: Text('Rename')),
+                            PopupMenuItem(value: 'delete', child: Text('Delete')),
+                          ],
+                        ),
+                        onTap: () {
+                          final recent = _recentFiles[index];
+                          if (recent.volume == null) {
+                            Navigator.of(context).push(MaterialPageRoute<void>(
+                              builder: (_) => FileManagerScreen(
+                                api: widget.api,
+                                initialPath: recent.parentPath,
+                              ),
+                            ));
+                          } else {
+                            Navigator.of(context).push(MaterialPageRoute<void>(
+                              builder: (_) => StorageBrowserScreen(
+                                api: widget.api,
+                                initialVolume: recent.volume,
+                                initialPath: recent.parentPath,
+                              ),
+                            ));
+                          }
+                        },
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            const SizedBox(height: 27),
+            ],
+
+          ],
+        ),
+      ),
+    );
+  }
+}
+, caseSensitive: false).hasMatch(name)) {
+      return volume.id == 'usb1' ? 'USB drive 1' : volume.id == 'usb2' ? 'USB drive 2' : 'USB / SSD';
+    }
+    return name;
+  }
+
+  String _cleanTrackTitle(String title) {
+    final withoutExtension = title.replaceFirst(RegExp(r'\.[^.\\/]+
+    final host = base?.host ?? '';
+    final parts = host.split('.').map(int.tryParse).toList();
+    if (parts.length == 4 && parts.every((part) => part != null && part >= 0 && part <= 255)) {
+      final a = parts[0]!;
+      final b = parts[1]!;
+      if (a == 100 && b >= 64 && b <= 127) return 'Tailscale';
+      if (a == 192 && b == 168 || a == 10 || a == 172 && b >= 16 && b <= 31) {
+        return 'Local LAN';
+      }
+    }
+    return 'Remote';
+  }
+
+  Future<void> _quickUpload() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        allowMultiple: false,
+        withData: true,
+      );
+      if (result == null || result.files.isEmpty) return;
+      final file = result.files.single;
+      final bytes = file.bytes;
+      if (bytes == null) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not read the selected file.')),
+        );
+        return;
+      }
+      final completed = await TransferManager.instance.run(
+        name: file.name,
+        direction: 'Upload',
+        location: 'Internal storage · Root',
+        operation: (token, progress) => widget.api.uploadFile(
+          '',
+          file.name,
+          bytes,
+          cancelToken: token,
+          onSendProgress: progress,
+        ),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(completed ? 'Uploaded ${file.name}' : 'Upload did not complete. Check Transfers.'),
+      ));
+      if (completed) await _refreshStatus();
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not upload the selected file.')),
+      );
+    }
+  }
+
+  Widget _buildServerTelemetry(BuildContext context, ThemeData theme, ColorScheme colors) {
+    final transfers = TransferManager.instance;
+    final base = Uri.tryParse(widget.api.baseUrl);
+    final host = base == null ? 'Connected server' : '${base.host}:${base.hasPort ? base.port : (base.scheme == 'https' ? 443 : 80)}';
+    final route = _networkRouteLabel(base);
+    final online = _serverOnline == true;
+    final statusColor = _checking ? Colors.amber : online ? const Color(0xFF4ADE80) : const Color(0xFFF59E0B);
+    final cardColor = const Color(0xFF1E2025);
+    final foreground = Colors.white;
+    final muted = Colors.white.withValues(alpha: 0.62);
+    final mountedVolumes = _volumes.where((volume) => volume.available).toList(growable: false);
+    return AnimatedBuilder(
+      animation: transfers,
+      builder: (context, _) {
+        final activeTransfers = transfers.tasks.where((task) => task.status == TransferStatus.running).length;
+        return Container(
+          padding: const EdgeInsets.all(15),
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: online ? Colors.white.withValues(alpha: 0.075) : statusColor.withValues(alpha: 0.42),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                const Icon(Icons.dns_rounded, color: Colors.white70, size: 18),
+                const SizedBox(width: 8),
+                Expanded(child: Text(host, maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleSmall?.copyWith(color: foreground, fontWeight: FontWeight.w800))),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.075), borderRadius: BorderRadius.circular(20)),
+                  child: Text(route, style: theme.textTheme.labelSmall?.copyWith(color: foreground, fontWeight: FontWeight.w700)),
+                ),
+                const SizedBox(width: 7),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Container(width: 6, height: 6, decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle)),
+                    const SizedBox(width: 5),
+                    Text(_checking ? 'Checking' : online ? 'Online' : 'Offline',
+                      style: theme.textTheme.labelSmall?.copyWith(color: statusColor, fontWeight: FontWeight.w800)),
+                    if (online && _latency != null) ...[
+                      const SizedBox(width: 5),
+                      Text('${_latency!.inMilliseconds} ms',
+                        style: theme.textTheme.labelSmall?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
+                    ],
+                  ]),
+                ),
+                const SizedBox(width: 2),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  tooltip: 'Quick upload',
+                  onPressed: online ? _quickUpload : null,
+                  icon: const Icon(Icons.arrow_upward_rounded, color: Colors.white, size: 19),
+                ),
+              ]),
+              if (!online && !_checking) ...[
+                const SizedBox(height: 8),
+                Row(children: [
+                  Expanded(child: Text('Server is unreachable. Check the network or server service.',
+                    style: theme.textTheme.bodySmall?.copyWith(color: Colors.white70))),
+                  TextButton(onPressed: _refreshStatus, child: const Text('Reconnect')),
+                  TextButton(onPressed: widget.onReturnToConnection, child: const Text('Switch')),
+                ]),
+              ],
+              const SizedBox(height: 13),
+              Row(children: [
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('STORAGE', style: theme.textTheme.labelSmall?.copyWith(color: muted, letterSpacing: 0.7)),
+                  const SizedBox(height: 5),
+                  Text('Capacity unavailable', style: theme.textTheme.labelMedium?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
+                ])),
+                const SizedBox(width: 10),
+                Expanded(child: InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen())),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('TRANSFERS', style: theme.textTheme.labelSmall?.copyWith(color: muted, letterSpacing: 0.7)),
+                    const SizedBox(height: 5),
+                    Text('$activeTransfers active', style: theme.textTheme.labelMedium?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
+                  ]),
+                )),
+                const SizedBox(width: 10),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('LATENCY', style: theme.textTheme.labelSmall?.copyWith(color: muted, letterSpacing: 0.7)),
+                  const SizedBox(height: 5),
+                  Text(_checking ? 'Checking' : (_latency == null ? '—' : '${_latency!.inMilliseconds} ms'),
+                    style: theme.textTheme.labelMedium?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
+                ])),
+              ]),
+              const SizedBox(height: 11),
+              InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: () => widget.onOpenExplore(ExploreCategory.drives),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Text('MOUNTED PARTITIONS', style: theme.textTheme.labelSmall?.copyWith(color: muted, letterSpacing: 0.65)),
+                    const Spacer(),
+                    Text('${mountedVolumes.length + 1} mounted', style: theme.textTheme.labelSmall?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
+                    const SizedBox(width: 3),
+                    const Icon(Icons.chevron_right_rounded, color: Colors.white70, size: 17),
+                  ]),
+                  const SizedBox(height: 7),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(5),
+                    child: SizedBox(height: 5, child: Row(children: [
+                      Expanded(child: Container(color: const Color(0xFF60A5FA))),
+                      for (var i = 0; i < mountedVolumes.length; i++) ...[
+                        const SizedBox(width: 2),
+                        Expanded(child: Container(color: const Color(0xFF2DD4BF))),
+                      ],
+                    ])),
+                  ),
+                  const SizedBox(height: 5),
+                  Text('Internal storage${mountedVolumes.isEmpty ? '' : ' · ${mountedVolumes.map((volume) => volume.name).join(' · ')}'}',
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall?.copyWith(color: muted)),
+                ]),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildContinueStrip(BuildContext context, ThemeData theme, ColorScheme colors) {
+    final player = PersistentAudioPlayer.instance;
+    final item = player.currentItem;
+    if (item == null || !player.isActive) {
+      return Container(
+        height: 82,
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(color: colors.surfaceContainerLow, borderRadius: BorderRadius.circular(18)),
+        child: Row(children: [
+          Icon(Icons.play_circle_outline_rounded, color: colors.onSurfaceVariant),
+          const SizedBox(width: 10),
+          Expanded(child: Text('Your recent playback and pinned folders will appear here.',
+            style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant))),
+        ]),
+      );
+    }
+    return SizedBox(
+      height: 92,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          SizedBox(
+            width: 250,
+            child: Material(
+              color: colors.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(18),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(18),
+                onTap: () {
+                  Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => player.isMusic
+                    ? NowPlayingScreen(
+                        api: widget.api,
+                        queue: player.queue,
+                        initialIndex: player.currentIndex,
+                        resumeExisting: true,
+                      )
+                    : MediaPlayerScreen(
+                        api: widget.api, title: item.title, path: item.path, volume: item.volume,
+                        isVideo: true, queue: player.queue,
+                        initialIndex: player.currentIndex, resumeExisting: true,
+                      )));
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(13),
+                  child: Row(children: [
+                    Container(width: 48, height: 48, decoration: BoxDecoration(
+                      color: colors.primaryContainer, borderRadius: BorderRadius.circular(14)),
+                      child: Icon(player.isMusic ? Icons.music_note_rounded : Icons.movie_rounded, color: colors.primary)),
+                    const SizedBox(width: 11),
+                    Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('Continue listening', style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant)),
+                      const SizedBox(height: 3),
+                      Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                    ])),
+                    const Icon(Icons.play_arrow_rounded),
+                  ]),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _refreshStatus() async {
+    if (mounted) setState(() => _checking = true);
+    var online = false;
+    var volumes = <StorageVolume>[];
+    final stopwatch = Stopwatch()..start();
+    try {
+      await widget.api.authenticate();
+      stopwatch.stop();
+      online = true;
+      if (mounted) setState(() => _latency = stopwatch.elapsed);
+      try {
+        volumes = await widget.api.listStorageVolumes();
+      } catch (_) {
+        // The server can be reachable even when the optional volume endpoint fails.
+      }
+      try {
+        final recentFiles = await widget.api.listRecentFiles(volumes: volumes);
+        if (mounted) setState(() => _recentFiles = recentFiles);
+      } catch (_) {
+        // A recent-file scan failure must not mark a reachable server as offline.
+      }
+    } catch (_) {
+      stopwatch.stop();
+      online = false;
+      if (mounted) setState(() => _latency = null);
+    }
+    if (!mounted) return;
+    setState(() {
+      _serverOnline = online;
+      _volumes = volumes;
+      _checking = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final availableVolumes = _volumes.where((volume) => volume.available).length;
+    final appSettings = AppSettings.instance;
+
+    Widget sectionTitle(String title, {String? action, VoidCallback? onAction}) {
+      return Row(
+        children: [
+          Expanded(
+            child: Text(title, style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.4,
+            )),
+          ),
+          if (action != null)
+            TextButton(onPressed: onAction, child: Text(action)),
+        ],
+      );
+    }
+
+    Widget quickAction(IconData icon, String label, VoidCallback onTap) {
+      return Material(
+        color: colors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(18),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 15),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 23, color: colors.primary),
+                const SizedBox(height: 8),
+                Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: colors.surface,
+      drawer: Drawer(
+        child: SafeArea(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: colors.primaryContainer,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Icon(Icons.cloud_rounded, color: colors.onPrimaryContainer),
+                    ),
+                    const SizedBox(height: 14),
+                    Text('HomeServer', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 3),
+                    Text('Storage & locations', style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 16, 8),
+                child: Text('STORAGE', style: theme.textTheme.labelSmall?.copyWith(
+                  color: colors.primary, fontWeight: FontWeight.w800, letterSpacing: 1.1,
+                )),
+              ),
+              ListTile(
+                leading: const Icon(Icons.phone_android_rounded),
+                title: const Text('Internal storage'),
+                subtitle: const Text('Browse server folders'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () {
+                  Navigator.pop(context);
+                  widget.onOpenExplore(ExploreCategory.files);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.usb_rounded),
+                title: const Text('USB & external drives'),
+                subtitle: Text(_checking ? 'Checking connected drives…' : '$availableVolumes of ${_volumes.length} available'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () {
+                  Navigator.pop(context);
+                  widget.onOpenExplore(ExploreCategory.drives);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.add_to_drive_rounded),
+                title: const Text('Connect a drive'),
+                subtitle: const Text('Set up USB / SSD / OTG access'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.of(context).push(MaterialPageRoute<void>(
+                    builder: (_) => const LocalStorageSetupScreen(),
+                  ));
+                },
+              ),
+              const Divider(height: 24),
+              ListTile(
+                leading: const Icon(Icons.switch_account_rounded),
+                title: const Text('Connection / Switch server'),
+                subtitle: const Text('Return to the server login screen'),
+                onTap: () {
+                  Navigator.pop(context);
+                  widget.onReturnToConnection?.call();
+                },
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 16, 8),
+                child: Text('TOOLS', style: theme.textTheme.labelSmall?.copyWith(
+                  color: colors.primary, fontWeight: FontWeight.w800, letterSpacing: 1.1,
+                )),
+              ),
+              ListTile(
+                leading: const Icon(Icons.swap_vert_rounded),
+                title: const Text('Transfers'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.of(context).push(MaterialPageRoute<void>(
+                    builder: (_) => const TransferManagerScreen(),
+                  ));
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.settings_outlined),
+                title: const Text('Settings'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.of(context).push(MaterialPageRoute<void>(
+                    builder: (_) => SettingsScreen(
+                      onOpenSavedServers: widget.onReturnToConnection,
+                    ),
+                  ));
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+      appBar: AppBar(
+        leading: Builder(
+          builder: (context) => IconButton(
+            tooltip: 'Open menu',
+            icon: const Icon(Icons.menu_rounded),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
+        backgroundColor: colors.surface,
+        surfaceTintColor: Colors.transparent,
+        titleSpacing: 20,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('HomeServer', style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.6,
+            )),
+            Text('Your private space', style: theme.textTheme.labelSmall?.copyWith(
+              color: colors.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+            )),
+          ],
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'Transfers',
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+              builder: (_) => const TransferManagerScreen(),
+            )),
+            icon: const Icon(Icons.swap_vert_rounded),
+          ),
+          IconButton(
+            tooltip: 'Refresh server status',
+            onPressed: _checking ? null : _refreshStatus,
+            icon: const Icon(Icons.refresh_rounded),
+          ),
+          const SizedBox(width: 6),
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: _refreshStatus,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.fromLTRB(18, 8, 18, 104 + MediaQuery.paddingOf(context).bottom),
+          children: [
+            _buildServerTelemetry(context, theme, colors),
+            const SizedBox(height: 27),
+            if (appSettings.showQuickActions) ...[
+            sectionTitle(
+              'Quick actions',
+              action: 'Edit',
+              onAction: _editQuickActions,
+            ),
+            const SizedBox(height: 12),
+            if (_quickActions.isEmpty)
+              OutlinedButton.icon(
+                onPressed: _editQuickActions,
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Add quick actions'),
+              )
+            else
+              GridView.count(
+                crossAxisCount: 4,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisSpacing: 9,
+                mainAxisSpacing: 9,
+                childAspectRatio: 0.88,
+                children: _quickActions.map((id) {
+                  final detail = _quickActionDetails[id]!;
+                  return quickAction(
+                    detail.icon,
+                    detail.label,
+                    () => _runQuickAction(id),
+                  );
+                }).toList(),
+              ),
+            ],
+            const SizedBox(height: 22),
+            sectionTitle('Continue'),
+            const SizedBox(height: 10),
+            AnimatedBuilder(
+              animation: PersistentAudioPlayer.instance,
+              builder: (context, _) => _buildContinueStrip(context, theme, colors),
+            ),
+            if (appSettings.showRecentFiles) ...[
+            const SizedBox(height: 27),
+            sectionTitle(
+              'Recent files',
+              action: 'Browse',
+              onAction: () => widget.onOpenExplore(ExploreCategory.files),
+            ),
+            const SizedBox(height: 10),
+            if (_recentFiles.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: colors.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.history_rounded, color: colors.onSurfaceVariant),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _checking
+                            ? 'Checking your folders for recent files…'
+                            : 'No recent files found in the scanned folders.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Material(
+                color: colors.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(20),
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  children: [
+                    for (var index = 0; index < _recentFiles.take(8).length; index++) ...[
+                      if (index > 0) const Divider(height: 1, indent: 68),
+                      ListTile(
+                        leading: Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: colors.secondaryContainer,
+                            borderRadius: BorderRadius.circular(13),
+                          ),
+                          child: Icon(
+                            _recentIcon(_recentFiles[index].file),
+                            color: colors.onSecondaryContainer,
+                          ),
+                        ),
+                        title: Text(
+                          _recentFiles[index].file.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        subtitle: Text(
+                          '${_formatBytes(_recentFiles[index].file.size)} · ${_relativeTime(_recentFiles[index].modifiedAt)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        trailing: PopupMenuButton<String>(
+                          tooltip: 'File actions',
+                          onSelected: (action) => _handleRecentAction(_recentFiles[index], action),
+                          itemBuilder: (_) => const [
+                            PopupMenuItem(value: 'download', child: Text('Download')),
+                            PopupMenuItem(value: 'share', child: Text('Share')),
+                            PopupMenuItem(value: 'rename', child: Text('Rename')),
+                            PopupMenuItem(value: 'delete', child: Text('Delete')),
+                          ],
+                        ),
+                        onTap: () {
+                          final recent = _recentFiles[index];
+                          if (recent.volume == null) {
+                            Navigator.of(context).push(MaterialPageRoute<void>(
+                              builder: (_) => FileManagerScreen(
+                                api: widget.api,
+                                initialPath: recent.parentPath,
+                              ),
+                            ));
+                          } else {
+                            Navigator.of(context).push(MaterialPageRoute<void>(
+                              builder: (_) => StorageBrowserScreen(
+                                api: widget.api,
+                                initialVolume: recent.volume,
+                                initialPath: recent.parentPath,
+                              ),
+                            ));
+                          }
+                        },
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            const SizedBox(height: 27),
+            ],
+
+          ],
+        ),
+      ),
+    );
+  }
+}
+), '');
+    return withoutExtension.replaceFirst(RegExp(r'[\\s-]+
+    final host = base?.host ?? '';
+    final parts = host.split('.').map(int.tryParse).toList();
+    if (parts.length == 4 && parts.every((part) => part != null && part >= 0 && part <= 255)) {
+      final a = parts[0]!;
+      final b = parts[1]!;
+      if (a == 100 && b >= 64 && b <= 127) return 'Tailscale';
+      if (a == 192 && b == 168 || a == 10 || a == 172 && b >= 16 && b <= 31) {
+        return 'Local LAN';
+      }
+    }
+    return 'Remote';
+  }
+
+  Future<void> _quickUpload() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        allowMultiple: false,
+        withData: true,
+      );
+      if (result == null || result.files.isEmpty) return;
+      final file = result.files.single;
+      final bytes = file.bytes;
+      if (bytes == null) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not read the selected file.')),
+        );
+        return;
+      }
+      final completed = await TransferManager.instance.run(
+        name: file.name,
+        direction: 'Upload',
+        location: 'Internal storage · Root',
+        operation: (token, progress) => widget.api.uploadFile(
+          '',
+          file.name,
+          bytes,
+          cancelToken: token,
+          onSendProgress: progress,
+        ),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(completed ? 'Uploaded ${file.name}' : 'Upload did not complete. Check Transfers.'),
+      ));
+      if (completed) await _refreshStatus();
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not upload the selected file.')),
+      );
+    }
+  }
+
+  Widget _buildServerTelemetry(BuildContext context, ThemeData theme, ColorScheme colors) {
+    final transfers = TransferManager.instance;
+    final base = Uri.tryParse(widget.api.baseUrl);
+    final host = base == null ? 'Connected server' : '${base.host}:${base.hasPort ? base.port : (base.scheme == 'https' ? 443 : 80)}';
+    final route = _networkRouteLabel(base);
+    final online = _serverOnline == true;
+    final statusColor = _checking ? Colors.amber : online ? const Color(0xFF4ADE80) : const Color(0xFFF59E0B);
+    final cardColor = const Color(0xFF1E2025);
+    final foreground = Colors.white;
+    final muted = Colors.white.withValues(alpha: 0.62);
+    final mountedVolumes = _volumes.where((volume) => volume.available).toList(growable: false);
+    return AnimatedBuilder(
+      animation: transfers,
+      builder: (context, _) {
+        final activeTransfers = transfers.tasks.where((task) => task.status == TransferStatus.running).length;
+        return Container(
+          padding: const EdgeInsets.all(15),
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: online ? Colors.white.withValues(alpha: 0.075) : statusColor.withValues(alpha: 0.42),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                const Icon(Icons.dns_rounded, color: Colors.white70, size: 18),
+                const SizedBox(width: 8),
+                Expanded(child: Text(host, maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleSmall?.copyWith(color: foreground, fontWeight: FontWeight.w800))),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.075), borderRadius: BorderRadius.circular(20)),
+                  child: Text(route, style: theme.textTheme.labelSmall?.copyWith(color: foreground, fontWeight: FontWeight.w700)),
+                ),
+                const SizedBox(width: 7),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Container(width: 6, height: 6, decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle)),
+                    const SizedBox(width: 5),
+                    Text(_checking ? 'Checking' : online ? 'Online' : 'Offline',
+                      style: theme.textTheme.labelSmall?.copyWith(color: statusColor, fontWeight: FontWeight.w800)),
+                    if (online && _latency != null) ...[
+                      const SizedBox(width: 5),
+                      Text('${_latency!.inMilliseconds} ms',
+                        style: theme.textTheme.labelSmall?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
+                    ],
+                  ]),
+                ),
+                const SizedBox(width: 2),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  tooltip: 'Quick upload',
+                  onPressed: online ? _quickUpload : null,
+                  icon: const Icon(Icons.arrow_upward_rounded, color: Colors.white, size: 19),
+                ),
+              ]),
+              if (!online && !_checking) ...[
+                const SizedBox(height: 8),
+                Row(children: [
+                  Expanded(child: Text('Server is unreachable. Check the network or server service.',
+                    style: theme.textTheme.bodySmall?.copyWith(color: Colors.white70))),
+                  TextButton(onPressed: _refreshStatus, child: const Text('Reconnect')),
+                  TextButton(onPressed: widget.onReturnToConnection, child: const Text('Switch')),
+                ]),
+              ],
+              const SizedBox(height: 13),
+              Row(children: [
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('STORAGE', style: theme.textTheme.labelSmall?.copyWith(color: muted, letterSpacing: 0.7)),
+                  const SizedBox(height: 5),
+                  Text('Capacity unavailable', style: theme.textTheme.labelMedium?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
+                ])),
+                const SizedBox(width: 10),
+                Expanded(child: InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen())),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('TRANSFERS', style: theme.textTheme.labelSmall?.copyWith(color: muted, letterSpacing: 0.7)),
+                    const SizedBox(height: 5),
+                    Text('$activeTransfers active', style: theme.textTheme.labelMedium?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
+                  ]),
+                )),
+                const SizedBox(width: 10),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('LATENCY', style: theme.textTheme.labelSmall?.copyWith(color: muted, letterSpacing: 0.7)),
+                  const SizedBox(height: 5),
+                  Text(_checking ? 'Checking' : (_latency == null ? '—' : '${_latency!.inMilliseconds} ms'),
+                    style: theme.textTheme.labelMedium?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
+                ])),
+              ]),
+              const SizedBox(height: 11),
+              InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: () => widget.onOpenExplore(ExploreCategory.drives),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Text('MOUNTED PARTITIONS', style: theme.textTheme.labelSmall?.copyWith(color: muted, letterSpacing: 0.65)),
+                    const Spacer(),
+                    Text('${mountedVolumes.length + 1} mounted', style: theme.textTheme.labelSmall?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
+                    const SizedBox(width: 3),
+                    const Icon(Icons.chevron_right_rounded, color: Colors.white70, size: 17),
+                  ]),
+                  const SizedBox(height: 7),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(5),
+                    child: SizedBox(height: 5, child: Row(children: [
+                      Expanded(child: Container(color: const Color(0xFF60A5FA))),
+                      for (var i = 0; i < mountedVolumes.length; i++) ...[
+                        const SizedBox(width: 2),
+                        Expanded(child: Container(color: const Color(0xFF2DD4BF))),
+                      ],
+                    ])),
+                  ),
+                  const SizedBox(height: 5),
+                  Text('Internal storage${mountedVolumes.isEmpty ? '' : ' · ${mountedVolumes.map((volume) => volume.name).join(' · ')}'}',
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall?.copyWith(color: muted)),
+                ]),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildContinueStrip(BuildContext context, ThemeData theme, ColorScheme colors) {
+    final player = PersistentAudioPlayer.instance;
+    final item = player.currentItem;
+    if (item == null || !player.isActive) {
+      return Container(
+        height: 82,
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(color: colors.surfaceContainerLow, borderRadius: BorderRadius.circular(18)),
+        child: Row(children: [
+          Icon(Icons.play_circle_outline_rounded, color: colors.onSurfaceVariant),
+          const SizedBox(width: 10),
+          Expanded(child: Text('Your recent playback and pinned folders will appear here.',
+            style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant))),
+        ]),
+      );
+    }
+    return SizedBox(
+      height: 92,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          SizedBox(
+            width: 250,
+            child: Material(
+              color: colors.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(18),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(18),
+                onTap: () {
+                  Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => player.isMusic
+                    ? NowPlayingScreen(
+                        api: widget.api,
+                        queue: player.queue,
+                        initialIndex: player.currentIndex,
+                        resumeExisting: true,
+                      )
+                    : MediaPlayerScreen(
+                        api: widget.api, title: item.title, path: item.path, volume: item.volume,
+                        isVideo: true, queue: player.queue,
+                        initialIndex: player.currentIndex, resumeExisting: true,
+                      )));
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(13),
+                  child: Row(children: [
+                    Container(width: 48, height: 48, decoration: BoxDecoration(
+                      color: colors.primaryContainer, borderRadius: BorderRadius.circular(14)),
+                      child: Icon(player.isMusic ? Icons.music_note_rounded : Icons.movie_rounded, color: colors.primary)),
+                    const SizedBox(width: 11),
+                    Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('Continue listening', style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant)),
+                      const SizedBox(height: 3),
+                      Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                    ])),
+                    const Icon(Icons.play_arrow_rounded),
+                  ]),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _refreshStatus() async {
+    if (mounted) setState(() => _checking = true);
+    var online = false;
+    var volumes = <StorageVolume>[];
+    final stopwatch = Stopwatch()..start();
+    try {
+      await widget.api.authenticate();
+      stopwatch.stop();
+      online = true;
+      if (mounted) setState(() => _latency = stopwatch.elapsed);
+      try {
+        volumes = await widget.api.listStorageVolumes();
+      } catch (_) {
+        // The server can be reachable even when the optional volume endpoint fails.
+      }
+      try {
+        final recentFiles = await widget.api.listRecentFiles(volumes: volumes);
+        if (mounted) setState(() => _recentFiles = recentFiles);
+      } catch (_) {
+        // A recent-file scan failure must not mark a reachable server as offline.
+      }
+    } catch (_) {
+      stopwatch.stop();
+      online = false;
+      if (mounted) setState(() => _latency = null);
+    }
+    if (!mounted) return;
+    setState(() {
+      _serverOnline = online;
+      _volumes = volumes;
+      _checking = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final availableVolumes = _volumes.where((volume) => volume.available).length;
+    final appSettings = AppSettings.instance;
+
+    Widget sectionTitle(String title, {String? action, VoidCallback? onAction}) {
+      return Row(
+        children: [
+          Expanded(
+            child: Text(title, style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.4,
+            )),
+          ),
+          if (action != null)
+            TextButton(onPressed: onAction, child: Text(action)),
+        ],
+      );
+    }
+
+    Widget quickAction(IconData icon, String label, VoidCallback onTap) {
+      return Material(
+        color: colors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(18),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 15),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 23, color: colors.primary),
+                const SizedBox(height: 8),
+                Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: colors.surface,
+      drawer: Drawer(
+        child: SafeArea(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: colors.primaryContainer,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Icon(Icons.cloud_rounded, color: colors.onPrimaryContainer),
+                    ),
+                    const SizedBox(height: 14),
+                    Text('HomeServer', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 3),
+                    Text('Storage & locations', style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 16, 8),
+                child: Text('STORAGE', style: theme.textTheme.labelSmall?.copyWith(
+                  color: colors.primary, fontWeight: FontWeight.w800, letterSpacing: 1.1,
+                )),
+              ),
+              ListTile(
+                leading: const Icon(Icons.phone_android_rounded),
+                title: const Text('Internal storage'),
+                subtitle: const Text('Browse server folders'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () {
+                  Navigator.pop(context);
+                  widget.onOpenExplore(ExploreCategory.files);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.usb_rounded),
+                title: const Text('USB & external drives'),
+                subtitle: Text(_checking ? 'Checking connected drives…' : '$availableVolumes of ${_volumes.length} available'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () {
+                  Navigator.pop(context);
+                  widget.onOpenExplore(ExploreCategory.drives);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.add_to_drive_rounded),
+                title: const Text('Connect a drive'),
+                subtitle: const Text('Set up USB / SSD / OTG access'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.of(context).push(MaterialPageRoute<void>(
+                    builder: (_) => const LocalStorageSetupScreen(),
+                  ));
+                },
+              ),
+              const Divider(height: 24),
+              ListTile(
+                leading: const Icon(Icons.switch_account_rounded),
+                title: const Text('Connection / Switch server'),
+                subtitle: const Text('Return to the server login screen'),
+                onTap: () {
+                  Navigator.pop(context);
+                  widget.onReturnToConnection?.call();
+                },
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 16, 8),
+                child: Text('TOOLS', style: theme.textTheme.labelSmall?.copyWith(
+                  color: colors.primary, fontWeight: FontWeight.w800, letterSpacing: 1.1,
+                )),
+              ),
+              ListTile(
+                leading: const Icon(Icons.swap_vert_rounded),
+                title: const Text('Transfers'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.of(context).push(MaterialPageRoute<void>(
+                    builder: (_) => const TransferManagerScreen(),
+                  ));
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.settings_outlined),
+                title: const Text('Settings'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.of(context).push(MaterialPageRoute<void>(
+                    builder: (_) => SettingsScreen(
+                      onOpenSavedServers: widget.onReturnToConnection,
+                    ),
+                  ));
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+      appBar: AppBar(
+        leading: Builder(
+          builder: (context) => IconButton(
+            tooltip: 'Open menu',
+            icon: const Icon(Icons.menu_rounded),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
+        backgroundColor: colors.surface,
+        surfaceTintColor: Colors.transparent,
+        titleSpacing: 20,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('HomeServer', style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.6,
+            )),
+            Text('Your private space', style: theme.textTheme.labelSmall?.copyWith(
+              color: colors.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+            )),
+          ],
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'Transfers',
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+              builder: (_) => const TransferManagerScreen(),
+            )),
+            icon: const Icon(Icons.swap_vert_rounded),
+          ),
+          IconButton(
+            tooltip: 'Refresh server status',
+            onPressed: _checking ? null : _refreshStatus,
+            icon: const Icon(Icons.refresh_rounded),
+          ),
+          const SizedBox(width: 6),
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: _refreshStatus,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.fromLTRB(18, 8, 18, 104 + MediaQuery.paddingOf(context).bottom),
+          children: [
+            _buildServerTelemetry(context, theme, colors),
+            const SizedBox(height: 27),
+            if (appSettings.showQuickActions) ...[
+            sectionTitle(
+              'Quick actions',
+              action: 'Edit',
+              onAction: _editQuickActions,
+            ),
+            const SizedBox(height: 12),
+            if (_quickActions.isEmpty)
+              OutlinedButton.icon(
+                onPressed: _editQuickActions,
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Add quick actions'),
+              )
+            else
+              GridView.count(
+                crossAxisCount: 4,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisSpacing: 9,
+                mainAxisSpacing: 9,
+                childAspectRatio: 0.88,
+                children: _quickActions.map((id) {
+                  final detail = _quickActionDetails[id]!;
+                  return quickAction(
+                    detail.icon,
+                    detail.label,
+                    () => _runQuickAction(id),
+                  );
+                }).toList(),
+              ),
+            ],
+            const SizedBox(height: 22),
+            sectionTitle('Continue'),
+            const SizedBox(height: 10),
+            AnimatedBuilder(
+              animation: PersistentAudioPlayer.instance,
+              builder: (context, _) => _buildContinueStrip(context, theme, colors),
+            ),
+            if (appSettings.showRecentFiles) ...[
+            const SizedBox(height: 27),
+            sectionTitle(
+              'Recent files',
+              action: 'Browse',
+              onAction: () => widget.onOpenExplore(ExploreCategory.files),
+            ),
+            const SizedBox(height: 10),
+            if (_recentFiles.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: colors.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.history_rounded, color: colors.onSurfaceVariant),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _checking
+                            ? 'Checking your folders for recent files…'
+                            : 'No recent files found in the scanned folders.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Material(
+                color: colors.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(20),
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  children: [
+                    for (var index = 0; index < _recentFiles.take(8).length; index++) ...[
+                      if (index > 0) const Divider(height: 1, indent: 68),
+                      ListTile(
+                        leading: Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: colors.secondaryContainer,
+                            borderRadius: BorderRadius.circular(13),
+                          ),
+                          child: Icon(
+                            _recentIcon(_recentFiles[index].file),
+                            color: colors.onSecondaryContainer,
+                          ),
+                        ),
+                        title: Text(
+                          _recentFiles[index].file.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        subtitle: Text(
+                          '${_formatBytes(_recentFiles[index].file.size)} · ${_relativeTime(_recentFiles[index].modifiedAt)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        trailing: PopupMenuButton<String>(
+                          tooltip: 'File actions',
+                          onSelected: (action) => _handleRecentAction(_recentFiles[index], action),
+                          itemBuilder: (_) => const [
+                            PopupMenuItem(value: 'download', child: Text('Download')),
+                            PopupMenuItem(value: 'share', child: Text('Share')),
+                            PopupMenuItem(value: 'rename', child: Text('Rename')),
+                            PopupMenuItem(value: 'delete', child: Text('Delete')),
+                          ],
+                        ),
+                        onTap: () {
+                          final recent = _recentFiles[index];
+                          if (recent.volume == null) {
+                            Navigator.of(context).push(MaterialPageRoute<void>(
+                              builder: (_) => FileManagerScreen(
+                                api: widget.api,
+                                initialPath: recent.parentPath,
+                              ),
+                            ));
+                          } else {
+                            Navigator.of(context).push(MaterialPageRoute<void>(
+                              builder: (_) => StorageBrowserScreen(
+                                api: widget.api,
+                                initialVolume: recent.volume,
+                                initialPath: recent.parentPath,
+                              ),
+                            ));
+                          }
+                        },
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            const SizedBox(height: 27),
+            ],
+
+          ],
+        ),
+      ),
+    );
+  }
+}
+), '').trim();
+  }
+
   String _networkRouteLabel(Uri? base) {
     final host = base?.host ?? '';
     final parts = host.split('.').map(int.tryParse).toList();
