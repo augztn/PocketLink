@@ -266,10 +266,6 @@ internal class NativeApiServer(
             ).apply { addHeader("Content-Range", "bytes $start-$end/$length") }
         }
         response.addHeader("Accept-Ranges", "bytes")
-        response.addHeader(
-            "Content-Disposition",
-            "inline; filename*=UTF-8''${java.net.URLEncoder.encode(item.name.orEmpty(), "UTF-8").replace("+", "%20")}"
-        )
         return response
     }
 
