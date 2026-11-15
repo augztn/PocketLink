@@ -262,7 +262,17 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     setState(() {});
     try {
       await Navigator.of(context).push(
-        MaterialPageRoute<void>(builder: (_) => HomeScreen(api: api)),
+        MaterialPageRoute<void>(
+          builder: (_) => HomeScreen(
+            api: api,
+            onReturnToConnection: () {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute<void>(builder: (_) => const ConnectionScreen()),
+                (route) => false,
+              );
+            },
+          ),
+        ),
       );
     } finally {
       if (mounted) setState(() => _isConnecting = false);
