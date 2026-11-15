@@ -18,19 +18,24 @@ class ExploreScreen extends StatefulWidget {
     required this.api,
     required this.category,
     required this.onCategoryChanged,
+    this.fileCategory = 'All',
+    this.onBackAtRoot,
     super.key,
   });
 
   final ServerApi api;
   final ExploreCategory category;
-  final ValueChanged<ExploreCategory> onCategoryChanged;\n  final String fileCategory;\n  final VoidCallback? onBackAtRoot;
+  final ValueChanged<ExploreCategory> onCategoryChanged;
+  final String fileCategory;
+  final VoidCallback? onBackAtRoot;
 
   @override
   State<ExploreScreen> createState() => _ExploreScreenState();
 }
 
 class _ExploreScreenState extends State<ExploreScreen> {
-  late ExploreCategory _category = widget.category;\n  late String _fileCategory = widget.fileCategory;
+  late ExploreCategory _category = widget.category;
+  late String _fileCategory = widget.fileCategory;
 
   @override
   void didUpdateWidget(covariant ExploreScreen oldWidget) {
@@ -38,10 +43,16 @@ class _ExploreScreenState extends State<ExploreScreen> {
     if (oldWidget.category != widget.category) {
       _category = widget.category;
     }
+    if (oldWidget.fileCategory != widget.fileCategory) {
+      _fileCategory = widget.fileCategory;
+    }
   }
 
   void _select(ExploreCategory category) {
-    setState(() => _category = category);
+    setState(() {
+      _category = category;
+      if (category == ExploreCategory.files) _fileCategory = 'All';
+    });
     widget.onCategoryChanged(category);
   }
 
@@ -78,7 +89,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
             children: [
               FileManagerScreen(
                 api: widget.api,
+                initialCategory: _fileCategory,
                 isActive: _category == ExploreCategory.files,
+                onBackAtRoot: widget.onBackAtRoot,
               ),
               StorageBrowserScreen(api: widget.api),
               PhotoGalleryScreen(api: widget.api),
