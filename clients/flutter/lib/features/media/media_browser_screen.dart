@@ -265,16 +265,54 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   String _sourceLabel(_MediaFile media) =>
       media.volume == null ? 'Internal storage' : 'USB / OTG';
 
-  Map<String, List<_MediaFile>> _groupByFolder(List<_MediaFile> items) {
-    final groups = <String, List<_MediaFile>>{};
+
+  List<_MediaFolder> _foldersAtCurrentLevel(List<_MediaFile> items) {
+    final grouped = <String, List<_MediaFile>>{};
+    final prefix = _currentFolderPath.isEmpty
+        ? <String>[]
+        : _currentFolderPath.split('/').where((part) => part.isNotEmpty).toList();
     for (final media in items) {
-      final folder = media.path.contains('/')
-          ? media.path.substring(0, media.path.lastIndexOf('/'))
-          : _sourceLabel(media);
-      final key = '${media.volume ?? 'internal'}::${folder}';
-      groups.putIfAbsent(key, () => <_MediaFile>[]).add(media);
+      final source = media.volume ?? 'internal';
+      if (_selectedVolume != null && source != _selectedVolume) continue;
+      final parts = media.path.split('/').where((part) => part.isNotEmpty).toList();
+      if (parts.length <= prefix.length) continue;
+      var matches = true;
+      for (var i = 0; i < prefix.length; i++) {
+        if (parts[i] != prefix[i]) { matches = false; break; }
+      }
+      if (!matches) continue;
+      final folderPath = parts.take(prefix.length + 1).join('/');
+      final key = '$source::$folderPath';
+      grouped.putIfAbsent(key, () => <_MediaFile>[]).add(media);
     }
-    return groups;
+    return grouped.entries.map((entry) {
+      final separator = entry.key.indexOf('::');
+      final source = entry.key.substring(0, separator);
+      final path = entry.key.substring(separator + 2);
+      return _MediaFolder(
+        name: path.split('/').last,
+        path: path,
+        volume: source == 'internal' ? null : source,
+        items: entry.value,
+      );
+    }).toList()
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+  }
+
+  List<_MediaFile> _filesAtCurrentLevel(List<_MediaFile> items) {
+    final prefix = _currentFolderPath.isEmpty
+        ? <String>[]
+        : _currentFolderPath.split('/').where((part) => part.isNotEmpty).toList();
+    return items.where((media) {
+      final source = media.volume ?? 'internal';
+      if (_selectedVolume != null && source != _selectedVolume) return false;
+      final parts = media.path.split('/').where((part) => part.isNotEmpty).toList();
+      if (parts.length != prefix.length) return false;
+      for (var i = 0; i < prefix.length; i++) {
+        if (parts[i] != prefix[i]) return false;
+      }
+      return true;
+    }).toList();
   }
 
   List<_MediaFile> _sortMedia(List<_MediaFile> items) {
@@ -468,45 +506,94 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     );
   }
 
-  Widget _buildFolders(Map<String, List<_MediaFile>> folders) {
-    final entries = folders.entries.toList()
-      ..sort((a, b) => a.key.toLowerCase().compareTo(b.key.toLowerCase()));
-    return ListView.builder(
-      padding: EdgeInsets.fromLTRB(12, 8, 12, 104 + MediaQuery.paddingOf(context).bottom),
-      itemCount: entries.length,
-      itemBuilder: (context, index) {
-        final entry = entries[index];
-        final items = entry.value;
-        final first = items.first;
-        final folderName = entry.key.split('::').last;
-        final bytes = items.fold<int>(0, (sum, item) => sum + item.entry.size);
-        return Card(
-          clipBehavior: Clip.antiAlias,
-          child: ExpansionTile(
-            leading: const Icon(Icons.folder_rounded),
-            title: Text(
-              folderName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+
+  Widget _buildFolders(List<_MediaFile> items) {
+    final folders = _foldersAtCurrentLevel(items);
+    final files = _sortMedia(_filesAtCurrentLevel(items));
+    final parts = _currentFolderPath.split('/').where((part) => part.isNotEmpty).toList();
+    return Column(
+      children: [
+        if (_currentFolderPath.isNotEmpty || _selectedVolume != null)
+          SizedBox(
+            height: 38,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(children: [
+                TextButton(
+                  onPressed: _currentFolderPath.isEmpty && _selectedVolume == null
+                      ? null
+                      : () {
+                          setState(() { _currentFolderPath = ''; _selectedVolume = null; });
+                          _saveState(folderPath: '', clearVolume: true);
+                        },
+                  child: const Text('All storage'),
+                ),
+                if (_selectedVolume != null) ...[
+                  const Icon(Icons.chevron_right_rounded, size: 16),
+                  TextButton(
+                    onPressed: _currentFolderPath.isEmpty
+                        ? null
+                        : () { setState(() => _currentFolderPath = ''); _saveState(folderPath: ''); },
+                    child: Text(_volumeName(_selectedVolume)),
+                  ),
+                ],
+                for (var i = 0; i < parts.length; i++) ...[
+                  const Icon(Icons.chevron_right_rounded, size: 16),
+                  TextButton(
+                    onPressed: i == parts.length - 1
+                        ? null
+                        : () {
+                            final path = parts.take(i + 1).join('/');
+                            setState(() => _currentFolderPath = path);
+                            _saveState(folderPath: path);
+                          },
+                    child: Text(parts[i]),
+                  ),
+                ],
+              ]),
             ),
-            subtitle: Text(
-              '${items.length} ${_isMusic ? 'tracks' : 'videos'} · ${_formatBytes(bytes)} · ${_sourceLabel(first)}',
-            ),
-            children: items.map((media) => ListTile(
-              contentPadding: const EdgeInsets.only(left: 28, right: 16),
-              leading: Icon(_isMusic ? Icons.audio_file_outlined : Icons.movie_outlined),
-              title: Text(
-                media.entry.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              subtitle: Text(_formatBytes(media.entry.size)),
-              trailing: const Icon(Icons.play_arrow_rounded),
-              onTap: () => _openMedia(media, items),
-            )).toList(growable: false),
           ),
-        );
-      },
+        Expanded(
+          child: ListView(
+            controller: _folderScrollController,
+            padding: EdgeInsets.fromLTRB(12, 8, 12, 104 + MediaQuery.paddingOf(context).bottom),
+            children: [
+              for (final folder in folders)
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.folder_rounded),
+                    title: Text(folder.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    subtitle: Text('${folder.items.length} ${_isMusic ? 'tracks' : 'videos'} · ${_volumeName(folder.volume)}'),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () {
+                      setState(() {
+                        _selectedVolume = folder.volume ?? 'internal';
+                        _currentFolderPath = folder.path;
+                      });
+                      _saveState(folderPath: folder.path);
+                      if (_folderScrollController.hasClients) _folderScrollController.jumpTo(0);
+                    },
+                  ),
+                ),
+              for (final media in files)
+                Card(
+                  child: ListTile(
+                    leading: Icon(_isMusic ? Icons.audio_file_outlined : Icons.movie_outlined),
+                    title: Text(media.entry.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    subtitle: Text('${_formatBytes(media.entry.size)} · ${_volumeName(media.volume)}'),
+                    trailing: const Icon(Icons.play_arrow_rounded),
+                    onTap: () => _openMedia(media, files),
+                  ),
+                ),
+              if (folders.isEmpty && files.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(32),
+                  child: Center(child: Text('No media in this folder')),
+                ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -577,13 +664,13 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
           media.entry.name.toLowerCase().contains(query) ||
           media.path.toLowerCase().contains(query);
       final matchesVolume = _selectedVolume == null ||
-          media.volume == _selectedVolume;
+          (_selectedVolume == 'internal' ? media.volume == null : media.volume == _selectedVolume);
       return matchesQuery && matchesVolume;
     }).toList(growable: false);
     final visibleMedia = _sortMedia(filtered);
     final isFolderView = _libraryView == 'folders';
     final selectedVolumes = _volumes.where((volume) => volume.id == _selectedVolume).toList();
-    final sourceLabel = selectedVolumes.isEmpty ? 'All Storage' : selectedVolumes.first.name;
+    final sourceLabel = _selectedVolume == 'internal' ? 'Internal storage' : selectedVolumes.isEmpty ? 'All Storage' : selectedVolumes.first.name;
 
     return PopScope(
       canPop: _libraryView != 'folders' || _currentFolderPath.isEmpty,
@@ -778,7 +865,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                             ),
                           )
                         : isFolderView
-                            ? _buildFolders(folders)
+                            ? _buildFolders(visibleMedia)
                             : !_isMusic && _layoutMode == 'grid'
                                 ? _buildVideoGrid(visibleMedia)
                                 : !_isMusic
