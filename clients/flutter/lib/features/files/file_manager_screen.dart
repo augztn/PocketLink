@@ -192,7 +192,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   }
 
   Future<void> _selectPartition(String? volumeId) async {
-    if (volumeId == _selectedVolume) return;
+    if (volumeId == _selectedVolume && _path.isEmpty) return;
     setState(() {
       _selectedVolume = volumeId; _path = ''; _listing = null;
       _searchController.clear(); _searchQuery = ''; _pendingScrollOffset = 0;
