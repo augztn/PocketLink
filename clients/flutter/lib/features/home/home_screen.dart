@@ -30,10 +30,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _openTab(int index) => setState(() => _selectedIndex = index);
 
-  void _openExplore(ExploreCategory category, {String fileCategory = 'All'}) {
+  void _openExplore(ExploreCategory category, {String? fileCategory}) {
     setState(() {
       _exploreCategory = category;
-      _fileCategory = fileCategory;
+      _fileCategory = fileCategory ?? 'All';
       _selectedIndex = 1;
     });
   }
@@ -343,7 +343,7 @@ class _HomeDashboard extends StatefulWidget {
   });
 
   final ServerApi api;
-  final void Function(ExploreCategory category, {String fileCategory}) onOpenExplore;
+  final void Function(ExploreCategory category, {String? fileCategory}) onOpenExplore;
   final VoidCallback? onReturnToConnection;
 
   @override
