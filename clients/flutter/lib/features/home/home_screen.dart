@@ -110,7 +110,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                 const SizedBox(height: 12),
                 Expanded(
                   child: ReorderableListView.builder(
-                    itemCount: QuickActionsStore.available.length,
+                    itemCount: draft.length,
                     onReorder: (oldIndex, newIndex) {
                       setDialogState(() {
                         if (newIndex > oldIndex) newIndex--;
@@ -184,20 +184,27 @@ class _HomeDashboardState extends State<_HomeDashboard> {
     switch (id) {
       case 'files':
         widget.onOpenTab(1);
+        return;
       case 'photos':
         widget.onOpenTab(2);
+        return;
       case 'music':
         widget.onOpenTab(3);
+        return;
       case 'videos':
         widget.onOpenTab(4);
+        return;
       case 'drives':
         _openStorage();
+        return;
       case 'documents':
         _openDocuments();
+        return;
       case 'transfers':
         Navigator.of(context).push(MaterialPageRoute<void>(
           builder: (_) => const TransferManagerScreen(),
         ));
+        return;
     }
   }
 
