@@ -195,7 +195,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     if (dateMode == 3) return grid(items);
     final groups = <String,List<_Photo>>{};
     for (final p in items) { groups.putIfAbsent(group(p), () => []).add(p); }
-    return ListView(children: [
+    return ListView(padding: EdgeInsets.only(bottom: 104 + MediaQuery.paddingOf(context).bottom), children: [
       for (final entry in groups.entries) ...[
         Padding(padding: const EdgeInsets.fromLTRB(16,18,16,8),
           child: Row(children: [
@@ -212,7 +212,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     final albums = groupByAlbum(items).entries.toList()..sort((a,b)=>a.key.compareTo(b.key));
     if (albums.isEmpty) return empty('Albums will appear when photos are found.');
     return GridView.builder(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.fromLTRB(12, 12, 12, 104 + MediaQuery.paddingOf(context).bottom),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount:2,crossAxisSpacing:12,mainAxisSpacing:16,childAspectRatio:.92),
       itemCount: albums.length,
@@ -241,7 +241,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     }
     final featured=memories.entries.take(8).toList();
     final albums=groupByAlbum(items);
-    return ListView(padding:const EdgeInsets.all(16),children:[
+    return ListView(padding:EdgeInsets.fromLTRB(16,16,16,104 + MediaQuery.paddingOf(context).bottom),children:[
       Text('Memories',style:Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight:FontWeight.w800)),
       const SizedBox(height:4),
       Text('Moments grouped by the dates stored with your photos.',style:Theme.of(context).textTheme.bodySmall),
