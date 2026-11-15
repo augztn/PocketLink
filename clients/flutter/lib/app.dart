@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'features/connection/connection_screen.dart';
-import 'features/media/persistent_mini_player.dart';
 
 class HomeServerApp extends StatelessWidget {
   const HomeServerApp({super.key});
@@ -19,12 +18,7 @@ class HomeServerApp extends StatelessWidget {
         ),
       ),
       home: const ConnectionScreen(),
-      builder: (context, child) => Column(
-        children: [
-          Expanded(child: child ?? const SizedBox.shrink()),
-          const PersistentMiniPlayer(),
-        ],
-      ),
+      builder: (context, child) => child ?? const SizedBox.shrink(),
     );
   }
 }
