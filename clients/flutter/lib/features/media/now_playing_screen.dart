@@ -469,6 +469,42 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     );
   }
 
+  Future<void> _showAudioOutput() async {
+    final devices = _player.state.audioDevices;
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF1C1C1E),
+      builder: (ctx) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            const ListTile(
+              title: Text('Audio output', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+              subtitle: Text('Choose an available playback device', style: TextStyle(color: Colors.white54)),
+            ),
+            for (final device in devices)
+              ListTile(
+                leading: Icon(
+                  _player.state.audioDevice == device ? Icons.radio_button_checked : Icons.radio_button_off,
+                  color: _player.state.audioDevice == device ? Colors.white : Colors.white54,
+                ),
+                title: Text(device.description.isNotEmpty ? device.description : device.name,
+                  style: const TextStyle(color: Colors.white)),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  try {
+                    await _player.setAudioDevice(device);
+                  } catch (_) {
+                    _message('Could not switch audio output.');
+                  }
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _showQueue() async {
     await showModalBottomSheet<void>(
       context: context,
@@ -760,8 +796,13 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 14),
                   child: Column(
                     children: [
-                      Text(_audioFormat, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: Colors.white38, fontSize: 9, letterSpacing: 1.1, fontWeight: FontWeight.w700)),
+                      StreamBuilder<Tracks>(
+                        stream: _player.stream.tracks,
+                        initialData: _player.state.tracks,
+                        builder: (context, snapshot) => Text(_audioFormat,
+                          textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Colors.white38, fontSize: 9, letterSpacing: 1.1, fontWeight: FontWeight.w700)),
+                      ),
                       const SizedBox(height: 18),
                       Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
                         Expanded(
@@ -793,7 +834,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                       Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
                         IconButton(tooltip: 'Lyrics', onPressed: _showLyrics,
                           icon: const Icon(Icons.lyrics_outlined, color: Colors.white70)),
-                        IconButton(tooltip: 'Audio output', onPressed: () => _message('Audio is playing through this device. Use Android media output controls to change the route.'),
+                        IconButton(tooltip: 'Audio output / Cast', onPressed: _showAudioOutput,
                           icon: const Icon(Icons.speaker_group_outlined, color: Colors.white70)),
                         IconButton(tooltip: 'Queue', onPressed: _showQueue,
                           icon: const Icon(Icons.queue_music_rounded, color: Colors.white70)),
@@ -876,7 +917,7 @@ class _MarqueeTitleState extends State<_MarqueeTitle> {
       if (!mounted || !_controller.hasClients) return;
       final end = _controller.position.maxScrollExtent;
       if (end <= 0) return;
-      await _controller.animateTo(end, duration: Duration(milliseconds: (end * 18).round().clamp(1800, 6000)), curve: Curves.linear);
+      await _controller.animateTo(end, duration: Duration(milliseconds: (end * 18).round().clamp(1800, 6000).toInt()), curve: Curves.linear);
       if (!mounted) return;
       await Future<void>.delayed(const Duration(milliseconds: 700));
       if (!mounted) return;
