@@ -40,6 +40,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.category != widget.category) {
       _category = widget.category;
+      _initialized.add(widget.category);
     }
     if (oldWidget.fileCategory != widget.fileCategory) {
       _fileCategory = widget.fileCategory;
