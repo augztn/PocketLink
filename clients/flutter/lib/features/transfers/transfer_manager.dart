@@ -63,7 +63,7 @@ class TransferManager extends ChangeNotifier {
         task.total = total;
         notifyListeners();
       });
-      task.status = TransferStatus.completed;
+      if (task.cancelToken.isCancelled) {\n        task.status = TransferStatus.cancelled;\n        notifyListeners();\n        return false;\n      }\n      task.status = TransferStatus.completed;
       if (task.total > 0) task.transferred = task.total;
       notifyListeners();
       return true;
@@ -90,7 +90,13 @@ class TransferManager extends ChangeNotifier {
 
   void cancel(String id) {
     TransferTask? task;
-    for (final candidate in _tasks) {\n      if (candidate.id == id) {\n        task = candidate;\n        break;\n      }\n    }\n    if (task == null || task.status != TransferStatus.running) return;
+    for (final candidate in _tasks) {
+      if (candidate.id == id) {
+        task = candidate;
+        break;
+      }
+    }
+    if (task == null || task.status != TransferStatus.running) return;
     task.cancelToken.cancel('Cancelled by user');
     task.status = TransferStatus.cancelled;
     notifyListeners();
