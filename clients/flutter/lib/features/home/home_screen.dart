@@ -61,7 +61,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _openSearch() {
     Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => SearchScreen(api: widget.api, onHome: () => _openTab(0)),
+      builder: (_) => SearchScreen(api: widget.api, onHome: () {
+        Navigator.of(context).pop();
+        _openTab(0);
+      }),
     ));
   }
 
