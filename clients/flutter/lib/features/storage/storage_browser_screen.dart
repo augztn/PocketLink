@@ -7,6 +7,7 @@ import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../core/network/server_api.dart';
+import '../../core/settings/app_settings.dart';
 import '../media/media_player_screen.dart';
 import '../transfers/transfer_manager.dart';
 import '../transfers/transfer_manager_screen.dart';
@@ -253,6 +254,7 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
         final savedPath = await FilePicker.platform.saveFile(
           dialogTitle: 'Save ${item.name}',
           fileName: item.name,
+          initialDirectory: AppSettings.instance.downloadDirectory,
           bytes: bytes,
         );
         if (savedPath == null) token.cancel('Save cancelled by user');
