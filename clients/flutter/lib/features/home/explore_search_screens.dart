@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../core/widgets/home_server_app_bar.dart';
 
 import '../../core/network/server_api.dart';
+import '../../core/widgets/home_server_app_bar.dart';
 import '../files/file_manager_screen.dart';
 import '../files/documents_browser_screen.dart';
 import '../library/photo_gallery_screen.dart';
@@ -36,10 +36,79 @@ class ExploreScreen extends StatefulWidget {
 
 class _ExploreScreenState extends State<ExploreScreen> {
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+  late final _ExploreNavigatorObserver _observer;
+
+  @override
+  void initState() {
+    super.initState();
+    _observer = _ExploreNavigatorObserver(() {
+      if (mounted) setState(() {});
+    });
+  }
 
   void _open(Widget screen) {
-    _navigatorKey.currentState?.push(MaterialPageRoute<void>(builder: (_) => screen));
+    _navigatorKey.currentState?.push(
+      MaterialPageRoute<void>(builder: (_) => screen),
+    );
   }
+
+  @override
+  Widget build(BuildContext context) {
+    return NavigatorPopHandler<void>(
+      enabled: _navigatorKey.currentState?.canPop() ?? false,
+      onPop: () => _navigatorKey.currentState?.maybePop(),
+      child: Navigator(
+        key: _navigatorKey,
+        observers: [_observer],
+        onGenerateInitialRoutes: (navigator, initialRoute) => [
+          MaterialPageRoute<void>(
+            settings: const RouteSettings(name: '/'),
+            builder: (_) => _ExploreGrid(
+              api: widget.api,
+              onHome: widget.onBackAtRoot,
+              onOpen: _open,
+              onOpenFiles: widget.onOpenFiles,
+              onOpenSearch: widget.onOpenSearch,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ExploreNavigatorObserver extends NavigatorObserver {
+  _ExploreNavigatorObserver(this.onChanged);
+
+  final VoidCallback onChanged;
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) => onChanged();
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) => onChanged();
+
+  @override
+  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) => onChanged();
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) => onChanged();
+}
+
+class _ExploreGrid extends StatelessWidget {
+  const _ExploreGrid({
+    required this.api,
+    required this.onHome,
+    required this.onOpen,
+    required this.onOpenFiles,
+    required this.onOpenSearch,
+  });
+
+  final ServerApi api;
+  final VoidCallback? onHome;
+  final ValueChanged<Widget> onOpen;
+  final VoidCallback? onOpenFiles;
+  final VoidCallback? onOpenSearch;
 
   @override
   Widget build(BuildContext context) {
@@ -93,25 +162,17 @@ class _ExploreScreenState extends State<ExploreScreen> {
       );
     }
 
-    return NavigatorPopHandler<void>(
-      enabled: _navigatorKey.currentState?.canPop() ?? false,
-      onPop: () => _navigatorKey.currentState?.pop(),
-      child: Navigator(
-        key: _navigatorKey,
-        onGenerateInitialRoutes: (navigator, initialRoute) => [
-          MaterialPageRoute<void>(
-            settings: const RouteSettings(name: '/'),
-            builder: (_) => Scaffold(
-              appBar: HomeServerAppBar(
-                title: const Text('Explore'),
-                onHome: widget.onBackAtRoot,
-                leading: widget.onBackAtRoot == null ? null : IconButton(
-                  tooltip: 'Back to Dashboard',
-                  onPressed: widget.onBackAtRoot,
-                  icon: const Icon(Icons.arrow_back_rounded),
-                ),
-              ),
-              body: GridView.count(
+    return Scaffold(
+      appBar: HomeServerAppBar(
+        title: const Text('Explore'),
+        onHome: onHome,
+        leading: onHome == null ? null : IconButton(
+          tooltip: 'Back to Dashboard',
+          onPressed: onHome,
+          icon: const Icon(Icons.arrow_back_rounded),
+        ),
+      ),
+      body: GridView.count(
         padding: EdgeInsets.fromLTRB(16, 12, 16, 112 + MediaQuery.paddingOf(context).bottom),
         crossAxisCount: 2,
         crossAxisSpacing: 14,
@@ -121,37 +182,45 @@ class _ExploreScreenState extends State<ExploreScreen> {
           card(
             title: 'Photos', subtitle: 'Your picture collection',
             icon: Icons.photo_library_rounded, tint: const Color(0xFFE5A044),
-            onTap: () => _open(PhotoGalleryScreen(api: widget.api)),
+            onTap: () => onOpen(PhotoGalleryScreen(api: api)),
           ),
           card(
             title: 'Music', subtitle: 'Albums and playlists',
             icon: Icons.headphones_rounded, tint: const Color(0xFF8D72E8),
-            onTap: () => _open(MediaBrowserScreen(api: widget.api, type: MediaLibraryType.music, onHome: () => _navigatorKey.currentState?.pop())),
+            onTap: () => onOpen(MediaBrowserScreen(
+              api: api,
+              type: MediaLibraryType.music,
+              onHome: () => Navigator.of(context).maybePop(),
+            )),
           ),
           card(
             title: 'Videos', subtitle: 'Movies and clips',
             icon: Icons.play_circle_fill_rounded, tint: const Color(0xFF279D91),
-            onTap: () => _open(MediaBrowserScreen(api: widget.api, type: MediaLibraryType.video, onHome: () => _navigatorKey.currentState?.pop())),
+            onTap: () => onOpen(MediaBrowserScreen(
+              api: api,
+              type: MediaLibraryType.video,
+              onHome: () => Navigator.of(context).maybePop(),
+            )),
           ),
           card(
             title: 'Documents', subtitle: 'PDF, Office and text',
             icon: Icons.description_rounded, tint: const Color(0xFF4C8ED9),
-            onTap: () => _open(DocumentsBrowserScreen(api: widget.api)),
+            onTap: () => onOpen(DocumentsBrowserScreen(api: api)),
           ),
           card(
             title: 'Files', subtitle: 'Browse server folders',
             icon: Icons.folder_rounded, tint: const Color(0xFF7186C8),
-            onTap: widget.onOpenFiles ?? () => _open(FileManagerScreen(api: widget.api)),
+            onTap: onOpenFiles ?? () => onOpen(FileManagerScreen(api: api)),
           ),
           card(
             title: 'Search', subtitle: 'Find files across storage',
             icon: Icons.search_rounded, tint: const Color(0xFF6C9DCE),
-            onTap: widget.onOpenSearch ?? () {},
+            onTap: onOpenSearch ?? () {},
           ),
           card(
             title: 'Drives', subtitle: 'Internal & external SSDs',
             icon: Icons.usb_rounded, tint: const Color(0xFF28B8C8),
-            onTap: () => _open(StorageBrowserScreen(api: widget.api)),
+            onTap: () => onOpen(StorageBrowserScreen(api: api)),
           ),
         ],
       ),
