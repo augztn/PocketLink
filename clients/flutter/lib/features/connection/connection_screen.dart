@@ -315,6 +315,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
           ),
           builder: (_) => HomeScreen(
             api: api,
+            serverName: _serverNameController.text.trim(),
             onReturnToConnection: () {
               Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute<void>(builder: (_) => const ConnectionScreen()),
