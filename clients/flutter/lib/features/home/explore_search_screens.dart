@@ -28,7 +28,7 @@ class ExploreScreen extends StatelessWidget {
   final String fileCategory;
   final VoidCallback? onBackAtRoot;
 
-  void _open(BuildContext context, String title, Widget screen) {
+  void _open(BuildContext context, Widget screen) {
     Navigator.of(context).push(MaterialPageRoute<void>(
       builder: (_) => screen,
     ));
@@ -98,32 +98,32 @@ class ExploreScreen extends StatelessWidget {
           card(
             title: 'Photos', subtitle: 'Your picture collection',
             icon: Icons.photo_library_rounded, tint: const Color(0xFFE5A044),
-            onTap: () => _open(context, 'Photos', PhotoGalleryScreen(api: api)),
+            onTap: () => _open(context, PhotoGalleryScreen(api: api)),
           ),
           card(
             title: 'Music', subtitle: 'Albums and playlists',
             icon: Icons.headphones_rounded, tint: const Color(0xFF8D72E8),
-            onTap: () => _open(context, 'Music', MediaBrowserScreen(api: api, type: MediaLibraryType.music)),
+            onTap: () => _open(context, MediaBrowserScreen(api: api, type: MediaLibraryType.music)),
           ),
           card(
             title: 'Videos', subtitle: 'Movies and clips',
             icon: Icons.play_circle_fill_rounded, tint: const Color(0xFF279D91),
-            onTap: () => _open(context, 'Videos', MediaBrowserScreen(api: api, type: MediaLibraryType.video)),
+            onTap: () => _open(context, MediaBrowserScreen(api: api, type: MediaLibraryType.video)),
           ),
           card(
             title: 'Documents', subtitle: 'PDF, Office and text',
             icon: Icons.description_rounded, tint: const Color(0xFF4C8ED9),
-            onTap: () => _open(context, 'Documents', FileManagerScreen(api: api, initialCategory: 'Documents')),
+            onTap: () => _open(context, FileManagerScreen(api: api, initialCategory: 'Documents')),
           ),
           card(
             title: 'Files', subtitle: 'Browse server folders',
             icon: Icons.folder_rounded, tint: const Color(0xFF7186C8),
-            onTap: () => _open(context, 'Files', FileManagerScreen(api: api)),
+            onTap: () => _open(context, FileManagerScreen(api: api)),
           ),
           card(
             title: 'Drives', subtitle: 'Internal & external SSDs',
             icon: Icons.usb_rounded, tint: const Color(0xFF28B8C8),
-            onTap: () => _open(context, 'Drives', StorageBrowserScreen(api: api)),
+            onTap: () => _open(context, StorageBrowserScreen(api: api)),
           ),
         ],
       ),
