@@ -114,6 +114,7 @@ class _HomeScreenState extends State<HomeScreen> {
         SearchScreen(
           key: const PageStorageKey<String>('homeserver-search'),
           api: widget.api,
+          onHome: () => _openTab(0),
         )
       else
         const SizedBox.shrink(),
