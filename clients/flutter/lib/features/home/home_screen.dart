@@ -59,6 +59,18 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  void _openSearch() {
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => SearchScreen(
+        api: widget.api,
+        onHome: () {
+          Navigator.of(context).pop();
+          _openTab(0);
+        },
+      ),
+    ));
+  }
+
   void _openNowPlaying(PersistentAudioPlayer player) {
     final item = player.currentItem;
     final api = player.api;
