@@ -56,6 +56,16 @@ void main() {
       expect(adapter.requests, 2);
     });
 
+    test('does not return a directory response invalidated while in flight', () async {
+      final adapter = _SequenceAdapter([200, 200], delay: const Duration(milliseconds: 50));
+      final api = ServerApi(baseUrl: 'http://127.0.0.1:8000', username: 'admin', password: 'secret', httpClientAdapter: adapter);
+      final pending = api.listDirectory('');
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      api.invalidateDirectoryCache();
+      await pending;
+      expect(adapter.requests, 2);
+    });
+
     test('limits simultaneous API requests to four', () async {
       final adapter = _SequenceAdapter(List.filled(12, 200), delay: const Duration(milliseconds: 20));
       final api = ServerApi(baseUrl: 'http://127.0.0.1:8000', username: 'admin', password: 'secret', httpClientAdapter: adapter);
