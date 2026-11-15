@@ -17,6 +17,9 @@ class FileManagerScreen extends StatefulWidget {
     this.initialPath = '',
     this.initialVolume,
     this.externalDriveRequest = 0,
+    this.locationRequest = 0,
+    this.requestedVolume,
+    this.requestedPath = '',
     this.initialCategory = 'All',
     this.showSearch = true,
     this.isActive = false,
@@ -28,6 +31,9 @@ class FileManagerScreen extends StatefulWidget {
   final String initialPath;
   final String? initialVolume;
   final int externalDriveRequest;
+  final int locationRequest;
+  final String? requestedVolume;
+  final String requestedPath;
   final String initialCategory;
   final bool showSearch;
   final bool isActive;
@@ -98,7 +104,9 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     if (oldWidget.initialCategory != widget.initialCategory) {
       _category = widget.initialCategory;
     }
-    if (oldWidget.externalDriveRequest != widget.externalDriveRequest &&
+    if (oldWidget.locationRequest != widget.locationRequest && widget.locationRequest > 0) {
+      _navigateToRequestedLocation();
+    } else if (oldWidget.externalDriveRequest != widget.externalDriveRequest &&
         widget.externalDriveRequest > 0) {
       _selectFirstExternalDrive();
     }
@@ -113,14 +121,14 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     _stateKey = widget.api.baseUrl;
     _browserState = Provider.of<BrowserStateStore>(context, listen: false);
     final saved = _browserState.fileState(_stateKey);
-    _path = widget.initialPath.isNotEmpty ? widget.initialPath : saved.path;
+    _path = widget.locationRequest > 0 ? widget.requestedPath : (widget.initialPath.isNotEmpty ? widget.initialPath : saved.path);
     _category = widget.initialCategory != 'All' ? widget.initialCategory : saved.category;
     _sortBy = saved.sortBy;
     _gridView = saved.gridView;
     _pendingScrollOffset = saved.scrollOffset;
-    _selectedVolume = widget.initialVolume ?? saved.selectedVolume;
+    _selectedVolume = widget.locationRequest > 0 ? widget.requestedVolume : widget.initialVolume ?? saved.selectedVolume;
     _scrollController.addListener(_saveScrollOffset);
-    _loadVolumesAndDirectory(selectFirstExternal: widget.externalDriveRequest > 0);
+    _loadVolumesAndDirectory(selectFirstExternal: widget.locationRequest == 0 && widget.externalDriveRequest > 0);
   }
 
   void _restoreScrollOffset() {
@@ -143,6 +151,37 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   }
 
   void _saveScrollOffset() => _saveState();
+
+  Future<void> _navigateToRequestedLocation() async {
+    final volume = widget.requestedVolume;
+    try {
+      final volumes = await widget.api.listStorageVolumes();
+      if (!mounted) return;
+      final available = volumes.where((item) => item.available).toList();
+      if (volume != null && !available.any((item) => item.id == volume)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('That storage drive is no longer mounted.')),
+        );
+        return;
+      }
+      setState(() {
+        _volumes = available;
+        _selectedVolume = volume;
+        _path = widget.requestedPath;
+        _listing = null;
+        _searchController.clear();
+        _searchQuery = '';
+        _pendingScrollOffset = 0;
+        if (_scrollController.hasClients) _scrollController.jumpTo(0);
+      });
+      _saveState(path: _path);
+      await _load(_path);
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open that storage location.')),
+      );
+    }
+  }
 
   Future<void> _selectFirstExternalDrive() async {
     try {
