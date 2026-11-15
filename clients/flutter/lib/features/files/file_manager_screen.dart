@@ -372,7 +372,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
           leading: fileIcon(item),
           title: Text(item.name, maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontWeight: FontWeight.w650)),
+              style: const TextStyle(fontWeight: FontWeight.w600)),
           subtitle: Text(item.isDirectory ? 'Folder' : _formatSize(item.size),
               style: TextStyle(color: colors.onSurfaceVariant)),
           onTap: item.isDirectory
