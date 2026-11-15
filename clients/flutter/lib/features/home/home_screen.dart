@@ -59,6 +59,12 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  void _openSearch() {
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => SearchScreen(api: widget.api, onHome: () => _openTab(0)),
+    ));
+  }
+
   void _openNowPlaying(PersistentAudioPlayer player) {
     final item = player.currentItem;
     final api = player.api;
@@ -103,6 +109,8 @@ class _HomeScreenState extends State<HomeScreen> {
           category: _exploreCategory,
           fileCategory: _fileCategory,
           onBackAtRoot: () => _openTab(0),
+          onOpenFiles: () => _openTab(2),
+          onOpenSearch: _openSearch,
           onCategoryChanged: (category) => setState(() {
             _exploreCategory = category;
             if (category == ExploreCategory.files) _fileCategory = 'All';
@@ -110,18 +118,15 @@ class _HomeScreenState extends State<HomeScreen> {
         )
       else
         const SizedBox.shrink(),
-      if (_initializedTabs.contains(2))
-        SearchScreen(
-          key: const PageStorageKey<String>('homeserver-search'),
-          api: widget.api,
-          onHome: () => _openTab(0),
-        )
-      else
-        const SizedBox.shrink(),
+      FileManagerScreen(
+        key: PageStorageKey<String>('homeserver-files-${widget.api.baseUrl}'),
+        api: widget.api,
+        isActive: true,
+        onBackAtRoot: () => _openTab(0),
+      ),
     ];
 
-    final fileBrowserActive =
-        _selectedIndex == 1 && _exploreCategory == ExploreCategory.files;
+    final fileBrowserActive = _selectedIndex == 2;
 
     return PopScope(
       canPop: _selectedIndex == 0 || fileBrowserActive,
@@ -225,7 +230,7 @@ class _FloatingGlassDock extends StatelessWidget {
                     children: [
                       _DockTab(index: 0, selectedIndex: selectedIndex, icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: 'Home', onTap: onSelect, activeColor: colors.primary),
                       _DockTab(index: 1, selectedIndex: selectedIndex, icon: Icons.explore_outlined, activeIcon: Icons.explore_rounded, label: 'Explore', onTap: onSelect, activeColor: colors.primary),
-                      _DockTab(index: 2, selectedIndex: selectedIndex, icon: Icons.search_rounded, activeIcon: Icons.search_rounded, label: 'Search', onTap: onSelect, activeColor: colors.primary),
+                      _DockTab(index: 2, selectedIndex: selectedIndex, icon: Icons.folder_outlined, activeIcon: Icons.folder_rounded, label: 'Files', onTap: onSelect, activeColor: colors.primary),
                     ],
                   ),
                 ),
@@ -522,7 +527,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
         _quickUpload();
         return;
       case 'files':
-        Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => FileManagerScreen(api: widget.api)));
+        _openTab(2);
         return;
       case 'favorites':
         Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PhotoGalleryScreen(api: widget.api, initialTab: 3)));
