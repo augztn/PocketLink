@@ -9,6 +9,7 @@ import 'media_player_screen.dart';
 import 'now_playing_screen.dart';
 import 'persistent_audio_player.dart';
 import '../transfers/transfer_manager_screen.dart';
+import '../home/browser_state_store.dart';
 
 enum MediaLibraryType { music, video }
 
@@ -44,6 +45,9 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   String _libraryView = 'all';
   String _layoutMode = 'grid';
   String _sortBy = 'name';
+  String _currentFolderPath = '';
+  late final String _stateKey;
+  final ScrollController _folderScrollController = ScrollController();
 
   bool get _isMusic => widget.type == MediaLibraryType.music;
   String get _title => _isMusic ? 'Music' : 'Videos';
@@ -52,7 +56,52 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   @override
   void initState() {
     super.initState();
+    _stateKey = widget.api.baseUrl;
+    final saved = BrowserStateStore.instance.mediaState(_stateKey, widget.type.name);
+    _selectedVolume = saved.selectedVolume;
+    _libraryView = saved.view;
+    _layoutMode = saved.layoutMode;
+    _sortBy = saved.sortBy;
+    _currentFolderPath = saved.folderPath;
+    _folderScrollController.addListener(_saveScrollOffset);
     _scan();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _folderScrollController.hasClients && saved.scrollOffset > 0) {
+        _folderScrollController.jumpTo(saved.scrollOffset.clamp(0, _folderScrollController.position.maxScrollExtent));
+      }
+    });
+  }
+
+  void _saveState({String? folderPath, bool clearVolume = false}) {
+    final current = BrowserStateStore.instance.mediaState(_stateKey, widget.type.name);
+    BrowserStateStore.instance.updateMedia(_stateKey, widget.type.name, current.copyWith(
+      folderPath: folderPath ?? _currentFolderPath,
+      selectedVolume: _selectedVolume,
+      clearSelectedVolume: clearVolume,
+      view: _libraryView,
+      sortBy: _sortBy,
+      layoutMode: _layoutMode,
+      scrollOffset: _folderScrollController.hasClients ? _folderScrollController.offset : current.scrollOffset,
+    ));
+  }
+
+  void _saveScrollOffset() => _saveState();
+
+  void _goUpFolder() {
+    if (_currentFolderPath.isEmpty) return;
+    final parts = _currentFolderPath.split('/')..removeLast();
+    final parent = parts.join('/');
+    setState(() => _currentFolderPath = parent);
+    _saveState(folderPath: parent);
+    if (_folderScrollController.hasClients) _folderScrollController.jumpTo(0);
+  }
+
+  String _volumeName(String? id) {
+    if (id == null) return 'Internal storage';
+    for (final volume in _volumes) {
+      if (volume.id == id) return volume.name;
+    }
+    return 'USB / OTG';
   }
 
   bool _isMedia(FileEntry item) {
@@ -81,6 +130,10 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       try {
         final volumes = await widget.api.listStorageVolumes();
         _volumes = volumes;
+        if (_selectedVolume != null && !volumes.any((volume) => volume.id == _selectedVolume && volume.available)) {
+          _selectedVolume = null;
+          _currentFolderPath = '';
+        }
         for (final volume in volumes.where((item) => item.available)) {
           pending.add((path: '', depth: 0, volume: volume.id));
         }
@@ -509,6 +562,14 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   );
 
   @override
+  void dispose() {
+    _saveState();
+    _folderScrollController.removeListener(_saveScrollOffset);
+    _folderScrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final query = _searchQuery.trim().toLowerCase();
     final filtered = _media.where((media) {
@@ -520,12 +581,16 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       return matchesQuery && matchesVolume;
     }).toList(growable: false);
     final visibleMedia = _sortMedia(filtered);
-    final folders = _groupByFolder(visibleMedia);
     final isFolderView = _libraryView == 'folders';
     final selectedVolumes = _volumes.where((volume) => volume.id == _selectedVolume).toList();
     final sourceLabel = selectedVolumes.isEmpty ? 'All Storage' : selectedVolumes.first.name;
 
-    return Scaffold(
+    return PopScope(
+      canPop: _libraryView != 'folders' || _currentFolderPath.isEmpty,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && _libraryView == 'folders' && _currentFolderPath.isNotEmpty) _goUpFolder();
+      },
+      child: Scaffold(
       appBar: HomeServerAppBar(
         title: Text(_title),
         actions: [
@@ -534,7 +599,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
             HomeServerAppBarAction(
               label: _layoutMode == 'grid' ? 'List view' : 'Grid view',
               icon: _layoutMode == 'grid' ? Icons.view_list_rounded : Icons.grid_view_rounded,
-              onPressed: () => setState(() { _layoutMode = _layoutMode == 'grid' ? 'list' : 'grid'; }),
+              onPressed: () { setState(() { _layoutMode = _layoutMode == 'grid' ? 'list' : 'grid'; }); _saveState(); },
             ),
           HomeServerAppBarAction(label: 'Scan again', icon: Icons.refresh, onPressed: _loading ? null : _scan),
         ],
@@ -614,12 +679,12 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                         _viewPill(
                           label: _isMusic ? 'Songs' : 'Videos',
                           selected: _libraryView == 'all',
-                          onTap: () => setState(() => _libraryView = 'all'),
+                          onTap: () { setState(() => _libraryView = 'all'); _saveState(); },
                         ),
                         _viewPill(
                           label: 'Folders',
                           selected: isFolderView,
-                          onTap: () => setState(() => _libraryView = 'folders'),
+                          onTap: () { setState(() { _libraryView = 'folders'; _currentFolderPath = ''; _selectedVolume = null; }); _saveState(folderPath: '', clearVolume: true); },
                         ),
                       ],
                     ),
@@ -638,9 +703,10 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                         ),
                       )),
                     ],
-                    onSelected: (value) => setState(() {
+                    onSelected: (value) { setState(() {
                       _selectedVolume = value == 'all' ? null : value;
-                    }),
+                      _currentFolderPath = '';
+                    }); _saveState(folderPath: '', clearVolume: value == 'all'); },
                   ),
                   const SizedBox(width: 8),
                   _menuPill(
@@ -654,7 +720,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                       PopupMenuItem(value: 'newest', child: Text('Newest')),
                       PopupMenuItem(value: 'largest', child: Text('Largest')),
                     ],
-                    onSelected: (value) => setState(() => _sortBy = value),
+                    onSelected: (value) { setState(() => _sortBy = value); _saveState(); },
                   ),
                 ],
               ),
@@ -745,6 +811,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                                       ),
           ),
         ],
+      ),
       ),
     );
   }
