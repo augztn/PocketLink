@@ -3,6 +3,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/network/server_api.dart';
+import '../../core/settings/app_settings.dart';
 import '../transfers/transfer_manager.dart';
 import '../transfers/transfer_manager_screen.dart';
 
@@ -209,6 +210,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
         final savedPath = await FilePicker.platform.saveFile(
           dialogTitle: 'Save ${item.name}',
           fileName: item.name,
+          initialDirectory: AppSettings.instance.downloadDirectory,
           bytes: bytes,
         );
         if (savedPath == null) token.cancel('Save cancelled by user');
