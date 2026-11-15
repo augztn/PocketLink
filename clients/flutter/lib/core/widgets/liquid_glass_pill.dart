@@ -26,10 +26,29 @@ class LiquidGlassPill extends StatelessWidget {
               ? const Color(0xB8141416)
               : const Color(0xFF161618),
           borderRadius: radius,
-          border: Border.all(
-            color: Colors.white.withValues(alpha: useGlass ? 0.16 : 0.08),
-            width: useGlass ? 0.8 : 1,
-          ),
+          border: useGlass
+              ? Border(
+                  top: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.16),
+                    width: 0.8,
+                  ),
+                  left: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.08),
+                    width: 0.8,
+                  ),
+                  right: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.08),
+                    width: 0.8,
+                  ),
+                  bottom: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.08),
+                    width: 0.8,
+                  ),
+                )
+              : Border.all(
+                  color: Colors.white.withValues(alpha: 0.08),
+                  width: 1,
+                ),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.24),
