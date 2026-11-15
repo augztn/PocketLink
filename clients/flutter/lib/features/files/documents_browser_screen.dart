@@ -30,6 +30,7 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
   };
   static const _maxDirectories = 1800;
   static const _maxDepth = 18;
+  static const _maxFiles = 10000;
 
   final _search = TextEditingController();
   List<_DocumentFile> _documents = const [];
@@ -71,7 +72,7 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
       pending.add((path: '', volume: null, depth: 0));
 
       var cursor = 0;
-      while (cursor < pending.length && visited.length < _maxDirectories) {
+      while (cursor < pending.length && visited.length < _maxDirectories && found.length < _maxFiles) {
         final current = pending[cursor++];
         final key = '${current.volume ?? 'internal'}:${current.path}';
         if (!visited.add(key)) continue;
@@ -81,6 +82,7 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
               : await widget.api.listStorageDirectory(current.volume!, current.path);
           _scanned++;
           for (final item in listing.items) {
+            if (found.length >= _maxFiles) break;
             final path = current.path.isEmpty ? item.name : '${current.path}/${item.name}';
             if (item.isDirectory) {
               if (current.depth < _maxDepth) {
