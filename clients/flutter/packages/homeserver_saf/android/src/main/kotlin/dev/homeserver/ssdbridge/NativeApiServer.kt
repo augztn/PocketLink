@@ -241,17 +241,21 @@ internal class NativeApiServer(
         val item = resolveDocument(root, relative) ?: return notFound("File not found")
         if (!item.isFile) return bad("Not a file")
         val length = item.length()
-        if (length <= 0L) return bad("File size is unavailable from this storage provider")
         val mime = item.type?.takeIf { it.isNotBlank() } ?: mimeFor(item.name.orEmpty())
         val range = session.headers["range"]
         val response = if (range.isNullOrBlank()) {
             val input = context.contentResolver.openInputStream(item.uri)
                 ?: return notFound("Cannot open file")
-            newFixedLengthResponse(
-                Response.Status.OK, mime,
-                BufferedInputStream(input, STREAM_BUFFER_SIZE), length
-            )
+            val buffered = BufferedInputStream(input, STREAM_BUFFER_SIZE)
+            if (length > 0L) {
+                newFixedLengthResponse(Response.Status.OK, mime, buffered, length)
+            } else {
+                newChunkedResponse(Response.Status.OK, mime, buffered, STREAM_BUFFER_SIZE)
+            }
         } else {
+            if (length <= 0L) {
+                return jsonError(Response.Status.RANGE_NOT_SATISFIABLE, "Byte ranges are unavailable for this storage provider")
+            }
             val bounds = parseRange(range, length)
                 ?: return jsonError(Response.Status.RANGE_NOT_SATISFIABLE, "Invalid byte range")
             val (start, end) = bounds
@@ -297,8 +301,16 @@ internal class NativeApiServer(
 
         val input = context.contentResolver.openInputStream(uri) ?: return null
         var skipped = 0L
+        val discard = ByteArray(STREAM_BUFFER_SIZE)
         while (skipped < offset) {
-            val count = try { input.skip(offset - skipped) } catch (_: Exception) { -1L }
+            val remaining = offset - skipped
+            val count = try {
+                val advanced = input.skip(remaining)
+                if (advanced > 0L) advanced
+                else input.read(discard, 0, minOf(discard.size.toLong(), remaining).toInt()).toLong()
+            } catch (_: Exception) {
+                -1L
+            }
             if (count <= 0L) {
                 input.close()
                 return null
