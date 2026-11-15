@@ -7,6 +7,7 @@ import '../media/media_browser_screen.dart';
 import '../media/media_player_screen.dart';
 import '../media/persistent_audio_player.dart';
 import '../storage/storage_browser_screen.dart';
+import '../transfers/transfer_manager_screen.dart';
 
 enum ExploreCategory { files, drives, photos, music, videos }
 
@@ -333,6 +334,11 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
       appBar: AppBar(
         title: const Text('Search'),
         actions: [
+          IconButton(
+            tooltip: 'Transfers',
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen())),
+            icon: const Icon(Icons.swap_vert_rounded),
+          ),
           IconButton(
             tooltip: 'Search storage',
             onPressed: _loading || query.isEmpty ? null : _search,
