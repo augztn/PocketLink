@@ -40,7 +40,7 @@ class _LyricLine {
   final String text;
 }
 
-class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerProviderStateMixin {
+class _NowPlayingScreenState extends State<NowPlayingScreen> {
   static const _storage = FlutterSecureStorage();
   static const _favoriteKey = 'homeserver.music.favorites.v1';
   static const _pinnedKey = 'homeserver.music.pinned.v1';
@@ -758,7 +758,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
       for (var i = 0; i < _lyrics.length; i++) {
         if (_lyrics[i].time <= position) active = i;
       }
-      final text = active >= 0 ? _lyrics[active].text : (_lyrics.isEmpty ? 'Lyrics  ›' : _lyrics.first.text);
+      final text = active >= 0 ? _lyrics[active].text : (_loadingLyrics ? 'Loading lyrics…' : _lyrics.isEmpty ? 'Lyrics  ›' : _lyrics.first.text);
       return InkWell(
         onTap: _showLyrics,
         borderRadius: BorderRadius.circular(12),
