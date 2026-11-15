@@ -283,6 +283,13 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
             ..addAll(found);
         });
       }
+    } on DioException catch (error) {
+      if (mounted) {
+        final status = error.response?.statusCode;
+        setState(() => _error = status == 401
+            ? 'Login expired or credentials are incorrect.'
+            : error.message ?? 'Could not search server storage. Check the connection and try again.');
+      }
     } catch (_) {
       if (mounted) setState(() => _error = 'Could not search server storage. Check the connection and try again.');
     } finally {
