@@ -790,13 +790,30 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
         ? track.path.substring(0, track.path.lastIndexOf('/') + 1)
         : '';
 
-    // Ignore slow responses belonging to a track that is no longer active.
-    for (final name in const [
-      'cover.jpg', 'cover.jpeg', 'cover.png', 'cover.webp',
-      'folder.jpg', 'folder.png', 'album.jpg', 'album.png', 'front.jpg',
-    ]) {
-      try {
-        final path = '$folder$name';
+    // Inspect the folder once instead of issuing a series of expected 404s.
+    try {
+      final listing = track.volume == null
+          ? await widget.api.listDirectory(folder)
+          : await widget.api.listStorageDirectory(track.volume!, folder);
+      if (requestId != _artworkRequestId || !mounted) return;
+
+      const preferredNames = [
+        'cover.jpg', 'cover.jpeg', 'cover.png', 'cover.webp',
+        'folder.jpg', 'folder.png', 'album.jpg', 'album.png', 'front.jpg',
+      ];
+      FileEntry? artwork;
+      for (final name in preferredNames) {
+        for (final item in listing.items) {
+          if (!item.isDirectory && item.name.toLowerCase() == name) {
+            artwork = item;
+            break;
+          }
+        }
+        if (artwork != null) break;
+      }
+
+      if (artwork != null) {
+        final path = '$folder${artwork.name}';
         final bytes = track.volume == null
             ? await widget.api.downloadFile(path)
             : await widget.api.downloadStorageFile(track.volume!, path);
@@ -808,10 +825,9 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
           });
           return;
         }
-      } catch (_) {
-        // Try the next conventional artwork filename.
       }
-      if (requestId != _artworkRequestId || !mounted) return;
+    } catch (_) {
+      // Artwork is optional; keep playback working when it is unavailable.
     }
 
     if (requestId == _artworkRequestId && mounted) {
