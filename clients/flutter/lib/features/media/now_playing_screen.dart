@@ -514,7 +514,28 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
               ),
             ),
           ),
-          const SizedBox(width: 48),
+          SizedBox(
+            width: 96,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                IconButton(
+                  tooltip: 'Home',
+                  onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
+                  icon: const Icon(Icons.home_rounded, color: Colors.white70, size: 21),
+                  visualDensity: VisualDensity.compact,
+                ),
+                PopupMenuButton<String>(
+                  tooltip: 'More actions',
+                  icon: const Icon(Icons.more_vert_rounded, color: Colors.white70, size: 21),
+                  onSelected: (_) => _showOptions(),
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'track_options', child: Text('Track options')),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     ),
