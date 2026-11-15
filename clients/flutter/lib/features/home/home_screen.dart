@@ -877,11 +877,18 @@ class _HomeDashboardState extends State<_HomeDashboard> {
               child: InkWell(
                 borderRadius: BorderRadius.circular(18),
                 onTap: () {
-                  Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => MediaPlayerScreen(
-                    api: widget.api, title: item.title, path: item.path, volume: item.volume,
-                    isVideo: !player.isMusic, queue: player.queue,
-                    initialIndex: player.currentIndex, resumeExisting: true,
-                  )));
+                  Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => player.isMusic
+                    ? NowPlayingScreen(
+                        api: widget.api,
+                        queue: player.queue,
+                        initialIndex: player.currentIndex,
+                        resumeExisting: true,
+                      )
+                    : MediaPlayerScreen(
+                        api: widget.api, title: item.title, path: item.path, volume: item.volume,
+                        isVideo: true, queue: player.queue,
+                        initialIndex: player.currentIndex, resumeExisting: true,
+                      )));
                 },
                 child: Padding(
                   padding: const EdgeInsets.all(13),
