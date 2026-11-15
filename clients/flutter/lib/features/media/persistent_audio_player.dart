@@ -69,7 +69,6 @@ class PersistentAudioPlayer extends ChangeNotifier {
   MediaQueueItem? get currentItem =>
       _queue.isEmpty ? null : _queue[_currentIndex.clamp(0, _queue.length - 1).toInt()];
 
-  bool get showMiniPlayer => _active && _music && !_fullScreen && currentItem != null;
 
   Future<void> openQueue({
     required ServerApi api,
@@ -101,12 +100,10 @@ class PersistentAudioPlayer extends ChangeNotifier {
   }
 
   Future<void> closePlayerScreen({required bool isVideo}) async {
+    // Keep both audio and video sessions alive when their full player screen closes.
+    // HomeScreen exposes a floating shortcut to reopen the active session.
     _fullScreen = false;
-    if (isVideo) {
-      await dismiss();
-    } else {
-      notifyListeners();
-    }
+    notifyListeners();
   }
 
   Future<void> togglePlayback() async {
