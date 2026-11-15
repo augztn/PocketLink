@@ -138,7 +138,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
   }
 
   Future<void> _connectProfile(Map<String, String> profile) async {
-    if (_isConnecting) return;
+    if (_isConnecting || _connectingProfileId != null) return;
     setState(() { _connectingProfileId = profile['id']; _message = null; });
     try {
       await _selectProfile(profile, connect: false);
