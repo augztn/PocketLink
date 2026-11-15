@@ -100,6 +100,7 @@ class TransferManager extends ChangeNotifier {
   final List<TransferTask> _tasks = [];
 
   List<TransferTask> get tasks => List.unmodifiable(_tasks);
+  Future<void> get ready => _ready;
 
   Future<void> _restoreHistory() async {
     try {
