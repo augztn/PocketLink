@@ -8,7 +8,6 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../core/network/server_api.dart';
 import '../../core/settings/app_settings.dart';
-import '../media/media_player_screen.dart';
 import '../media/now_playing_screen.dart';
 import '../media/persistent_audio_player.dart';
 import '../transfers/transfer_manager.dart';
