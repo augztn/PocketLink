@@ -32,7 +32,7 @@ void main() {
     });
 
     test('retains Music and Videos tabs and storage selections independently', () {
-      final store = BrowserStateStore.instance;
+      final store = BrowserStateStore();
 
       store.updateMedia(
         'https://server-a.test:8000',
