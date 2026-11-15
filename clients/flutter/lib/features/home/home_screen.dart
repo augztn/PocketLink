@@ -63,6 +63,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
   bool _checking = true;
   bool? _serverOnline;
   List<StorageVolume> _volumes = const [];
+  List<RecentFile> _recentFiles = const [];
 
   @override
   void initState() {
@@ -82,6 +83,8 @@ class _HomeDashboardState extends State<_HomeDashboard> {
       } catch (_) {
         // The server can be reachable even when the optional volume endpoint fails.
       }
+      final recentFiles = await widget.api.listRecentFiles(volumes: volumes);
+      if (mounted) setState(() => _recentFiles = recentFiles);
     } catch (_) {
       online = false;
     }
@@ -380,6 +383,99 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                 ),
               ],
             ),
+            const SizedBox(height: 27),
+            sectionTitle(
+              'Recent files',
+              action: 'Browse',
+              onAction: () => widget.onOpenTab(1),
+            ),
+            const SizedBox(height: 10),
+            if (_recentFiles.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: colors.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.history_rounded, color: colors.onSurfaceVariant),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _checking
+                            ? 'Checking your folders for recent files…'
+                            : 'No recent files found in the scanned folders.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Material(
+                color: colors.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(20),
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  children: [
+                    for (var index = 0; index < _recentFiles.length; index++) ...[
+                      if (index > 0) const Divider(height: 1, indent: 68),
+                      ListTile(
+                        leading: Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: colors.secondaryContainer,
+                            borderRadius: BorderRadius.circular(13),
+                          ),
+                          child: Icon(
+                            _recentFiles[index].file.name.contains('.')
+                                ? Icons.insert_drive_file_outlined
+                                : Icons.folder_outlined,
+                            color: colors.onSecondaryContainer,
+                          ),
+                        ),
+                        title: Text(
+                          _recentFiles[index].file.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        subtitle: Text(
+                          '${_recentFiles[index].volumeName} · ${_recentFiles[index].parentPath.isEmpty ? 'Root' : _recentFiles[index].parentPath}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: () {
+                          final recent = _recentFiles[index];
+                          if (recent.volume == null) {
+                            Navigator.of(context).push(MaterialPageRoute<void>(
+                              builder: (_) => FileManagerScreen(
+                                api: widget.api,
+                                initialPath: recent.parentPath,
+                              ),
+                            ));
+                          } else {
+                            Navigator.of(context).push(MaterialPageRoute<void>(
+                              builder: (_) => StorageBrowserScreen(
+                                api: widget.api,
+                                initialVolume: recent.volume,
+                                initialPath: recent.parentPath,
+                              ),
+                            ));
+                          }
+                        },
+                      ),
+                    ],
+                  ],
+                ),
+              ),
             const SizedBox(height: 27),
             sectionTitle('Storage', action: 'Open', onAction: _openStorage),
             const SizedBox(height: 12),
