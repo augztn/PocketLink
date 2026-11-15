@@ -302,7 +302,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       final key = '$source::$folderPath';
       grouped.putIfAbsent(key, () => <_MediaFile>[]).add(media);
     }
-    return grouped.entries.map((entry) {
+    final result = grouped.entries.map((entry) {
       final separator = entry.key.indexOf('::');
       final source = entry.key.substring(0, separator);
       final path = entry.key.substring(separator + 2);
@@ -312,8 +312,26 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         volume: source == 'internal' ? null : source,
         items: entry.value,
       );
-    }).toList()
-      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    }).toList();
+    result.sort((a, b) {
+      if (_sortBy == 'largest') {
+        final aSize = a.items.fold<int>(0, (sum, item) => sum + item.entry.size);
+        final bSize = b.items.fold<int>(0, (sum, item) => sum + item.entry.size);
+        return bSize.compareTo(aSize);
+      }
+      if (_sortBy == 'newest') {
+        DateTime newest(_MediaFolder folder) {
+          return folder.items
+              .map((item) => DateTime.tryParse(item.entry.modified))
+              .whereType<DateTime>()
+              .fold<DateTime>(DateTime.fromMillisecondsSinceEpoch(0),
+                  (latest, date) => date.isAfter(latest) ? date : latest);
+        }
+        return newest(b).compareTo(newest(a));
+      }
+      return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+    });
+    return result;
   }
 
   List<_MediaFile> _filesAtCurrentLevel(List<_MediaFile> items) {
@@ -544,6 +562,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                       : () {
                           setState(() { _currentFolderPath = ''; _selectedVolume = null; });
                           _saveState(folderPath: '', clearVolume: true);
+                          if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0);
                         },
                   child: const Text('All storage'),
                 ),
@@ -552,7 +571,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                   TextButton(
                     onPressed: _currentFolderPath.isEmpty
                         ? null
-                        : () { setState(() => _currentFolderPath = ''); _saveState(folderPath: ''); },
+                        : () { setState(() => _currentFolderPath = ''); _saveState(folderPath: ''); if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0); },
                     child: Text(_volumeName(_selectedVolume)),
                   ),
                 ],
@@ -565,6 +584,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                             final path = parts.take(i + 1).join('/');
                             setState(() => _currentFolderPath = path);
                             _saveState(folderPath: path);
+                            if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0);
                           },
                     child: Text(parts[i]),
                   ),
@@ -814,7 +834,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                     onSelected: (value) { setState(() {
                       _selectedVolume = value == 'all' ? null : value;
                       _currentFolderPath = '';
-                    }); _saveState(folderPath: '', clearVolume: value == 'all'); },
+                    }); _saveState(folderPath: '', clearVolume: value == 'all'); if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0); },
                   ),
                   const SizedBox(width: 8),
                   _menuPill(
