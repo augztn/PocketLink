@@ -294,6 +294,11 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
         leading:selecting?IconButton(onPressed:()=>setState(selected.clear),icon:const Icon(Icons.close)):null,
         actions:[
           if(!selecting)IconButton(onPressed:()=>setState(()=>searchOpen=!searchOpen),icon:Icon(searchOpen?Icons.close:Icons.search),tooltip:'Search'),
+          if(!selecting)IconButton(
+            onPressed:()=>setState(()=>tab=tab==3?0:3),
+            icon:Icon(tab==3?Icons.favorite:Icons.favorite_border),
+            tooltip:'Favourites',
+          ),
           IconButton(onPressed:loading?null:scan,icon:const Icon(Icons.refresh),tooltip:'Scan again'),
         ],
       ),
