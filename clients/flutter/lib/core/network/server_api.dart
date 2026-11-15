@@ -110,6 +110,7 @@ class ServerApi {
     required String baseUrl,
     required String username,
     required String password,
+    HttpClientAdapter? httpClientAdapter,
   }) : _dio = Dio(
           BaseOptions(
             baseUrl: _normalizeBaseUrl(baseUrl),
@@ -123,6 +124,7 @@ class ServerApi {
             },
           ),
         ) {
+    if (httpClientAdapter != null) _dio.httpClientAdapter = httpClientAdapter;
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) {
         AppLogger.info('API request', fields: {
@@ -139,13 +141,46 @@ class ServerApi {
         });
         handler.next(response);
       },
-      onError: (error, handler) {
+      onError: (error, handler) async {
         AppLogger.warning('API request failed', fields: {
           'method': error.requestOptions.method,
           'path': error.requestOptions.uri.path,
           'type': error.type.name,
           'status': error.response?.statusCode,
         });
+
+        final options = error.requestOptions;
+        final attempts = options.extra['homeserver.retryCount'] as int? ?? 0;
+        final cancelled = options.cancelToken?.isCancelled ?? false;
+        final status = error.response?.statusCode;
+        final transientStatus = status == 408 || status == 425 || status == 429 ||
+            status == 500 || status == 502 || status == 503 || status == 504;
+        final transientNetwork = error.type == DioExceptionType.connectionError ||
+            error.type == DioExceptionType.connectionTimeout ||
+            error.type == DioExceptionType.receiveTimeout;
+        if (options.method.toUpperCase() == 'GET' &&
+            attempts < 2 && !cancelled && (transientNetwork || transientStatus)) {
+          options.extra['homeserver.retryCount'] = attempts + 1;
+          await Future<void>.delayed(Duration(milliseconds: 300 * (1 << attempts)));
+          if (options.cancelToken?.isCancelled ?? false) {
+            handler.next(error);
+            return;
+          }
+          try {
+            handler.resolve(await _dio.fetch<dynamic>(options));
+            return;
+          } on DioException catch (retryError) {
+            handler.next(retryError);
+            return;
+          } catch (retryError) {
+            handler.next(DioException(
+              requestOptions: options,
+              error: retryError,
+              type: DioExceptionType.unknown,
+            ));
+            return;
+          }
+        }
         handler.next(error);
       },
     ));
