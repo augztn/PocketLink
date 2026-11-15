@@ -11,7 +11,7 @@ import org.junit.runner.RunWith
 import java.net.HttpURLConnection
 import java.net.ServerSocket
 import java.net.URL
-import java.util.Base64
+import android.util.Base64
 
 @RunWith(AndroidJUnit4::class)
 class NativeApiServerIntegrationTest {
@@ -36,14 +36,14 @@ class NativeApiServerIntegrationTest {
             val wrongPassword = request(
                 port,
                 "/api/storage/volumes",
-                "Basic " + Base64.getEncoder().encodeToString("admin:incorrect-password".toByteArray())
+                "Basic " + Base64.encodeToString("admin:incorrect-password".toByteArray(), Base64.NO_WRAP)
             )
             assertEquals(401, wrongPassword.first)
 
             val authorized = request(
                 port,
                 "/api/storage/volumes",
-                "Basic " + Base64.getEncoder().encodeToString("admin:$password".toByteArray())
+                "Basic " + Base64.encodeToString("admin:$password".toByteArray(), Base64.NO_WRAP)
             )
             assertEquals(200, authorized.first)
             assertTrue(authorized.second.contains("\"items\""))
