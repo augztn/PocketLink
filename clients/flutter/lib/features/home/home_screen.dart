@@ -7,6 +7,7 @@ import '../library/library_browser_screen.dart';
 import '../library/photo_gallery_screen.dart';
 import '../storage/storage_browser_screen.dart';
 import '../storage/local_storage_setup_screen.dart';
+import '../transfers/transfer_manager_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({required this.api, super.key});
@@ -221,6 +222,13 @@ class _HomeDashboardState extends State<_HomeDashboard> {
           ],
         ),
         actions: [
+          IconButton(
+            tooltip: 'Transfers',
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+              builder: (_) => const TransferManagerScreen(),
+            )),
+            icon: const Icon(Icons.swap_vert_rounded),
+          ),
           IconButton(
             tooltip: 'Refresh server status',
             onPressed: _checking ? null : _refreshStatus,
