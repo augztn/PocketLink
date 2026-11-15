@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'quick_actions_store.dart';
+import '../media/media_player_screen.dart';
+import '../media/persistent_audio_player.dart';
 
 import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
@@ -40,6 +42,8 @@ class _HomeScreenState extends State<HomeScreen> {
       MediaBrowserScreen(api: widget.api, type: MediaLibraryType.video),
     ];
 
+    final mediaPlayer = PersistentAudioPlayer.instance;
+
     return PopScope(
       canPop: _selectedIndex == 0 || _selectedIndex == 1,
       onPopInvokedWithResult: (didPop, result) {
@@ -47,8 +51,39 @@ class _HomeScreenState extends State<HomeScreen> {
           _openTab(0);
         }
       },
-      child: Scaffold(
+      child: AnimatedBuilder(
+        animation: mediaPlayer,
+        builder: (context, _) => Scaffold(
       body: IndexedStack(index: _selectedIndex, children: pages),
+      floatingActionButton: mediaPlayer.isActive && mediaPlayer.currentItem != null
+          ? FloatingActionButton.small(
+              heroTag: 'homeserver-current-media',
+              tooltip: 'Open now playing · ${mediaPlayer.isMusic ? 'Music' : 'Video'}',
+              onPressed: () {
+                final item = mediaPlayer.currentItem!;
+                final api = mediaPlayer.api;
+                if (api == null) return;
+                Navigator.of(context).push(MaterialPageRoute<void>(
+                  builder: (_) => MediaPlayerScreen(
+                    api: api,
+                    title: item.title,
+                    path: item.path,
+                    volume: item.volume,
+                    isVideo: !mediaPlayer.isMusic,
+                    queue: mediaPlayer.queue,
+                    initialIndex: mediaPlayer.currentIndex,
+                    resumeExisting: true,
+                  ),
+                ));
+              },
+              child: Icon(
+                mediaPlayer.isMusic
+                    ? Icons.music_note_rounded
+                    : Icons.play_circle_fill_rounded,
+              ),
+            )
+          : null,
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
         onDestinationSelected: _openTab,
@@ -60,6 +95,8 @@ class _HomeScreenState extends State<HomeScreen> {
           NavigationDestination(icon: Icon(Icons.movie_outlined), selectedIcon: Icon(Icons.movie), label: 'Videos'),
         ],
       ),
+      ),
+        ),
       ),
     );
   }
