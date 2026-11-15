@@ -30,7 +30,10 @@ class _HomeScreenState extends State<HomeScreen> {
   ExploreCategory _exploreCategory = ExploreCategory.files;
   String _fileCategory = 'All';
 
-  void _openTab(int index) => setState(() {\n    _initializedTabs.add(index);\n    _selectedIndex = index;\n  });
+  void _openTab(int index) => setState(() {
+    _initializedTabs.add(index);
+    _selectedIndex = index;
+  });
 
   void _openExplore(ExploreCategory category, {String? fileCategory}) {
     setState(() {
