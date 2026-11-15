@@ -21,6 +21,14 @@ class _MediaFile {
   final String? volume;
 }
 
+class _MediaFolder {
+  const _MediaFolder({required this.name, required this.path, required this.volume, required this.items});
+  final String name;
+  final String path;
+  final String? volume;
+  final List<_MediaFile> items;
+}
+
 class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   static const _audioExtensions = {
     'mp3', 'm4a', 'aac', 'wav', 'flac', 'ogg', 'opus',
@@ -97,7 +105,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   }
 
   String _volumeName(String? id) {
-    if (id == null) return 'Internal storage';
+    if (id == null || id == 'internal') return 'Internal storage';
     for (final volume in _volumes) {
       if (volume.id == id) return volume.name;
     }
@@ -130,7 +138,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       try {
         final volumes = await widget.api.listStorageVolumes();
         _volumes = volumes;
-        if (_selectedVolume != null && !volumes.any((volume) => volume.id == _selectedVolume && volume.available)) {
+        if (_selectedVolume != null && _selectedVolume != 'internal' && !volumes.any((volume) => volume.id == _selectedVolume && volume.available)) {
           _selectedVolume = null;
           _currentFolderPath = '';
         }
