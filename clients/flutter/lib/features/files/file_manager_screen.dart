@@ -730,7 +730,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                               ),
                             )
                           : RefreshIndicator(
-                              onRefresh: () => _load(),
+                              onRefresh: _refreshDirectory,
                               child: _gridView
                                   ? GridView.builder(
                                       controller: _scrollController,
