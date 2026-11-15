@@ -966,7 +966,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
           final recent = items[index];
           final isTrack = recent.kind == 'track';
           final isFolder = recent.kind == 'folder';
-          final icon = isTrack ? Icons.music_note_rounded : isFolder ? Icons.folder_rounded : _recentIcon(FileEntry(name: recent.title, isDirectory: false, size: 0, modified: recent.updatedAt));
+          final icon = isTrack ? Icons.music_note_rounded : isFolder ? Icons.folder_rounded : Icons.insert_drive_file_rounded;
           return SizedBox(
             width: 250,
             child: Material(
