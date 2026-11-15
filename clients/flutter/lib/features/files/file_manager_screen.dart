@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../core/widgets/home_server_app_bar.dart';
 
 import '../../core/network/server_api.dart';
@@ -40,6 +41,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   late final String _stateKey;
+  late final BrowserStateStore _browserState;
   String _sortBy = 'name';
   double _pendingScrollOffset = 0;
 
@@ -94,7 +96,8 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   void initState() {
     super.initState();
     _stateKey = widget.api.baseUrl;
-    final saved = BrowserStateStore.instance.fileState(_stateKey);
+    _browserState = Provider.of<BrowserStateStore>(context, listen: false);
+    final saved = _browserState.fileState(_stateKey);
     _path = widget.initialPath.isNotEmpty ? widget.initialPath : saved.path;
     _category = widget.initialCategory != 'All' ? widget.initialCategory : saved.category;
     _sortBy = saved.sortBy;
@@ -112,8 +115,8 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   }
 
   void _saveState({String? path}) {
-    final current = BrowserStateStore.instance.fileState(_stateKey);
-    BrowserStateStore.instance.updateFile(_stateKey, current.copyWith(
+    final current = _browserState.fileState(_stateKey);
+    _browserState.updateFile(_stateKey, current.copyWith(
       path: path ?? _path,
       category: _category,
       sortBy: _sortBy,
