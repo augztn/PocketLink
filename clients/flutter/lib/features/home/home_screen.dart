@@ -110,6 +110,8 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       },
       child: AnimatedBuilder(
+        animation: AppSettings.instance,
+        builder: (context, __) => AnimatedBuilder(
         animation: player,
         builder: (context, _) => Scaffold(
           extendBody: true,
@@ -122,6 +124,7 @@ class _HomeScreenState extends State<HomeScreen> {
             onSelect: _openTab,
             onMediaPressed: () => _openNowPlaying(player),
           ),
+        ),
         ),
       ),
     );
@@ -226,9 +229,7 @@ class _FloatingGlassDock extends StatelessWidget {
                           : Icon(
                               hasMedia && isVideo
                                   ? Icons.play_circle_fill_rounded
-                                  : hasMedia
-                                      ? Icons.music_note_rounded
-                                      : Icons.graphic_eq_rounded,
+                                  : Icons.music_note_rounded,
                               color: colors.primary,
                               size: 27,
                             ),
