@@ -274,10 +274,10 @@ class ServerApi {
 
     final generation = _cacheGeneration;
     late final Future<T> request;
-    request = load().then((value) {
+    request = load().then<T>((value) {
       if (generation != _cacheGeneration) {
         if (identical(requests[key], request)) requests.remove(key);
-        return _cachedGet(key, cache, requests, load);
+        return _cachedGet<T>(key, cache, requests, load);
       }
       if (cache.length >= _maxCachedDirectories && !cache.containsKey(key)) {
         cache.remove(cache.keys.first);
