@@ -3,6 +3,8 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 
+import '../logging/app_logger.dart';
+
 class FileEntry {
   const FileEntry({
     required this.name,
@@ -117,7 +119,34 @@ class ServerApi {
                   'Basic ${base64Encode(utf8.encode('$username:$password'))}',
             },
           ),
-        );
+        ) {
+    _dio.interceptors.add(InterceptorsWrapper(
+      onRequest: (options, handler) {
+        AppLogger.info('API request', fields: {
+          'method': options.method,
+          'path': options.uri.path,
+        });
+        handler.next(options);
+      },
+      onResponse: (response, handler) {
+        AppLogger.info('API response', fields: {
+          'method': response.requestOptions.method,
+          'path': response.requestOptions.uri.path,
+          'status': response.statusCode,
+        });
+        handler.next(response);
+      },
+      onError: (error, handler) {
+        AppLogger.warning('API request failed', fields: {
+          'method': error.requestOptions.method,
+          'path': error.requestOptions.uri.path,
+          'type': error.type.name,
+          'status': error.response?.statusCode,
+        });
+        handler.next(error);
+      },
+    ));
+  }
 
   final Dio _dio;
 
