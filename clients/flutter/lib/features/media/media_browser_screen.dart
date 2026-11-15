@@ -779,7 +779,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                         _viewPill(
                           label: 'Folders',
                           selected: isFolderView,
-                          onTap: () { setState(() { _libraryView = 'folders'; _currentFolderPath = ''; _selectedVolume = null; }); _saveState(folderPath: '', clearVolume: true); },
+                          onTap: () { setState(() => _libraryView = 'folders'); _saveState(); },
                         ),
                       ],
                     ),
