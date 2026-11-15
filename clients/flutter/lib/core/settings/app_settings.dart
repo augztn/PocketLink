@@ -7,7 +7,6 @@ class AppSettings extends ChangeNotifier {
 
   static const _storage = FlutterSecureStorage();
   static const _themeKey = 'settings_theme_mode';
-  static const _qualityKey = 'settings_streaming_quality';
   static const _downloadKey = 'settings_download_directory';
   static const _quickActionsKey = 'settings_home_quick_actions';
   static const _libraryKey = 'settings_home_library';
@@ -15,7 +14,6 @@ class AppSettings extends ChangeNotifier {
 
   ThemeMode _themeMode = ThemeMode.system;
   bool _amoled = false;
-  String _streamingQuality = 'Original';
   String? _downloadDirectory;
   bool _showQuickActions = true;
   bool _showLibrary = true;
@@ -24,7 +22,6 @@ class AppSettings extends ChangeNotifier {
 
   ThemeMode get themeMode => _themeMode;
   bool get amoled => _amoled;
-  String get streamingQuality => _streamingQuality;
   String? get downloadDirectory => _downloadDirectory;
   bool get showQuickActions => _showQuickActions;
   bool get showLibrary => _showLibrary;
@@ -35,7 +32,6 @@ class AppSettings extends ChangeNotifier {
     try {
       final values = await Future.wait([
         _storage.read(key: _themeKey),
-        _storage.read(key: _qualityKey),
         _storage.read(key: _downloadKey),
         _storage.read(key: _quickActionsKey),
         _storage.read(key: _libraryKey),
@@ -77,13 +73,6 @@ class AppSettings extends ChangeNotifier {
     if (value) _themeMode = ThemeMode.dark;
     notifyListeners();
     await _storage.write(key: _themeKey, value: value ? 'amoled' : 'dark');
-  }
-
-  Future<void> setStreamingQuality(String value) async {
-    if (!const {'Data saver', 'Balanced', 'Original'}.contains(value)) return;
-    _streamingQuality = value;
-    notifyListeners();
-    await _storage.write(key: _qualityKey, value: value);
   }
 
   Future<void> setDownloadDirectory(String? value) async {
