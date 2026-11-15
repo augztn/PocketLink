@@ -631,14 +631,17 @@ class _HomeDashboardState extends State<_HomeDashboard> {
 
   Widget _buildServerTelemetry(BuildContext context, ThemeData theme, ColorScheme colors) {
     final transfers = TransferManager.instance;
-    final activeTransfers = transfers.tasks.where((task) => task.status == TransferStatus.running).length;
     final base = Uri.tryParse(widget.api.baseUrl);
     final host = base == null ? 'Connected server' : '${base.host}:${base.hasPort ? base.port : (base.scheme == 'https' ? 443 : 80)}';
     final dark = Theme.of(context).brightness == Brightness.dark;
     final cardColor = dark ? const Color(0xFF202226) : const Color(0xFF24272D);
     final foreground = Colors.white;
     final muted = Colors.white.withValues(alpha: 0.66);
-    return Container(
+    return AnimatedBuilder(
+      animation: transfers,
+      builder: (context, _) {
+        final activeTransfers = transfers.tasks.where((task) => task.status == TransferStatus.running).length;
+        return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: cardColor,
@@ -708,7 +711,8 @@ class _HomeDashboardState extends State<_HomeDashboard> {
             ],
           ),
         ],
-      ),
+        );
+      },
     );
   }
 
