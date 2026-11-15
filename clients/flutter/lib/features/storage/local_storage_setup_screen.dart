@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/widgets/home_server_app_bar.dart';
 import 'package:flutter/services.dart';
 
 class LocalStorageSetupScreen extends StatefulWidget {
@@ -204,7 +205,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
     final running = _status['running'] == true;
     final internalGranted = _status['internalStorageGranted'] == true;
     return Scaffold(
-      appBar: AppBar(title: const Text('This device · Storage setup')),
+      appBar: const HomeServerAppBar(title: Text('This device · Storage setup')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
