@@ -107,14 +107,16 @@ class TransferManager extends ChangeNotifier {
   Future<void> _restoreHistory() async {
     try {
       final entries = await (await _storeFuture).load();
-      for (final entry in entries.take(100)) {
+      final restored = <TransferTask>[];
+      for (final entry in entries) {
         try {
-          _tasks.add(TransferTask.fromJson(entry));
+          restored.add(TransferTask.fromJson(entry));
         } catch (_) {
           // Ignore malformed entries while preserving the rest of the history.
         }
       }
-      _tasks.sort((a, b) => b.startedAt.compareTo(a.startedAt));
+      restored.sort((a, b) => b.startedAt.compareTo(a.startedAt));
+      _tasks.addAll(restored.take(100));
       notifyListeners();
       await _persist();
     } catch (_) {
