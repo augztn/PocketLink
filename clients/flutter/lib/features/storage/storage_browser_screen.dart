@@ -10,8 +10,15 @@ import '../../core/network/server_api.dart';
 import '../media/media_player_screen.dart';
 
 class StorageBrowserScreen extends StatefulWidget {
-  const StorageBrowserScreen({required this.api, super.key});
+  const StorageBrowserScreen({
+    required this.api,
+    this.initialVolume,
+    this.initialPath = '',
+    super.key,
+  });
   final ServerApi api;
+  final String? initialVolume;
+  final String initialPath;
 
   @override
   State<StorageBrowserScreen> createState() => _StorageBrowserScreenState();
@@ -42,9 +49,14 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
       final available = volumes.where((item) => item.available).toList();
       setState(() {
         _volumes = volumes;
-        _volume = available.isNotEmpty ? available.first.id : (volumes.isEmpty ? null : volumes.first.id);
+        _volume = volumes.any((item) => item.id == widget.initialVolume)
+            ? widget.initialVolume
+            : (available.isNotEmpty
+                ? available.first.id
+                : (volumes.isEmpty ? null : volumes.first.id));
+        _path = widget.initialPath;
       });
-      if (_volume != null) await _loadDirectory('');
+      if (_volume != null) await _loadDirectory(widget.initialPath);
     } on DioException catch (error) {
       if (mounted) setState(() => _error = switch (error.response?.statusCode) {
         401 => 'HomeServer rejected the saved login (401). Go back to the connection screen and enter the current server admin password. The SAF bridge token is separate.',
