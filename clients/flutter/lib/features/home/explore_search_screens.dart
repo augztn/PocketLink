@@ -113,12 +113,12 @@ class ExploreScreen extends StatelessWidget {
           card(
             title: 'Music', subtitle: 'Albums and playlists',
             icon: Icons.headphones_rounded, tint: const Color(0xFF8D72E8),
-            onTap: () => _open(context, MediaBrowserScreen(api: api, type: MediaLibraryType.music)),
+            onTap: () => _open(context, MediaBrowserScreen(api: api, type: MediaLibraryType.music, onHome: onBackAtRoot)),
           ),
           card(
             title: 'Videos', subtitle: 'Movies and clips',
             icon: Icons.play_circle_fill_rounded, tint: const Color(0xFF279D91),
-            onTap: () => _open(context, MediaBrowserScreen(api: api, type: MediaLibraryType.video)),
+            onTap: () => _open(context, MediaBrowserScreen(api: api, type: MediaLibraryType.video, onHome: onBackAtRoot)),
           ),
           card(
             title: 'Documents', subtitle: 'PDF, Office and text',
