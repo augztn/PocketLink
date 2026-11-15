@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
-/// Small, private, rotating diagnostic log for troubleshooting HomeServer.
+/// Small, private, rotating diagnostic log for troubleshooting PocketLink.
 class AppLogger {
   AppLogger._();
 
@@ -24,7 +24,7 @@ class AppLogger {
         'debug': kDebugMode,
       });
     } catch (error) {
-      debugPrint('HomeServer logger initialization failed: $error');
+      debugPrint('PocketLink logger initialization failed: $error');
     }
   }
 
@@ -73,7 +73,7 @@ class AppLogger {
         await _rotateIfNeeded();
         await file.writeAsString(line.toString(), mode: FileMode.append, flush: true);
       } catch (writeError) {
-        debugPrint('HomeServer log write failed: $writeError');
+        debugPrint('PocketLink log write failed: $writeError');
       }
     });
   }
@@ -115,7 +115,7 @@ class AppLogger {
   static Future<File> createDiagnosticFile() async {
     final directory = _directory ?? await getApplicationSupportDirectory();
     final content = await readLogs();
-    final file = File('${directory.path}/homeserver-diagnostics-${DateTime.now().toUtc().millisecondsSinceEpoch}.txt');
+    final file = File('${directory.path}/pocketlink-diagnostics-${DateTime.now().toUtc().millisecondsSinceEpoch}.txt');
     await file.writeAsString(content, flush: true);
     return file;
   }
