@@ -502,6 +502,8 @@ class _HomeDashboardState extends State<_HomeDashboard> {
   void _runQuickAction(String id) {
     switch (id) {
       case 'upload':
+        _quickUpload();
+        return;
       case 'files':
         Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => FileManagerScreen(api: widget.api)));
         return;
@@ -652,93 +654,185 @@ class _HomeDashboardState extends State<_HomeDashboard> {
     }
   }
 
+  String _networkRouteLabel(Uri? base) {
+    final host = base?.host ?? '';
+    final parts = host.split('.').map(int.tryParse).toList();
+    if (parts.length == 4 && parts.every((part) => part != null && part >= 0 && part <= 255)) {
+      final a = parts[0]!;
+      final b = parts[1]!;
+      if (a == 100 && b >= 64 && b <= 127) return 'Tailscale';
+      if (a == 192 && b == 168 || a == 10 || a == 172 && b >= 16 && b <= 31) {
+        return 'Local LAN';
+      }
+    }
+    return 'Remote';
+  }
+
+  Future<void> _quickUpload() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        allowMultiple: false,
+        withData: true,
+      );
+      if (result == null || result.files.isEmpty) return;
+      final file = result.files.single;
+      final bytes = file.bytes;
+      if (bytes == null) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not read the selected file.')),
+        );
+        return;
+      }
+      final completed = await TransferManager.instance.run(
+        name: file.name,
+        direction: 'Upload',
+        location: 'Internal storage · Root',
+        operation: (token, progress) => widget.api.uploadFile(
+          '',
+          file.name,
+          bytes,
+          cancelToken: token,
+          onSendProgress: progress,
+        ),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(completed ? 'Uploaded ${file.name}' : 'Upload did not complete. Check Transfers.'),
+      ));
+      if (completed) await _refreshStatus();
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not upload the selected file.')),
+      );
+    }
+  }
+
   Widget _buildServerTelemetry(BuildContext context, ThemeData theme, ColorScheme colors) {
     final transfers = TransferManager.instance;
     final base = Uri.tryParse(widget.api.baseUrl);
     final host = base == null ? 'Connected server' : '${base.host}:${base.hasPort ? base.port : (base.scheme == 'https' ? 443 : 80)}';
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = dark ? const Color(0xFF202226) : const Color(0xFF24272D);
+    final route = _networkRouteLabel(base);
+    final online = _serverOnline == true;
+    final statusColor = _checking ? Colors.amber : online ? const Color(0xFF4ADE80) : const Color(0xFFF59E0B);
+    final cardColor = const Color(0xFF1E2025);
     final foreground = Colors.white;
-    final muted = Colors.white.withValues(alpha: 0.66);
+    final muted = Colors.white.withValues(alpha: 0.62);
+    final mountedVolumes = _volumes.where((volume) => volume.available).toList(growable: false);
     return AnimatedBuilder(
       animation: transfers,
       builder: (context, _) {
         final activeTransfers = transfers.tasks.where((task) => task.status == TransferStatus.running).length;
         return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.dns_rounded, color: Colors.white70, size: 19),
-              const SizedBox(width: 9),
-              Expanded(child: Text(host, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.titleSmall?.copyWith(color: foreground, fontWeight: FontWeight.w700))),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.09), borderRadius: BorderRadius.circular(20)),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Container(width: 7, height: 7, decoration: BoxDecoration(
-                    color: _checking ? Colors.amber : (_serverOnline == true ? const Color(0xFF4ADE80) : Colors.redAccent),
-                    shape: BoxShape.circle)),
-                  const SizedBox(width: 6),
-                  Text(_checking ? 'Checking' : (_serverOnline == true ? 'Online' : 'Offline'),
-                    style: theme.textTheme.labelSmall?.copyWith(color: foreground, fontWeight: FontWeight.w700)),
-                ]),
-              ),
-              IconButton(
-                visualDensity: VisualDensity.compact,
-                tooltip: 'Switch server',
-                onPressed: widget.onReturnToConnection,
-                icon: const Icon(Icons.swap_horiz_rounded, color: Colors.white70, size: 20),
-              ),
-            ],
+          padding: const EdgeInsets.all(15),
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: online ? Colors.white.withValues(alpha: 0.075) : statusColor.withValues(alpha: 0.42),
+            ),
           ),
-          const SizedBox(height: 14),
-          Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('STORAGE', style: theme.textTheme.labelSmall?.copyWith(color: muted, letterSpacing: 0.7)),
-                const SizedBox(height: 5),
-                Text('Usage unavailable', style: theme.textTheme.labelMedium?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 7),
+              Row(children: [
+                const Icon(Icons.dns_rounded, color: Colors.white70, size: 18),
+                const SizedBox(width: 8),
+                Expanded(child: Text(host, maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleSmall?.copyWith(color: foreground, fontWeight: FontWeight.w800))),
                 Container(
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.075), borderRadius: BorderRadius.circular(20)),
+                  child: Text(route, style: theme.textTheme.labelSmall?.copyWith(color: foreground, fontWeight: FontWeight.w700)),
                 ),
-              ])),
-              const SizedBox(width: 14),
-              Expanded(child: InkWell(
-                borderRadius: BorderRadius.circular(10),
-                onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen())),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('TRANSFERS', style: theme.textTheme.labelSmall?.copyWith(color: muted, letterSpacing: 0.7)),
-                  const SizedBox(height: 5),
-                  Text('$activeTransfers active', style: theme.textTheme.labelMedium?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 7),
-                  Text('View activity  →', style: theme.textTheme.labelSmall?.copyWith(color: Colors.white70)),
+                const SizedBox(width: 7),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Container(width: 6, height: 6, decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle)),
+                    const SizedBox(width: 5),
+                    Text(_checking ? 'Checking' : online ? 'Online' : 'Offline',
+                      style: theme.textTheme.labelSmall?.copyWith(color: statusColor, fontWeight: FontWeight.w800)),
+                    if (online && _latency != null) ...[
+                      const SizedBox(width: 5),
+                      Text('${_latency!.inMilliseconds} ms',
+                        style: theme.textTheme.labelSmall?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
+                    ],
+                  ]),
+                ),
+                const SizedBox(width: 2),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  tooltip: 'Quick upload',
+                  onPressed: online ? _quickUpload : null,
+                  icon: const Icon(Icons.arrow_upward_rounded, color: Colors.white, size: 19),
+                ),
+              ]),
+              if (!online && !_checking) ...[
+                const SizedBox(height: 8),
+                Row(children: [
+                  Expanded(child: Text('Server is unreachable. Check the network or server service.',
+                    style: theme.textTheme.bodySmall?.copyWith(color: Colors.white70))),
+                  TextButton(onPressed: _refreshStatus, child: const Text('Reconnect')),
+                  TextButton(onPressed: widget.onReturnToConnection, child: const Text('Switch')),
                 ]),
-              )),
-              const SizedBox(width: 14),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('LATENCY', style: theme.textTheme.labelSmall?.copyWith(color: muted, letterSpacing: 0.7)),
-                const SizedBox(height: 5),
-                Text(_checking ? 'Checking' : (_latency == null ? 'Offline' : '${_latency!.inMilliseconds} ms'),
-                  style: theme.textTheme.labelMedium?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 7),
-                Text('API response', style: theme.textTheme.labelSmall?.copyWith(color: Colors.white70)),
-              ])),
+              ],
+              const SizedBox(height: 13),
+              Row(children: [
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('STORAGE', style: theme.textTheme.labelSmall?.copyWith(color: muted, letterSpacing: 0.7)),
+                  const SizedBox(height: 5),
+                  Text('Capacity unavailable', style: theme.textTheme.labelMedium?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
+                ])),
+                const SizedBox(width: 10),
+                Expanded(child: InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen())),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('TRANSFERS', style: theme.textTheme.labelSmall?.copyWith(color: muted, letterSpacing: 0.7)),
+                    const SizedBox(height: 5),
+                    Text('$activeTransfers active', style: theme.textTheme.labelMedium?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
+                  ]),
+                )),
+                const SizedBox(width: 10),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('LATENCY', style: theme.textTheme.labelSmall?.copyWith(color: muted, letterSpacing: 0.7)),
+                  const SizedBox(height: 5),
+                  Text(_checking ? 'Checking' : (_latency == null ? '—' : '${_latency!.inMilliseconds} ms'),
+                    style: theme.textTheme.labelMedium?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
+                ])),
+              ]),
+              const SizedBox(height: 11),
+              InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: () => widget.onOpenExplore(ExploreCategory.drives),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Text('MOUNTED PARTITIONS', style: theme.textTheme.labelSmall?.copyWith(color: muted, letterSpacing: 0.65)),
+                    const Spacer(),
+                    Text('${mountedVolumes.length + 1} mounted', style: theme.textTheme.labelSmall?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
+                    const SizedBox(width: 3),
+                    const Icon(Icons.chevron_right_rounded, color: Colors.white70, size: 17),
+                  ]),
+                  const SizedBox(height: 7),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(5),
+                    child: SizedBox(height: 5, child: Row(children: [
+                      Expanded(child: Container(color: const Color(0xFF60A5FA))),
+                      for (var i = 0; i < mountedVolumes.length; i++) ...[
+                        const SizedBox(width: 2),
+                        Expanded(child: Container(color: const Color(0xFF2DD4BF))),
+                      ],
+                    ])),
+                  ),
+                  const SizedBox(height: 5),
+                  Text('Internal storage${mountedVolumes.isEmpty ? '' : ' · ${mountedVolumes.map((volume) => volume.name).join(' · ')}'}',
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall?.copyWith(color: muted)),
+                ]),
+              ),
             ],
           ),
-        ],
         );
       },
     );
@@ -1071,6 +1165,13 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                 }).toList(),
               ),
             ],
+            const SizedBox(height: 22),
+            sectionTitle('Continue'),
+            const SizedBox(height: 10),
+            AnimatedBuilder(
+              animation: PersistentAudioPlayer.instance,
+              builder: (context, _) => _buildContinueStrip(context, theme, colors),
+            ),
             if (appSettings.showRecentFiles) ...[
             const SizedBox(height: 27),
             sectionTitle(
@@ -1174,10 +1275,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
               ),
             const SizedBox(height: 27),
             ],
-            const SizedBox(height: 22),
-            sectionTitle('Continue'),
-            const SizedBox(height: 10),
-            _buildContinueStrip(context, theme, colors),
+
           ],
         ),
       ),
