@@ -73,6 +73,14 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   }
 
   @override
+  void didUpdateWidget(covariant FileManagerScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialCategory != widget.initialCategory) {
+      _category = widget.initialCategory;
+    }
+  }
+
+  @override
   void initState() {
     super.initState();
     _path = widget.initialPath;
@@ -565,7 +573,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                               child: _gridView
                                   ? GridView.builder(
                                       physics: const AlwaysScrollableScrollPhysics(),
-                                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                                      padding: EdgeInsets.fromLTRB(16, 12, 16, 104 + MediaQuery.paddingOf(context).bottom),
                                       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                                         maxCrossAxisExtent: 190, mainAxisExtent: 156,
                                         crossAxisSpacing: 10, mainAxisSpacing: 10,
