@@ -160,7 +160,6 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
   static const _audio = {'mp3', 'm4a', 'aac', 'wav', 'flac', 'ogg', 'opus', 'wma', 'aiff', 'alac'};
   static const _video = {'mp4', 'm4v', 'mov', 'mkv', 'webm', 'avi', 'wmv', 'mpeg', 'mpg', '3gp', 'ts', 'm2ts', 'mts', 'flv', 'ogv'};
   static const _photo = {'jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'heic', 'heif', 'avif'};
-  };
 
   final _searchController = TextEditingController();
   final _focusNode = FocusNode();
