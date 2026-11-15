@@ -491,10 +491,10 @@ class _HomeDashboardState extends State<_HomeDashboard> {
         widget.onOpenExplore(ExploreCategory.videos);
         return;
       case 'drives':
-        _openStorage();
+        widget.onOpenExplore(ExploreCategory.drives);
         return;
       case 'documents':
-        _openDocuments();
+        widget.onOpenExplore(ExploreCategory.files, fileCategory: 'Documents');
         return;
       case 'transfers':
         Navigator.of(context).push(MaterialPageRoute<void>(
@@ -676,7 +676,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () {
                   Navigator.pop(context);
-                  widget.onOpenTab(1);
+                  widget.onOpenExplore(ExploreCategory.files);
                 },
               ),
               ListTile(
@@ -686,7 +686,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () {
                   Navigator.pop(context);
-                  _openStorage();
+                  widget.onOpenExplore(ExploreCategory.drives);
                 },
               ),
               ListTile(
