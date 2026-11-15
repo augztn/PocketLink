@@ -7,11 +7,12 @@ import 'package:media_kit/media_kit.dart';
 import '../../core/network/server_api.dart';
 
 class MediaQueueItem {
-  const MediaQueueItem({required this.title, required this.path, this.volume});
+  const MediaQueueItem({required this.title, required this.path, this.volume, this.localPath});
 
   final String title;
   final String path;
   final String? volume;
+  final String? localPath;
 }
 
 /// App-scoped owner for the native media engine.
@@ -89,8 +90,8 @@ class PersistentAudioPlayer extends ChangeNotifier {
     notifyListeners();
 
     final tracks = _queue.map((item) => Media(
-      api.mediaStreamUrl(item.path, volume: item.volume),
-      httpHeaders: api.mediaHeaders,
+      item.localPath ?? api.mediaStreamUrl(item.path, volume: item.volume),
+      httpHeaders: item.localPath == null ? api.mediaHeaders : const {},
       extras: {'title': item.title},
     )).toList(growable: false);
     await player.open(Playlist(tracks, index: _currentIndex));
