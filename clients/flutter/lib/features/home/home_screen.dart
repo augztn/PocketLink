@@ -810,6 +810,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    final availableVolumes = _volumes.where((volume) => volume.available).length;
     final appSettings = AppSettings.instance;
 
     Widget sectionTitle(String title, {String? action, VoidCallback? onAction}) {
