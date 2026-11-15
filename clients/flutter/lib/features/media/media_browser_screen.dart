@@ -464,7 +464,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     final isFolderView = _libraryView == 'folders';
 
     return Scaffold(
-      appBar: widget.embedded ? null : AppBar(
+      appBar: AppBar(
         title: Text(_title),
         actions: [
           IconButton(
@@ -744,13 +744,11 @@ class MediaBrowserScreen extends StatefulWidget {
   const MediaBrowserScreen({
     required this.api,
     required this.type,
-    this.embedded = false,
     super.key,
   });
 
   final ServerApi api;
   final MediaLibraryType type;
-  final bool embedded;
 
   @override
   State<MediaBrowserScreen> createState() => _MediaBrowserScreenState();
