@@ -147,6 +147,8 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         if (_selectedVolume != null && _selectedVolume != 'internal' && !volumes.any((volume) => volume.id == _selectedVolume && volume.available)) {
           _selectedVolume = null;
           _currentFolderPath = '';
+          _pendingScrollOffset = 0;
+          _saveState(folderPath: '', clearVolume: true);
         }
         for (final volume in volumes.where((item) => item.available)) {
           pending.add((path: '', depth: 0, volume: volume.id));
