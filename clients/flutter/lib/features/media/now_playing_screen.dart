@@ -65,7 +65,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   }
 
   String get _title => _track.title.replaceAll(RegExp(r'\.[^.]+$'), '');
-  String get _folder => _track.path.contains('/') ? _track.path.substring(0, _track.path.lastIndexOf('/')) : 'Internal storage';
+  String get _folder => _track.path.contains('/') ? _track.path.substring(0, _track.path.lastIndexOf('/')) : '';
   String get _folderName => _folder.isEmpty ? 'Internal storage' : _folder.split('/').last;
 
   @override
