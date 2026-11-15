@@ -286,7 +286,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   }
   Widget _buildVideoGrid(List<_MediaFile> items) {
     return GridView.builder(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+      padding: EdgeInsets.fromLTRB(12, 8, 12, 104 + MediaQuery.paddingOf(context).bottom),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         crossAxisSpacing: 12,
