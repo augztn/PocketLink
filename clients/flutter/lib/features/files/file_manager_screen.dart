@@ -29,6 +29,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
 
   String _searchQuery = '';
   String _category = 'All';
+  bool _gridView = false;
 
   static const Map<String, Set<String>> _categoryExtensions = {
     'Images': {'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'heic', 'heif', 'avif'},
@@ -339,169 +340,295 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
     final allItems = _listing?.items ?? const <FileEntry>[];
     final query = _searchQuery.trim().toLowerCase();
     final items = allItems.where((item) {
       if (!_matchesCategory(item)) return false;
       return query.isEmpty || item.name.toLowerCase().contains(query);
     }).toList(growable: false);
+
+    Widget fileIcon(FileEntry item, {double size = 24}) {
+      final color = item.isDirectory ? colors.primary : colors.secondary;
+      return Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Icon(_iconFor(item), color: color, size: size),
+      );
+    }
+
+    Widget fileTile(FileEntry item) {
+      return Card(
+        margin: EdgeInsets.zero,
+        elevation: 0,
+        color: colors.surfaceContainerLow,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+          leading: fileIcon(item),
+          title: Text(item.name, maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w650)),
+          subtitle: Text(item.isDirectory ? 'Folder' : _formatSize(item.size),
+              style: TextStyle(color: colors.onSurfaceVariant)),
+          onTap: item.isDirectory
+              ? () => _load(_itemPath(item.name))
+              : _isImage(item) ? () => _previewImage(item) : null,
+          trailing: PopupMenuButton<String>(
+            tooltip: 'More actions',
+            onSelected: (action) {
+              if (action == 'download' && !item.isDirectory) _downloadFile(item);
+              if (action == 'rename') _rename(item);
+              if (action == 'delete') _delete(item);
+            },
+            itemBuilder: (_) => [
+              if (!item.isDirectory)
+                const PopupMenuItem(value: 'download', child: Text('Download')),
+              const PopupMenuItem(value: 'rename', child: Text('Rename')),
+              const PopupMenuItem(value: 'delete', child: Text('Delete')),
+            ],
+          ),
+        ),
+      );
+    }
+
     return PopScope(
       canPop: _path.isEmpty,
-      onPopInvoked: (didPop) {
+      onPopInvokedWithResult: (didPop, result) {
         if (!didPop && _path.isNotEmpty) _goUp();
       },
       child: Scaffold(
-      appBar: AppBar(
-        title: const Text('Files'),
-        actions: [
-          IconButton(
-            tooltip: 'Upload file',
-            onPressed: _uploadFile,
-            icon: const Icon(Icons.upload_file),
-          ),
-          IconButton(
-            tooltip: 'Transfers',
-            onPressed: _openTransfers,
-            icon: const Icon(Icons.swap_vert_rounded),
-          ),
-          IconButton(
-            tooltip: 'New folder',
-            onPressed: _createFolder,
-            icon: const Icon(Icons.create_new_folder_outlined),
-          ),
-          IconButton(
-            tooltip: 'Refresh',
-            onPressed: _loading ? null : () => _load(),
-            icon: const Icon(Icons.refresh),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          ListTile(
-            leading: IconButton(
-              tooltip: 'Go up',
-              onPressed: _path.isEmpty ? null : _goUp,
-              icon: const Icon(Icons.arrow_upward),
-            ),
-            title: Text(_path.isEmpty ? 'HomeServer storage' : _path),
-            subtitle: Text('${allItems.length} items'),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: TextField(
-              controller: _searchController,
-              onChanged: (value) => setState(() => _searchQuery = value),
-              decoration: InputDecoration(
-                hintText: 'Search this folder',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchQuery.isEmpty
-                    ? null
-                    : IconButton(
-                        tooltip: 'Clear search',
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() => _searchQuery = '');
-                        },
-                        icon: const Icon(Icons.close),
+        appBar: AppBar(
+          title: const Text('File manager', style: TextStyle(fontWeight: FontWeight.w800)),
+          actions: [
+            IconButton(tooltip: 'Transfers', onPressed: _openTransfers,
+                icon: const Icon(Icons.swap_vert_rounded)),
+            IconButton(tooltip: 'Upload file', onPressed: _uploadFile,
+                icon: const Icon(Icons.cloud_upload_outlined)),
+            IconButton(tooltip: 'New folder', onPressed: _createFolder,
+                icon: const Icon(Icons.create_new_folder_outlined)),
+            IconButton(tooltip: 'Refresh', onPressed: _loading ? null : () => _load(),
+                icon: const Icon(Icons.refresh_rounded)),
+          ],
+        ),
+        body: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [colors.primaryContainer, colors.surfaceContainerHighest],
+                  ),
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [
+                      Container(
+                        width: 44, height: 44,
+                        decoration: BoxDecoration(
+                          color: colors.surface.withValues(alpha: 0.72),
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        child: Icon(Icons.folder_copy_rounded, color: colors.primary, size: 25),
                       ),
-                isDense: true,
+                      const Spacer(),
+                      IconButton.filledTonal(
+                        tooltip: 'Go to parent folder',
+                        onPressed: _path.isEmpty ? null : _goUp,
+                        icon: const Icon(Icons.arrow_upward_rounded),
+                      ),
+                    ]),
+                    const SizedBox(height: 14),
+                    Text(_path.isEmpty ? 'Internal storage' : _path.split('/').last,
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 4),
+                    Text(_path.isEmpty ? 'Your files, all in one place' : 'Internal storage  /  $_path',
+                      maxLines: 2, overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
+                    const SizedBox(height: 14),
+                    Row(children: [
+                      _summaryPill(Icons.folder_outlined, '${allItems.where((e) => e.isDirectory).length} folders'),
+                      const SizedBox(width: 8),
+                      _summaryPill(Icons.insert_drive_file_outlined, '${allItems.where((e) => !e.isDirectory).length} files'),
+                    ]),
+                  ],
+                ),
               ),
             ),
-          ),
-          SizedBox(
-            height: 48,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              children: [
-                for (final category in const [
-                  'All', 'Images', 'Videos', 'Music', 'Documents'
-                ])
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: ChoiceChip(
-                      label: Text(category),
-                      selected: _category == category,
-                      onSelected: (_) => setState(() => _category = category),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          if (_loading) const LinearProgressIndicator(),
-          if (_error != null)
             Padding(
-              padding: const EdgeInsets.all(20),
-              child: Text(_error!, style: TextStyle(
-                color: Theme.of(context).colorScheme.error,
-              )),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: TextField(
+                controller: _searchController,
+                onChanged: (value) => setState(() => _searchQuery = value),
+                decoration: InputDecoration(
+                  hintText: 'Search files and folders',
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  suffixIcon: _searchQuery.isEmpty ? null : IconButton(
+                    tooltip: 'Clear search',
+                    onPressed: () { _searchController.clear(); setState(() => _searchQuery = ''); },
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                  filled: true,
+                  fillColor: colors.surfaceContainerLow,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide(color: colors.primary, width: 1.5)),
+                ),
+              ),
             ),
-          Expanded(
-            child: _error != null
-                ? Center(
-                    child: FilledButton(
-                      onPressed: () => _load(),
-                      child: const Text('Retry'),
-                    ),
-                  )
-                : _loading && _listing == null
-                    ? const SizedBox.shrink()
-                    : items.isEmpty
-                        ? Center(
-                            child: Text(
-                              allItems.isEmpty
-                                  ? 'This folder is empty.'
-                                  : 'No matching files.',
-                            ),
-                          )
-                        : ListView.separated(
-                            itemCount: items.length,
-                            separatorBuilder: (_, __) =>
-                                const Divider(height: 1),
-                            itemBuilder: (context, index) {
-                              final item = items[index];
-                              return ListTile(
-                                leading: Icon(_iconFor(item)),
-                                title: Text(item.name),
-                                subtitle: Text(item.isDirectory
-                                    ? 'Folder'
-                                    : _formatSize(item.size)),
-                                onTap: item.isDirectory
-                                    ? () => _load(_itemPath(item.name))
-                                    : _isImage(item)
-                                        ? () => _previewImage(item)
-                                        : null,
-                                trailing: PopupMenuButton<String>(
-                                  onSelected: (action) {
-                                    if (action == 'download' && !item.isDirectory) {
-                                      _downloadFile(item);
-                                    }
-                                    if (action == 'rename') _rename(item);
-                                    if (action == 'delete') _delete(item);
-                                  },
-                                  itemBuilder: (_) => [
-                                    if (!item.isDirectory)
-                                      const PopupMenuItem(
-                                        value: 'download',
-                                        child: Text('Download'),
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 44,
+              child: Row(children: [
+                Expanded(child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  children: [
+                    for (final category in const ['All', 'Images', 'Videos', 'Music', 'Documents'])
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: ChoiceChip(
+                          label: Text(category),
+                          selected: _category == category,
+                          onSelected: (_) => setState(() => _category = category),
+                          showCheckmark: false,
+                        ),
+                      ),
+                  ],
+                )),
+                IconButton(
+                  tooltip: _gridView ? 'List view' : 'Grid view',
+                  onPressed: () => setState(() => _gridView = !_gridView),
+                  icon: Icon(_gridView ? Icons.view_list_rounded : Icons.grid_view_rounded),
+                ),
+                const SizedBox(width: 8),
+              ]),
+            ),
+            if (_loading) const LinearProgressIndicator(minHeight: 2),
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                child: Material(
+                  color: colors.errorContainer,
+                  borderRadius: BorderRadius.circular(14),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(children: [
+                      Icon(Icons.error_outline_rounded, color: colors.onErrorContainer),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(_error!, style: TextStyle(color: colors.onErrorContainer))),
+                    ]),
+                  ),
+                ),
+              ),
+            Expanded(
+              child: _error != null
+                  ? Center(child: FilledButton.icon(onPressed: () => _load(),
+                      icon: const Icon(Icons.refresh), label: const Text('Try again')))
+                  : _loading && _listing == null
+                      ? const SizedBox.shrink()
+                      : items.isEmpty
+                          ? RefreshIndicator(
+                              onRefresh: () => _load(),
+                              child: ListView(physics: const AlwaysScrollableScrollPhysics(),
+                                children: [SizedBox(height: 150, child: Center(child: Text(
+                                  allItems.isEmpty ? 'This folder is empty' : 'No matching files',
+                                  style: theme.textTheme.bodyLarge?.copyWith(color: colors.onSurfaceVariant),
+                                )))],
+                              ),
+                            )
+                          : RefreshIndicator(
+                              onRefresh: () => _load(),
+                              child: _gridView
+                                  ? GridView.builder(
+                                      physics: const AlwaysScrollableScrollPhysics(),
+                                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                                      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                                        maxCrossAxisExtent: 190, mainAxisExtent: 156,
+                                        crossAxisSpacing: 10, mainAxisSpacing: 10,
                                       ),
-                                    const PopupMenuItem(
-                                      value: 'rename',
-                                      child: Text('Rename'),
+                                      itemCount: items.length,
+                                      itemBuilder: (context, index) {
+                                        final item = items[index];
+                                        return InkWell(
+                                          borderRadius: BorderRadius.circular(20),
+                                          onTap: item.isDirectory ? () => _load(_itemPath(item.name))
+                                              : _isImage(item) ? () => _previewImage(item) : null,
+                                          child: Container(
+                                            padding: const EdgeInsets.all(14),
+                                            decoration: BoxDecoration(
+                                              color: colors.surfaceContainerLow,
+                                              borderRadius: BorderRadius.circular(20),
+                                            ),
+                                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                              Row(children: [
+                                                fileIcon(item, size: 26),
+                                                const Spacer(),
+                                                PopupMenuButton<String>(
+                                                  padding: EdgeInsets.zero,
+                                                  onSelected: (action) {
+                                                    if (action == 'download' && !item.isDirectory) _downloadFile(item);
+                                                    if (action == 'rename') _rename(item);
+                                                    if (action == 'delete') _delete(item);
+                                                  },
+                                                  itemBuilder: (_) => [
+                                                    if (!item.isDirectory) const PopupMenuItem(value: 'download', child: Text('Download')),
+                                                    const PopupMenuItem(value: 'rename', child: Text('Rename')),
+                                                    const PopupMenuItem(value: 'delete', child: Text('Delete')),
+                                                  ],
+                                                ),
+                                              ]),
+                                              const Spacer(),
+                                              Text(item.name, maxLines: 2, overflow: TextOverflow.ellipsis,
+                                                style: const TextStyle(fontWeight: FontWeight.w700)),
+                                              const SizedBox(height: 3),
+                                              Text(item.isDirectory ? 'Folder' : _formatSize(item.size),
+                                                style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
+                                            ]),
+                                          ),
+                                        );
+                                      },
+                                    )
+                                  : ListView.separated(
+                                      physics: const AlwaysScrollableScrollPhysics(),
+                                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                                      itemCount: items.length,
+                                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                                      itemBuilder: (context, index) => fileTile(items[index]),
                                     ),
-                                    PopupMenuItem(
-                                      value: 'delete',
-                                      child: Text('Delete'),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-          ),
-        ],
+                            ),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _summaryPill(IconData icon, String label) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.65),
+        borderRadius: BorderRadius.circular(30),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, size: 15),
+          const SizedBox(width: 6),
+          Text(label, style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700)),
+        ]),
       ),
     );
   }
