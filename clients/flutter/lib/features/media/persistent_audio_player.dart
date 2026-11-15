@@ -52,6 +52,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
   StreamSubscription<Duration>? _positionSubscription;
   StreamSubscription<Duration>? _durationSubscription;
   bool _nativeSessionStarted = false;
+  Timer? _sleepTimer;
 
   List<MediaQueueItem> _queue = const [];
   ServerApi? _api;
@@ -67,6 +68,21 @@ class PersistentAudioPlayer extends ChangeNotifier {
   bool get isMusic => _music;
   bool get isFullScreen => _fullScreen;
   bool get isPlaying => player.state.playing;
+  bool get hasSleepTimer => _sleepTimer?.isActive ?? false;
+
+  /// Pauses playback after [duration], even if the Now Playing screen is closed.
+  void schedulePauseAfter(Duration duration) {
+    _sleepTimer?.cancel();
+    _sleepTimer = Timer(duration, () {
+      _sleepTimer = null;
+      unawaited(player.pause());
+    });
+  }
+
+  void cancelSleepTimer() {
+    _sleepTimer?.cancel();
+    _sleepTimer = null;
+  }
 
   MediaQueueItem? get currentItem =>
       _queue.isEmpty ? null : _queue[_currentIndex.clamp(0, _queue.length - 1).toInt()];
@@ -144,6 +160,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
   }
 
   Future<void> dismiss() async {
+    cancelSleepTimer();
     await player.stop();
     if (defaultTargetPlatform == TargetPlatform.android) {
       try {
@@ -219,6 +236,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
 
   @override
   void dispose() {
+    cancelSleepTimer();
     unawaited(_playlistSubscription?.cancel());
     unawaited(_playingSubscription?.cancel());
     unawaited(_completedSubscription?.cancel());
