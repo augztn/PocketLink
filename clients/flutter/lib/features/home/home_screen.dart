@@ -923,6 +923,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
   }
 
   Future<void> _refreshStatus() async {
+    widget.api.invalidateDirectoryCache();
     if (mounted) setState(() => _checking = true);
     var online = false;
     var volumes = <StorageVolume>[];
