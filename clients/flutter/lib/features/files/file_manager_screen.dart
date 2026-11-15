@@ -195,9 +195,6 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
           bytes: bytes,
         );
         if (savedPath == null) token.cancel('Save cancelled by user');
-        if (savedPath == null) {
-          throw StateError('Save location was not selected.');
-        }
       },
     );
     if (!mounted) return;
@@ -356,6 +353,11 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
             tooltip: 'Upload file',
             onPressed: _uploadFile,
             icon: const Icon(Icons.upload_file),
+          ),
+          IconButton(
+            tooltip: 'Transfers',
+            onPressed: _openTransfers,
+            icon: const Icon(Icons.swap_vert_rounded),
           ),
           IconButton(
             tooltip: 'New folder',
