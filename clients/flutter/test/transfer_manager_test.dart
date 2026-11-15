@@ -113,7 +113,7 @@ void main() {
     );
 
     final restored = TransferManager.forTesting(store);
-    await Future<void>.delayed(Duration.zero);
+    await restored.ready;
     expect(restored.tasks, hasLength(1));
     expect(restored.tasks.single.name, 'persisted.jpg');
     expect(restored.tasks.single.status, TransferStatus.completed);
@@ -133,7 +133,7 @@ void main() {
     }]);
 
     final restored = TransferManager.forTesting(store);
-    await Future<void>.delayed(Duration.zero);
+    await restored.ready;
     expect(restored.tasks.single.status, TransferStatus.failed);
     expect(restored.tasks.single.error, contains('App closed'));
     restored.dispose();
