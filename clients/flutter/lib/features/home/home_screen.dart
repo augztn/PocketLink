@@ -771,7 +771,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     Container(width: 6, height: 6, decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle)),
                     const SizedBox(width: 5),
-                    Text(_checking ? '• Checking' : online ? '• Online' : '• Offline',
+                    Text(_checking ? 'Checking' : online ? 'Online' : 'Offline',
                       style: theme.textTheme.labelSmall?.copyWith(color: statusColor, fontWeight: FontWeight.w800)),
                   ]),
                 ),
@@ -855,6 +855,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
     final item = player.currentItem;
     if (item == null || !player.isActive) {
       return Container(
+        width: double.infinity,
         height: 82,
         alignment: Alignment.centerLeft,
         padding: const EdgeInsets.symmetric(horizontal: 16),
