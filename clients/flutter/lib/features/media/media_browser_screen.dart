@@ -29,6 +29,14 @@ class _MediaFolder {
   final List<_MediaFile> items;
 }
 
+class _MediaFolder {
+  const _MediaFolder({required this.name, required this.path, required this.volume, required this.items});
+  final String name;
+  final String path;
+  final String? volume;
+  final List<_MediaFile> items;
+}
+
 class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   static const _audioExtensions = {
     'mp3', 'm4a', 'aac', 'wav', 'flac', 'ogg', 'opus',
@@ -772,7 +780,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         _viewPill(
-                          label: _isMusic ? 'Songs' : 'Videos',
+                          label: _isMusic ? 'Songs' : 'All videos',
                           selected: _libraryView == 'all',
                           onTap: () { setState(() => _libraryView = 'all'); _saveState(); },
                         ),
