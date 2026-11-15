@@ -81,7 +81,9 @@ class _ExploreNavigatorObserver extends NavigatorObserver {
   final VoidCallback onChanged;
 
   @override
-  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) => onChanged();
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (previousRoute != null) onChanged();
+  }
 
   @override
   void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) => onChanged();
