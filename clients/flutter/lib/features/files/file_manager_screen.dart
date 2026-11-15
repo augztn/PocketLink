@@ -10,11 +10,15 @@ class FileManagerScreen extends StatefulWidget {
   const FileManagerScreen({
     required this.api,
     this.initialPath = '',
+    this.isActive = true,
+    this.onBackAtRoot,
     super.key,
   });
 
   final ServerApi api;
   final String initialPath;
+  final bool isActive;
+  final VoidCallback? onBackAtRoot;
 
   @override
   State<FileManagerScreen> createState() => _FileManagerScreenState();
@@ -397,9 +401,14 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     }
 
     return PopScope(
-      canPop: _path.isEmpty,
+      canPop: !widget.isActive || _path.isNotEmpty,
       onPopInvokedWithResult: (didPop, result) {
-        if (!didPop && _path.isNotEmpty) _goUp();
+        if (didPop || !widget.isActive) return;
+        if (_path.isNotEmpty) {
+          _goUp();
+        } else {
+          widget.onBackAtRoot?.call();
+        }
       },
       child: Scaffold(
         appBar: AppBar(
