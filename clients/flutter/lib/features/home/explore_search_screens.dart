@@ -4,7 +4,6 @@ import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
 import '../library/photo_gallery_screen.dart';
 import '../media/media_browser_screen.dart';
-import '../media/persistent_audio_player.dart';
 import '../storage/storage_browser_screen.dart';
 
 enum ExploreCategory { files, drives, photos, music, videos }
