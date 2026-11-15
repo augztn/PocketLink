@@ -31,7 +31,11 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final pages = [
-      _HomeDashboard(api: widget.api, onOpenTab: _openTab),
+      _HomeDashboard(
+        api: widget.api,
+        onOpenTab: _openTab,
+        onReturnToConnection: widget.onReturnToConnection,
+      ),
       FileManagerScreen(
         api: widget.api,
         isActive: _selectedIndex == 1,
@@ -96,17 +100,21 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       ),
-        ),
       ),
     );
   }
 }
 
 class _HomeDashboard extends StatefulWidget {
-  const _HomeDashboard({required this.api, required this.onOpenTab});
+  const _HomeDashboard({
+    required this.api,
+    required this.onOpenTab,
+    this.onReturnToConnection,
+  });
 
   final ServerApi api;
   final ValueChanged<int> onOpenTab;
+  final VoidCallback? onReturnToConnection;
 
   @override
   State<_HomeDashboard> createState() => _HomeDashboardState();
