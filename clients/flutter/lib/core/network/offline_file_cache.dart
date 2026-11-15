@@ -159,7 +159,12 @@ class OfflineFileCache {
     final extension = name.contains('.')
         ? name.substring(name.lastIndexOf('.') + 1).toLowerCase()
         : '';
-    final safeExtension = RegExp(r'^[a-z0-9]{1,12}
+    final validExtension = extension.isNotEmpty &&
+        extension.length <= 12 &&
+        extension.runes.every((value) =>
+            (value >= 48 && value <= 57) || (value >= 97 && value <= 122));
+    final safeExtension = validExtension ? extension : 'bin';
+    final target = File('${root.path}/$key.$safeExtension');
     final temp = File('${root.path}/$key.part');
     try {
       await api.downloadToFile(path, temp.path, volume: volume);
