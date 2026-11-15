@@ -250,8 +250,7 @@ class _SearchScreenState extends State<SearchScreen> {
         }
       }
 
-      _scanTruncated = _directoryCursor < _pendingDirectories.length ||
-          _allFound.length - startingFiles >= 10000;
+      _scanTruncated = _directoryCursor < _pendingDirectories.length;
       _allFound.sort((a, b) => a.file.name.toLowerCase().compareTo(b.file.name.toLowerCase()));
       if (mounted && generation == _scanGeneration) {
         setState(() {
