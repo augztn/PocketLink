@@ -179,7 +179,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               ListTile(
-                leading: const Icon(Icons.folder_download_outlined),
+                leading: const Icon(Icons.folder_outlined),
                 title: const Text('Download directory'),
                 subtitle: Text(_settings.downloadDirectory ?? 'Use the system default'),
                 trailing: const Icon(Icons.chevron_right_rounded),
