@@ -56,6 +56,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   String _currentFolderPath = '';
   late final String _stateKey;
   final ScrollController _folderScrollController = ScrollController();
+  double _pendingScrollOffset = 0;
 
   bool get _isMusic => widget.type == MediaLibraryType.music;
   String get _title => _isMusic ? 'Music' : 'Videos';
@@ -71,13 +72,16 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     _layoutMode = saved.layoutMode;
     _sortBy = saved.sortBy;
     _currentFolderPath = saved.folderPath;
+    _pendingScrollOffset = saved.scrollOffset;
     _folderScrollController.addListener(_saveScrollOffset);
     _scan();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _folderScrollController.hasClients && saved.scrollOffset > 0) {
-        _folderScrollController.jumpTo(saved.scrollOffset.clamp(0, _folderScrollController.position.maxScrollExtent).toDouble());
-      }
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _restoreScrollOffset());
+  }
+
+  void _restoreScrollOffset() {
+    if (!mounted || !_folderScrollController.hasClients || _pendingScrollOffset <= 0) return;
+    _folderScrollController.jumpTo(_pendingScrollOffset.clamp(0, _folderScrollController.position.maxScrollExtent).toDouble());
+    _pendingScrollOffset = 0;
   }
 
   void _saveState({String? folderPath, bool clearVolume = false}) {
@@ -85,7 +89,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     BrowserStateStore.instance.updateMedia(_stateKey, widget.type.name, current.copyWith(
       folderPath: folderPath ?? _currentFolderPath,
       selectedVolume: _selectedVolume,
-      clearSelectedVolume: clearVolume,
+      clearSelectedVolume: clearVolume || _selectedVolume == null,
       view: _libraryView,
       sortBy: _sortBy,
       layoutMode: _layoutMode,
@@ -224,6 +228,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
           _media = List.unmodifiable(found);
           _loading = false;
         });
+        WidgetsBinding.instance.addPostFrameCallback((_) => _restoreScrollOffset());
       }
     }
   }
