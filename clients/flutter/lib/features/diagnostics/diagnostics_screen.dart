@@ -42,8 +42,8 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
       final file = await AppLogger.createDiagnosticFile();
       await Share.shareXFiles(
         [XFile(file.path, mimeType: 'text/plain')],
-        subject: 'HomeServer diagnostic logs',
-        text: 'HomeServer diagnostic logs. Review before sharing; logs are designed to exclude passwords and authentication headers.',
+        subject: 'PocketLink diagnostic logs',
+        text: 'PocketLink diagnostic logs. Review before sharing; logs are designed to exclude passwords and authentication headers.',
       );
       await AppLogger.info('Diagnostic log export requested');
     } catch (error, stack) {
@@ -107,7 +107,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                   Text('$_sizeLabel saved on this device'),
                   const SizedBox(height: 8),
                   const Text(
-                    'HomeServer records connection attempts, API status codes, app errors and crash details. Logs are stored privately on this device and rotate automatically to limit storage use.',
+                    'PocketLink records connection attempts, API status codes, app errors and crash details. Logs are stored privately on this device and rotate automatically to limit storage use.',
                   ),
                   if (_error != null) ...[
                     const SizedBox(height: 10),
