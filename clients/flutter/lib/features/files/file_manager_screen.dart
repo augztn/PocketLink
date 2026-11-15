@@ -401,7 +401,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     }
 
     return PopScope(
-      canPop: !widget.isActive || _path.isNotEmpty,
+      canPop: !widget.isActive,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop || !widget.isActive) return;
         if (_path.isNotEmpty) {
