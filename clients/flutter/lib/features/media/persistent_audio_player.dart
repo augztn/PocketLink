@@ -7,12 +7,13 @@ import 'package:media_kit/media_kit.dart';
 import '../../core/network/server_api.dart';
 
 class MediaQueueItem {
-  const MediaQueueItem({required this.title, required this.path, this.volume, this.localPath});
+  const MediaQueueItem({required this.title, required this.path, this.volume, this.localPath, this.size});
 
   final String title;
   final String path;
   final String? volume;
   final String? localPath;
+  final int? size;
 }
 
 /// App-scoped owner for the native media engine.
@@ -96,6 +97,28 @@ class PersistentAudioPlayer extends ChangeNotifier {
     )).toList(growable: false);
     await player.open(Playlist(tracks, index: _currentIndex));
     await _syncMediaSession(start: true);
+  }
+
+  /// Adds an original server/local media item to the active queue.
+  Future<void> enqueue(MediaQueueItem item, {bool playNext = false}) async {
+    if (!_active || _api == null) return;
+    final media = Media(
+      item.localPath ?? _api!.mediaStreamUrl(item.path, volume: item.volume),
+      httpHeaders: item.localPath == null ? _api!.mediaHeaders : const {},
+      extras: {'title': item.title},
+    );
+    final oldLength = _queue.length;
+    await player.add(media);
+    final updated = _queue.toList();
+    if (playNext && oldLength > 0) {
+      final target = (_currentIndex + 1).clamp(0, oldLength).toInt();
+      if (target < oldLength) await player.move(oldLength, target);
+      updated.insert(target, item);
+    } else {
+      updated.add(item);
+    }
+    _queue = List.unmodifiable(updated);
+    notifyListeners();
   }
 
   void setFullScreen(bool value) {
