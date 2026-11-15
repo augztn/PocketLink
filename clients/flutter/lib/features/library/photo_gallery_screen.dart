@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/network/server_api.dart';
+import 'photo_favorites_store.dart';
 
 class _Photo {
   const _Photo(this.file, this.path, this.volume);
@@ -32,6 +33,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
   final search = TextEditingController();
   final favorites = <String>{};
   final selected = <String>{};
+  PhotoFavoritesStore? _favoritesStore;
   List<_Photo> photos = [];
   List<StorageVolume> volumes = [];
   bool loading = true;
@@ -42,7 +44,43 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
   int dateMode = 0;
 
   @override
-  void initState() { super.initState(); scan(); }
+  void initState() { super.initState(); _initialize(); }
+
+  Future<void> _initialize() async {
+    try {
+      _favoritesStore = await PhotoFavoritesStore.inApplicationSupportDirectory();
+      favorites.addAll(await _favoritesStore!.load());
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not load photo favourites: $e')),
+        );
+      }
+    }
+    if (mounted) await scan();
+  }
+
+  Future<void> _persistFavorites() async {
+    final store = _favoritesStore;
+    if (store == null) return;
+    try {
+      await store.save(favorites);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not save photo favourites: $e')),
+        );
+      }
+    }
+  }
+
+  void _toggleFavorite(_Photo photo) {
+    setState(() {
+      if (!favorites.add(photo.id)) favorites.remove(photo.id);
+    });
+    _persistFavorites();
+  }
+
   @override
   void dispose() { search.dispose(); super.dispose(); }
 
@@ -126,7 +164,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     Navigator.push(context, MaterialPageRoute<void>(builder: (_) => _PhotoViewer(
       photos: items, index: index, api: widget.api,
       favorite: (p) => favorites.contains(p.id),
-      onFavorite: (p) => setState(() { if (!favorites.add(p.id)) favorites.remove(p.id); }),
+      onFavorite: _toggleFavorite,
     )));
   }
 
@@ -263,27 +301,33 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     if(ok!=true)return;
     final targets=photos.where((p)=>selected.contains(p.id)).toList();
     var deleted=0;
+    final deletedIds = <String>{};
     for(final p in targets){
       try{
         if(p.volume==null){await widget.api.deleteItem(p.path);}
         else{await widget.api.deleteStorageItem(p.volume!,p.path);}
         deleted++;
+        deletedIds.add(p.id);
       }catch(_){}
     }
     if(!mounted)return;
     setState((){
-      photos=photos.where((p)=>!selected.contains(p.id)).toList();
-      favorites.removeAll(selected);selected.clear();
+      photos=photos.where((p)=>!deletedIds.contains(p.id)).toList();
+      favorites.removeAll(deletedIds);selected.clear();
     });
+    if (deletedIds.isNotEmpty) await _persistFavorites();
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('Deleted $deleted of $count photos.')));
   }
 
-  void favoriteSelected() => setState((){
-    for(final p in photos.where((p)=>selected.contains(p.id))){
-      if(!favorites.add(p.id))favorites.remove(p.id);
-    }
-    selected.clear();
-  });
+  Future<void> favoriteSelected() async {
+    setState(() {
+      for (final p in photos.where((p) => selected.contains(p.id))) {
+        if (!favorites.add(p.id)) favorites.remove(p.id);
+      }
+      selected.clear();
+    });
+    await _persistFavorites();
+  }
 
   @override
   Widget build(BuildContext context) {
