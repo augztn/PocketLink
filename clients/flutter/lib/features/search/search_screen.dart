@@ -11,6 +11,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
 import '../media/media_player_screen.dart';
+import '../media/persistent_audio_player.dart';
 import '../storage/storage_browser_screen.dart';
 
 class SearchScreen extends StatefulWidget {
@@ -212,9 +213,10 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   void _chooseQuick(String value) {
-    if (value == 'offline') { setState(() => _quick = value); return; }
-    setState(() { _quick = _quick == value ? null : value; _controller.clear(); });
-    if (_quick != null) _scan();
+    final next = _quick == value ? null : value;
+    _controller.clear();
+    setState(() => _quick = next);
+    if (_quick != null && _quick != 'offline') _scan();
   }
 
   void _chooseScope(String? value) {
