@@ -1,11 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:homeserver/features/files/documents_browser_screen.dart';
+import 'package:homeserver_client/features/files/documents_browser_screen.dart';
 
 void main() {
   group('canonicalDocumentPath', () {
     test('normalizes separators and redundant path segments', () {
       expect(
-        canonicalDocumentPath(r'folder\\.\\reports\\..\\notes\\homeserver-test.txt'),
+        canonicalDocumentPath(r'folder\.\reports\..\notes\homeserver-test.txt'),
         'folder/notes/homeserver-test.txt',
       );
     });
