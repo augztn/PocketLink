@@ -172,18 +172,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ListTile(
                 leading: const Icon(Icons.high_quality_outlined),
                 title: const Text('Streaming quality'),
-                subtitle: const Text('Saved preference; original quality is used when variants are unavailable'),
-                trailing: DropdownButton<String>(
-                  value: _settings.streamingQuality,
-                  underline: const SizedBox.shrink(),
-                  items: const [
-                    DropdownMenuItem(value: 'Data saver', child: Text('Data saver')),
-                    DropdownMenuItem(value: 'Balanced', child: Text('Balanced')),
-                    DropdownMenuItem(value: 'Original', child: Text('Original')),
-                  ],
-                  onChanged: (value) {
-                    if (value != null) _settings.setStreamingQuality(value);
-                  },
+                subtitle: const Text('RAW · Original source quality · No transcoding or compression'),
+                trailing: const Chip(
+                  label: Text('ORIGINAL'),
+                  avatar: Icon(Icons.verified_rounded, size: 16),
                 ),
               ),
               ListTile(
