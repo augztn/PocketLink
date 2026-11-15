@@ -1066,10 +1066,6 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                 }).toList(),
               ),
             ],
-            const SizedBox(height: 22),
-            sectionTitle('Continue'),
-            const SizedBox(height: 10),
-            _buildContinueStrip(context, theme, colors),
             if (appSettings.showRecentFiles) ...[
             const SizedBox(height: 27),
             sectionTitle(
@@ -1171,6 +1167,10 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                   ],
                 ),
               ),
+            const SizedBox(height: 22),
+            sectionTitle('Continue'),
+            const SizedBox(height: 10),
+            _buildContinueStrip(context, theme, colors),
             const SizedBox(height: 27),
             ],
           ],
