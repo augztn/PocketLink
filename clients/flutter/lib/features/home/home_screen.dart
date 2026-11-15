@@ -16,6 +16,7 @@ import '../media/persistent_audio_player.dart';
 
 import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
+import '../files/documents_browser_screen.dart';
 import '../library/photo_gallery_screen.dart';
 import '../storage/storage_browser_screen.dart';
 import '../storage/local_storage_setup_screen.dart';
@@ -44,6 +45,12 @@ class _HomeScreenState extends State<HomeScreen> {
   });
 
   void _openExplore(ExploreCategory category, {String? fileCategory}) {
+    if (fileCategory == 'Documents') {
+      Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (_) => DocumentsBrowserScreen(api: widget.api),
+      ));
+      return;
+    }
     setState(() {
       _initializedTabs.add(1);
       _exploreCategory = category;
