@@ -3,6 +3,7 @@ import '../../core/widgets/home_server_app_bar.dart';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../core/network/server_api.dart';
 import 'media_player_screen.dart';
@@ -55,7 +56,8 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   String _sortBy = 'name';
   String _currentFolderPath = '';
   late final String _stateKey;
-  final ScrollController _folderScrollController = ScrollController();
+  late final BrowserStateStore _browserState;
+  final ScrollController _contentScrollController = ScrollController();
   double _pendingScrollOffset = 0;
 
   bool get _isMusic => widget.type == MediaLibraryType.music;
@@ -66,14 +68,15 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   void initState() {
     super.initState();
     _stateKey = widget.api.baseUrl;
-    final saved = BrowserStateStore.instance.mediaState(_stateKey, widget.type.name);
+    _browserState = Provider.of<BrowserStateStore>(context, listen: false);
+    final saved = _browserState.mediaState(_stateKey, widget.type.name);
     _selectedVolume = saved.selectedVolume;
     _libraryView = saved.view;
     _layoutMode = saved.layoutMode;
     _sortBy = saved.sortBy;
     _currentFolderPath = saved.folderPath;
     _pendingScrollOffset = saved.scrollOffset;
-    _folderScrollController.addListener(_saveScrollOffset);
+    _contentScrollController.addListener(_saveScrollOffset);
     _scan();
     WidgetsBinding.instance.addPostFrameCallback((_) => _restoreScrollOffset());
   }
@@ -85,8 +88,8 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   }
 
   void _saveState({String? folderPath, bool clearVolume = false}) {
-    final current = BrowserStateStore.instance.mediaState(_stateKey, widget.type.name);
-    BrowserStateStore.instance.updateMedia(_stateKey, widget.type.name, current.copyWith(
+    final current = _browserState.mediaState(_stateKey, widget.type.name);
+    _browserState.updateMedia(_stateKey, widget.type.name, current.copyWith(
       folderPath: folderPath ?? _currentFolderPath,
       selectedVolume: _selectedVolume,
       clearSelectedVolume: clearVolume || _selectedVolume == null,
@@ -400,6 +403,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   }
   Widget _buildVideoGrid(List<_MediaFile> items) {
     return GridView.builder(
+      controller: _contentScrollController,
       padding: EdgeInsets.fromLTRB(12, 8, 12, 104 + MediaQuery.paddingOf(context).bottom),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
@@ -477,6 +481,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
 
   Widget _buildVideoList(List<_MediaFile> items) {
     return ListView.separated(
+      controller: _contentScrollController,
       padding: EdgeInsets.fromLTRB(12, 8, 12, 104 + MediaQuery.paddingOf(context).bottom),
       itemCount: items.length,
       separatorBuilder: (_, __) => const SizedBox(height: 4),
@@ -886,6 +891,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                                 : !_isMusic
                                     ? _buildVideoList(visibleMedia)
                                     : ListView.builder(
+                                        controller: _contentScrollController,
                                         padding: EdgeInsets.fromLTRB(12, 8, 12, 104 + MediaQuery.paddingOf(context).bottom),
                                         itemCount: visibleMedia.length,
                                         itemBuilder: (context, index) {
