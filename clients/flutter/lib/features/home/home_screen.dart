@@ -1,6 +1,10 @@
-import 'dart:math' as math;\nimport 'dart:ui' as ui;\n\nimport 'package:flutter/material.dart';
+import 'dart:math' as math;
+import 'dart:ui' as ui;
+
+import 'package:flutter/material.dart';
 
 import 'quick_actions_store.dart';
+import 'explore_search_screens.dart';
 import '../media/media_player_screen.dart';
 import '../media/persistent_audio_player.dart';
 
@@ -73,7 +77,11 @@ class _HomeScreenState extends State<HomeScreen> {
         api: widget.api,
         category: _exploreCategory,
         fileCategory: _fileCategory,
-        onCategoryChanged: (category) => setState(() => _exploreCategory = category),
+        onBackAtRoot: () => _openTab(0),
+        onCategoryChanged: (category) => setState(() {
+          _exploreCategory = category;
+          if (category == ExploreCategory.files) _fileCategory = 'All';
+        }),
       ),
       GlobalSearchScreen(
         key: const PageStorageKey<String>('homeserver-search'),
