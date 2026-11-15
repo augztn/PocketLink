@@ -150,6 +150,8 @@ class ServerApi {
 
   final Dio _dio;
 
+  String get baseUrl => _dio.options.baseUrl;
+
   static String _normalizeBaseUrl(String value) {
     final trimmed = value.trim();
     final withScheme = trimmed.startsWith('http://') ||
