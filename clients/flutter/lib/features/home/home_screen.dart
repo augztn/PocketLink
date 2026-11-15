@@ -335,7 +335,7 @@ class _AnimatedEqualizerState extends State<_AnimatedEqualizer>
         crossAxisAlignment: CrossAxisAlignment.center,
         children: List.generate(4, (index) {
           final phase = (_controller.value * math.pi * 2) + index * 1.15;
-          final height = 9 + (math.sin(phase).abs() * 17);
+          final height = 9.0 + (math.sin(phase).abs() * 17);
           return Container(
             width: 3.5,
             height: height,
