@@ -64,8 +64,8 @@ jobs:
           cat > "$APPDIR/homeserver.desktop" <<'EOF'
           [Desktop Entry]
           Type=Application
-          Name=HomeServer
-          Comment=Manage your self-hosted HomeServer
+          Name=PocketLink
+          Comment=Manage your private PocketLink server
           Exec=AppRun
           Icon=homeserver
           Categories=Utility;FileTransfer;
@@ -82,11 +82,11 @@ jobs:
           wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
           chmod +x appimagetool
           ARCH=x86_64 ./appimagetool --appimage-extract-and-run "$APPDIR" "$PWD/PocketLink-x86_64.AppImage"
-          chmod +x "$PWD/HomeServer-x86_64.AppImage"
+          chmod +x "$PWD/PocketLink-x86_64.AppImage"
       - uses: actions/upload-artifact@v4
         with:
           name: PocketLink-Linux-x86_64-AppImage
-          path: clients/flutter/HomeServer-x86_64.AppImage
+          path: clients/flutter/PocketLink-x86_64.AppImage
           if-no-files-found: error
           retention-days: 14
 
