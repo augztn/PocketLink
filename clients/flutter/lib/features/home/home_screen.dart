@@ -588,7 +588,19 @@ class _HomeDashboardState extends State<_HomeDashboard> {
           }
           break;
         case 'share':
-          await Share.share('HomeServer file: ${recent.file.name}\nLocation: ${recent.volumeName} / $path');
+          if (recent.file.size > 50 * 1024 * 1024) {
+            if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Sharing from Home is limited to 50 MB. Use Download for larger files.')),
+            );
+            return;
+          }
+          final shareBytes = recent.volume == null
+              ? await widget.api.downloadFile(path)
+              : await widget.api.downloadStorageFile(recent.volume!, path);
+          await Share.shareXFiles(
+            [XFile.fromData(shareBytes, name: recent.file.name)],
+            text: recent.file.name,
+          );
           break;
         case 'rename':
           final controller = TextEditingController(text: recent.file.name);
