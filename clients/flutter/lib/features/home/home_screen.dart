@@ -26,13 +26,15 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
+  final Set<int> _initializedTabs = {0};
   ExploreCategory _exploreCategory = ExploreCategory.files;
   String _fileCategory = 'All';
 
-  void _openTab(int index) => setState(() => _selectedIndex = index);
+  void _openTab(int index) => setState(() {\n    _initializedTabs.add(index);\n    _selectedIndex = index;\n  });
 
   void _openExplore(ExploreCategory category, {String? fileCategory}) {
     setState(() {
+      _initializedTabs.add(1);
       _exploreCategory = category;
       _fileCategory = fileCategory ?? 'All';
       _selectedIndex = 1;
@@ -69,21 +71,27 @@ class _HomeScreenState extends State<HomeScreen> {
         onOpenExplore: _openExplore,
         onReturnToConnection: widget.onReturnToConnection,
       ),
-      ExploreScreen(
-        key: const PageStorageKey<String>('homeserver-explore'),
-        api: widget.api,
-        category: _exploreCategory,
-        fileCategory: _fileCategory,
-        onBackAtRoot: () => _openTab(0),
-        onCategoryChanged: (category) => setState(() {
-          _exploreCategory = category;
-          if (category == ExploreCategory.files) _fileCategory = 'All';
-        }),
-      ),
-      GlobalSearchScreen(
-        key: const PageStorageKey<String>('homeserver-search'),
-        api: widget.api,
-      ),
+      if (_initializedTabs.contains(1))
+        ExploreScreen(
+          key: const PageStorageKey<String>('homeserver-explore'),
+          api: widget.api,
+          category: _exploreCategory,
+          fileCategory: _fileCategory,
+          onBackAtRoot: () => _openTab(0),
+          onCategoryChanged: (category) => setState(() {
+            _exploreCategory = category;
+            if (category == ExploreCategory.files) _fileCategory = 'All';
+          }),
+        )
+      else
+        const SizedBox.shrink(),
+      if (_initializedTabs.contains(2))
+        GlobalSearchScreen(
+          key: const PageStorageKey<String>('homeserver-search'),
+          api: widget.api,
+        )
+      else
+        const SizedBox.shrink(),
     ];
 
     return PopScope(
