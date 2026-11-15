@@ -82,11 +82,15 @@ class OfflineFileCache {
     return root;
   }
 
+  String serverId(ServerApi api) => sha256
+      .convert(utf8.encode('${api.baseUrl}|${api.mediaHeaders['Authorization']}'))
+      .toString();
+
   String _key(String server, String? volume, String path) =>
-      sha256.convert(utf8.encode('$server| ${volume ?? 'internal'} |$path')).toString();
+      sha256.convert(utf8.encode('$server|${volume ?? 'internal'}|$path')).toString();
 
   Future<void> _ensureLoaded() async {
-    if (_loading != null) return _loading;
+    if (_loading != null) return _loading!;
     _loading = () async {
       final root = await _root();
       final index = File('${root.path}/index.json');
@@ -146,13 +150,83 @@ class OfflineFileCache {
       throw StateError('This file is larger than the offline cache limit.');
     }
     await _ensureLoaded();
-    final server = api.baseUrl;
+    final server = serverId(api);
     final key = _key(server, volume, path);
     final existing = _entries[key];
     if (existing != null && await File(existing.localPath).exists()) return existing;
 
     final root = await _root();
-    final target = File('${root.path}/$key.bin');
+    final extension = name.contains('.')
+        ? name.substring(name.lastIndexOf('.') + 1).toLowerCase()
+        : '';
+    final safeExtension = RegExp(r'^[a-z0-9]{1,12}
+    final temp = File('${root.path}/$key.part');
+    try {
+      await api.downloadToFile(path, temp.path, volume: volume);
+      final actualSize = await temp.length();
+      if (actualSize > maxBytes) {
+        throw StateError('Downloaded file exceeds the offline cache limit.');
+      }
+      var used = _entries.values.fold<int>(0, (sum, item) => sum + item.size);
+      final victims = _entries.values.toList()
+        ..sort((a, b) => a.accessedAt.compareTo(b.accessedAt));
+      for (final victim in victims) {
+        if (used + actualSize <= maxBytes) break;
+        await File(victim.localPath).delete().catchError((_) => File(victim.localPath));
+        _entries.remove(victim.key);
+        used -= victim.size;
+      }
+      if (used + actualSize > maxBytes) {
+        throw StateError('Not enough space in the offline cache.');
+      }
+      if (await target.exists()) await target.delete();
+      await temp.rename(target.path);
+      final entry = OfflineFile(
+        key: key,
+        server: server,
+        path: path,
+        volume: volume,
+        name: name,
+        size: actualSize,
+        modified: modified,
+        localPath: target.path,
+        accessedAt: DateTime.now(),
+      );
+      _entries[key] = entry;
+      await _persist();
+      return entry;
+    } catch (_) {
+      if (await temp.exists()) await temp.delete();
+      rethrow;
+    }
+  }
+
+  Future<void> remove(String server, String? volume, String path) async {
+    await _ensureLoaded();
+    final key = _key(server, volume, path);
+    final entry = _entries.remove(key);
+    if (entry != null) {
+      await File(entry.localPath).delete().catchError((_) => File(entry.localPath));
+      await _persist();
+    }
+  }
+
+  Future<void> clear({String? server}) async {
+    await _ensureLoaded();
+    final selected = _entries.values
+        .where((e) => server == null || e.server == server)
+        .toList();
+    for (final entry in selected) {
+      await File(entry.localPath).delete().catchError((_) => File(entry.localPath));
+      _entries.remove(entry.key);
+    }
+    await _persist();
+  }
+}
+).hasMatch(extension)
+        ? extension
+        : 'bin';
+    final target = File('${root.path}/$key.$safeExtension');
     final temp = File('${root.path}/$key.part');
     try {
       await api.downloadToFile(path, temp.path, volume: volume);
