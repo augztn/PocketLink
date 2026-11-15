@@ -122,6 +122,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
 
   Future<void> _load([String? path]) async {
     final target = path ?? _path;
+    if (target != _path && _scrollController.hasClients) _scrollController.jumpTo(0);
     setState(() {
       _loading = true;
       _error = null;
