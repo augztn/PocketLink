@@ -272,8 +272,8 @@ class ServerApi {
             ));
           }
         }
-      } on DioException {
-        // A missing or revoked folder must not hide results from other sources.
+      } catch (_) {
+        // A missing, revoked, or unreadable folder must not hide other results.
       }
     }
 
@@ -283,7 +283,7 @@ class ServerApi {
     await Future.wait(childDirectories.map(scan));
 
     found.sort((a, b) => b.modifiedAt.compareTo(a.modifiedAt));
-    return found.take(limit.clamp(1, 50)).toList(growable: false);
+    return found.take(limit.clamp(1, 50).toInt()).toList(growable: false);
   }
 
   Future<void> uploadFile(
