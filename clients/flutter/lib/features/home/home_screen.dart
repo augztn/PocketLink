@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 
 import 'quick_actions_store.dart';
 import '../../core/settings/app_settings.dart';
+import '../../core/storage/home_activity_store.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
 import '../settings/settings_screen.dart';
 import 'explore_search_screens.dart';
@@ -421,6 +422,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
   void initState() {
     super.initState();
     _loadQuickActions();
+    HomeActivityStore.instance.load();
     _refreshStatus();
   }
 
@@ -684,6 +686,50 @@ class _HomeDashboardState extends State<_HomeDashboard> {
     }
   }
 
+  Future<void> _showServerSwitcherSheet() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => SafeArea(
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(18, 12, 18, 22),
+          decoration: const BoxDecoration(
+            color: Color(0xFF161618),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border(top: BorderSide(color: Color(0x22FFFFFF))),
+          ),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Center(child: Container(width: 36, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(4)))),
+            const SizedBox(height: 18),
+            const Text('Server switcher & Native host', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 8),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.swap_horiz_rounded, color: Colors.white70),
+              title: const Text('Switch server', style: TextStyle(color: Colors.white)),
+              subtitle: const Text('Choose or manage saved servers', style: TextStyle(color: Colors.white60)),
+              onTap: widget.onReturnToConnection == null ? null : () {
+                Navigator.pop(sheetContext);
+                widget.onReturnToConnection!.call();
+              },
+            ),
+            const Divider(color: Color(0x22FFFFFF)),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.dns_outlined, color: Colors.white70),
+              title: const Text('Host PocketLink on this phone', style: TextStyle(color: Colors.white)),
+              subtitle: const Text('Set up this device as a PocketLink server', style: TextStyle(color: Colors.white60)),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LocalStorageSetupScreen()));
+              },
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+
   String _networkRouteLabel(Uri? base) {
     final host = base?.host ?? '';
     final parts = host.split('.').map(int.tryParse).toList();
@@ -692,10 +738,10 @@ class _HomeDashboardState extends State<_HomeDashboard> {
       final b = parts[1]!;
       if (a == 100 && b >= 64 && b <= 127) return 'Tailscale';
       if (a == 192 && b == 168 || a == 10 || a == 172 && b >= 16 && b <= 31) {
-        return 'Local LAN';
+        return 'LAN';
       }
     }
-    return 'Remote';
+    return 'LAN';
   }
 
   Future<void> _quickUpload() async {
@@ -740,7 +786,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
   Widget _buildServerTelemetry(BuildContext context, ThemeData theme, ColorScheme colors) {
     final transfers = TransferManager.instance;
     final base = Uri.tryParse(widget.api.baseUrl);
-    final host = base == null ? 'Connected server' : '${base.host}:${base.hasPort ? base.port : (base.scheme == 'https' ? 443 : 80)}';
+    final host = base == null ? widget.api.baseUrl : '${base.host}:${base.hasPort ? base.port : (base.scheme == 'https' ? 443 : 80)}';
     final displayName = (widget.serverName ?? '').trim().isNotEmpty ? widget.serverName!.trim() : host;
     final route = _networkRouteLabel(base);
     final online = _serverOnline == true;
@@ -765,38 +811,57 @@ class _HomeDashboardState extends State<_HomeDashboard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(children: [
-                const Icon(Icons.dns_rounded, color: Colors.white70, size: 18),
-                const SizedBox(width: 8),
-                Expanded(child: Text(displayName, maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleSmall?.copyWith(color: foreground, fontWeight: FontWeight.w800))),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.075), borderRadius: BorderRadius.circular(20)),
-                  child: Text(route, style: theme.textTheme.labelSmall?.copyWith(color: foreground, fontWeight: FontWeight.w700)),
-                ),
-                const SizedBox(width: 7),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                  decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Container(width: 6, height: 6, decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle)),
-                    const SizedBox(width: 5),
-                    Text(_checking ? 'Checking' : online ? 'Online' : 'Offline',
-                      style: theme.textTheme.labelSmall?.copyWith(color: statusColor, fontWeight: FontWeight.w800)),
-                    if (online && _latency != null) ...[
-                      const SizedBox(width: 5),
-                      Text('${_latency!.inMilliseconds} ms',
-                        style: theme.textTheme.labelSmall?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
-                    ],
+              InkWell(
+                borderRadius: BorderRadius.circular(14),
+                onTap: _showServerSwitcherSheet,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    const Padding(
+                      padding: EdgeInsets.only(top: 2),
+                      child: Icon(Icons.dns_rounded, color: Colors.white70, size: 19),
+                    ),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: Text(
+                        displayName,
+                        softWrap: true,
+                        style: theme.textTheme.titleSmall?.copyWith(color: foreground, fontWeight: FontWeight.w800, height: 1.2),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.075), borderRadius: BorderRadius.circular(20)),
+                      child: Text(route, style: theme.textTheme.labelSmall?.copyWith(color: foreground, fontWeight: FontWeight.w700)),
+                    ),
+                    const SizedBox(width: 2),
+                    const Icon(Icons.expand_more_rounded, color: Colors.white54, size: 19),
                   ]),
                 ),
-                const SizedBox(width: 2),
-                IconButton(
-                  visualDensity: VisualDensity.compact,
-                  tooltip: 'Quick upload',
-                  onPressed: online ? _quickUpload : null,
-                  icon: const Icon(Icons.arrow_upward_rounded, color: Colors.white, size: 19),
+              ),
+              const SizedBox(height: 8),
+              Row(children: [
+                Container(width: 7, height: 7, decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle)),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: Text(
+                    _checking ? 'Checking server' : online
+                        ? 'Online${_latency == null ? '' : ' • ${_latency!.inMilliseconds} ms'}'
+                        : 'Offline',
+                    maxLines: 1,
+                    overflow: TextOverflow.visible,
+                    style: theme.textTheme.labelMedium?.copyWith(color: statusColor, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                LiquidGlassPill(
+                  radius: BorderRadius.circular(13),
+                  child: IconButton(
+                    visualDensity: VisualDensity.compact,
+                    tooltip: 'Quick upload',
+                    onPressed: online ? _quickUpload : null,
+                    icon: const Icon(Icons.arrow_upward_rounded, color: Colors.white, size: 18),
+                  ),
                 ),
               ]),
               if (!online && !_checking) ...[
@@ -813,7 +878,12 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text('STORAGE', style: theme.textTheme.labelSmall?.copyWith(color: muted, letterSpacing: 0.7)),
                   const SizedBox(height: 5),
-                  Text('Capacity unavailable', style: theme.textTheme.labelMedium?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
+                  Text(
+                    '${mountedVolumes.length + 1} volume${mountedVolumes.isEmpty ? '' : 's'} mounted',
+                    maxLines: 1,
+                    overflow: TextOverflow.visible,
+                    style: theme.textTheme.labelMedium?.copyWith(color: foreground, fontWeight: FontWeight.w600),
+                  ),
                 ])),
                 const SizedBox(width: 10),
                 Expanded(child: InkWell(
@@ -871,67 +941,70 @@ class _HomeDashboardState extends State<_HomeDashboard> {
 
   Widget _buildContinueStrip(BuildContext context, ThemeData theme, ColorScheme colors) {
     final player = PersistentAudioPlayer.instance;
-    final item = player.currentItem;
-    if (item == null || !player.isActive) {
+    final items = HomeActivityStore.instance.itemsForServer(widget.api.baseUrl).take(8).toList();
+    if (items.isEmpty) {
       return Container(
-        height: 82,
+        height: 72,
         alignment: Alignment.centerLeft,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(color: colors.surfaceContainerLow, borderRadius: BorderRadius.circular(18)),
         child: Row(children: [
-          Icon(Icons.play_circle_outline_rounded, color: colors.onSurfaceVariant),
+          Icon(Icons.history_rounded, color: colors.onSurfaceVariant),
           const SizedBox(width: 10),
-          Expanded(child: Text('Your recent playback and pinned folders will appear here.',
+          Expanded(child: Text('Your recent tracks, folders and files will appear here.',
             style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant))),
         ]),
       );
     }
     return SizedBox(
       height: 92,
-      child: ListView(
+      child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        children: [
-          SizedBox(
+        itemCount: items.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (context, index) {
+          final recent = items[index];
+          final isTrack = recent.kind == 'track';
+          final isFolder = recent.kind == 'folder';
+          final icon = isTrack ? Icons.music_note_rounded : isFolder ? Icons.folder_rounded : _recentIcon(FileEntry(name: recent.title, isDirectory: false, size: 0, modified: recent.updatedAt));
+          return SizedBox(
             width: 250,
             child: Material(
               color: colors.surfaceContainerLow,
               borderRadius: BorderRadius.circular(18),
               child: InkWell(
                 borderRadius: BorderRadius.circular(18),
-                onTap: () {
-                  Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => player.isMusic
-                    ? NowPlayingScreen(
-                        api: widget.api,
-                        queue: player.queue,
-                        initialIndex: player.currentIndex,
-                        resumeExisting: true,
-                      )
-                    : MediaPlayerScreen(
-                        api: widget.api, title: item.title, path: item.path, volume: item.volume,
-                        isVideo: true, queue: player.queue,
-                        initialIndex: player.currentIndex, resumeExisting: true,
-                      )));
+                onTap: () async {
+                  if (isTrack) {
+                    final queueItem = MediaQueueItem(title: recent.title, path: recent.path, volume: recent.volume);
+                    await player.openQueue(api: widget.api, queue: [queueItem], initialIndex: 0, isMusic: true);
+                    _openNowPlaying(player);
+                  } else {
+                    final path = isFolder ? recent.path : recent.parentPath;
+                    widget.onOpenFileLocation(recent.volume, path);
+                  }
                 },
                 child: Padding(
                   padding: const EdgeInsets.all(13),
                   child: Row(children: [
                     Container(width: 48, height: 48, decoration: BoxDecoration(
                       color: colors.primaryContainer, borderRadius: BorderRadius.circular(14)),
-                      child: Icon(player.isMusic ? Icons.music_note_rounded : Icons.movie_rounded, color: colors.primary)),
+                      child: Icon(icon, color: colors.primary)),
                     const SizedBox(width: 11),
                     Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('Continue listening', style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant)),
+                      Text(isTrack ? 'Continue listening' : isFolder ? 'Recent folder' : 'Recent file',
+                        style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant)),
                       const SizedBox(height: 3),
-                      Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                      Text(recent.title, maxLines: 1, overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
                     ])),
-                    const Icon(Icons.play_arrow_rounded),
+                    Icon(isTrack ? Icons.play_arrow_rounded : Icons.chevron_right_rounded),
                   ]),
                 ),
               ),
             ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -1001,14 +1074,14 @@ class _HomeDashboardState extends State<_HomeDashboard> {
           onTap: onTap,
           borderRadius: BorderRadius.circular(18),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 15),
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 13),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(icon, size: 23, color: colors.primary),
                 const SizedBox(height: 8),
-                Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600)),
+                Text(label, maxLines: 1, overflow: TextOverflow.visible, softWrap: false,
+                  style: theme.textTheme.labelLarge?.copyWith(fontSize: 11.5, fontWeight: FontWeight.w600)),
               ],
             ),
           ),
@@ -1017,7 +1090,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
     }
 
     return Scaffold(
-      backgroundColor: colors.surface,
+      backgroundColor: Colors.black,
       drawer: Drawer(
         child: SafeArea(
           child: ListView(
@@ -1126,14 +1199,14 @@ class _HomeDashboardState extends State<_HomeDashboard> {
         ),
       ),
       appBar: AppBar(
-        leading: Builder(
-          builder: (context) => IconButton(
-            tooltip: 'Open menu',
-            icon: const Icon(Icons.menu_rounded),
-            onPressed: () => Scaffold.of(context).openDrawer(),
-          ),
+        leading: IconButton(
+          tooltip: 'Settings',
+          icon: const Icon(Icons.settings_outlined),
+          onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+            builder: (_) => SettingsScreen(onOpenSavedServers: widget.onReturnToConnection),
+          )),
         ),
-        backgroundColor: colors.surface,
+        backgroundColor: Colors.black,
         surfaceTintColor: Colors.transparent,
         titleSpacing: 20,
         title: Column(
@@ -1150,12 +1223,15 @@ class _HomeDashboardState extends State<_HomeDashboard> {
           ],
         ),
         actions: [
-          IconButton(
-            tooltip: 'Transfers',
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
-              builder: (_) => const TransferManagerScreen(),
-            )),
-            icon: const Icon(Icons.swap_vert_rounded),
+          LiquidGlassPill(
+            radius: BorderRadius.circular(14),
+            child: IconButton(
+              tooltip: 'Transfers',
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                builder: (_) => const TransferManagerScreen(),
+              )),
+              icon: const Icon(Icons.swap_vert_rounded),
+            ),
           ),
           IconButton(
             tooltip: 'Refresh server status',
@@ -1208,7 +1284,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
             sectionTitle('Continue'),
             const SizedBox(height: 10),
             AnimatedBuilder(
-              animation: PersistentAudioPlayer.instance,
+              animation: HomeActivityStore.instance,
               builder: (context, _) => _buildContinueStrip(context, theme, colors),
             ),
             if (appSettings.showRecentFiles) ...[
@@ -1290,6 +1366,12 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                         ),
                         onTap: () {
                           final recent = _recentFiles[index];
+                          HomeActivityStore.instance.recordFile(
+                            serverUrl: widget.api.baseUrl,
+                            title: recent.file.name,
+                            path: recent.path,
+                            volume: recent.volume,
+                          );
                           widget.onOpenFileLocation(recent.volume, recent.parentPath);
                         },
                       ),
