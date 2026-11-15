@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AppSettings extends ChangeNotifier {
   AppSettings._();
@@ -11,6 +12,7 @@ class AppSettings extends ChangeNotifier {
   static const _quickActionsKey = 'settings_home_quick_actions';
   static const _libraryKey = 'settings_home_library';
   static const _recentKey = 'settings_home_recent';
+  static const _liquidGlassKey = 'settings_use_liquid_glass';
 
   ThemeMode _themeMode = ThemeMode.system;
   bool _amoled = false;
@@ -18,6 +20,7 @@ class AppSettings extends ChangeNotifier {
   bool _showQuickActions = true;
   bool _showLibrary = true;
   bool _showRecentFiles = true;
+  bool _useLiquidGlass = true;
   bool _loaded = false;
 
   ThemeMode get themeMode => _themeMode;
@@ -26,9 +29,16 @@ class AppSettings extends ChangeNotifier {
   bool get showQuickActions => _showQuickActions;
   bool get showLibrary => _showLibrary;
   bool get showRecentFiles => _showRecentFiles;
+  bool get useLiquidGlass => _useLiquidGlass;
 
   Future<void> load() async {
     if (_loaded) return;
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      _useLiquidGlass = preferences.getBool(_liquidGlassKey) ?? true;
+    } catch (_) {
+      // Keep the default glass appearance if preferences are unavailable.
+    }
     try {
       final values = await Future.wait([
         _storage.read(key: _themeKey),
@@ -80,6 +90,13 @@ class AppSettings extends ChangeNotifier {
     } else {
       await _storage.write(key: _downloadKey, value: value);
     }
+  }
+
+  Future<void> setUseLiquidGlass(bool value) async {
+    _useLiquidGlass = value;
+    notifyListeners();
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_liquidGlassKey, value);
   }
 
   Future<void> setHomeSections({
