@@ -63,7 +63,12 @@ class TransferManager extends ChangeNotifier {
         task.total = total;
         notifyListeners();
       });
-      if (task.cancelToken.isCancelled) {\n        task.status = TransferStatus.cancelled;\n        notifyListeners();\n        return false;\n      }\n      task.status = TransferStatus.completed;
+      if (task.cancelToken.isCancelled) {
+        task.status = TransferStatus.cancelled;
+        notifyListeners();
+        return false;
+      }
+      task.status = TransferStatus.completed;
       if (task.total > 0) task.transferred = task.total;
       notifyListeners();
       return true;
