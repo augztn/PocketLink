@@ -88,22 +88,22 @@ class _ExploreScreenState extends State<ExploreScreen> {
       children: [
         SizedBox(
           height: 58,
-          child: ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            children: [
-              for (final category in categories)
-                Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(
-                    selected: _category == category,
-                    showCheckmark: false,
-                    avatar: Icon(_icon(category), size: 17),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            child: SegmentedButton<ExploreCategory>(
+              segments: [
+                for (final category in categories)
+                  ButtonSegment(
+                    value: category,
+                    icon: Icon(_icon(category), size: 17),
                     label: Text(_label(category)),
-                    onSelected: (_) => _select(category),
                   ),
-                ),
-            ],
+              ],
+              selected: {_category},
+              showSelectedIcon: false,
+              onSelectionChanged: (selection) => _select(selection.first),
+            ),
           ),
         ),
         Expanded(child: IndexedStack(index: selectedIndex, children: pages)),
