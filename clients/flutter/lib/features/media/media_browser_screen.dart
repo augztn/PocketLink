@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../core/network/server_api.dart';
 import 'media_player_screen.dart';
 import 'persistent_audio_player.dart';
+import '../transfers/transfer_manager_screen.dart';
 
 enum MediaLibraryType { music, video }
 
@@ -466,6 +467,11 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       appBar: AppBar(
         title: Text(_title),
         actions: [
+          IconButton(
+            tooltip: 'Transfers',
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen())),
+            icon: const Icon(Icons.swap_vert_rounded),
+          ),
           if (!_isMusic)
             IconButton(
               tooltip: _layoutMode == 'grid' ? 'List view' : 'Grid view',
