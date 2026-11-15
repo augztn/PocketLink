@@ -131,7 +131,7 @@ void main() {
       'transferred': 1,
       'total': 1,
       'status': 'completed',
-    }));
+    }).reversed.toList());
 
     final restored = TransferManager.forTesting(store);
     await restored.ready;
