@@ -3,6 +3,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/network/server_api.dart';
+import '../transfers/transfer_manager.dart';
+import '../transfers/transfer_manager_screen.dart';
 
 class FileManagerScreen extends StatefulWidget {
   const FileManagerScreen({
@@ -152,55 +154,62 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
         return;
       }
 
-      setState(() => _transferProgress = 0);
-      await widget.api.uploadFile(
-        _path,
-        file.name,
-        bytes,
-        onSendProgress: (sent, total) {
-          if (mounted && total > 0) {
-            setState(() => _transferProgress = sent / total);
-          }
-        },
+      final completed = await TransferManager.instance.run(
+        name: file.name,
+        direction: 'Upload',
+        location: _path.isEmpty ? 'Internal storage' : _path,
+        operation: (token, progress) => widget.api.uploadFile(
+          _path,
+          file.name,
+          bytes,
+          cancelToken: token,
+          onSendProgress: progress,
+        ),
       );
       if (!mounted) return;
-      _showError('Upload complete: ${file.name}');
-      await _load();
-    } on DioException catch (error) {
-      _showError(_messageFor(error));
+      if (completed) {
+        _showError('Upload complete: ${file.name}');
+        await _load();
+      } else {
+        _showError('Upload did not complete. Check Transfers for details.');
+      }
     } catch (_) {
       _showError('Unable to select or upload this file.');
-    } finally {
-      if (mounted) setState(() => _transferProgress = null);
     }
   }
 
   Future<void> _downloadFile(FileEntry item) async {
-    try {
-      setState(() => _transferProgress = 0);
-      final bytes = await widget.api.downloadFile(
-        _itemPath(item.name),
-        onReceiveProgress: (received, total) {
-          if (mounted && total > 0) {
-            setState(() => _transferProgress = received / total);
-          }
-        },
-      );
-      if (!mounted) return;
-      final savedPath = await FilePicker.platform.saveFile(
-        dialogTitle: 'Save ${item.name}',
-        fileName: item.name,
-        bytes: bytes,
-      );
-      if (!mounted) return;
-      if (savedPath != null) _showError('Downloaded: $savedPath');
-    } on DioException catch (error) {
-      _showError(_messageFor(error));
-    } catch (_) {
-      _showError('Unable to download this file.');
-    } finally {
-      if (mounted) setState(() => _transferProgress = null);
-    }
+    final completed = await TransferManager.instance.run(
+      name: item.name,
+      direction: 'Download',
+      location: _path.isEmpty ? 'Internal storage' : _path,
+      operation: (token, progress) async {
+        final bytes = await widget.api.downloadFile(
+          _itemPath(item.name),
+          cancelToken: token,
+          onReceiveProgress: progress,
+        );
+        if (token.isCancelled) return;
+        final savedPath = await FilePicker.platform.saveFile(
+          dialogTitle: 'Save ${item.name}',
+          fileName: item.name,
+          bytes: bytes,
+        );
+        if (savedPath == null) {
+          throw StateError('Save location was not selected.');
+        }
+      },
+    );
+    if (!mounted) return;
+    _showError(completed
+        ? 'Download complete: ${item.name}'
+        : 'Download did not complete. Check Transfers for details.');
+  }
+
+  void _openTransfers() {
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => const TransferManagerScreen(),
+    ));
   }
 
   bool _isImage(FileEntry item) {
@@ -345,7 +354,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
         actions: [
           IconButton(
             tooltip: 'Upload file',
-            onPressed: _transferProgress != null ? null : _uploadFile,
+            onPressed: _uploadFile,
             icon: const Icon(Icons.upload_file),
           ),
           IconButton(
