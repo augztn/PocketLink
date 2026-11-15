@@ -129,7 +129,8 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         .contains(extension);
   }
 
-  Future<void> _scan() async {
+  Future<void> _scan({bool refresh = false}) async {
+    if (refresh) widget.api.invalidateDirectoryCache();
     widget.api.clearMediaCache();
     setState(() {
       _loading = true;
