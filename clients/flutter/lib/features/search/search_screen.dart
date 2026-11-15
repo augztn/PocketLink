@@ -354,7 +354,7 @@ class _SearchScreenState extends State<SearchScreen> {
     final audio = _audio.contains(e), video = _video.contains(e);
     if (r.localPath != null && _photo.contains(e)) {
       await Navigator.push(context, MaterialPageRoute<void>(builder: (_) => Scaffold(
-        appBar: AppBar(title: Text(r.file.name)),
+        appBar: HomeServerAppBar(title: Text(r.file.name)),
         body: Center(child: InteractiveViewer(child: Image.file(File(r.localPath!), fit: BoxFit.contain))))));
     } else if (audio || video) {
       final queue = r.localPath != null
