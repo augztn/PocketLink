@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import java.io.ByteArrayOutputStream
 import java.io.ByteArrayInputStream
 import android.os.Environment
+import android.os.Build
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
 import fi.iki.elonen.NanoHTTPD
@@ -427,7 +428,7 @@ internal class NativeApiServer(
             .put("modified", isoDate(file.lastModified()))
         // Filesystem birth time is not available on every Android filesystem.
         // Only publish it when the provider supplies a valid value.
-        if (file.isFile) {
+        if (file.isFile && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             try {
                 val created = java.nio.file.Files.readAttributes(
                     file.toPath(),
