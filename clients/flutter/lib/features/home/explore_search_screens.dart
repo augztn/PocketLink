@@ -85,7 +85,15 @@ class ExploreScreen extends StatelessWidget {
     }
 
     return Scaffold(
-      appBar: HomeServerAppBar(title: const Text('Explore'), onHome: onBackAtRoot),
+      appBar: HomeServerAppBar(
+        title: const Text('Explore'),
+        onHome: onBackAtRoot,
+        leading: onBackAtRoot == null ? null : IconButton(
+          tooltip: 'Back to Dashboard',
+          onPressed: onBackAtRoot,
+          icon: const Icon(Icons.arrow_back_rounded),
+        ),
+      ),
       body: GridView.count(
         padding: EdgeInsets.fromLTRB(16, 12, 16, 112 + MediaQuery.paddingOf(context).bottom),
         crossAxisCount: 2,
