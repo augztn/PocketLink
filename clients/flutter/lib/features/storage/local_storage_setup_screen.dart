@@ -84,6 +84,34 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> {
     }
   }
 
+  Future<void> _requestBackgroundAccess() async {
+    setState(() { _busy = true; _error = null; });
+    try {
+      final alreadyAllowed = await _channel.invokeMethod<bool>('requestBackgroundAccess');
+      await _refresh();
+      if (mounted && alreadyAllowed != true) {
+        setState(() => _error =
+            'If Android shows a battery restriction prompt, choose Allow. Then return here and refresh status.');
+      }
+    } on PlatformException catch (error) {
+      if (mounted) setState(() {
+        _busy = false;
+        _error = error.message ?? 'Could not open background activity settings.';
+      });
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _openBackgroundSettings() async {
+    try {
+      await _channel.invokeMethod<bool>('openBackgroundAccessSettings');
+    } on PlatformException catch (error) {
+      if (mounted) setState(() =>
+          _error = error.message ?? 'Could not open Android battery settings.');
+    }
+  }
+
   Future<void> _requestInternalStorageAccess() async {
     setState(() { _busy = true; _error = null; });
     try {
@@ -193,6 +221,37 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> {
               onTap: _busy || internalGranted ? null : _requestInternalStorageAccess,
             ),
           ),
+          const SizedBox(height: 12),
+          Card(
+            child: ListTile(
+              leading: Icon(
+                _status['backgroundAccessGranted'] == true
+                    ? Icons.battery_charging_full
+                    : Icons.battery_alert,
+                color: _status['backgroundAccessGranted'] == true
+                    ? Colors.green
+                    : Theme.of(context).colorScheme.error,
+              ),
+              title: const Text('Background connection protection'),
+              subtitle: Text(_status['backgroundAccessGranted'] == true
+                  ? 'Battery optimization is disabled for HomeServer.'
+                  : 'Allow unrestricted battery use so Android is less likely to suspend the server when the screen is off.'),
+              isThreeLine: true,
+              trailing: const Icon(Icons.chevron_right),
+              onTap: _busy || _status['backgroundAccessGranted'] == true
+                  ? null
+                  : _requestBackgroundAccess,
+            ),
+          ),
+          if (_status['backgroundAccessGranted'] != true)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: OutlinedButton.icon(
+                onPressed: _busy ? null : _openBackgroundSettings,
+                icon: const Icon(Icons.settings),
+                label: const Text('Open battery settings'),
+              ),
+            ),
           const SizedBox(height: 8),
           OutlinedButton.icon(
             onPressed: _busy ? null : _refresh,
