@@ -70,56 +70,42 @@ class _ExploreScreenState extends State<ExploreScreen> {
             api: widget.api,
             initialCategory: _fileCategory,
             isActive: _category == category,
-            embedded: true,
             onBackAtRoot: widget.onBackAtRoot,
           )
         else if (category == ExploreCategory.drives)
-          StorageBrowserScreen(api: widget.api, embedded: true)
+          StorageBrowserScreen(api: widget.api)
         else if (category == ExploreCategory.photos)
-          PhotoGalleryScreen(api: widget.api, embedded: true)
+          PhotoGalleryScreen(api: widget.api)
         else if (category == ExploreCategory.music)
-          MediaBrowserScreen(api: widget.api, type: MediaLibraryType.music, embedded: true)
+          MediaBrowserScreen(api: widget.api, type: MediaLibraryType.music)
         else
-          MediaBrowserScreen(api: widget.api, type: MediaLibraryType.video, embedded: true),
+          MediaBrowserScreen(api: widget.api, type: MediaLibraryType.video),
     ];
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Explore'),
-        actions: [
-          IconButton(
-            tooltip: 'Transfers',
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen()),
-            ),
-            icon: const Icon(Icons.swap_vert_rounded),
-          ),
-        ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(58),
-          child: SizedBox(
-            height: 58,
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              scrollDirection: Axis.horizontal,
-              children: [
-                for (final category in categories)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      selected: _category == category,
-                      showCheckmark: false,
-                      avatar: Icon(_icon(category), size: 17),
-                      label: Text(_label(category)),
-                      onSelected: (_) => _select(category),
-                    ),
+    return Column(
+      children: [
+        SizedBox(
+          height: 58,
+          child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            scrollDirection: Axis.horizontal,
+            children: [
+              for (final category in categories)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ChoiceChip(
+                    selected: _category == category,
+                    showCheckmark: false,
+                    avatar: Icon(_icon(category), size: 17),
+                    label: Text(_label(category)),
+                    onSelected: (_) => _select(category),
                   ),
-              ],
-            ),
+                ),
+            ],
           ),
         ),
-      ),
-      body: IndexedStack(index: selectedIndex, children: pages),
+        Expanded(child: IndexedStack(index: selectedIndex, children: pages)),
+      ],
     );
   }
 
