@@ -25,9 +25,10 @@ String networkRouteLabel(String host) {
   }
   if (compact == '::1' || compact == 'localhost') return 'Local';
   if (compact.endsWith('.local')) return 'LAN';
-  if (compact.startsWith('fc') ||
-      compact.startsWith('fd') ||
-      compact.startsWith('fe80:')) {
+  if (compact.contains(':') &&
+      (compact.startsWith('fc') ||
+          compact.startsWith('fd') ||
+          compact.startsWith('fe80:'))) {
     return 'LAN';
   }
   return 'Remote';
