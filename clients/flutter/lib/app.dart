@@ -58,8 +58,11 @@ class _HomeServerAppState extends State<HomeServerApp> {
   @override
   Widget build(BuildContext context) {
     final mode = _settings.themeMode;
-    return ChangeNotifierProvider(
-      create: (_) => BrowserStateStore(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => BrowserStateStore()),
+        ChangeNotifierProvider<AppSettings>.value(value: _settings),
+      ],
       child: MaterialApp(
       title: 'HomeServer',
       debugShowCheckedModeBanner: false,
