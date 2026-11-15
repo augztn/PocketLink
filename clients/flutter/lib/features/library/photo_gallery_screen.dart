@@ -174,7 +174,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
 
   Widget grid(List<_Photo> items) => GridView.builder(
     padding: EdgeInsets.fromLTRB(2, 2, 2, 104 + MediaQuery.paddingOf(context).bottom),
-    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
       crossAxisCount: gridColumns, crossAxisSpacing: 2, mainAxisSpacing: 2),
     itemCount: items.length,
     itemBuilder: (_,i) {
