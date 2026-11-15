@@ -185,7 +185,12 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   }
 
   String _itemPath(String name) => _path.isEmpty ? name : '$_path/$name';
-  String _volumeName(String id) => _volumes.where((v) => v.id == id).map((v) => v.name).firstOrNull ?? 'External drive';
+  String _volumeName(String id) {
+    for (final volume in _volumes) {
+      if (volume.id == id) return volume.name;
+    }
+    return id;
+  }
 
   Future<String?> _askName(String title, {String initial = ''}) async {
     final controller = TextEditingController(text: initial);
@@ -497,7 +502,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
       child: Scaffold(
         appBar: HomeServerAppBar(
           title: const Text('Files', style: TextStyle(fontWeight: FontWeight.w800)),
-          onHome: _path.isEmpty ? widget.onBackAtRoot : () => _load(''),
+          onHome: () => _load(''),
           leading: widget.isActive
               ? IconButton(
                   tooltip: _path.isEmpty ? 'Back to Dashboard' : 'Go to parent folder',
@@ -604,7 +609,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                   children: [
                     TextButton(
                       onPressed: _path.isEmpty ? null : () => _load(''),
-                      child: const Text('Internal storage'),
+                      child: Text(_selectedVolume == null ? 'Internal storage' : _volumeName(_selectedVolume!)),
                     ),
                     for (var i = 0; i < _path.split('/').where((part) => part.isNotEmpty).length; i++) ...[
                       const Center(child: Icon(Icons.chevron_right_rounded, size: 17)),
