@@ -155,9 +155,14 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   Future<void> _navigateToRequestedLocation() async {
     final volume = widget.requestedVolume;
     try {
-      final volumes = await widget.api.listStorageVolumes();
+      var available = _volumes;
+      try {
+        final volumes = await widget.api.listStorageVolumes();
+        available = volumes.where((item) => item.available).toList();
+      } catch (_) {
+        if (volume != null) rethrow;
+      }
       if (!mounted) return;
-      final available = volumes.where((item) => item.available).toList();
       if (volume != null && !available.any((item) => item.id == volume)) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('That storage drive is no longer mounted.')),
