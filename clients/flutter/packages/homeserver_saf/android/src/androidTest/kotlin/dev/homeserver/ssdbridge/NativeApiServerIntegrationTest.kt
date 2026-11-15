@@ -1,6 +1,8 @@
 package dev.homeserver.ssdbridge
 
 import android.content.Context
+import android.content.ContextWrapper
+import android.content.SharedPreferences
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import fi.iki.elonen.NanoHTTPD
@@ -17,7 +19,12 @@ import android.util.Base64
 class NativeApiServerIntegrationTest {
     @Test
     fun healthIsReachableAndApiRequiresValidCredentials() {
-        val context = ApplicationProvider.getApplicationContext<Context>()
+        val appContext = ApplicationProvider.getApplicationContext<Context>()
+        // Keep test credentials isolated from the app's real saved server password.
+        val context = object : ContextWrapper(appContext) {
+            override fun getSharedPreferences(name: String, mode: Int): SharedPreferences =
+                appContext.getSharedPreferences("integration-test-$name", mode)
+        }
         val credentials = ServerCredentials(context)
         val password = "integration-test-password"
         credentials.setPassword(password)
@@ -49,7 +56,7 @@ class NativeApiServerIntegrationTest {
             assertTrue(authorized.second.contains("\"items\""))
         } finally {
             server.stop()
-            context.getSharedPreferences("homeserver-auth", Context.MODE_PRIVATE)
+            context.getSharedPreferences("integration-test-homeserver-auth", Context.MODE_PRIVATE)
                 .edit().clear().commit()
         }
     }
