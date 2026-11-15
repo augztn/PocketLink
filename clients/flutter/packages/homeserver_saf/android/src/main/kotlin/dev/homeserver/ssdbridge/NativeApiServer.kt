@@ -419,11 +419,27 @@ internal class NativeApiServer(
         return try { JSONObject(raw) } catch (_: Exception) { null }
     }
 
-    private fun fileJson(file: File): JSONObject = JSONObject()
-        .put("name", file.name)
-        .put("type", if (file.isDirectory) "directory" else "file")
-        .put("size", if (file.isFile) file.length() else 0L)
-        .put("modified", isoDate(file.lastModified()))
+    private fun fileJson(file: File): JSONObject {
+        val value = JSONObject()
+            .put("name", file.name)
+            .put("type", if (file.isDirectory) "directory" else "file")
+            .put("size", if (file.isFile) file.length() else 0L)
+            .put("modified", isoDate(file.lastModified()))
+        // Filesystem birth time is not available on every Android filesystem.
+        // Only publish it when the provider supplies a valid value.
+        if (file.isFile) {
+            try {
+                val created = java.nio.file.Files.readAttributes(
+                    file.toPath(),
+                    java.nio.file.attribute.BasicFileAttributes::class.java
+                ).creationTime().toMillis()
+                if (created > 0L) value.put("created", isoDate(created))
+            } catch (_: Exception) {
+                // Some Android/FUSE filesystems do not expose birth time.
+            }
+        }
+        return value
+    }
 
     private fun parseRange(value: String, length: Long): Pair<Long, Long>? {
         if (length <= 0L) return null
