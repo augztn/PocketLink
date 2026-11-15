@@ -43,13 +43,10 @@ class AppSettings extends ChangeNotifier {
         _ => ThemeMode.system,
       };
       _amoled = values[0] == 'amoled';
-    _streamingQuality = const {'Data saver', 'Balanced', 'Original'}.contains(values[1])
-        ? values[1]!
-        : 'Original';
-    _downloadDirectory = values[2];
-    _showQuickActions = values[3] != 'false';
-    _showLibrary = values[4] != 'false';
-      _showRecentFiles = values[5] != 'false';
+      _downloadDirectory = values[1];
+      _showQuickActions = values[2] != 'false';
+      _showLibrary = values[3] != 'false';
+      _showRecentFiles = values[4] != 'false';
     } catch (_) {
       // Keep safe defaults when secure settings storage is unavailable.
     }
