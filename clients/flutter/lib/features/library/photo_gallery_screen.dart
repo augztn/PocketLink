@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../core/widgets/home_server_app_bar.dart';
 import '../../core/network/server_api.dart';
 import 'photo_favorites_store.dart';
 import '../transfers/transfer_manager_screen.dart';
+import '../../core/widgets/home_server_app_bar.dart';
 
 class _Photo {
   const _Photo(this.file, this.path, this.volume);
