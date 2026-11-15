@@ -550,7 +550,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
               showSelectedIcon: false,
             ),
           ),
-          Padding(
+          if (widget.showSearch) Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
             child: TextField(
               onChanged: (value) => setState(() => _searchQuery = value),
@@ -748,7 +748,7 @@ class MediaBrowserScreen extends StatefulWidget {
   });
 
   final ServerApi api;
-  final MediaLibraryType type;
+  final MediaLibraryType type;\n  final bool showSearch;
 
   @override
   State<MediaBrowserScreen> createState() => _MediaBrowserScreenState();
