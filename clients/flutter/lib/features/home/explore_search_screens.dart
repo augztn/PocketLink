@@ -17,6 +17,8 @@ class ExploreScreen extends StatelessWidget {
     required this.onCategoryChanged,
     this.fileCategory = 'All',
     this.onBackAtRoot,
+    this.onOpenFiles,
+    this.onOpenSearch,
     super.key,
   });
 
@@ -25,6 +27,8 @@ class ExploreScreen extends StatelessWidget {
   final ValueChanged<ExploreCategory> onCategoryChanged;
   final String fileCategory;
   final VoidCallback? onBackAtRoot;
+  final VoidCallback? onOpenFiles;
+  final VoidCallback? onOpenSearch;
 
   void _open(BuildContext context, Widget screen) {
     Navigator.of(context).push(MaterialPageRoute<void>(
@@ -124,7 +128,12 @@ class ExploreScreen extends StatelessWidget {
           card(
             title: 'Files', subtitle: 'Browse server folders',
             icon: Icons.folder_rounded, tint: const Color(0xFF7186C8),
-            onTap: () => _open(context, FileManagerScreen(api: api)),
+            onTap: onOpenFiles ?? () => _open(context, FileManagerScreen(api: api)),
+          ),
+          card(
+            title: 'Search', subtitle: 'Find files across storage',
+            icon: Icons.search_rounded, tint: const Color(0xFF6C9DCE),
+            onTap: onOpenSearch ?? () {},
           ),
           card(
             title: 'Drives', subtitle: 'Internal & external SSDs',
