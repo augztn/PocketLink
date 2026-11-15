@@ -978,7 +978,14 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                   if (isTrack) {
                     final queueItem = MediaQueueItem(title: recent.title, path: recent.path, volume: recent.volume);
                     await player.openQueue(api: widget.api, queue: [queueItem], initialIndex: 0, isMusic: true);
-                    _openNowPlaying(player);
+                    Navigator.of(context).push(MaterialPageRoute<void>(
+                      builder: (_) => NowPlayingScreen(
+                        api: widget.api,
+                        queue: player.queue,
+                        initialIndex: player.currentIndex,
+                        resumeExisting: true,
+                      ),
+                    ));
                   } else {
                     final path = isFolder ? recent.path : recent.parentPath;
                     widget.onOpenFileLocation(recent.volume, path);
