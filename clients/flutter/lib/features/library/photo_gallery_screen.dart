@@ -23,9 +23,10 @@ class _Photo {
 }
 
 class PhotoGalleryScreen extends StatefulWidget {
-  const PhotoGalleryScreen({required this.api, this.showSearch = true, super.key});
+  const PhotoGalleryScreen({required this.api, this.showSearch = true, this.initialTab = 0, super.key});
   final ServerApi api;
   final bool showSearch;
+  final int initialTab;
   @override
   State<PhotoGalleryScreen> createState() => _PhotoGalleryScreenState();
 }
@@ -46,7 +47,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
   int dateMode = 0;
 
   @override
-  void initState() { super.initState(); _initialize(); }
+  void initState() { super.initState(); tab = widget.initialTab.clamp(0, 3); _initialize(); }
 
   Future<void> _initialize() async {
     try {
