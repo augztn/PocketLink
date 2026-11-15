@@ -744,6 +744,7 @@ class MediaBrowserScreen extends StatefulWidget {
   const MediaBrowserScreen({
     required this.api,
     required this.type,
+    this.embedded = false,
     super.key,
   });
 
