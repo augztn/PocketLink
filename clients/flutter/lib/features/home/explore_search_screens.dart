@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/widgets/home_server_app_bar.dart';
 
 import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
@@ -84,7 +85,7 @@ class ExploreScreen extends StatelessWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Explore')),
+      appBar: HomeServerAppBar(title: const Text('Explore'), onHome: onBackAtRoot),
       body: GridView.count(
         padding: EdgeInsets.fromLTRB(16, 12, 16, 112 + MediaQuery.paddingOf(context).bottom),
         crossAxisCount: 2,
