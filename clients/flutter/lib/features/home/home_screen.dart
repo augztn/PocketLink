@@ -10,9 +10,6 @@ import '../media/persistent_audio_player.dart';
 
 import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
-import '../media/media_browser_screen.dart';
-import '../library/library_browser_screen.dart';
-import '../library/photo_gallery_screen.dart';
 import '../storage/storage_browser_screen.dart';
 import '../storage/local_storage_setup_screen.dart';
 import '../transfers/transfer_manager_screen.dart';
@@ -531,21 +528,6 @@ class _HomeDashboardState extends State<_HomeDashboard> {
       _volumes = volumes;
       _checking = false;
     });
-  }
-
-  void _openDocuments() {
-    Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => LibraryBrowserScreen(
-        api: widget.api,
-        category: LibraryCategory.documents,
-      ),
-    ));
-  }
-
-  void _openStorage() {
-    Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => StorageBrowserScreen(api: widget.api),
-    ));
   }
 
   @override
