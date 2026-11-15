@@ -10,8 +10,8 @@ import 'features/media/persistent_audio_player.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  MediaKit.ensureInitialized();
   await AppLogger.initialize();
+  MediaKit.ensureInitialized();
   FlutterError.onError = (details) {
     FlutterError.presentError(details);
     unawaited(AppLogger.error('Flutter framework error', error: details.exception, stackTrace: details.stack));
