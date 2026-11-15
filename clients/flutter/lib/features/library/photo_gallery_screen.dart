@@ -45,9 +45,10 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
   String? source;
   int tab = 0;
   int dateMode = 0;
+  int gridColumns = 3;
 
   @override
-  void initState() { super.initState(); tab = widget.initialTab.clamp(0, 3).toInt(); _initialize(); }
+  void initState() { super.initState(); tab = widget.initialTab.clamp(0, 2).toInt(); _initialize(); }
 
   Future<void> _initialize() async {
     try {
@@ -136,7 +137,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     final matches = q.isEmpty || p.file.name.toLowerCase().contains(q) ||
         p.path.toLowerCase().contains(q) || p.album.toLowerCase().contains(q);
     return matches && (source == null || (source == 'internal' ? p.volume == null : p.volume == source)) &&
-        (tab != 3 || favorites.contains(p.id));
+        (tab != 2 || favorites.contains(p.id));
   }).toList();
 
   Map<String,List<_Photo>> groupByAlbum(List<_Photo> items) {
@@ -174,7 +175,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
   Widget grid(List<_Photo> items) => GridView.builder(
     padding: EdgeInsets.fromLTRB(2, 2, 2, 104 + MediaQuery.paddingOf(context).bottom),
     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-      crossAxisCount: 3, crossAxisSpacing: 2, mainAxisSpacing: 2),
+      crossAxisCount: gridColumns, crossAxisSpacing: 2, mainAxisSpacing: 2),
     itemCount: items.length,
     itemBuilder: (_,i) {
       final p = items[i]; final isSelected = selected.contains(p.id);
@@ -332,80 +333,274 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     await _persistFavorites();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final items=visible;final selecting=selected.isNotEmpty;
-    return Scaffold(
-      appBar:AppBar(
-        title:Text(selecting?'${selected.length} selected':['Photos','Albums','Discover','Favourites'][tab]),
-        leading:selecting?IconButton(onPressed:()=>setState(selected.clear),icon:const Icon(Icons.close)):null,
-        actions:[
-          IconButton(onPressed:()=>Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>const TransferManagerScreen())),icon:const Icon(Icons.swap_vert_rounded),tooltip:'Transfers'),
-          if(!selecting && widget.showSearch)IconButton(onPressed:()=>setState(()=>searchOpen=!searchOpen),icon:Icon(searchOpen?Icons.close:Icons.search),tooltip:'Search'),
-          if(!selecting)IconButton(
-            onPressed:()=>setState(()=>tab=tab==3?0:3),
-            icon:Icon(tab==3?Icons.favorite:Icons.favorite_border),
-            tooltip:'Favourites',
+  Widget _photoTabPill(String label, int value) {
+    final selectedTab = tab == value;
+    return Expanded(
+      child: Material(
+        color: selectedTab ? const Color(0xFF343438) : Colors.transparent,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: () => setState(() => tab = value),
+          child: SizedBox(
+            height: 34,
+            child: Center(
+              child: Text(label, style: TextStyle(
+                color: selectedTab ? Colors.white : Colors.white60,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              )),
+            ),
           ),
-          IconButton(onPressed:loading?null:scan,icon:const Icon(Icons.refresh),tooltip:'Scan again'),
-        ],
+        ),
       ),
-      body:Column(children:[
-        if(widget.showSearch && searchOpen)Padding(padding:const EdgeInsets.fromLTRB(16,4,16,8),child:TextField(
-          controller:search,autofocus:true,onChanged:(_)=>setState((){}),
-          decoration:InputDecoration(hintText:'Search photos, folders or dates',prefixIcon:const Icon(Icons.search),
-            suffixIcon:IconButton(onPressed:(){search.clear();setState((){});},icon:const Icon(Icons.clear)),
-            filled:true,border:OutlineInputBorder(borderRadius:BorderRadius.circular(18),borderSide:BorderSide.none)),
-        )),
-        if(!selecting)Padding(padding:const EdgeInsets.fromLTRB(12,4,12,8),child:Row(children:[
-          Expanded(child:SegmentedButton<int>(
-            segments:const[
-              ButtonSegment(value:0,label:Text('Photos')),
-              ButtonSegment(value:1,label:Text('Albums')),
-              ButtonSegment(value:2,label:Text('Discover')),
-            ],
-            selected:{tab==3?0:tab},showSelectedIcon:false,
-            onSelectionChanged:(v)=>setState(()=>tab=v.first),
-          )),
-          PopupMenuButton<String>(
-            tooltip:'Storage source',icon:const Icon(Icons.tune_rounded),
-            onSelected:(v)=>setState(()=>source=v=='all'?null:v),
-            itemBuilder:(_)=>[
-              const PopupMenuItem(value:'all',child:Text('All storage')),
-              const PopupMenuItem(value:'internal',child:Text('Internal storage')),
-              ...volumes.map((v)=>PopupMenuItem(value:v.id,enabled:v.available,child:Text(v.name))),
-            ],
-          ),
-        ])),
-        if(tab==0&&!selecting)Padding(padding:const EdgeInsets.fromLTRB(16,0,16,8),child:Row(children:[
-          Expanded(child:Text('${items.length} photos${loading?' · Scanning…':''}',style:Theme.of(context).textTheme.bodySmall)),
-          SegmentedButton<int>(
-            segments:const[
-              ButtonSegment(value:0,label:Text('Days')),
-              ButtonSegment(value:1,label:Text('Months')),
-              ButtonSegment(value:2,label:Text('Years')),
-              ButtonSegment(value:3,icon:Icon(Icons.grid_view_rounded)),
-            ],
-            selected:{dateMode},showSelectedIcon:false,
-            onSelectionChanged:(v)=>setState(()=>dateMode=v.first),
-          ),
-        ])),
-        if(loading)const LinearProgressIndicator(minHeight:2),
-        if(error!=null)Padding(padding:const EdgeInsets.all(12),child:Text(error!,style:TextStyle(color:Theme.of(context).colorScheme.error))),
-        Expanded(child:error!=null
-          ?Center(child:FilledButton(onPressed:scan,child:const Text('Retry scan')))
-          :loading&&photos.isEmpty?const Center(child:CircularProgressIndicator())
-          :tab==1?albumsTab(items):tab==2?discoverTab(items)
-          :items.isEmpty?empty('No photos found in internal or connected USB storage.')
-          :photosTab(items)),
-      ]),
-      bottomNavigationBar:selecting?SafeArea(child:Padding(padding:const EdgeInsets.all(10),child:Row(children:[
-        Expanded(child:OutlinedButton.icon(onPressed:favoriteSelected,icon:const Icon(Icons.favorite_border),label:const Text('Favourite'))),
-        const SizedBox(width:8),
-        Expanded(child:FilledButton.icon(onPressed:deleteSelected,icon:const Icon(Icons.delete_outline),label:const Text('Delete'))),
-      ]))):null,
     );
   }
+
+  Future<void> _showFilters() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF1C1C1E),
+      isScrollControlled: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Photo view', style: TextStyle(
+                  color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700,
+                )),
+                const SizedBox(height: 16),
+                const Text('Grouping', style: TextStyle(color: Colors.white70)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    for (final option in const [(0, 'Days'), (1, 'Months'), (2, 'Years'), (3, 'Grid')])
+                      ChoiceChip(
+                        label: Text(option.$2),
+                        selected: dateMode == option.$1,
+                        onSelected: (_) {
+                          setState(() => dateMode = option.$1);
+                          setSheetState(() {});
+                        },
+                        backgroundColor: const Color(0xFF161618),
+                        selectedColor: const Color(0xFF343438),
+                        side: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+                        labelStyle: TextStyle(
+                          color: dateMode == option.$1 ? Colors.white : Colors.white70,
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    const Expanded(child: Text('Grid density', style: TextStyle(color: Colors.white70))),
+                    Text('$gridColumns columns', style: const TextStyle(color: Colors.white)),
+                  ],
+                ),
+                Slider(
+                  min: 2,
+                  max: 5,
+                  divisions: 3,
+                  value: gridColumns.toDouble(),
+                  onChanged: (value) {
+                    setState(() => gridColumns = value.round());
+                    setSheetState(() {});
+                  },
+                ),
+                const SizedBox(height: 12),
+                const Text('Storage source', style: TextStyle(color: Colors.white70)),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  initialValue: source ?? 'all',
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: const Color(0xFF161618),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+                    ),
+                  ),
+                  dropdownColor: const Color(0xFF1C1C1E),
+                  items: [
+                    const DropdownMenuItem(value: 'all', child: Text('All storage')),
+                    const DropdownMenuItem(value: 'internal', child: Text('Internal storage')),
+                    ...volumes.map((volume) => DropdownMenuItem(
+                      value: volume.id,
+                      enabled: volume.available,
+                      child: Text(volume.name),
+                    )),
+                  ],
+                  onChanged: (value) {
+                    setState(() => source = value == null || value == 'all' ? null : value);
+                    setSheetState(() {});
+                  },
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () => Navigator.pop(sheetContext),
+                    child: const Text('Done'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final items = visible;
+    final selecting = selected.isNotEmpty;
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(selecting ? '${selected.length} selected' : 'Photos'),
+        leading: selecting
+            ? IconButton(
+                onPressed: () => setState(selected.clear),
+                icon: const Icon(Icons.close),
+              )
+            : null,
+        actions: [
+          IconButton(
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+              builder: (_) => const TransferManagerScreen(),
+            )),
+            icon: const Icon(Icons.swap_vert_rounded),
+            tooltip: 'Transfers',
+          ),
+          if (!selecting && widget.showSearch)
+            IconButton(
+              onPressed: () => setState(() => searchOpen = !searchOpen),
+              icon: Icon(searchOpen ? Icons.close : Icons.search),
+              tooltip: 'Search',
+            ),
+          IconButton(
+            onPressed: loading ? null : scan,
+            icon: const Icon(Icons.refresh_rounded),
+            tooltip: 'Scan again',
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          if (widget.showSearch && searchOpen)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+              child: TextField(
+                controller: search,
+                autofocus: true,
+                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  hintText: 'Search photos, folders or dates',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: IconButton(
+                    onPressed: () { search.clear(); setState(() {}); },
+                    icon: const Icon(Icons.clear),
+                  ),
+                  filled: true,
+                  fillColor: const Color(0xFF1C1C1E),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(18),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ),
+          if (!selecting)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      height: 42,
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1C1C1E),
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                      ),
+                      child: Row(
+                        children: [
+                          _photoTabPill('Photos', 0),
+                          _photoTabPill('Albums', 1),
+                          _photoTabPill('Favorites', 2),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1C1C1E),
+                      borderRadius: BorderRadius.circular(21),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                    ),
+                    child: IconButton(
+                      tooltip: 'Photo filters and layout',
+                      onPressed: _showFilters,
+                      icon: const Icon(Icons.tune_rounded, size: 20),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (loading) const LinearProgressIndicator(minHeight: 2),
+          if (error != null)
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Text(error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            ),
+          Expanded(
+            child: error != null
+                ? Center(child: FilledButton(onPressed: scan, child: const Text('Retry scan')))
+                : loading && photos.isEmpty
+                    ? const Center(child: Text('Scanning photos…'))
+                    : tab == 1
+                        ? albumsTab(items)
+                        : items.isEmpty
+                            ? empty(tab == 2 ? 'No favourite photos yet.' : 'No photos found in internal or connected USB storage.')
+                            : photosTab(items),
+          ),
+        ],
+      ),
+      bottomNavigationBar: selecting
+          ? SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: Row(
+                  children: [
+                    Expanded(child: OutlinedButton.icon(
+                      onPressed: favoriteSelected,
+                      icon: const Icon(Icons.favorite_border),
+                      label: const Text('Favourite'),
+                    )),
+                    const SizedBox(width: 8),
+                    Expanded(child: FilledButton.icon(
+                      onPressed: deleteSelected,
+                      icon: const Icon(Icons.delete_outline),
+                      label: const Text('Delete'),
+                    )),
+                  ],
+                ),
+              ),
+            )
+          : null,
+    );
+  }
+
 }
 
 class _PhotoAlbum extends StatelessWidget {
