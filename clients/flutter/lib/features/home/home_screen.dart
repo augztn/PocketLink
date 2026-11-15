@@ -1,5 +1,4 @@
 import 'dart:math' as math;
-import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
@@ -7,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 
 import 'quick_actions_store.dart';
 import '../../core/settings/app_settings.dart';
+import '../../core/widgets/liquid_glass_pill.dart';
 import '../settings/settings_screen.dart';
 import 'explore_search_screens.dart';
 import '../media/media_player_screen.dart';
@@ -211,42 +211,10 @@ class _FloatingGlassDock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final glassColor = isDark
-        ? colors.surface.withOpacity(0.72)
-        : colors.surface.withOpacity(0.78);
-    final borderColor = colors.outlineVariant.withOpacity(isDark ? 0.42 : 0.55);
-
     Widget glass({
       required Widget child,
       required BorderRadius radius,
-      required BoxBorder border,
-    }) => ClipRRect(
-      borderRadius: radius,
-      child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-        child: Container(
-          decoration: BoxDecoration(
-            color: glassColor,
-            borderRadius: radius,
-            border: border,
-            boxShadow: [
-              BoxShadow(
-                color: colors.shadow.withOpacity(isDark ? 0.24 : 0.10),
-                blurRadius: 24,
-                offset: const Offset(0, 8),
-              ),
-              BoxShadow(
-                color: colors.onSurface.withOpacity(isDark ? 0.05 : 0.035),
-                blurRadius: 1,
-                spreadRadius: -1,
-              ),
-            ],
-          ),
-          child: child,
-        ),
-      ),
-    );
+    }) => LiquidGlassPill(radius: radius, child: child);
 
     return SafeArea(
       top: false,
@@ -257,7 +225,6 @@ class _FloatingGlassDock extends StatelessWidget {
             Expanded(
               child: glass(
                 radius: BorderRadius.circular(32),
-                border: Border.all(color: borderColor, width: 0.8),
                 child: SizedBox(
                   height: 64,
                   child: Row(
@@ -273,7 +240,6 @@ class _FloatingGlassDock extends StatelessWidget {
             const SizedBox(width: 10),
             glass(
               radius: BorderRadius.circular(32),
-              border: Border.all(color: borderColor, width: 0.8),
               child: Material(
                 color: Colors.transparent,
                 shape: const CircleBorder(),
