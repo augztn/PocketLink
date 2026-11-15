@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import 'features/home/browser_state_store.dart';
 
 import 'core/settings/app_settings.dart';
 import 'features/connection/connection_screen.dart';
@@ -55,7 +58,9 @@ class _HomeServerAppState extends State<HomeServerApp> {
   @override
   Widget build(BuildContext context) {
     final mode = _settings.themeMode;
-    return MaterialApp(
+    return ChangeNotifierProvider(
+      create: (_) => BrowserStateStore(),
+      child: MaterialApp(
       title: 'HomeServer',
       debugShowCheckedModeBanner: false,
       themeMode: mode,
@@ -63,6 +68,7 @@ class _HomeServerAppState extends State<HomeServerApp> {
       darkTheme: _theme(brightness: Brightness.dark, amoled: _settings.amoled),
       home: const ConnectionScreen(),
       builder: (context, child) => child ?? const SizedBox.shrink(),
+      ),
     );
   }
 }
