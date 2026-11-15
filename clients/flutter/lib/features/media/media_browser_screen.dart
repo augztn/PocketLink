@@ -734,7 +734,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
               icon: _layoutMode == 'grid' ? Icons.view_list_rounded : Icons.grid_view_rounded,
               onPressed: () { setState(() { _layoutMode = _layoutMode == 'grid' ? 'list' : 'grid'; }); _saveState(); },
             ),
-          HomeServerAppBarAction(label: 'Scan again', icon: Icons.refresh, onPressed: _loading ? null : _scan),
+          HomeServerAppBarAction(label: 'Scan again', icon: Icons.refresh, onPressed: _loading ? null : () => _scan(refresh: true)),
         ],
       ),
       body: Column(
