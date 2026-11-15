@@ -23,14 +23,14 @@ class ExploreScreen extends StatefulWidget {
 
   final ServerApi api;
   final ExploreCategory category;
-  final ValueChanged<ExploreCategory> onCategoryChanged;
+  final ValueChanged<ExploreCategory> onCategoryChanged;\n  final String fileCategory;\n  final VoidCallback? onBackAtRoot;
 
   @override
   State<ExploreScreen> createState() => _ExploreScreenState();
 }
 
 class _ExploreScreenState extends State<ExploreScreen> {
-  late ExploreCategory _category = widget.category;
+  late ExploreCategory _category = widget.category;\n  late String _fileCategory = widget.fileCategory;
 
   @override
   void didUpdateWidget(covariant ExploreScreen oldWidget) {
