@@ -5,7 +5,7 @@ import '../lib/features/home/browser_state_store.dart';
 void main() {
   group('BrowserStateStore', () {
     test('retains Files navigation and presentation state per server', () {
-      final store = BrowserStateStore.instance;
+      final store = BrowserStateStore();
       const state = FileBrowserState(
         path: 'Movies/2026',
         category: 'Videos',
@@ -28,6 +28,7 @@ void main() {
         store.fileState('https://server-b.test:8000').path,
         isEmpty,
       );
+      store.dispose();
     });
 
     test('retains Music and Videos tabs and storage selections independently', () {
@@ -70,6 +71,7 @@ void main() {
         store.mediaState('https://server-a.test:8000', 'video').selectedVolume,
         'usb-123',
       );
+      store.dispose();
     });
   });
 }
