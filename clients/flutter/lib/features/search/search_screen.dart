@@ -291,12 +291,11 @@ class _SearchScreenState extends State<SearchScreen> {
       await Navigator.push(context, MaterialPageRoute<void>(builder: (_) => Scaffold(
         appBar: AppBar(title: Text(r.file.name)),
         body: Center(child: InteractiveViewer(child: Image.file(File(r.localPath!), fit: BoxFit.contain))))));
-    } else if (r.localPath != null && (audio || video)) {
-      await Navigator.push(context, MaterialPageRoute<void>(builder: (_) => MediaPlayerScreen(
-        api: widget.api, title: r.file.name, path: r.localPath!, isVideo: video))));
     } else if (audio || video) {
-      final queue = _visible.where((v) => audio ? _audio.contains(_ext(v.file.name)) : _video.contains(_ext(v.file.name)))
-        .map((v) => MediaQueueItem(title: v.file.name, path: v.path, volume: v.volume)).toList(growable: false);
+      final queue = r.localPath != null
+        ? [MediaQueueItem(title: r.file.name, path: r.path, volume: r.volume, localPath: r.localPath)]
+        : _visible.where((v) => audio ? _audio.contains(_ext(v.file.name)) : _video.contains(_ext(v.file.name)))
+          .map((v) => MediaQueueItem(title: v.file.name, path: v.path, volume: v.volume, localPath: v.localPath)).toList(growable: false);
       final index = queue.indexWhere((v) => v.path == r.path && v.volume == r.volume);
       await Navigator.push(context, MaterialPageRoute<void>(builder: (_) => MediaPlayerScreen(
         api: widget.api, title: r.file.name, path: r.path, volume: r.volume,
