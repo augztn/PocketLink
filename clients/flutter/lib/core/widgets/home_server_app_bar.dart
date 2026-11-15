@@ -39,12 +39,20 @@ class HomeServerAppBar extends StatelessWidget implements PreferredSizeWidget {
   final double? elevation;
   final bool showHome;
 
+  static const dashboardRouteName = '/homeserver-dashboard';
+
+  static void goToDashboard(BuildContext context) {
+    Navigator.of(context).popUntil(
+      (route) => route.settings.name == dashboardRouteName,
+    );
+  }
+
   void _goHome(BuildContext context) {
     if (onHome != null) {
       onHome!();
       return;
     }
-    Navigator.of(context).popUntil((route) => route.isFirst);
+    goToDashboard(context);
   }
 
   @override
