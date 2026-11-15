@@ -506,7 +506,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
         Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => FileManagerScreen(api: widget.api)));
         return;
       case 'favorites':
-        Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PhotoGalleryScreen(api: widget.api)));
+        Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PhotoGalleryScreen(api: widget.api, initialTab: 3)));
         return;
       case 'photos':
         widget.onOpenExplore(ExploreCategory.photos);
@@ -531,6 +531,17 @@ class _HomeDashboardState extends State<_HomeDashboard> {
     }
   }
 
+
+  IconData _recentIcon(FileEntry file) {
+    if (file.isDirectory) return Icons.folder_outlined;
+    final dot = file.name.lastIndexOf('.');
+    final extension = dot < 0 ? '' : file.name.substring(dot + 1).toLowerCase();
+    if (const {'jpg','jpeg','png','gif','webp','heic','heif','bmp','avif'}.contains(extension)) return Icons.image_outlined;
+    if (const {'mp4','mkv','mov','avi','webm','m4v','3gp'}.contains(extension)) return Icons.video_file_outlined;
+    if (const {'mp3','m4a','aac','wav','flac','ogg','opus','wma','aiff','alac'}.contains(extension)) return Icons.audio_file_outlined;
+    if (const {'pdf','doc','docx','xls','xlsx','ppt','pptx','txt','rtf','odt'}.contains(extension)) return Icons.description_outlined;
+    return Icons.insert_drive_file_outlined;
+  }
 
   String _formatBytes(int bytes) {
     if (bytes < 1024) return '$bytes B';
@@ -577,7 +588,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
           }
           break;
         case 'share':
-          await Share.share('HomeServer file: ${recent.file.name}\\nLocation: ${recent.volumeName} / $path');
+          await Share.share('HomeServer file: ${recent.file.name}\nLocation: ${recent.volumeName} / $path');
           break;
         case 'rename':
           final controller = TextEditingController(text: recent.file.name);
@@ -1097,9 +1108,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                             borderRadius: BorderRadius.circular(13),
                           ),
                           child: Icon(
-                            _recentFiles[index].file.name.contains('.')
-                                ? Icons.insert_drive_file_outlined
-                                : Icons.folder_outlined,
+                            _recentIcon(_recentFiles[index].file),
                             color: colors.onSecondaryContainer,
                           ),
                         ),
