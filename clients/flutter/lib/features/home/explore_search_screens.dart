@@ -245,36 +245,43 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
       final visited = <String>{};
       final found = <_SearchResult>[];
       var cursor = 0;
-      while (cursor < pending.length && visited.length < 2500) {
+      while (cursor < pending.length && visited.length < 1800) {
         if (!mounted) return;
-        final current = pending[cursor++];
-        final key = '${current.volume ?? 'internal'}:${current.path}';
-        if (!visited.add(key)) continue;
-        try {
-          final listing = current.volume == null
-              ? await widget.api.listDirectory(current.path)
-              : await widget.api.listStorageDirectory(current.volume!, current.path);
-          _scannedDirectories++;
-          for (final item in listing.items) {
-            if (item.name.startsWith('.')) continue;
-            final path = current.path.isEmpty ? item.name : '${current.path}/${item.name}';
-            if (item.isDirectory) {
-              if (current.depth < 18) {
-                pending.add((path: path, volume: current.volume, volumeName: current.volumeName, depth: current.depth + 1));
+        final batch = <({String path, String? volume, String volumeName, int depth})>[];
+        while (cursor < pending.length && batch.length < 8 && visited.length < 1800) {
+          final current = pending[cursor++];
+          final key = '${current.volume ?? 'internal'}:${current.path}';
+          if (visited.add(key)) batch.add(current);
+        }
+
+        await Future.wait(batch.map((current) async {
+          try {
+            final listing = current.volume == null
+                ? await widget.api.listDirectory(current.path)
+                : await widget.api.listStorageDirectory(current.volume!, current.path);
+            _scannedDirectories++;
+            for (final item in listing.items) {
+              if (item.name.startsWith('.')) continue;
+              final path = current.path.isEmpty ? item.name : '${current.path}/${item.name}';
+              if (item.isDirectory) {
+                if (current.depth < 18) {
+                  pending.add((path: path, volume: current.volume, volumeName: current.volumeName, depth: current.depth + 1));
+                }
+              } else if (found.length < 10000) {
+                found.add(_SearchResult(file: item, path: path, volume: current.volume, volumeName: current.volumeName));
               }
-            } else if (found.length < 10000) {
-              found.add(_SearchResult(file: item, path: path, volume: current.volume, volumeName: current.volumeName));
             }
+          } catch (_) {
+            // Continue through other folders when a folder is unavailable.
           }
-          if (cursor % 20 == 0 && mounted) {
-            setState(() {
-              _results
-                ..clear()
-                ..addAll(found);
-            });
-          }
-        } catch (_) {
-          // Continue through other folders when a folder is unavailable.
+        }));
+
+        if (mounted) {
+          setState(() {
+            _results
+              ..clear()
+              ..addAll(found);
+          });
         }
       }
       found.sort((a, b) => a.file.name.toLowerCase().compareTo(b.file.name.toLowerCase()));
