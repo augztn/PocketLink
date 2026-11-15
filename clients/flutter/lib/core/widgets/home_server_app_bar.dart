@@ -26,6 +26,7 @@ class HomeServerAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.foregroundColor,
     this.elevation,
     this.showHome = true,
+    this.actionsBeforeHome = const [],
     super.key,
   });
 
@@ -38,6 +39,7 @@ class HomeServerAppBar extends StatelessWidget implements PreferredSizeWidget {
   final Color? foregroundColor;
   final double? elevation;
   final bool showHome;
+  final List<Widget> actionsBeforeHome;
 
   static const dashboardRouteName = '/homeserver-dashboard';
 
@@ -64,6 +66,7 @@ class HomeServerAppBar extends StatelessWidget implements PreferredSizeWidget {
     foregroundColor: foregroundColor,
     elevation: elevation,
     actions: [
+      ...actionsBeforeHome,
       if (showHome)
         IconButton(
           tooltip: 'Home',
