@@ -942,12 +942,12 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                                                   : Icons.movie_outlined),
                                             ),
                                             title: Text(
-                                              _displayTitle(media),
+                                              _isMusic ? _displayTitle(media) : media.entry.name,
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                             ),
                                             subtitle: Text(
-                                              '${_fileExtension(media)} · ${_sourceLabel(media)} · ${_formatBytes(media.entry.size)}',
+                                              '${_isMusic ? '${_fileExtension(media)} · ' : ''}${_sourceLabel(media)} · ${_formatBytes(media.entry.size)}',
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                             ),
