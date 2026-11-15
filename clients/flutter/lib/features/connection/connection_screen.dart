@@ -173,7 +173,6 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       if (!mounted) return;
       final status = error.response?.statusCode;
       setState(() {
-        _isConnecting = false;
         _message = status == 401
             ? 'The server rejected these credentials for storage access. Re-enter the current server admin password. The SAF bridge token is separate.'
             : status == 403
