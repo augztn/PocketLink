@@ -67,7 +67,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
               onHome: widget.onBackAtRoot,
               onOpen: _open,
               onOpenFiles: widget.onOpenFiles,
-              onOpenSearch: widget.onOpenSearch,
             ),
           ),
         ],
@@ -100,14 +99,12 @@ class _ExploreGrid extends StatelessWidget {
     required this.onHome,
     required this.onOpen,
     required this.onOpenFiles,
-    required this.onOpenSearch,
   });
 
   final ServerApi api;
   final VoidCallback? onHome;
   final ValueChanged<Widget> onOpen;
   final VoidCallback? onOpenFiles;
-  final VoidCallback? onOpenSearch;
 
   @override
   Widget build(BuildContext context) {
