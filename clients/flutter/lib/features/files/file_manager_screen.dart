@@ -32,7 +32,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   String _searchQuery = '';
-  String _category = 'All';
+  late String _category = widget.initialCategory;
   bool _gridView = false;
 
   static const Map<String, Set<String>> _categoryExtensions = {
