@@ -130,25 +130,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ThemeMode.dark => 'Dark',
                   ThemeMode.system => 'System default',
                 }),
-                trailing: DropdownButton<ThemeMode>(
-                  value: _settings.themeMode,
+                trailing: DropdownButton<String>(
+                  value: _settings.amoled ? 'amoled' : _settings.themeMode.name,
                   underline: const SizedBox.shrink(),
                   items: const [
-                    DropdownMenuItem(value: ThemeMode.system, child: Text('System')),
-                    DropdownMenuItem(value: ThemeMode.light, child: Text('Light')),
-                    DropdownMenuItem(value: ThemeMode.dark, child: Text('Dark')),
+                    DropdownMenuItem(value: 'system', child: Text('System')),
+                    DropdownMenuItem(value: 'light', child: Text('Light')),
+                    DropdownMenuItem(value: 'dark', child: Text('Dark')),
+                    DropdownMenuItem(value: 'amoled', child: Text('AMOLED')),
                   ],
                   onChanged: (value) {
-                    if (value != null) _settings.setThemeMode(value);
+                    if (value == 'amoled') {
+                      _settings.setAmoled(true);
+                    } else if (value != null) {
+                      _settings.setThemeMode(ThemeMode.values.byName(value));
+                    }
                   },
                 ),
-              ),
-              SwitchListTile(
-                secondary: const Icon(Icons.dark_mode_outlined),
-                title: const Text('AMOLED black'),
-                subtitle: const Text('Use a true-black dark background'),
-                value: _settings.amoled,
-                onChanged: _settings.setAmoled,
               ),
               const Divider(height: 1),
               SwitchListTile(
@@ -174,7 +172,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ListTile(
                 leading: const Icon(Icons.high_quality_outlined),
                 title: const Text('Streaming quality'),
-                subtitle: const Text('Playback preference for supported media streams'),
+                subtitle: const Text('Saved preference; original quality is used when variants are unavailable'),
                 trailing: DropdownButton<String>(
                   value: _settings.streamingQuality,
                   underline: const SizedBox.shrink(),
