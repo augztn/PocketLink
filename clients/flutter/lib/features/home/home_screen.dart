@@ -671,17 +671,55 @@ class _HomeDashboardState extends State<_HomeDashboard> {
     }
   }
 
+  bool _isHexVolumeId(String value) =>
+      value.length == 16 &&
+      value.codeUnits.every((unit) =>
+          (unit >= 48 && unit <= 57) ||
+          (unit >= 97 && unit <= 102));
+
   bool _isMountedDrive(StorageVolume volume) {
     final id = volume.id.toLowerCase();
-    return id == 'usb1' || id == 'usb2' ||
-        RegExp(r'^usb-(?:manual-)?[0-9a-f]{16}
+    if (id == 'usb1' || id == 'usb2') return true;
+    if (id.startsWith('usb-manual-')) {
+      return _isHexVolumeId(id.substring('usb-manual-'.length));
+    }
+    if (id.startsWith('usb-')) {
+      return _isHexVolumeId(id.substring('usb-'.length));
+    }
+    return false;
+  }
+
+  String _mountedDriveLabel(StorageVolume volume) {
+    final name = volume.name.trim();
+    if (name.isEmpty || name == volume.id || _isHexVolumeId(name)) {
+      return volume.id == 'usb1'
+          ? 'USB drive 1'
+          : volume.id == 'usb2'
+              ? 'USB drive 2'
+              : 'USB / SSD';
+    }
+    return name;
+  }
+
+  String _cleanTrackTitle(String title) {
+    var cleaned = title.trim().replaceFirst(RegExp(r'[\s-]+$'), '');
+    final dot = cleaned.lastIndexOf('.');
+    final separator = cleaned.lastIndexOf(RegExp(r'[/\\]'));
+    if (dot > separator) cleaned = cleaned.substring(0, dot);
+    return cleaned.replaceFirst(RegExp(r'[\s-]+$'), '').trim();
+  }
+
+  String _networkRouteLabel(Uri? base) {
     final host = base?.host ?? '';
     final parts = host.split('.').map(int.tryParse).toList();
-    if (parts.length == 4 && parts.every((part) => part != null && part >= 0 && part <= 255)) {
+    if (parts.length == 4 &&
+        parts.every((part) => part != null && part >= 0 && part <= 255)) {
       final a = parts[0]!;
       final b = parts[1]!;
       if (a == 100 && b >= 64 && b <= 127) return 'Tailscale';
-      if (a == 192 && b == 168 || a == 10 || a == 172 && b >= 16 && b <= 31) {
+      if ((a == 192 && b == 168) ||
+          a == 10 ||
+          (a == 172 && b >= 16 && b <= 31)) {
         return 'Local LAN';
       }
     }
