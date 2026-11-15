@@ -52,6 +52,8 @@ void main() {
           selectedVolume: 'internal',
           view: 'folders',
           sortBy: 'largest',
+          layoutMode: 'list',
+          scrollOffset: 286,
         ),
       );
       store.updateMedia(
@@ -73,6 +75,14 @@ void main() {
         store.mediaState('https://server-a.test:8000', 'music').selectedVolume,
         'internal',
       );
+      expect(store.mediaState('https://server-a.test:8000', 'music').scrollOffset, 286);
+      expect(store.mediaState('https://server-a.test:8000', 'music').layoutMode, 'list');
+      store.updateMedia(
+        'https://server-a.test:8000',
+        'music',
+        store.mediaState('https://server-a.test:8000', 'music').copyWith(clearSelectedVolume: true),
+      );
+      expect(store.mediaState('https://server-a.test:8000', 'music').selectedVolume, isNull);
       expect(
         store.mediaState('https://server-a.test:8000', 'video').folderPath,
         'Movies',
