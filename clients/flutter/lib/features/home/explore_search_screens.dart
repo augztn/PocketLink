@@ -10,7 +10,7 @@ import '../storage/storage_browser_screen.dart';
 
 enum ExploreCategory { files, drives, photos, music, videos }
 
-class ExploreScreen extends StatelessWidget {
+class ExploreScreen extends StatefulWidget {
   const ExploreScreen({
     required this.api,
     required this.category,
@@ -30,10 +30,15 @@ class ExploreScreen extends StatelessWidget {
   final VoidCallback? onOpenFiles;
   final VoidCallback? onOpenSearch;
 
-  void _open(BuildContext context, Widget screen) {
-    Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => screen,
-    ));
+  @override
+  State<ExploreScreen> createState() => _ExploreScreenState();
+}
+
+class _ExploreScreenState extends State<ExploreScreen> {
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+
+  void _open(Widget screen) {
+    _navigatorKey.currentState?.push(MaterialPageRoute<void>(builder: (_) => screen));
   }
 
   @override
@@ -88,17 +93,25 @@ class ExploreScreen extends StatelessWidget {
       );
     }
 
-    return Scaffold(
-      appBar: HomeServerAppBar(
-        title: const Text('Explore'),
-        onHome: onBackAtRoot,
-        leading: onBackAtRoot == null ? null : IconButton(
-          tooltip: 'Back to Dashboard',
-          onPressed: onBackAtRoot,
-          icon: const Icon(Icons.arrow_back_rounded),
-        ),
-      ),
-      body: GridView.count(
+    return NavigatorPopHandler<void>(
+      enabled: _navigatorKey.currentState?.canPop() ?? false,
+      onPop: () => _navigatorKey.currentState?.pop(),
+      child: Navigator(
+        key: _navigatorKey,
+        onGenerateInitialRoutes: (navigator, initialRoute) => [
+          MaterialPageRoute<void>(
+            settings: const RouteSettings(name: '/'),
+            builder: (_) => Scaffold(
+              appBar: HomeServerAppBar(
+                title: const Text('Explore'),
+                onHome: widget.onBackAtRoot,
+                leading: widget.onBackAtRoot == null ? null : IconButton(
+                  tooltip: 'Back to Dashboard',
+                  onPressed: widget.onBackAtRoot,
+                  icon: const Icon(Icons.arrow_back_rounded),
+                ),
+              ),
+              body: GridView.count(
         padding: EdgeInsets.fromLTRB(16, 12, 16, 112 + MediaQuery.paddingOf(context).bottom),
         crossAxisCount: 2,
         crossAxisSpacing: 14,
@@ -108,37 +121,37 @@ class ExploreScreen extends StatelessWidget {
           card(
             title: 'Photos', subtitle: 'Your picture collection',
             icon: Icons.photo_library_rounded, tint: const Color(0xFFE5A044),
-            onTap: () => _open(context, PhotoGalleryScreen(api: api)),
+            onTap: () => _open(PhotoGalleryScreen(api: widget.api)),
           ),
           card(
             title: 'Music', subtitle: 'Albums and playlists',
             icon: Icons.headphones_rounded, tint: const Color(0xFF8D72E8),
-            onTap: () => _open(context, MediaBrowserScreen(api: api, type: MediaLibraryType.music, onHome: () { Navigator.of(context).pop(); onBackAtRoot?.call(); })),
+            onTap: () => _open(MediaBrowserScreen(api: widget.api, type: MediaLibraryType.music, onHome: () => _navigatorKey.currentState?.pop())),
           ),
           card(
             title: 'Videos', subtitle: 'Movies and clips',
             icon: Icons.play_circle_fill_rounded, tint: const Color(0xFF279D91),
-            onTap: () => _open(context, MediaBrowserScreen(api: api, type: MediaLibraryType.video, onHome: () { Navigator.of(context).pop(); onBackAtRoot?.call(); })),
+            onTap: () => _open(MediaBrowserScreen(api: widget.api, type: MediaLibraryType.video, onHome: () => _navigatorKey.currentState?.pop())),
           ),
           card(
             title: 'Documents', subtitle: 'PDF, Office and text',
             icon: Icons.description_rounded, tint: const Color(0xFF4C8ED9),
-            onTap: () => _open(context, DocumentsBrowserScreen(api: api)),
+            onTap: () => _open(DocumentsBrowserScreen(api: widget.api)),
           ),
           card(
             title: 'Files', subtitle: 'Browse server folders',
             icon: Icons.folder_rounded, tint: const Color(0xFF7186C8),
-            onTap: onOpenFiles ?? () => _open(context, FileManagerScreen(api: api)),
+            onTap: widget.onOpenFiles ?? () => _open(FileManagerScreen(api: widget.api)),
           ),
           card(
             title: 'Search', subtitle: 'Find files across storage',
             icon: Icons.search_rounded, tint: const Color(0xFF6C9DCE),
-            onTap: onOpenSearch ?? () {},
+            onTap: widget.onOpenSearch ?? () {},
           ),
           card(
             title: 'Drives', subtitle: 'Internal & external SSDs',
             icon: Icons.usb_rounded, tint: const Color(0xFF28B8C8),
-            onTap: () => _open(context, StorageBrowserScreen(api: api)),
+            onTap: () => _open(StorageBrowserScreen(api: widget.api)),
           ),
         ],
       ),
