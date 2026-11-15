@@ -7,7 +7,6 @@ import '../files/documents_browser_screen.dart';
 import '../library/photo_gallery_screen.dart';
 import '../media/media_browser_screen.dart';
 import '../search/search_screen.dart';
-import '../storage/storage_browser_screen.dart';
 
 enum ExploreCategory { files, drives, photos, music, videos }
 
@@ -19,6 +18,7 @@ class ExploreScreen extends StatefulWidget {
     this.fileCategory = 'All',
     this.onBackAtRoot,
     this.onOpenFiles,
+    this.onOpenExternalStorage,
     super.key,
   });
 
@@ -28,6 +28,7 @@ class ExploreScreen extends StatefulWidget {
   final String fileCategory;
   final VoidCallback? onBackAtRoot;
   final VoidCallback? onOpenFiles;
+  final VoidCallback? onOpenExternalStorage;
 
   @override
   State<ExploreScreen> createState() => _ExploreScreenState();
@@ -67,6 +68,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
               onHome: widget.onBackAtRoot,
               onOpen: _open,
               onOpenFiles: widget.onOpenFiles,
+              onOpenExternalStorage: widget.onOpenExternalStorage,
             ),
           ),
         ],
@@ -101,12 +103,14 @@ class _ExploreGrid extends StatelessWidget {
     required this.onHome,
     required this.onOpen,
     required this.onOpenFiles,
+    required this.onOpenExternalStorage,
   });
 
   final ServerApi api;
   final VoidCallback? onHome;
   final ValueChanged<Widget> onOpen;
   final VoidCallback? onOpenFiles;
+  final VoidCallback? onOpenExternalStorage;
 
   @override
   Widget build(BuildContext context) {
@@ -218,7 +222,7 @@ class _ExploreGrid extends StatelessWidget {
           card(
             title: 'Drives', subtitle: 'Internal & external SSDs',
             icon: Icons.usb_rounded, tint: const Color(0xFF28B8C8),
-            onTap: () => onOpen(StorageBrowserScreen(api: api)),
+            onTap: onOpenExternalStorage ?? onOpenFiles ?? () => onOpen(FileManagerScreen(api: api)),
           ),
         ],
       ),
