@@ -264,6 +264,9 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     try {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
+          settings: const RouteSettings(
+            name: HomeServerAppBar.dashboardRouteName,
+          ),
           builder: (_) => HomeScreen(
             api: api,
             onReturnToConnection: () {
