@@ -134,7 +134,18 @@ class _HomeScreenState extends State<HomeScreen> {
         animation: player,
         builder: (context, _) => Scaffold(
           extendBody: true,
-          body: IndexedStack(index: _selectedIndex, children: pages),
+          body: GestureDetector(
+            behavior: HitTestBehavior.deferToChild,
+            onHorizontalDragEnd: (details) {
+              final velocity = details.primaryVelocity ?? 0;
+              if (velocity.abs() < 300) return;
+              final nextIndex = velocity < 0
+                  ? (_selectedIndex + 1).clamp(0, pages.length - 1)
+                  : (_selectedIndex - 1).clamp(0, pages.length - 1);
+              if (nextIndex != _selectedIndex) _openTab(nextIndex);
+            },
+            child: IndexedStack(index: _selectedIndex, children: pages),
+          ),
           bottomNavigationBar: _FloatingGlassDock(
             selectedIndex: _selectedIndex,
             isPlaying: player.isMusic && player.isPlaying,
