@@ -29,6 +29,11 @@ void main() {
         store.fileState('https://server-a.test:8000').selectedVolume,
         '188FECD93CDD48EB',
       );
+      store.updateFile(
+        'https://server-a.test:8000',
+        store.fileState('https://server-a.test:8000').copyWith(clearSelectedVolume: true),
+      );
+      expect(store.fileState('https://server-a.test:8000').selectedVolume, isNull);
       expect(
         store.fileState('https://server-b.test:8000').path,
         isEmpty,
