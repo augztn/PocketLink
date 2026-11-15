@@ -107,7 +107,7 @@ class TransferManager extends ChangeNotifier {
   Future<void> _restoreHistory() async {
     try {
       final entries = await (await _storeFuture).load();
-      for (final entry in entries.reversed.take(100)) {
+      for (final entry in entries.take(100)) {
         try {
           _tasks.add(TransferTask.fromJson(entry));
         } catch (_) {
