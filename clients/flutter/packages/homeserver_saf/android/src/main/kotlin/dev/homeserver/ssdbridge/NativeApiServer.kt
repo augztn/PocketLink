@@ -14,6 +14,8 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.io.FileInputStream
+import java.io.BufferedInputStream
+import java.io.FilterInputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -124,19 +126,22 @@ internal class NativeApiServer(
         val range = session.headers["range"]
         val response: Response
         if (range.isNullOrBlank()) {
-            response = newFixedLengthResponse(Response.Status.OK, mime, FileInputStream(file), length)
+            response = newFixedLengthResponse(
+                Response.Status.OK, mime, BufferedInputStream(FileInputStream(file), STREAM_BUFFER_SIZE), length
+            )
         } else {
             val bounds = parseRange(range, length) ?: return jsonError(Response.Status.RANGE_NOT_SATISFIABLE, "Invalid byte range")
             val (start, end) = bounds
             val input = FileInputStream(file)
-            var skipped = 0L
-            while (skipped < start) {
-                val count = input.skip(start - skipped)
-                if (count <= 0L) { input.close(); return jsonError(Response.Status.RANGE_NOT_SATISFIABLE, "Invalid byte range") }
-                skipped += count
+            try {
+                input.channel.position(start)
+            } catch (_: Exception) {
+                input.close()
+                return jsonError(Response.Status.RANGE_NOT_SATISFIABLE, "Could not seek to byte range")
             }
             response = newFixedLengthResponse(
-                Response.Status.PARTIAL_CONTENT, mime, input, end - start + 1
+                Response.Status.PARTIAL_CONTENT, mime,
+                BufferedInputStream(input, STREAM_BUFFER_SIZE), end - start + 1
             ).apply { addHeader("Content-Range", "bytes $start-$end/$length") }
         }
         response.addHeader("Accept-Ranges", "bytes")
@@ -235,27 +240,72 @@ internal class NativeApiServer(
         val root = externalRoot(volume) ?: return notFound("Storage permission not granted")
         val item = resolveDocument(root, relative) ?: return notFound("File not found")
         if (!item.isFile) return bad("Not a file")
-        val input = context.contentResolver.openInputStream(item.uri) ?: return notFound("Cannot open file")
         val length = item.length()
+        if (length <= 0L) return bad("File size is unavailable from this storage provider")
+        val mime = item.type?.takeIf { it.isNotBlank() } ?: mimeFor(item.name.orEmpty())
         val range = session.headers["range"]
-        if (range.isNullOrBlank()) {
-            return newFixedLengthResponse(Response.Status.OK, item.type ?: mimeFor(item.name.orEmpty()), input, length)
-                .apply { addHeader("Accept-Ranges", "bytes") }
+        val response = if (range.isNullOrBlank()) {
+            val input = context.contentResolver.openInputStream(item.uri)
+                ?: return notFound("Cannot open file")
+            newFixedLengthResponse(
+                Response.Status.OK, mime,
+                BufferedInputStream(input, STREAM_BUFFER_SIZE), length
+            )
+        } else {
+            val bounds = parseRange(range, length)
+                ?: return jsonError(Response.Status.RANGE_NOT_SATISFIABLE, "Invalid byte range")
+            val (start, end) = bounds
+            val input = openExternalRangeStream(item.uri, start)
+                ?: return jsonError(Response.Status.RANGE_NOT_SATISFIABLE, "Could not seek to byte range")
+            newFixedLengthResponse(
+                Response.Status.PARTIAL_CONTENT, mime, input, end - start + 1
+            ).apply { addHeader("Content-Range", "bytes $start-$end/$length") }
         }
-        val bounds = parseRange(range, length) ?: run {
-            input.close()
-            return jsonError(Response.Status.RANGE_NOT_SATISFIABLE, "Invalid byte range")
+        response.addHeader("Accept-Ranges", "bytes")
+        response.addHeader(
+            "Content-Disposition",
+            "inline; filename*=UTF-8''${java.net.URLEncoder.encode(item.name.orEmpty(), "UTF-8").replace("+", "%20")}"
+        )
+        return response
+    }
+
+    /**
+     * Prefer a seekable descriptor for SAF range requests. Some providers expose
+     * non-seekable pipes, so retain a streaming skip fallback for compatibility.
+     */
+    private fun openExternalRangeStream(uri: Uri, offset: Long): BufferedInputStream? {
+        val descriptor = try {
+            context.contentResolver.openFileDescriptor(uri, "r")
+        } catch (_: Exception) {
+            null
         }
-        val (start, end) = bounds
+        if (descriptor != null) {
+            val fileInput = FileInputStream(descriptor.fileDescriptor)
+            try {
+                fileInput.channel.position(offset)
+                val owned = object : FilterInputStream(fileInput) {
+                    override fun close() {
+                        try { super.close() } finally { descriptor.close() }
+                    }
+                }
+                return BufferedInputStream(owned, STREAM_BUFFER_SIZE)
+            } catch (_: Exception) {
+                try { fileInput.close() } catch (_: Exception) { }
+                try { descriptor.close() } catch (_: Exception) { }
+            }
+        }
+
+        val input = context.contentResolver.openInputStream(uri) ?: return null
         var skipped = 0L
-        while (skipped < start) {
-            val count = input.skip(start - skipped)
-            if (count <= 0L) { input.close(); return jsonError(Response.Status.RANGE_NOT_SATISFIABLE, "Could not seek to byte range") }
+        while (skipped < offset) {
+            val count = try { input.skip(offset - skipped) } catch (_: Exception) { -1L }
+            if (count <= 0L) {
+                input.close()
+                return null
+            }
             skipped += count
         }
-        return newFixedLengthResponse(Response.Status.PARTIAL_CONTENT,
-            item.type ?: mimeFor(item.name.orEmpty()), input, end - start + 1)
-            .apply { addHeader("Accept-Ranges", "bytes"); addHeader("Content-Range", "bytes $start-$end/$length") }
+        return BufferedInputStream(input, STREAM_BUFFER_SIZE)
     }
 
     private fun uploadExternal(volume: String?, relative: String, session: IHTTPSession): Response {
@@ -474,7 +524,7 @@ internal class NativeApiServer(
 
     private fun mimeFor(name: String): String = when (name.substringAfterLast('.', "").lowercase(Locale.ROOT)) {
         "jpg", "jpeg" -> "image/jpeg"; "png" -> "image/png"; "gif" -> "image/gif"; "webp" -> "image/webp"
-        "mp3" -> "audio/mpeg"; "m4a", "mp4" -> "video/mp4"; "aac" -> "audio/aac"
+        "mp3" -> "audio/mpeg"; "m4a" -> "audio/mp4"; "mp4" -> "video/mp4"; "aac" -> "audio/aac"
         "flac" -> "audio/flac"; "ogg", "opus" -> "audio/ogg"; "wav" -> "audio/wav"
         "mkv" -> "video/x-matroska"; "pdf" -> "application/pdf"; "txt" -> "text/plain"
         else -> "application/octet-stream"
@@ -490,5 +540,6 @@ internal class NativeApiServer(
     companion object {
         const val PORT = 8000
         const val USERNAME = "admin"
+        private const val STREAM_BUFFER_SIZE = 64 * 1024
     }
 }
