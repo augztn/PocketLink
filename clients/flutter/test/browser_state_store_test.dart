@@ -8,6 +8,7 @@ void main() {
       final store = BrowserStateStore();
       const state = FileBrowserState(
         path: 'Movies/2026',
+        selectedVolume: '188FECD93CDD48EB',
         category: 'Videos',
         sortBy: 'newest',
         gridView: true,
@@ -23,6 +24,10 @@ void main() {
       expect(
         store.fileState('https://server-a.test:8000').scrollOffset,
         420,
+      );
+      expect(
+        store.fileState('https://server-a.test:8000').selectedVolume,
+        '188FECD93CDD48EB',
       );
       expect(
         store.fileState('https://server-b.test:8000').path,
