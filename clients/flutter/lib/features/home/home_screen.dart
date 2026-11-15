@@ -4,6 +4,7 @@ import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
 import '../media/media_browser_screen.dart';
 import '../library/library_browser_screen.dart';
+import '../library/photo_gallery_screen.dart';
 import '../storage/storage_browser_screen.dart';
 import '../storage/local_storage_setup_screen.dart';
 
@@ -26,7 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final pages = [
       _HomeDashboard(api: widget.api, onOpenTab: _openTab),
       FileManagerScreen(api: widget.api),
-      LibraryBrowserScreen(api: widget.api, category: LibraryCategory.images),
+      PhotoGalleryScreen(api: widget.api),
       MediaBrowserScreen(api: widget.api, type: MediaLibraryType.music),
       MediaBrowserScreen(api: widget.api, type: MediaLibraryType.video),
     ];
