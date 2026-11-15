@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'quick_actions_store.dart';
+import 'network_route_classifier.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/storage/home_activity_store.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
@@ -730,19 +731,8 @@ class _HomeDashboardState extends State<_HomeDashboard> {
     );
   }
 
-  String _networkRouteLabel(Uri? base) {
-    final host = base?.host ?? '';
-    final parts = host.split('.').map(int.tryParse).toList();
-    if (parts.length == 4 && parts.every((part) => part != null && part >= 0 && part <= 255)) {
-      final a = parts[0]!;
-      final b = parts[1]!;
-      if (a == 100 && b >= 64 && b <= 127) return 'Tailscale';
-      if (a == 192 && b == 168 || a == 10 || a == 172 && b >= 16 && b <= 31) {
-        return 'LAN';
-      }
-    }
-    return 'LAN';
-  }
+  String _networkRouteLabel(Uri? base) =>
+      networkRouteLabel(base?.host ?? '');
 
   Future<void> _quickUpload() async {
     try {
