@@ -29,14 +29,6 @@ class _MediaFolder {
   final List<_MediaFile> items;
 }
 
-class _MediaFolder {
-  const _MediaFolder({required this.name, required this.path, required this.volume, required this.items});
-  final String name;
-  final String path;
-  final String? volume;
-  final List<_MediaFile> items;
-}
-
 class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   static const _audioExtensions = {
     'mp3', 'm4a', 'aac', 'wav', 'flac', 'ogg', 'opus',
@@ -291,7 +283,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       final source = media.volume ?? 'internal';
       if (_selectedVolume != null && source != _selectedVolume) continue;
       final parts = media.path.split('/').where((part) => part.isNotEmpty).toList();
-      if (parts.length <= prefix.length) continue;
+      if (parts.length <= prefix.length + 1) continue;
       var matches = true;
       for (var i = 0; i < prefix.length; i++) {
         if (parts[i] != prefix[i]) { matches = false; break; }
@@ -323,7 +315,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       final source = media.volume ?? 'internal';
       if (_selectedVolume != null && source != _selectedVolume) return false;
       final parts = media.path.split('/').where((part) => part.isNotEmpty).toList();
-      if (parts.length != prefix.length) return false;
+      if (parts.length != prefix.length + 1) return false;
       for (var i = 0; i < prefix.length; i++) {
         if (parts[i] != prefix[i]) return false;
       }
@@ -797,6 +789,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                     label: sourceLabel,
                     items: [
                       const PopupMenuItem(value: 'all', child: Text('All Storage')),
+                      const PopupMenuItem(value: 'internal', child: Text('Internal storage')),
                       ..._volumes.map((volume) => PopupMenuItem(
                         value: volume.id,
                         enabled: volume.available,
