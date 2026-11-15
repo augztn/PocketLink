@@ -212,7 +212,8 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
         _isConnecting = false;
       });
       return;
-    } catch (_) {
+    } catch (error, stack) {
+      await AppLogger.error('Connection initialization failed', error: error, stackTrace: stack);
       if (mounted) {
         setState(() {
           _message = 'Could not initialize the server connection. Check the address and try again.';
@@ -231,6 +232,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     // A secure-storage write failure must not turn a successful connection
     // into a misleading connection error or block access to the server.
     try {
+      await AppLogger.info('Saving authenticated server profile');
       await () async {
         await _storage.write(key: 'server_password_$id', value: password);
         await _persistProfiles();
@@ -238,13 +240,16 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
         await _storage.write(key: 'last_server_username', value: username);
         await _storage.write(key: 'last_server_password', value: password);
       }().timeout(const Duration(seconds: 5));
+      await AppLogger.info('Server profile saved');
     } on TimeoutException {
+      await AppLogger.warning('Saving server profile timed out');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Connected. Saving this server is taking too long; you can still continue.')),
         );
       }
-    } catch (_) {
+    } catch (error, stack) {
+      await AppLogger.error('Saving server profile failed', error: error, stackTrace: stack);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Connected, but this server could not be saved securely.')),
