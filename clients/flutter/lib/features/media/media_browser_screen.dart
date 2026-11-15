@@ -744,11 +744,13 @@ class MediaBrowserScreen extends StatefulWidget {
   const MediaBrowserScreen({
     required this.api,
     required this.type,
+    this.showSearch = true,
     super.key,
   });
 
   final ServerApi api;
-  final MediaLibraryType type;\n  final bool showSearch;
+  final MediaLibraryType type;
+  final bool showSearch;
 
   @override
   State<MediaBrowserScreen> createState() => _MediaBrowserScreenState();
