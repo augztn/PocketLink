@@ -707,8 +707,13 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                 const SizedBox(height: 5),
                 Text('Usage unavailable', style: theme.textTheme.labelMedium?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 7),
-                ClipRRect(borderRadius: BorderRadius.circular(4), child: LinearProgressIndicator(
-                  minHeight: 4, value: null, backgroundColor: Colors.white.withValues(alpha: 0.14))),
+                Container(
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
               ])),
               const SizedBox(width: 14),
               Expanded(child: InkWell(
