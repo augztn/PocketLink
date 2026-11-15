@@ -155,7 +155,7 @@ class _LibraryBrowserScreenState extends State<LibraryBrowserScreen> {
         context: context,
         builder: (context) => Dialog.fullscreen(
           child: Scaffold(
-            appBar: AppBar(title: Text(file.entry.name)),
+            appBar: HomeServerAppBar(title: Text(file.entry.name)),
             body: Center(
               child: InteractiveViewer(
                 child: Image.memory(
