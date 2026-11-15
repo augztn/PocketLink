@@ -1,6 +1,7 @@
 import 'dart:async';
 import '../../core/widgets/home_server_app_bar.dart';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -30,6 +31,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
   // This collection is mutated when servers are added, removed, or reordered.
   List<Map<String, String>> _profiles = <Map<String, String>>[];
   bool _isConnecting = false;
+  String? _connectingProfileId;
   bool _obscurePassword = true;
   String? _message;
 
@@ -102,6 +104,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     bool connect = true,
   }) async {
     _applyAddress(profile['address']!);
+    _obscurePassword = true;
     _usernameController.text = profile['username']!;
     _passwordController.text =
         await _storage.read(key: 'server_password_${profile['id']}') ?? '';
@@ -111,11 +114,45 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
   }
 
   Future<void> _addServer() async {
+    _obscurePassword = true;
     _addressController.clear();
     _portController.text = '8000';
     _usernameController.text = 'admin';
     _passwordController.clear();
     setState(() => _message = null);
+  }
+
+  String _networkLabel(String address) {
+    final parsed = Uri.tryParse(address.contains('://') ? address : 'http://$address');
+    final ip = parsed == null ? null : InternetAddress.tryParse(parsed.host);
+    if (ip == null || ip.type != InternetAddressType.IPv4) return 'LAN';
+    final octets = ip.rawAddress;
+    if (octets[0] == 100 && octets[1] >= 64 && octets[1] <= 127) return 'Tailscale';
+    if ((octets[0] == 192 && octets[1] == 168) || octets[0] == 10) return 'LAN';
+    return 'LAN';
+  }
+
+  Future<void> _editProfile(Map<String, String> profile) async {
+    await _selectProfile(profile, connect: false);
+    if (mounted) setState(() => _message = 'Edit the server details, then tap Connect & save server.');
+  }
+
+  Future<void> _connectProfile(Map<String, String> profile) async {
+    if (_isConnecting) return;
+    setState(() { _connectingProfileId = profile['id']; _message = null; });
+    try {
+      await _selectProfile(profile, connect: false);
+      if (_passwordController.text.isEmpty) {
+        if (mounted) setState(() {
+          _message = 'Enter the password for this saved server, then connect.';
+          _connectingProfileId = null;
+        });
+        return;
+      }
+      await _connect();
+    } finally {
+      if (mounted) setState(() => _connectingProfileId = null);
+    }
   }
 
   Future<void> _removeProfile(Map<String, String> profile) async {
@@ -283,6 +320,27 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     }
   }
 
+  InputDecoration _inputDecoration({required String hint, required IconData icon, Widget? suffixIcon}) {
+    const background = Color(0xFF161618);
+    final border = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+    );
+    return InputDecoration(
+      hintText: hint,
+      prefixIcon: Icon(icon, color: Colors.white60),
+      suffixIcon: suffixIcon,
+      filled: true,
+      fillColor: background,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      border: border,
+      enabledBorder: border,
+      focusedBorder: border.copyWith(
+        borderSide: BorderSide(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75)),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _addressController.dispose();
@@ -308,11 +366,6 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute<void>(builder: (_) => const DiagnosticsScreen()),
             ),
-          ),
-          HomeServerAppBarAction(
-            label: 'Add server',
-            icon: Icons.add_rounded,
-            onPressed: _isConnecting ? null : _addServer,
           ),
         ],
       ),
@@ -343,25 +396,39 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                   ..._profiles.map((profile) => Card(
                     margin: const EdgeInsets.only(bottom: 8),
                     child: ListTile(
-                      leading: const CircleAvatar(
-                        child: Icon(Icons.dns_rounded),
-                      ),
+                      leading: const CircleAvatar(child: Icon(Icons.dns_rounded)),
                       title: Text(profile['address']!),
-                      subtitle: Text(profile['username']!),
-                      onTap: _isConnecting
-                          ? null
-                          : () => _selectProfile(profile),
-                      trailing: PopupMenuButton<String>(
-                        onSelected: (value) {
-                          if (value == 'remove') _removeProfile(profile);
-                        },
-                        itemBuilder: (_) => const [
-                          PopupMenuItem(
-                            value: 'remove',
-                            child: Text('Remove server'),
+                      subtitle: Row(children: [
+                        Text(profile['username']!),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: colors.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
                           ),
-                        ],
-                      ),
+                          child: Text(_networkLabel(profile['address']!),
+                            style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant)),
+                        ),
+                      ]),
+                      onTap: _isConnecting ? null : () => _connectProfile(profile),
+                      trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                        if (_connectingProfileId == profile['id'])
+                          const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                        else
+                          const Icon(Icons.chevron_right_rounded, color: Colors.white54),
+                        PopupMenuButton<String>(
+                          onSelected: (value) {
+                            if (value == 'edit') _editProfile(profile);
+                            if (value == 'delete') _removeProfile(profile);
+                          },
+                          itemBuilder: (_) => const [
+                            PopupMenuItem(value: 'edit', child: Text('Edit')),
+                            PopupMenuItem(value: 'delete', child: Text('Delete')),
+                          ],
+                        ),
+                      ]),
                     ),
                   )),
                   const SizedBox(height: 18),
@@ -387,41 +454,36 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                   ),
                   const SizedBox(height: 28),
                 ],
-                TextField(
-                  controller: _addressController,
-                  keyboardType: TextInputType.url,
-                  autocorrect: false,
-                  decoration: const InputDecoration(
-                    labelText: 'Server address',
-                    hintText: '192.168.1.10 or example.com',
-                    prefixIcon: Icon(Icons.language),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _portController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Port',
-                    prefixIcon: Icon(Icons.settings_ethernet),
-                  ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(flex: 7, child: TextField(
+                      controller: _addressController,
+                      keyboardType: TextInputType.url,
+                      autocorrect: false,
+                      decoration: _inputDecoration(hint: 'Server address', icon: Icons.language),
+                    )),
+                    const SizedBox(width: 10),
+                    Expanded(flex: 3, child: TextField(
+                      controller: _portController,
+                      keyboardType: TextInputType.number,
+                      decoration: _inputDecoration(hint: 'Port', icon: Icons.settings_ethernet),
+                    )),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _usernameController,
                   autocorrect: false,
-                  decoration: const InputDecoration(
-                    labelText: 'Username',
-                    prefixIcon: Icon(Icons.person_outline),
-                  ),
+                  decoration: _inputDecoration(hint: 'Username', icon: Icons.person_outline),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
-                  decoration: InputDecoration(
-                    labelText: 'Password',
-                    prefixIcon: const Icon(Icons.lock_outline),
+                  decoration: _inputDecoration(
+                    hint: 'Password',
+                    icon: Icons.lock_outline,
                     suffixIcon: IconButton(
                       onPressed: () => setState(
                         () => _obscurePassword = !_obscurePassword,
