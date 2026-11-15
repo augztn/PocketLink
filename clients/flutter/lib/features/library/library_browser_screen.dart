@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import '../../core/widgets/home_server_app_bar.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
@@ -232,14 +233,10 @@ class _LibraryBrowserScreenState extends State<LibraryBrowserScreen> {
     final files = _visibleFiles;
     final colors = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(
+      appBar: HomeServerAppBar(
         title: Text(_title),
         actions: [
-          IconButton(
-            tooltip: 'Scan again',
-            onPressed: _loading ? null : _scan,
-            icon: const Icon(Icons.refresh),
-          ),
+          HomeServerAppBarAction(label: 'Scan again', icon: Icons.refresh, onPressed: _loading ? null : _scan),
         ],
       ),
       body: Column(
