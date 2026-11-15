@@ -335,7 +335,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
               children: [
                 quickAction(Icons.folder_open_rounded, 'Files', () => widget.onOpenTab(1)),
                 quickAction(Icons.photo_library_rounded, 'Photos', () => widget.onOpenTab(2)),
-                quickAction(Icons.search_rounded, 'Search', () => widget.onOpenTab(1)),
+                quickAction(Icons.headphones_rounded, 'Music', () => widget.onOpenTab(3)),
                 quickAction(Icons.usb_rounded, 'Drives', _openStorage),
               ],
             ),
