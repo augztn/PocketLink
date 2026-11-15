@@ -77,7 +77,6 @@ class AppLogger {
         debugPrint('HomeServer log write failed: $writeError');
       }
     });
-    await _writeQueue;
   }
 
   static String _redact(String value) => value
@@ -123,6 +122,7 @@ class AppLogger {
   }
 
   static Future<int> logSize() async {
+    await _writeQueue;
     final file = _logFile;
     if (file == null || !await file.exists()) return 0;
     return file.length();
