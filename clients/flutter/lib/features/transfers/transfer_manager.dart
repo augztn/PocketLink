@@ -89,8 +89,8 @@ class TransferManager extends ChangeNotifier {
   }
 
   void cancel(String id) {
-    final task = _tasks.where((item) => item.id == id).firstOrNull;
-    if (task == null || task.status != TransferStatus.running) return;
+    TransferTask? task;
+    for (final candidate in _tasks) {\n      if (candidate.id == id) {\n        task = candidate;\n        break;\n      }\n    }\n    if (task == null || task.status != TransferStatus.running) return;
     task.cancelToken.cancel('Cancelled by user');
     task.status = TransferStatus.cancelled;
     notifyListeners();
