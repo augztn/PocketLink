@@ -66,6 +66,17 @@ class HomeServerSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
                 result.success(true)
             }
             "status" -> result.success(status())
+            "requestBackgroundAccess" -> result.success(requestBackgroundAccess())
+            "openBackgroundAccessSettings" -> {
+                try {
+                    val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(intent)
+                    result.success(true)
+                } catch (error: Exception) {
+                    result.error("BACKGROUND_SETTINGS_FAILED", error.message ?: "Could not open battery settings.", null)
+                }
+            }
             "token" -> result.success(ensureToken())
             "serverPasswordConfigured" -> result.success(ServerCredentials(context).isConfigured())
             "setServerPassword" -> {
@@ -164,6 +175,36 @@ class HomeServerSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
         }
     }
 
+    private fun requestBackgroundAccess(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return true
+        val powerManager = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+        if (powerManager.isIgnoringBatteryOptimizations(context.packageName)) return true
+        return try {
+            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                .setData(Uri.parse("package:${context.packageName}"))
+            val current = activity
+            if (current != null) current.startActivity(intent)
+            else context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            false
+        } catch (_: Exception) {
+            try {
+                val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                val current = activity
+                if (current != null) current.startActivity(intent)
+                else context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                false
+            } catch (_: Exception) {
+                false
+            }
+        }
+    }
+
+    private fun backgroundAccessGranted(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return true
+        val powerManager = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+        return powerManager.isIgnoringBatteryOptimizations(context.packageName)
+    }
+
     private fun internalStorageGranted(): Boolean =
         Build.VERSION.SDK_INT < Build.VERSION_CODES.R || Environment.isExternalStorageManager()
 
@@ -183,6 +224,7 @@ class HomeServerSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
         "bridgeRunning" to BridgeService.bridgeRunning,
         "error" to BridgeService.lastError,
         "internalStorageGranted" to internalStorageGranted(),
+        "backgroundAccessGranted" to backgroundAccessGranted(),
         "serverPasswordConfigured" to ServerCredentials(context).isConfigured()
     )
 
