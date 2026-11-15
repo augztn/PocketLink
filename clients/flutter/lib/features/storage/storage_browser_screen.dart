@@ -16,11 +16,13 @@ class StorageBrowserScreen extends StatefulWidget {
     required this.api,
     this.initialVolume,
     this.initialPath = '',
+    this.embedded = false,
     super.key,
   });
   final ServerApi api;
   final String? initialVolume;
   final String initialPath;
+  final bool embedded;
 
   @override
   State<StorageBrowserScreen> createState() => _StorageBrowserScreenState();
@@ -355,7 +357,7 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
         if (!didPop && _path.isNotEmpty) _goUp();
       },
       child: Scaffold(
-        appBar: AppBar(
+        appBar: widget.embedded ? null : AppBar(
           title: const Text('External storage', style: TextStyle(fontWeight: FontWeight.w800)),
           actions: [
             IconButton(tooltip: 'Transfers', onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen())), icon: const Icon(Icons.swap_vert_rounded)),
