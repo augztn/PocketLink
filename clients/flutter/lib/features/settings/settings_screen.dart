@@ -151,6 +151,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const Divider(height: 1),
               SwitchListTile(
+                secondary: const Icon(Icons.blur_on_rounded),
+                title: const Text('Liquid Glass UI'),
+                subtitle: const Text('Translucent frosted blur on floating navigation and action pills'),
+                value: _settings.useLiquidGlass,
+                onChanged: _settings.setUseLiquidGlass,
+              ),
+              SwitchListTile(
                 secondary: const Icon(Icons.dashboard_customize_outlined),
                 title: const Text('Quick actions'),
                 value: _settings.showQuickActions,
