@@ -275,12 +275,13 @@ class ServerApi {
     final generation = _cacheGeneration;
     late final Future<T> request;
     request = load().then((value) {
-      if (generation == _cacheGeneration) {
-        if (cache.length >= _maxCachedDirectories && !cache.containsKey(key)) {
-          cache.remove(cache.keys.first);
-        }
-        cache[key] = _CacheEntry(value, DateTime.now().add(_directoryCacheTtl));
+      if (generation != _cacheGeneration) {
+        return _cachedGet(key, cache, requests, load);
       }
+      if (cache.length >= _maxCachedDirectories && !cache.containsKey(key)) {
+        cache.remove(cache.keys.first);
+      }
+      cache[key] = _CacheEntry(value, DateTime.now().add(_directoryCacheTtl));
       return value;
     }).whenComplete(() {
       if (identical(requests[key], request)) requests.remove(key);
@@ -549,12 +550,11 @@ class ServerApi {
       final volumes = (response.data?['items'] as List<dynamic>? ?? const [])
           .map((item) => StorageVolume.fromJson(item as Map<String, dynamic>))
           .toList(growable: false);
-      if (generation == _cacheGeneration) {
-        _volumesCache = _CacheEntry(
-          volumes,
-          DateTime.now().add(_directoryCacheTtl),
-        );
-      }
+      if (generation != _cacheGeneration) return listStorageVolumes();
+      _volumesCache = _CacheEntry(
+        volumes,
+        DateTime.now().add(_directoryCacheTtl),
+      );
       return volumes;
     }().whenComplete(() {
       if (identical(_volumesRequest, request)) _volumesRequest = null;
