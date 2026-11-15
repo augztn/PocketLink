@@ -528,7 +528,7 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
                                           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
                                           leading: iconFor(item),
                                           title: Text(item.name, maxLines: 1, overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(fontWeight: FontWeight.w650)),
+                                            style: const TextStyle(fontWeight: FontWeight.w600)),
                                           subtitle: Text(item.isDirectory ? 'Folder' : _formatSize(item.size),
                                             style: TextStyle(color: colors.onSurfaceVariant)),
                                           onTap: item.isDirectory ? () => _loadDirectory(_itemPath(item.name))
@@ -558,3 +558,17 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
       ),
     );
   }
+
+
+  String _formatSize(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    const units = ['KB', 'MB', 'GB', 'TB'];
+    var size = bytes / 1024;
+    var index = 0;
+    while (size >= 1024 && index < units.length - 1) {
+      size /= 1024;
+      index++;
+    }
+    return '${size.toStringAsFixed(1)} ${units[index]}';
+  }
+}
