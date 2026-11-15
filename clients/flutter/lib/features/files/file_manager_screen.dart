@@ -25,7 +25,6 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   DirectoryListing? _listing;
   bool _loading = true;
   String? _error;
-  double? _transferProgress;
   final TextEditingController _searchController = TextEditingController();
 
   String _searchQuery = '';
@@ -423,8 +422,6 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
             ),
           ),
           if (_loading) const LinearProgressIndicator(),
-          if (_transferProgress != null)
-            LinearProgressIndicator(value: _transferProgress),
           if (_error != null)
             Padding(
               padding: const EdgeInsets.all(20),
