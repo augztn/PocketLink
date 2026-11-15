@@ -1,6 +1,7 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import '../../core/widgets/home_server_app_bar.dart';
+import '../../core/widgets/compact_search_field.dart';
 
 import '../../core/network/server_api.dart';
 
@@ -60,6 +61,7 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
       _scanned = 0;
     });
     final found = <_DocumentFile>[];
+    final seenDocumentPaths = <String>{};
     final pending = <({String path, String? volume, int depth})>[];
     final visited = <String>{};
     try {
@@ -94,7 +96,15 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
               final dot = item.name.lastIndexOf('.');
               final extension = dot < 0 ? '' : item.name.substring(dot + 1).toLowerCase();
               if (_extensions.contains(extension)) {
-                found.add(_DocumentFile(entry: item, path: path, volume: current.volume));
+                final canonicalPath = path
+                    .replaceAll('\\\\', '/')
+                    .split('/')
+                    .where((part) => part.isNotEmpty && part != '.')
+                    .join('/');
+                final sourceKey = current.volume ?? 'internal';
+                if (seenDocumentPaths.add('$sourceKey:$canonicalPath')) {
+                  found.add(_DocumentFile(entry: item, path: canonicalPath, volume: current.volume));
+                }
               }
             }
           }
@@ -170,25 +180,11 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: TextField(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            child: CompactSearchField(
               controller: _search,
+              hintText: 'Search documents',
               onChanged: (_) => setState(() {}),
-              decoration: InputDecoration(
-                hintText: 'Search documents',
-                prefixIcon: const Icon(Icons.search_rounded),
-                suffixIcon: _search.text.isEmpty ? null : IconButton(
-                  tooltip: 'Clear search',
-                  onPressed: () { _search.clear(); setState(() {}); },
-                  icon: const Icon(Icons.close_rounded),
-                ),
-                filled: true,
-                fillColor: const Color(0xFF1C1C1E),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(18),
-                  borderSide: BorderSide.none,
-                ),
-              ),
             ),
           ),
           if (_loading) const LinearProgressIndicator(minHeight: 2),
@@ -196,7 +192,7 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
             child: Row(
               children: [
-                Text('${items.length} documents',
+                Text('${items.length} ${items.length == 1 ? 'document' : 'documents'}',
                   style: Theme.of(context).textTheme.labelLarge),
                 const Spacer(),
                 Text(
