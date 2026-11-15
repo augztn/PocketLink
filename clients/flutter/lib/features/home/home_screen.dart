@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 
 import 'quick_actions_store.dart';
 import '../../core/settings/app_settings.dart';
@@ -12,9 +13,11 @@ import '../media/persistent_audio_player.dart';
 
 import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
+import '../library/photo_gallery_screen.dart';
 import '../storage/storage_browser_screen.dart';
 import '../storage/local_storage_setup_screen.dart';
 import '../transfers/transfer_manager_screen.dart';
+import '../transfers/transfer_manager.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({required this.api, this.onReturnToConnection, super.key});
@@ -377,6 +380,7 @@ class _HomeDashboard extends StatefulWidget {
 class _HomeDashboardState extends State<_HomeDashboard> {
   bool _checking = true;
   bool? _serverOnline;
+  Duration? _latency;
   List<StorageVolume> _volumes = const [];
   List<RecentFile> _recentFiles = const [];
   final QuickActionsStore _quickActionsStore = QuickActionsStore();
@@ -391,6 +395,8 @@ class _HomeDashboardState extends State<_HomeDashboard> {
 
   static const _quickActionDetails = <String, ({String label, IconData icon})>{
     'files': (label: 'Files', icon: Icons.folder_open_rounded),
+    'upload': (label: 'Upload', icon: Icons.cloud_upload_rounded),
+    'favorites': (label: 'Favorites', icon: Icons.favorite_rounded),
     'photos': (label: 'Photos', icon: Icons.photo_library_rounded),
     'music': (label: 'Music', icon: Icons.headphones_rounded),
     'videos': (label: 'Videos', icon: Icons.movie_rounded),
@@ -494,9 +500,16 @@ class _HomeDashboardState extends State<_HomeDashboard> {
 
   void _runQuickAction(String id) {
     switch (id) {
+      case 'upload':
       case 'files':
-        widget.onOpenExplore(ExploreCategory.files);
+        Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => FileManagerScreen(api: widget.api)));
         return;
+      case 'favorites':
+        Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PhotoGalleryScreen(api: widget.api)));
+        return;
+      /*
+        return;
+      */
       case 'photos':
         widget.onOpenExplore(ExploreCategory.photos);
         return;
@@ -520,13 +533,257 @@ class _HomeDashboardState extends State<_HomeDashboard> {
     }
   }
 
+
+  String _formatBytes(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    const units = ['KB', 'MB', 'GB', 'TB'];
+    var value = bytes / 1024;
+    var unit = 0;
+    while (value >= 1024 && unit < units.length - 1) {
+      value /= 1024;
+      unit++;
+    }
+    return '${value.toStringAsFixed(1)} ${units[unit]}';
+  }
+
+  String _relativeTime(DateTime date) {
+    final difference = DateTime.now().difference(date);
+    if (difference.isNegative || difference.inMinutes < 1) return 'Just now';
+    if (difference.inHours < 1) return '${difference.inMinutes}m ago';
+    if (difference.inDays < 1) return '${difference.inHours}h ago';
+    if (difference.inDays < 7) return '${difference.inDays}d ago';
+    return '${date.day}/${date.month}/${date.year}';
+  }
+
+  Future<void> _handleRecentAction(RecentFile recent, String action) async {
+    final path = recent.path;
+    try {
+      switch (action) {
+        case 'download':
+          if (recent.volume == null) {
+            final bytes = await widget.api.downloadFile(path);
+            final saved = await FilePicker.platform.saveFile(
+              dialogTitle: 'Save ${recent.file.name}',
+              fileName: recent.file.name,
+              bytes: bytes,
+            );
+            if (saved == null) return;
+          } else {
+            final bytes = await widget.api.downloadStorageFile(recent.volume!, path);
+            final saved = await FilePicker.platform.saveFile(
+              dialogTitle: 'Save ${recent.file.name}',
+              fileName: recent.file.name,
+              bytes: bytes,
+            );
+            if (saved == null) return;
+          }
+          break;
+        case 'share':
+          await Share.share('HomeServer file: ${recent.file.name}\\nLocation: ${recent.volumeName} / $path');
+          break;
+        case 'rename':
+          final controller = TextEditingController(text: recent.file.name);
+          final name = await showDialog<String>(
+            context: context,
+            builder: (dialogContext) => AlertDialog(
+              title: const Text('Rename file'),
+              content: TextField(controller: controller, autofocus: true),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+                FilledButton(onPressed: () => Navigator.pop(dialogContext, controller.text.trim()), child: const Text('Save')),
+              ],
+            ),
+          );
+          controller.dispose();
+          if (name == null || name.isEmpty || name == recent.file.name) return;
+          if (recent.volume == null) {
+            await widget.api.renameItem(path, name);
+          } else {
+            await widget.api.renameStorageItem(recent.volume!, path, name);
+          }
+          await _refreshStatus();
+          break;
+        case 'delete':
+          final confirmed = await showDialog<bool>(
+            context: context,
+            builder: (dialogContext) => AlertDialog(
+              title: const Text('Delete file?'),
+              content: Text('Delete "${recent.file.name}"? This cannot be undone.'),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
+                FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Delete')),
+              ],
+            ),
+          );
+          if (confirmed != true) return;
+          if (recent.volume == null) {
+            await widget.api.deleteItem(path);
+          } else {
+            await widget.api.deleteStorageItem(recent.volume!, path);
+          }
+          await _refreshStatus();
+          break;
+      }
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not complete that file action.')),
+      );
+    }
+  }
+
+  Widget _buildServerTelemetry(BuildContext context, ThemeData theme, ColorScheme colors) {
+    final transfers = TransferManager.instance;
+    final activeTransfers = transfers.tasks.where((task) => task.status == TransferStatus.running).length;
+    final base = Uri.tryParse(widget.api.baseUrl);
+    final host = base == null ? 'Connected server' : '${base.host}:${base.hasPort ? base.port : (base.scheme == 'https' ? 443 : 80)}';
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = dark ? const Color(0xFF202226) : const Color(0xFF24272D);
+    final foreground = Colors.white;
+    final muted = Colors.white.withValues(alpha: 0.66);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.dns_rounded, color: Colors.white70, size: 19),
+              const SizedBox(width: 9),
+              Expanded(child: Text(host, maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleSmall?.copyWith(color: foreground, fontWeight: FontWeight.w700))),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.09), borderRadius: BorderRadius.circular(20)),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Container(width: 7, height: 7, decoration: BoxDecoration(
+                    color: _checking ? Colors.amber : (_serverOnline == true ? const Color(0xFF4ADE80) : Colors.redAccent),
+                    shape: BoxShape.circle)),
+                  const SizedBox(width: 6),
+                  Text(_checking ? 'Checking' : (_serverOnline == true ? 'Online' : 'Offline'),
+                    style: theme.textTheme.labelSmall?.copyWith(color: foreground, fontWeight: FontWeight.w700)),
+                ]),
+              ),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                tooltip: 'Switch server',
+                onPressed: widget.onReturnToConnection,
+                icon: const Icon(Icons.swap_horiz_rounded, color: Colors.white70, size: 20),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('STORAGE', style: theme.textTheme.labelSmall?.copyWith(color: muted, letterSpacing: 0.7)),
+                const SizedBox(height: 5),
+                Text('Usage unavailable', style: theme.textTheme.labelMedium?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 7),
+                ClipRRect(borderRadius: BorderRadius.circular(4), child: LinearProgressIndicator(
+                  minHeight: 4, value: null, backgroundColor: Colors.white.withValues(alpha: 0.14))),
+              ])),
+              const SizedBox(width: 14),
+              Expanded(child: InkWell(
+                borderRadius: BorderRadius.circular(10),
+                onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen())),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('TRANSFERS', style: theme.textTheme.labelSmall?.copyWith(color: muted, letterSpacing: 0.7)),
+                  const SizedBox(height: 5),
+                  Text('$activeTransfers active', style: theme.textTheme.labelMedium?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 7),
+                  Text('View activity  →', style: theme.textTheme.labelSmall?.copyWith(color: Colors.white70)),
+                ]),
+              )),
+              const SizedBox(width: 14),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('LATENCY', style: theme.textTheme.labelSmall?.copyWith(color: muted, letterSpacing: 0.7)),
+                const SizedBox(height: 5),
+                Text(_checking ? 'Checking' : (_latency == null ? 'Offline' : '${_latency!.inMilliseconds} ms'),
+                  style: theme.textTheme.labelMedium?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 7),
+                Text('API response', style: theme.textTheme.labelSmall?.copyWith(color: Colors.white70)),
+              ])),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContinueStrip(BuildContext context, ThemeData theme, ColorScheme colors) {
+    final player = PersistentAudioPlayer.instance;
+    final item = player.currentItem;
+    if (item == null || !player.isActive) {
+      return Container(
+        height: 82,
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(color: colors.surfaceContainerLow, borderRadius: BorderRadius.circular(18)),
+        child: Row(children: [
+          Icon(Icons.play_circle_outline_rounded, color: colors.onSurfaceVariant),
+          const SizedBox(width: 10),
+          Expanded(child: Text('Your recent playback and pinned folders will appear here.',
+            style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant))),
+        ]),
+      );
+    }
+    return SizedBox(
+      height: 92,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          SizedBox(
+            width: 250,
+            child: Material(
+              color: colors.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(18),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(18),
+                onTap: () {
+                  Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => MediaPlayerScreen(
+                    api: widget.api, title: item.title, path: item.path, volume: item.volume,
+                    isVideo: !player.isMusic, queue: player.queue,
+                    initialIndex: player.currentIndex, resumeExisting: true,
+                  )));
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(13),
+                  child: Row(children: [
+                    Container(width: 48, height: 48, decoration: BoxDecoration(
+                      color: colors.primaryContainer, borderRadius: BorderRadius.circular(14)),
+                      child: Icon(player.isMusic ? Icons.music_note_rounded : Icons.movie_rounded, color: colors.primary)),
+                    const SizedBox(width: 11),
+                    Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('Continue listening', style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant)),
+                      const SizedBox(height: 3),
+                      Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                    ])),
+                    const Icon(Icons.play_arrow_rounded),
+                  ]),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _refreshStatus() async {
     if (mounted) setState(() => _checking = true);
     var online = false;
     var volumes = <StorageVolume>[];
+    final stopwatch = Stopwatch()..start();
     try {
       await widget.api.authenticate();
+      stopwatch.stop();
       online = true;
+      if (mounted) setState(() => _latency = stopwatch.elapsed);
       try {
         volumes = await widget.api.listStorageVolumes();
       } catch (_) {
@@ -539,7 +796,9 @@ class _HomeDashboardState extends State<_HomeDashboard> {
         // A recent-file scan failure must not mark a reachable server as offline.
       }
     } catch (_) {
+      stopwatch.stop();
       online = false;
+      if (mounted) setState(() => _latency = null);
     }
     if (!mounted) return;
     setState(() {
@@ -553,7 +812,6 @@ class _HomeDashboardState extends State<_HomeDashboard> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final availableVolumes = _volumes.where((volume) => volume.available).length;
     final appSettings = AppSettings.instance;
 
     Widget sectionTitle(String title, {String? action, VoidCallback? onAction}) {
@@ -791,101 +1049,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.fromLTRB(18, 8, 18, 104 + MediaQuery.paddingOf(context).bottom),
           children: [
-            Container(
-              padding: const EdgeInsets.all(22),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(28),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [colors.primary, Color.lerp(colors.primary, colors.tertiary, 0.72)!],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: colors.primary.withOpacity(0.18),
-                    blurRadius: 24,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 42,
-                        height: 42,
-                        decoration: BoxDecoration(
-                          color: colors.onPrimary.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Icon(Icons.cloud_done_rounded, color: colors.onPrimary),
-                      ),
-                      const Spacer(),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-                        decoration: BoxDecoration(
-                          color: colors.onPrimary.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 7,
-                              height: 7,
-                              decoration: BoxDecoration(
-                                color: _checking ? colors.onPrimary : (_serverOnline == true ? const Color(0xFF8EF0B0) : const Color(0xFFFFB4AB)),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 7),
-                            Text(
-                              _checking ? 'Checking' : (_serverOnline == true ? 'Server online' : 'Server offline'),
-                              style: theme.textTheme.labelMedium?.copyWith(
-                                color: colors.onPrimary,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 25),
-                  Text('Your files.\nYour own cloud.', style: theme.textTheme.headlineMedium?.copyWith(
-                    color: colors.onPrimary,
-                    height: 1.08,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.9,
-                  )),
-                  const SizedBox(height: 9),
-                  Text('Access your photos, music, videos and files from anywhere.',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colors.onPrimary.withOpacity(0.86),
-                      height: 1.4,
-                    )),
-                  const SizedBox(height: 20),
-                  FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: colors.onPrimary,
-                      foregroundColor: colors.primary,
-                      padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 12),
-                    ),
-                    onPressed: () => widget.onOpenExplore(ExploreCategory.files),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('Browse files', style: TextStyle(fontWeight: FontWeight.w800)),
-                        SizedBox(width: 8),
-                        Icon(Icons.arrow_forward_rounded, size: 18),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            _buildServerTelemetry(context, theme, colors),
             const SizedBox(height: 27),
             if (appSettings.showQuickActions) ...[
             sectionTitle(
@@ -918,49 +1082,10 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                 }).toList(),
               ),
             ],
-            if (appSettings.showLibrary) ...[
-            const SizedBox(height: 27),
-            sectionTitle('Your library'),
-            const SizedBox(height: 12),
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 10,
-              crossAxisSpacing: 10,
-              childAspectRatio: 1.24,
-              children: [
-                category(
-                  title: 'Photos',
-                  subtitle: 'Your picture collection',
-                  icon: Icons.photo_rounded,
-                  tint: const Color(0xFFE5A044),
-                  onTap: () => widget.onOpenExplore(ExploreCategory.photos),
-                ),
-                category(
-                  title: 'Music',
-                  subtitle: 'Albums and playlists',
-                  icon: Icons.headphones_rounded,
-                  tint: const Color(0xFF8D72E8),
-                  onTap: () => widget.onOpenExplore(ExploreCategory.music),
-                ),
-                category(
-                  title: 'Videos',
-                  subtitle: 'Movies and clips',
-                  icon: Icons.play_circle_fill_rounded,
-                  tint: const Color(0xFF279D91),
-                  onTap: () => widget.onOpenExplore(ExploreCategory.videos),
-                ),
-                category(
-                  title: 'Documents',
-                  subtitle: 'PDF, Office and text',
-                  icon: Icons.description_rounded,
-                  tint: const Color(0xFF4C8ED9),
-                  onTap: () => widget.onOpenExplore(ExploreCategory.files, fileCategory: 'Documents'),
-                ),
-              ],
-            ),
-            ],
+            const SizedBox(height: 22),
+            sectionTitle('Continue'),
+            const SizedBox(height: 10),
+            _buildContinueStrip(context, theme, colors),
             if (appSettings.showRecentFiles) ...[
             const SizedBox(height: 27),
             sectionTitle(
@@ -1000,7 +1125,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                 clipBehavior: Clip.antiAlias,
                 child: Column(
                   children: [
-                    for (var index = 0; index < _recentFiles.length; index++) ...[
+                    for (var index = 0; index < _recentFiles.take(8).length; index++) ...[
                       if (index > 0) const Divider(height: 1, indent: 68),
                       ListTile(
                         leading: Container(
@@ -1026,11 +1151,20 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                           ),
                         ),
                         subtitle: Text(
-                          '${_recentFiles[index].volumeName} · ${_recentFiles[index].parentPath.isEmpty ? 'Root' : _recentFiles[index].parentPath}',
+                          '${_formatBytes(_recentFiles[index].file.size)} · ${_relativeTime(_recentFiles[index].modifiedAt)}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        trailing: const Icon(Icons.chevron_right_rounded),
+                        trailing: PopupMenuButton<String>(
+                          tooltip: 'File actions',
+                          onSelected: (action) => _handleRecentAction(_recentFiles[index], action),
+                          itemBuilder: (_) => const [
+                            PopupMenuItem(value: 'download', child: Text('Download')),
+                            PopupMenuItem(value: 'share', child: Text('Share')),
+                            PopupMenuItem(value: 'rename', child: Text('Rename')),
+                            PopupMenuItem(value: 'delete', child: Text('Delete')),
+                          ],
+                        ),
                         onTap: () {
                           final recent = _recentFiles[index];
                           if (recent.volume == null) {
