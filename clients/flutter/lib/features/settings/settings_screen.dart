@@ -1,4 +1,5 @@
 import 'dart:io';
+import '../../core/widgets/home_server_app_bar.dart';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -117,7 +118,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return AnimatedBuilder(
       animation: _settings,
       builder: (context, _) => Scaffold(
-        appBar: AppBar(title: const Text('Settings')),
+        appBar: const HomeServerAppBar(title: Text('Settings')),
         body: ListView(
           padding: EdgeInsets.fromLTRB(16, 8, 16, 32 + MediaQuery.paddingOf(context).bottom),
           children: [
