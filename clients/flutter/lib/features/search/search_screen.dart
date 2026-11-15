@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:cross_file/cross_file.dart';
 import 'package:dio/dio.dart';
@@ -220,7 +221,8 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   void _chooseScope(String? value) {
-    setState(() { _scope = value; _scanned = false; });
+    _scanGeneration++;
+    setState(() { _scope = value; _scanned = false; _loading = false; });
     if (_controller.text.trim().isNotEmpty || _quick != null) _scan(refresh: true);
   }
 
@@ -296,7 +298,7 @@ class _SearchScreenState extends State<SearchScreen> {
     }
   }
 
-  Future<List<int>> _bytes(_Result r) => r.volume == null
+  Future<Uint8List> _bytes(_Result r) => r.volume == null
     ? widget.api.downloadFile(r.path)
     : widget.api.downloadStorageFile(r.volume!, r.path);
 
