@@ -247,11 +247,12 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
           onReceiveProgress: progress,
         );
         if (token.isCancelled) return;
-        await FilePicker.platform.saveFile(
+        final savedPath = await FilePicker.platform.saveFile(
           dialogTitle: 'Save ${item.name}',
           fileName: item.name,
           bytes: bytes,
         );
+        if (savedPath == null) token.cancel('Save cancelled by user');
       },
     );
     if (!mounted) return;
