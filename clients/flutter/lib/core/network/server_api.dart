@@ -291,6 +291,7 @@ class ServerApi {
     String filename,
     Uint8List bytes, {
     ProgressCallback? onSendProgress,
+    CancelToken? cancelToken,
   }) async {
     final form = FormData.fromMap({
       'file': MultipartFile.fromBytes(bytes, filename: filename),
@@ -300,18 +301,21 @@ class ServerApi {
       queryParameters: {'path': path},
       data: form,
       onSendProgress: onSendProgress,
+      cancelToken: cancelToken,
     );
   }
 
   Future<Uint8List> downloadFile(
     String path, {
     ProgressCallback? onReceiveProgress,
+    CancelToken? cancelToken,
   }) async {
     final response = await _dio.get<List<int>>(
       '/api/files/download',
       queryParameters: {'path': path},
       options: Options(responseType: ResponseType.bytes),
       onReceiveProgress: onReceiveProgress,
+      cancelToken: cancelToken,
     );
     return Uint8List.fromList(response.data ?? const <int>[]);
   }
