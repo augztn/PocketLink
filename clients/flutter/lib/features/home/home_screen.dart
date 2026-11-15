@@ -1072,7 +1072,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                       child: Icon(Icons.cloud_rounded, color: colors.onPrimaryContainer),
                     ),
                     const SizedBox(height: 14),
-                    Text('HomeServer', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+                    Text('PocketLink', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
                     const SizedBox(height: 3),
                     Text('Storage & locations', style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
                   ],
@@ -1173,7 +1173,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('HomeServer', style: theme.textTheme.titleLarge?.copyWith(
+            Text('PocketLink', style: theme.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w900,
               letterSpacing: -0.6,
             )),
