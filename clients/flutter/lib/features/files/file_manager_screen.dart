@@ -125,6 +125,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
       gridView: _gridView,
       scrollOffset: _scrollController.hasClients ? _scrollController.offset : current.scrollOffset,
       selectedVolume: _selectedVolume,
+      clearSelectedVolume: _selectedVolume == null,
     ));
   }
 
