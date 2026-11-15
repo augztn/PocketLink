@@ -697,25 +697,27 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
             const SizedBox(height: 8),
 
             SizedBox(
-              height: 44,
+              height: 40,
               child: Row(children: [
-                Expanded(child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                    for (final category in const ['All', 'Images', 'Videos', 'Music', 'Documents'])
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: ChoiceChip(
-                          label: Text(category),
-                          selected: _category == category,
-                          onSelected: (_) { setState(() => _category = category); _saveState(); },
-                          showCheckmark: false,
-                        ),
-                      ),
-                    ],
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        for (final category in const ['All', 'Images', 'Videos', 'Music', 'Documents'])
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: ChoiceChip(
+                              label: Text(category),
+                              selected: _category == category,
+                              onSelected: (_) { setState(() => _category = category); _saveState(); },
+                              showCheckmark: false,
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
-                )),
+                ),
                 PopupMenuButton<String>(
                   tooltip: 'Sort files',
                   onSelected: (value) { setState(() => _sortBy = value); _saveState(); },
