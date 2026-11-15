@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'quick_actions_store.dart';
+
 import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
 import '../media/media_browser_screen.dart';
@@ -65,11 +67,138 @@ class _HomeDashboardState extends State<_HomeDashboard> {
   bool? _serverOnline;
   List<StorageVolume> _volumes = const [];
   List<RecentFile> _recentFiles = const [];
+  final QuickActionsStore _quickActionsStore = QuickActionsStore();
+  List<String> _quickActions = List.of(QuickActionsStore.defaults);
 
   @override
   void initState() {
     super.initState();
+    _loadQuickActions();
     _refreshStatus();
+  }
+
+  static const _quickActionDetails = <String, ({String label, IconData icon})>{
+    'files': (label: 'Files', icon: Icons.folder_open_rounded),
+    'photos': (label: 'Photos', icon: Icons.photo_library_rounded),
+    'music': (label: 'Music', icon: Icons.headphones_rounded),
+    'videos': (label: 'Videos', icon: Icons.movie_rounded),
+    'drives': (label: 'Drives', icon: Icons.usb_rounded),
+    'documents': (label: 'Documents', icon: Icons.description_rounded),
+    'transfers': (label: 'Transfers', icon: Icons.swap_vert_rounded),
+  };
+
+  Future<void> _loadQuickActions() async {
+    final actions = await _quickActionsStore.load();
+    if (mounted) setState(() => _quickActions = actions);
+  }
+
+  Future<void> _editQuickActions() async {
+    var draft = List<String>.of(_quickActions);
+    final result = await showDialog<List<String>>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Customize quick actions'),
+          content: SizedBox(
+            width: 420,
+            height: 440,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Drag to rearrange. Select the actions you want on Home.',
+                    style: Theme.of(context).textTheme.bodySmall),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: ReorderableListView.builder(
+                    itemCount: QuickActionsStore.available.length,
+                    onReorder: (oldIndex, newIndex) {
+                      setDialogState(() {
+                        if (newIndex > oldIndex) newIndex--;
+                        final item = draft.removeAt(oldIndex);
+                        draft.insert(newIndex, item);
+                      });
+                    },
+                    itemBuilder: (context, index) {
+                      final id = draft[index];
+                      final detail = _quickActionDetails[id]!;
+                      return CheckboxListTile(
+                        key: ValueKey(id),
+                        value: true,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        secondary: const Icon(Icons.drag_handle_rounded),
+                        title: Text(detail.label),
+                        onChanged: (checked) {
+                          if (checked == false) {
+                            setDialogState(() => draft.remove(id));
+                          }
+                        },
+                      );
+                    },
+                  ),
+                ),
+                const Divider(),
+                Text('Add actions', style: Theme.of(context).textTheme.titleSmall),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: QuickActionsStore.available
+                      .where((id) => !draft.contains(id))
+                      .map((id) => ActionChip(
+                            avatar: Icon(_quickActionDetails[id]!.icon, size: 17),
+                            label: Text(_quickActionDetails[id]!.label),
+                            onPressed: () => setDialogState(() => draft.add(id)),
+                          ))
+                      .toList(),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => setDialogState(
+                () => draft = List.of(QuickActionsStore.defaults),
+              ),
+              child: const Text('Reset'),
+            ),
+            FilledButton(
+              onPressed: draft.isEmpty
+                  ? null
+                  : () => Navigator.pop(dialogContext, draft),
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (result == null || !mounted) return;
+    await _quickActionsStore.save(result);
+    if (mounted) setState(() => _quickActions = result);
+  }
+
+  void _runQuickAction(String id) {
+    switch (id) {
+      case 'files':
+        widget.onOpenTab(1);
+      case 'photos':
+        widget.onOpenTab(2);
+      case 'music':
+        widget.onOpenTab(3);
+      case 'videos':
+        widget.onOpenTab(4);
+      case 'drives':
+        _openStorage();
+      case 'documents':
+        _openDocuments();
+      case 'transfers':
+        Navigator.of(context).push(MaterialPageRoute<void>(
+          builder: (_) => const TransferManagerScreen(),
+        ));
+    }
   }
 
   Future<void> _refreshStatus() async {
@@ -339,21 +468,35 @@ class _HomeDashboardState extends State<_HomeDashboard> {
               ),
             ),
             const SizedBox(height: 27),
-            sectionTitle('Quick actions'),
-            const SizedBox(height: 12),
-            GridView.count(
-              crossAxisCount: 4,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisSpacing: 9,
-              childAspectRatio: 0.88,
-              children: [
-                quickAction(Icons.folder_open_rounded, 'Files', () => widget.onOpenTab(1)),
-                quickAction(Icons.photo_library_rounded, 'Photos', () => widget.onOpenTab(2)),
-                quickAction(Icons.headphones_rounded, 'Music', () => widget.onOpenTab(3)),
-                quickAction(Icons.usb_rounded, 'Drives', _openStorage),
-              ],
+            sectionTitle(
+              'Quick actions',
+              action: 'Edit',
+              onAction: _editQuickActions,
             ),
+            const SizedBox(height: 12),
+            if (_quickActions.isEmpty)
+              OutlinedButton.icon(
+                onPressed: _editQuickActions,
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Add quick actions'),
+              )
+            else
+              GridView.count(
+                crossAxisCount: 4,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisSpacing: 9,
+                mainAxisSpacing: 9,
+                childAspectRatio: 0.88,
+                children: _quickActions.map((id) {
+                  final detail = _quickActionDetails[id]!;
+                  return quickAction(
+                    detail.icon,
+                    detail.label,
+                    () => _runQuickAction(id),
+                  );
+                }).toList(),
+              ),
             const SizedBox(height: 27),
             sectionTitle('Your library'),
             const SizedBox(height: 12),
