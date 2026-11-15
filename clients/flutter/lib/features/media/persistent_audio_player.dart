@@ -100,8 +100,9 @@ class PersistentAudioPlayer extends ChangeNotifier {
   }
 
   Future<void> closePlayerScreen({required bool isVideo}) async {
-    // Keep both audio and video sessions alive when their full player screen closes.
-    // HomeScreen exposes a floating shortcut to reopen the active session.
+    // Keep the queue and position so HomeScreen can reopen the current session.
+    // Pause video when its surface closes; audio continues in the background.
+    if (isVideo && player.state.playing) await player.pause();
     _fullScreen = false;
     notifyListeners();
   }
