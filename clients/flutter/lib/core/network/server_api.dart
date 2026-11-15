@@ -245,6 +245,7 @@ class ServerApi {
   final Dio _dio;
   final _RequestGate _requestGate;
   static const _directoryCacheTtl = Duration(seconds: 20);
+  static const _maxCachedDirectories = 512;
   final Map<String, _CacheEntry<DirectoryListing>> _directoryCache = {};
   final Map<String, Future<DirectoryListing>> _directoryRequests = {};
   _CacheEntry<List<StorageVolume>>? _volumesCache;
@@ -275,6 +276,9 @@ class ServerApi {
     late final Future<T> request;
     request = load().then((value) {
       if (generation == _cacheGeneration) {
+        if (cache.length >= _maxCachedDirectories && !cache.containsKey(key)) {
+          cache.remove(cache.keys.first);
+        }
         cache[key] = _CacheEntry(value, DateTime.now().add(_directoryCacheTtl));
       }
       return value;
