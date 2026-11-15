@@ -696,16 +696,18 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-              child: CompactSearchField(
-                controller: _searchController,
-                focusNode: _searchFocusNode,
-                hintText: 'Search files and folders',
-                onChanged: (value) => setState(() => _searchQuery = value),
+            if (widget.showSearch) ...[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                child: CompactSearchField(
+                  controller: _searchController,
+                  focusNode: _searchFocusNode,
+                  hintText: 'Search files and folders',
+                  onChanged: (value) => setState(() => _searchQuery = value),
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
+              const SizedBox(height: 8),
+            ],
             if (_path.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
