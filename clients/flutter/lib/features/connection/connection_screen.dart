@@ -31,6 +31,12 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
   String _profileId(String address, String username) =>
       base64Url.encode(utf8.encode('$address|$username')).replaceAll('=', '');
 
+  @override
+  void initState() {
+    super.initState();
+    _restoreAddress();
+  }
+
   Future<void> _restoreAddress() async {
     try {
       final raw = await _storage.read(key: _profilesKey);
