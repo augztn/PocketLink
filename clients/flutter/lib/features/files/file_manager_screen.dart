@@ -5,9 +5,14 @@ import 'package:flutter/material.dart';
 import '../../core/network/server_api.dart';
 
 class FileManagerScreen extends StatefulWidget {
-  const FileManagerScreen({required this.api, super.key});
+  const FileManagerScreen({
+    required this.api,
+    this.initialPath = '',
+    super.key,
+  });
 
   final ServerApi api;
+  final String initialPath;
 
   @override
   State<FileManagerScreen> createState() => _FileManagerScreenState();
@@ -62,7 +67,8 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   @override
   void initState() {
     super.initState();
-    _load();
+    _path = widget.initialPath;
+    _load(widget.initialPath);
   }
 
   Future<void> _load([String? path]) async {
