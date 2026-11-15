@@ -248,7 +248,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
               if (current.depth < 18) {
                 pending.add((path: path, volume: current.volume, volumeName: current.volumeName, depth: current.depth + 1));
               }
-            } else {
+            } else if (found.length < 10000) {
               found.add(_SearchResult(file: item, path: path, volume: current.volume, volumeName: current.volumeName));
             }
           }
