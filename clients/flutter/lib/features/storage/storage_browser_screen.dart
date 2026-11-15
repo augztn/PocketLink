@@ -316,7 +316,8 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
     final allItems = _listing?.items ?? const <FileEntry>[];
     final query = _searchQuery.trim().toLowerCase();
     final items = allItems.where((item) => query.isEmpty || item.name.toLowerCase().contains(query)).toList(growable: false);
-    final selected = _volumes.where((item) => item.id == _volume).firstOrNull;
+    final selectedVolumes = _volumes.where((item) => item.id == _volume).toList(growable: false);
+    final selected = selectedVolumes.isEmpty ? null : selectedVolumes.first;
 
     Widget iconFor(FileEntry item) {
       final icon = item.isDirectory
