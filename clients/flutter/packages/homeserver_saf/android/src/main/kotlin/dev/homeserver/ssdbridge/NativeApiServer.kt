@@ -26,13 +26,15 @@ import android.util.Base64
 
 /**
  * Native replacement for the Termux FastAPI file/storage routes.
- * The listener is intentionally bound to all interfaces so Tailscale peers
- * can reach it; every non-health endpoint requires HTTP Basic authentication.
+ * The listener is bound to all interfaces for Tailscale reachability, while
+ * NetworkAccessPolicy rejects cleartext peers outside loopback/Tailscale.
+ * Every route except health requires HTTP Basic authentication.
  */
 internal class NativeApiServer(
     private val context: Context,
-    private val credentials: ServerCredentials
-) : NanoHTTPD("0.0.0.0", PORT) {
+    private val credentials: ServerCredentials,
+    listenPort: Int = PORT
+) : NanoHTTPD("0.0.0.0", listenPort) {
     private val prefs = context.getSharedPreferences("ssd-bridge", Context.MODE_PRIVATE)
     private val internalRoot = Environment.getExternalStorageDirectory().canonicalFile
 
