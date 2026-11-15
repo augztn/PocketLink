@@ -38,11 +38,24 @@ class _HomeScreenState extends State<HomeScreen> {
   ExploreCategory _exploreCategory = ExploreCategory.files;
   String _fileCategory = 'All';
   int _externalDriveRequest = 0;
+  int _fileLocationRequest = 0;
+  String? _requestedVolume;
+  String _requestedPath = '';
 
   void _openTab(int index) => setState(() {
     _initializedTabs.add(index);
     _selectedIndex = index;
   });
+
+  void _openFileLocation(String? volume, String path) {
+    setState(() {
+      _initializedTabs.add(2);
+      _selectedIndex = 2;
+      _requestedVolume = volume;
+      _requestedPath = path;
+      _fileLocationRequest++;
+    });
+  }
 
   void _openExternalStorage() {
     setState(() {
@@ -105,6 +118,7 @@ class _HomeScreenState extends State<HomeScreen> {
         onOpenExplore: _openExplore,
         onOpenFiles: () => _openTab(2),
         onOpenExternalStorage: _openExternalStorage,
+        onOpenFileLocation: _openFileLocation,
         onReturnToConnection: widget.onReturnToConnection,
       ),
       if (_initializedTabs.contains(1))
@@ -130,6 +144,9 @@ class _HomeScreenState extends State<HomeScreen> {
           isActive: true,
           onBackAtRoot: () => _openTab(0),
           externalDriveRequest: _externalDriveRequest,
+          locationRequest: _fileLocationRequest,
+          requestedVolume: _requestedVolume,
+          requestedPath: _requestedPath,
         )
       else
         const SizedBox.shrink(),
@@ -407,6 +424,7 @@ class _HomeDashboard extends StatefulWidget {
     required this.onOpenExplore,
     required this.onOpenFiles,
     required this.onOpenExternalStorage,
+    required this.onOpenFileLocation,
     this.onReturnToConnection,
   });
 
@@ -414,6 +432,7 @@ class _HomeDashboard extends StatefulWidget {
   final void Function(ExploreCategory category, {String? fileCategory}) onOpenExplore;
   final VoidCallback onOpenFiles;
   final VoidCallback onOpenExternalStorage;
+  final void Function(String? volume, String path) onOpenFileLocation;
   final VoidCallback? onReturnToConnection;
 
   @override
@@ -1301,16 +1320,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                         ),
                         onTap: () {
                           final recent = _recentFiles[index];
-                          if (recent.volume == null) {
-                            Navigator.of(context).push(MaterialPageRoute<void>(
-                              builder: (_) => FileManagerScreen(
-                                api: widget.api,
-                                initialPath: recent.parentPath,
-                              ),
-                            ));
-                          } else {
-                            widget.onOpenExternalStorage();
-                          }
+                          widget.onOpenFileLocation(recent.volume, recent.parentPath);
                         },
                       ),
                     ],
