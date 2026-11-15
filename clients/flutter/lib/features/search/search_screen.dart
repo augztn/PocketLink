@@ -55,6 +55,12 @@ class _SearchScreenState extends State<SearchScreen> {
   String? _error;
   int _scanGeneration = 0;
   int _scannedFolders = 0;
+  final _pendingDirectories = <({String path, String? volume, String name, int depth})>[];
+  final _visitedDirectories = <String>{};
+  final _allFound = <_Result>[];
+  int _directoryCursor = 0;
+  bool _scanInitialized = false;
+  bool _scanTruncated = false;
 
   @override
   void initState() {
@@ -150,70 +156,121 @@ class _SearchScreenState extends State<SearchScreen> {
       .take(300).toList(growable: false);
   }
 
-  Future<void> _scan({bool refresh = false}) async {
+  Future<void> _scan({bool refresh = false, bool continueExisting = false}) async {
     if (_quick == 'offline') { await _loadOfflineResults(); return; }
     final query = _controller.text.trim();
     if (query.isEmpty && _quick == null) return;
     if (_loading) return;
-    if (_scanned && !refresh) {
+    if (_scanned && !refresh && !continueExisting) {
       if (query.isNotEmpty) _saveHistory(query);
       setState(() {});
       return;
     }
+
     final generation = ++_scanGeneration;
-    setState(() { _loading = true; _error = null; _results.clear(); _scannedFolders = 0; });
+    final isNewScan = refresh || !_scanInitialized;
+    if (isNewScan) {
+      _scanInitialized = true;
+      _scanTruncated = false;
+      _directoryCursor = 0;
+      _pendingDirectories.clear();
+      _visitedDirectories.clear();
+      _allFound.clear();
+      _scannedFolders = 0;
+    }
+    setState(() {
+      _loading = true;
+      _error = null;
+      if (isNewScan) _results.clear();
+    });
+
     try {
       if (_volumes.isEmpty) await _loadVolumes();
-      final pending = <({String path, String? volume, String name, int depth})>[
-        for (final root in const ['', 'DCIM', 'Pictures', 'Download', 'Documents', 'Music', 'Movies'])
-          if (_scope == null || _scope == 'internal')
-            (path: root, volume: null, name: 'Internal storage', depth: 0),
-        for (final v in _volumes)
-          if (_scope == null || _scope == v.id)
-            (path: '', volume: v.id, name: v.name, depth: 0),
-      ];
-      final seen = <String>{};
-      final found = <_Result>[];
-      var cursor = 0;
-      while (cursor < pending.length && seen.length < 1800 && generation == _scanGeneration) {
+      if (isNewScan) {
+        _pendingDirectories.addAll([
+          for (final root in const ['', 'DCIM', 'Pictures', 'Download', 'Documents', 'Music', 'Movies'])
+            if (_scope == null || _scope == 'internal')
+              (path: root, volume: null, name: 'Internal storage', depth: 0),
+          for (final v in _volumes)
+            if (_scope == null || _scope == v.id)
+              (path: '', volume: v.id, name: v.name, depth: 0),
+        ]);
+      }
+
+      final startingDirectories = _visitedDirectories.length;
+      final startingFiles = _allFound.length;
+      while (_directoryCursor < _pendingDirectories.length &&
+          _visitedDirectories.length - startingDirectories < 1800 &&
+          _allFound.length - startingFiles < 10000 &&
+          generation == _scanGeneration) {
         final batch = <({String path, String? volume, String name, int depth})>[];
-        while (cursor < pending.length && batch.length < 8 && seen.length < 1800) {
-          final item = pending[cursor++];
-          if (seen.add('${item.volume ?? 'internal'}:${item.path}')) batch.add(item);
+        while (_directoryCursor < _pendingDirectories.length &&
+            batch.length < 8 &&
+            _visitedDirectories.length - startingDirectories < 1800) {
+          final item = _pendingDirectories[_directoryCursor++];
+          final key = '${item.volume ?? 'internal'}:${item.path}';
+          if (_visitedDirectories.add(key)) batch.add(item);
         }
         await Future.wait(batch.map((item) async {
           try {
             final listing = item.volume == null
-              ? await widget.api.listDirectory(item.path)
-              : await widget.api.listStorageDirectory(item.volume!, item.path);
+                ? await widget.api.listDirectory(item.path)
+                : await widget.api.listStorageDirectory(item.volume!, item.path);
             _scannedFolders++;
             for (final file in listing.items) {
               if (file.name.startsWith('.')) continue;
               final path = item.path.isEmpty ? file.name : '${item.path}/${file.name}';
               if (file.isDirectory) {
-                if (item.depth < 18) pending.add((path: path, volume: item.volume, name: item.name, depth: item.depth + 1));
-              } else if (found.length < 10000) {
-                found.add(_Result(file, path, item.name, item.volume));
+                if (item.depth < 18) {
+                  _pendingDirectories.add((
+                    path: path,
+                    volume: item.volume,
+                    name: item.name,
+                    depth: item.depth + 1,
+                  ));
+                }
+              } else {
+                _allFound.add(_Result(file, path, item.name, item.volume));
               }
             }
           } on DioException catch (e) {
             if (e.response?.statusCode != 403 && e.response?.statusCode != 404) rethrow;
-          } catch (_) {}
+          } catch (_) {
+            // A revoked or unavailable folder must not abort other volumes.
+          }
         }));
         if (generation != _scanGeneration) return;
-        if (mounted) setState(() { _results..clear()..addAll(found); });
+        if (mounted) {
+          setState(() {
+            _results
+              ..clear()
+              ..addAll(_allFound);
+          });
+        }
       }
-      found.sort((a,b) => a.file.name.toLowerCase().compareTo(b.file.name.toLowerCase()));
+
+      _scanTruncated = _directoryCursor < _pendingDirectories.length ||
+          _allFound.length - startingFiles >= 10000;
+      _allFound.sort((a, b) => a.file.name.toLowerCase().compareTo(b.file.name.toLowerCase()));
       if (mounted && generation == _scanGeneration) {
-        setState(() { _results..clear()..addAll(found); _scanned = true; });
-        if (query.isNotEmpty) _saveHistory(query);
+        setState(() {
+          _results
+            ..clear()
+            ..addAll(_allFound);
+          _scanned = !_scanTruncated;
+        });
+        if (!_scanTruncated && query.isNotEmpty) _saveHistory(query);
       }
     } on DioException catch (e) {
-      if (mounted && generation == _scanGeneration) setState(() => _error =
-        e.response?.statusCode == 401 ? 'Login expired or credentials are incorrect.' :
-        e.message ?? 'Could not search server storage. Check the connection and try again.');
+      if (mounted && generation == _scanGeneration) {
+        setState(() => _error = e.response?.statusCode == 401
+            ? 'Login expired or credentials are incorrect.'
+            : e.message ?? 'Could not search server storage. Check the connection and try again.');
+      }
     } catch (_) {
-      if (mounted && generation == _scanGeneration) setState(() => _error = 'Could not search server storage.');
+      if (mounted && generation == _scanGeneration) {
+        setState(() => _error = 'Could not search server storage.');
+      }
     } finally {
       if (mounted && generation == _scanGeneration) setState(() => _loading = false);
     }
@@ -229,7 +286,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
   void _chooseScope(String? value) {
     _scanGeneration++;
-    setState(() { _scope = value; _scanned = false; _loading = false; });
+    setState(() { _scope = value; _scanned = false; _scanInitialized = false; _loading = false; });
     if (_controller.text.trim().isNotEmpty || _quick != null) _scan(refresh: true);
   }
 
@@ -456,14 +513,14 @@ class _SearchScreenState extends State<SearchScreen> {
                 case 'delete': _delete(r); break;
               }
             },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'folder', child: Text('Open containing folder')),
-              PopupMenuItem(value: 'offline', child: Text('Save for offline')),
-              if (r.localPath != null) PopupMenuItem(value: 'removeOffline', child: Text('Remove offline copy')),
-              PopupMenuItem(value: 'download', child: Text('Download')),
-              PopupMenuItem(value: 'share', child: Text('Share')),
-              PopupMenuItem(value: 'rename', child: Text('Rename')),
-              PopupMenuItem(value: 'delete', child: Text('Delete')),
+            itemBuilder: (_) => [
+              const PopupMenuItem(value: 'folder', child: Text('Open containing folder')),
+              const PopupMenuItem(value: 'offline', child: Text('Save for offline')),
+              if (r.localPath != null) const PopupMenuItem(value: 'removeOffline', child: Text('Remove offline copy')),
+              const PopupMenuItem(value: 'download', child: Text('Download')),
+              const PopupMenuItem(value: 'share', child: Text('Share')),
+              const PopupMenuItem(value: 'rename', child: Text('Rename')),
+              const PopupMenuItem(value: 'delete', child: Text('Delete')),
             ]),
         );
       });
@@ -564,6 +621,14 @@ class _SearchScreenState extends State<SearchScreen> {
               ? ListView(padding: EdgeInsets.only(bottom: 96 + MediaQuery.paddingOf(context).bottom),
                   children: [_resultsList(theme, shrink: true)])
               : _resultsList(theme)),
+        if (!_loading && _scanTruncated && _quick != 'offline' && (query.isNotEmpty || _quick != null))
+          Padding(padding: const EdgeInsets.fromLTRB(12, 4, 12, 8), child: Row(
+            children: [
+              Expanded(child: Text('${_visible.length} shown · $_scannedFolders folders scanned. More folders/files remain.',
+                style: theme.textTheme.labelSmall)),
+              TextButton(onPressed: () => _scan(continueExisting: true), child: const Text('Continue')),
+            ],
+          )),
         if (_scanned && !_loading && (query.isNotEmpty || _quick != null))
           Padding(padding: const EdgeInsets.only(bottom: 6, top: 2),
             child: Text('${_visible.length} results · $_scannedFolders folders scanned', style: theme.textTheme.labelSmall)),
