@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/widgets/home_server_app_bar.dart';
 import '../../core/network/server_api.dart';
 import 'photo_favorites_store.dart';
 import '../transfers/transfer_manager_screen.dart';
@@ -462,7 +463,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     final items = visible;
     final selecting = selected.isNotEmpty;
     return Scaffold(
-      appBar: AppBar(
+      appBar: HomeServerAppBar(
         title: Text(selecting ? '${selected.length} selected' : 'Photos'),
         leading: selecting
             ? IconButton(
@@ -471,23 +472,21 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
               )
             : null,
         actions: [
-          IconButton(
+          HomeServerAppBarAction(
+            label: 'Transfers', icon: Icons.swap_vert_rounded,
             onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
               builder: (_) => const TransferManagerScreen(),
             )),
-            icon: const Icon(Icons.swap_vert_rounded),
-            tooltip: 'Transfers',
           ),
           if (!selecting && widget.showSearch)
-            IconButton(
+            HomeServerAppBarAction(
+              label: searchOpen ? 'Close search' : 'Search',
+              icon: searchOpen ? Icons.close : Icons.search,
               onPressed: () => setState(() => searchOpen = !searchOpen),
-              icon: Icon(searchOpen ? Icons.close : Icons.search),
-              tooltip: 'Search',
             ),
-          IconButton(
+          HomeServerAppBarAction(
+            label: 'Scan again', icon: Icons.refresh_rounded,
             onPressed: loading ? null : scan,
-            icon: const Icon(Icons.refresh_rounded),
-            tooltip: 'Scan again',
           ),
         ],
       ),
