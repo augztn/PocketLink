@@ -243,7 +243,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       await AppLogger.warning('Server authentication timed out', fields: {'host': host, 'port': port});
       if (mounted) {
         setState(() {
-          _message = 'The server took too long to respond. Check that HomeServer is running, then try again.';
+          _message = 'The server took too long to respond. Check that PocketLink is running, then try again.';
           _isConnecting = false;
         });
       }
@@ -368,7 +368,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
 
     return Scaffold(
       appBar: HomeServerAppBar(
-        title: const Text('HomeServer'),
+        title: const Text('PocketLink'),
         showHome: false,
         actions: [
           HomeServerAppBarAction(
@@ -468,7 +468,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Add one or more HomeServer instances and switch between them anytime.',
+                    'Add one or more PocketLink servers and switch between them anytime.',
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 28),
@@ -552,7 +552,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                             ),
                           ),
                   icon: const Icon(Icons.dns_outlined),
-                  label: const Text('Set up this phone as a HomeServer'),
+                  label: const Text('Host PocketLink on this phone'),
                 ),
                 const SizedBox(height: 18),
                 Text(
