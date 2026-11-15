@@ -23,6 +23,7 @@ class ConnectionScreen extends StatefulWidget {
 class _ConnectionScreenState extends State<ConnectionScreen> {
   static const _storage = FlutterSecureStorage();
   static const _profilesKey = 'server_profiles';
+  final _serverNameController = TextEditingController();
   final _addressController = TextEditingController();
   final _portController = TextEditingController(text: '8000');
   final _usernameController = TextEditingController(text: 'admin');
@@ -52,6 +53,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
         _profiles = decoded.whereType<Map>().map((item) => {
           'id': item['id']?.toString() ?? '',
           'address': item['address']?.toString() ?? '',
+          'name': item['name']?.toString() ?? '',
           'username': item['username']?.toString() ?? 'admin',
         }).where((item) => item['id']!.isNotEmpty && item['address']!.isNotEmpty)
           .toList(growable: true);
@@ -104,6 +106,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     bool connect = true,
   }) async {
     _applyAddress(profile['address']!);
+    _serverNameController.text = profile['name'] ?? '';
     _obscurePassword = true;
     _usernameController.text = profile['username']!;
     _passwordController.text =
@@ -115,6 +118,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
 
   Future<void> _addServer() async {
     _obscurePassword = true;
+    _serverNameController.clear();
     _addressController.clear();
     _portController.text = '8000';
     _usernameController.text = 'admin';
@@ -264,7 +268,12 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
 
     if (!mounted) return;
     final id = _profileId(address, username);
-    final profile = {'id': id, 'address': address, 'username': username};
+    final profile = {
+      'id': id,
+      'address': address,
+      'name': _serverNameController.text.trim(),
+      'username': username,
+    };
     _profiles.removeWhere((item) => item['id'] == id);
     _profiles.insert(0, profile);
 
@@ -343,6 +352,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
 
   @override
   void dispose() {
+    _serverNameController.dispose();
     _addressController.dispose();
     _portController.dispose();
     _usernameController.dispose();
@@ -397,9 +407,17 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                     margin: const EdgeInsets.only(bottom: 8),
                     child: ListTile(
                       leading: const CircleAvatar(child: Icon(Icons.dns_rounded)),
-                      title: Text(profile['address']!),
+                      title: Text(
+                        (profile['name'] ?? '').trim().isNotEmpty
+                            ? profile['name']!.trim()
+                            : profile['address']!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                      ),
                       subtitle: Row(children: [
-                        Text(profile['username']!),
+                        Expanded(child: Text('${profile['address']} • ${profile['username']}',
+                          maxLines: 1, overflow: TextOverflow.ellipsis)),
                         const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -454,6 +472,12 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                   ),
                   const SizedBox(height: 28),
                 ],
+                TextField(
+                  controller: _serverNameController,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: _inputDecoration(hint: 'Server name (optional)', icon: Icons.edit_location_alt_outlined),
+                ),
+                const SizedBox(height: 12),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
