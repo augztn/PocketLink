@@ -345,7 +345,12 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
       if (!_matchesCategory(item)) return false;
       return query.isEmpty || item.name.toLowerCase().contains(query);
     }).toList(growable: false);
-    return Scaffold(
+    return PopScope(
+      canPop: _path.isEmpty,
+      onPopInvoked: (didPop) {
+        if (!didPop && _path.isNotEmpty) _goUp();
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: const Text('Files'),
         actions: [
@@ -496,6 +501,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                           ),
           ),
         ],
+      ),
       ),
     );
   }
