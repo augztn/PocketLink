@@ -661,20 +661,4 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     );
   }
 
-  Widget _summaryPill(IconData icon, String label) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.65),
-        borderRadius: BorderRadius.circular(30),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 15),
-          const SizedBox(width: 6),
-          Text(label, style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700)),
-        ]),
-      ),
-    );
-  }
 }
