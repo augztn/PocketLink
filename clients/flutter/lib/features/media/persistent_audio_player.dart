@@ -29,7 +29,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
     _playlistSubscription = player.stream.playlist.listen((playlist) {
       _currentIndex = playlist.index.clamp(0, _queue.isEmpty ? 0 : _queue.length - 1).toInt();
       final current = currentItem;
-      if (current != null && _active && _music && _api != null) {
+      if (current != null && current.localPath == null && _active && _music && _api != null) {
         unawaited(HomeActivityStore.instance.recordTrack(serverUrl: _api!.baseUrl, title: current.title, path: current.path, volume: current.volume));
       }
       notifyListeners();
@@ -117,6 +117,10 @@ class PersistentAudioPlayer extends ChangeNotifier {
       extras: {'title': item.title},
     )).toList(growable: false);
     await player.open(Playlist(tracks, index: _currentIndex));
+    final current = currentItem;
+    if (current != null && current.localPath == null && _music) {
+      unawaited(HomeActivityStore.instance.recordTrack(serverUrl: api.baseUrl, title: current.title, path: current.path, volume: current.volume));
+    }
     await _syncMediaSession(start: true);
   }
 
