@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
+import android.app.PendingIntent
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
@@ -20,11 +21,25 @@ class BridgeService : Service() {
             val channel = NotificationChannel(channelId, "HomeServer server", NotificationManager.IMPORTANCE_LOW)
             getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
         }
+        val launchIntent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        }
+        val contentIntent = launchIntent?.let {
+            PendingIntent.getActivity(
+                this, 8765, it,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        }
         val notification: Notification = NotificationCompat.Builder(this, channelId)
-            .setContentTitle("HomeServer")
-            .setContentText("Your HomeServer service is running")
+            .setContentTitle("HomeServer is running")
+            .setContentText("Your personal server is active. Tap to manage storage and connection settings.")
             .setSmallIcon(android.R.drawable.ic_menu_info_details)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setOnlyAlertOnce(true)
             .setOngoing(true)
+            .setContentIntent(contentIntent)
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .build()
         startForeground(8765, notification)
 
@@ -55,6 +70,8 @@ class BridgeService : Service() {
         }
     }
 
+    // Android may recreate this service with a null intent after reclaiming
+    // the process. onCreate() rehydrates both listeners from persisted credentials.
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
 
     override fun onDestroy() {
