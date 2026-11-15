@@ -131,6 +131,7 @@ internal class NativeApiServer(
             )
         } else {
             val bounds = parseRange(range, length) ?: return jsonError(Response.Status.RANGE_NOT_SATISFIABLE, "Invalid byte range")
+                .apply { addHeader("Content-Range", "bytes */$length") }
             val (start, end) = bounds
             val input = FileInputStream(file)
             try {
@@ -145,6 +146,7 @@ internal class NativeApiServer(
             ).apply { addHeader("Content-Range", "bytes $start-$end/$length") }
         }
         response.addHeader("Accept-Ranges", "bytes")
+        response.addHeader("Cache-Control", "no-transform")
         response.addHeader("Content-Disposition", "${if (inline) "inline" else "attachment"}; filename*=UTF-8''${java.net.URLEncoder.encode(file.name, "UTF-8").replace("+", "%20")}")
         return response
     }
@@ -258,6 +260,7 @@ internal class NativeApiServer(
             }
             val bounds = parseRange(range, length)
                 ?: return jsonError(Response.Status.RANGE_NOT_SATISFIABLE, "Invalid byte range")
+                    .apply { addHeader("Content-Range", "bytes */$length") }
             val (start, end) = bounds
             val input = openExternalRangeStream(item.uri, start)
                 ?: return jsonError(Response.Status.RANGE_NOT_SATISFIABLE, "Could not seek to byte range")
@@ -265,7 +268,8 @@ internal class NativeApiServer(
                 Response.Status.PARTIAL_CONTENT, mime, input, end - start + 1
             ).apply { addHeader("Content-Range", "bytes $start-$end/$length") }
         }
-        response.addHeader("Accept-Ranges", "bytes")
+        if (length > 0L) response.addHeader("Accept-Ranges", "bytes")
+        response.addHeader("Cache-Control", "no-transform")
         return response
     }
 
