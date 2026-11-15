@@ -9,7 +9,6 @@ import '../home/browser_state_store.dart';
 import '../../core/settings/app_settings.dart';
 import '../transfers/transfer_manager.dart';
 import '../transfers/transfer_manager_screen.dart';
-import '../storage/storage_browser_screen.dart';
 
 class FileManagerScreen extends StatefulWidget {
   const FileManagerScreen({
@@ -45,6 +44,8 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   String _sortBy = 'name';
   double _pendingScrollOffset = 0;
   int _loadGeneration = 0;
+  List<StorageVolume> _volumes = const [];
+  String? _selectedVolume;
 
   String _searchQuery = '';
   late String _category = widget.initialCategory;
@@ -104,8 +105,9 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     _sortBy = saved.sortBy;
     _gridView = saved.gridView;
     _pendingScrollOffset = saved.scrollOffset;
+    _selectedVolume = saved.selectedVolume;
     _scrollController.addListener(_saveScrollOffset);
-    _load(_path);
+    _loadVolumesAndDirectory();
   }
 
   void _restoreScrollOffset() {
@@ -122,30 +124,44 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
       sortBy: _sortBy,
       gridView: _gridView,
       scrollOffset: _scrollController.hasClients ? _scrollController.offset : current.scrollOffset,
+      selectedVolume: _selectedVolume,
     ));
   }
 
   void _saveScrollOffset() => _saveState();
 
+  Future<void> _loadVolumesAndDirectory() async {
+    try {
+      final volumes = await widget.api.listStorageVolumes();
+      if (!mounted) return;
+      final available = volumes.where((volume) => volume.available).toList();
+      setState(() { _volumes = available; if (!available.any((v) => v.id == _selectedVolume)) _selectedVolume = null; });
+    } catch (_) {}
+    await _load(_path);
+  }
+
+  Future<void> _selectPartition(String? volumeId) async {
+    if (volumeId == _selectedVolume) return;
+    setState(() {
+      _selectedVolume = volumeId; _path = ''; _listing = null;
+      _searchController.clear(); _searchQuery = ''; _pendingScrollOffset = 0;
+      if (_scrollController.hasClients) _scrollController.jumpTo(0);
+    });
+    _saveState(path: '');
+    await _load('');
+  }
+
   Future<void> _load([String? path]) async {
     final generation = ++_loadGeneration;
     final target = path ?? _path;
-    if (target != _path) {
-      _pendingScrollOffset = 0;
-      if (_scrollController.hasClients) _scrollController.jumpTo(0);
-    }
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+    if (target != _path) { _pendingScrollOffset = 0; if (_scrollController.hasClients) _scrollController.jumpTo(0); }
+    setState(() { _loading = true; _error = null; });
     try {
-      final result = await widget.api.listDirectory(target);
+      final result = _selectedVolume == null
+          ? await widget.api.listDirectory(target)
+          : await widget.api.listStorageDirectory(_selectedVolume!, target);
       if (!mounted || generation != _loadGeneration) return;
-      setState(() {
-        _path = result.path == '.' ? '' : result.path;
-        _listing = result;
-        _saveState(path: _path);
-      });
+      setState(() { _path = result.path == '.' ? '' : result.path; _listing = result; _saveState(path: _path); });
     } on DioException catch (error) {
       if (!mounted || generation != _loadGeneration) return;
       setState(() => _error = _messageFor(error));
@@ -169,6 +185,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   }
 
   String _itemPath(String name) => _path.isEmpty ? name : '$_path/$name';
+  String _volumeName(String id) => _volumes.where((v) => v.id == id).map((v) => v.name).firstOrNull ?? 'External drive';
 
   Future<String?> _askName(String title, {String initial = ''}) async {
     final controller = TextEditingController(text: initial);
@@ -217,17 +234,13 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
         return;
       }
 
+      final volume = _selectedVolume;
       final completed = await TransferManager.instance.run(
-        name: file.name,
-        direction: 'Upload',
-        location: _path.isEmpty ? 'Internal storage' : _path,
-        operation: (token, progress) => widget.api.uploadFile(
-          _path,
-          file.name,
-          bytes,
-          cancelToken: token,
-          onSendProgress: progress,
-        ),
+        name: file.name, direction: 'Upload',
+        location: '${volume == null ? 'Internal storage' : _volumeName(volume)} · ${_path.isEmpty ? 'Root' : _path}',
+        operation: (token, progress) => volume == null
+          ? widget.api.uploadFile(_path, file.name, bytes, cancelToken: token, onSendProgress: progress)
+          : widget.api.uploadStorageFile(volume, _path, file.name, bytes, cancelToken: token, onSendProgress: progress),
       );
       if (!mounted) return;
       if (completed) {
@@ -247,11 +260,9 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
       direction: 'Download',
       location: _path.isEmpty ? 'Internal storage' : _path,
       operation: (token, progress) async {
-        final bytes = await widget.api.downloadFile(
-          _itemPath(item.name),
-          cancelToken: token,
-          onReceiveProgress: progress,
-        );
+        final bytes = _selectedVolume == null
+          ? await widget.api.downloadFile(_itemPath(item.name), cancelToken: token, onReceiveProgress: progress)
+          : await widget.api.downloadStorageFile(_selectedVolume!, _itemPath(item.name), cancelToken: token, onReceiveProgress: progress);
         if (token.isCancelled) return;
         final savedPath = await FilePicker.platform.saveFile(
           dialogTitle: 'Save ${item.name}',
@@ -285,7 +296,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
       return;
     }
     try {
-      final bytes = await widget.api.downloadFile(_itemPath(item.name));
+      final bytes = _selectedVolume == null ? await widget.api.downloadFile(_itemPath(item.name)) : await widget.api.downloadStorageFile(_selectedVolume!, _itemPath(item.name));
       if (!mounted) return;
       await showDialog<void>(
         context: context,
@@ -325,7 +336,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     final name = await _askName('Create folder');
     if (name == null) return;
     try {
-      await widget.api.createFolder(_path, name);
+      if (_selectedVolume == null) { await widget.api.createFolder(_path, name); } else { await widget.api.createStorageFolder(_selectedVolume!, _path, name); }
       await _load();
     } on DioException catch (error) {
       _showError(_messageFor(error));
@@ -336,7 +347,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     final name = await _askName('Rename item', initial: item.name);
     if (name == null || name == item.name) return;
     try {
-      await widget.api.renameItem(_itemPath(item.name), name);
+      if (_selectedVolume == null) { await widget.api.renameItem(_itemPath(item.name), name); } else { await widget.api.renameStorageItem(_selectedVolume!, _itemPath(item.name), name); }
       await _load();
     } on DioException catch (error) {
       _showError(_messageFor(error));
@@ -363,7 +374,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     );
     if (confirmed != true) return;
     try {
-      await widget.api.deleteItem(_itemPath(item.name));
+      if (_selectedVolume == null) { await widget.api.deleteItem(_itemPath(item.name)); } else { await widget.api.deleteStorageItem(_selectedVolume!, _itemPath(item.name)); }
       await _load();
     } on DioException catch (error) {
       _showError(_messageFor(error));
@@ -486,7 +497,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
       child: Scaffold(
         appBar: HomeServerAppBar(
           title: const Text('Files', style: TextStyle(fontWeight: FontWeight.w800)),
-          onHome: widget.onBackAtRoot,
+          onHome: _path.isEmpty ? widget.onBackAtRoot : () => _load(''),
           leading: widget.isActive
               ? IconButton(
                   tooltip: _path.isEmpty ? 'Back to Dashboard' : 'Go to parent folder',
@@ -525,9 +536,19 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                       Expanded(
                         child: InkWell(
                           borderRadius: BorderRadius.circular(10),
-                          onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                            builder: (_) => StorageBrowserScreen(api: widget.api),
-                          )),
+                          onTap: () => showModalBottomSheet<void>(
+                            context: context, backgroundColor: colors.surfaceContainerLow, showDragHandle: true,
+                            builder: (sheetContext) => SafeArea(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                              ListTile(leading: const Icon(Icons.phone_android_rounded), title: const Text('Internal storage'),
+                                trailing: _selectedVolume == null ? const Icon(Icons.check_rounded) : null,
+                                onTap: () { Navigator.pop(sheetContext); _selectPartition(null); }),
+                              for (final volume in _volumes) ListTile(leading: const Icon(Icons.usb_rounded),
+                                title: Text(volume.name, maxLines: 1, overflow: TextOverflow.ellipsis), subtitle: Text(volume.id),
+                                trailing: _selectedVolume == volume.id ? const Icon(Icons.check_rounded) : null,
+                                onTap: () { Navigator.pop(sheetContext); _selectPartition(volume.id); }),
+                              if (_volumes.isEmpty) const Padding(padding: EdgeInsets.all(16), child: Text('No mounted external drives')),
+                            ])),
+                          ),
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 2),
                             child: Column(
@@ -537,7 +558,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                                   children: [
                                     Flexible(
                                       child: Text(
-                                        _path.isEmpty ? 'Internal storage' : _path.split('/').last,
+                                        _path.isEmpty ? (_selectedVolume == null ? 'Internal storage' : _volumeName(_selectedVolume!)) : _path.split('/').last,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
