@@ -607,7 +607,7 @@ class _PhotoAlbum extends StatelessWidget {
   final String title;final List<_Photo> photos;final ServerApi api;final ValueChanged<int> onOpen;
   @override
   Widget build(BuildContext context)=>Scaffold(
-    appBar:AppBar(title:Text(title)),
+    appBar:HomeServerAppBar(title:Text(title)),
     body:GridView.builder(
       padding:const EdgeInsets.all(2),
       gridDelegate:const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount:3,crossAxisSpacing:2,mainAxisSpacing:2),
