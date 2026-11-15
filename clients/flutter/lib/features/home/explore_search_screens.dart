@@ -6,6 +6,7 @@ import '../files/file_manager_screen.dart';
 import '../files/documents_browser_screen.dart';
 import '../library/photo_gallery_screen.dart';
 import '../media/media_browser_screen.dart';
+import '../search/search_screen.dart';
 import '../storage/storage_browser_screen.dart';
 
 enum ExploreCategory { files, drives, photos, music, videos }
@@ -215,7 +216,7 @@ class _ExploreGrid extends StatelessWidget {
           card(
             title: 'Search', subtitle: 'Find files across storage',
             icon: Icons.search_rounded, tint: const Color(0xFF6C9DCE),
-            onTap: onOpenSearch ?? () {},
+            onTap: () => onOpen(SearchScreen(api: api, onHome: () => Navigator.of(context).maybePop())),
           ),
           card(
             title: 'Drives', subtitle: 'Internal & external SSDs',
