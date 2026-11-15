@@ -369,7 +369,7 @@ class _SearchScreenState extends State<SearchScreen> {
             isVideo: true, queue: queue, initialIndex: index < 0 ? 0 : index)));
     } else if (_photo.contains(e)) {
       await Navigator.push(context, MaterialPageRoute<void>(builder: (_) => Scaffold(
-        appBar: AppBar(title: Text(r.file.name)),
+        appBar: HomeServerAppBar(title: Text(r.file.name)),
         body: Center(child: InteractiveViewer(child: Image.network(
           widget.api.mediaStreamUrl(r.path, volume: r.volume), headers: widget.api.mediaHeaders,
           fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Icon(Icons.broken_image_outlined, size: 56)))))));
