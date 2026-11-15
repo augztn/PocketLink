@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../core/network/server_api.dart';
+import '../../core/logging/app_logger.dart';
+import '../diagnostics/diagnostics_screen.dart';
 import '../home/home_screen.dart';
 import '../storage/local_storage_setup_screen.dart';
 
@@ -170,7 +172,8 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
         password: password,
       );
       await api.authenticate().timeout(const Duration(seconds: 15));
-    } on DioException catch (error) {
+      await AppLogger.info('Server authentication succeeded', fields: {'host': host, 'port': port});
+    } on DioException catch (error) {\n      await AppLogger.warning('Server authentication failed', fields: {'host': host, 'port': port, 'type': error.type.name, 'status': error.response?.statusCode});
       if (!mounted) return;
       final status = error.response?.statusCode;
       setState(() {
@@ -191,7 +194,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
         _isConnecting = false;
       });
       return;
-    } on TimeoutException {
+    } on TimeoutException {\n      await AppLogger.warning('Server authentication timed out', fields: {'host': host, 'port': port});
       if (mounted) {
         setState(() {
           _message = 'The server took too long to respond. Check that HomeServer is running, then try again.';
@@ -199,7 +202,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
         });
       }
       return;
-    } on FormatException catch (error) {
+    } on FormatException catch (error) {\n      await AppLogger.warning('Connection address validation failed');
       if (mounted) setState(() {
         _message = error.message;
         _isConnecting = false;
