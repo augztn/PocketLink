@@ -8,6 +8,8 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../core/network/server_api.dart';
 import '../media/media_player_screen.dart';
+import '../transfers/transfer_manager.dart';
+import '../transfers/transfer_manager_screen.dart';
 
 class StorageBrowserScreen extends StatefulWidget {
   const StorageBrowserScreen({
@@ -126,27 +128,47 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
   }
 
   Future<void> _upload() async {
-    if (_volume == null) return;
+    final volume = _volume;
+    if (volume == null) return;
     try {
       final picked = await FilePicker.platform.pickFiles(withData: true);
       if (picked == null || picked.files.isEmpty) return;
       final file = picked.files.single;
       final bytes = file.bytes;
-      if (bytes == null) { _message('Could not read the selected file.'); return; }
-      setState(() => _progress = 0);
-      await widget.api.uploadStorageFile(
-        _volume!, _path, file.name, bytes,
-        onSendProgress: (sent, total) {
-          if (mounted && total > 0) setState(() => _progress = sent / total);
-        },
+      if (bytes == null) {
+        _message('Could not read the selected file.');
+        return;
+      }
+      final completed = await TransferManager.instance.run(
+        name: file.name,
+        direction: 'Upload',
+        location: '${selectedVolumeName(volume)} · ${_path.isEmpty ? 'Root' : _path}',
+        operation: (token, progress) => widget.api.uploadStorageFile(
+          volume,
+          _path,
+          file.name,
+          bytes,
+          cancelToken: token,
+          onSendProgress: progress,
+        ),
       );
-      await _loadDirectory();
-      _message('Uploaded ${file.name}');
-    } on DioException catch (error) {
-      _message(error.message ?? 'Upload failed.');
-    } finally {
-      if (mounted) setState(() => _progress = null);
+      if (!mounted) return;
+      if (completed) {
+        await _loadDirectory();
+        _message('Uploaded ${file.name}');
+      } else {
+        _message('Upload did not complete. Check Transfers for details.');
+      }
+    } catch (_) {
+      _message('Could not select or upload this file.');
     }
+  }
+
+  String selectedVolumeName(String id) {
+    for (final volume in _volumes) {
+      if (volume.id == id) return volume.name;
+    }
+    return 'External storage';
   }
 
   static const _audioExtensions = {
@@ -211,25 +233,31 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
   }
 
   Future<void> _download(FileEntry item) async {
-    if (_volume == null) return;
-    try {
-      setState(() => _progress = 0);
-      final bytes = await widget.api.downloadStorageFile(
-        _volume!, _itemPath(item.name),
-        onReceiveProgress: (received, total) {
-          if (mounted && total > 0) setState(() => _progress = received / total);
-        },
-      );
-      if (!mounted) return;
-      final saved = await FilePicker.platform.saveFile(
-        dialogTitle: 'Save ${item.name}', fileName: item.name, bytes: bytes,
-      );
-      if (saved != null) _message('Saved to $saved');
-    } on DioException catch (error) {
-      _message(error.message ?? 'Download failed.');
-    } finally {
-      if (mounted) setState(() => _progress = null);
-    }
+    final volume = _volume;
+    if (volume == null) return;
+    final completed = await TransferManager.instance.run(
+      name: item.name,
+      direction: 'Download',
+      location: '${selectedVolumeName(volume)} · ${_path.isEmpty ? 'Root' : _path}',
+      operation: (token, progress) async {
+        final bytes = await widget.api.downloadStorageFile(
+          volume,
+          _itemPath(item.name),
+          cancelToken: token,
+          onReceiveProgress: progress,
+        );
+        if (token.isCancelled) return;
+        await FilePicker.platform.saveFile(
+          dialogTitle: 'Save ${item.name}',
+          fileName: item.name,
+          bytes: bytes,
+        );
+      },
+    );
+    if (!mounted) return;
+    _message(completed
+        ? 'Download complete: ${item.name}'
+        : 'Download did not complete. Check Transfers for details.');
   }
 
   Future<void> _rename(FileEntry item) async {
@@ -274,7 +302,7 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
       appBar: AppBar(
         title: const Text('External SSDs'),
         actions: [
-          IconButton(tooltip: 'Upload', onPressed: _volume == null ? null : _upload, icon: const Icon(Icons.upload_file)),
+          IconButton(tooltip: 'Transfers', onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen())), icon: const Icon(Icons.swap_vert_rounded)),\n          IconButton(tooltip: 'Upload', onPressed: _volume == null ? null : _upload, icon: const Icon(Icons.upload_file)),
           IconButton(tooltip: 'New folder', onPressed: _volume == null ? null : _createFolder, icon: const Icon(Icons.create_new_folder_outlined)),
           IconButton(tooltip: 'Refresh', onPressed: _loading ? null : _loadVolumes, icon: const Icon(Icons.refresh)),
         ],
