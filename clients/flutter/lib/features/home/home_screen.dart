@@ -340,7 +340,100 @@ class _HomeDashboardState extends State<_HomeDashboard> {
 
     return Scaffold(
       backgroundColor: colors.surface,
+      drawer: Drawer(
+        child: SafeArea(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: colors.primaryContainer,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Icon(Icons.cloud_rounded, color: colors.onPrimaryContainer),
+                    ),
+                    const SizedBox(height: 14),
+                    Text('HomeServer', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 3),
+                    Text('Storage & locations', style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 16, 8),
+                child: Text('STORAGE', style: theme.textTheme.labelSmall?.copyWith(
+                  color: colors.primary, fontWeight: FontWeight.w800, letterSpacing: 1.1,
+                )),
+              ),
+              ListTile(
+                leading: const Icon(Icons.phone_android_rounded),
+                title: const Text('Internal storage'),
+                subtitle: const Text('Browse server folders'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () {
+                  Navigator.pop(context);
+                  widget.onOpenTab(1);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.usb_rounded),
+                title: const Text('USB & external drives'),
+                subtitle: Text(_checking ? 'Checking connected drives…' : '$availableVolumes of ${_volumes.length} available'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () {
+                  Navigator.pop(context);
+                  _openStorage();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.add_to_drive_rounded),
+                title: const Text('Connect a drive'),
+                subtitle: const Text('Set up USB / SSD / OTG access'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.of(context).push(MaterialPageRoute<void>(
+                    builder: (_) => const LocalStorageSetupScreen(),
+                  ));
+                },
+              ),
+              const Divider(height: 24),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 16, 8),
+                child: Text('TOOLS', style: theme.textTheme.labelSmall?.copyWith(
+                  color: colors.primary, fontWeight: FontWeight.w800, letterSpacing: 1.1,
+                )),
+              ),
+              ListTile(
+                leading: const Icon(Icons.swap_vert_rounded),
+                title: const Text('Transfers'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.of(context).push(MaterialPageRoute<void>(
+                    builder: (_) => const TransferManagerScreen(),
+                  ));
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
       appBar: AppBar(
+        leading: Builder(
+          builder: (context) => IconButton(
+            tooltip: 'Open menu',
+            icon: const Icon(Icons.menu_rounded),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
         backgroundColor: colors.surface,
         surfaceTintColor: Colors.transparent,
         titleSpacing: 20,
@@ -639,109 +732,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                 ),
               ),
             const SizedBox(height: 27),
-            sectionTitle('Storage', action: 'Open', onAction: _openStorage),
-            const SizedBox(height: 12),
-            Material(
-              color: colors.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(22),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(22),
-                onTap: _openStorage,
-                child: Padding(
-                  padding: const EdgeInsets.all(17),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: colors.secondaryContainer,
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: Icon(Icons.phone_android_rounded, color: colors.onSecondaryContainer),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Internal storage', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
-                                Text('Browse server folders', style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
-                              ],
-                            ),
-                          ),
-                          Icon(Icons.chevron_right_rounded, color: colors.onSurfaceVariant),
-                        ],
-                      ),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 14),
-                        child: Divider(height: 1),
-                      ),
-                      Row(
-                        children: [
-                          Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: colors.tertiaryContainer,
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: Icon(Icons.storage_rounded, color: colors.onTertiaryContainer),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('USB / external drives', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
-                                Text(
-                                  _checking ? 'Checking connected volumes…' : 'Available: $availableVolumes of ${_volumes.length}',
-                                  style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Icon(Icons.chevron_right_rounded, color: colors.onSurfaceVariant),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Material(
-              color: colors.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(20),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(20),
-                onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                  builder: (_) => const LocalStorageSetupScreen(),
-                )),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Icon(Icons.add_to_drive_rounded, color: colors.primary),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Connect a USB drive', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
-                            Text('Set up access to an external SSD or OTG drive',
-                              style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
-                          ],
-                        ),
-                      ),
-                      const Icon(Icons.chevron_right_rounded),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+
           ],
         ),
       ),
