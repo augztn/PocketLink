@@ -10,7 +10,8 @@ String networkRouteLabel(String host) {
       if (a == 100 && b >= 64 && b <= 127) return 'Tailscale';
       if (a == 10 ||
           (a == 172 && b >= 16 && b <= 31) ||
-          (a == 192 && b == 168)) {
+          (a == 192 && b == 168) ||
+          (a == 169 && b == 254)) {
         return 'LAN';
       }
     }
@@ -23,5 +24,11 @@ String networkRouteLabel(String host) {
     return 'Tailscale';
   }
   if (compact == '::1' || compact == 'localhost') return 'Local';
+  if (compact.endsWith('.local')) return 'LAN';
+  if (compact.startsWith('fc') ||
+      compact.startsWith('fd') ||
+      compact.startsWith('fe80:')) {
+    return 'LAN';
+  }
   return 'Remote';
 }
