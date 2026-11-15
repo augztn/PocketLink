@@ -375,70 +375,97 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
         ),
         body: Column(children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
             child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(17),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft, end: Alignment.bottomRight,
-                  colors: [colors.tertiaryContainer, colors.surfaceContainerHighest],
-                ),
-                borderRadius: BorderRadius.circular(24),
+                color: const Color(0xFF1C1C1E),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
               ),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  Container(width: 44, height: 44,
-                    decoration: BoxDecoration(color: colors.surface.withValues(alpha: 0.7), borderRadius: BorderRadius.circular(15)),
-                    child: Icon(Icons.usb_rounded, color: colors.tertiary, size: 25)),
-                  const Spacer(),
-                  IconButton.filledTonal(
-                    tooltip: 'Go to parent folder',
-                    onPressed: _path.isEmpty ? null : _goUp,
-                    icon: const Icon(Icons.arrow_upward_rounded),
+              child: Row(
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF161618),
+                      borderRadius: BorderRadius.circular(13),
+                    ),
+                    child: const Icon(Icons.usb_rounded, size: 23, color: Colors.white70),
                   ),
-                ]),
-                const SizedBox(height: 12),
-                Text(selected?.name ?? 'Choose a drive',
-                  style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
-                const SizedBox(height: 3),
-                Text(_path.isEmpty ? 'External drive  /  Root' : '${selected?.name ?? 'Drive'}  /  $_path',
-                  maxLines: 2, overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
-                const SizedBox(height: 12),
-                Row(children: [
-                  _volumePill(Icons.folder_outlined, '${allItems.where((e) => e.isDirectory).length} folders'),
-                  const SizedBox(width: 8),
-                  _volumePill(Icons.insert_drive_file_outlined, '${allItems.where((e) => !e.isDirectory).length} files'),
-                  const SizedBox(width: 8),
-                  _volumePill(selected?.writable == true ? Icons.edit_outlined : Icons.visibility_outlined,
-                    selected?.writable == true ? 'Read & write' : 'Read only'),
-                ]),
-              ]),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: PopupMenuButton<String>(
+                      tooltip: 'Choose drive or partition',
+                      onSelected: (value) {
+                        setState(() {
+                          _volume = value;
+                          _path = '';
+                          _listing = null;
+                          _searchController.clear();
+                          _searchQuery = '';
+                        });
+                        _loadDirectory('');
+                      },
+                      itemBuilder: (_) => _volumes.map((volume) => PopupMenuItem(
+                        value: volume.id,
+                        enabled: volume.available,
+                        child: Text(
+                          '${volume.name}${volume.available ? '' : ' · Not connected'}',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      )).toList(),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    selected == null
+                                        ? 'Choose a drive'
+                                        : '${selected.name}${_path.isEmpty ? '' : ' · ${_path.split('/').last}'}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: theme.textTheme.titleSmall?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                                const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              '${allItems.where((item) => item.isDirectory).length} folders • '
+                              '${allItems.where((item) => !item.isDirectory).length} files • '
+                              '${selected?.writable == true ? 'Read & write' : 'Read only'}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: colors.onSurfaceVariant,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    tooltip: 'Go up one level',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: _path.isEmpty ? null : _goUp,
+                    icon: const Icon(Icons.arrow_upward_rounded, size: 21),
+                  ),
+                ],
+              ),
             ),
           ),
-          if (_volumes.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-              child: DropdownButtonFormField<String>(
-                initialValue: _volume,
-                decoration: InputDecoration(
-                  labelText: 'Storage location',
-                  prefixIcon: const Icon(Icons.storage_rounded),
-                  filled: true, fillColor: colors.surfaceContainerLow,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(17), borderSide: BorderSide.none),
-                ),
-                items: _volumes.map((item) => DropdownMenuItem(
-                  value: item.id,
-                  child: Text('${item.name}${item.available ? '' : ' · Not connected'}', overflow: TextOverflow.ellipsis),
-                )).toList(),
-                onChanged: (value) {
-                  if (value == null) return;
-                  setState(() { _volume = value; _path = ''; _listing = null; _searchController.clear(); _searchQuery = ''; });
-                  _loadDirectory('');
-                },
-              ),
-            ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: TextField(
