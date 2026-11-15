@@ -41,6 +41,28 @@ class DirectoryListing {
       );
 }
 
+class RecentFile {
+  const RecentFile({
+    required this.file,
+    required this.path,
+    required this.volume,
+    required this.volumeName,
+  });
+
+  final FileEntry file;
+  final String path;
+  final String? volume;
+  final String volumeName;
+
+  String get parentPath {
+    final separator = path.lastIndexOf('/');
+    return separator < 0 ? '' : path.substring(0, separator);
+  }
+
+  DateTime get modifiedAt =>
+      DateTime.tryParse(file.modified)?.toLocal() ?? DateTime(1970);
+}
+
 class VideoMetadata {
   const VideoMetadata({required this.durationMs, required this.width, required this.height});
 
@@ -200,6 +222,68 @@ class ServerApi {
       queryParameters: {'path': path},
     );
     return DirectoryListing.fromJson(response.data ?? const {});
+  }
+
+  /// Returns recent files from common media/document folders and connected volume roots.
+  /// Scans a bounded set of directories only; it never recursively walks storage.
+  Future<List<RecentFile>> listRecentFiles({
+    int limit = 8,
+    List<StorageVolume> volumes = const [],
+  }) async {
+    final candidates = <({String path, String? volume, String volumeName})>[
+      for (final path in const [
+        'DCIM', 'Pictures', 'Download', 'Documents', 'Music', 'Movies',
+      ])
+        (path: path, volume: null, volumeName: 'Internal storage'),
+      for (final volume in volumes.where((item) => item.available))
+        (path: '', volume: volume.id, volumeName: volume.name),
+    ];
+
+    final found = <RecentFile>[];
+    final childDirectories = <({String path, String? volume, String volumeName})>[];
+
+    Future<void> scan(
+      ({String path, String? volume, String volumeName}) candidate, {
+      bool collectChildren = false,
+    }) async {
+      try {
+        final listing = candidate.volume == null
+            ? await listDirectory(candidate.path)
+            : await listStorageDirectory(candidate.volume!, candidate.path);
+        for (final item in listing.items) {
+          if (item.name.startsWith('.')) continue;
+          final path = candidate.path.isEmpty
+              ? item.name
+              : '${candidate.path}/${item.name}';
+          if (item.isDirectory) {
+            if (collectChildren && childDirectories.length < 24) {
+              childDirectories.add((
+                path: path,
+                volume: candidate.volume,
+                volumeName: candidate.volumeName,
+              ));
+            }
+          } else {
+            found.add(RecentFile(
+              file: item,
+              path: path,
+              volume: candidate.volume,
+              volumeName: candidate.volumeName,
+            ));
+          }
+        }
+      } on DioException {
+        // A missing or revoked folder must not hide results from other sources.
+      }
+    }
+
+    await Future.wait(candidates.map(
+      (candidate) => scan(candidate, collectChildren: true),
+    ));
+    await Future.wait(childDirectories.map(scan));
+
+    found.sort((a, b) => b.modifiedAt.compareTo(a.modifiedAt));
+    return found.take(limit.clamp(1, 50)).toList(growable: false);
   }
 
   Future<void> uploadFile(
