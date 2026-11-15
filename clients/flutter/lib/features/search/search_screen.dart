@@ -154,7 +154,7 @@ class _SearchScreenState extends State<SearchScreen> {
     final q = _controller.text.trim().toLowerCase();
     return _results.where((r) => _categoryMatch(r) && _scopeMatch(r) && _quickMatch(r) &&
       (q.isEmpty || r.file.name.toLowerCase().contains(q) || r.path.toLowerCase().contains(q) || r.volumeName.toLowerCase().contains(q)))
-      .take(300).toList(growable: false);
+      .toList(growable: false);
   }
 
   Future<void> _scan({bool refresh = false, bool continueExisting = false}) async {
