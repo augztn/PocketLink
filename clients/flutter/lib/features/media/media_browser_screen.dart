@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import '../../core/widgets/home_server_app_bar.dart';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -525,29 +526,17 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     final sourceLabel = selectedVolumes.isEmpty ? 'All Storage' : selectedVolumes.first.name;
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: HomeServerAppBar(
         title: Text(_title),
         actions: [
-          IconButton(
-            tooltip: 'Transfers',
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen())),
-            icon: const Icon(Icons.swap_vert_rounded),
-          ),
+          HomeServerAppBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded, onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen()))),
           if (!_isMusic)
-            IconButton(
-              tooltip: _layoutMode == 'grid' ? 'List view' : 'Grid view',
-              onPressed: () => setState(() {
-                _layoutMode = _layoutMode == 'grid' ? 'list' : 'grid';
-              }),
-              icon: Icon(_layoutMode == 'grid'
-                  ? Icons.view_list_rounded
-                  : Icons.grid_view_rounded),
+            HomeServerAppBarAction(
+              label: _layoutMode == 'grid' ? 'List view' : 'Grid view',
+              icon: _layoutMode == 'grid' ? Icons.view_list_rounded : Icons.grid_view_rounded,
+              onPressed: () => setState(() { _layoutMode = _layoutMode == 'grid' ? 'list' : 'grid'; }),
             ),
-          IconButton(
-            tooltip: 'Scan again',
-            onPressed: _loading ? null : _scan,
-            icon: const Icon(Icons.refresh),
-          ),
+          HomeServerAppBarAction(label: 'Scan again', icon: Icons.refresh, onPressed: _loading ? null : _scan),
         ],
       ),
       body: Column(
