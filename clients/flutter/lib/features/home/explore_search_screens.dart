@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
+import '../files/documents_browser_screen.dart';
 import '../library/photo_gallery_screen.dart';
 import '../media/media_browser_screen.dart';
 import '../storage/storage_browser_screen.dart';
@@ -109,7 +110,7 @@ class ExploreScreen extends StatelessWidget {
           card(
             title: 'Documents', subtitle: 'PDF, Office and text',
             icon: Icons.description_rounded, tint: const Color(0xFF4C8ED9),
-            onTap: () => _open(context, FileManagerScreen(api: api, initialCategory: 'Documents')),
+            onTap: () => _open(context, DocumentsBrowserScreen(api: api)),
           ),
           card(
             title: 'Files', subtitle: 'Browse server folders',
