@@ -136,7 +136,14 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
       final volumes = await widget.api.listStorageVolumes();
       if (!mounted) return;
       final available = volumes.where((volume) => volume.available).toList();
-      setState(() { _volumes = available; if (!available.any((v) => v.id == _selectedVolume)) _selectedVolume = null; });
+      setState(() {
+        _volumes = available;
+        if (_selectedVolume != null && !available.any((v) => v.id == _selectedVolume)) {
+          _selectedVolume = null;
+          _path = '';
+          _pendingScrollOffset = 0;
+        }
+      });
     } catch (_) {}
     await _load(_path);
   }
