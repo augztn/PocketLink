@@ -10,6 +10,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/network/offline_file_cache.dart';
+import '../../core/widgets/home_server_app_bar.dart';
 import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
 import '../storage/storage_browser_screen.dart';
@@ -521,7 +522,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
               children: [
                 IconButton(
                   tooltip: 'Home',
-                  onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
+                  onPressed: () => HomeServerAppBar.goToDashboard(context),
                   icon: const Icon(Icons.home_rounded, color: Colors.white70, size: 21),
                   visualDensity: VisualDensity.compact,
                 ),
