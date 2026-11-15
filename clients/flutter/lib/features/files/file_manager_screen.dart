@@ -194,6 +194,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
           fileName: item.name,
           bytes: bytes,
         );
+        if (savedPath == null) token.cancel('Save cancelled by user');
         if (savedPath == null) {
           throw StateError('Save location was not selected.');
         }
