@@ -54,7 +54,12 @@ class AppLogger {
       debugPrint('[$level] $message');
       return;
     }
-    final safeFields = fields.map((key, value) => MapEntry(key, _redact(value.toString())));
+    final safeFields = fields.map((key, value) => MapEntry(
+      key,
+      RegExp(r'password|passwd|authorization|token|secret|api[_-]?key', caseSensitive: false).hasMatch(key)
+          ? '[REDACTED]'
+          : _redact(value.toString()),
+    ));
     final line = StringBuffer()
       ..write(DateTime.now().toUtc().toIso8601String())
       ..write(' [$level] ')
