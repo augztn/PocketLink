@@ -29,6 +29,7 @@ class BrowserStateStore extends ChangeNotifier {
 class FileBrowserState {
   const FileBrowserState({
     this.path = '',
+    this.selectedVolume,
     this.category = 'All',
     this.sortBy = 'name',
     this.gridView = false,
@@ -36,6 +37,7 @@ class FileBrowserState {
   });
 
   final String path;
+  final String? selectedVolume;
   final String category;
   final String sortBy;
   final bool gridView;
@@ -43,12 +45,15 @@ class FileBrowserState {
 
   FileBrowserState copyWith({
     String? path,
+    String? selectedVolume,
+    bool clearSelectedVolume = false,
     String? category,
     String? sortBy,
     bool? gridView,
     double? scrollOffset,
   }) => FileBrowserState(
     path: path ?? this.path,
+    selectedVolume: clearSelectedVolume ? null : selectedVolume ?? this.selectedVolume,
     category: category ?? this.category,
     sortBy: sortBy ?? this.sortBy,
     gridView: gridView ?? this.gridView,
