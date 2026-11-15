@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import '../../core/widgets/home_server_app_bar.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
@@ -426,17 +427,13 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
         }
       },
       child: Scaffold(
-        appBar: AppBar(
+        appBar: HomeServerAppBar(
           title: const Text('Files', style: TextStyle(fontWeight: FontWeight.w800)),
           actions: [
-            IconButton(tooltip: 'Transfers', onPressed: _openTransfers,
-                icon: const Icon(Icons.swap_vert_rounded)),
-            IconButton(tooltip: 'Upload file', onPressed: _uploadFile,
-                icon: const Icon(Icons.cloud_upload_outlined)),
-            IconButton(tooltip: 'New folder', onPressed: _createFolder,
-                icon: const Icon(Icons.create_new_folder_outlined)),
-            IconButton(tooltip: 'Refresh', onPressed: _loading ? null : () => _load(),
-                icon: const Icon(Icons.refresh_rounded)),
+            HomeServerAppBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded, onPressed: _openTransfers),
+            HomeServerAppBarAction(label: 'Upload file', icon: Icons.cloud_upload_outlined, onPressed: _uploadFile),
+            HomeServerAppBarAction(label: 'New folder', icon: Icons.create_new_folder_outlined, onPressed: _createFolder),
+            HomeServerAppBarAction(label: 'Refresh', icon: Icons.refresh_rounded, onPressed: _loading ? null : () => _load()),
           ],
         ),
         body: Column(
