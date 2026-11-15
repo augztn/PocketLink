@@ -22,9 +22,10 @@ import '../transfers/transfer_manager_screen.dart';
 import '../transfers/transfer_manager.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({required this.api, this.onReturnToConnection, super.key});
+  const HomeScreen({required this.api, this.serverName, this.onReturnToConnection, super.key});
 
   final ServerApi api;
+  final String? serverName;
   final VoidCallback? onReturnToConnection;
 
   @override
@@ -114,6 +115,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final pages = [
       _HomeDashboard(
         api: widget.api,
+        serverName: widget.serverName,
         onOpenExplore: _openExplore,
         onOpenFiles: () => _openTab(2),
         onOpenExternalStorage: _openExternalStorage,
@@ -420,6 +422,7 @@ class _AnimatedEqualizerState extends State<_AnimatedEqualizer>
 class _HomeDashboard extends StatefulWidget {
   const _HomeDashboard({
     required this.api,
+    required this.serverName,
     required this.onOpenExplore,
     required this.onOpenFiles,
     required this.onOpenExternalStorage,
@@ -428,6 +431,7 @@ class _HomeDashboard extends StatefulWidget {
   });
 
   final ServerApi api;
+  final String? serverName;
   final void Function(ExploreCategory category, {String? fileCategory}) onOpenExplore;
   final VoidCallback onOpenFiles;
   final VoidCallback onOpenExternalStorage;
@@ -771,6 +775,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
     final transfers = TransferManager.instance;
     final base = Uri.tryParse(widget.api.baseUrl);
     final host = base == null ? 'Connected server' : '${base.host}:${base.hasPort ? base.port : (base.scheme == 'https' ? 443 : 80)}';
+    final displayName = (widget.serverName ?? '').trim().isNotEmpty ? widget.serverName!.trim() : host;
     final route = _networkRouteLabel(base);
     final online = _serverOnline == true;
     final statusColor = _checking ? Colors.amber : online ? const Color(0xFF4ADE80) : const Color(0xFFF59E0B);
@@ -797,7 +802,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
               Row(children: [
                 const Icon(Icons.dns_rounded, color: Colors.white70, size: 18),
                 const SizedBox(width: 8),
-                Expanded(child: Text(host, maxLines: 1, overflow: TextOverflow.ellipsis,
+                Expanded(child: Text(displayName, maxLines: 1, overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.titleSmall?.copyWith(color: foreground, fontWeight: FontWeight.w800))),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
