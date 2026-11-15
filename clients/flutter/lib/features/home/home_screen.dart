@@ -1309,17 +1309,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                               ),
                             ));
                           } else {
-                            _openTab(2);
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              if (!mounted) return;
-                              Navigator.of(context).push(MaterialPageRoute<void>(
-                                builder: (_) => FileManagerScreen(
-                                  api: widget.api,
-                                  initialVolume: recent.volume,
-                                  initialPath: recent.parentPath,
-                                ),
-                              ));
-                            });
+                            widget.onOpenExternalStorage();
                           }
                         },
                       ),
