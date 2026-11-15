@@ -15,6 +15,7 @@ import '../../core/network/offline_file_cache.dart';
 import 'dart:io';
 import '../files/file_manager_screen.dart';
 import '../media/media_player_screen.dart';
+import '../media/now_playing_screen.dart';
 import '../media/persistent_audio_player.dart';
 import '../storage/storage_browser_screen.dart';
 
@@ -350,13 +351,15 @@ class _SearchScreenState extends State<SearchScreen> {
         body: Center(child: InteractiveViewer(child: Image.file(File(r.localPath!), fit: BoxFit.contain))))));
     } else if (audio || video) {
       final queue = r.localPath != null
-        ? [MediaQueueItem(title: r.file.name, path: r.path, volume: r.volume, localPath: r.localPath)]
+        ? [MediaQueueItem(title: r.file.name, path: r.path, volume: r.volume, localPath: r.localPath, size: r.file.size)]
         : _visible.where((v) => audio ? _audio.contains(_ext(v.file.name)) : _video.contains(_ext(v.file.name)))
-          .map((v) => MediaQueueItem(title: v.file.name, path: v.path, volume: v.volume, localPath: v.localPath)).toList(growable: false);
+          .map((v) => MediaQueueItem(title: v.file.name, path: v.path, volume: v.volume, localPath: v.localPath, size: v.file.size)).toList(growable: false);
       final index = queue.indexWhere((v) => v.path == r.path && v.volume == r.volume);
-      await Navigator.push(context, MaterialPageRoute<void>(builder: (_) => MediaPlayerScreen(
-        api: widget.api, title: r.file.name, path: r.path, volume: r.volume,
-        isVideo: video, queue: queue, initialIndex: index < 0 ? 0 : index)));
+      await Navigator.push(context, MaterialPageRoute<void>(builder: (_) => audio
+        ? NowPlayingScreen(api: widget.api, queue: queue, initialIndex: index < 0 ? 0 : index)
+        : MediaPlayerScreen(
+            api: widget.api, title: r.file.name, path: r.path, volume: r.volume,
+            isVideo: true, queue: queue, initialIndex: index < 0 ? 0 : index)));
     } else if (_photo.contains(e)) {
       await Navigator.push(context, MaterialPageRoute<void>(builder: (_) => Scaffold(
         appBar: AppBar(title: Text(r.file.name)),
