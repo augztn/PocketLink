@@ -8,7 +8,7 @@ class LocalStorageSetupScreen extends StatefulWidget {
   State<LocalStorageSetupScreen> createState() => _LocalStorageSetupScreenState();
 }
 
-class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> {
+class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with WidgetsBindingObserver {
   static const _channel = MethodChannel('homeserver/saf');
   Map<String, dynamic> _status = const {};
   String? _token;
@@ -21,8 +21,14 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _channel.setMethodCallHandler(_onNativeEvent);
     _refresh();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _refresh();
   }
 
   Future<void> _onNativeEvent(MethodCall call) async {
@@ -185,6 +191,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _serverPasswordController.dispose();
     _channel.setMethodCallHandler(null);
     super.dispose();
