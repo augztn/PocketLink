@@ -1,59 +1,776 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
+import '../../core/widgets/home_server_app_bar.dart';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
 import '../../core/network/server_api.dart';
+import 'persistent_audio_player.dart';
 
 class MediaPlayerScreen extends StatefulWidget {
   const MediaPlayerScreen({
     required this.api,
     required this.title,
     required this.path,
+    this.volume,
     required this.isVideo,
+    this.queue = const [],
+    this.initialIndex = 0,
+    this.resumeExisting = false,
     super.key,
   });
 
   final ServerApi api;
   final String title;
   final String path;
+  final String? volume;
   final bool isVideo;
+  final List<MediaQueueItem> queue;
+  final int initialIndex;
+  final bool resumeExisting;
 
   @override
   State<MediaPlayerScreen> createState() => _MediaPlayerScreenState();
 }
 
 class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
+  late final PersistentAudioPlayer _persistent;
   late final Player _player;
   late final VideoController _videoController;
   String? _openError;
+  int _currentIndex = 0;
+  bool _shuffle = false;
+  PlaylistMode _repeatMode = PlaylistMode.none;
+  double _playbackRate = 1;
+  StreamSubscription<Playlist>? _playlistSubscription;
+  StreamSubscription<bool>? _playingSubscription;
+  StreamSubscription<Tracks>? _tracksSubscription;
+  StreamSubscription<Track>? _trackSubscription;
+  Timer? _sleepTimer;
+  Timer? _videoControlsTimer;
+  bool _showVideoControls = true;
+  bool _isVideoFullscreen = false;
+  Uint8List? _coverBytes;
+  String? _coverForTrack;
+  int _artworkRequestId = 0;
+
+  List<MediaQueueItem> get _queue => widget.queue.isEmpty
+      ? [MediaQueueItem(title: widget.title, path: widget.path, volume: widget.volume)]
+      : widget.queue;
 
   @override
   void initState() {
     super.initState();
-    _player = Player();
+    _persistent = PersistentAudioPlayer.instance;
+    _player = _persistent.player;
     _videoController = VideoController(_player);
-    _open();
+    _currentIndex = widget.resumeExisting
+        ? _persistent.currentIndex
+        : widget.initialIndex.clamp(0, _queue.length - 1).toInt();
+    _persistent.setFullScreen(true);
+    _playlistSubscription = _player.stream.playlist.listen((playlist) {
+      if (mounted && _queue.isNotEmpty) {
+        final index = playlist.index.clamp(0, _queue.length - 1).toInt();
+        setState(() {
+          _currentIndex = index;
+          _coverBytes = null;
+          _coverForTrack = null;
+        });
+        unawaited(_loadArtwork(_queue[index]));
+      }
+    });
+    _tracksSubscription = _player.stream.tracks.listen((_) {
+      if (mounted) setState(() {});
+    });
+    _trackSubscription = _player.stream.track.listen((_) {
+      if (mounted) setState(() {});
+    });
+    _playingSubscription = _player.stream.playing.listen((playing) {
+      if (playing) {
+        _scheduleVideoControlsHide();
+      } else if (mounted && widget.isVideo) {
+        _videoControlsTimer?.cancel();
+        if (!_showVideoControls) setState(() => _showVideoControls = true);
+      }
+    });
+    unawaited(_loadArtwork(_queue[_currentIndex]));
+    if (!widget.resumeExisting) _open();
   }
 
   Future<void> _open() async {
     try {
-      await _player.open(
-        Media(
-          widget.api.mediaStreamUrl(widget.path),
-          httpHeaders: widget.api.mediaHeaders,
-        ),
+      await _persistent.openQueue(
+        api: widget.api,
+        queue: _queue,
+        initialIndex: _currentIndex,
+        isMusic: !widget.isVideo,
       );
     } catch (error) {
       if (mounted) setState(() => _openError = error.toString());
     }
   }
 
+  Future<void> _toggleShuffle() async {
+    final value = !_shuffle;
+    await _player.setShuffle(value);
+    if (mounted) setState(() => _shuffle = value);
+  }
+
+  Future<void> _cycleRepeat() async {
+    final value = switch (_repeatMode) {
+      PlaylistMode.none => PlaylistMode.loop,
+      PlaylistMode.loop => PlaylistMode.single,
+      PlaylistMode.single => PlaylistMode.none,
+    };
+    await _player.setPlaylistMode(value);
+    if (mounted) setState(() => _repeatMode = value);
+  }
+
+  Future<void> _setPlaybackRate(double value) async {
+    await _player.setRate(value);
+    if (mounted) setState(() => _playbackRate = value);
+  }
+
+  String _trackLabel({required String? title, required String? language, required String? codec, required String id, required int index}) {
+    if (id == 'auto') return 'Auto select';
+    if (id == 'no') return 'Off';
+    final parts = <String>[
+      if (title != null && title.trim().isNotEmpty) title.trim(),
+      if (language != null && language.trim().isNotEmpty && language != title) language.trim().toUpperCase(),
+      if (codec != null && codec.trim().isNotEmpty) codec.trim().toUpperCase(),
+    ];
+    return parts.isEmpty ? 'Track ${index + 1}' : parts.join(' · ');
+  }
+
+  Future<void> _showAudioTracks() async {
+    final tracks = _player.state.tracks.audio;
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: const Color(0xFF171421),
+      builder: (sheetContext) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            const ListTile(title: Text('Audio track', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700))),
+            for (var index = 0; index < tracks.length; index++)
+              ListTile(
+                leading: Icon(_player.state.track.audio.id == tracks[index].id ? Icons.radio_button_checked : Icons.radio_button_off, color: const Color(0xFFD8C9FF)),
+                title: Text(_trackLabel(title: tracks[index].title, language: tracks[index].language, codec: tracks[index].codec, id: tracks[index].id, index: index), style: const TextStyle(color: Colors.white)),
+                subtitle: tracks[index].channels == null ? null : Text(tracks[index].channels!, style: const TextStyle(color: Colors.white54)),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  unawaited(_player.setAudioTrack(tracks[index]));
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _loadExternalSubtitleFromServer() async {
+    final track = _queue[_currentIndex.clamp(0, _queue.length - 1).toInt()];
+    final extensionIndex = track.path.lastIndexOf('.');
+    final slashIndex = track.path.lastIndexOf('/');
+    final withoutExtension = extensionIndex > slashIndex
+        ? track.path.substring(0, extensionIndex)
+        : track.path;
+    for (final extension in const ['srt', 'ass', 'ssa', 'vtt']) {
+      final subtitlePath = '$withoutExtension.$extension';
+      try {
+        final bytes = track.volume == null
+            ? await widget.api.downloadFile(subtitlePath)
+            : await widget.api.downloadStorageFile(track.volume!, subtitlePath);
+        if (bytes.isEmpty) continue;
+        final data = utf8.decode(bytes, allowMalformed: true);
+        await _player.setSubtitleTrack(SubtitleTrack.data(data, title: subtitlePath.split('/').last));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Loaded ${subtitlePath.split('/').last}')),
+          );
+        }
+        return;
+      } catch (_) {
+        // Try the next supported sidecar extension.
+      }
+    }
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No matching .srt, .ass, .ssa or .vtt file found beside this video.')),
+      );
+    }
+  }
+
+  Future<void> _pickExternalSubtitle() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const ['srt', 'ass', 'ssa', 'vtt'],
+        withData: true,
+      );
+      if (result == null || result.files.isEmpty) return;
+      final file = result.files.single;
+      final bytes = file.bytes;
+      if (bytes == null || bytes.isEmpty) {
+        throw StateError('Could not read the selected subtitle file.');
+      }
+      final data = utf8.decode(bytes, allowMalformed: true);
+      await _player.setSubtitleTrack(SubtitleTrack.data(data, title: file.name));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Loaded ${file.name}')),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not load subtitle: $error')),
+        );
+      }
+    }
+  }
+
+  Future<void> _showSubtitleTracks() async {
+    final tracks = _player.state.tracks.subtitle;
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: const Color(0xFF171421),
+      builder: (sheetContext) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            const ListTile(title: Text('Subtitles', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700))),
+            ListTile(
+              leading: Icon(_player.state.track.subtitle.id == 'no' ? Icons.radio_button_checked : Icons.radio_button_off, color: const Color(0xFFD8C9FF)),
+              title: const Text('Off', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                unawaited(_player.setSubtitleTrack(SubtitleTrack.no()));
+              },
+            ),
+            ListTile(
+              leading: Icon(_player.state.track.subtitle.id == 'auto' ? Icons.radio_button_checked : Icons.radio_button_off, color: const Color(0xFFD8C9FF)),
+              title: const Text('Auto select', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                unawaited(_player.setSubtitleTrack(SubtitleTrack.auto()));
+              },
+            ),
+            for (var index = 0; index < tracks.length; index++)
+              if (tracks[index].id != 'auto' && tracks[index].id != 'no')
+                ListTile(
+                  leading: Icon(_player.state.track.subtitle.id == tracks[index].id ? Icons.radio_button_checked : Icons.radio_button_off, color: const Color(0xFFD8C9FF)),
+                  title: Text(_trackLabel(title: tracks[index].title, language: tracks[index].language, codec: tracks[index].codec, id: tracks[index].id, index: index), style: const TextStyle(color: Colors.white)),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    unawaited(_player.setSubtitleTrack(tracks[index]));
+                  },
+                ),
+            const Divider(color: Colors.white24),
+            ListTile(
+              leading: const Icon(Icons.folder_open, color: Colors.white70),
+              title: const Text('Load matching subtitle from server', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                unawaited(_loadExternalSubtitleFromServer());
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.file_open_outlined, color: Colors.white70),
+              title: const Text('Choose subtitle file', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                unawaited(_pickExternalSubtitle());
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showQueue() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: const Color(0xFF171421),
+      builder: (context) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Text(widget.isVideo ? 'VIDEO QUEUE' : 'UP NEXT', style: const TextStyle(
+                color: Colors.white70, fontWeight: FontWeight.w800,
+                letterSpacing: 1.5,
+              )),
+            ),
+            for (var index = 0; index < _queue.length; index++)
+              ListTile(
+                leading: Icon(
+                  index == _currentIndex
+                      ? Icons.equalizer_rounded
+                      : widget.isVideo
+                          ? Icons.movie_outlined
+                          : Icons.music_note_rounded,
+                  color: index == _currentIndex ? const Color(0xFFD8C9FF) : Colors.white54,
+                ),
+                title: Text(_queue[index].title,
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white)),
+                subtitle: Text(_queue[index].path,
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white38)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _player.jump(index);
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _chooseSleepTimer() async {
+    final minutes = await showModalBottomSheet<int>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const ListTile(title: Text('Sleep timer')),
+            for (final value in [15, 30, 45, 60])
+              ListTile(
+                leading: const Icon(Icons.bedtime_outlined),
+                title: Text(value.toString() + ' minutes'),
+                onTap: () => Navigator.pop(context, value),
+              ),
+            if (_sleepTimer != null)
+              ListTile(
+                leading: const Icon(Icons.timer_off_outlined),
+                title: const Text('Cancel timer'),
+                onTap: () => Navigator.pop(context, 0),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (minutes == null) return;
+    _sleepTimer?.cancel();
+    if (minutes == 0) {
+      if (mounted) setState(() {});
+      return;
+    }
+    _sleepTimer = Timer(Duration(minutes: minutes), () async {
+      await _player.pause();
+      _sleepTimer = null;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Sleep timer paused playback.')),
+        );
+        setState(() {});
+      }
+    });
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _showLyrics() async {
+    final track = _queue[_currentIndex.clamp(0, _queue.length - 1).toInt()];
+    final withoutExtension = track.path.replaceAll(RegExp(r'\.[^.]+$'), '');
+    final lyricsPath = withoutExtension + '.lrc';
+    try {
+      final bytes = track.volume == null
+          ? await widget.api.downloadFile(lyricsPath)
+          : await widget.api.downloadStorageFile(track.volume!, lyricsPath);
+      final raw = utf8.decode(bytes, allowMalformed: true);
+      final pattern = RegExp(
+        r'^\[(\d{2}):(\d{2})(?:\.(\d{1,3}))?\](.*)$',
+        multiLine: true,
+      );
+      final lines = pattern.allMatches(raw).map((match) {
+        final minutes = int.parse(match.group(1)!);
+        final seconds = int.parse(match.group(2)!);
+        final fraction = (match.group(3) ?? '0').padRight(3, '0').substring(0, 3);
+        return (
+          time: Duration(
+            minutes: minutes,
+            seconds: seconds,
+            milliseconds: int.parse(fraction),
+          ),
+          text: match.group(4)!.trim(),
+        );
+      }).toList()..sort((a, b) => a.time.compareTo(b.time));
+
+      if (!mounted) return;
+      if (lines.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No synchronized lyrics found in the matching .lrc file.')),
+        );
+        return;
+      }
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        showDragHandle: true,
+        backgroundColor: const Color(0xFF171421),
+        builder: (context) => SafeArea(
+          child: SizedBox(
+            height: MediaQuery.of(context).size.height * 0.68,
+            child: StreamBuilder<Duration>(
+              stream: _player.stream.position,
+              initialData: _player.state.position,
+              builder: (context, snapshot) {
+                final position = snapshot.data ?? Duration.zero;
+                var active = -1;
+                for (var i = 0; i < lines.length; i++) {
+                  if (lines[i].time <= position) active = i;
+                }
+                return ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                  itemCount: lines.length,
+                  itemBuilder: (context, index) => ListTile(
+                    title: Text(
+                      lines[index].text,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: index == active ? Colors.white : Colors.white54,
+                        fontSize: index == active ? 19 : 15,
+                        fontWeight: index == active ? FontWeight.w800 : FontWeight.w500,
+                      ),
+                    ),
+                    onTap: () => _player.seek(lines[index].time),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Lyrics not found. Add a matching .lrc file beside the song.')),
+        );
+      }
+    }
+  }
+
   @override
   void dispose() {
-    unawaited(_player.dispose());
+    _sleepTimer?.cancel();
+    _videoControlsTimer?.cancel();
+    if (_isVideoFullscreen) {
+      unawaited(SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge));
+      unawaited(SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]));
+    }
+    unawaited(_playlistSubscription?.cancel());
+    unawaited(_playingSubscription?.cancel());
+    unawaited(_tracksSubscription?.cancel());
+    unawaited(_trackSubscription?.cancel());
+    unawaited(_persistent.closePlayerScreen(isVideo: widget.isVideo));
     super.dispose();
+  }
+
+  void _scheduleVideoControlsHide() {
+    _videoControlsTimer?.cancel();
+    if (!_player.state.playing || !_showVideoControls || !widget.isVideo) return;
+    _videoControlsTimer = Timer(const Duration(seconds: 4), () {
+      if (mounted && _player.state.playing) {
+        setState(() => _showVideoControls = false);
+      }
+    });
+  }
+
+  void _revealVideoControls() {
+    if (!_showVideoControls) setState(() => _showVideoControls = true);
+    _scheduleVideoControlsHide();
+  }
+
+  Future<void> _seekRelative(Duration offset) async {
+    final duration = _player.state.duration;
+    final target = _player.state.position + offset;
+    final clamped = target < Duration.zero
+        ? Duration.zero
+        : target > duration
+            ? duration
+            : target;
+    await _player.seek(clamped);
+    _revealVideoControls();
+  }
+
+  Future<void> _toggleVideoFullscreen() async {
+    final next = !_isVideoFullscreen;
+    setState(() {
+      _isVideoFullscreen = next;
+      _showVideoControls = true;
+    });
+    if (next) {
+      await SystemChrome.setPreferredOrientations(const [
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+      await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    } else {
+      await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      await SystemChrome.setPreferredOrientations(const [
+        DeviceOrientation.portraitUp,
+      ]);
+    }
+    _scheduleVideoControlsHide();
+  }
+
+  Widget _videoSurface() {
+    final surface = ColoredBox(
+      color: Colors.black,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Video(controller: _videoController, controls: NoVideoControls),
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _revealVideoControls,
+              onDoubleTapDown: (details) {
+                final width = MediaQuery.sizeOf(context).width;
+                _seekRelative(details.localPosition.dx < width / 2
+                    ? const Duration(seconds: -10)
+                    : const Duration(seconds: 10));
+              },
+              child: const SizedBox.expand(),
+            ),
+          ),
+          if (_showVideoControls)
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withOpacity(0.68),
+                      Colors.transparent,
+                      Colors.transparent,
+                      Colors.black.withOpacity(0.78),
+                    ],
+                    stops: const [0, 0.28, 0.58, 1],
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        IconButton(
+                          tooltip: 'Back',
+                          onPressed: () {
+                            if (_isVideoFullscreen) {
+                              _toggleVideoFullscreen();
+                            } else {
+                              Navigator.of(context).maybePop();
+                            }
+                          },
+                          icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        ),
+                        Expanded(
+                          child: Text(
+                            _queue[_currentIndex.clamp(0, _queue.length - 1).toInt()].title
+                                .replaceAll(RegExp(r'\.[^.]+$'), ''),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Video queue',
+                          onPressed: _showQueue,
+                          icon: const Icon(Icons.queue_play_next_rounded, color: Colors.white),
+                        ),
+                        PopupMenuButton<String>(
+                          tooltip: 'Audio and subtitles',
+                          color: const Color(0xFF24202E),
+                          onSelected: (value) {
+                            if (value == 'audio') {
+                              unawaited(_showAudioTracks());
+                            } else {
+                              unawaited(_showSubtitleTracks());
+                            }
+                          },
+                          itemBuilder: (_) => const [
+                            PopupMenuItem(
+                              value: 'audio',
+                              child: Row(children: [
+                                Icon(Icons.audiotrack_rounded, color: Colors.white70),
+                                SizedBox(width: 12),
+                                Text('Audio tracks', style: TextStyle(color: Colors.white)),
+                              ]),
+                            ),
+                            PopupMenuItem(
+                              value: 'subtitles',
+                              child: Row(children: [
+                                Icon(Icons.closed_caption_rounded, color: Colors.white70),
+                                SizedBox(width: 12),
+                                Text('Subtitles', style: TextStyle(color: Colors.white)),
+                              ]),
+                            ),
+                          ],
+                          child: const Padding(
+                            padding: EdgeInsets.all(12),
+                            child: Icon(Icons.tune_rounded, color: Colors.white),
+                          ),
+                        ),
+                        PopupMenuButton<double>(
+                          tooltip: 'Playback speed',
+                          initialValue: _playbackRate,
+                          color: const Color(0xFF24202E),
+                          onSelected: _setPlaybackRate,
+                          itemBuilder: (_) => [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0]
+                              .map((rate) => PopupMenuItem(
+                                    value: rate,
+                                    child: Text(
+                                      '${rate}×',
+                                      style: const TextStyle(color: Colors.white),
+                                    ),
+                                  ))
+                              .toList(),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Text(
+                              '${_playbackRate}×',
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: _isVideoFullscreen ? 'Exit fullscreen' : 'Fullscreen',
+                          onPressed: _toggleVideoFullscreen,
+                          icon: Icon(
+                            _isVideoFullscreen
+                                ? Icons.fullscreen_exit_rounded
+                                : Icons.fullscreen_rounded,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    StreamBuilder<bool>(
+                      stream: _player.stream.playing,
+                      initialData: _player.state.playing,
+                      builder: (context, snapshot) {
+                        final playing = snapshot.data ?? false;
+                        return Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            IconButton(
+                              tooltip: 'Previous video',
+                              onPressed: _queue.length > 1 ? _player.previous : null,
+                              icon: const Icon(Icons.skip_previous_rounded, color: Colors.white, size: 32),
+                            ),
+                            IconButton(
+                              tooltip: 'Back 10 seconds',
+                              onPressed: () => _seekRelative(const Duration(seconds: -10)),
+                              icon: const Icon(Icons.replay_10_rounded, color: Colors.white, size: 38),
+                            ),
+                            const SizedBox(width: 10),
+                            IconButton.filled(
+                              tooltip: playing ? 'Pause' : 'Play',
+                              onPressed: () async {
+                                await _player.playOrPause();
+                                _revealVideoControls();
+                              },
+                              style: IconButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: Colors.black,
+                                fixedSize: const Size(68, 68),
+                              ),
+                              iconSize: 36,
+                              icon: Icon(playing ? Icons.pause_rounded : Icons.play_arrow_rounded),
+                            ),
+                            const SizedBox(width: 10),
+                            IconButton(
+                              tooltip: 'Forward 10 seconds',
+                              onPressed: () => _seekRelative(const Duration(seconds: 10)),
+                              icon: const Icon(Icons.forward_10_rounded, color: Colors.white, size: 38),
+                            ),
+                            IconButton(
+                              tooltip: 'Next video',
+                              onPressed: _queue.length > 1 ? _player.next : null,
+                              icon: const Icon(Icons.skip_next_rounded, color: Colors.white, size: 32),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                    const Spacer(),
+                    StreamBuilder<Duration>(
+                      stream: _player.stream.position,
+                      initialData: _player.state.position,
+                      builder: (context, positionSnapshot) {
+                        final position = positionSnapshot.data ?? Duration.zero;
+                        return StreamBuilder<Duration>(
+                          stream: _player.stream.duration,
+                          initialData: _player.state.duration,
+                          builder: (context, durationSnapshot) {
+                            final duration = durationSnapshot.data ?? Duration.zero;
+                            final maximum = duration.inMilliseconds.toDouble().clamp(1, double.infinity).toDouble();
+                            final current = position.inMilliseconds.toDouble().clamp(0, maximum).toDouble();
+                            return Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  SliderTheme(
+                                    data: SliderTheme.of(context).copyWith(
+                                      trackHeight: 3,
+                                      thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                                      activeTrackColor: const Color(0xFFD8C9FF),
+                                      inactiveTrackColor: Colors.white38,
+                                      thumbColor: Colors.white,
+                                    ),
+                                    child: Slider(
+                                      min: 0,
+                                      max: maximum,
+                                      value: current,
+                                      onChanged: duration > Duration.zero
+                                          ? (value) => _player.seek(Duration(milliseconds: value.round()))
+                                          : null,
+                                    ),
+                                  ),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(_formatDuration(position), style: const TextStyle(color: Colors.white, fontSize: 12)),
+                                      Text(_formatDuration(duration), style: const TextStyle(color: Colors.white, fontSize: 12)),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+
+    if (_isVideoFullscreen) return SizedBox.expand(child: surface);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18),
+      child: AspectRatio(aspectRatio: 16 / 9, child: surface),
+    );
   }
 
   String _formatDuration(Duration value) {
@@ -66,6 +783,60 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
         : '${two(minutes)}:${two(seconds)}';
   }
 
+  Future<void> _loadArtwork(MediaQueueItem track) async {
+    final requestId = ++_artworkRequestId;
+    final trackKey = '${track.volume ?? 'internal'}:${track.path}';
+    final folder = track.path.contains('/')
+        ? track.path.substring(0, track.path.lastIndexOf('/') + 1)
+        : '';
+
+    // Inspect the folder once instead of issuing a series of expected 404s.
+    try {
+      final listing = track.volume == null
+          ? await widget.api.listDirectory(folder)
+          : await widget.api.listStorageDirectory(track.volume!, folder);
+      if (requestId != _artworkRequestId || !mounted) return;
+
+      const preferredNames = [
+        'cover.jpg', 'cover.jpeg', 'cover.png', 'cover.webp',
+        'folder.jpg', 'folder.png', 'album.jpg', 'album.png', 'front.jpg',
+      ];
+      FileEntry? artwork;
+      for (final name in preferredNames) {
+        for (final item in listing.items) {
+          if (!item.isDirectory && item.name.toLowerCase() == name) {
+            artwork = item;
+            break;
+          }
+        }
+        if (artwork != null) break;
+      }
+
+      if (artwork != null) {
+        final path = '$folder${artwork.name}';
+        final bytes = track.volume == null
+            ? await widget.api.downloadFile(path)
+            : await widget.api.downloadStorageFile(track.volume!, path);
+        if (requestId != _artworkRequestId || !mounted) return;
+        if (bytes.isNotEmpty) {
+          setState(() {
+            _coverBytes = bytes;
+            _coverForTrack = trackKey;
+          });
+          return;
+        }
+      }
+    } catch (_) {
+      // Artwork is optional; keep playback working when it is unavailable.
+    }
+
+    if (requestId == _artworkRequestId && mounted) {
+      setState(() {
+        _coverBytes = null;
+        _coverForTrack = trackKey;
+      });
+    }
+  }
   Widget _artwork() {
     return AspectRatio(
       aspectRatio: 1,
@@ -87,9 +858,20 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
           ],
         ),
         child: Stack(
+          fit: StackFit.expand,
           alignment: Alignment.center,
           children: [
-            Positioned(
+            if (_coverBytes != null && _coverForTrack == '${_queue[_currentIndex.clamp(0, _queue.length - 1).toInt()].volume ?? 'internal'}:${_queue[_currentIndex.clamp(0, _queue.length - 1).toInt()].path}')
+              ClipRRect(
+                borderRadius: BorderRadius.circular(28),
+                child: Image.memory(
+                  _coverBytes!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                ),
+              ),
+            if (_coverBytes == null || _coverForTrack != '${_queue[_currentIndex.clamp(0, _queue.length - 1).toInt()].volume ?? 'internal'}:${_queue[_currentIndex.clamp(0, _queue.length - 1).toInt()].path}')
+              Positioned(
               top: -42,
               right: -28,
               child: Container(
@@ -113,7 +895,8 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                 ),
               ),
             ),
-            Container(
+            if (_coverBytes == null || _coverForTrack != '${_queue[_currentIndex.clamp(0, _queue.length - 1).toInt()].volume ?? 'internal'}:${_queue[_currentIndex.clamp(0, _queue.length - 1).toInt()].path}')
+              Container(
               width: 174,
               height: 174,
               decoration: BoxDecoration(
@@ -145,7 +928,8 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                 ],
               ),
             ),
-            Positioned(
+            if (_coverBytes == null || _coverForTrack != '${_queue[_currentIndex.clamp(0, _queue.length - 1).toInt()].volume ?? 'internal'}:${_queue[_currentIndex.clamp(0, _queue.length - 1).toInt()].path}')
+              Positioned(
               left: 22,
               bottom: 20,
               child: Text(
@@ -173,7 +957,11 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
         return Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const SizedBox(width: 56),
+            IconButton(
+              tooltip: 'Previous track',
+              onPressed: _queue.length > 1 ? _player.previous : null,
+              icon: const Icon(Icons.skip_previous_rounded, color: Colors.white, size: 34),
+            ),
             IconButton.filled(
               tooltip: playing ? 'Pause' : 'Play',
               onPressed: _player.playOrPause,
@@ -185,7 +973,11 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
               iconSize: 38,
               icon: Icon(playing ? Icons.pause_rounded : Icons.play_arrow_rounded),
             ),
-            const SizedBox(width: 56),
+            IconButton(
+              tooltip: 'Next track',
+              onPressed: _queue.length > 1 ? _player.next : null,
+              icon: const Icon(Icons.skip_next_rounded, color: Colors.white, size: 34),
+            ),
           ],
         );
       },
@@ -279,11 +1071,14 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final title = widget.title.replaceAll(RegExp(r'\.[^.]+$'), '');
-    final folder = widget.path.split('/').take(widget.path.split('/').length - 1).join('/');
+    final currentTrack = _queue[_currentIndex.clamp(0, _queue.length - 1).toInt()];
+    final title = currentTrack.title.replaceAll(RegExp(r'\.[^.]+$'), '');
+    final folder = currentTrack.path.split('/').take(currentTrack.path.split('/').length - 1).join('/');
     return Scaffold(
       backgroundColor: const Color(0xFF0B0A12),
-      appBar: AppBar(
+      appBar: widget.isVideo && _isVideoFullscreen
+          ? null
+          : HomeServerAppBar(
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -293,7 +1088,9 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
           style: const TextStyle(fontSize: 11, letterSpacing: 2.0, fontWeight: FontWeight.w700),
         ),
       ),
-      body: Container(
+      body: widget.isVideo && _isVideoFullscreen
+          ? _videoSurface()
+          : Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
@@ -310,13 +1107,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                 padding: const EdgeInsets.fromLTRB(24, 12, 24, 28),
                 children: [
                   if (widget.isVideo)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(22),
-                      child: AspectRatio(
-                        aspectRatio: 16 / 9,
-                        child: Video(controller: _videoController, controls: NoVideoControls),
-                      ),
-                    )
+                    _videoSurface()
                   else
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -373,6 +1164,60 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                   _timeline(),
                   const SizedBox(height: 16),
                   _playbackControls(),
+                  if (!widget.isVideo) ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        IconButton(
+                          tooltip: 'Shuffle',
+                          onPressed: _toggleShuffle,
+                          color: _shuffle ? const Color(0xFFD8C9FF) : Colors.white54,
+                          icon: const Icon(Icons.shuffle_rounded),
+                        ),
+                        IconButton(
+                          tooltip: 'Repeat',
+                          onPressed: _cycleRepeat,
+                          color: _repeatMode == PlaylistMode.none ? Colors.white54 : const Color(0xFFD8C9FF),
+                          icon: Icon(_repeatMode == PlaylistMode.single
+                              ? Icons.repeat_one_rounded : Icons.repeat_rounded),
+                        ),
+                        IconButton(
+                          tooltip: 'Lyrics',
+                          onPressed: _showLyrics,
+                          color: Colors.white70,
+                          icon: const Icon(Icons.lyrics_outlined),
+                        ),
+                        IconButton(
+                          tooltip: 'Sleep timer',
+                          onPressed: _chooseSleepTimer,
+                          color: _sleepTimer == null ? Colors.white70 : const Color(0xFFD8C9FF),
+                          icon: const Icon(Icons.bedtime_outlined),
+                        ),
+                        IconButton(
+                          tooltip: 'Up next',
+                          onPressed: _showQueue,
+                          color: Colors.white70,
+                          icon: const Icon(Icons.queue_music_rounded),
+                        ),
+                        PopupMenuButton<double>(
+                          tooltip: 'Playback speed',
+                          initialValue: _playbackRate,
+                          onSelected: _setPlaybackRate,
+                          itemBuilder: (_) => [0.75, 1.0, 1.25, 1.5, 1.75, 2.0]
+                              .map((rate) => PopupMenuItem(
+                                value: rate,
+                                child: Text(rate.toString() + '×'),
+                              )).toList(),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Text(_playbackRate.toString() + '×',
+                              style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 28),
                   _volumeControl(),
                   const SizedBox(height: 18),

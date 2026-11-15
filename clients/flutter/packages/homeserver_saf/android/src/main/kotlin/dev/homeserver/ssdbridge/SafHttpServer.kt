@@ -74,13 +74,28 @@ class SafHttpServer(private val context: Context, private val token: String) : N
                     val parentPath = path.substringBeforeLast('/', "")
                     val parent = resolve(root, parentPath) ?: return jsonError(Response.Status.NOT_FOUND, "Parent folder not found")
                     if (!parent.isDirectory) return bad("Parent is not a folder")
-                    val existing = parent.findFile(name)
-                    if (existing?.isDirectory == true) return bad("A folder already uses this name")
-                    val target = existing ?: parent.createFile(mimeFor(name), name)
-                        ?: return jsonError(Response.Status.INTERNAL_ERROR, "Could not create file")
-                    val output = context.contentResolver.openOutputStream(target.uri, "wt")
-                        ?: return jsonError(Response.Status.INTERNAL_ERROR, "Cannot write file")
-                    session.inputStream.use { input -> output.use { input.copyTo(it) } }
+                    if (parent.findFile(name) != null) {
+                        return jsonError(Response.Status.CONFLICT, "An item with this name already exists")
+                    }
+                    val bodyFiles = HashMap<String, String>()
+                    session.parseBody(bodyFiles)
+                    val bodyPath = bodyFiles["content"]
+                        ?: return jsonError(Response.Status.BAD_REQUEST, "Upload body is missing")
+                    val bodyFile = bodyPath.takeIf { it.isNotBlank() }?.let { java.io.File(it) }
+                    val temporaryName = ".homeserver-upload-${java.util.UUID.randomUUID()}.part"
+                    val temporary = parent.createFile(mimeFor(name), temporaryName)
+                        ?: return jsonError(Response.Status.INTERNAL_ERROR, "Could not stage upload")
+                    try {
+                        context.contentResolver.openOutputStream(temporary.uri, "wt")?.use { output ->
+                            bodyFile?.inputStream()?.use { input -> input.copyTo(output) }
+                        } ?: return jsonError(Response.Status.INTERNAL_ERROR, "Cannot write file")
+                        if (!temporary.renameTo(name)) {
+                            return jsonError(Response.Status.INTERNAL_ERROR, "Could not finalize uploaded file")
+                        }
+                    } finally {
+                        bodyFile?.delete()
+                        if (temporary.exists()) temporary.delete()
+                    }
                     json(JSONObject().put("ok", true).put("name", name))
                 }
                 session.uri == "/v1/mkdir" && session.method == Method.POST -> {

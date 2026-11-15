@@ -1,5 +1,20 @@
 # Android SAF storage integration
 
+## Native Android server migration (in progress)
+
+The `feat/native-android-server` branch adds a native NanoHTTPD API listener on port `8000`. It is hosted by the Android foreground service and binds to `0.0.0.0` so a Tailscale peer can reach it. The API uses HTTP Basic authentication with username `admin`; the password is configured on the server phone and stored only as a salted PBKDF2 verifier in app-private preferences.
+
+The native API currently implements the Flutter file and USB storage routes:
+
+- Internal shared storage: list, download, byte-range stream, upload, create folder, rename, delete
+- USB/SSD SAF roots: volume status, list, download with byte ranges, upload, create folder, rename, delete
+- Public `GET /health`
+
+Server-phone setup is available directly from the connection screen via **Set up this phone as a HomeServer**. Grant all-files access for internal shared storage, set the native server password, select USB roots as needed, then start the service. The client connects to the server phone's Tailscale IP on port `8000`, username `admin`, and the password configured in the app.
+
+This is a migration build, not yet a verified plug-and-play release. Keep the existing Termux backend installed until the APK is built, installed on the server phone, and internal + USB read/write/stream operations have been tested on the actual devices. The legacy port-8765 SAF bridge remains optional compatibility code in this branch.
+
+
 USB access is built into the main HomeServer Android app through the local `homeserver_saf` Flutter plugin. Install the same HomeServer APK on the Android phone that runs Termux and has the SSD attached. The remote Flutter client can remain on your second phone.
 
 ## Setup on the server phone
