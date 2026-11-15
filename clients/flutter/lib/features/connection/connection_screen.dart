@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -15,37 +17,120 @@ class ConnectionScreen extends StatefulWidget {
 
 class _ConnectionScreenState extends State<ConnectionScreen> {
   static const _storage = FlutterSecureStorage();
+  static const _profilesKey = 'server_profiles';
   final _addressController = TextEditingController();
   final _portController = TextEditingController(text: '8000');
   final _usernameController = TextEditingController(text: 'admin');
   final _passwordController = TextEditingController();
 
+  List<Map<String, String>> _profiles = const [];
   bool _isConnecting = false;
   bool _obscurePassword = true;
   String? _message;
 
-  @override
-  void initState() {
-    super.initState();
-    _restoreAddress();
-  }
+  String _profileId(String address, String username) =>
+      base64Url.encode(utf8.encode('$address|$username')).replaceAll('=', '');
 
   Future<void> _restoreAddress() async {
+    try {
+      final raw = await _storage.read(key: _profilesKey);
+      final decoded = raw == null ? null : jsonDecode(raw);
+      if (decoded is List) {
+        _profiles = decoded.whereType<Map>().map((item) => {
+          'id': item['id']?.toString() ?? '',
+          'address': item['address']?.toString() ?? '',
+          'username': item['username']?.toString() ?? 'admin',
+        }).where((item) => item['id']!.isNotEmpty && item['address']!.isNotEmpty)
+          .toList(growable: true);
+      }
+    } catch (_) {
+      _profiles = [];
+    }
+
+    // Migrate the previous single-server credentials without losing them.
     final saved = await _storage.read(key: 'last_server_address');
-    if (!mounted || saved == null) return;
+    final username = await _storage.read(key: 'last_server_username') ?? 'admin';
+    final password = await _storage.read(key: 'last_server_password');
+    if (saved != null && password != null) {
+      final id = _profileId(saved, username);
+      if (!_profiles.any((profile) => profile['id'] == id)) {
+        _profiles.add({'id': id, 'address': saved, 'username': username});
+        await _storage.write(key: 'server_password_$id', value: password);
+        await _persistProfiles();
+      }
+    }
+
+    if (!mounted) return;
+    if (_profiles.isNotEmpty) {
+      await _selectProfile(_profiles.first, connect: false);
+    } else if (saved != null) {
+      _applyAddress(saved);
+      _usernameController.text = username;
+      _passwordController.text = password ?? '';
+    }
+    if (mounted) setState(() {});
+  }
+
+  void _applyAddress(String address) {
     final uri = Uri.tryParse(
-      saved.startsWith('http://') || saved.startsWith('https://')
-          ? saved
-          : 'http://$saved',
+      address.startsWith('http://') || address.startsWith('https://')
+          ? address
+          : 'http://$address',
     );
     if (uri == null) return;
     _addressController.text = uri.host;
-    if (uri.hasPort) _portController.text = uri.port.toString();
-    _usernameController.text =
-        await _storage.read(key: 'last_server_username') ?? 'admin';
+    _portController.text = uri.hasPort ? uri.port.toString() : '8000';
+  }
+
+  Future<void> _persistProfiles() async {
+    await _storage.write(key: _profilesKey, value: jsonEncode(_profiles));
+  }
+
+  Future<void> _selectProfile(
+    Map<String, String> profile, {
+    bool connect = true,
+  }) async {
+    _applyAddress(profile['address']!);
+    _usernameController.text = profile['username']!;
     _passwordController.text =
-        await _storage.read(key: 'last_server_password') ?? '';
-    if (mounted) setState(() {});
+        await _storage.read(key: 'server_password_${profile['id']}') ?? '';
+    if (!mounted) return;
+    setState(() => _message = null);
+    if (connect && _passwordController.text.isNotEmpty) await _connect();
+  }
+
+  Future<void> _addServer() async {
+    _addressController.clear();
+    _portController.text = '8000';
+    _usernameController.text = 'admin';
+    _passwordController.clear();
+    setState(() => _message = null);
+  }
+
+  Future<void> _removeProfile(Map<String, String> profile) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Remove server?'),
+        content: Text('Remove ${profile['address']} from saved servers?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    _profiles.removeWhere((item) => item['id'] == profile['id']);
+    await _storage.delete(key: 'server_password_${profile['id']}');
+    await _persistProfiles();
+    if (!mounted) return;
+    setState(() {});
   }
 
   Future<void> _connect() async {
@@ -70,21 +155,30 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     });
 
     try {
+      final address = '$host:$port';
       final api = ServerApi(
-        baseUrl: '$host:$port',
+        baseUrl: address,
         username: username,
         password: password,
       );
       await api.authenticate();
-      await _storage.write(key: 'last_server_address', value: '$host:$port');
+
+      final id = _profileId(address, username);
+      final profile = {'id': id, 'address': address, 'username': username};
+      _profiles.removeWhere((item) => item['id'] == id);
+      _profiles.insert(0, profile);
+      await _storage.write(key: 'server_password_$id', value: password);
+      await _persistProfiles();
+
+      // Keep the legacy keys for a seamless upgrade and restore path.
+      await _storage.write(key: 'last_server_address', value: address);
       await _storage.write(key: 'last_server_username', value: username);
       await _storage.write(key: 'last_server_password', value: password);
 
       if (!mounted) return;
+      setState(() {});
       await Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => HomeScreen(api: api),
-        ),
+        MaterialPageRoute<void>(builder: (_) => HomeScreen(api: api)),
       );
     } on DioException catch (error) {
       if (!mounted) return;
@@ -121,30 +215,91 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final colors = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
 
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('HomeServer'),
+        actions: [
+          IconButton(
+            tooltip: 'Add server',
+            onPressed: _isConnecting ? null : _addServer,
+            icon: const Icon(Icons.add_rounded),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 460),
+            constraints: const BoxConstraints(maxWidth: 520),
             child: ListView(
-              padding: const EdgeInsets.all(24),
-              shrinkWrap: true,
+              padding: const EdgeInsets.all(20),
               children: [
-                Icon(Icons.dns_rounded, size: 52, color: colorScheme.primary),
-                const SizedBox(height: 20),
-                Text(
-                  'HomeServer',
-                  style: Theme.of(context).textTheme.headlineMedium,
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Connect to your server and manage your files.',
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 32),
+                if (_profiles.isNotEmpty) ...[
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text('Your servers',
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            )),
+                      ),
+                      TextButton.icon(
+                        onPressed: _isConnecting ? null : _addServer,
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  ..._profiles.map((profile) => Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      leading: const CircleAvatar(
+                        child: Icon(Icons.dns_rounded),
+                      ),
+                      title: Text(profile['address']!),
+                      subtitle: Text(profile['username']!),
+                      onTap: _isConnecting
+                          ? null
+                          : () => _selectProfile(profile),
+                      trailing: PopupMenuButton<String>(
+                        onSelected: (value) {
+                          if (value == 'remove') _removeProfile(profile);
+                        },
+                        itemBuilder: (_) => const [
+                          PopupMenuItem(
+                            value: 'remove',
+                            child: Text('Remove server'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )),
+                  const SizedBox(height: 18),
+                  const Divider(),
+                  const SizedBox(height: 12),
+                  Text('Server details',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      )),
+                  const SizedBox(height: 12),
+                ] else ...[
+                  Icon(Icons.dns_rounded, size: 52, color: colors.primary),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Connect to your server',
+                    style: theme.textTheme.headlineSmall,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Add one or more HomeServer instances and switch between them anytime.',
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 28),
+                ],
                 TextField(
                   controller: _addressController,
                   keyboardType: TextInputType.url,
@@ -155,7 +310,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                     prefixIcon: Icon(Icons.language),
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
                 TextField(
                   controller: _portController,
                   keyboardType: TextInputType.number,
@@ -164,7 +319,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                     prefixIcon: Icon(Icons.settings_ethernet),
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
                 TextField(
                   controller: _usernameController,
                   autocorrect: false,
@@ -173,7 +328,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                     prefixIcon: Icon(Icons.person_outline),
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
                 TextField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
@@ -190,7 +345,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 18),
                 FilledButton.icon(
                   onPressed: _isConnecting ? null : _connect,
                   icon: _isConnecting
@@ -200,20 +355,20 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.link),
-                  label: Text(_isConnecting ? 'Connecting…' : 'Connect'),
+                  label: Text(_isConnecting ? 'Connecting…' : 'Connect & save server'),
                 ),
                 if (_message != null) ...[
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
                   Semantics(
                     liveRegion: true,
                     child: Text(
                       _message!,
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: colorScheme.error),
+                      style: TextStyle(color: colors.error),
                     ),
                   ),
                 ],
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
                 OutlinedButton.icon(
                   onPressed: _isConnecting
                       ? null
@@ -225,11 +380,10 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                   icon: const Icon(Icons.dns_outlined),
                   label: const Text('Set up this phone as a HomeServer'),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 18),
                 Text(
-                  'Use the admin username and the password configured on your server. '
-                  'Use HTTPS on untrusted networks.',
-                  style: Theme.of(context).textTheme.bodySmall,
+                  'Saved passwords are kept in Android secure storage. Use HTTPS on untrusted networks.',
+                  style: theme.textTheme.bodySmall,
                   textAlign: TextAlign.center,
                 ),
               ],
