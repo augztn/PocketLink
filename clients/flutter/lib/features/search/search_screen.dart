@@ -374,7 +374,7 @@ class _SearchScreenState extends State<SearchScreen> {
   Future<void> _loadOfflineResults() async {
     setState(() { _loading = true; _error = null; });
     try {
-      final cached = await _offlineCache.list(server: widget.api.baseUrl);
+      final cached = await _offlineCache.list(server: _offlineCache.serverId(widget.api));
       if (!mounted) return;
       setState(() {
         _results
@@ -409,7 +409,7 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Future<void> _removeOffline(_Result r) async {
-    await _offlineCache.remove(widget.api.baseUrl, r.volume, r.path);
+    await _offlineCache.remove(_offlineCache.serverId(widget.api), r.volume, r.path);
     if (!mounted) return;
     setState(() => _results.remove(r));
     _message('Removed from offline cache.');
