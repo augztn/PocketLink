@@ -26,7 +26,8 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
   final _usernameController = TextEditingController(text: 'admin');
   final _passwordController = TextEditingController();
 
-  List<Map<String, String>> _profiles = const [];
+  // This collection is mutated when servers are added, removed, or reordered.
+  List<Map<String, String>> _profiles = <Map<String, String>>[];
   bool _isConnecting = false;
   bool _obscurePassword = true;
   String? _message;
