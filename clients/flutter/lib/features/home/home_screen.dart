@@ -103,6 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _HomeDashboard(
         api: widget.api,
         onOpenExplore: _openExplore,
+        onOpenFiles: () => _openTab(2),
         onReturnToConnection: widget.onReturnToConnection,
       ),
       if (_initializedTabs.contains(1))
@@ -391,11 +392,13 @@ class _HomeDashboard extends StatefulWidget {
   const _HomeDashboard({
     required this.api,
     required this.onOpenExplore,
+    required this.onOpenFiles,
     this.onReturnToConnection,
   });
 
   final ServerApi api;
   final void Function(ExploreCategory category, {String? fileCategory}) onOpenExplore;
+  final VoidCallback onOpenFiles;
   final VoidCallback? onReturnToConnection;
 
   @override
@@ -529,7 +532,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
         _quickUpload();
         return;
       case 'files':
-        _openTab(2);
+        widget.onOpenFiles();
         return;
       case 'favorites':
         Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PhotoGalleryScreen(api: widget.api, initialTab: 3)));
