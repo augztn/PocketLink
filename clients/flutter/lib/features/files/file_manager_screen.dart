@@ -408,6 +408,12 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     try {
       final bytes = _selectedVolume == null ? await widget.api.downloadFile(_itemPath(item.name)) : await widget.api.downloadStorageFile(_selectedVolume!, _itemPath(item.name));
       if (!mounted) return;
+      HomeActivityStore.instance.recordFile(
+        serverUrl: widget.api.baseUrl,
+        title: item.name,
+        path: _itemPath(item.name),
+        volume: _selectedVolume,
+      );
       await showDialog<void>(
         context: context,
         builder: (context) => Dialog(
