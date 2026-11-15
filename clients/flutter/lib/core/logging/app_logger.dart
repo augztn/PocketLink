@@ -77,10 +77,10 @@ class AppLogger {
 
   static String _redact(String value) => value
       .replaceAll(
-        RegExp(r'(password|passwd|authorization|token|secret|api[_-]?key)(\\s*[:=]\\s*)[^,;\\s]+', caseSensitive: false),
+        RegExp(r'(password|passwd|authorization|token|secret|api[_-]?key)(\s*[:=]\s*)[^,;\s]+', caseSensitive: false),
         r'$1$2[REDACTED]',
       )
-      .replaceAll(RegExp(r'Basic\\s+[A-Za-z0-9+/=]+', caseSensitive: false), 'Basic [REDACTED]');
+      .replaceAll(RegExp(r'Basic\s+[A-Za-z0-9+/=]+', caseSensitive: false), 'Basic [REDACTED]');
 
   static Future<void> _rotateIfNeeded() async {
     final file = _logFile;
@@ -124,6 +124,7 @@ class AppLogger {
   }
 
   static Future<void> clear() async {
+    await _writeQueue;
     final file = _logFile;
     if (file != null && await file.exists()) await file.writeAsString('', flush: true);
     final backup = file == null ? null : File('${file.path}.1');
