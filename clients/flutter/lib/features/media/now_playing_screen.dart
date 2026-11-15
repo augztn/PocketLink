@@ -766,7 +766,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final artworkHeight = (constraints.maxHeight * 0.34)
-                .clamp(220.0, 290.0)
+                .clamp(250.0, 290.0)
                 .toDouble();
             return Column(
               children: [
