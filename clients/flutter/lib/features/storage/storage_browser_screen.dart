@@ -1,4 +1,5 @@
 import 'dart:io';
+import '../../core/widgets/home_server_app_bar.dart';
 
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
@@ -364,13 +365,13 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
         if (!didPop && _path.isNotEmpty) _goUp();
       },
       child: Scaffold(
-        appBar: AppBar(
+        appBar: HomeServerAppBar(
           title: const Text('External storage', style: TextStyle(fontWeight: FontWeight.w800)),
           actions: [
-            IconButton(tooltip: 'Transfers', onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen())), icon: const Icon(Icons.swap_vert_rounded)),
-            IconButton(tooltip: 'Upload', onPressed: _volume == null ? null : _upload, icon: const Icon(Icons.cloud_upload_outlined)),
-            IconButton(tooltip: 'New folder', onPressed: _volume == null ? null : _createFolder, icon: const Icon(Icons.create_new_folder_outlined)),
-            IconButton(tooltip: 'Refresh', onPressed: _loading ? null : _loadVolumes, icon: const Icon(Icons.refresh_rounded)),
+            HomeServerAppBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded, onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen()))),
+            HomeServerAppBarAction(label: 'Upload', icon: Icons.cloud_upload_outlined, onPressed: _volume == null ? null : _upload),
+            HomeServerAppBarAction(label: 'New folder', icon: Icons.create_new_folder_outlined, onPressed: _volume == null ? null : _createFolder),
+            HomeServerAppBarAction(label: 'Refresh', icon: Icons.refresh_rounded, onPressed: _loading ? null : _loadVolumes),
           ],
         ),
         body: Column(children: [
