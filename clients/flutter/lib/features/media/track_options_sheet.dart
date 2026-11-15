@@ -1,16 +1,11 @@
 import 'package:flutter/material.dart';
 
 enum TrackOptionAction {
-  favorite,
-  pin,
+  download,
   share,
-  addToPlaylist,
   playNext,
   addToQueue,
-  download,
   removeFromCache,
-  openAlbum,
-  openArtist,
   showInFolder,
   trackInfo,
   sleepTimer,
@@ -23,9 +18,8 @@ class TrackOptionsSheet {
   static Future<void> show(
     BuildContext context, {
     required ValueChanged<TrackOptionAction> onAction,
-    required bool isFavorite,
-    required bool isPinned,
     required bool isCached,
+    required bool hasLyrics,
   }) {
     return showGeneralDialog<void>(
       context: context,
@@ -61,16 +55,9 @@ class TrackOptionsSheet {
                       child: Row(
                         children: [
                           _TopAction(
-                            icon: isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
-                            label: 'Favorite',
-                            selected: isFavorite,
-                            onTap: () => _select(dialogContext, onAction, TrackOptionAction.favorite),
-                          ),
-                          _TopAction(
-                            icon: isPinned ? Icons.push_pin_rounded : Icons.push_pin_outlined,
-                            label: 'Pin',
-                            selected: isPinned,
-                            onTap: () => _select(dialogContext, onAction, TrackOptionAction.pin),
+                            icon: Icons.download_rounded,
+                            label: 'Download',
+                            onTap: () => _select(dialogContext, onAction, TrackOptionAction.download),
                           ),
                           _TopAction(
                             icon: Icons.ios_share_rounded,
@@ -88,30 +75,23 @@ class TrackOptionsSheet {
                       child: ListView(
                         padding: const EdgeInsets.fromLTRB(8, 0, 8, 18),
                         children: [
-                          _ActionTile(Icons.playlist_add_rounded, 'Add to playlist', () => _select(dialogContext, onAction, TrackOptionAction.addToPlaylist)),
                           _ActionTile(Icons.skip_next_rounded, 'Play next', () => _select(dialogContext, onAction, TrackOptionAction.playNext)),
                           _ActionTile(Icons.queue_music_rounded, 'Add to queue', () => _select(dialogContext, onAction, TrackOptionAction.addToQueue)),
-                          _ActionTile(Icons.download_rounded, 'Download original', () => _select(dialogContext, onAction, TrackOptionAction.download)),
-                          _ActionTile(
-                            isCached ? Icons.delete_sweep_outlined : Icons.offline_pin_outlined,
-                            isCached ? 'Remove from cache' : 'Remove from cache',
-                            isCached ? () => _select(dialogContext, onAction, TrackOptionAction.removeFromCache) : null,
-                            subdued: !isCached,
-                          ),
+                          if (isCached)
+                            _ActionTile(Icons.delete_sweep_outlined, 'Remove from offline cache', () => _select(dialogContext, onAction, TrackOptionAction.removeFromCache)),
                           const Padding(
                             padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                             child: Divider(height: 1, color: Color(0x22FFFFFF)),
                           ),
-                          _ActionTile(Icons.album_outlined, 'Open album', () => _select(dialogContext, onAction, TrackOptionAction.openAlbum)),
-                          _ActionTile(Icons.person_outline_rounded, 'Open artist', () => _select(dialogContext, onAction, TrackOptionAction.openArtist)),
                           _ActionTile(Icons.folder_open_rounded, 'Show in folder', () => _select(dialogContext, onAction, TrackOptionAction.showInFolder)),
+                          _ActionTile(Icons.info_outline_rounded, 'Track & file info', () => _select(dialogContext, onAction, TrackOptionAction.trackInfo)),
                           const Padding(
                             padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                             child: Divider(height: 1, color: Color(0x22FFFFFF)),
                           ),
-                          _ActionTile(Icons.info_outline_rounded, 'Track & file info', () => _select(dialogContext, onAction, TrackOptionAction.trackInfo)),
                           _ActionTile(Icons.bedtime_outlined, 'Sleep timer', () => _select(dialogContext, onAction, TrackOptionAction.sleepTimer)),
-                          _ActionTile(Icons.lyrics_outlined, 'Lyrics offset', () => _select(dialogContext, onAction, TrackOptionAction.lyricsOffset)),
+                          if (hasLyrics)
+                            _ActionTile(Icons.lyrics_outlined, 'Lyrics offset', () => _select(dialogContext, onAction, TrackOptionAction.lyricsOffset)),
                         ],
                       ),
                     ),
@@ -139,12 +119,11 @@ class TrackOptionsSheet {
 }
 
 class _TopAction extends StatelessWidget {
-  const _TopAction({required this.icon, required this.label, required this.onTap, this.selected = false});
+  const _TopAction({required this.icon, required this.label, required this.onTap});
 
   final IconData icon;
   final String label;
   final VoidCallback onTap;
-  final bool selected;
 
   @override
   Widget build(BuildContext context) => Expanded(
@@ -156,7 +135,7 @@ class _TopAction extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 23, color: selected ? const Color(0xFFFFD66B) : Colors.white70),
+            Icon(icon, size: 23, color: Colors.white70),
             const SizedBox(height: 6),
             Text(label, style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600)),
           ],
@@ -167,12 +146,11 @@ class _TopAction extends StatelessWidget {
 }
 
 class _ActionTile extends StatelessWidget {
-  const _ActionTile(this.icon, this.label, this.onTap, {this.subdued = false});
+  const _ActionTile(this.icon, this.label, this.onTap);
 
   final IconData icon;
   final String label;
-  final VoidCallback? onTap;
-  final bool subdued;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) => ListTile(
@@ -180,8 +158,8 @@ class _ActionTile extends StatelessWidget {
     minLeadingWidth: 24,
     horizontalTitleGap: 12,
     contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-    leading: Icon(icon, size: 20, color: subdued ? Colors.white30 : Colors.white70),
-    title: Text(label, style: TextStyle(color: subdued ? Colors.white38 : Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
+    leading: Icon(icon, size: 20, color: Colors.white70),
+    title: Text(label, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
     onTap: onTap,
   );
 }
