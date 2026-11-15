@@ -194,6 +194,8 @@ jobs:
           print("Updated plugin compile SDK: " + ", ".join(patched))
           PY
       - run: flutter build apk --release
+      - name: Run native Android unit tests
+        run: cd android && ./gradlew :homeserver_saf:testDebugUnitTest
       - name: Run native Android integration tests
         uses: ReactiveCircus/android-emulator-runner@v2
         with:
