@@ -98,6 +98,13 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     if (oldWidget.initialCategory != widget.initialCategory) {
       _category = widget.initialCategory;
     }
+    if (oldWidget.externalDriveRequest != widget.externalDriveRequest &&
+        widget.externalDriveRequest > 0) {
+      _selectFirstExternalDrive();
+    }
+    if (oldWidget.initialVolume != widget.initialVolume && widget.initialVolume != null) {
+      _selectPartition(widget.initialVolume);
+    }
   }
 
   @override
@@ -136,18 +143,6 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   }
 
   void _saveScrollOffset() => _saveState();
-
-  @override
-  void didUpdateWidget(covariant FileManagerScreen oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.externalDriveRequest != widget.externalDriveRequest &&
-        widget.externalDriveRequest > 0) {
-      _selectFirstExternalDrive();
-    }
-    if (oldWidget.initialVolume != widget.initialVolume && widget.initialVolume != null) {
-      _selectPartition(widget.initialVolume);
-    }
-  }
 
   Future<void> _selectFirstExternalDrive() async {
     try {
