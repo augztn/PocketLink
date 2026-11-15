@@ -339,7 +339,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
         leading:selecting?IconButton(onPressed:()=>setState(selected.clear),icon:const Icon(Icons.close)):null,
         actions:[
           IconButton(onPressed:()=>Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>const TransferManagerScreen())),icon:const Icon(Icons.swap_vert_rounded),tooltip:'Transfers'),
-          if(!selecting)IconButton(onPressed:()=>setState(()=>searchOpen=!searchOpen),icon:Icon(searchOpen?Icons.close:Icons.search),tooltip:'Search'),
+          if(!selecting && widget.showSearch)IconButton(onPressed:()=>setState(()=>searchOpen=!searchOpen),icon:Icon(searchOpen?Icons.close:Icons.search),tooltip:'Search'),
           if(!selecting)IconButton(
             onPressed:()=>setState(()=>tab=tab==3?0:3),
             icon:Icon(tab==3?Icons.favorite:Icons.favorite_border),
@@ -349,7 +349,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
         ],
       ),
       body:Column(children:[
-        if(searchOpen)Padding(padding:const EdgeInsets.fromLTRB(16,4,16,8),child:TextField(
+        if(widget.showSearch && searchOpen)Padding(padding:const EdgeInsets.fromLTRB(16,4,16,8),child:TextField(
           controller:search,autofocus:true,onChanged:(_)=>setState((){}),
           decoration:InputDecoration(hintText:'Search photos, folders or dates',prefixIcon:const Icon(Icons.search),
             suffixIcon:IconButton(onPressed:(){search.clear();setState((){});},icon:const Icon(Icons.clear)),
