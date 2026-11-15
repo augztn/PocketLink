@@ -75,7 +75,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
             onBackAtRoot: widget.onBackAtRoot,
           )
         else if (category == ExploreCategory.drives)
-          StorageBrowserScreen(api: widget.api)
+          StorageBrowserScreen(api: widget.api, showSearch: false)
         else if (category == ExploreCategory.photos)
           PhotoGalleryScreen(api: widget.api, showSearch: false)
         else if (category == ExploreCategory.music)
