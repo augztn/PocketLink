@@ -78,12 +78,11 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     _pendingScrollOffset = saved.scrollOffset;
     _contentScrollController.addListener(_saveScrollOffset);
     _scan();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _restoreScrollOffset());
   }
 
   void _restoreScrollOffset() {
-    if (!mounted || !_folderScrollController.hasClients || _pendingScrollOffset <= 0) return;
-    _folderScrollController.jumpTo(_pendingScrollOffset.clamp(0, _folderScrollController.position.maxScrollExtent).toDouble());
+    if (!mounted || !_contentScrollController.hasClients || _pendingScrollOffset <= 0) return;
+    _contentScrollController.jumpTo(_pendingScrollOffset.clamp(0, _contentScrollController.position.maxScrollExtent).toDouble());
     _pendingScrollOffset = 0;
   }
 
@@ -96,7 +95,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       view: _libraryView,
       sortBy: _sortBy,
       layoutMode: _layoutMode,
-      scrollOffset: _folderScrollController.hasClients ? _folderScrollController.offset : current.scrollOffset,
+      scrollOffset: _contentScrollController.hasClients ? _contentScrollController.offset : current.scrollOffset,
     ));
   }
 
@@ -108,7 +107,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     final parent = parts.join('/');
     setState(() => _currentFolderPath = parent);
     _saveState(folderPath: parent);
-    if (_folderScrollController.hasClients) _folderScrollController.jumpTo(0);
+    if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0);
   }
 
   String _volumeName(String? id) {
@@ -573,7 +572,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
           ),
         Expanded(
           child: ListView(
-            controller: _folderScrollController,
+            controller: _contentScrollController,
             padding: EdgeInsets.fromLTRB(12, 8, 12, 104 + MediaQuery.paddingOf(context).bottom),
             children: [
               for (final folder in folders)
@@ -589,7 +588,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                         _currentFolderPath = folder.path;
                       });
                       _saveState(folderPath: folder.path);
-                      if (_folderScrollController.hasClients) _folderScrollController.jumpTo(0);
+                      if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0);
                     },
                   ),
                 ),
@@ -669,8 +668,8 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   @override
   void dispose() {
     _saveState();
-    _folderScrollController.removeListener(_saveScrollOffset);
-    _folderScrollController.dispose();
+    _contentScrollController.removeListener(_saveScrollOffset);
+    _contentScrollController.dispose();
     super.dispose();
   }
 
