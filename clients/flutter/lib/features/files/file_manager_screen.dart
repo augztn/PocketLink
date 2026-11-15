@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../core/widgets/home_server_app_bar.dart';
 
 import '../../core/network/server_api.dart';
+import '../home/browser_state_store.dart';
 import '../../core/settings/app_settings.dart';
 import '../transfers/transfer_manager.dart';
 import '../transfers/transfer_manager_screen.dart';
@@ -37,6 +38,9 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   bool _loading = true;
   String? _error;
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  late final String _stateKey;
+  String _sortBy = 'name';
 
   String _searchQuery = '';
   late String _category = widget.initialCategory;
@@ -88,9 +92,33 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   @override
   void initState() {
     super.initState();
-    _path = widget.initialPath;
-    _load(widget.initialPath);
+    _stateKey = widget.api.baseUrl;
+    final saved = BrowserStateStore.instance.fileState(_stateKey);
+    _path = widget.initialPath.isNotEmpty ? widget.initialPath : saved.path;
+    _category = widget.initialCategory != 'All' ? widget.initialCategory : saved.category;
+    _sortBy = saved.sortBy;
+    _gridView = saved.gridView;
+    _scrollController.addListener(_saveScrollOffset);
+    _load(_path);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _scrollController.hasClients && saved.scrollOffset > 0) {
+        _scrollController.jumpTo(saved.scrollOffset.clamp(0, _scrollController.position.maxScrollExtent));
+      }
+    });
   }
+
+  void _saveState({String? path}) {
+    final current = BrowserStateStore.instance.fileState(_stateKey);
+    BrowserStateStore.instance.updateFile(_stateKey, current.copyWith(
+      path: path ?? _path,
+      category: _category,
+      sortBy: _sortBy,
+      gridView: _gridView,
+      scrollOffset: _scrollController.hasClients ? _scrollController.offset : current.scrollOffset,
+    ));
+  }
+
+  void _saveScrollOffset() => _saveState();
 
   Future<void> _load([String? path]) async {
     final target = path ?? _path;
@@ -104,6 +132,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
       setState(() {
         _path = result.path == '.' ? '' : result.path;
         _listing = result;
+        _saveState(path: _path);
       });
     } on DioException catch (error) {
       if (!mounted) return;
@@ -337,6 +366,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     if (_path.isEmpty) return;
     final parts = _path.split('/');
     parts.removeLast();
+    if (_scrollController.hasClients) _scrollController.jumpTo(0);
     await _load(parts.join('/'));
   }
 
@@ -354,6 +384,9 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
 
   @override
   void dispose() {
+    _saveState();
+    _scrollController.removeListener(_saveScrollOffset);
+    _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -367,7 +400,16 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     final items = allItems.where((item) {
       if (!_matchesCategory(item)) return false;
       return query.isEmpty || item.name.toLowerCase().contains(query);
-    }).toList(growable: false);
+    }).toList();
+    items.sort((a, b) {
+      if (a.isDirectory != b.isDirectory) return a.isDirectory ? -1 : 1;
+      if (_sortBy == 'largest') return b.size.compareTo(a.size);
+      if (_sortBy == 'newest') {
+        return (DateTime.tryParse(b.modified)?.millisecondsSinceEpoch ?? 0)
+            .compareTo(DateTime.tryParse(a.modified)?.millisecondsSinceEpoch ?? 0);
+      }
+      return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+    });
 
     Widget fileIcon(FileEntry item, {double size = 24}) {
       final color = item.isDirectory ? colors.primary : colors.secondary;
@@ -417,12 +459,12 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     }
 
     return PopScope(
-      canPop: !widget.isActive,
+      canPop: !widget.isActive && _path.isEmpty,
       onPopInvokedWithResult: (didPop, result) {
-        if (didPop || !widget.isActive) return;
+        if (didPop) return;
         if (_path.isNotEmpty) {
           _goUp();
-        } else {
+        } else if (widget.isActive) {
           widget.onBackAtRoot?.call();
         }
       },
@@ -509,6 +551,30 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                 ),
               ),
             ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 0, 18, 8),
+              child: SizedBox(
+                height: 34,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: [
+                    TextButton(
+                      onPressed: _path.isEmpty ? null : () => _load(''),
+                      child: const Text('Internal storage'),
+                    ),
+                    for (var i = 0; i < _path.split('/').where((part) => part.isNotEmpty).length; i++) ...[
+                      const Center(child: Icon(Icons.chevron_right_rounded, size: 17)),
+                      TextButton(
+                        onPressed: i == _path.split('/').where((part) => part.isNotEmpty).length - 1
+                            ? null
+                            : () => _load(_path.split('/').where((part) => part.isNotEmpty).take(i + 1).join('/')),
+                        child: Text(_path.split('/').where((part) => part.isNotEmpty).elementAt(i)),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
             if (widget.showSearch) Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: TextField(
@@ -544,15 +610,25 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                         child: ChoiceChip(
                           label: Text(category),
                           selected: _category == category,
-                          onSelected: (_) => setState(() => _category = category),
+                          onSelected: (_) { setState(() => _category = category); _saveState(); },
                           showCheckmark: false,
                         ),
                       ),
                   ],
                 )),
+                PopupMenuButton<String>(
+                  tooltip: 'Sort files',
+                  onSelected: (value) { setState(() => _sortBy = value); _saveState(); },
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'name', child: Text('Name')),
+                    PopupMenuItem(value: 'newest', child: Text('Newest')),
+                    PopupMenuItem(value: 'largest', child: Text('Largest')),
+                  ],
+                  icon: const Icon(Icons.sort_rounded),
+                ),
                 IconButton(
                   tooltip: _gridView ? 'List view' : 'Grid view',
-                  onPressed: () => setState(() => _gridView = !_gridView),
+                  onPressed: () { setState(() => _gridView = !_gridView); _saveState(); },
                   icon: Icon(_gridView ? Icons.view_list_rounded : Icons.grid_view_rounded),
                 ),
                 const SizedBox(width: 8),
@@ -595,6 +671,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                               onRefresh: () => _load(),
                               child: _gridView
                                   ? GridView.builder(
+                                      controller: _scrollController,
                                       physics: const AlwaysScrollableScrollPhysics(),
                                       padding: EdgeInsets.fromLTRB(16, 12, 16, 104 + MediaQuery.paddingOf(context).bottom),
                                       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
@@ -644,6 +721,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                                       },
                                     )
                                   : ListView.separated(
+                                      controller: _scrollController,
                                       physics: const AlwaysScrollableScrollPhysics(),
                                       padding: EdgeInsets.fromLTRB(16, 12, 16, 104 + MediaQuery.paddingOf(context).bottom),
                                       itemCount: items.length,
