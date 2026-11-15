@@ -638,14 +638,20 @@ class _PhotoViewerState extends State<_PhotoViewer>{
     final p=widget.photos[index];
     return Scaffold(
       backgroundColor:Colors.black,
-      appBar:controls?AppBar(
-        backgroundColor:Colors.black,foregroundColor:Colors.white,
+      appBar:controls?HomeServerAppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
         title:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
           Text(p.file.name,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:15)),
           Text('${index+1} / ${widget.photos.length}',style:const TextStyle(fontSize:11,color:Colors.white70)),
         ]),
-        actions:[IconButton(onPressed:()=>setState(()=>widget.onFavorite(p)),
-          icon:Icon(widget.favorite(p)?Icons.favorite:Icons.favorite_border))],
+        actions:[
+          HomeServerAppBarAction(
+            label: widget.favorite(p) ? 'Remove favorite' : 'Add favorite',
+            icon: widget.favorite(p) ? Icons.favorite : Icons.favorite_border,
+            onPressed: () => setState(() => widget.onFavorite(p)),
+          ),
+        ],
       ):null,
       body:GestureDetector(
         onTap:()=>setState(()=>controls=!controls),
