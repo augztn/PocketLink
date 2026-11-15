@@ -17,7 +17,6 @@ import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
 import '../files/documents_browser_screen.dart';
 import '../library/photo_gallery_screen.dart';
-import '../storage/storage_browser_screen.dart';
 import '../storage/local_storage_setup_screen.dart';
 import '../transfers/transfer_manager_screen.dart';
 import '../transfers/transfer_manager.dart';
