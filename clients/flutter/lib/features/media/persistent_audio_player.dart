@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 
 import '../../core/network/server_api.dart';
+import '../../core/storage/home_activity_store.dart';
 
 class MediaQueueItem {
   const MediaQueueItem({required this.title, required this.path, this.volume, this.localPath, this.size});
@@ -27,6 +28,10 @@ class PersistentAudioPlayer extends ChangeNotifier {
     }
     _playlistSubscription = player.stream.playlist.listen((playlist) {
       _currentIndex = playlist.index.clamp(0, _queue.isEmpty ? 0 : _queue.length - 1).toInt();
+      final current = currentItem;
+      if (current != null && _active && _music && _api != null) {
+        unawaited(HomeActivityStore.instance.recordTrack(serverUrl: _api!.baseUrl, title: current.title, path: current.path, volume: current.volume));
+      }
       notifyListeners();
       unawaited(_syncMediaSession());
     });
