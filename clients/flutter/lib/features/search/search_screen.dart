@@ -10,6 +10,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/network/server_api.dart';
+import '../../core/network/offline_file_cache.dart';
+import 'dart:io';
 import '../files/file_manager_screen.dart';
 import '../media/media_player_screen.dart';
 import '../media/persistent_audio_player.dart';
@@ -23,7 +25,8 @@ class SearchScreen extends StatefulWidget {
 }
 
 class _Result {
-  const _Result(this.file, this.path, this.volumeName, this.volume);
+  const _Result(this.file, this.path, this.volumeName, this.volume, {this.localPath});
+  final String? localPath;
   final FileEntry file;
   final String path;
   final String volumeName;
@@ -40,6 +43,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
   final _controller = TextEditingController();
   final _results = <_Result>[];
+  final _offlineCache = OfflineFileCache();
   final _volumes = <StorageVolume>[];
   Timer? _debounce;
   String _category = 'All';
@@ -130,12 +134,13 @@ class _SearchScreenState extends State<SearchScreen> {
 
   bool _quickMatch(_Result r) {
     if (_quick == 'large') return r.file.size > 100 * 1024 * 1024;
+    if (_quick == 'offline') return r.localPath != null;
     if (_quick == 'today') {
-      final d = DateTime.tryParse(r.file.modified)?.toLocal();
+      final d = DateTime.tryParse(r.file.created ?? r.file.modified)?.toLocal();
       final n = DateTime.now();
       return d != null && d.year == n.year && d.month == n.month && d.day == n.day;
     }
-    return _quick == null;
+    return _quick == null || _quick == 'offline';
   }
 
   List<_Result> get _visible {
@@ -146,6 +151,7 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Future<void> _scan({bool refresh = false}) async {
+    if (_quick == 'offline') { await _loadOfflineResults(); return; }
     final query = _controller.text.trim();
     if (query.isEmpty && _quick == null) return;
     if (_loading) return;
@@ -217,7 +223,8 @@ class _SearchScreenState extends State<SearchScreen> {
     final next = _quick == value ? null : value;
     _controller.clear();
     setState(() => _quick = next);
-    if (_quick != null && _quick != 'offline') _scan();
+    if (_quick == 'offline') { _loadOfflineResults(); }
+    else if (_quick != null) _scan();
   }
 
   void _chooseScope(String? value) {
@@ -280,7 +287,14 @@ class _SearchScreenState extends State<SearchScreen> {
   Future<void> _open(_Result r) async {
     final e = _ext(r.file.name);
     final audio = _audio.contains(e), video = _video.contains(e);
-    if (audio || video) {
+    if (r.localPath != null && _photo.contains(e)) {
+      await Navigator.push(context, MaterialPageRoute<void>(builder: (_) => Scaffold(
+        appBar: AppBar(title: Text(r.file.name)),
+        body: Center(child: InteractiveViewer(child: Image.file(File(r.localPath!), fit: BoxFit.contain))))));
+    } else if (r.localPath != null && (audio || video)) {
+      await Navigator.push(context, MaterialPageRoute<void>(builder: (_) => MediaPlayerScreen(
+        api: widget.api, title: r.file.name, path: r.localPath!, isVideo: video))));
+    } else if (audio || video) {
       final queue = _visible.where((v) => audio ? _audio.contains(_ext(v.file.name)) : _video.contains(_ext(v.file.name)))
         .map((v) => MediaQueueItem(title: v.file.name, path: v.path, volume: v.volume)).toList(growable: false);
       final index = queue.indexWhere((v) => v.path == r.path && v.volume == r.volume);
@@ -298,9 +312,56 @@ class _SearchScreenState extends State<SearchScreen> {
     }
   }
 
-  Future<Uint8List> _bytes(_Result r) => r.volume == null
-    ? widget.api.downloadFile(r.path)
-    : widget.api.downloadStorageFile(r.volume!, r.path);
+  Future<void> _loadOfflineResults() async {
+    setState(() { _loading = true; _error = null; });
+    try {
+      final cached = await _offlineCache.list(server: widget.api.baseUrl);
+      if (!mounted) return;
+      setState(() {
+        _results
+          ..clear()
+          ..addAll(cached.map((entry) => _Result(
+            entry.entry, entry.path,
+            entry.volume == null ? 'Internal storage' : entry.volume!,
+            entry.volume,
+            localPath: entry.localPath,
+          )));
+        _scanned = true;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _error = 'Could not read offline cache.');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _saveOffline(_Result r) async {
+    try {
+      await _offlineCache.cache(
+        api: widget.api, path: r.path, volume: r.volume,
+        name: r.file.name, size: r.file.size, modified: r.file.modified,
+      );
+      if (!mounted) return;
+      _message('Saved original file for offline access.');
+      if (_quick == 'offline') await _loadOfflineResults();
+    } catch (e) {
+      if (mounted) _message(e is StateError ? e.message.toString() : 'Could not cache this file.');
+    }
+  }
+
+  Future<void> _removeOffline(_Result r) async {
+    await _offlineCache.remove(widget.api.baseUrl, r.volume, r.path);
+    if (!mounted) return;
+    setState(() => _results.remove(r));
+    _message('Removed from offline cache.');
+  }
+
+  Future<Uint8List> _bytes(_Result r) async {
+    if (r.localPath != null) return File(r.localPath!).readAsBytes();
+    return r.volume == null
+      ? widget.api.downloadFile(r.path)
+      : widget.api.downloadStorageFile(r.volume!, r.path);
+  }
 
   Future<void> _download(_Result r) async {
     try {
@@ -380,7 +441,7 @@ class _SearchScreenState extends State<SearchScreen> {
             text: _highlight(r.file.name, q, theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700))),
           subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(breadcrumb, maxLines: 1, overflow: TextOverflow.ellipsis),
-            Text('${_size(r.file.size)}  ·  ${_time(r.file.modified)}', style: theme.textTheme.labelSmall),
+            Text('${_size(r.file.size)}  ·  ${r.file.created == null ? 'Modified' : 'Added'} ${_time(r.file.created ?? r.file.modified)}', style: theme.textTheme.labelSmall),
           ]),
           isThreeLine: true,
           onTap: () => _open(r),
@@ -388,6 +449,8 @@ class _SearchScreenState extends State<SearchScreen> {
             onSelected: (v) {
               switch (v) {
                 case 'folder': _openFolder(r); break;
+                case 'offline': _saveOffline(r); break;
+                case 'removeOffline': _removeOffline(r); break;
                 case 'download': _download(r); break;
                 case 'share': _share(r); break;
                 case 'rename': _rename(r); break;
@@ -396,6 +459,8 @@ class _SearchScreenState extends State<SearchScreen> {
             },
             itemBuilder: (_) => const [
               PopupMenuItem(value: 'folder', child: Text('Open containing folder')),
+              PopupMenuItem(value: 'offline', child: Text('Save for offline')),
+              if (r.localPath != null) PopupMenuItem(value: 'removeOffline', child: Text('Remove offline copy')),
               PopupMenuItem(value: 'download', child: Text('Download')),
               PopupMenuItem(value: 'share', child: Text('Share')),
               PopupMenuItem(value: 'rename', child: Text('Rename')),
@@ -433,13 +498,13 @@ class _SearchScreenState extends State<SearchScreen> {
       const SizedBox(height: 10),
       Wrap(children: [
         _quickChip('Large files · 100 MB+', 'large', Icons.data_usage_rounded),
-        _quickChip('Added today', 'today', Icons.today_rounded),
+        _quickChip('Added / modified today', 'today', Icons.today_rounded),
         _quickChip('Offline cached', 'offline', Icons.offline_pin_rounded),
       ]),
       if (_quick == 'offline') Padding(padding: const EdgeInsets.only(top: 12),
-        child: Text('Offline file caching is not available yet. Original files remain on your server.',
+        child: Text('Offline copies are stored privately on this device. Cache limit: 512 MB; least-recently-used files are evicted automatically.',
           style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant))),
-      if (_quick == 'large' || _quick == 'today') ...[
+      if (_quick == 'large' || _quick == 'today' || _quick == 'offline') ...[
         const SizedBox(height: 18),
         _resultsList(theme, shrink: true),
       ],
@@ -495,9 +560,7 @@ class _SearchScreenState extends State<SearchScreen> {
         Expanded(child: query.isEmpty && _quick == null
           ? _idle(theme)
           : _quick == 'offline'
-            ? Center(child: Padding(padding: const EdgeInsets.all(28), child: Text(
-                'Offline file caching is not available yet. Search does not store server originals locally.',
-                textAlign: TextAlign.center, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant))))
+            ? _resultsList(theme)
             : query.isEmpty
               ? ListView(padding: EdgeInsets.only(bottom: 96 + MediaQuery.paddingOf(context).bottom),
                   children: [_resultsList(theme, shrink: true)])
