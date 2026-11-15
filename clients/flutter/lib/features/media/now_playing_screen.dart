@@ -64,7 +64,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   int? _sleepMinutes;
   double _dragPosition = 0;
 
-  MediaQueueItem get _track => _persistent.currentItem ?? widget.queue[widget.initialIndex.clamp(0, widget.queue.length - 1)];
+  MediaQueueItem get _track => _persistent.currentItem ?? widget.queue[widget.initialIndex.clamp(0, widget.queue.length - 1).toInt()];
   String get _trackKey => '${_track.volume ?? 'internal'}:${_track.path}';
   String get _title => _track.title.replaceAll(RegExp(r'\\.[^.]+$'), '');
   String get _folder => _track.path.contains('/') ? _track.path.substring(0, _track.path.lastIndexOf('/')) : 'Internal storage';
@@ -282,7 +282,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
 
   Future<void> _downloadTrack() async {
     try {
-      final bytes = await _fileBytes();
+      final bytes = Uint8List.fromList(await _fileBytes());
       final saved = await FilePicker.platform.saveFile(
         dialogTitle: 'Save original track',
         fileName: _track.title,
@@ -296,7 +296,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
 
   Future<void> _shareTrack() async {
     try {
-      final bytes = await _fileBytes();
+      final bytes = Uint8List.fromList(await _fileBytes());
       await Share.shareXFiles([XFile.fromData(bytes, name: _track.title)], text: _title);
     } catch (_) {
       _message('Could not share this track.');
