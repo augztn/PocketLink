@@ -581,21 +581,6 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
     );
   }
 
-  Widget _volumePill(IconData icon, String label) {
-    return Flexible(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
-        decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.65), borderRadius: BorderRadius.circular(30)),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 14), const SizedBox(width: 5),
-          Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700))),
-        ]),
-      ),
-    );
-  }
-
-
   String _formatSize(int bytes) {
     if (bytes < 1024) return '$bytes B';
     const units = ['KB', 'MB', 'GB', 'TB'];
