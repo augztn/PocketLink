@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../core/widgets/home_server_app_bar.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../core/widgets/home_server_app_bar.dart';
 
 import '../../core/logging/app_logger.dart';
 
