@@ -616,6 +616,22 @@ class _SearchScreenState extends State<SearchScreen> {
           )),
         ])),
         if (_loading) const LinearProgressIndicator(minHeight: 2),
+        if (_quick != null) Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: InputChip(
+              selected: true,
+              label: Text(switch (_quick) {
+                'offline' => 'Offline cached',
+                'large' => 'Large files · 100 MB+',
+                'today' => 'Added / modified today',
+                _ => 'Filter active',
+              }),
+              onDeleted: () => _chooseQuick(_quick!),
+            ),
+          ),
+        ),
         Expanded(child: query.isEmpty && _quick == null
           ? _idle(theme)
           : _quick == 'offline'
