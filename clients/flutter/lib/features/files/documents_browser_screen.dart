@@ -51,7 +51,8 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
     super.dispose();
   }
 
-  Future<void> _scan() async {
+  Future<void> _scan({bool refresh = false}) async {
+    if (refresh) widget.api.invalidateDirectoryCache();
     setState(() {
       _loading = true;
       _error = null;
@@ -163,7 +164,7 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
       appBar: HomeServerAppBar(
         title: const Text('Documents', style: TextStyle(fontWeight: FontWeight.w800)),
         actions: [
-          HomeServerAppBarAction(label: 'Scan again', icon: Icons.refresh_rounded, onPressed: _loading ? null : _scan),
+          HomeServerAppBarAction(label: 'Scan again', icon: Icons.refresh_rounded, onPressed: _loading ? null : () => _scan(refresh: true)),
         ],
       ),
       body: Column(
