@@ -1,4 +1,5 @@
 import 'package:file_picker/file_picker.dart';
+import '../../core/widgets/home_server_app_bar.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/network/server_api.dart';
@@ -159,14 +160,10 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
     ).toList(growable: false);
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: HomeServerAppBar(
         title: const Text('Documents', style: TextStyle(fontWeight: FontWeight.w800)),
         actions: [
-          IconButton(
-            tooltip: 'Scan again',
-            onPressed: _loading ? null : _scan,
-            icon: const Icon(Icons.refresh_rounded),
-          ),
+          HomeServerAppBarAction(label: 'Scan again', icon: Icons.refresh_rounded, onPressed: _loading ? null : _scan),
         ],
       ),
       body: Column(
