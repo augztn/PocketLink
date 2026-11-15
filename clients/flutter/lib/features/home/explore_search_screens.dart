@@ -12,7 +12,7 @@ import '../transfers/transfer_manager_screen.dart';
 
 enum ExploreCategory { files, drives, photos, music, videos }
 
-class ExploreScreen extends StatefulWidget {
+class ExploreScreen extends StatelessWidget {
   const ExploreScreen({
     required this.api,
     required this.category,
@@ -28,104 +28,107 @@ class ExploreScreen extends StatefulWidget {
   final String fileCategory;
   final VoidCallback? onBackAtRoot;
 
-  @override
-  State<ExploreScreen> createState() => _ExploreScreenState();
-}
-
-class _ExploreScreenState extends State<ExploreScreen> {
-  late ExploreCategory _category = widget.category;
-  late String _fileCategory = widget.fileCategory;
-  late final Set<ExploreCategory> _initialized = {widget.category};
-
-  @override
-  void didUpdateWidget(covariant ExploreScreen oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.category != widget.category) {
-      _category = widget.category;
-      _initialized.add(widget.category);
-    }
-    if (oldWidget.fileCategory != widget.fileCategory) {
-      _fileCategory = widget.fileCategory;
-    }
-  }
-
-  void _select(ExploreCategory category) {
-    setState(() {
-      _initialized.add(category);
-      _category = category;
-      if (category == ExploreCategory.files) _fileCategory = 'All';
-    });
-    widget.onCategoryChanged(category);
+  void _open(BuildContext context, String title, Widget screen) {
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => screen,
+    ));
   }
 
   @override
   Widget build(BuildContext context) {
-    final categories = ExploreCategory.values;
-    final selectedIndex = categories.indexOf(_category);
-    final pages = <Widget>[
-      for (final category in categories)
-        if (!_initialized.contains(category))
-          const SizedBox.shrink()
-        else if (category == ExploreCategory.files)
-          FileManagerScreen(
-            api: widget.api,
-            initialCategory: _fileCategory,
-            showSearch: false,
-            isActive: _category == category,
-            onBackAtRoot: widget.onBackAtRoot,
-          )
-        else if (category == ExploreCategory.drives)
-          StorageBrowserScreen(api: widget.api, showSearch: false)
-        else if (category == ExploreCategory.photos)
-          PhotoGalleryScreen(api: widget.api, showSearch: false)
-        else if (category == ExploreCategory.music)
-          MediaBrowserScreen(api: widget.api, type: MediaLibraryType.music, showSearch: false)
-        else
-          MediaBrowserScreen(api: widget.api, type: MediaLibraryType.video, showSearch: false),
-    ];
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
 
-    return Column(
-      children: [
-        SizedBox(
-          height: 58,
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            child: SegmentedButton<ExploreCategory>(
-              segments: [
-                for (final category in categories)
-                  ButtonSegment(
-                    value: category,
-                    icon: Icon(_icon(category), size: 17),
-                    label: Text(_label(category)),
+    Widget card({
+      required String title,
+      required String subtitle,
+      required IconData icon,
+      required Color tint,
+      required VoidCallback onTap,
+    }) {
+      return Material(
+        color: colors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(22),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: colors.onSurface.withValues(alpha: 0.06)),
+              borderRadius: BorderRadius.circular(22),
+            ),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: tint.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(15),
                   ),
+                  child: Icon(icon, color: tint, size: 25),
+                ),
+                const Spacer(),
+                Text(title, style: theme.textTheme.titleMedium?.copyWith(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.2,
+                )),
+                const SizedBox(height: 3),
+                Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
               ],
-              selected: {_category},
-              showSelectedIcon: false,
-              onSelectionChanged: (selection) => _select(selection.first),
             ),
           ),
         ),
-        Expanded(child: IndexedStack(index: selectedIndex, children: pages)),
-      ],
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Explore')),
+      body: GridView.count(
+        padding: EdgeInsets.fromLTRB(16, 12, 16, 112 + MediaQuery.paddingOf(context).bottom),
+        crossAxisCount: 2,
+        crossAxisSpacing: 14,
+        mainAxisSpacing: 14,
+        childAspectRatio: 1.15,
+        children: [
+          card(
+            title: 'Photos', subtitle: 'Your picture collection',
+            icon: Icons.photo_library_rounded, tint: const Color(0xFFE5A044),
+            onTap: () => _open(context, 'Photos', PhotoGalleryScreen(api: api)),
+          ),
+          card(
+            title: 'Music', subtitle: 'Albums and playlists',
+            icon: Icons.headphones_rounded, tint: const Color(0xFF8D72E8),
+            onTap: () => _open(context, 'Music', MediaBrowserScreen(api: api, type: MediaLibraryType.music)),
+          ),
+          card(
+            title: 'Videos', subtitle: 'Movies and clips',
+            icon: Icons.play_circle_fill_rounded, tint: const Color(0xFF279D91),
+            onTap: () => _open(context, 'Videos', MediaBrowserScreen(api: api, type: MediaLibraryType.video)),
+          ),
+          card(
+            title: 'Documents', subtitle: 'PDF, Office and text',
+            icon: Icons.description_rounded, tint: const Color(0xFF4C8ED9),
+            onTap: () => _open(context, 'Documents', FileManagerScreen(api: api, initialCategory: 'Documents')),
+          ),
+          card(
+            title: 'Files', subtitle: 'Browse server folders',
+            icon: Icons.folder_rounded, tint: const Color(0xFF7186C8),
+            onTap: () => _open(context, 'Files', FileManagerScreen(api: api)),
+          ),
+          card(
+            title: 'Drives', subtitle: 'Internal & external SSDs',
+            icon: Icons.usb_rounded, tint: const Color(0xFF28B8C8),
+            onTap: () => _open(context, 'Drives', StorageBrowserScreen(api: api)),
+          ),
+        ],
+      ),
     );
   }
-
-  String _label(ExploreCategory category) => switch (category) {
-    ExploreCategory.files => 'Files',
-    ExploreCategory.drives => 'Drives',
-    ExploreCategory.photos => 'Photos',
-    ExploreCategory.music => 'Music',
-    ExploreCategory.videos => 'Videos',
-  };
-
-  IconData _icon(ExploreCategory category) => switch (category) {
-    ExploreCategory.files => Icons.folder_outlined,
-    ExploreCategory.drives => Icons.usb_rounded,
-    ExploreCategory.photos => Icons.photo_outlined,
-    ExploreCategory.music => Icons.headphones_rounded,
-    ExploreCategory.videos => Icons.movie_outlined,
-  };
 }
 
 class GlobalSearchScreen extends StatefulWidget {
