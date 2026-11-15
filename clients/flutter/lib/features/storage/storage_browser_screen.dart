@@ -486,7 +486,7 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
                             child: _gridView
                                 ? GridView.builder(
                                     physics: const AlwaysScrollableScrollPhysics(),
-                                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
+                                    padding: EdgeInsets.fromLTRB(16, 10, 16, 104 + MediaQuery.paddingOf(context).bottom),
                                     gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                                       maxCrossAxisExtent: 190, mainAxisExtent: 158,
                                       crossAxisSpacing: 10, mainAxisSpacing: 10),
