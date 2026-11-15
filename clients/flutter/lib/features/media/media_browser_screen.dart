@@ -456,6 +456,57 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     );
   }
 
+  Widget _viewPill({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) => Material(
+    color: selected ? const Color(0xFF343438) : Colors.transparent,
+    borderRadius: BorderRadius.circular(18),
+    child: InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: onTap,
+      child: SizedBox(
+        height: 30,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Center(
+            child: Text(label, style: TextStyle(
+              color: selected ? Colors.white : Colors.white60,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            )),
+          ),
+        ),
+      ),
+    ),
+  );
+
+  Widget _menuPill({
+    required String label,
+    required List<PopupMenuEntry<String>> items,
+    required ValueChanged<String> onSelected,
+  }) => PopupMenuButton<String>(
+    onSelected: onSelected,
+    itemBuilder: (_) => items,
+    child: Container(
+      height: 36,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C1C1E),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Text(label, style: const TextStyle(
+          color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600,
+        )),
+        const SizedBox(width: 4),
+        const Icon(Icons.keyboard_arrow_down_rounded, size: 17, color: Colors.white70),
+      ]),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     final query = _searchQuery.trim().toLowerCase();
@@ -470,6 +521,8 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     final visibleMedia = _sortMedia(filtered);
     final folders = _groupByFolder(visibleMedia);
     final isFolderView = _libraryView == 'folders';
+    final selectedVolumes = _volumes.where((volume) => volume.id == _selectedVolume).toList();
+    final sourceLabel = selectedVolumes.isEmpty ? 'All Storage' : selectedVolumes.first.name;
 
     return Scaffold(
       appBar: AppBar(
@@ -537,27 +590,6 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-            child: SegmentedButton<String>(
-              segments: [
-                ButtonSegment(
-                  value: 'all',
-                  label: Text(_isMusic ? 'Songs' : 'All videos'),
-                  icon: Icon(_isMusic ? Icons.music_note : Icons.movie_outlined),
-                ),
-                const ButtonSegment(
-                  value: 'folders',
-                  label: Text('Folders'),
-                  icon: Icon(Icons.folder_outlined),
-                ),
-              ],
-              selected: {_libraryView},
-              onSelectionChanged: (selection) =>
-                  setState(() => _libraryView = selection.first),
-              showSelectedIcon: false,
-            ),
-          ),
           if (widget.showSearch) Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
             child: TextField(
@@ -581,22 +613,40 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    initialValue: _selectedVolume ?? 'all',
-                    decoration: const InputDecoration(
-                      labelText: 'Storage source',
-                      prefixIcon: Icon(Icons.storage_outlined),
-                      isDense: true,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  Container(
+                    height: 36,
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1C1C1E),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
                     ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _viewPill(
+                          label: _isMusic ? 'Songs' : 'Videos',
+                          selected: _libraryView == 'all',
+                          onTap: () => setState(() => _libraryView = 'all'),
+                        ),
+                        _viewPill(
+                          label: 'Folders',
+                          selected: isFolderView,
+                          onTap: () => setState(() => _libraryView = 'folders'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  _menuPill(
+                    label: sourceLabel,
                     items: [
-                      const DropdownMenuItem(
-                        value: 'all',
-                        child: Text('All storage'),
-                      ),
-                      ..._volumes.map((volume) => DropdownMenuItem(
+                      const PopupMenuItem(value: 'all', child: Text('All Storage')),
+                      ..._volumes.map((volume) => PopupMenuItem(
                         value: volume.id,
                         enabled: volume.available,
                         child: Text(
@@ -605,32 +655,26 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                         ),
                       )),
                     ],
-                    onChanged: (value) => setState(() {
-                      _selectedVolume = value == null || value == 'all'
-                          ? null
-                          : value;
+                    onSelected: (value) => setState(() {
+                      _selectedVolume = value == 'all' ? null : value;
                     }),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    initialValue: _sortBy,
-                    decoration: const InputDecoration(
-                      labelText: 'Sort by',
-                      prefixIcon: Icon(Icons.sort_rounded),
-                      isDense: true,
-                    ),
+                  const SizedBox(width: 8),
+                  _menuPill(
+                    label: switch (_sortBy) {
+                      'newest' => 'Newest',
+                      'largest' => 'Largest',
+                      _ => 'Name',
+                    },
                     items: const [
-                      DropdownMenuItem(value: 'name', child: Text('Name')),
-                      DropdownMenuItem(value: 'newest', child: Text('Newest')),
-                      DropdownMenuItem(value: 'largest', child: Text('Largest')),
+                      PopupMenuItem(value: 'name', child: Text('Name')),
+                      PopupMenuItem(value: 'newest', child: Text('Newest')),
+                      PopupMenuItem(value: 'largest', child: Text('Largest')),
                     ],
-                    onChanged: (value) =>
-                        setState(() => _sortBy = value ?? 'name'),
+                    onSelected: (value) => setState(() => _sortBy = value),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           if (_loading) const LinearProgressIndicator(minHeight: 2),
@@ -651,7 +695,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                     ),
                   )
                 : _loading && _media.isEmpty
-                    ? const Center(child: Text('Searching media folders…'))
+                    ? const Center(child: Text('Scanning storage for media…'))
                     : visibleMedia.isEmpty
                         ? Center(
                             child: Padding(
