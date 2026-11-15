@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import '../../core/widgets/home_server_app_bar.dart';
+import '../../core/widgets/compact_search_field.dart';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -51,6 +52,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   List<StorageVolume> _volumes = const [];
   String? _selectedVolume;
   String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
   String _libraryView = 'all';
   String _layoutMode = 'grid';
   String _sortBy = 'name';
@@ -286,6 +288,20 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   String _sourceLabel(_MediaFile media) =>
       media.volume == null ? 'Internal storage' : 'USB / OTG';
 
+  String _fileExtension(_MediaFile media) {
+    final dot = media.entry.name.lastIndexOf('.');
+    return dot < 0 ? '' : media.entry.name.substring(dot + 1).toUpperCase();
+  }
+
+  String _displayTitle(_MediaFile media) {
+    final dot = media.entry.name.lastIndexOf('.');
+    final name = dot > 0 ? media.entry.name.substring(0, dot) : media.entry.name;
+    return name.replaceAll('_', ' ').trim();
+  }
+
+  String _countLabel(int count, String singular, String plural) =>
+      '$count ${count == 1 ? singular : plural}';
+
 
   List<_MediaFolder> _foldersAtCurrentLevel(List<_MediaFile> items) {
     final grouped = <String, List<_MediaFile>>{};
@@ -479,7 +495,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                     children: [
                       Text(
                         media.entry.name,
-                        maxLines: 2,
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.titleSmall,
                       ),
@@ -607,7 +623,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                   child: ListTile(
                     leading: const Icon(Icons.folder_rounded),
                     title: Text(folder.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-                    subtitle: Text('${folder.items.length} ${_isMusic ? 'tracks' : 'videos'} · ${_volumeName(folder.volume)}'),
+                    subtitle: Text('${_countLabel(folder.items.length, _isMusic ? 'track' : 'video', _isMusic ? 'tracks' : 'videos')} · ${_volumeName(folder.volume)}'),
                     trailing: const Icon(Icons.chevron_right_rounded),
                     onTap: () {
                       setState(() {
@@ -624,8 +640,8 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                 Card(
                   child: ListTile(
                     leading: Icon(_isMusic ? Icons.audio_file_outlined : Icons.movie_outlined),
-                    title: Text(media.entry.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-                    subtitle: Text('${_formatBytes(media.entry.size)} · ${_volumeName(media.volume)}'),
+                    title: Text(_isMusic ? _displayTitle(media) : media.entry.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    subtitle: Text('${_isMusic && _fileExtension(media).isNotEmpty ? '${_fileExtension(media)} · ' : ''}${_formatBytes(media.entry.size)} · ${_volumeName(media.volume)}'),
                     trailing: const Icon(Icons.play_arrow_rounded),
                     onTap: () => _openMedia(media, files),
                   ),
@@ -696,6 +712,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   @override
   void dispose() {
     _saveState();
+    _searchController.dispose();
     _contentScrollController.removeListener(_saveScrollOffset);
     _contentScrollController.dispose();
     super.dispose();
@@ -755,7 +772,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '${_media.length} ${_isMusic ? 'tracks' : 'videos'}',
+                        _countLabel(_media.length, _isMusic ? 'track' : 'video', _isMusic ? 'tracks' : 'videos'),
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       Text(
@@ -771,27 +788,15 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
               ],
             ),
           ),
-          if (widget.showSearch) Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-            child: TextField(
-              onChanged: (value) => setState(() => _searchQuery = value),
-              decoration: InputDecoration(
+          if (widget.showSearch)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+              child: CompactSearchField(
+                controller: _searchController,
                 hintText: _isMusic ? 'Search songs or folders' : 'Search videos or folders',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchQuery.isEmpty
-                    ? null
-                    : IconButton(
-                        tooltip: 'Clear search',
-                        onPressed: () => setState(() => _searchQuery = ''),
-                        icon: const Icon(Icons.close),
-                      ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                isDense: true,
+                onChanged: (value) => setState(() => _searchQuery = value),
               ),
             ),
-          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
             child: SingleChildScrollView(
