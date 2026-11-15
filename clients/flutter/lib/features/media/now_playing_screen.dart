@@ -416,8 +416,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
         content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
           _InfoLine('Format', codec),
           _InfoLine('Channels', channels?.isNotEmpty == true ? channels! : 'Not reported by source'),
-          const _InfoLine('Sample rate', 'Not reported by server/player metadata'),
-          const _InfoLine('Bitrate', 'Not reported by server/player metadata'),
+          _InfoLine('Sample rate', audioTrack.samplerate == null ? 'Not reported' : '${(audioTrack.samplerate! / 1000).toStringAsFixed(1)} kHz'),
+          _InfoLine('Bitrate', audioTrack.bitrate == null ? 'Not reported' : '${(audioTrack.bitrate! / 1000).round()} kbps'),
           _InfoLine('File size', _track.size == null ? 'Not provided' : _formatBytes(_track.size!)),
           _InfoLine('Server path', _track.path),
           _InfoLine('Source', _track.localPath == null ? 'Direct original stream' : 'Local offline copy'),
@@ -542,10 +542,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     final ext = _track.title.contains('.') ? _track.title.split('.').last.toUpperCase() : 'AUDIO';
     final codec = audio.codec?.trim();
     final channels = audio.channels?.trim();
+    final sampleRate = audio.samplerate;
     return [
       (codec?.isNotEmpty ?? false) ? codec!.toUpperCase() : ext,
+      if (sampleRate != null && sampleRate > 0) '${(sampleRate / 1000).toStringAsFixed(1)} kHz',
       if (channels?.isNotEmpty ?? false) channels!,
-      'ORIGINAL STREAM',
     ].join('  •  ');
   }
 
@@ -790,7 +791,17 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                       Text('PLAYING FROM  $folderLabel', maxLines: 1, overflow: TextOverflow.ellipsis,
                         style: const TextStyle(color: Colors.white30, fontSize: 9, letterSpacing: 1.2)),
                       const SizedBox(height: 8),
-                      const Text('This device', style: TextStyle(color: Colors.white38, fontSize: 11)),
+                      StreamBuilder<AudioDevice>(
+                        stream: _player.stream.audioDevice,
+                        initialData: _player.state.audioDevice,
+                        builder: (context, snapshot) {
+                          final device = snapshot.data ?? _player.state.audioDevice;
+                          final label = device.description.trim().isNotEmpty
+                              ? device.description.trim()
+                              : device.name == 'auto' ? 'This device' : device.name;
+                          return Text(label, style: const TextStyle(color: Colors.white38, fontSize: 11));
+                        },
+                      ),
                       if (_sleepMinutes != null)
                         Padding(padding: const EdgeInsets.only(top: 6),
                           child: Text('Sleep timer · $_sleepMinutes min', style: const TextStyle(color: Colors.white38, fontSize: 10))),
