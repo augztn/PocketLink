@@ -12,6 +12,10 @@ void main() {
       expect(networkRouteLabel('192.168.1.10'), 'LAN');
       expect(networkRouteLabel('10.0.0.5'), 'LAN');
       expect(networkRouteLabel('172.20.1.2'), 'LAN');
+      expect(networkRouteLabel('169.254.1.2'), 'LAN');
+      expect(networkRouteLabel('fd12:3456:789a::1'), 'LAN');
+      expect(networkRouteLabel('fe80::1'), 'LAN');
+      expect(networkRouteLabel('pocketlink.local'), 'LAN');
     });
 
     test('does not mislabel public or unknown hosts as LAN', () {
