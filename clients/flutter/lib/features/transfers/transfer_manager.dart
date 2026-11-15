@@ -98,9 +98,11 @@ class TransferManager extends ChangeNotifier {
   final Future<TransferHistoryStore> _storeFuture;
   late final Future<void> _ready;
   final List<TransferTask> _tasks = [];
+  final Set<String> _retryingIds = {};
 
   List<TransferTask> get tasks => List.unmodifiable(_tasks);
   Future<void> get ready => _ready;
+  bool isRetrying(String id) => _retryingIds.contains(id);
 
   Future<void> _restoreHistory() async {
     try {
@@ -193,27 +195,34 @@ class TransferManager extends ChangeNotifier {
   }
 
   Future<bool> retry(String id) async {
-    await _ready;
-    TransferTask? task;
-    for (final candidate in _tasks) {
-      if (candidate.id == id) {
-        task = candidate;
-        break;
+    if (!_retryingIds.add(id)) return false;
+    notifyListeners();
+    try {
+      await _ready;
+      TransferTask? task;
+      for (final candidate in _tasks) {
+        if (candidate.id == id) {
+          task = candidate;
+          break;
+        }
       }
+      final operation = task?.operation;
+      if (task == null ||
+          operation == null ||
+          task.status == TransferStatus.running ||
+          task.status == TransferStatus.completed) {
+        return false;
+      }
+      return await run(
+        name: task.name,
+        direction: task.direction,
+        location: task.location,
+        operation: operation,
+      );
+    } finally {
+      _retryingIds.remove(id);
+      notifyListeners();
     }
-    final operation = task?.operation;
-    if (task == null ||
-        operation == null ||
-        task.status == TransferStatus.running ||
-        task.status == TransferStatus.completed) {
-      return false;
-    }
-    return run(
-      name: task.name,
-      direction: task.direction,
-      location: task.location,
-      operation: operation,
-    );
   }
 
   void cancel(String id) {
