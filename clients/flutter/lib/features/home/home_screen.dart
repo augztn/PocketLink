@@ -945,7 +945,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
             sectionTitle(
               'Recent files',
               action: 'Browse',
-              onAction: () => widget.onOpenTab(1),
+              onAction: () => widget.onOpenExplore(ExploreCategory.files),
             ),
             const SizedBox(height: 10),
             if (_recentFiles.isEmpty)
