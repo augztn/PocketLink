@@ -115,6 +115,14 @@ jobs:
 
           manifest = Path("android/app/src/main/AndroidManifest.xml")
           content = manifest.read_text()
+          content = re.sub(
+              r'android:label="[^"]*"',
+              'android:label="PocketLink"',
+              content,
+              count=1,
+          )
+          if 'android:label="PocketLink"' not in content:
+              raise SystemExit("Could not set Android app label to PocketLink")
           if "android.permission.INTERNET" not in content:
               content = content.replace(
                   "<application",
