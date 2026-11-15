@@ -90,6 +90,15 @@ class TransferManagerScreen extends StatelessWidget {
                             ),
                           ),
                           Text(_status(task), style: Theme.of(context).textTheme.labelMedium),
+                          if (!running &&
+                              task.operation != null &&
+                              (task.status == TransferStatus.failed ||
+                                  task.status == TransferStatus.cancelled))
+                            IconButton(
+                              tooltip: 'Retry transfer',
+                              onPressed: () => manager.retry(task.id),
+                              icon: const Icon(Icons.refresh_rounded),
+                            ),
                           if (running && !task.cancelToken.isCancelled)
                             IconButton(
                               tooltip: 'Cancel transfer',
