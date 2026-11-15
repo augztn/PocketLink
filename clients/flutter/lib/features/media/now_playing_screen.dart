@@ -64,7 +64,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   String get _fileName {
     final pathName = _track.path.split('/').last;
     final raw = _track.title.trim().isNotEmpty ? _track.title : pathName;
-    return raw.replaceAll(RegExp(r'\.[^.]+
+    return raw.replaceAll(RegExp(r'\.[^.]+$'), '').replaceAll('_', ' ');
   }
 
   String get _folder {
@@ -843,44 +843,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     unawaited(_persistent.closePlayerScreen(isVideo: false));
     super.dispose();
   }
-}
-
-class _UtilityButton extends StatelessWidget {
-  const _UtilityButton({
-    required this.icon,
-    required this.label,
-    required this.active,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => InkWell(
-    borderRadius: BorderRadius.circular(14),
-    onTap: onTap,
-    child: Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 18, color: active ? Colors.white : Colors.white54),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              color: active ? Colors.white : Colors.white54,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
 }
 
 class _InfoLine extends StatelessWidget {
