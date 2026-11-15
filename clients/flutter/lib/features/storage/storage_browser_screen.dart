@@ -9,6 +9,8 @@ import 'package:path_provider/path_provider.dart';
 import '../../core/network/server_api.dart';
 import '../../core/settings/app_settings.dart';
 import '../media/media_player_screen.dart';
+import '../media/now_playing_screen.dart';
+import '../media/persistent_audio_player.dart';
 import '../transfers/transfer_manager.dart';
 import '../transfers/transfer_manager_screen.dart';
 
@@ -193,12 +195,16 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
     if (volume == null) return;
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => MediaPlayerScreen(
+        builder: (_) => NowPlayingScreen(
           api: widget.api,
-          title: item.name,
-          path: _itemPath(item.name),
-          volume: volume,
-          isVideo: false,
+          queue: [
+            MediaQueueItem(
+              title: item.name,
+              path: _itemPath(item.name),
+              volume: volume,
+              size: item.size,
+            ),
+          ],
         ),
       ),
     );
