@@ -9,7 +9,6 @@ import 'quick_actions_store.dart';
 import '../../core/settings/app_settings.dart';
 import '../settings/settings_screen.dart';
 import 'explore_search_screens.dart';
-import '../search/search_screen.dart';
 import '../media/media_player_screen.dart';
 import '../media/now_playing_screen.dart';
 import '../media/persistent_audio_player.dart';
@@ -59,17 +58,6 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  void _openSearch() {
-    Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => SearchScreen(
-        api: widget.api,
-        onHome: () {
-          Navigator.of(context).pop();
-          _openTab(0);
-        },
-      ),
-    ));
-  }
 
   void _openNowPlaying(PersistentAudioPlayer player) {
     final item = player.currentItem;
@@ -117,7 +105,6 @@ class _HomeScreenState extends State<HomeScreen> {
           fileCategory: _fileCategory,
           onBackAtRoot: () => _openTab(0),
           onOpenFiles: () => _openTab(2),
-          onOpenSearch: _openSearch,
           onCategoryChanged: (category) => setState(() {
             _exploreCategory = category;
             if (category == ExploreCategory.files) _fileCategory = 'All';
