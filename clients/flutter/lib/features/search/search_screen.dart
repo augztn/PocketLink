@@ -616,7 +616,15 @@ class _SearchScreenState extends State<SearchScreen> {
       for (final v in _volumes) DropdownMenuItem(value: v.id, child: Text(v.name, overflow: TextOverflow.ellipsis)),
     ];
     return Scaffold(
-      appBar: HomeServerAppBar(title: const Text('Search'), onHome: widget.onHome),
+      appBar: HomeServerAppBar(
+        title: const Text('Search'),
+        onHome: widget.onHome,
+        leading: widget.onHome == null ? null : IconButton(
+          tooltip: 'Back to Dashboard',
+          onPressed: widget.onHome,
+          icon: const Icon(Icons.arrow_back_rounded),
+        ),
+      ),
       body: Column(children: [
         Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 8), child: TextField(
           controller: _controller,
