@@ -11,6 +11,7 @@ import '../settings/settings_screen.dart';
 import 'explore_search_screens.dart';
 import '../search/search_screen.dart';
 import '../media/media_player_screen.dart';
+import '../media/now_playing_screen.dart';
 import '../media/persistent_audio_player.dart';
 
 import '../../core/network/server_api.dart';
@@ -56,16 +57,23 @@ class _HomeScreenState extends State<HomeScreen> {
     final api = player.api;
     if (player.isActive && item != null && api != null) {
       Navigator.of(context).push(MaterialPageRoute<void>(
-        builder: (_) => MediaPlayerScreen(
-          api: api,
-          title: item.title,
-          path: item.path,
-          volume: item.volume,
-          isVideo: !player.isMusic,
-          queue: player.queue,
-          initialIndex: player.currentIndex,
-          resumeExisting: true,
-        ),
+        builder: (_) => player.isMusic
+            ? NowPlayingScreen(
+                api: api,
+                queue: player.queue,
+                initialIndex: player.currentIndex,
+                resumeExisting: true,
+              )
+            : MediaPlayerScreen(
+                api: api,
+                title: item.title,
+                path: item.path,
+                volume: item.volume,
+                isVideo: true,
+                queue: player.queue,
+                initialIndex: player.currentIndex,
+                resumeExisting: true,
+              ),
       ));
     } else {
       _openExplore(ExploreCategory.music);
