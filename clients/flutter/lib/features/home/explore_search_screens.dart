@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/network/server_api.dart';
@@ -257,6 +258,10 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
                 found.add(_SearchResult(file: item, path: path, volume: current.volume, volumeName: current.volumeName));
               }
             }
+          } on DioException catch (error) {
+            final status = error.response?.statusCode;
+            if (status == 403 || status == 404) return;
+            rethrow;
           } catch (_) {
             // Continue through other folders when a folder is unavailable.
           }
