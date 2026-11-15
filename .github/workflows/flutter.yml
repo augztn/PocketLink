@@ -81,11 +81,11 @@ jobs:
           cp "$APPDIR/homeserver.svg" "$APPDIR/.DirIcon"
           wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
           chmod +x appimagetool
-          ARCH=x86_64 ./appimagetool --appimage-extract-and-run "$APPDIR" "$PWD/HomeServer-x86_64.AppImage"
+          ARCH=x86_64 ./appimagetool --appimage-extract-and-run "$APPDIR" "$PWD/PocketLink-x86_64.AppImage"
           chmod +x "$PWD/HomeServer-x86_64.AppImage"
       - uses: actions/upload-artifact@v4
         with:
-          name: HomeServer-Linux-x86_64-AppImage
+          name: PocketLink-Linux-x86_64-AppImage
           path: clients/flutter/HomeServer-x86_64.AppImage
           if-no-files-found: error
           retention-days: 14
@@ -194,9 +194,15 @@ jobs:
           print("Updated plugin compile SDK: " + ", ".join(patched))
           PY
       - run: flutter build apk --release
+      - name: Run native Android integration tests
+        uses: ReactiveCircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          script: cd android && ./gradlew :homeserver_saf:connectedDebugAndroidTest
       - uses: actions/upload-artifact@v4
         with:
-          name: HomeServer-Android-APK
+          name: PocketLink-Android-APK
           path: clients/flutter/build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
           retention-days: 14
