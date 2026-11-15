@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'dart:math' as math;\nimport 'dart:ui' as ui;\n\nimport 'package:flutter/material.dart';
 
 import 'quick_actions_store.dart';
 import '../media/media_player_screen.dart';
@@ -25,81 +25,311 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
+  ExploreCategory _exploreCategory = ExploreCategory.files;
+  String _fileCategory = 'All';
 
   void _openTab(int index) => setState(() => _selectedIndex = index);
 
+  void _openExplore(ExploreCategory category, {String fileCategory = 'All'}) {
+    setState(() {
+      _exploreCategory = category;
+      _fileCategory = fileCategory;
+      _selectedIndex = 1;
+    });
+  }
+
+  void _openNowPlaying(PersistentAudioPlayer player) {
+    final item = player.currentItem;
+    final api = player.api;
+    if (player.isActive && item != null && api != null) {
+      Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (_) => MediaPlayerScreen(
+          api: api,
+          title: item.title,
+          path: item.path,
+          volume: item.volume,
+          isVideo: !player.isMusic,
+          queue: player.queue,
+          initialIndex: player.currentIndex,
+          resumeExisting: true,
+        ),
+      ));
+    } else {
+      _openExplore(ExploreCategory.music);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final player = PersistentAudioPlayer.instance;
     final pages = [
       _HomeDashboard(
         api: widget.api,
-        onOpenTab: _openTab,
+        onOpenExplore: _openExplore,
         onReturnToConnection: widget.onReturnToConnection,
       ),
-      FileManagerScreen(
+      ExploreScreen(
+        key: const PageStorageKey<String>('homeserver-explore'),
         api: widget.api,
-        isActive: _selectedIndex == 1,
-        onBackAtRoot: () => _openTab(0),
+        category: _exploreCategory,
+        fileCategory: _fileCategory,
+        onCategoryChanged: (category) => setState(() => _exploreCategory = category),
       ),
-      PhotoGalleryScreen(api: widget.api),
-      MediaBrowserScreen(api: widget.api, type: MediaLibraryType.music),
-      MediaBrowserScreen(api: widget.api, type: MediaLibraryType.video),
+      GlobalSearchScreen(
+        key: const PageStorageKey<String>('homeserver-search'),
+        api: widget.api,
+      ),
     ];
 
-    final mediaPlayer = PersistentAudioPlayer.instance;
-
     return PopScope(
-      canPop: _selectedIndex == 0 || _selectedIndex == 1,
+      canPop: _selectedIndex == 0,
       onPopInvokedWithResult: (didPop, result) {
-        if (!didPop && _selectedIndex != 0 && _selectedIndex != 1) {
-          _openTab(0);
-        }
+        if (!didPop && _selectedIndex != 0) _openTab(0);
       },
       child: AnimatedBuilder(
-        animation: mediaPlayer,
+        animation: player,
         builder: (context, _) => Scaffold(
-      body: IndexedStack(index: _selectedIndex, children: pages),
-      floatingActionButton: mediaPlayer.isActive && mediaPlayer.currentItem != null
-          ? FloatingActionButton.small(
-              heroTag: 'homeserver-current-media',
-              tooltip: 'Open now playing · ${mediaPlayer.isMusic ? 'Music' : 'Video'}',
-              onPressed: () {
-                final item = mediaPlayer.currentItem!;
-                final api = mediaPlayer.api;
-                if (api == null) return;
-                Navigator.of(context).push(MaterialPageRoute<void>(
-                  builder: (_) => MediaPlayerScreen(
-                    api: api,
-                    title: item.title,
-                    path: item.path,
-                    volume: item.volume,
-                    isVideo: !mediaPlayer.isMusic,
-                    queue: mediaPlayer.queue,
-                    initialIndex: mediaPlayer.currentIndex,
-                    resumeExisting: true,
-                  ),
-                ));
-              },
-              child: Icon(
-                mediaPlayer.isMusic
-                    ? Icons.music_note_rounded
-                    : Icons.play_circle_fill_rounded,
+          extendBody: true,
+          body: IndexedStack(index: _selectedIndex, children: pages),
+          bottomNavigationBar: _FloatingGlassDock(
+            selectedIndex: _selectedIndex,
+            isPlaying: player.isMusic && player.isPlaying,
+            hasMedia: player.isActive && player.currentItem != null,
+            isVideo: player.isActive && !player.isMusic,
+            onSelect: _openTab,
+            onMediaPressed: () => _openNowPlaying(player),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FloatingGlassDock extends StatelessWidget {
+  const _FloatingGlassDock({
+    required this.selectedIndex,
+    required this.isPlaying,
+    required this.hasMedia,
+    required this.isVideo,
+    required this.onSelect,
+    required this.onMediaPressed,
+  });
+
+  final int selectedIndex;
+  final bool isPlaying;
+  final bool hasMedia;
+  final bool isVideo;
+  final ValueChanged<int> onSelect;
+  final VoidCallback onMediaPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final glassColor = isDark
+        ? colors.surface.withOpacity(0.72)
+        : colors.surface.withOpacity(0.78);
+    final borderColor = colors.outlineVariant.withOpacity(isDark ? 0.42 : 0.55);
+
+    Widget glass({
+      required Widget child,
+      required BorderRadius radius,
+      required BoxBorder border,
+    }) => ClipRRect(
+      borderRadius: radius,
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          decoration: BoxDecoration(
+            color: glassColor,
+            borderRadius: radius,
+            border: border,
+            boxShadow: [
+              BoxShadow(
+                color: colors.shadow.withOpacity(isDark ? 0.24 : 0.10),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
               ),
-            )
-          : null,
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: _openTab,
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home_rounded), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.folder_outlined), selectedIcon: Icon(Icons.folder_rounded), label: 'Files'),
-          NavigationDestination(icon: Icon(Icons.photo_outlined), selectedIcon: Icon(Icons.photo), label: 'Images'),
-          NavigationDestination(icon: Icon(Icons.music_note_outlined), selectedIcon: Icon(Icons.music_note), label: 'Audio'),
-          NavigationDestination(icon: Icon(Icons.movie_outlined), selectedIcon: Icon(Icons.movie), label: 'Videos'),
-        ],
+              BoxShadow(
+                color: colors.onSurface.withOpacity(isDark ? 0.05 : 0.035),
+                blurRadius: 1,
+                spreadRadius: -1,
+              ),
+            ],
+          ),
+          child: child,
+        ),
       ),
+    );
+
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
+        child: Row(
+          children: [
+            Expanded(
+              child: glass(
+                radius: BorderRadius.circular(32),
+                border: Border.all(color: borderColor, width: 0.8),
+                child: SizedBox(
+                  height: 64,
+                  child: Row(
+                    children: [
+                      _DockTab(index: 0, selectedIndex: selectedIndex, icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: 'Home', onTap: onSelect, activeColor: colors.primary),
+                      _DockTab(index: 1, selectedIndex: selectedIndex, icon: Icons.explore_outlined, activeIcon: Icons.explore_rounded, label: 'Explore', onTap: onSelect, activeColor: colors.primary),
+                      _DockTab(index: 2, selectedIndex: selectedIndex, icon: Icons.search_rounded, activeIcon: Icons.search_rounded, label: 'Search', onTap: onSelect, activeColor: colors.primary),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            glass(
+              radius: BorderRadius.circular(32),
+              border: Border.all(color: borderColor, width: 0.8),
+              child: Material(
+                color: Colors.transparent,
+                shape: const CircleBorder(),
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: onMediaPressed,
+                  child: SizedBox(
+                    width: 64,
+                    height: 64,
+                    child: Center(
+                      child: isPlaying
+                          ? const _AnimatedEqualizer()
+                          : Icon(
+                              hasMedia && isVideo
+                                  ? Icons.play_circle_fill_rounded
+                                  : hasMedia
+                                      ? Icons.music_note_rounded
+                                      : Icons.graphic_eq_rounded,
+                              color: colors.primary,
+                              size: 27,
+                            ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+}
+
+class _DockTab extends StatelessWidget {
+  const _DockTab({
+    required this.index,
+    required this.selectedIndex,
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+    required this.onTap,
+    required this.activeColor,
+  });
+
+  final int index;
+  final int selectedIndex;
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+  final ValueChanged<int> onTap;
+  final Color activeColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = selectedIndex == index;
+    final colors = Theme.of(context).colorScheme;
+    return Expanded(
+      child: Semantics(
+        button: true,
+        selected: selected,
+        label: label,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(26),
+            onTap: () => onTap(index),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+                decoration: BoxDecoration(
+                  color: selected ? activeColor.withOpacity(0.14) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(25),
+                  border: selected
+                      ? Border.all(color: activeColor.withOpacity(0.10))
+                      : null,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(selected ? activeIcon : icon, size: 21,
+                      color: selected ? activeColor : colors.onSurfaceVariant),
+                    const SizedBox(height: 3),
+                    Text(label, maxLines: 1,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        fontSize: 10,
+                        fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                        color: selected ? activeColor : colors.onSurfaceVariant,
+                      )),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AnimatedEqualizer extends StatefulWidget {
+  const _AnimatedEqualizer();
+
+  @override
+  State<_AnimatedEqualizer> createState() => _AnimatedEqualizerState();
+}
+
+class _AnimatedEqualizerState extends State<_AnimatedEqualizer>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 760),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.primary;
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) => Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: List.generate(4, (index) {
+          final phase = (_controller.value * math.pi * 2) + index * 1.15;
+          final height = 9 + (math.sin(phase).abs() * 17);
+          return Container(
+            width: 3.5,
+            height: height,
+            margin: const EdgeInsets.symmetric(horizontal: 1.5),
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          );
+        }),
       ),
     );
   }
@@ -108,12 +338,12 @@ class _HomeScreenState extends State<HomeScreen> {
 class _HomeDashboard extends StatefulWidget {
   const _HomeDashboard({
     required this.api,
-    required this.onOpenTab,
+    required this.onOpenExplore,
     this.onReturnToConnection,
   });
 
   final ServerApi api;
-  final ValueChanged<int> onOpenTab;
+  final void Function(ExploreCategory category, {String fileCategory}) onOpenExplore;
   final VoidCallback? onReturnToConnection;
 
   @override
@@ -241,16 +471,16 @@ class _HomeDashboardState extends State<_HomeDashboard> {
   void _runQuickAction(String id) {
     switch (id) {
       case 'files':
-        widget.onOpenTab(1);
+        widget.onOpenExplore(ExploreCategory.files);
         return;
       case 'photos':
-        widget.onOpenTab(2);
+        widget.onOpenExplore(ExploreCategory.photos);
         return;
       case 'music':
-        widget.onOpenTab(3);
+        widget.onOpenExplore(ExploreCategory.music);
         return;
       case 'videos':
-        widget.onOpenTab(4);
+        widget.onOpenExplore(ExploreCategory.videos);
         return;
       case 'drives':
         _openStorage();
@@ -537,7 +767,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
         onRefresh: _refreshStatus,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(18, 8, 18, 30),
+          padding: EdgeInsets.fromLTRB(18, 8, 18, 104 + MediaQuery.paddingOf(context).bottom),
           children: [
             Container(
               padding: const EdgeInsets.all(22),
@@ -621,7 +851,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                       foregroundColor: colors.primary,
                       padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 12),
                     ),
-                    onPressed: () => widget.onOpenTab(1),
+                    onPressed: () => widget.onOpenExplore(ExploreCategory.files),
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -680,28 +910,28 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                   subtitle: 'Your picture collection',
                   icon: Icons.photo_rounded,
                   tint: const Color(0xFFE5A044),
-                  onTap: () => widget.onOpenTab(2),
+                  onTap: () => widget.onOpenExplore(ExploreCategory.photos),
                 ),
                 category(
                   title: 'Music',
                   subtitle: 'Albums and playlists',
                   icon: Icons.headphones_rounded,
                   tint: const Color(0xFF8D72E8),
-                  onTap: () => widget.onOpenTab(3),
+                  onTap: () => widget.onOpenExplore(ExploreCategory.music),
                 ),
                 category(
                   title: 'Videos',
                   subtitle: 'Movies and clips',
                   icon: Icons.play_circle_fill_rounded,
                   tint: const Color(0xFF279D91),
-                  onTap: () => widget.onOpenTab(4),
+                  onTap: () => widget.onOpenExplore(ExploreCategory.videos),
                 ),
                 category(
                   title: 'Documents',
                   subtitle: 'PDF, Office and text',
                   icon: Icons.description_rounded,
                   tint: const Color(0xFF4C8ED9),
-                  onTap: _openDocuments,
+                  onTap: () => widget.onOpenExplore(ExploreCategory.files, fileCategory: 'Documents'),
                 ),
               ],
             ),
