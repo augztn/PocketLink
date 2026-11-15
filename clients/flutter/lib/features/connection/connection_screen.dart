@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../../core/widgets/home_server_app_bar.dart';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
@@ -294,20 +295,21 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: HomeServerAppBar(
         title: const Text('HomeServer'),
+        showHome: false,
         actions: [
-          IconButton(
-            tooltip: 'Diagnostics & logs',
+          HomeServerAppBarAction(
+            label: 'Diagnostics & logs',
+            icon: Icons.bug_report_outlined,
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute<void>(builder: (_) => const DiagnosticsScreen()),
             ),
-            icon: const Icon(Icons.bug_report_outlined),
           ),
-          IconButton(
-            tooltip: 'Add server',
+          HomeServerAppBarAction(
+            label: 'Add server',
+            icon: Icons.add_rounded,
             onPressed: _isConnecting ? null : _addServer,
-            icon: const Icon(Icons.add_rounded),
           ),
         ],
       ),
