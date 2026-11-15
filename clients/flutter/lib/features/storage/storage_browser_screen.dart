@@ -51,6 +51,16 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
 
   String _itemPath(String name) => _path.isEmpty ? name : '$_path/$name';
 
+  Future<void> _refreshVolumes() async {
+    widget.api.invalidateDirectoryCache();
+    await _loadVolumes();
+  }
+
+  Future<void> _refreshDirectory() async {
+    widget.api.invalidateDirectoryCache();
+    await _loadDirectory();
+  }
+
   Future<void> _loadVolumes() async {
     setState(() { _loading = true; _error = null; });
     try {
@@ -371,7 +381,7 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
             HomeServerAppBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded, onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen()))),
             HomeServerAppBarAction(label: 'Upload', icon: Icons.cloud_upload_outlined, onPressed: _volume == null ? null : _upload),
             HomeServerAppBarAction(label: 'New folder', icon: Icons.create_new_folder_outlined, onPressed: _volume == null ? null : _createFolder),
-            HomeServerAppBarAction(label: 'Refresh', icon: Icons.refresh_rounded, onPressed: _loading ? null : _loadVolumes),
+            HomeServerAppBarAction(label: 'Refresh', icon: Icons.refresh_rounded, onPressed: _loading ? null : _refreshVolumes),
           ],
         ),
         body: Column(children: [
@@ -508,12 +518,12 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
             ),
           Expanded(
             child: _error != null
-                ? Center(child: FilledButton.icon(onPressed: _loadVolumes, icon: const Icon(Icons.refresh), label: const Text('Try again')))
+                ? Center(child: FilledButton.icon(onPressed: _refreshVolumes, icon: const Icon(Icons.refresh), label: const Text('Try again')))
                 : _loading && _listing == null
                     ? const SizedBox.shrink()
                     : items.isEmpty
                         ? RefreshIndicator(
-                            onRefresh: _loadDirectory,
+                            onRefresh: _refreshDirectory,
                             child: ListView(physics: const AlwaysScrollableScrollPhysics(),
                               children: [SizedBox(height: 140, child: Center(child: Text(
                                 allItems.isEmpty ? 'This folder is empty' : 'No matching files',
