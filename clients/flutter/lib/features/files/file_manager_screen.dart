@@ -234,6 +234,44 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     return result.trim();
   }
 
+  Future<void> _showSearchDialog() async {
+    if (!widget.showSearch) return;
+    _searchController.text = _searchQuery;
+    final query = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Search files'),
+        content: TextField(
+          controller: _searchController,
+          autofocus: true,
+          textInputAction: TextInputAction.search,
+          decoration: InputDecoration(
+            hintText: 'Search files and folders',
+            prefixIcon: const Icon(Icons.search_rounded),
+            suffixIcon: IconButton(
+              tooltip: 'Clear search',
+              onPressed: _searchController.clear,
+              icon: const Icon(Icons.close_rounded),
+            ),
+          ),
+          onSubmitted: (value) => Navigator.pop(dialogContext, value.trim()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, _searchController.text.trim()),
+            child: const Text('Search'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || query == null) return;
+    setState(() => _searchQuery = query);
+  }
+
   Future<void> _uploadFile() async {
     try {
       final selection = await FilePicker.platform.pickFiles(
@@ -516,13 +554,13 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
         appBar: HomeServerAppBar(
           title: const Text('Files', style: TextStyle(fontWeight: FontWeight.w800)),
           onHome: () => _load(''),
-          leading: widget.isActive
-              ? IconButton(
-                  tooltip: _path.isEmpty ? 'Back to Dashboard' : 'Go to parent folder',
-                  onPressed: _path.isEmpty ? widget.onBackAtRoot : _goUp,
-                  icon: const Icon(Icons.arrow_back_rounded),
-                )
-              : null,
+          actionsBeforeHome: widget.showSearch ? [
+            IconButton(
+              tooltip: 'Search files',
+              onPressed: _showSearchDialog,
+              icon: const Icon(Icons.search_rounded),
+            ),
+          ] : const [],
           actions: [
             HomeServerAppBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded, onPressed: _openTransfers),
             HomeServerAppBarAction(label: 'Upload file', icon: Icons.cloud_upload_outlined, onPressed: _uploadFile),
@@ -533,24 +571,24 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
         body: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
               child: Material(
                 color: colors.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(18),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   child: Row(
                     children: [
                       Container(
-                        width: 42,
-                        height: 42,
+                        width: 34,
+                        height: 34,
                         decoration: BoxDecoration(
                           color: colors.primary.withValues(alpha: 0.14),
-                          borderRadius: BorderRadius.circular(13),
+                          borderRadius: BorderRadius.circular(11),
                         ),
-                        child: Icon(Icons.folder_copy_rounded, color: colors.primary, size: 23),
+                        child: Icon(Icons.folder_copy_rounded, color: colors.primary, size: 20),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: InkWell(
                           borderRadius: BorderRadius.circular(10),
@@ -613,59 +651,58 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 0, 18, 8),
-              child: SizedBox(
-                height: 34,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: [
-                    TextButton(
-                      onPressed: _path.isEmpty ? null : () => _load(''),
-                      child: Text(_selectedVolume == null ? 'Internal storage' : _volumeName(_selectedVolume!)),
-                    ),
-                    for (var i = 0; i < _path.split('/').where((part) => part.isNotEmpty).length; i++) ...[
-                      const Center(child: Icon(Icons.chevron_right_rounded, size: 17)),
+            if (_path.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                child: SizedBox(
+                  height: 30,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: [
                       TextButton(
-                        onPressed: i == _path.split('/').where((part) => part.isNotEmpty).length - 1
-                            ? null
-                            : () => _load(_path.split('/').where((part) => part.isNotEmpty).take(i + 1).join('/')),
-                        child: Text(_path.split('/').where((part) => part.isNotEmpty).elementAt(i)),
+                        style: TextButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          minimumSize: const Size(0, 28),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        onPressed: () => _load(''),
+                        child: Text(
+                          _selectedVolume == null ? 'Internal storage' : _volumeName(_selectedVolume!),
+                          style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
+                        ),
                       ),
+                      for (var i = 0; i < _path.split('/').where((part) => part.isNotEmpty).length; i++) ...[
+                        const Center(child: Icon(Icons.chevron_right_rounded, size: 15)),
+                        TextButton(
+                          style: TextButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            minimumSize: const Size(0, 28),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          onPressed: i == _path.split('/').where((part) => part.isNotEmpty).length - 1
+                              ? null
+                              : () => _load(_path.split('/').where((part) => part.isNotEmpty).take(i + 1).join('/')),
+                          child: Text(
+                            _path.split('/').where((part) => part.isNotEmpty).elementAt(i),
+                            style: theme.textTheme.labelSmall,
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
-                ),
-              ),
-            ),
-            if (widget.showSearch) Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: TextField(
-                controller: _searchController,
-                onChanged: (value) => setState(() => _searchQuery = value),
-                decoration: InputDecoration(
-                  hintText: 'Search files and folders',
-                  prefixIcon: const Icon(Icons.search_rounded),
-                  suffixIcon: _searchQuery.isEmpty ? null : IconButton(
-                    tooltip: 'Clear search',
-                    onPressed: () { _searchController.clear(); setState(() => _searchQuery = ''); },
-                    icon: const Icon(Icons.close_rounded),
                   ),
-                  filled: true,
-                  fillColor: colors.surfaceContainerLow,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
-                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
-                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide(color: colors.primary, width: 1.5)),
                 ),
               ),
-            ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
+
             SizedBox(
               height: 44,
               child: Row(children: [
-                Expanded(child: ListView(
+                Expanded(child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  children: [
+                  child: Row(
+                    children: [
                     for (final category in const ['All', 'Images', 'Videos', 'Music', 'Documents'])
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -676,7 +713,8 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                           showCheckmark: false,
                         ),
                       ),
-                  ],
+                    ],
+                  ),
                 )),
                 PopupMenuButton<String>(
                   tooltip: 'Sort files',
