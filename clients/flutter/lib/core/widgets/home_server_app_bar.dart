@@ -22,6 +22,9 @@ class HomeServerAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.onHome,
     this.leading,
     this.centerTitle,
+    this.backgroundColor,
+    this.foregroundColor,
+    this.elevation,
     super.key,
   });
 
@@ -30,6 +33,9 @@ class HomeServerAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback? onHome;
   final Widget? leading;
   final bool? centerTitle;
+  final Color? backgroundColor;
+  final Color? foregroundColor;
+  final double? elevation;
 
   void _goHome(BuildContext context) {
     if (onHome != null) {
@@ -44,6 +50,9 @@ class HomeServerAppBar extends StatelessWidget implements PreferredSizeWidget {
     title: title,
     leading: leading,
     centerTitle: centerTitle,
+    backgroundColor: backgroundColor,
+    foregroundColor: foregroundColor,
+    elevation: elevation,
     actions: [
       IconButton(
         tooltip: 'Home',
