@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
@@ -168,7 +169,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
         username: username,
         password: password,
       );
-      await api.authenticate();
+      await api.authenticate().timeout(const Duration(seconds: 15));
     } on DioException catch (error) {
       if (!mounted) return;
       final status = error.response?.statusCode;
@@ -189,6 +190,14 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                                 : 'Could not connect. Check the server address and credentials.';
         _isConnecting = false;
       });
+      return;
+    } on TimeoutException {
+      if (mounted) {
+        setState(() {
+          _message = 'The server took too long to respond. Check that HomeServer is running, then try again.';
+          _isConnecting = false;
+        });
+      }
       return;
     } on FormatException catch (error) {
       if (mounted) setState(() {
@@ -215,11 +224,19 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     // A secure-storage write failure must not turn a successful connection
     // into a misleading connection error or block access to the server.
     try {
-      await _storage.write(key: 'server_password_$id', value: password);
-      await _persistProfiles();
-      await _storage.write(key: 'last_server_address', value: address);
-      await _storage.write(key: 'last_server_username', value: username);
-      await _storage.write(key: 'last_server_password', value: password);
+      await () async {
+        await _storage.write(key: 'server_password_$id', value: password);
+        await _persistProfiles();
+        await _storage.write(key: 'last_server_address', value: address);
+        await _storage.write(key: 'last_server_username', value: username);
+        await _storage.write(key: 'last_server_password', value: password);
+      }().timeout(const Duration(seconds: 5));
+    } on TimeoutException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Connected. Saving this server is taking too long; you can still continue.')),
+        );
+      }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
