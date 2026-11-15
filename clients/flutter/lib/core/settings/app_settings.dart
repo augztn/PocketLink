@@ -20,7 +20,7 @@ class AppSettings extends ChangeNotifier {
   bool _showQuickActions = true;
   bool _showLibrary = true;
   bool _showRecentFiles = true;
-  bool _useLiquidGlass = true;
+  bool _useLiquidGlass = false;
   bool _loaded = false;
 
   ThemeMode get themeMode => _themeMode;
@@ -35,7 +35,7 @@ class AppSettings extends ChangeNotifier {
     if (_loaded) return;
     try {
       final preferences = await SharedPreferences.getInstance();
-      _useLiquidGlass = preferences.getBool(_liquidGlassKey) ?? true;
+      _useLiquidGlass = preferences.getBool(_liquidGlassKey) ?? false;
     } catch (_) {
       // Keep the default glass appearance if preferences are unavailable.
     }
