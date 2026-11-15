@@ -1,39 +1,74 @@
-# Backend API contract
+# PocketLink Native Android API Contract
 
-This contract is based on inspection of the deployed FastAPI source under `/opt/homeserver` on 2026-11-13.
+This document describes the native Android implementation in `clients/flutter/packages/homeserver_saf`. It supersedes the older FastAPI deployment contract.
 
-## Authentication
+## Connection and security
 
-The current backend uses HTTP Basic authentication for the dashboard and all file routes.
+- Base URL: `http://<tailscale-ip>:8000` for a Tailscale peer, or loopback for same-device access.
+- The native server listens on port `8000`.
+- Cleartext requests are accepted only from loopback or Tailscale peers:
+  - IPv4: `100.64.0.0/10`
+  - IPv6: `fd7a:115c:a1e0::/48`
+- Other LAN/public peers receive HTTP 403. Use a TLS-terminating reverse proxy for non-Tailscale network access; do not expose port 8000 directly.
+- Every route, including `/health`, is subject to the peer policy.
+- All routes except `GET /health` require HTTP Basic authentication (username `admin`). The native server verifies the password against a salted PBKDF2-HMAC-SHA256 verifier. The client stores credentials using platform secure storage.
+- Error responses use JSON: `{"detail":"..."}`.
 
-- Username: `admin`
-- Password: read from the server-side `/opt/homeserver/admin-password.txt` file.
-- `GET /health` is public.
-- File routes return HTTP 401 when credentials are missing or invalid.
+## Path and volume rules
 
-The Flutter client sends Basic credentials on each authenticated request and stores the server address and credentials using the platform secure-storage plugin. Use HTTPS for any untrusted network; Basic authentication over plain HTTP does not protect credentials in transit.
+- Internal paths are relative to Android's shared-storage root.
+- External paths are relative to a SAF tree granted by the user.
+- Discover external volumes with `GET /api/storage/volumes`; use the returned `id` unchanged.
+- Hidden path segments, dot segments, separators inside names, and control characters are rejected for mutations and SAF path traversal.
+- The app must not assume a USB volume is available merely because it was previously mounted; inspect the returned `available` value.
 
-## Verified endpoints
+## Endpoints
 
-| Method | Path | Request | Purpose |
+| Method | Path | Inputs | Purpose |
 | --- | --- | --- | --- |
-| GET | `/health` | — | Public server health |
-| GET | `/` | Basic auth | Existing HTML dashboard |
-| GET | `/api/files/?path=` | Query: `path` | List directory; response has `path` and `items` |
-| GET | `/api/files/download?path=` | Query: `path` | Download a file |
-| POST | `/api/files/upload?path=` | Multipart: `file`; query: `path` | Upload a file (100 MB maximum) |
-| POST | `/api/files/mkdir` | JSON: `{path, name}` | Create directory |
-| PATCH | `/api/files/rename` | JSON: `{path, new_name}` | Rename file or directory |
-| DELETE | `/api/files/item?path=` | Query: `path` | Delete file or empty directory |
+| GET | `/health` | — | Service health; peer policy applies, no Basic auth |
+| GET | `/api/files/` | Query: `path` | List internal directory |
+| GET | `/api/files/download` | Query: `path` | Download original internal file |
+| GET | `/api/files/stream` | Query: `path` | Stream original internal file inline |
+| POST | `/api/files/upload` | Query: `path`; multipart: `file` | Upload to internal directory |
+| POST | `/api/files/mkdir` | JSON: `{path, name}` | Create internal directory |
+| PATCH | `/api/files/rename` | JSON: `{path, new_name}` | Rename internal file/directory |
+| DELETE | `/api/files/item` | Query: `path` | Delete internal file or empty directory |
+| GET | `/api/storage/volumes` | — | List SAF volumes and availability |
+| GET | `/api/storage/list` | Query: `volume`, `path` | List external directory |
+| GET | `/api/storage/download` | Query: `volume`, `path` | Download/stream original external file |
+| POST | `/api/storage/upload` | Query: `volume`, `path`; multipart: `file` | Upload to external directory |
+| POST | `/api/storage/mkdir` | JSON: `{volume, path, name}` | Create external directory |
+| POST | `/api/storage/rename` | JSON: `{volume, path, new_name}` | Rename external item |
+| DELETE | `/api/storage/item` | Query: `volume`, `path` | Delete external item |
+| GET | `/api/media/metadata` | Query: `path`; optional `volume` | Read video duration, width, and height |
+| GET | `/api/media/thumbnail` | Query: `path`; optional `volume` | Generate a JPEG video preview thumbnail |
 
-## Filesystem boundary
+## Response shapes
 
-The current storage root is `/sdcard/HomeServer`. The filesystem service resolves requested paths and rejects paths that resolve outside this root. The server validates names, rejects hidden names for create/upload/rename, prevents overwriting on upload, and limits uploads to 100 MB.
+Directory listings return `{"path":"...","items":[...]}`. Each item includes `name`, `type` (`file` or `directory`), `size`, and `modified`; `created` is included only when Android exposes a reliable creation timestamp.
 
-## Not currently implemented
+Volume listings return `{"items":[{"id":"...","name":"...","available":true,"writable":true}]}`.
 
-The inspected backend does not expose file move/copy/search, media preview, system metrics, process/service management, logs, token sessions, or WebSocket events. The Flutter client must not show these as supported until matching backend functionality exists.
+Mutation and upload success responses return `{"ok":true,"name":"..."}` (delete returns `{"ok":true}`). Video metadata returns `duration_ms`, `width`, and `height`.
 
-## Future API evolution
+## Upload and download behavior
 
-New endpoints should be versioned under `/api/v1/` without breaking the existing routes. Continue using explicit request/response schemas, per-route authorization, capability metadata, upload limits, and strict storage-root enforcement. Do not expose arbitrary shell execution or unrestricted root operations.
+PocketLink does not impose an application-level upload or download size limit. Actual maximum sizes depend on available device storage, Android filesystem/SAF provider behavior, memory and OS constraints, and connection stability. Uploads are staged before finalization; clients should treat a non-2xx response as failure and refresh the listing before retrying.
+
+## Original media and byte ranges
+
+- Internal downloads and streams return the source file bytes without transcoding or recompression.
+- External storage streams use the SAF content provider and preserve original bytes.
+- A valid single HTTP byte range returns `206 Partial Content`, `Content-Range`, and `Accept-Ranges: bytes`.
+- Invalid or unsupported ranges return `416 Range Not Satisfiable`.
+- Original file responses include `Cache-Control: no-transform`.
+- `/api/media/thumbnail` is the only preview path that creates a resized/compressed image; it does not modify the source file.
+
+## Known behavior and limitations
+
+- Deleting an internal non-empty directory is rejected; delete its contents first.
+- SAF providers differ in seek support. Range requests prefer a seekable file descriptor and fall back to stream skipping; a provider that cannot seek may reject a range.
+- SAF providers may not expose creation timestamps.
+- Copy/move/search, persistent offline caching, server hardware telemetry, and arbitrary shell execution are not exposed by this native API.
+- API evolution should preserve these existing routes and the raw-stream contract; add versioned routes for future incompatible changes.
