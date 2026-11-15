@@ -118,22 +118,21 @@ class _HomeScreenState extends State<HomeScreen> {
         )
       else
         const SizedBox.shrink(),
-      FileManagerScreen(
-        key: PageStorageKey<String>('homeserver-files-${widget.api.baseUrl}'),
-        api: widget.api,
-        isActive: true,
-        onBackAtRoot: () => _openTab(0),
-      ),
+      if (_initializedTabs.contains(2))
+        FileManagerScreen(
+          key: PageStorageKey<String>('homeserver-files-${widget.api.baseUrl}'),
+          api: widget.api,
+          isActive: true,
+          onBackAtRoot: () => _openTab(0),
+        )
+      else
+        const SizedBox.shrink(),
     ];
 
-    final fileBrowserActive = _selectedIndex == 2;
-
     return PopScope(
-      canPop: _selectedIndex == 0 || fileBrowserActive,
+      canPop: _selectedIndex == 0,
       onPopInvokedWithResult: (didPop, result) {
-        if (!didPop && _selectedIndex != 0 && !fileBrowserActive) {
-          _openTab(0);
-        }
+        if (!didPop && _selectedIndex == 1) _openTab(0);
       },
       child: AnimatedBuilder(
         animation: AppSettings.instance,
