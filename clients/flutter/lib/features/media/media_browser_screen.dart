@@ -693,6 +693,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       child: Scaffold(
       appBar: HomeServerAppBar(
         title: Text(_title),
+        onHome: widget.onHome,
         actions: [
           HomeServerAppBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded, onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen()))),
           if (!_isMusic)
@@ -948,12 +949,14 @@ class MediaBrowserScreen extends StatefulWidget {
     required this.api,
     required this.type,
     this.showSearch = true,
+    this.onHome,
     super.key,
   });
 
   final ServerApi api;
   final MediaLibraryType type;
   final bool showSearch;
+  final VoidCallback? onHome;
 
   @override
   State<MediaBrowserScreen> createState() => _MediaBrowserScreenState();
