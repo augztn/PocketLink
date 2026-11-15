@@ -66,46 +66,60 @@ class _ExploreScreenState extends State<ExploreScreen> {
         if (!_initialized.contains(category))
           const SizedBox.shrink()
         else if (category == ExploreCategory.files)
-          FileManagerScreen(api: widget.api, initialCategory: _fileCategory,
-            isActive: _category == category, onBackAtRoot: widget.onBackAtRoot)
+          FileManagerScreen(
+            api: widget.api,
+            initialCategory: _fileCategory,
+            isActive: _category == category,
+            embedded: true,
+            onBackAtRoot: widget.onBackAtRoot,
+          )
         else if (category == ExploreCategory.drives)
-          StorageBrowserScreen(api: widget.api)
+          StorageBrowserScreen(api: widget.api, embedded: true)
         else if (category == ExploreCategory.photos)
-          PhotoGalleryScreen(api: widget.api)
+          PhotoGalleryScreen(api: widget.api, embedded: true)
         else if (category == ExploreCategory.music)
-          MediaBrowserScreen(api: widget.api, type: MediaLibraryType.music)
+          MediaBrowserScreen(api: widget.api, type: MediaLibraryType.music, embedded: true)
         else
-          MediaBrowserScreen(api: widget.api, type: MediaLibraryType.video),
+          MediaBrowserScreen(api: widget.api, type: MediaLibraryType.video, embedded: true),
     ];
-    return Column(
-      children: [
-        SizedBox(
-          height: 58,
-          child: ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            scrollDirection: Axis.horizontal,
-            children: [
-              for (final category in categories)
-                Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(
-                    selected: _category == category,
-                    showCheckmark: false,
-                    avatar: Icon(_icon(category), size: 17),
-                    label: Text(_label(category)),
-                    onSelected: (_) => _select(category),
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Explore'),
+        actions: [
+          IconButton(
+            tooltip: 'Transfers',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen()),
+            ),
+            icon: const Icon(Icons.swap_vert_rounded),
+          ),
+        ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(58),
+          child: SizedBox(
+            height: 58,
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              scrollDirection: Axis.horizontal,
+              children: [
+                for (final category in categories)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      selected: _category == category,
+                      showCheckmark: false,
+                      avatar: Icon(_icon(category), size: 17),
+                      label: Text(_label(category)),
+                      onSelected: (_) => _select(category),
+                    ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
-        Expanded(
-          child: IndexedStack(
-            index: selectedIndex,
-            children: pages,
-          ),
-        ),
-      ],
+      ),
+      body: IndexedStack(index: selectedIndex, children: pages),
     );
   }
 
