@@ -159,6 +159,11 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     await _load('');
   }
 
+  Future<void> _refreshDirectory() async {
+    widget.api.invalidateDirectoryCache();
+    await _load();
+  }
+
   Future<void> _load([String? path]) async {
     final generation = ++_loadGeneration;
     final target = path ?? _path;
@@ -710,13 +715,13 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
               ),
             Expanded(
               child: _error != null
-                  ? Center(child: FilledButton.icon(onPressed: () => _load(),
+                  ? Center(child: FilledButton.icon(onPressed: _refreshDirectory,
                       icon: const Icon(Icons.refresh), label: const Text('Try again')))
                   : _loading && _listing == null
                       ? const SizedBox.shrink()
                       : items.isEmpty
                           ? RefreshIndicator(
-                              onRefresh: () => _load(),
+                              onRefresh: _refreshDirectory,
                               child: ListView(physics: const AlwaysScrollableScrollPhysics(),
                                 children: [SizedBox(height: 150, child: Center(child: Text(
                                   allItems.isEmpty ? 'This folder is empty' : 'No matching files',
