@@ -173,6 +173,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       if (!mounted) return;
       final status = error.response?.statusCode;
       setState(() {
+        _isConnecting = false;
         _message = status == 401
             ? 'The server rejected these credentials for storage access. Re-enter the current server admin password. The SAF bridge token is separate.'
             : status == 403
@@ -182,13 +183,26 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                     : error.type == DioExceptionType.connectionTimeout ||
                             error.type == DioExceptionType.receiveTimeout
                         ? 'Connection timed out. Check the address, port, and network.'
-                        : 'Could not connect. Check the server address and credentials.';
+                        : error.type == DioExceptionType.connectionError
+                            ? 'Could not reach the server. Check that it is running and that the address, port, and network are correct.'
+                            : error.type == DioExceptionType.badCertificate
+                                ? 'The server certificate could not be verified. Check the server HTTPS certificate.'
+                                : 'Could not connect. Check the server address and credentials.';
+        _isConnecting = false;
       });
+      return;
     } on FormatException catch (error) {
-      if (mounted) setState(() => _message = error.message);
+      if (mounted) setState(() {
+        _message = error.message;
+        _isConnecting = false;
+      });
+      return;
     } catch (_) {
       if (mounted) {
-        setState(() => _message = 'Could not initialize the server connection. Check the address and try again.');
+        setState(() {
+          _message = 'Could not initialize the server connection. Check the address and try again.';
+          _isConnecting = false;
+        });
       }
       return;
     }
