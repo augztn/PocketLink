@@ -4,7 +4,6 @@ import 'quick_actions_store.dart';
 
 import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
-import '../connection/connection_screen.dart';
 import '../media/media_browser_screen.dart';
 import '../library/library_browser_screen.dart';
 import '../library/photo_gallery_screen.dart';
@@ -13,9 +12,10 @@ import '../storage/local_storage_setup_screen.dart';
 import '../transfers/transfer_manager_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({required this.api, super.key});
+  const HomeScreen({required this.api, this.onReturnToConnection, super.key});
 
   final ServerApi api;
+  final VoidCallback? onReturnToConnection;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -425,10 +425,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                 subtitle: const Text('Return to the server login screen'),
                 onTap: () {
                   Navigator.pop(context);
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute<void>(builder: (_) => const ConnectionScreen()),
-                    (route) => false,
-                  );
+                  widget.onReturnToConnection?.call();
                 },
               ),
               Padding(
