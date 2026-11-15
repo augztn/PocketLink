@@ -158,6 +158,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       return;
     }
 
+    unawaited(AppLogger.info('Connection attempt started', fields: {'host': host, 'port': port, 'username': username}));
     setState(() {
       _isConnecting = true;
       _message = null;
@@ -173,7 +174,8 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       );
       await api.authenticate().timeout(const Duration(seconds: 15));
       await AppLogger.info('Server authentication succeeded', fields: {'host': host, 'port': port});
-    } on DioException catch (error) {\n      await AppLogger.warning('Server authentication failed', fields: {'host': host, 'port': port, 'type': error.type.name, 'status': error.response?.statusCode});
+    } on DioException catch (error) {
+      await AppLogger.warning('Server authentication failed', fields: {'host': host, 'port': port, 'type': error.type.name, 'status': error.response?.statusCode});
       if (!mounted) return;
       final status = error.response?.statusCode;
       setState(() {
@@ -194,7 +196,8 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
         _isConnecting = false;
       });
       return;
-    } on TimeoutException {\n      await AppLogger.warning('Server authentication timed out', fields: {'host': host, 'port': port});
+    } on TimeoutException {
+      await AppLogger.warning('Server authentication timed out', fields: {'host': host, 'port': port});
       if (mounted) {
         setState(() {
           _message = 'The server took too long to respond. Check that HomeServer is running, then try again.';
@@ -202,7 +205,8 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
         });
       }
       return;
-    } on FormatException catch (error) {\n      await AppLogger.warning('Connection address validation failed');
+    } on FormatException catch (error) {
+      await AppLogger.warning('Connection address validation failed');
       if (mounted) setState(() {
         _message = error.message;
         _isConnecting = false;
@@ -277,6 +281,13 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       appBar: AppBar(
         title: const Text('HomeServer'),
         actions: [
+          IconButton(
+            tooltip: 'Diagnostics & logs',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const DiagnosticsScreen()),
+            ),
+            icon: const Icon(Icons.bug_report_outlined),
+          ),
           IconButton(
             tooltip: 'Add server',
             onPressed: _isConnecting ? null : _addServer,
