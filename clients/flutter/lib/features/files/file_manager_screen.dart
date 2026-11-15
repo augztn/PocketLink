@@ -12,6 +12,7 @@ class FileManagerScreen extends StatefulWidget {
     this.initialPath = '',
     this.initialCategory = 'All',
     this.isActive = false,
+    this.embedded = false,
     this.onBackAtRoot,
     super.key,
   });
@@ -20,6 +21,7 @@ class FileManagerScreen extends StatefulWidget {
   final String initialPath;
   final String initialCategory;
   final bool isActive;
+  final bool embedded;
   final VoidCallback? onBackAtRoot;
 
   @override
@@ -421,7 +423,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
         }
       },
       child: Scaffold(
-        appBar: AppBar(
+        appBar: widget.embedded ? null : AppBar(
           title: const Text('File manager', style: TextStyle(fontWeight: FontWeight.w800)),
           actions: [
             IconButton(tooltip: 'Transfers', onPressed: _openTransfers,
