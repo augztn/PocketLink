@@ -59,7 +59,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final categories = ExploreCategory.values;
     final selectedIndex = categories.indexOf(_category);
     final pages = <Widget>[
