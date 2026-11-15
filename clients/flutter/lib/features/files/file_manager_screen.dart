@@ -11,6 +11,7 @@ class FileManagerScreen extends StatefulWidget {
     required this.api,
     this.initialPath = '',
     this.initialCategory = 'All',
+    this.showSearch = true,
     this.isActive = false,
     this.onBackAtRoot,
     super.key,
@@ -19,6 +20,7 @@ class FileManagerScreen extends StatefulWidget {
   final ServerApi api;
   final String initialPath;
   final String initialCategory;
+  final bool showSearch;
   final bool isActive;
   final VoidCallback? onBackAtRoot;
 
@@ -422,7 +424,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('File manager', style: TextStyle(fontWeight: FontWeight.w800)),
+          title: const Text('Files', style: TextStyle(fontWeight: FontWeight.w800)),
           actions: [
             IconButton(tooltip: 'Transfers', onPressed: _openTransfers,
                 icon: const Icon(Icons.swap_vert_rounded)),
@@ -486,7 +488,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                 ),
               ),
             ),
-            Padding(
+            if (widget.showSearch) Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: TextField(
                 controller: _searchController,
