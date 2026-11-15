@@ -97,10 +97,15 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox.shrink(),
     ];
 
+    final fileBrowserActive =
+        _selectedIndex == 1 && _exploreCategory == ExploreCategory.files;
+
     return PopScope(
-      canPop: _selectedIndex == 0,
+      canPop: _selectedIndex == 0 || fileBrowserActive,
       onPopInvokedWithResult: (didPop, result) {
-        if (!didPop && _selectedIndex != 0) _openTab(0);
+        if (!didPop && _selectedIndex != 0 && !fileBrowserActive) {
+          _openTab(0);
+        }
       },
       child: AnimatedBuilder(
         animation: player,
