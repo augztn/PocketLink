@@ -47,7 +47,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
   int dateMode = 0;
 
   @override
-  void initState() { super.initState(); tab = widget.initialTab.clamp(0, 3); _initialize(); }
+  void initState() { super.initState(); tab = widget.initialTab.clamp(0, 3).toInt(); _initialize(); }
 
   Future<void> _initialize() async {
     try {
