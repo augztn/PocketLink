@@ -4,6 +4,7 @@ import 'quick_actions_store.dart';
 
 import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
+import '../connection/connection_screen.dart';
 import '../media/media_browser_screen.dart';
 import '../library/library_browser_screen.dart';
 import '../library/photo_gallery_screen.dart';
@@ -29,13 +30,24 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final pages = [
       _HomeDashboard(api: widget.api, onOpenTab: _openTab),
-      FileManagerScreen(api: widget.api),
+      FileManagerScreen(
+        api: widget.api,
+        isActive: _selectedIndex == 1,
+        onBackAtRoot: () => _openTab(0),
+      ),
       PhotoGalleryScreen(api: widget.api),
       MediaBrowserScreen(api: widget.api, type: MediaLibraryType.music),
       MediaBrowserScreen(api: widget.api, type: MediaLibraryType.video),
     ];
 
-    return Scaffold(
+    return PopScope(
+      canPop: _selectedIndex == 0 || _selectedIndex == 1,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && _selectedIndex != 0 && _selectedIndex != 1) {
+          _openTab(0);
+        }
+      },
+      child: Scaffold(
       body: IndexedStack(index: _selectedIndex, children: pages),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
@@ -47,6 +59,7 @@ class _HomeScreenState extends State<HomeScreen> {
           NavigationDestination(icon: Icon(Icons.music_note_outlined), selectedIcon: Icon(Icons.music_note), label: 'Audio'),
           NavigationDestination(icon: Icon(Icons.movie_outlined), selectedIcon: Icon(Icons.movie), label: 'Videos'),
         ],
+      ),
       ),
     );
   }
@@ -406,6 +419,18 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                 },
               ),
               const Divider(height: 24),
+              ListTile(
+                leading: const Icon(Icons.switch_account_rounded),
+                title: const Text('Connection / Switch server'),
+                subtitle: const Text('Return to the server login screen'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute<void>(builder: (_) => const ConnectionScreen()),
+                    (route) => false,
+                  );
+                },
+              ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 16, 8),
                 child: Text('TOOLS', style: theme.textTheme.labelSmall?.copyWith(
