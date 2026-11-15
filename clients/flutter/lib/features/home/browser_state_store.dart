@@ -3,9 +3,7 @@ import 'package:flutter/foundation.dart';
 /// App-scoped browser session state. Keyed by server URL so multiple servers
 /// never share navigation or presentation state.
 class BrowserStateStore extends ChangeNotifier {
-  BrowserStateStore._();
-
-  static final BrowserStateStore instance = BrowserStateStore._();
+  BrowserStateStore();
 
   final Map<String, FileBrowserState> _files = {};
   final Map<String, MediaBrowserState> _media = {};
