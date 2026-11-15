@@ -201,13 +201,14 @@ class _SearchScreenState extends State<SearchScreen> {
 
       final startingDirectories = _visitedDirectories.length;
       final startingFiles = _allFound.length;
+      var completedBatches = 0;
       while (_directoryCursor < _pendingDirectories.length &&
           _visitedDirectories.length - startingDirectories < 1800 &&
           _allFound.length - startingFiles < 10000 &&
           generation == _scanGeneration) {
         final batch = <({String path, String? volume, String name, int depth})>[];
         while (_directoryCursor < _pendingDirectories.length &&
-            batch.length < 8 &&
+            batch.length < 12 &&
             _visitedDirectories.length - startingDirectories < 1800) {
           final item = _pendingDirectories[_directoryCursor++];
           final key = '${item.volume ?? 'internal'}:${item.path}';
@@ -242,7 +243,11 @@ class _SearchScreenState extends State<SearchScreen> {
           }
         }));
         if (generation != _scanGeneration) return;
-        if (mounted) {
+
+        // Publish immediately on the first wave, then batch UI work to avoid
+        // repeatedly copying and rebuilding the entire result list.
+        completedBatches++;
+        if (mounted && (completedBatches == 1 || completedBatches % 2 == 0)) {
           setState(() {
             _results
               ..clear()
@@ -480,7 +485,34 @@ class _SearchScreenState extends State<SearchScreen> {
     final list = _visible;
     final q = _controller.text.trim();
     if (_error != null) return Padding(padding: const EdgeInsets.all(24), child: Text(_error!, textAlign: TextAlign.center));
-    if (_loading && list.isEmpty) return const Center(child: CircularProgressIndicator());
+    if (_loading && list.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Searching storage…',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '$_scannedFolders folders checked',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     if (list.isEmpty) return Padding(padding: const EdgeInsets.all(24), child: Center(child: Text(
       _quick == 'large' ? 'No files larger than 100 MB found.' : _quick == 'today' ? 'No files added today.' : 'No matching files found.',
       style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant))));
@@ -617,7 +649,21 @@ class _SearchScreenState extends State<SearchScreen> {
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)),
           )),
         ])),
-        if (_loading) const LinearProgressIndicator(minHeight: 2),
+        if (_loading) ...[
+          const LinearProgressIndicator(minHeight: 2),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 5, 16, 2),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Searching storage · $_scannedFolders folders · ${_visible.length} matches found',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ),
+        ],
         if (_quick != null) Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
           child: Align(
