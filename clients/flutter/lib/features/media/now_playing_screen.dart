@@ -655,7 +655,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
       }
       final text = active >= 0 ? _lyrics[active].text : (_loadingLyrics ? 'Loading lyrics…' : _lyrics.isEmpty ? 'Lyrics  ›' : _lyrics.first.text);
       return InkWell(
-        onTap: _showLyrics,
+        onTap: _lyrics.isNotEmpty ? _showLyrics : null,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 10),
@@ -716,7 +716,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                         _roundAction(Icons.more_horiz_rounded, 'More options', _showOptions),
                       ]),
                       const SizedBox(height: 8),
-                      _lyricPreview(),
+                      if (_lyrics.isNotEmpty || _loadingLyrics) _lyricPreview(),
                       const SizedBox(height: 4),
                       _timeline(),
                       const SizedBox(height: 18),
@@ -725,8 +725,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                       _volume(),
                       const SizedBox(height: 8),
                       Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-                        IconButton(tooltip: 'Lyrics', onPressed: _showLyrics,
-                          icon: const Icon(Icons.lyrics_outlined, color: Colors.white70)),
+                        if (_lyrics.isNotEmpty)
+                          IconButton(tooltip: 'Lyrics', onPressed: _showLyrics,
+                            icon: const Icon(Icons.lyrics_outlined, color: Colors.white70)),
                         IconButton(tooltip: 'Audio output', onPressed: _showAudioOutput,
                           icon: const Icon(Icons.speaker_group_outlined, color: Colors.white70)),
                         IconButton(tooltip: 'Queue', onPressed: _showQueue,
