@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/network/server_api.dart';
 import 'photo_favorites_store.dart';
+import '../transfers/transfer_manager_screen.dart';
 
 class _Photo {
   const _Photo(this.file, this.path, this.volume);
@@ -337,6 +338,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
         title:Text(selecting?'${selected.length} selected':['Photos','Albums','Discover','Favourites'][tab]),
         leading:selecting?IconButton(onPressed:()=>setState(selected.clear),icon:const Icon(Icons.close)):null,
         actions:[
+          IconButton(onPressed:()=>Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>const TransferManagerScreen())),icon:const Icon(Icons.swap_vert_rounded),tooltip:'Transfers'),
           if(!selecting)IconButton(onPressed:()=>setState(()=>searchOpen=!searchOpen),icon:Icon(searchOpen?Icons.close:Icons.search),tooltip:'Search'),
           if(!selecting)IconButton(
             onPressed:()=>setState(()=>tab=tab==3?0:3),
