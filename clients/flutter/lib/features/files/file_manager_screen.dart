@@ -2,6 +2,8 @@ import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cross_file/cross_file.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../core/widgets/home_server_app_bar.dart';
 import '../../core/widgets/compact_search_field.dart';
 
@@ -58,6 +60,8 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   int _loadGeneration = 0;
   List<StorageVolume> _volumes = const [];
   String? _selectedVolume;
+  final Set<String> _selectedNames = <String>{};
+  bool get _selectionMode => _selectedNames.isNotEmpty;
 
   String _searchQuery = '';
   late String _category = widget.initialCategory;
@@ -231,6 +235,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   }
 
   Future<void> _selectPartition(String? volumeId) async {
+    _selectedNames.clear();
     setState(() {
       _selectedVolume = volumeId; _path = ''; _listing = null;
       _searchController.clear(); _searchQuery = ''; _pendingScrollOffset = 0;
@@ -248,6 +253,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   Future<void> _load([String? path]) async {
     final generation = ++_loadGeneration;
     final target = path ?? _path;
+    if (target != _path) _selectedNames.clear();
     if (target != _path) { _pendingScrollOffset = 0; if (_scrollController.hasClients) _scrollController.jumpTo(0); }
     setState(() { _loading = true; _error = null; });
     try {
@@ -434,6 +440,705 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     } catch (_) {
       _showError('Unable to preview this image.');
     }
+  }
+
+
+  void _toggleSelection(FileEntry item) {
+    setState(() {
+      if (!_selectedNames.add(item.name)) _selectedNames.remove(item.name);
+    });
+  }
+
+  void _clearSelection() {
+    if (_selectedNames.isNotEmpty) setState(_selectedNames.clear);
+  }
+
+  List<FileEntry> get _selectedItems => (_listing?.items ?? const <FileEntry>[])
+      .where((item) => _selectedNames.contains(item.name)).toList();
+
+  Future<void> _batchDownload() async {
+    final selected = _selectedItems;
+    var completed = 0;
+    for (final item in selected) {
+      final ok = await TransferManager.instance.run(
+        name: item.name, direction: 'Download',
+        location: _path.isEmpty ? 'Storage root' : _path,
+        operation: (token, progress) async {
+          final bytes = _selectedVolume == null
+              ? await widget.api.downloadFile(_itemPath(item.name), cancelToken: token, onReceiveProgress: progress)
+              : await widget.api.downloadStorageFile(_selectedVolume!, _itemPath(item.name), cancelToken: token, onReceiveProgress: progress);
+          if (token.isCancelled) return;
+          final saved = await FilePicker.platform.saveFile(
+            dialogTitle: 'Save ${item.name}', fileName: item.name,
+            initialDirectory: AppSettings.instance.downloadDirectory, bytes: bytes);
+          if (saved == null) token.cancel('Save cancelled by user');
+        });
+      if (!ok) break;
+      completed++;
+    }
+    if (!mounted) return;
+    _showError('$completed of ${selected.length} files downloaded.');
+    if (completed == selected.length) _clearSelection();
+  }
+
+  Future<void> _batchShare() async {
+    final selected = _selectedItems;
+    try {
+      final files = <XFile>[];
+      for (final item in selected) {
+        if (item.size > 100 * 1024 * 1024) {
+          _showError('${item.name} exceeds the 100 MB share limit.');
+          return;
+        }
+        final bytes = _selectedVolume == null
+            ? await widget.api.downloadFile(_itemPath(item.name))
+            : await widget.api.downloadStorageFile(_selectedVolume!, _itemPath(item.name));
+        files.add(XFile.fromData(bytes, name: item.name));
+      }
+      if (files.isNotEmpty) await Share.shareXFiles(files, text: 'Shared from HomeServer');
+      _clearSelection();
+    } catch (_) {
+      _showError('Could not share the selected files.');
+    }
+  }
+
+  Future<void> _batchDelete() async {
+    final selected = _selectedItems;
+    if (selected.isEmpty) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Delete ${selected.length} items?'),
+        content: const Text('This permanently deletes the selected items. Folders must be empty.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Delete')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    var deleted = 0;
+    for (final item in selected) {
+      try {
+        if (_selectedVolume == null) {
+          await widget.api.deleteItem(_itemPath(item.name));
+        } else {
+          await widget.api.deleteStorageItem(_selectedVolume!, _itemPath(item.name));
+        }
+        deleted++;
+      } catch (_) {
+        // Continue so one non-empty folder does not block other deletions.
+      }
+    }
+    _clearSelection();
+    await _load();
+    if (mounted) _showError('$deleted of ${selected.length} items deleted.');
+  }
+
+  Future<void> _batchCopyMove({required bool move}) async {
+    final selected = _selectedItems;
+    if (selected.any((item) => item.isDirectory)) {
+      _showError('Copy and Move currently support files, not folders.');
+      return;
+    }
+    final controller = TextEditingController(text: _path);
+    final destination = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(move ? 'Move files' : 'Copy files'),
+        content: TextField(
+          controller: controller, autofocus: true,
+          decoration: const InputDecoration(labelText: 'Destination folder', hintText: 'Example: Documents/Backup'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
+            child: Text(move ? 'Move' : 'Copy')),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (destination == null) return;
+    final target = destination.replaceAll('\\\\', '/').replaceAll(RegExp(r'/+'), '/')
+        .replaceAll(RegExp(r'^/|/
+    final name = await _askName('Create folder');
+    if (name == null) return;
+    try {
+      if (_selectedVolume == null) { await widget.api.createFolder(_path, name); } else { await widget.api.createStorageFolder(_selectedVolume!, _path, name); }
+      await _load();
+    } on DioException catch (error) {
+      _showError(_messageFor(error));
+    }
+  }
+
+  Future<void> _rename(FileEntry item) async {
+    final name = await _askName('Rename item', initial: item.name);
+    if (name == null || name == item.name) return;
+    try {
+      if (_selectedVolume == null) { await widget.api.renameItem(_itemPath(item.name), name); } else { await widget.api.renameStorageItem(_selectedVolume!, _itemPath(item.name), name); }
+      await _load();
+    } on DioException catch (error) {
+      _showError(_messageFor(error));
+    }
+  }
+
+  Future<void> _delete(FileEntry item) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete item?'),
+        content: Text('Delete "${item.name}"? Folders must be empty.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      if (_selectedVolume == null) { await widget.api.deleteItem(_itemPath(item.name)); } else { await widget.api.deleteStorageItem(_selectedVolume!, _itemPath(item.name)); }
+      await _load();
+    } on DioException catch (error) {
+      _showError(_messageFor(error));
+    }
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  Future<void> _goUp() async {
+    if (_path.isEmpty) return;
+    final parts = _path.split('/');
+    parts.removeLast();
+    if (_scrollController.hasClients) _scrollController.jumpTo(0);
+    await _load(parts.join('/'));
+  }
+
+  String _formatSize(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    const units = ['KB', 'MB', 'GB', 'TB'];
+    var size = bytes / 1024;
+    var index = 0;
+    while (size >= 1024 && index < units.length - 1) {
+      size /= 1024;
+      index++;
+    }
+    return '${size.toStringAsFixed(1)} ${units[index]}';
+  }
+
+  @override
+  void dispose() {
+    _saveState();
+    _scrollController.removeListener(_saveScrollOffset);
+    _scrollController.dispose();
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final allItems = _listing?.items ?? const <FileEntry>[];
+    final query = _searchQuery.trim().toLowerCase();
+    final items = allItems.where((item) {
+      if (!_matchesCategory(item)) return false;
+      return query.isEmpty || item.name.toLowerCase().contains(query);
+    }).toList();
+    items.sort((a, b) {
+      if (a.isDirectory != b.isDirectory) return a.isDirectory ? -1 : 1;
+      if (_sortBy == 'largest') return b.size.compareTo(a.size);
+      if (_sortBy == 'newest') {
+        return (DateTime.tryParse(b.modified)?.millisecondsSinceEpoch ?? 0)
+            .compareTo(DateTime.tryParse(a.modified)?.millisecondsSinceEpoch ?? 0);
+      }
+      return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+    });
+
+    Widget fileIcon(FileEntry item, {double size = 24}) {
+      final color = item.isDirectory ? colors.primary : colors.secondary;
+      return Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Icon(_iconFor(item), color: color, size: size),
+      );
+    }
+
+    Widget fileTile(FileEntry item) {
+      return Card(
+        margin: EdgeInsets.zero,
+        elevation: 0,
+        color: colors.surfaceContainerLow,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+          leading: fileIcon(item),
+          title: Text(item.name, maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w600)),
+          subtitle: Text(item.isDirectory ? 'Folder' : _formatSize(item.size),
+              style: TextStyle(color: colors.onSurfaceVariant)),
+          selected: _selectedNames.contains(item.name),
+          onLongPress: () => _toggleSelection(item),
+          onTap: _selectionMode
+              ? () => _toggleSelection(item)
+              : item.isDirectory
+                  ? () => _load(_itemPath(item.name))
+                  : _isImage(item) ? () => _previewImage(item) : null,
+          leading: _selectionMode
+              ? Checkbox(value: _selectedNames.contains(item.name), onChanged: (_) => _toggleSelection(item))
+              : fileIcon(item),
+          trailing: _selectionMode ? null : PopupMenuButton<String>(
+            tooltip: 'More actions',
+            onSelected: (action) {
+              if (action == 'download' && !item.isDirectory) _downloadFile(item);
+              if (action == 'rename') _rename(item);
+              if (action == 'delete') _delete(item);
+            },
+            itemBuilder: (_) => [
+              if (!item.isDirectory)
+                const PopupMenuItem(value: 'download', child: Text('Download')),
+              const PopupMenuItem(value: 'rename', child: Text('Rename')),
+              const PopupMenuItem(value: 'delete', child: Text('Delete')),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return PopScope(
+      canPop: !widget.isActive && _path.isEmpty,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (_path.isNotEmpty) {
+          _goUp();
+        } else if (widget.isActive) {
+          widget.onBackAtRoot?.call();
+        }
+      },
+      child: Scaffold(
+        appBar: HomeServerAppBar(
+          title: const Text('Files', style: TextStyle(fontWeight: FontWeight.w800)),
+          onHome: () => _load(''),
+          actionsBeforeHome: widget.showSearch ? [
+            IconButton(
+              tooltip: 'Search files',
+              onPressed: _focusSearch,
+              icon: const Icon(Icons.search_rounded),
+            ),
+          ] : const [],
+          actions: [
+            HomeServerAppBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded, onPressed: _openTransfers),
+            HomeServerAppBarAction(label: 'Upload file', icon: Icons.cloud_upload_outlined, onPressed: _uploadFile),
+            HomeServerAppBarAction(label: 'New folder', icon: Icons.create_new_folder_outlined, onPressed: _createFolder),
+            HomeServerAppBarAction(label: 'Refresh', icon: Icons.refresh_rounded, onPressed: _loading ? null : _refreshDirectory),
+          ],
+        ),
+        body: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              child: Material(
+                color: colors.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(18),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: colors.primary.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                        child: Icon(Icons.folder_copy_rounded, color: colors.primary, size: 20),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(10),
+                          onTap: () => showModalBottomSheet<void>(
+                            context: context, backgroundColor: colors.surfaceContainerLow, showDragHandle: true,
+                            builder: (sheetContext) => SafeArea(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                              ListTile(leading: const Icon(Icons.phone_android_rounded), title: const Text('Internal storage'),
+                                trailing: _selectedVolume == null ? const Icon(Icons.check_rounded) : null,
+                                onTap: () { Navigator.pop(sheetContext); _selectPartition(null); }),
+                              for (final volume in _volumes) ListTile(leading: const Icon(Icons.usb_rounded),
+                                title: Text(volume.name, maxLines: 1, overflow: TextOverflow.ellipsis), subtitle: Text(volume.id),
+                                trailing: _selectedVolume == volume.id ? const Icon(Icons.check_rounded) : null,
+                                onTap: () { Navigator.pop(sheetContext); _selectPartition(volume.id); }),
+                              if (_volumes.isEmpty) const Padding(padding: EdgeInsets.all(16), child: Text('No mounted external drives')),
+                            ])),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 2),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        _path.isEmpty ? (_selectedVolume == null ? 'Internal storage' : _volumeName(_selectedVolume!)) : _path.split('/').last,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                                      ),
+                                    ),
+                                    const Icon(Icons.keyboard_arrow_down_rounded, size: 21),
+                                  ],
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${allItems.where((e) => e.isDirectory).length} folders • ${allItems.where((e) => !e.isDirectory).length} files',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Material(
+                        color: colors.secondaryContainer,
+                        shape: const CircleBorder(),
+                        child: IconButton(
+                          tooltip: 'Go to parent folder',
+                          visualDensity: VisualDensity.compact,
+                          onPressed: _path.isEmpty ? null : _goUp,
+                          icon: Icon(Icons.arrow_upward_rounded, color: colors.onSecondaryContainer, size: 19),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            if (widget.showSearch) ...[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                child: CompactSearchField(
+                  controller: _searchController,
+                  focusNode: _searchFocusNode,
+                  hintText: 'Search files and folders',
+                  onChanged: (value) => setState(() => _searchQuery = value),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+            if (_path.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                child: SizedBox(
+                  height: 30,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      TextButton(
+                        style: TextButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          minimumSize: const Size(0, 28),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        onPressed: () => _load(''),
+                        child: Text(
+                          _selectedVolume == null ? 'Internal storage' : _volumeName(_selectedVolume!),
+                          style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
+                        ),
+                      ),
+                      for (var i = 0; i < _path.split('/').where((part) => part.isNotEmpty).length; i++) ...[
+                        const Center(child: Icon(Icons.chevron_right_rounded, size: 15)),
+                        TextButton(
+                          style: TextButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            minimumSize: const Size(0, 28),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          onPressed: i == _path.split('/').where((part) => part.isNotEmpty).length - 1
+                              ? null
+                              : () => _load(_path.split('/').where((part) => part.isNotEmpty).take(i + 1).join('/')),
+                          child: Text(
+                            _path.split('/').where((part) => part.isNotEmpty).elementAt(i),
+                            style: theme.textTheme.labelSmall,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            const SizedBox(height: 8),
+
+            SizedBox(
+              height: 40,
+              child: Row(children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        for (final category in const ['All', 'Images', 'Videos', 'Music', 'Documents'])
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: ChoiceChip(
+                              label: Text(category),
+                              selected: _category == category,
+                              onSelected: (_) { setState(() => _category = category); _saveState(); },
+                              showCheckmark: false,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                PopupMenuButton<String>(
+                  tooltip: 'Sort files',
+                  onSelected: (value) { setState(() => _sortBy = value); _saveState(); },
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'name', child: Text('Name')),
+                    PopupMenuItem(value: 'newest', child: Text('Newest')),
+                    PopupMenuItem(value: 'largest', child: Text('Largest')),
+                  ],
+                  icon: const Icon(Icons.sort_rounded),
+                ),
+                IconButton(
+                  tooltip: _gridView ? 'List view' : 'Grid view',
+                  onPressed: () { setState(() => _gridView = !_gridView); _saveState(); },
+                  icon: Icon(_gridView ? Icons.view_list_rounded : Icons.grid_view_rounded),
+                ),
+                const SizedBox(width: 8),
+              ]),
+            ),
+            if (_loading) const LinearProgressIndicator(minHeight: 2),
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                child: Material(
+                  color: colors.errorContainer,
+                  borderRadius: BorderRadius.circular(14),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(children: [
+                      Icon(Icons.error_outline_rounded, color: colors.onErrorContainer),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(_error!, style: TextStyle(color: colors.onErrorContainer))),
+                    ]),
+                  ),
+                ),
+              ),
+            Expanded(
+              child: _error != null
+                  ? Center(child: FilledButton.icon(onPressed: _refreshDirectory,
+                      icon: const Icon(Icons.refresh), label: const Text('Try again')))
+                  : _loading && _listing == null
+                      ? const SizedBox.shrink()
+                      : items.isEmpty
+                          ? RefreshIndicator(
+                              onRefresh: _refreshDirectory,
+                              child: ListView(physics: const AlwaysScrollableScrollPhysics(),
+                                children: [SizedBox(height: 150, child: Center(child: Text(
+                                  allItems.isEmpty ? 'This folder is empty' : 'No matching files',
+                                  style: theme.textTheme.bodyLarge?.copyWith(color: colors.onSurfaceVariant),
+                                )))],
+                              ),
+                            )
+                          : RefreshIndicator(
+                              onRefresh: _refreshDirectory,
+                              child: _gridView
+                                  ? GridView.builder(
+                                      controller: _scrollController,
+                                      physics: const AlwaysScrollableScrollPhysics(),
+                                      padding: EdgeInsets.fromLTRB(16, 12, 16, 104 + MediaQuery.paddingOf(context).bottom),
+                                      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                                        maxCrossAxisExtent: 190, mainAxisExtent: 156,
+                                        crossAxisSpacing: 10, mainAxisSpacing: 10,
+                                      ),
+                                      itemCount: items.length,
+                                      itemBuilder: (context, index) {
+                                        final item = items[index];
+                                        return InkWell(
+                                          borderRadius: BorderRadius.circular(20),
+                                          onLongPress: () => _toggleSelection(item),
+                                          onTap: _selectionMode
+                                              ? () => _toggleSelection(item)
+                                              : item.isDirectory ? () => _load(_itemPath(item.name))
+                                                  : _isImage(item) ? () => _previewImage(item) : null,
+                                          child: Container(
+                                            padding: const EdgeInsets.all(14),
+                                            decoration: BoxDecoration(
+                                              color: _selectedNames.contains(item.name)
+                                                  ? colors.primary.withValues(alpha: 0.12)
+                                                  : colors.surfaceContainerLow,
+                                              border: _selectedNames.contains(item.name)
+                                                  ? Border.all(color: colors.primary.withValues(alpha: 0.55))
+                                                  : null,
+                                              borderRadius: BorderRadius.circular(20),
+                                            ),
+                                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                              Row(children: [
+                                                if (_selectionMode)
+                                                  Checkbox(value: _selectedNames.contains(item.name), onChanged: (_) => _toggleSelection(item))
+                                                else
+                                                  fileIcon(item, size: 26),
+                                                const Spacer(),
+                                                if (!_selectionMode) PopupMenuButton<String>(
+                                                  padding: EdgeInsets.zero,
+                                                  onSelected: (action) {
+                                                    if (action == 'download' && !item.isDirectory) _downloadFile(item);
+                                                    if (action == 'rename') _rename(item);
+                                                    if (action == 'delete') _delete(item);
+                                                  },
+                                                  itemBuilder: (_) => [
+                                                    if (!item.isDirectory) const PopupMenuItem(value: 'download', child: Text('Download')),
+                                                    const PopupMenuItem(value: 'rename', child: Text('Rename')),
+                                                    const PopupMenuItem(value: 'delete', child: Text('Delete')),
+                                                  ],
+                                                ),
+                                              ]),
+                                              const Spacer(),
+                                              Text(item.name, maxLines: 2, overflow: TextOverflow.ellipsis,
+                                                style: const TextStyle(fontWeight: FontWeight.w700)),
+                                              const SizedBox(height: 3),
+                                              Text(item.isDirectory ? 'Folder' : _formatSize(item.size),
+                                                style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
+                                            ]),
+                                          ),
+                                        );
+                                      },
+                                    )
+                                  : ListView.separated(
+                                      controller: _scrollController,
+                                      physics: const AlwaysScrollableScrollPhysics(),
+                                      padding: EdgeInsets.fromLTRB(16, 12, 16, 104 + MediaQuery.paddingOf(context).bottom),
+                                      itemCount: items.length,
+                                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                                      itemBuilder: (context, index) => fileTile(items[index]),
+                                    ),
+                            ),
+            ),
+          ],
+        ),
+        bottomNavigationBar: _selectionMode
+            ? SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 92),
+                  child: Material(
+                    color: colors.surfaceContainerHigh,
+                    elevation: 10,
+                    borderRadius: BorderRadius.circular(22),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
+                      child: Row(children: [
+                        IconButton(tooltip: 'Clear selection', onPressed: _clearSelection,
+                          icon: const Icon(Icons.close_rounded)),
+                        Expanded(child: Text('${_selectedNames.length} selected',
+                          maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700))),
+                        IconButton(tooltip: 'Download',
+                          onPressed: _selectedItems.any((item) => item.isDirectory) ? null : _batchDownload,
+                          icon: const Icon(Icons.download_rounded)),
+                        PopupMenuButton<String>(
+                          tooltip: 'Copy or move',
+                          enabled: !_selectedItems.any((item) => item.isDirectory),
+                          onSelected: (action) => _batchCopyMove(move: action == 'move'),
+                          itemBuilder: (_) => const [
+                            PopupMenuItem(value: 'copy', child: Text('Copy')),
+                            PopupMenuItem(value: 'move', child: Text('Move')),
+                          ],
+                          icon: const Icon(Icons.drive_file_move_rounded),
+                        ),
+                        IconButton(tooltip: 'Share',
+                          onPressed: _selectedItems.any((item) => item.isDirectory) ? null : _batchShare,
+                          icon: const Icon(Icons.share_rounded)),
+                        IconButton(tooltip: 'Delete', onPressed: _batchDelete,
+                          color: colors.error, icon: const Icon(Icons.delete_outline_rounded)),
+                      ]),
+                    ),
+                  ),
+                ),
+              )
+            : null,
+      ),
+    );
+  }
+
+}
+), '');
+    if (target.split('/').any((part) => part == '..' || part == '.')) {
+      _showError('Enter a valid relative destination folder.');
+      return;
+    }
+    if (target == _path) {
+      _showError('Choose a different destination folder.');
+      return;
+    }
+    try {
+      final listing = _selectedVolume == null
+          ? await widget.api.listDirectory(target)
+          : await widget.api.listStorageDirectory(_selectedVolume!, target);
+      final existing = listing.items.map((item) => item.name.toLowerCase()).toSet();
+      if (selected.any((item) => existing.contains(item.name.toLowerCase()))) {
+        _showError('A selected filename already exists in the destination. No files were changed.');
+        return;
+      }
+    } catch (_) {
+      _showError('Destination folder could not be opened.');
+      return;
+    }
+    var completed = 0;
+    for (final item in selected) {
+      if (item.size > 100 * 1024 * 1024) {
+        _showError('${item.name} exceeds the server 100 MB upload limit.');
+        break;
+      }
+      final ok = await TransferManager.instance.run(
+        name: item.name, direction: move ? 'Move' : 'Copy',
+        location: target.isEmpty ? 'Storage root' : target,
+        operation: (token, progress) async {
+          final bytes = _selectedVolume == null
+              ? await widget.api.downloadFile(_itemPath(item.name), cancelToken: token, onReceiveProgress: progress)
+              : await widget.api.downloadStorageFile(_selectedVolume!, _itemPath(item.name), cancelToken: token, onReceiveProgress: progress);
+          if (token.isCancelled) return;
+          if (_selectedVolume == null) {
+            await widget.api.uploadFile(target, item.name, bytes, cancelToken: token, onSendProgress: progress);
+          } else {
+            await widget.api.uploadStorageFile(_selectedVolume!, target, item.name, bytes, cancelToken: token, onSendProgress: progress);
+          }
+          if (move && !token.isCancelled) {
+            if (_selectedVolume == null) {
+              await widget.api.deleteItem(_itemPath(item.name));
+            } else {
+              await widget.api.deleteStorageItem(_selectedVolume!, _itemPath(item.name));
+            }
+          }
+        });
+      if (!ok) break;
+      completed++;
+    }
+    if (!mounted) return;
+    _showError('$completed of ${selected.length} files ${move ? 'moved' : 'copied'}.');
+    _clearSelection();
+    await _load();
   }
 
   Future<void> _createFolder() async {
