@@ -37,11 +37,20 @@ class _HomeScreenState extends State<HomeScreen> {
   final Set<int> _initializedTabs = {0};
   ExploreCategory _exploreCategory = ExploreCategory.files;
   String _fileCategory = 'All';
+  int _externalDriveRequest = 0;
 
   void _openTab(int index) => setState(() {
     _initializedTabs.add(index);
     _selectedIndex = index;
   });
+
+  void _openExternalStorage() {
+    setState(() {
+      _initializedTabs.add(2);
+      _selectedIndex = 2;
+      _externalDriveRequest++;
+    });
+  }
 
   void _openExplore(ExploreCategory category, {String? fileCategory}) {
     if (fileCategory == 'Documents') {
@@ -95,6 +104,7 @@ class _HomeScreenState extends State<HomeScreen> {
         api: widget.api,
         onOpenExplore: _openExplore,
         onOpenFiles: () => _openTab(2),
+        onOpenExternalStorage: _openExternalStorage,
         onReturnToConnection: widget.onReturnToConnection,
       ),
       if (_initializedTabs.contains(1))
@@ -105,6 +115,7 @@ class _HomeScreenState extends State<HomeScreen> {
           fileCategory: _fileCategory,
           onBackAtRoot: () => _openTab(0),
           onOpenFiles: () => _openTab(2),
+          onOpenExternalStorage: _openExternalStorage,
           onCategoryChanged: (category) => setState(() {
             _exploreCategory = category;
             if (category == ExploreCategory.files) _fileCategory = 'All';
@@ -118,6 +129,7 @@ class _HomeScreenState extends State<HomeScreen> {
           api: widget.api,
           isActive: true,
           onBackAtRoot: () => _openTab(0),
+          externalDriveRequest: _externalDriveRequest,
         )
       else
         const SizedBox.shrink(),
@@ -394,12 +406,14 @@ class _HomeDashboard extends StatefulWidget {
     required this.api,
     required this.onOpenExplore,
     required this.onOpenFiles,
+    required this.onOpenExternalStorage,
     this.onReturnToConnection,
   });
 
   final ServerApi api;
   final void Function(ExploreCategory category, {String? fileCategory}) onOpenExplore;
   final VoidCallback onOpenFiles;
+  final VoidCallback onOpenExternalStorage;
   final VoidCallback? onReturnToConnection;
 
   @override
@@ -548,7 +562,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
         widget.onOpenExplore(ExploreCategory.videos);
         return;
       case 'drives':
-        widget.onOpenExplore(ExploreCategory.drives);
+        widget.onOpenExternalStorage();
         return;
       case 'documents':
         widget.onOpenExplore(ExploreCategory.files, fileCategory: 'Documents');
@@ -1295,13 +1309,17 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                               ),
                             ));
                           } else {
-                            Navigator.of(context).push(MaterialPageRoute<void>(
-                              builder: (_) => StorageBrowserScreen(
-                                api: widget.api,
-                                initialVolume: recent.volume,
-                                initialPath: recent.parentPath,
-                              ),
-                            ));
+                            _openTab(2);
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (!mounted) return;
+                              Navigator.of(context).push(MaterialPageRoute<void>(
+                                builder: (_) => FileManagerScreen(
+                                  api: widget.api,
+                                  initialVolume: recent.volume,
+                                  initialPath: recent.parentPath,
+                                ),
+                              ));
+                            });
                           }
                         },
                       ),
