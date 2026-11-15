@@ -249,6 +249,7 @@ class ServerApi {
   final Map<String, Future<DirectoryListing>> _directoryRequests = {};
   _CacheEntry<List<StorageVolume>>? _volumesCache;
   Future<List<StorageVolume>>? _volumesRequest;
+  int _cacheGeneration = 0;
 
   void _releaseRequestSlot(RequestOptions options) {
     if (options.extra['homeserver.requestSlot'] == true) {
@@ -270,9 +271,12 @@ class ServerApi {
     final existing = requests[key];
     if (existing != null) return existing;
 
+    final generation = _cacheGeneration;
     late final Future<T> request;
     request = load().then((value) {
-      cache[key] = _CacheEntry(value, DateTime.now().add(_directoryCacheTtl));
+      if (generation == _cacheGeneration) {
+        cache[key] = _CacheEntry(value, DateTime.now().add(_directoryCacheTtl));
+      }
       return value;
     }).whenComplete(() {
       if (identical(requests[key], request)) requests.remove(key);
@@ -283,6 +287,7 @@ class ServerApi {
 
   /// Invalidates short-lived directory and volume snapshots after refreshes or writes.
   void invalidateDirectoryCache() {
+    _cacheGeneration++;
     _directoryCache.clear();
     _directoryRequests.clear();
     _volumesCache = null;
@@ -532,6 +537,7 @@ class ServerApi {
     final existing = _volumesRequest;
     if (existing != null) return existing;
 
+    final generation = _cacheGeneration;
     late final Future<List<StorageVolume>> request;
     request = () async {
       final response =
@@ -539,10 +545,12 @@ class ServerApi {
       final volumes = (response.data?['items'] as List<dynamic>? ?? const [])
           .map((item) => StorageVolume.fromJson(item as Map<String, dynamic>))
           .toList(growable: false);
-      _volumesCache = _CacheEntry(
-        volumes,
-        DateTime.now().add(_directoryCacheTtl),
-      );
+      if (generation == _cacheGeneration) {
+        _volumesCache = _CacheEntry(
+          volumes,
+          DateTime.now().add(_directoryCacheTtl),
+        );
+      }
       return volumes;
     }().whenComplete(() {
       if (identical(_volumesRequest, request)) _volumesRequest = null;
