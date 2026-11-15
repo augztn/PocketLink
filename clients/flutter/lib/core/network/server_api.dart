@@ -11,12 +11,14 @@ class FileEntry {
     required this.type,
     required this.size,
     required this.modified,
+    this.created,
   });
 
   final String name;
   final String type;
   final int size;
   final String modified;
+  final String? created;
 
   bool get isDirectory => type == 'directory';
 
@@ -25,6 +27,7 @@ class FileEntry {
         type: json['type'] as String,
         size: (json['size'] as num?)?.toInt() ?? 0,
         modified: json['modified']?.toString() ?? '',
+        created: json['created']?.toString(),
       );
 }
 
@@ -333,6 +336,24 @@ class ServerApi {
       data: form,
       onSendProgress: onSendProgress,
       cancelToken: cancelToken,
+    );
+  }
+
+  /// Downloads an original file directly to disk without buffering it in memory.
+  Future<void> downloadToFile(
+    String path,
+    String destination, {
+    String? volume,
+    ProgressCallback? onReceiveProgress,
+    CancelToken? cancelToken,
+  }) async {
+    await _dio.download(
+      volume == null ? '/api/files/download' : '/api/storage/download',
+      destination,
+      queryParameters: {'path': path, if (volume != null) 'volume': volume},
+      onReceiveProgress: onReceiveProgress,
+      cancelToken: cancelToken,
+      deleteOnError: true,
     );
   }
 
