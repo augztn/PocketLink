@@ -37,6 +37,14 @@ internal class NativeApiServer(
     private val internalRoot = Environment.getExternalStorageDirectory().canonicalFile
 
     override fun serve(session: IHTTPSession): Response {
+        // The native listener is cleartext HTTP. Trust only loopback or peers
+        // arriving through Tailscale's encrypted WireGuard address ranges.
+        if (!NetworkAccessPolicy.allowsCleartextPeer(session.remoteIpAddress)) {
+            return jsonError(
+                Response.Status.FORBIDDEN,
+                "Cleartext access is limited to localhost and Tailscale peers"
+            )
+        }
         if (session.uri == "/health" && session.method == Method.GET) {
             return json(JSONObject().put("status", "ok").put("service", "homeserver-native"))
         }
