@@ -70,17 +70,18 @@ class _ExploreScreenState extends State<ExploreScreen> {
           FileManagerScreen(
             api: widget.api,
             initialCategory: _fileCategory,
+            showSearch: false,
             isActive: _category == category,
             onBackAtRoot: widget.onBackAtRoot,
           )
         else if (category == ExploreCategory.drives)
           StorageBrowserScreen(api: widget.api)
         else if (category == ExploreCategory.photos)
-          PhotoGalleryScreen(api: widget.api)
+          PhotoGalleryScreen(api: widget.api, showSearch: false)
         else if (category == ExploreCategory.music)
-          MediaBrowserScreen(api: widget.api, type: MediaLibraryType.music)
+          MediaBrowserScreen(api: widget.api, type: MediaLibraryType.music, showSearch: false)
         else
-          MediaBrowserScreen(api: widget.api, type: MediaLibraryType.video),
+          MediaBrowserScreen(api: widget.api, type: MediaLibraryType.video, showSearch: false),
     ];
 
     return Column(
@@ -153,9 +154,12 @@ class _SearchResult {
 class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
   static const _extensions = <String, Set<String>>{
     'Audio': {'mp3', 'm4a', 'aac', 'wav', 'flac', 'ogg', 'opus', 'wma', 'aiff', 'alac'},
-    'Video': {'mp4', 'm4v', 'mov', 'mkv', 'webm', 'avi', 'wmv', 'mpeg', 'mpg', '3gp', 'ts', 'm2ts', 'mts', 'flv', 'ogv'},
-    'Docs': {'pdf', 'doc', 'docx', 'odt', 'rtf', 'txt', 'md', 'csv', 'xls', 'xlsx', 'ods', 'ppt', 'pptx', 'odp'},
-    'Images': {'jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'heic', 'heif', 'avif'},
+    'Videos': {'mp4', 'm4v', 'mov', 'mkv', 'webm', 'avi', 'wmv', 'mpeg', 'mpg', '3gp', 'ts', 'm2ts', 'mts', 'flv', 'ogv'},
+    'Photos': {'jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'heic', 'heif', 'avif'},
+  };
+  static const _audio = {'mp3', 'm4a', 'aac', 'wav', 'flac', 'ogg', 'opus', 'wma', 'aiff', 'alac'};
+  static const _video = {'mp4', 'm4v', 'mov', 'mkv', 'webm', 'avi', 'wmv', 'mpeg', 'mpg', '3gp', 'ts', 'm2ts', 'mts', 'flv', 'ogv'};
+  static const _photo = {'jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'heic', 'heif', 'avif'};
   };
 
   final _searchController = TextEditingController();
@@ -189,8 +193,15 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
   }
 
   bool _matchesFilter(_SearchResult result) {
-    if (_filter == 'All') return true;
-    return _extensions[_filter]!.contains(_extension(result.file.name));
+    final extension = _extension(result.file.name);
+    return switch (_filter) {
+      'All' => true,
+      'Photos' => _photo.contains(extension),
+      'Audio' => _audio.contains(extension),
+      'Videos' => _video.contains(extension),
+      'Files' => !_photo.contains(extension) && !_audio.contains(extension) && !_video.contains(extension),
+      _ => true,
+    };
   }
 
   List<_SearchResult> get _visibleResults {
@@ -304,13 +315,13 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
 
   Future<void> _openResult(_SearchResult result) async {
     final extension = _extension(result.file.name);
-    final isAudio = _extensions['Audio']!.contains(extension);
-    final isVideo = _extensions['Video']!.contains(extension);
+    final isAudio = _audio.contains(extension);
+    final isVideo = _video.contains(extension);
     if (isAudio || isVideo) {
       final queue = _visibleResults
           .where((item) => isAudio
-              ? _extensions['Audio']!.contains(_extension(item.file.name))
-              : _extensions['Video']!.contains(_extension(item.file.name)))
+              ? _audio.contains(_extension(item.file.name))
+              : _video.contains(_extension(item.file.name)))
           .map((item) => MediaQueueItem(title: item.file.name, path: item.path, volume: item.volume))
           .toList(growable: false);
       final index = queue.indexWhere((item) => item.path == result.path && item.volume == result.volume);
@@ -396,7 +407,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 14),
               children: [
-                for (final filter in const ['All', 'Audio', 'Video', 'Docs', 'Images'])
+                for (final filter in const ['All', 'Files', 'Photos', 'Audio', 'Videos'])
                   Padding(
                     padding: const EdgeInsets.only(right: 8),
                     child: ChoiceChip(
@@ -445,10 +456,10 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
   }
 
   IconData _resultIcon(String extension) {
-    if (_extensions['Audio']!.contains(extension)) return Icons.audio_file_rounded;
-    if (_extensions['Video']!.contains(extension)) return Icons.video_file_rounded;
-    if (_extensions['Images']!.contains(extension)) return Icons.image_rounded;
-    if (_extensions['Docs']!.contains(extension)) return Icons.description_rounded;
+    if (_audio.contains(extension)) return Icons.audio_file_rounded;
+    if (_video.contains(extension)) return Icons.video_file_rounded;
+    if (_photo.contains(extension)) return Icons.image_rounded;
+    if (!_photo.contains(extension) && !_audio.contains(extension) && !_video.contains(extension)) return Icons.description_rounded;
     return Icons.insert_drive_file_outlined;
   }
 }
