@@ -622,7 +622,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                                     )
                                   : ListView.separated(
                                       physics: const AlwaysScrollableScrollPhysics(),
-                                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                                      padding: EdgeInsets.fromLTRB(16, 12, 16, 104 + MediaQuery.paddingOf(context).bottom),
                                       itemCount: items.length,
                                       separatorBuilder: (_, __) => const SizedBox(height: 8),
                                       itemBuilder: (context, index) => fileTile(items[index]),
