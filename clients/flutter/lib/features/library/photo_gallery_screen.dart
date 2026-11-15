@@ -89,7 +89,8 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
   @override
   void dispose() { search.dispose(); super.dispose(); }
 
-  Future<void> scan() async {
+  Future<void> scan({bool refresh = false}) async {
+    if (refresh) widget.api.invalidateDirectoryCache();
     setState(() { loading = true; error = null; photos = []; selected.clear(); });
     final found = <_Photo>[];
     final pending = <({String path, String? volume, int depth})>[];
@@ -486,7 +487,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
             ),
           HomeServerAppBarAction(
             label: 'Scan again', icon: Icons.refresh_rounded,
-            onPressed: loading ? null : scan,
+            onPressed: loading ? null : () => scan(refresh: true),
           ),
         ],
       ),
