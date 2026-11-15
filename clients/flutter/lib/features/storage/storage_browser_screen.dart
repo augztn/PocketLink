@@ -17,11 +17,13 @@ class StorageBrowserScreen extends StatefulWidget {
     required this.api,
     this.initialVolume,
     this.initialPath = '',
+    this.showSearch = true,
     super.key,
   });
   final ServerApi api;
   final String? initialVolume;
   final String initialPath;
+  final bool showSearch;
 
   @override
   State<StorageBrowserScreen> createState() => _StorageBrowserScreenState();
