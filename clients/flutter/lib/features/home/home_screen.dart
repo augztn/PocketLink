@@ -9,6 +9,7 @@ import 'quick_actions_store.dart';
 import '../../core/settings/app_settings.dart';
 import '../settings/settings_screen.dart';
 import 'explore_search_screens.dart';
+import '../search/search_screen.dart';
 import '../media/media_player_screen.dart';
 import '../media/persistent_audio_player.dart';
 
@@ -95,7 +96,7 @@ class _HomeScreenState extends State<HomeScreen> {
       else
         const SizedBox.shrink(),
       if (_initializedTabs.contains(2))
-        GlobalSearchScreen(
+        SearchScreen(
           key: const PageStorageKey<String>('homeserver-search'),
           api: widget.api,
         )
