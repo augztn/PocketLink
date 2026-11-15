@@ -31,7 +31,7 @@ class TransferTask {
   final String location;
   final DateTime startedAt;
   final CancelToken cancelToken;
-  final TransferOperation? operation;
+  TransferOperation? operation;
   int transferred;
   int total;
   TransferStatus status;
@@ -164,6 +164,7 @@ class TransferManager extends ChangeNotifier {
         return false;
       }
       task.status = TransferStatus.completed;
+      task.operation = null;
       if (task.total > 0) task.transferred = task.total;
       await _persist();
       notifyListeners();
