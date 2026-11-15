@@ -102,7 +102,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     _load(_path);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && _scrollController.hasClients && saved.scrollOffset > 0) {
-        _scrollController.jumpTo(saved.scrollOffset.clamp(0, _scrollController.position.maxScrollExtent));
+        _scrollController.jumpTo(saved.scrollOffset.clamp(0, _scrollController.position.maxScrollExtent).toDouble());
       }
     });
   }
