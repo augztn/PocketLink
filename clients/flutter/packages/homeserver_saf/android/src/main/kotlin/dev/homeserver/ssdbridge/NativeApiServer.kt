@@ -250,7 +250,7 @@ internal class NativeApiServer(
             if (length > 0L) {
                 newFixedLengthResponse(Response.Status.OK, mime, buffered, length)
             } else {
-                newChunkedResponse(Response.Status.OK, mime, buffered, STREAM_BUFFER_SIZE)
+                newChunkedResponse(Response.Status.OK, mime, buffered)
             }
         } else {
             if (length <= 0L) {
