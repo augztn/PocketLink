@@ -23,8 +23,9 @@ class _Photo {
 }
 
 class PhotoGalleryScreen extends StatefulWidget {
-  const PhotoGalleryScreen({required this.api, super.key});
+  const PhotoGalleryScreen({required this.api, this.showSearch = true, super.key});
   final ServerApi api;
+  final bool showSearch;
   @override
   State<PhotoGalleryScreen> createState() => _PhotoGalleryScreenState();
 }
