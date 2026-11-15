@@ -1,10 +1,7 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
-import '../library/library_browser_screen.dart';
 import '../library/photo_gallery_screen.dart';
 import '../media/media_browser_screen.dart';
 import '../media/media_player_screen.dart';
@@ -36,6 +33,7 @@ class ExploreScreen extends StatefulWidget {
 class _ExploreScreenState extends State<ExploreScreen> {
   late ExploreCategory _category = widget.category;
   late String _fileCategory = widget.fileCategory;
+  late final Set<ExploreCategory> _initialized = {widget.category};
 
   @override
   void didUpdateWidget(covariant ExploreScreen oldWidget) {
@@ -50,6 +48,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   void _select(ExploreCategory category) {
     setState(() {
+      _initialized.add(category);
       _category = category;
       if (category == ExploreCategory.files) _fileCategory = 'All';
     });
@@ -61,6 +60,22 @@ class _ExploreScreenState extends State<ExploreScreen> {
     final theme = Theme.of(context);
     final categories = ExploreCategory.values;
     final selectedIndex = categories.indexOf(_category);
+    final pages = <Widget>[
+      for (final category in categories)
+        if (!_initialized.contains(category))
+          const SizedBox.shrink()
+        else if (category == ExploreCategory.files)
+          FileManagerScreen(api: widget.api, initialCategory: _fileCategory,
+            isActive: _category == category, onBackAtRoot: widget.onBackAtRoot)
+        else if (category == ExploreCategory.drives)
+          StorageBrowserScreen(api: widget.api)
+        else if (category == ExploreCategory.photos)
+          PhotoGalleryScreen(api: widget.api)
+        else if (category == ExploreCategory.music)
+          MediaBrowserScreen(api: widget.api, type: MediaLibraryType.music)
+        else
+          MediaBrowserScreen(api: widget.api, type: MediaLibraryType.video),
+    ];
     return Column(
       children: [
         SizedBox(
@@ -86,18 +101,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
         Expanded(
           child: IndexedStack(
             index: selectedIndex,
-            children: [
-              FileManagerScreen(
-                api: widget.api,
-                initialCategory: _fileCategory,
-                isActive: _category == ExploreCategory.files,
-                onBackAtRoot: widget.onBackAtRoot,
-              ),
-              StorageBrowserScreen(api: widget.api),
-              PhotoGalleryScreen(api: widget.api),
-              MediaBrowserScreen(api: widget.api, type: MediaLibraryType.music),
-              MediaBrowserScreen(api: widget.api, type: MediaLibraryType.video),
-            ],
+            children: pages,
           ),
         ),
       ],
