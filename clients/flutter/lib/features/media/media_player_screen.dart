@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../../core/widgets/home_server_app_bar.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -1061,7 +1062,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
       backgroundColor: const Color(0xFF0B0A12),
       appBar: widget.isVideo && _isVideoFullscreen
           ? null
-          : AppBar(
+          : HomeServerAppBar(
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
         elevation: 0,
