@@ -363,7 +363,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
 
   Widget _buildVideoList(List<_MediaFile> items) {
     return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+      padding: EdgeInsets.fromLTRB(12, 8, 12, 104 + MediaQuery.paddingOf(context).bottom),
       itemCount: items.length,
       separatorBuilder: (_, __) => const SizedBox(height: 4),
       itemBuilder: (context, index) {
@@ -409,7 +409,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     final entries = folders.entries.toList()
       ..sort((a, b) => a.key.toLowerCase().compareTo(b.key.toLowerCase()));
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+      padding: EdgeInsets.fromLTRB(12, 8, 12, 104 + MediaQuery.paddingOf(context).bottom),
       itemCount: entries.length,
       itemBuilder: (context, index) {
         final entry = entries[index];
@@ -677,7 +677,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                                 : !_isMusic
                                     ? _buildVideoList(visibleMedia)
                                     : ListView.builder(
-                                        padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+                                        padding: EdgeInsets.fromLTRB(12, 8, 12, 104 + MediaQuery.paddingOf(context).bottom),
                                         itemCount: visibleMedia.length,
                                         itemBuilder: (context, index) {
                                           final media = visibleMedia[index];
