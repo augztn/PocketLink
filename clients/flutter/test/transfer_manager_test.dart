@@ -71,7 +71,6 @@ void main() {
       operation: (token, progress) async {
         progress(10, 100);
         token.cancel('test cancellation');
-        token.throwIfCancellationRequested();
       },
     );
 
