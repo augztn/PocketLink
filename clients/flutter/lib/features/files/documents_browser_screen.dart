@@ -5,6 +5,20 @@ import '../../core/widgets/compact_search_field.dart';
 
 import '../../core/network/server_api.dart';
 
+String canonicalDocumentPath(String path) {
+  final normalized = path.replaceAll(String.fromCharCode(92), '/');
+  final segments = <String>[];
+  for (final part in normalized.split('/')) {
+    if (part.isEmpty || part == '.') continue;
+    if (part == '..') {
+      if (segments.isNotEmpty) segments.removeLast();
+      continue;
+    }
+    segments.add(part);
+  }
+  return segments.join('/');
+}
+
 class _DocumentFile {
   const _DocumentFile({
     required this.entry,
@@ -96,11 +110,7 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
               final dot = item.name.lastIndexOf('.');
               final extension = dot < 0 ? '' : item.name.substring(dot + 1).toLowerCase();
               if (_extensions.contains(extension)) {
-                final canonicalPath = path
-                    .replaceAll('\\\\', '/')
-                    .split('/')
-                    .where((part) => part.isNotEmpty && part != '.')
-                    .join('/');
+                final canonicalPath = canonicalDocumentPath(path);
                 final sourceKey = current.volume ?? 'internal';
                 if (seenDocumentPaths.add('$sourceKey:$canonicalPath')) {
                   found.add(_DocumentFile(entry: item, path: canonicalPath, volume: current.volume));
