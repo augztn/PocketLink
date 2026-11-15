@@ -407,7 +407,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     final audioTrack = _player.state.track.audio;
     final extension = _track.title.contains('.') ? _track.title.split('.').last.toUpperCase() : 'Unknown';
     final codec = (audioTrack.codec?.trim().isNotEmpty ?? false) ? audioTrack.codec!.toUpperCase() : extension;
-    final channels = audioTrack.channels?.trim();
+    final channels = _channelLabel(audioTrack.channels, audioTrack.channelscount);
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -537,11 +537,21 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     return parts.length > 1 ? parts.skip(1).join(' - ').trim() : _title;
   }
 
+  String? _channelLabel(String? channels, int? count) {
+    if (count == 1) return 'Mono';
+    if (count == 2) return 'Stereo';
+    final value = channels?.trim();
+    if (value == null || value.isEmpty) return null;
+    if (value.toLowerCase().contains('stereo')) return 'Stereo';
+    if (value.toLowerCase().contains('mono')) return 'Mono';
+    return value;
+  }
+
   String get _audioFormat {
     final audio = _player.state.track.audio;
     final ext = _track.title.contains('.') ? _track.title.split('.').last.toUpperCase() : 'AUDIO';
     final codec = audio.codec?.trim();
-    final channels = audio.channels?.trim();
+    final channels = _channelLabel(audio.channels, audio.channelscount);
     final sampleRate = audio.samplerate;
     return [
       (codec?.isNotEmpty ?? false) ? codec!.toUpperCase() : ext,
@@ -756,10 +766,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                       Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
                         Expanded(
                           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: Text(_displayTitle, maxLines: 1, softWrap: false,
-                                style: const TextStyle(color: Colors.white, fontSize: 23, fontWeight: FontWeight.w800, letterSpacing: -0.4)),
+                            _MarqueeTitle(
+                              key: ValueKey(_trackKey),
+                              text: _displayTitle,
+                              style: const TextStyle(color: Colors.white, fontSize: 23, fontWeight: FontWeight.w800, letterSpacing: -0.4),
                             ),
                             const SizedBox(height: 4),
                             Text(_artist, maxLines: 1, overflow: TextOverflow.ellipsis,
@@ -839,4 +849,58 @@ class _InfoLine extends StatelessWidget {
       Expanded(child: Text(value, style: const TextStyle(color: Colors.white, fontSize: 12))),
     ]),
   );
+}
+
+
+class _MarqueeTitle extends StatefulWidget {
+  const _MarqueeTitle({required this.text, required this.style, super.key});
+  final String text;
+  final TextStyle style;
+
+  @override
+  State<_MarqueeTitle> createState() => _MarqueeTitleState();
+}
+
+class _MarqueeTitleState extends State<_MarqueeTitle> {
+  final ScrollController _controller = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _runMarquee());
+  }
+
+  Future<void> _runMarquee() async {
+    while (mounted) {
+      await Future<void>.delayed(const Duration(milliseconds: 900));
+      if (!mounted || !_controller.hasClients) return;
+      final end = _controller.position.maxScrollExtent;
+      if (end <= 0) return;
+      await _controller.animateTo(end, duration: Duration(milliseconds: (end * 18).round().clamp(1800, 6000)), curve: Curves.linear);
+      if (!mounted) return;
+      await Future<void>.delayed(const Duration(milliseconds: 700));
+      if (!mounted) return;
+      await _controller.animateTo(0, duration: Duration(milliseconds: (end * 18).round().clamp(1800, 6000)), curve: Curves.linear);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    height: 32,
+    child: SingleChildScrollView(
+      controller: _controller,
+      scrollDirection: Axis.horizontal,
+      physics: const NeverScrollableScrollPhysics(),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(widget.text, maxLines: 1, softWrap: false, style: widget.style),
+      ),
+    ),
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 }
