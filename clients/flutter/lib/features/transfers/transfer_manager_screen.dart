@@ -36,10 +36,7 @@ class TransferManagerScreen extends StatelessWidget {
         title: const Text('Transfers'),
         actions: [
           TextButton(
-            onPressed: manager.tasks.any((task) =>
-                    task.status != TransferStatus.running)
-                ? manager.clearFinished
-                : null,
+            onPressed: manager.clearFinished,
             child: const Text('Clear history'),
           ),
         ],
