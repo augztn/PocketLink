@@ -82,13 +82,23 @@ void main() {
     final settings = AppSettings.instance;
     const shortcuts = ['music', 'files', 'photos', 'upload'];
 
-    await settings.setFloatingShortcutEnabled(false);
+    expect(settings.floatingShortcutEnabled, isFalse);
+    expect(settings.floatingShortcutTapAction, 'primary');
+    expect(settings.floatingShortcutLongPressEnabled, isTrue);
+
+    await settings.setFloatingShortcutEnabled(true);
+    await settings.setFloatingShortcutTapAction('menu');
+    await settings.setFloatingShortcutLongPressEnabled(false);
     await settings.setFloatingShortcuts(shortcuts);
 
-    expect(settings.floatingShortcutEnabled, isFalse);
+    expect(settings.floatingShortcutEnabled, isTrue);
+    expect(settings.floatingShortcutTapAction, 'menu');
+    expect(settings.floatingShortcutLongPressEnabled, isFalse);
     expect(settings.floatingShortcuts, shortcuts);
     final preferences = await SharedPreferences.getInstance();
-    expect(preferences.getBool('settings_floating_shortcut_enabled'), isFalse);
+    expect(preferences.getBool('settings_floating_shortcut_enabled'), isTrue);
+    expect(preferences.getString('settings_floating_shortcut_tap_action'), 'menu');
+    expect(preferences.getBool('settings_floating_shortcut_long_press'), isFalse);
     expect(preferences.getString('settings_floating_shortcuts'),
         '["music","files","photos","upload"]');
 
@@ -101,14 +111,20 @@ void main() {
       throwsArgumentError,
     );
     await expectLater(
+      settings.setFloatingShortcutTapAction('invalid'),
+      throwsArgumentError,
+    );
+    await expectLater(
       settings.setFloatingShortcuts(const []),
       throwsArgumentError,
     );
 
     await settings.resetFloatingShortcuts();
-    expect(settings.floatingShortcutEnabled, isFalse);
+    expect(settings.floatingShortcutEnabled, isTrue);
+    expect(settings.floatingShortcutTapAction, 'menu');
+    expect(settings.floatingShortcutLongPressEnabled, isFalse);
     expect(settings.floatingShortcuts, AppSettings.floatingShortcutDefaults);
-    expect(preferences.getBool('settings_floating_shortcut_enabled'), isFalse);
+    expect(preferences.getBool('settings_floating_shortcut_enabled'), isTrue);
     expect(preferences.getString('settings_floating_shortcuts'), isNull);
   });
 
