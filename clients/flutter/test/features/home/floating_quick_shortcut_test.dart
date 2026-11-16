@@ -41,14 +41,14 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          home: MediaQuery(
-            data: const MediaQueryData(disableAnimations: true),
-            child: StatefulBuilder(
-              builder: (context, setState) => Scaffold(
-                body: Align(
-                  alignment: Alignment.bottomRight,
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
+          home: StatefulBuilder(
+            builder: (context, setState) => Scaffold(
+              body: Align(
+                alignment: Alignment.bottomRight,
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: MediaQuery(
+                    data: const MediaQueryData(disableAnimations: true),
                     child: FloatingQuickShortcut(
                       shortcuts: const ['explore', 'music', 'photos'],
                       expanded: expanded,
@@ -63,6 +63,13 @@ void main() {
             ),
           ),
         ),
+      );
+
+      expect(
+        MediaQuery.disableAnimationsOf(
+          tester.element(find.byType(FloatingQuickShortcut)),
+        ),
+        isTrue,
       );
 
       await tester.longPress(find.byType(FloatingActionButton));
