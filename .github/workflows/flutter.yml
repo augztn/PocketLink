@@ -129,7 +129,13 @@ jobs:
                   '<uses-permission android:name="android.permission.INTERNET" />\n\n    <application',
                   1,
               )
-          if "android:usesCleartextTraffic=" not in content:
+          content, cleartext_count = re.subn(
+              r'android:usesCleartextTraffic="[^"]*"',
+              'android:usesCleartextTraffic="true"',
+              content,
+              count=1,
+          )
+          if cleartext_count == 0:
               content = re.sub(
                   r"<application\b",
                   '<application\n        android:usesCleartextTraffic="true"',
@@ -137,7 +143,10 @@ jobs:
                   count=1,
               )
           manifest.write_text(content)
-          if "android.permission.INTERNET" not in content or "android:usesCleartextTraffic=" not in content:
+          if (
+              "android.permission.INTERNET" not in content
+              or 'android:usesCleartextTraffic="true"' not in content
+          ):
               raise SystemExit("Android network configuration was not applied")
           PY
           python3 - <<'PY'
