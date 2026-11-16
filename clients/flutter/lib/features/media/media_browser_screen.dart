@@ -135,7 +135,6 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     final category = _isMusic ? 'music' : 'video';
     final found = <_MediaFile>[];
     var offset = 0;
-    late MediaIndexStatus status;
     while (true) {
       final page = await widget.api.indexedMedia(
         category,
@@ -143,7 +142,6 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         limit: 500,
         offset: offset,
       );
-      status = page.status;
       found.addAll(page.items.map((item) => _MediaFile(
         entry: item.toFileEntry(),
         path: item.path,
