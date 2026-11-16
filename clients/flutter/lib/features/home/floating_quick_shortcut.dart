@@ -70,44 +70,57 @@ class _FloatingQuickShortcutState extends State<FloatingQuickShortcut>
   @override
   Widget build(BuildContext context) {
     final primary = FloatingQuickShortcut._details[widget.shortcuts.first]!;
-    final button = widget.useLiquidGlass
-        ? Tooltip(
-            message: '${primary.label} · Hold for shortcuts',
-            child: LiquidGlassPill(
-              radius: BorderRadius.circular(28),
-              child: SizedBox(
-                width: 56,
-                height: 56,
-                child: Material(
-                  color: Colors.transparent,
-                  shape: const CircleBorder(),
-                  child: InkWell(
-                    customBorder: const CircleBorder(),
-                    onTap: widget.onTap,
-                    child: _MainButtonIcon(
-                      expanded: widget.expanded,
-                      primary: primary.icon,
+    final button = Tooltip(
+      message: '${primary.label} · Hold for shortcuts',
+      child: Hero(
+        tag: 'pocketlink-floating-shortcut',
+        child: widget.useLiquidGlass
+            ? LiquidGlassPill(
+                radius: BorderRadius.circular(28),
+                child: SizedBox(
+                  width: 56,
+                  height: 56,
+                  child: Material(
+                    color: Colors.transparent,
+                    shape: const CircleBorder(),
+                    child: InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: widget.onTap,
+                      onLongPress: widget.onLongPress,
+                      child: _MainButtonIcon(
+                        expanded: widget.expanded,
+                        primary: primary.icon,
+                      ),
+                    ),
+                  ),
+                ),
+              )
+            : Material(
+                color: const Color(0xFF1E2025),
+                elevation: 5,
+                shape: CircleBorder(
+                  side: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: widget.onTap,
+                  onLongPress: widget.onLongPress,
+                  child: SizedBox(
+                    width: 56,
+                    height: 56,
+                    child: Center(
+                      child: Icon(
+                        widget.expanded ? Icons.close_rounded : primary.icon,
+                        size: 25,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          )
-        : FloatingActionButton(
-            heroTag: 'pocketlink-floating-shortcut',
-            tooltip: '${primary.label} · Hold for shortcuts',
-            onPressed: widget.onTap,
-            elevation: 5,
-            backgroundColor: const Color(0xFF1E2025),
-            foregroundColor: Colors.white,
-            shape: CircleBorder(
-              side: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
-            ),
-            child: _MainButtonIcon(
-              expanded: widget.expanded,
-              primary: primary.icon,
-            ),
-          );
+      ),
+    );
 
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
     final menuContent = Padding(
@@ -139,17 +152,13 @@ class _FloatingQuickShortcutState extends State<FloatingQuickShortcut>
             child: menuContent,
           );
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onLongPress: widget.onLongPress,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          menu,
-          button,
-        ],
-      ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        menu,
+        button,
+      ],
     );
   }
 
