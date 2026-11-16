@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/widgets/liquid_glass_pill.dart';
 
-class FloatingQuickShortcut extends StatelessWidget {
+class FloatingQuickShortcut extends StatefulWidget {
   const FloatingQuickShortcut({
     required this.shortcuts,
     required this.expanded,
@@ -32,9 +32,45 @@ class FloatingQuickShortcut extends StatelessWidget {
   };
 
   @override
+  State<FloatingQuickShortcut> createState() => _FloatingQuickShortcutState();
+}
+
+class _FloatingQuickShortcutState extends State<FloatingQuickShortcut>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 360),
+    reverseDuration: const Duration(milliseconds: 240),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.expanded) _controller.value = 1;
+  }
+
+  @override
+  void didUpdateWidget(covariant FloatingQuickShortcut oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.expanded != widget.expanded) {
+      if (widget.expanded) {
+        _controller.forward();
+      } else {
+        _controller.reverse();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final primary = _details[shortcuts.first]!;
-    final button = useLiquidGlass
+    final primary = FloatingQuickShortcut._details[widget.shortcuts.first]!;
+    final button = widget.useLiquidGlass
         ? Tooltip(
             message: '${primary.label} · Hold for shortcuts',
             child: LiquidGlassPill(
@@ -47,11 +83,10 @@ class FloatingQuickShortcut extends StatelessWidget {
                   shape: const CircleBorder(),
                   child: InkWell(
                     customBorder: const CircleBorder(),
-                    onTap: onTap,
-                    child: Icon(
-                      primary.icon,
-                      color: Theme.of(context).colorScheme.primary,
-                      size: 25,
+                    onTap: widget.onTap,
+                    child: _MainButtonIcon(
+                      expanded: widget.expanded,
+                      primary: primary.icon,
                     ),
                   ),
                 ),
@@ -61,51 +96,118 @@ class FloatingQuickShortcut extends StatelessWidget {
         : FloatingActionButton(
             heroTag: 'pocketlink-floating-shortcut',
             tooltip: '${primary.label} · Hold for shortcuts',
-            onPressed: onTap,
+            onPressed: widget.onTap,
             elevation: 5,
             backgroundColor: const Color(0xFF1E2025),
             foregroundColor: Colors.white,
             shape: CircleBorder(
               side: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
             ),
-            child: Icon(primary.icon, size: 25),
+            child: _MainButtonIcon(
+              expanded: widget.expanded,
+              primary: primary.icon,
+            ),
           );
 
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    final menu = SizeTransition(
+      sizeFactor: reduceMotion
+          ? AlwaysStoppedAnimation(widget.expanded ? 1 : 0)
+          : _controller,
+      axisAlignment: 1,
+      child: IgnorePointer(
+        ignoring: !widget.expanded,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              for (var index = 0; index < widget.shortcuts.length; index++) ...[
+                if (index > 0) const SizedBox(height: 8),
+                _buildAnimatedChip(
+                  widget.shortcuts[widget.shortcuts.length - index - 1],
+                  index,
+                  widget.shortcuts.length,
+                  reduceMotion,
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+
     return GestureDetector(
-      onLongPress: onLongPress,
+      onLongPress: widget.onLongPress,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          AnimatedSize(
-            duration: const Duration(milliseconds: 190),
-            curve: Curves.easeOutCubic,
-            alignment: Alignment.bottomRight,
-            child: expanded
-                ? Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        for (final id in shortcuts.reversed) ...[
-                          if (id != shortcuts.last) const SizedBox(height: 8),
-                          _ShortcutChip(
-                            label: _details[id]!.label,
-                            icon: _details[id]!.icon,
-                            onTap: () => onSelect(id),
-                          ),
-                        ],
-                      ],
-                    ),
-                  )
-                : const SizedBox.shrink(),
-          ),
+          menu,
           button,
         ],
       ),
     );
   }
+
+  Widget _buildAnimatedChip(
+    String id,
+    int index,
+    int count,
+    bool reduceMotion,
+  ) {
+    final detail = FloatingQuickShortcut._details[id]!;
+    final start = count <= 1 ? 0.0 : (index * 0.075).clamp(0.0, 0.55);
+    final end = (start + 0.62).clamp(0.0, 1.0);
+    final animation = CurvedAnimation(
+      parent: _controller,
+      curve: Interval(start, end, curve: Curves.easeOutCubic),
+    );
+    final chip = _ShortcutChip(
+      label: detail.label,
+      icon: detail.icon,
+      onTap: () => widget.onSelect(id),
+    );
+
+    if (reduceMotion) return chip;
+    return FadeTransition(
+      opacity: animation,
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0.16, 0.28),
+          end: Offset.zero,
+        ).animate(animation),
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.88, end: 1).animate(animation),
+          alignment: Alignment.centerRight,
+          child: chip,
+        ),
+      ),
+    );
+  }
+}
+
+class _MainButtonIcon extends StatelessWidget {
+  const _MainButtonIcon({required this.expanded, required this.primary});
+
+  final bool expanded;
+  final IconData primary;
+
+  @override
+  Widget build(BuildContext context) => AnimatedSwitcher(
+    duration: const Duration(milliseconds: 180),
+    reverseDuration: const Duration(milliseconds: 140),
+    transitionBuilder: (child, animation) => RotationTransition(
+      turns: Tween<double>(begin: -0.12, end: 0).animate(animation),
+      child: ScaleTransition(scale: animation, child: child),
+    ),
+    child: Icon(
+      expanded ? Icons.close_rounded : primary,
+      key: ValueKey(expanded ? 'close' : primary),
+      size: 25,
+    ),
+  );
 }
 
 class _ShortcutChip extends StatelessWidget {
