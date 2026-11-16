@@ -42,7 +42,8 @@ class FloatingNavigationDock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final activeItems = order.where(visibleItems.contains).toList(growable: false);
+    // The former standalone music button is now unified into the floating quick-shortcut FAB.
+    final activeItems = order.where((id) => id != 'browse' && visibleItems.contains(id)).toList(growable: false);
     final segments = <Widget>[];
     var tabGroup = <String>[];
 
