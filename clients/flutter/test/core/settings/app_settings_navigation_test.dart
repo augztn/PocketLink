@@ -106,9 +106,9 @@ void main() {
     );
 
     await settings.resetFloatingShortcuts();
-    expect(settings.floatingShortcutEnabled, isTrue);
+    expect(settings.floatingShortcutEnabled, isFalse);
     expect(settings.floatingShortcuts, AppSettings.floatingShortcutDefaults);
-    expect(preferences.getBool('settings_floating_shortcut_enabled'), isNull);
+    expect(preferences.getBool('settings_floating_shortcut_enabled'), isFalse);
     expect(preferences.getString('settings_floating_shortcuts'), isNull);
   });
 
