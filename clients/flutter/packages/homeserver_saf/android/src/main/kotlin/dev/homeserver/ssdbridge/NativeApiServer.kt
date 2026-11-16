@@ -261,8 +261,10 @@ internal class NativeApiServer(
             if (!parent.isDirectory) return bad("Not a directory")
             val target = File(parent, name)
             if (target.exists()) return jsonError(Response.Status.CONFLICT, "Name already exists")
-            return if (target.mkdir()) json(JSONObject().put("ok", true).put("name", name))
-                else jsonError(Response.Status.INTERNAL_ERROR, "Could not create folder")
+            return if (target.mkdir()) {
+                markMediaIndexDirty()
+                json(JSONObject().put("ok", true).put("name", name))
+            } else jsonError(Response.Status.INTERNAL_ERROR, "Could not create folder")
         }
 
         val oldFile = internalFile(relative) ?: return notFound("Item not found")
@@ -270,16 +272,20 @@ internal class NativeApiServer(
         val parent = oldFile.parentFile ?: return bad("Invalid parent folder")
         val target = File(parent, name)
         if (target.exists()) return jsonError(Response.Status.CONFLICT, "Name already exists")
-        return if (oldFile.renameTo(target)) json(JSONObject().put("ok", true).put("name", name))
-            else jsonError(Response.Status.INTERNAL_ERROR, "Rename failed")
+        return if (oldFile.renameTo(target)) {
+            markMediaIndexDirty()
+            json(JSONObject().put("ok", true).put("name", name))
+        } else jsonError(Response.Status.INTERNAL_ERROR, "Rename failed")
     }
 
     private fun deleteInternal(relative: String): Response {
         val file = internalFile(relative) ?: return notFound("Item not found")
         if (file == internalRoot) return bad("Cannot delete storage root")
         if (file.isDirectory && (file.list()?.isNotEmpty() == true)) return bad("Folder is not empty")
-        return if (file.delete()) json(JSONObject().put("ok", true))
-            else jsonError(Response.Status.INTERNAL_ERROR, "Delete failed")
+        return if (file.delete()) {
+            markMediaIndexDirty()
+            json(JSONObject().put("ok", true))
+        } else jsonError(Response.Status.INTERNAL_ERROR, "Delete failed")
     }
 
     private fun listVolumes(): Response {
@@ -443,8 +449,10 @@ internal class NativeApiServer(
         val root = externalRoot(volume) ?: return notFound("Storage permission not granted")
         if (relative.isBlank()) return bad("Cannot delete storage root")
         val item = resolveDocument(root, relative) ?: return notFound("Item not found")
-        return if (item.delete()) json(JSONObject().put("ok", true))
-            else jsonError(Response.Status.INTERNAL_ERROR, "Delete failed")
+        return if (item.delete()) {
+            markMediaIndexDirty()
+            json(JSONObject().put("ok", true))
+        } else jsonError(Response.Status.INTERNAL_ERROR, "Delete failed")
     }
 
     private fun withVideoSource(volume: String?, relative: String, action: (MediaMetadataRetriever) -> Response): Response {
