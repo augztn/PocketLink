@@ -130,6 +130,7 @@ class _HomeScreenState extends State<HomeScreen> {
           builder: (_) => MediaBrowserScreen(
             api: widget.api,
             type: MediaLibraryType.music,
+            onHome: () => Navigator.of(context).maybePop(),
           ),
         ));
         break;
@@ -138,6 +139,7 @@ class _HomeScreenState extends State<HomeScreen> {
           builder: (_) => MediaBrowserScreen(
             api: widget.api,
             type: MediaLibraryType.video,
+            onHome: () => Navigator.of(context).maybePop(),
           ),
         ));
         break;
