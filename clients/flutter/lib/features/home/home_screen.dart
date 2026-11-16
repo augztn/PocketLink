@@ -36,6 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _fileLocationRequest = 0;
   int _uploadRequest = 0;
   bool _quickShortcutsExpanded = false;
+  bool _filesCanNavigateBack = false;
   String? _requestedVolume;
   String _requestedPath = '';
 
@@ -239,6 +240,11 @@ class _HomeScreenState extends State<HomeScreen> {
           api: widget.api,
           isActive: true,
           onBackAtRoot: () => _openTab(0),
+          onCanNavigateBackChanged: (canNavigateBack) {
+            if (_filesCanNavigateBack != canNavigateBack) {
+              setState(() => _filesCanNavigateBack = canNavigateBack);
+            }
+          },
           externalDriveRequest: _externalDriveRequest,
           locationRequest: _fileLocationRequest,
           uploadRequest: _uploadRequest,
@@ -255,6 +261,8 @@ class _HomeScreenState extends State<HomeScreen> {
         if (didPop) return;
         if (_quickShortcutsExpanded) {
           setState(() => _quickShortcutsExpanded = false);
+        } else if (_selectedIndex == 2 && _filesCanNavigateBack) {
+          // FileManagerScreen handles folder-level back navigation.
         } else if (_selectedIndex != 0) {
           _openTab(0);
         }
