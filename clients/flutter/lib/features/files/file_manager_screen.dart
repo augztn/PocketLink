@@ -3,7 +3,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/widgets/home_server_app_bar.dart';
-import '../../core/widgets/compact_search_field.dart';
 
 import '../../core/network/server_api.dart';
 import '../../core/storage/home_activity_store.dart';
@@ -11,6 +10,7 @@ import '../home/browser_state_store.dart';
 import '../../core/settings/app_settings.dart';
 import '../transfers/transfer_manager.dart';
 import '../transfers/transfer_manager_screen.dart';
+import '../search/search_screen.dart';
 
 class FileManagerScreen extends StatefulWidget {
   const FileManagerScreen({
@@ -49,8 +49,6 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   DirectoryListing? _listing;
   bool _loading = true;
   String? _error;
-  final TextEditingController _searchController = TextEditingController();
-  final FocusNode _searchFocusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
   late final String _stateKey;
   late final BrowserStateStore _browserState;
@@ -60,7 +58,6 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   List<StorageVolume> _volumes = const [];
   String? _selectedVolume;
 
-  String _searchQuery = '';
   late String _category = widget.initialCategory;
   bool _gridView = false;
 
@@ -175,8 +172,6 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
         _selectedVolume = volume;
         _path = widget.requestedPath;
         _listing = null;
-        _searchController.clear();
-        _searchQuery = '';
         _pendingScrollOffset = 0;
         if (_scrollController.hasClients) _scrollController.jumpTo(0);
       });
@@ -234,7 +229,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   Future<void> _selectPartition(String? volumeId) async {
     setState(() {
       _selectedVolume = volumeId; _path = ''; _listing = null;
-      _searchController.clear(); _searchQuery = ''; _pendingScrollOffset = 0;
+      _pendingScrollOffset = 0;
       if (_scrollController.hasClients) _scrollController.jumpTo(0);
     });
     _saveState(path: '');
@@ -321,9 +316,10 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     return result.trim();
   }
 
-  void _focusSearch() {
-    if (!widget.showSearch) return;
-    _searchFocusNode.requestFocus();
+  void _openSearch() {
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => SearchScreen(api: widget.api),
+    ));
   }
 
   Future<void> _uploadFile() async {
@@ -529,8 +525,6 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     _saveState();
     _scrollController.removeListener(_saveScrollOffset);
     _scrollController.dispose();
-    _searchController.dispose();
-    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -539,11 +533,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final allItems = _listing?.items ?? const <FileEntry>[];
-    final query = _searchQuery.trim().toLowerCase();
-    final items = allItems.where((item) {
-      if (!_matchesCategory(item)) return false;
-      return query.isEmpty || item.name.toLowerCase().contains(query);
-    }).toList();
+    final items = allItems.where(_matchesCategory).toList();
     items.sort((a, b) {
       if (a.isDirectory != b.isDirectory) return a.isDirectory ? -1 : 1;
       if (_sortBy == 'largest') return b.size.compareTo(a.size);
@@ -618,7 +608,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
           actionsBeforeHome: widget.showSearch ? [
             IconButton(
               tooltip: 'Search files',
-              onPressed: _focusSearch,
+              onPressed: _openSearch,
               icon: const Icon(Icons.search_rounded),
             ),
           ] : const [],
@@ -712,18 +702,6 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                 ),
               ),
             ),
-            if (widget.showSearch) ...[
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-                child: CompactSearchField(
-                  controller: _searchController,
-                  focusNode: _searchFocusNode,
-                  hintText: 'Search files and folders',
-                  onChanged: (value) => setState(() => _searchQuery = value),
-                ),
-              ),
-              const SizedBox(height: 8),
-            ],
             if (_path.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
