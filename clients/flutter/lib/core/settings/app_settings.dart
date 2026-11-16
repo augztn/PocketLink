@@ -19,6 +19,8 @@ class AppSettings extends ChangeNotifier {
   static const _navigationVisibilityKey = 'settings_navigation_visibility';
   static const _homeSearchKey = 'settings_home_search';
   static const _homeTransfersKey = 'settings_home_transfers';
+  static const _homeSectionOrderKey = 'settings_home_section_order';
+  static const homeSectionDefaults = <String>['search', 'quick', 'transfers', 'continue', 'recent'];
   static const navigationDefaults = <String>['home', 'explore', 'files', 'browse'];
 
   ThemeMode _themeMode = ThemeMode.system;
@@ -29,6 +31,7 @@ class AppSettings extends ChangeNotifier {
   bool _showRecentFiles = true;
   bool _showGlobalSearch = true;
   bool _showActiveTransfers = true;
+  List<String> _homeSectionOrder = List.of(homeSectionDefaults);
   bool _useLiquidGlass = false;
   bool _loaded = false;
   List<String> _navigationOrder = List.of(navigationDefaults);
@@ -43,6 +46,7 @@ class AppSettings extends ChangeNotifier {
   bool get showRecentFiles => _showRecentFiles;
   bool get showGlobalSearch => _showGlobalSearch;
   bool get showActiveTransfers => _showActiveTransfers;
+  List<String> get homeSectionOrder => List.unmodifiable(_homeSectionOrder);
   bool get useLiquidGlass => _useLiquidGlass;
   List<String> get navigationOrder => List.unmodifiable(_navigationOrder);
   Set<String> get visibleNavigationItems => Set.unmodifiable(_visibleNavigationItems);
@@ -55,6 +59,18 @@ class AppSettings extends ChangeNotifier {
       _useLiquidGlass = preferences.getBool(_liquidGlassKey) ?? false;
       _showGlobalSearch = preferences.getBool(_homeSearchKey) ?? true;
       _showActiveTransfers = preferences.getBool(_homeTransfersKey) ?? true;
+      final rawSectionOrder = preferences.getString(_homeSectionOrderKey);
+      if (rawSectionOrder != null) {
+        final decoded = jsonDecode(rawSectionOrder);
+        if (decoded is List) {
+          final values = decoded.whereType<String>().toList();
+          if (values.length == homeSectionDefaults.length &&
+              values.toSet().length == homeSectionDefaults.length &&
+              values.toSet().containsAll(homeSectionDefaults)) {
+            _homeSectionOrder = values;
+          }
+        }
+      }
       final rawOrder = preferences.getString(_navigationOrderKey);
       final rawVisibility = preferences.getString(_navigationVisibilityKey);
       if (rawOrder != null) {
@@ -186,6 +202,18 @@ class AppSettings extends ChangeNotifier {
     notifyListeners();
     final preferences = await SharedPreferences.getInstance();
     await preferences.setBool(_liquidGlassKey, value);
+  }
+
+  Future<void> setHomeSectionOrder(List<String> order) async {
+    if (order.length != homeSectionDefaults.length ||
+        order.toSet().length != homeSectionDefaults.length ||
+        !order.toSet().containsAll(homeSectionDefaults)) {
+      throw ArgumentError('Invalid Home section order');
+    }
+    _homeSectionOrder = List.of(order);
+    notifyListeners();
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(_homeSectionOrderKey, jsonEncode(_homeSectionOrder));
   }
 
   Future<void> setHomeSections({

@@ -769,6 +769,151 @@ class HomeDashboardState extends State<HomeDashboard> {
     final availableVolumes = _volumes.where((volume) => volume.available).length;
     final appSettings = AppSettings.instance;
 
+    final sectionBuilders = <String, Widget Function()>{
+      'search': () => appSettings.showGlobalSearch
+          ? Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: _buildGlobalSearchEntry(theme, colors),
+            )
+          : const SizedBox.shrink(),
+      'quick': () => appSettings.showQuickActions
+          ? Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                sectionTitle('Quick actions', action: 'Edit', onAction: _editQuickActions),
+                const SizedBox(height: 9),
+                if (_quickActions.isEmpty)
+                  OutlinedButton.icon(
+                    onPressed: _editQuickActions,
+                    icon: const Icon(Icons.add_rounded),
+                    label: const Text('Add quick actions'),
+                  )
+                else
+                  GridView.count(
+                    crossAxisCount: 4,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisSpacing: 9,
+                    mainAxisSpacing: 9,
+                    childAspectRatio: 0.88,
+                    children: _quickActions.map((id) {
+                      final detail = _quickActionDetails[id]!;
+                      return quickAction(detail.icon, detail.label, () => _runQuickAction(id));
+                    }).toList(),
+                  ),
+              ]),
+            )
+          : const SizedBox.shrink(),
+      'transfers': () => appSettings.showActiveTransfers
+          ? Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: _buildActiveTransfersPreview(theme, colors),
+            )
+          : const SizedBox.shrink(),
+      'continue': () => appSettings.showLibrary
+          ? Padding(
+              padding: const EdgeInsets.only(bottom: 18),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                sectionTitle('Continue'),
+                const SizedBox(height: 10),
+                AnimatedBuilder(
+                  animation: HomeActivityStore.instance,
+                  builder: (context, _) => _buildContinueStrip(context, theme, colors),
+                ),
+              ]),
+            )
+          : const SizedBox.shrink(),
+      'recent': () => appSettings.showRecentFiles
+          ? Padding(
+              padding: const EdgeInsets.only(bottom: 18),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                sectionTitle(
+                  'Recent files',
+                  action: 'Browse',
+                  onAction: () => widget.onOpenExplore(ExploreCategory.files),
+                ),
+                const SizedBox(height: 10),
+                if (_recentFiles.isEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: colors.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(children: [
+                      Icon(Icons.history_rounded, color: colors.onSurfaceVariant),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          _checking
+                              ? 'Checking your folders for recent files…'
+                              : 'No recent files found in the scanned folders.',
+                          style: theme.textTheme.bodyMedium?.copyWith(color: colors.onSurfaceVariant),
+                        ),
+                      ),
+                    ]),
+                  )
+                else
+                  Material(
+                    color: colors.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(20),
+                    clipBehavior: Clip.antiAlias,
+                    child: Column(children: [
+                      for (var index = 0; index < _recentFiles.take(8).length; index++) ...[
+                        if (index > 0) const Divider(height: 1, indent: 68),
+                        ListTile(
+                          dense: true,
+                          minVerticalPadding: 8,
+                          leading: Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: colors.secondaryContainer,
+                              borderRadius: BorderRadius.circular(13),
+                            ),
+                            child: Icon(_recentIcon(_recentFiles[index].file), color: colors.onSecondaryContainer),
+                          ),
+                          title: Text(
+                            _recentFiles[index].file.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                          subtitle: Text(
+                            '${_formatBytes(_recentFiles[index].file.size)} · ${_relativeTime(_recentFiles[index].modifiedAt)} · ${_recentFiles[index].volumeName}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          trailing: PopupMenuButton<String>(
+                            tooltip: 'File actions',
+                            onSelected: (action) => _handleRecentAction(_recentFiles[index], action),
+                            itemBuilder: (_) => const [
+                              PopupMenuItem(value: 'download', child: Text('Download')),
+                              PopupMenuItem(value: 'share', child: Text('Share')),
+                              PopupMenuItem(value: 'rename', child: Text('Rename')),
+                              PopupMenuItem(value: 'delete', child: Text('Delete')),
+                            ],
+                          ),
+                          onTap: () {
+                            final recent = _recentFiles[index];
+                            HomeActivityStore.instance.recordFile(
+                              serverUrl: widget.api.baseUrl,
+                              title: recent.file.name,
+                              path: recent.path,
+                              volume: recent.volume,
+                            );
+                            widget.onOpenFileLocation(recent.volume, recent.parentPath);
+                          },
+                        ),
+                      ],
+                    ]),
+                  ),
+              ]),
+            )
+          : const SizedBox.shrink(),
+    };
+
+
     Widget sectionTitle(String title, {String? action, VoidCallback? onAction}) {
       return Row(
         children: [
@@ -960,148 +1105,9 @@ class HomeDashboardState extends State<HomeDashboard> {
           padding: EdgeInsets.fromLTRB(18, 6, 18, 104 + MediaQuery.paddingOf(context).bottom),
           children: [
             _buildServerTelemetry(context, theme, colors),
-            if (appSettings.showGlobalSearch) ...[
-              _buildGlobalSearchEntry(theme, colors),
-              const SizedBox(height: 16),
-            ],
-            if (appSettings.showQuickActions) ...[
-            sectionTitle(
-              'Quick actions',
-              action: 'Edit',
-              onAction: _editQuickActions,
-            ),
-            const SizedBox(height: 9),
-            if (_quickActions.isEmpty)
-              OutlinedButton.icon(
-                onPressed: _editQuickActions,
-                icon: const Icon(Icons.add_rounded),
-                label: const Text('Add quick actions'),
-              )
-            else
-              GridView.count(
-                crossAxisCount: 4,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisSpacing: 9,
-                mainAxisSpacing: 9,
-                childAspectRatio: 0.88,
-                children: _quickActions.map((id) {
-                  final detail = _quickActionDetails[id]!;
-                  return quickAction(
-                    detail.icon,
-                    detail.label,
-                    () => _runQuickAction(id),
-                  );
-                }).toList(),
-              ),
-            ],
-            if (appSettings.showActiveTransfers) ...[
-              _buildActiveTransfersPreview(theme, colors),
-              const SizedBox(height: 16),
-            ],
-            if (appSettings.showLibrary) ...[
-            sectionTitle('Continue'),
-            const SizedBox(height: 10),
-            AnimatedBuilder(
-              animation: HomeActivityStore.instance,
-              builder: (context, _) => _buildContinueStrip(context, theme, colors),
-            ),
-            ],
-            if (appSettings.showRecentFiles) ...[
             const SizedBox(height: 18),
-            sectionTitle(
-              'Recent files',
-              action: 'Browse',
-              onAction: () => widget.onOpenExplore(ExploreCategory.files),
-            ),
-            const SizedBox(height: 10),
-            if (_recentFiles.isEmpty)
-              Container(
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: colors.surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.history_rounded, color: colors.onSurfaceVariant),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        _checking
-                            ? 'Checking your folders for recent files…'
-                            : 'No recent files found in the scanned folders.',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: colors.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            else
-              Material(
-                color: colors.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(20),
-                clipBehavior: Clip.antiAlias,
-                child: Column(
-                  children: [
-                    for (var index = 0; index < _recentFiles.take(8).length; index++) ...[
-                      if (index > 0) const Divider(height: 1, indent: 68),
-                      ListTile(
-                        leading: Container(
-                          width: 42,
-                          height: 42,
-                          decoration: BoxDecoration(
-                            color: colors.secondaryContainer,
-                            borderRadius: BorderRadius.circular(13),
-                          ),
-                          child: Icon(
-                            _recentIcon(_recentFiles[index].file),
-                            color: colors.onSecondaryContainer,
-                          ),
-                        ),
-                        title: Text(
-                          _recentFiles[index].file.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        subtitle: Text(
-                          '${_formatBytes(_recentFiles[index].file.size)} · ${_relativeTime(_recentFiles[index].modifiedAt)} · ${_recentFiles[index].volumeName}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        trailing: PopupMenuButton<String>(
-                          tooltip: 'File actions',
-                          onSelected: (action) => _handleRecentAction(_recentFiles[index], action),
-                          itemBuilder: (_) => const [
-                            PopupMenuItem(value: 'download', child: Text('Download')),
-                            PopupMenuItem(value: 'share', child: Text('Share')),
-                            PopupMenuItem(value: 'rename', child: Text('Rename')),
-                            PopupMenuItem(value: 'delete', child: Text('Delete')),
-                          ],
-                        ),
-                        onTap: () {
-                          final recent = _recentFiles[index];
-                          HomeActivityStore.instance.recordFile(
-                            serverUrl: widget.api.baseUrl,
-                            title: recent.file.name,
-                            path: recent.path,
-                            volume: recent.volume,
-                          );
-                          widget.onOpenFileLocation(recent.volume, recent.parentPath);
-                        },
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            const SizedBox(height: 18),
-            ],
-
+            for (final section in appSettings.homeSectionOrder)
+              if (sectionBuilders.containsKey(section)) sectionBuilders[section]!(),
           ],
         ),
       ),

@@ -88,6 +88,65 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _customizeDashboardOrder() async {
+    const labels = <String, String>{
+      'search': 'Global search',
+      'quick': 'Quick actions',
+      'transfers': 'Active transfers',
+      'continue': 'Continue',
+      'recent': 'Recent files',
+    };
+    var draft = List<String>.of(_settings.homeSectionOrder);
+    final result = await showDialog<List<String>>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Reorder Home sections'),
+          content: SizedBox(
+            width: 420,
+            height: 380,
+            child: ReorderableListView.builder(
+              itemCount: draft.length,
+              onReorder: (oldIndex, newIndex) {
+                setDialogState(() {
+                  if (newIndex > oldIndex) newIndex--;
+                  final item = draft.removeAt(oldIndex);
+                  draft.insert(newIndex, item);
+                });
+              },
+              itemBuilder: (context, index) {
+                final id = draft[index];
+                return ListTile(
+                  key: ValueKey(id),
+                  leading: const Icon(Icons.drag_handle_rounded),
+                  title: Text(labels[id]!),
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => setDialogState(
+                () => draft = List.of(AppSettings.homeSectionDefaults),
+              ),
+              child: const Text('Reset'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, draft),
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (result == null || !mounted) return;
+    await _settings.setHomeSectionOrder(result);
+  }
+
   void _message(String message) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
@@ -189,6 +248,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 subtitle: const Text('Show live upload and download progress on Home'),
                 value: _settings.showActiveTransfers,
                 onChanged: (value) => _settings.setHomeSections(activeTransfers: value),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.reorder_rounded),
+                title: const Text('Reorder Home sections'),
+                subtitle: const Text('Choose the order of dashboard sections'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: _customizeDashboardOrder,
               ),
               const Divider(height: 1),
               ListTile(
