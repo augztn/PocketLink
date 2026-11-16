@@ -213,6 +213,7 @@ internal class MediaIndexScanner(
         Thread(runnable, "PocketLink-MediaIndex").apply { isDaemon = true }
     }
     private val running = AtomicBoolean(false)
+    private val dirty = AtomicBoolean(false)
     @Volatile private var started = false
     @Volatile private var scanned = 0
     @Volatile private var skipped = 0
@@ -221,13 +222,18 @@ internal class MediaIndexScanner(
     @Volatile private var lastCompletedAt: Long = 0L
     @Volatile private var lastScanStartedAt: Long = 0L
 
+    fun markDirty() {
+        dirty.set(true)
+    }
+
     fun ensureStarted() {
         val now = System.currentTimeMillis()
         if (!started) {
             requestScan(force = false)
-        } else if (!running.get() && now - lastScanStartedAt >= RESCAN_INTERVAL_MS) {
-            // Periodically discover files added or removed outside PocketLink.
-            // The scanner compares size/mtime and only rewrites changed rows.
+        } else if (!running.get() &&
+            (dirty.get() || now - lastScanStartedAt >= RESCAN_INTERVAL_MS)) {
+            // Discover changes made by PocketLink immediately, and external
+            // changes periodically. Unchanged rows are not rewritten.
             requestScan(force = true)
         }
     }
@@ -238,6 +244,7 @@ internal class MediaIndexScanner(
         if (started && !force && state == "complete") return
         started = true
         lastScanStartedAt = System.currentTimeMillis()
+        dirty.set(false)
         running.set(true)
         state = "scanning"
         scanned = 0
