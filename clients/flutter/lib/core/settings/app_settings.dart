@@ -115,7 +115,7 @@ class AppSettings extends ChangeNotifier {
         if (decoded is List) {
           final values = decoded.whereType<String>().toSet();
           if (values.contains('home') &&
-              values.where((id) => id != 'browse').length >= 2 &&
+              values.length >= 2 &&
               values.every(navigationDefaults.contains)) {
             _visibleNavigationItems = values;
           }
@@ -157,7 +157,7 @@ class AppSettings extends ChangeNotifier {
         order.toSet().length != navigationDefaults.length ||
         !order.toSet().containsAll(navigationDefaults) ||
         !visibleItems.contains('home') ||
-        visibleItems.where((id) => id != 'browse').length < 2 ||
+        visibleItems.length < 2 ||
         !visibleItems.every(navigationDefaults.contains)) {
       throw ArgumentError('Invalid navigation layout');
     }
