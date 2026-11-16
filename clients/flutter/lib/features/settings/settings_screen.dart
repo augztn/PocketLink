@@ -9,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/settings/app_settings.dart';
 import 'navigation_customization_screen.dart';
+import 'floating_shortcut_customization_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({this.onOpenSavedServers, super.key});
@@ -216,6 +217,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 subtitle: const Text('Translucent frosted blur on floating navigation and action pills'),
                 value: _settings.useLiquidGlass,
                 onChanged: _settings.setUseLiquidGlass,
+              ),
+              SwitchListTile(
+                secondary: const Icon(Icons.bolt_rounded),
+                title: const Text('Floating Quick-Shortcut Button'),
+                subtitle: const Text('Show one quick-access button above the navigation bar'),
+                value: _settings.floatingShortcutEnabled,
+                onChanged: _settings.setFloatingShortcutEnabled,
+              ),
+              const Divider(height: 1),
+              ListTile(
+                enabled: _settings.floatingShortcutEnabled,
+                leading: const Icon(Icons.tune_rounded),
+                title: const Text('Customize Floating Shortcuts'),
+                subtitle: Text(_settings.floatingShortcutEnabled
+                    ? '${_settings.floatingShortcuts.length} pinned destinations · first item is primary'
+                    : 'Turn on the floating button to customize shortcuts'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: _settings.floatingShortcutEnabled
+                    ? () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const FloatingShortcutCustomizationScreen(),
+                        ),
+                      )
+                    : null,
               ),
               SwitchListTile(
                 secondary: const Icon(Icons.dashboard_customize_outlined),
