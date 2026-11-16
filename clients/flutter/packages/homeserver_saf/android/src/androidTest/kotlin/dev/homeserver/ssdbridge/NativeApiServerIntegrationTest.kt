@@ -29,7 +29,7 @@ class NativeApiServerIntegrationTest {
         credentials.setPassword(password)
         // Let the OS allocate the port atomically when NanoHTTPD binds. Reserving
         // and then releasing a ServerSocket port creates a race with other processes.
-        val server = NativeApiServer(context, credentials, 0, "127.0.0.1")
+        val server = NativeApiServer(context, credentials, 0, "0.0.0.0")
 
         server.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false)
         try {
