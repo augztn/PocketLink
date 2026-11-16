@@ -9,6 +9,7 @@ class FloatingQuickShortcut extends StatefulWidget {
     required this.useLiquidGlass,
     required this.onTap,
     required this.onLongPress,
+    required this.longPressEnabled,
     required this.onSelect,
     super.key,
   });
@@ -18,6 +19,7 @@ class FloatingQuickShortcut extends StatefulWidget {
   final bool useLiquidGlass;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
+  final bool longPressEnabled;
   final ValueChanged<String> onSelect;
 
   static const _details = <String, ({String label, IconData icon})>{
@@ -71,7 +73,9 @@ class _FloatingQuickShortcutState extends State<FloatingQuickShortcut>
   Widget build(BuildContext context) {
     final primary = FloatingQuickShortcut._details[widget.shortcuts.first]!;
     final button = Tooltip(
-      message: '${primary.label} · Hold for shortcuts',
+      message: widget.longPressEnabled
+          ? '${primary.label} · Hold for shortcuts'
+          : primary.label,
       child: Hero(
         tag: 'pocketlink-floating-shortcut',
         child: widget.useLiquidGlass
@@ -86,7 +90,7 @@ class _FloatingQuickShortcutState extends State<FloatingQuickShortcut>
                     child: InkWell(
                       customBorder: const CircleBorder(),
                       onTap: widget.onTap,
-                      onLongPress: widget.onLongPress,
+                      onLongPress: widget.longPressEnabled ? widget.onLongPress : null,
                       child: _MainButtonIcon(
                         expanded: widget.expanded,
                         primary: primary.icon,
