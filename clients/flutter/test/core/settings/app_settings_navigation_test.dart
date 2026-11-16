@@ -27,7 +27,7 @@ void main() {
         '["home","files","browse"]');
   });
 
-  test('navigation layout rejects invalid visibility and unpinned home', () async {
+  test('navigation layout rejects invalid visibility but allows Home anywhere', () async {
     final settings = AppSettings.instance;
 
     await expectLater(
@@ -37,13 +37,12 @@ void main() {
       ),
       throwsArgumentError,
     );
-    await expectLater(
-      settings.setNavigationLayout(
-        order: const ['explore', 'home', 'files', 'browse'],
-        visibleItems: const {'home', 'explore'},
-      ),
-      throwsArgumentError,
+    await settings.setNavigationLayout(
+      order: const ['explore', 'home', 'files', 'browse'],
+      visibleItems: const {'home', 'explore'},
     );
+    expect(settings.navigationOrder,
+        const ['explore', 'home', 'files', 'browse']);
   });
 
   test('reset restores default order and all destinations', () async {
