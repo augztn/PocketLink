@@ -16,6 +16,7 @@ import '../library/photo_gallery_screen.dart';
 import '../storage/local_storage_setup_screen.dart';
 import '../transfers/transfer_manager_screen.dart';
 import '../transfers/transfer_manager.dart';
+import '../search/search_screen.dart';
 
 class HomeDashboard extends StatefulWidget {
   const HomeDashboard({
@@ -44,6 +45,7 @@ class HomeDashboardState extends State<HomeDashboard> {
   bool _checking = true;
   bool? _serverOnline;
   Duration? _latency;
+  DateTime? _lastCheckedAt;
   List<StorageVolume> _volumes = const [];
   List<RecentFile> _recentFiles = const [];
   final QuickActionsStore _quickActionsStore = QuickActionsStore();
@@ -484,6 +486,13 @@ class HomeDashboardState extends State<HomeDashboard> {
                   ),
                 ),
               ]),
+              if (_lastCheckedAt != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Last checked ${_lastCheckedAt!.hour.toString().padLeft(2, '0')}:${_lastCheckedAt!.minute.toString().padLeft(2, '0')}',
+                  style: theme.textTheme.labelSmall?.copyWith(color: muted),
+                ),
+              ],
               if (!online && !_checking) ...[
                 const SizedBox(height: 8),
                 Row(children: [
@@ -636,6 +645,87 @@ class HomeDashboardState extends State<HomeDashboard> {
     );
   }
 
+  Widget _buildGlobalSearchEntry(ThemeData theme, ColorScheme colors) {
+    return Material(
+      color: const Color(0xFF1E2025),
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+          builder: (_) => SearchScreen(api: widget.api),
+        )),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(children: [
+            Icon(Icons.search_rounded, color: colors.primary),
+            const SizedBox(width: 12),
+            Expanded(child: Text('Search files, folders and media',
+              style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white70))),
+            const Icon(Icons.arrow_forward_rounded, color: Colors.white54, size: 18),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActiveTransfersPreview(ThemeData theme, ColorScheme colors) {
+    final manager = TransferManager.instance;
+    return AnimatedBuilder(
+      animation: manager,
+      builder: (context, _) {
+        final active = manager.tasks
+            .where((task) => task.status == TransferStatus.running)
+            .take(2)
+            .toList(growable: false);
+        if (active.isEmpty) return const SizedBox.shrink();
+        return Material(
+          color: const Color(0xFF1E2025),
+          borderRadius: BorderRadius.circular(18),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+              builder: (_) => const TransferManagerScreen(),
+            )),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Expanded(child: Text('Active transfers',
+                    style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800))),
+                  Text('View all', style: theme.textTheme.labelMedium?.copyWith(color: colors.primary)),
+                ]),
+                const SizedBox(height: 10),
+                for (var index = 0; index < active.length; index++) ...[
+                  if (index > 0) const SizedBox(height: 12),
+                  Row(children: [
+                    Icon(active[index].direction == 'Upload'
+                        ? Icons.cloud_upload_outlined : Icons.download_rounded,
+                      color: colors.primary, size: 19),
+                    const SizedBox(width: 9),
+                    Expanded(child: Text(active[index].name, maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600))),
+                    Text(active[index].progress == null
+                        ? 'In progress'
+                        : '${(active[index].progress! * 100).round()}%',
+                      style: theme.textTheme.labelSmall?.copyWith(color: Colors.white70)),
+                  ]),
+                  const SizedBox(height: 7),
+                  LinearProgressIndicator(value: active[index].progress, minHeight: 4),
+                  const SizedBox(height: 4),
+                  Text(active[index].total > 0
+                      ? '${_formatBytes(active[index].transferred)} of ${_formatBytes(active[index].total)}'
+                      : 'Transfer in progress',
+                    style: theme.textTheme.labelSmall?.copyWith(color: Colors.white60)),
+                ],
+              ]),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _refreshStatus() async {
     widget.api.invalidateDirectoryCache();
     if (mounted) setState(() => _checking = true);
@@ -667,6 +757,7 @@ class HomeDashboardState extends State<HomeDashboard> {
     setState(() {
       _serverOnline = online;
       _volumes = volumes;
+      _lastCheckedAt = DateTime.now();
       _checking = false;
     });
   }
@@ -701,7 +792,7 @@ class HomeDashboardState extends State<HomeDashboard> {
           onTap: onTap,
           borderRadius: BorderRadius.circular(18),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 13),
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -866,17 +957,20 @@ class HomeDashboardState extends State<HomeDashboard> {
         onRefresh: _refreshStatus,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: EdgeInsets.fromLTRB(18, 8, 18, 104 + MediaQuery.paddingOf(context).bottom),
+          padding: EdgeInsets.fromLTRB(18, 6, 18, 104 + MediaQuery.paddingOf(context).bottom),
           children: [
             _buildServerTelemetry(context, theme, colors),
-            const SizedBox(height: 27),
+            if (appSettings.showGlobalSearch) ...[
+              _buildGlobalSearchEntry(theme, colors),
+              const SizedBox(height: 16),
+            ],
             if (appSettings.showQuickActions) ...[
             sectionTitle(
               'Quick actions',
               action: 'Edit',
               onAction: _editQuickActions,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 9),
             if (_quickActions.isEmpty)
               OutlinedButton.icon(
                 onPressed: _editQuickActions,
@@ -901,15 +995,20 @@ class HomeDashboardState extends State<HomeDashboard> {
                 }).toList(),
               ),
             ],
-            const SizedBox(height: 22),
+            if (appSettings.showActiveTransfers) ...[
+              _buildActiveTransfersPreview(theme, colors),
+              const SizedBox(height: 16),
+            ],
+            if (appSettings.showLibrary) ...[
             sectionTitle('Continue'),
             const SizedBox(height: 10),
             AnimatedBuilder(
               animation: HomeActivityStore.instance,
               builder: (context, _) => _buildContinueStrip(context, theme, colors),
             ),
+            ],
             if (appSettings.showRecentFiles) ...[
-            const SizedBox(height: 27),
+            const SizedBox(height: 18),
             sectionTitle(
               'Recent files',
               action: 'Browse',
@@ -971,7 +1070,7 @@ class HomeDashboardState extends State<HomeDashboard> {
                           ),
                         ),
                         subtitle: Text(
-                          '${_formatBytes(_recentFiles[index].file.size)} · ${_relativeTime(_recentFiles[index].modifiedAt)}',
+                          '${_formatBytes(_recentFiles[index].file.size)} · ${_relativeTime(_recentFiles[index].modifiedAt)} · ${_recentFiles[index].volumeName}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -1000,7 +1099,7 @@ class HomeDashboardState extends State<HomeDashboard> {
                   ],
                 ),
               ),
-            const SizedBox(height: 27),
+            const SizedBox(height: 18),
             ],
 
           ],

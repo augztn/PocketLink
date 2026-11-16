@@ -17,6 +17,8 @@ class AppSettings extends ChangeNotifier {
   static const _liquidGlassKey = 'settings_use_liquid_glass';
   static const _navigationOrderKey = 'settings_navigation_order';
   static const _navigationVisibilityKey = 'settings_navigation_visibility';
+  static const _homeSearchKey = 'settings_home_search';
+  static const _homeTransfersKey = 'settings_home_transfers';
   static const navigationDefaults = <String>['home', 'explore', 'files', 'browse'];
 
   ThemeMode _themeMode = ThemeMode.system;
@@ -25,6 +27,8 @@ class AppSettings extends ChangeNotifier {
   bool _showQuickActions = true;
   bool _showLibrary = true;
   bool _showRecentFiles = true;
+  bool _showGlobalSearch = true;
+  bool _showActiveTransfers = true;
   bool _useLiquidGlass = false;
   bool _loaded = false;
   List<String> _navigationOrder = List.of(navigationDefaults);
@@ -37,6 +41,8 @@ class AppSettings extends ChangeNotifier {
   bool get showQuickActions => _showQuickActions;
   bool get showLibrary => _showLibrary;
   bool get showRecentFiles => _showRecentFiles;
+  bool get showGlobalSearch => _showGlobalSearch;
+  bool get showActiveTransfers => _showActiveTransfers;
   bool get useLiquidGlass => _useLiquidGlass;
   List<String> get navigationOrder => List.unmodifiable(_navigationOrder);
   Set<String> get visibleNavigationItems => Set.unmodifiable(_visibleNavigationItems);
@@ -47,6 +53,8 @@ class AppSettings extends ChangeNotifier {
     try {
       final preferences = await SharedPreferences.getInstance();
       _useLiquidGlass = preferences.getBool(_liquidGlassKey) ?? false;
+      _showGlobalSearch = preferences.getBool(_homeSearchKey) ?? true;
+      _showActiveTransfers = preferences.getBool(_homeTransfersKey) ?? true;
       final rawOrder = preferences.getString(_navigationOrderKey);
       final rawVisibility = preferences.getString(_navigationVisibilityKey);
       if (rawOrder != null) {
@@ -184,15 +192,24 @@ class AppSettings extends ChangeNotifier {
     bool? quickActions,
     bool? library,
     bool? recentFiles,
+    bool? globalSearch,
+    bool? activeTransfers,
   }) async {
     if (quickActions != null) _showQuickActions = quickActions;
     if (library != null) _showLibrary = library;
     if (recentFiles != null) _showRecentFiles = recentFiles;
+    if (globalSearch != null) _showGlobalSearch = globalSearch;
+    if (activeTransfers != null) _showActiveTransfers = activeTransfers;
     notifyListeners();
     await Future.wait([
       if (quickActions != null) _storage.write(key: _quickActionsKey, value: '$quickActions'),
       if (library != null) _storage.write(key: _libraryKey, value: '$library'),
       if (recentFiles != null) _storage.write(key: _recentKey, value: '$recentFiles'),
+    ]);
+    final preferences = await SharedPreferences.getInstance();
+    await Future.wait([
+      if (globalSearch != null) preferences.setBool(_homeSearchKey, globalSearch),
+      if (activeTransfers != null) preferences.setBool(_homeTransfersKey, activeTransfers),
     ]);
   }
 }

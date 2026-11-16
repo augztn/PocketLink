@@ -176,6 +176,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 value: _settings.showRecentFiles,
                 onChanged: (value) => _settings.setHomeSections(recentFiles: value),
               ),
+              SwitchListTile(
+                secondary: const Icon(Icons.search_rounded),
+                title: const Text('Global search'),
+                subtitle: const Text('Show the search entry on Home'),
+                value: _settings.showGlobalSearch,
+                onChanged: (value) => _settings.setHomeSections(globalSearch: value),
+              ),
+              SwitchListTile(
+                secondary: const Icon(Icons.swap_vert_rounded),
+                title: const Text('Active transfers'),
+                subtitle: const Text('Show live upload and download progress on Home'),
+                value: _settings.showActiveTransfers,
+                onChanged: (value) => _settings.setHomeSections(activeTransfers: value),
+              ),
               const Divider(height: 1),
               ListTile(
                 leading: const Icon(Icons.tune_rounded),
