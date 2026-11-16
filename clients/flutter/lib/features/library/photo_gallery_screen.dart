@@ -174,10 +174,16 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     )));
   }
 
-  Widget grid(List<_Photo> items) => GridView.builder(
+  Widget grid(List<_Photo> items, {bool shrinkWrap = false}) => LayoutBuilder(
+    builder: (context, constraints) {
+      final width = constraints.maxWidth;
+      if (!width.isFinite || width <= 0) return const SizedBox.shrink();
+      return GridView.builder(
+    shrinkWrap: shrinkWrap,
+    physics: shrinkWrap ? const NeverScrollableScrollPhysics() : null,
     padding: EdgeInsets.fromLTRB(2, 2, 2, 104 + MediaQuery.paddingOf(context).bottom),
     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-      crossAxisCount: gridColumns, crossAxisSpacing: 2, mainAxisSpacing: 2),
+      crossAxisCount: gridColumns.clamp(2, 5), crossAxisSpacing: 2, mainAxisSpacing: 2),
     itemCount: items.length,
     itemBuilder: (_,i) {
       final p = items[i]; final isSelected = selected.contains(p.id);
@@ -194,6 +200,8 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
         ]),
       );
     },
+      );
+    },
   );
 
   Widget photosTab(List<_Photo> items) {
@@ -208,7 +216,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
             Expanded(child: Text(entry.key,style:Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight:FontWeight.w700))),
             Text('${entry.value.length}'),
           ])),
-        grid(entry.value),
+        grid(entry.value, shrinkWrap: true),
       ],
       const SizedBox(height:24),
     ]);
