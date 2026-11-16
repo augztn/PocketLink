@@ -41,7 +41,7 @@ internal class NativeApiServer(
     private val internalRoot by lazy(LazyThreadSafetyMode.NONE) {
         Environment.getExternalStorageDirectory().canonicalFile
     }
-    private val mediaIndex by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+    private val mediaIndexDelegate = lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
         MediaIndexScanner(
             context,
             { internalRoot },
@@ -55,6 +55,11 @@ internal class NativeApiServer(
                 ids.mapNotNull { id -> externalRoot(id)?.let { root -> id to root } }
             }
         )
+    }
+    private val mediaIndex by mediaIndexDelegate
+
+    private fun markMediaIndexDirty() {
+        if (mediaIndexDelegate.isInitialized()) mediaIndex.markDirty()
     }
 
     override fun serve(session: IHTTPSession): Response {
