@@ -302,7 +302,9 @@ internal class MediaIndexScanner(
             val safeModified = modified.coerceAtLeast(0L)
             val category = if (directory) null else categoryFor(name)
             val fileUnchanged = safeModified > 0L && fileSnapshot[path] == IndexStamp(safeSize, safeModified)
-            val mediaUnchanged = if (safeModified <= 0L) {\n                false\n            } else if (category == null) {
+            val mediaUnchanged = if (safeModified <= 0L) {
+                false
+            } else if (category == null) {
                 mediaSnapshot[path] == null
             } else {
                 mediaSnapshot[path] == IndexStamp(safeSize, safeModified, category)
