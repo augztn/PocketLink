@@ -203,6 +203,7 @@ class _SearchScreenState extends State<SearchScreen> {
         status = await loadAllPages();
       }
       if ((status.state == 'failed' || status.state == 'partial') && _results.isEmpty) {
+        if (mounted) setState(() => _loading = false);
         await _scanLegacy(refresh: true);
         return;
       }
@@ -211,9 +212,15 @@ class _SearchScreenState extends State<SearchScreen> {
         if (query.isNotEmpty) _saveHistory(query);
       }
     } on DioException {
-      if (generation == _scanGeneration) await _scanLegacy(refresh: true);
+      if (generation == _scanGeneration) {
+        if (mounted) setState(() => _loading = false);
+        await _scanLegacy(refresh: true);
+      }
     } catch (_) {
-      if (generation == _scanGeneration) await _scanLegacy(refresh: true);
+      if (generation == _scanGeneration) {
+        if (mounted) setState(() => _loading = false);
+        await _scanLegacy(refresh: true);
+      }
     }
   }
 
