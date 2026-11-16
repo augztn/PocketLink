@@ -41,6 +41,21 @@ internal class NativeApiServer(
     private val internalRoot by lazy(LazyThreadSafetyMode.NONE) {
         Environment.getExternalStorageDirectory().canonicalFile
     }
+    private val mediaIndex by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        MediaIndexScanner(
+            context,
+            { internalRoot },
+            {
+                val ids = linkedSetOf<String>()
+                prefs.all.keys.filter { it.startsWith("volume_uri_") }.forEach {
+                    ids.add(it.removePrefix("volume_uri_"))
+                }
+                if (prefs.getString("usb1", null) != null) ids.add("usb1")
+                if (prefs.getString("usb2", null) != null) ids.add("usb2")
+                ids.mapNotNull { id -> externalRoot(id)?.let { root -> id to root } }
+            }
+        )
+    }
 
     override fun serve(session: IHTTPSession): Response {
         // The native listener is cleartext HTTP. Trust only loopback or peers
@@ -89,6 +104,51 @@ internal class NativeApiServer(
                     mutateExternal(session, "rename")
                 session.uri == "/api/storage/item" && session.method == Method.DELETE ->
                     deleteExternal(query["volume"], path)
+                session.uri == "/api/index/status" && session.method == Method.GET -> {
+                    mediaIndex.ensureStarted()
+                    json(mediaIndex.status())
+                }
+                session.uri == "/api/index/scan" && session.method == Method.POST -> {
+                    mediaIndex.requestScan(force = true)
+                    json(mediaIndex.status())
+                }
+                session.uri == "/api/index/media" && session.method == Method.GET -> {
+                    mediaIndex.ensureStarted()
+                    val category = query["category"]?.takeIf { it in setOf("music", "video", "photo") }
+                        ?: return bad("Invalid media category")
+                    val limit = query["limit"]?.toIntOrNull()?.coerceIn(1, 500) ?: 100
+                    val offset = query["offset"]?.toIntOrNull()?.coerceAtLeast(0) ?: 0
+                    val items = JSONArray()
+                    mediaIndex.media(category, query["q"].orEmpty(), limit, offset).forEach { item ->
+                        items.put(JSONObject()
+                            .put("volume", item.volume)
+                            .put("path", item.path)
+                            .put("name", item.name)
+                            .put("type", item.type)
+                            .put("size", item.size)
+                            .put("modified", isoDate(item.modified))
+                            .put("mime", item.mime)
+                            .put("category", item.category))
+                    }
+                    json(JSONObject().put("items", items).put("status", mediaIndex.status()))
+                }
+                session.uri == "/api/index/files" && session.method == Method.GET -> {
+                    mediaIndex.ensureStarted()
+                    val limit = query["limit"]?.toIntOrNull()?.coerceIn(1, 500) ?: 100
+                    val offset = query["offset"]?.toIntOrNull()?.coerceAtLeast(0) ?: 0
+                    val items = JSONArray()
+                    mediaIndex.files(query["q"].orEmpty(), limit, offset).forEach { item ->
+                        items.put(JSONObject()
+                            .put("volume", item.volume)
+                            .put("path", item.path)
+                            .put("name", item.name)
+                            .put("type", item.type)
+                            .put("size", item.size)
+                            .put("modified", isoDate(item.modified))
+                            .put("mime", item.mime))
+                    }
+                    json(JSONObject().put("items", items).put("status", mediaIndex.status()))
+                }
                 session.uri == "/api/media/metadata" && session.method == Method.GET ->
                     videoMetadata(query["volume"], path)
                 session.uri == "/api/media/thumbnail" && session.method == Method.GET ->
