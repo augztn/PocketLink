@@ -89,7 +89,67 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
   @override
   void dispose() { search.dispose(); super.dispose(); }
 
+  Future<List<_Photo>> _readIndexedPhotos() async {
+    final found = <_Photo>[];
+    var offset = 0;
+    while (true) {
+      final page = await widget.api.indexedMedia(
+        'photo', limit: 500, offset: offset,
+      );
+      found.addAll(page.items.map((item) => _Photo(
+        item.toFileEntry(),
+        item.path,
+        item.volume == 'internal' ? null : item.volume,
+      )));
+      if (page.items.length < 500) break;
+      offset += page.items.length;
+    }
+    found.sort((a, b) => b.date.compareTo(a.date));
+    return found;
+  }
+
   Future<void> scan({bool refresh = false}) async {
+    if (refresh) {
+      widget.api.invalidateDirectoryCache();
+      try {
+        await widget.api.startMediaIndexScan();
+      } catch (_) {
+        await _scanLegacy(refresh: refresh);
+        return;
+      }
+    }
+    setState(() { loading = true; error = null; photos = []; selected.clear(); });
+    try {
+      volumes = await widget.api.listStorageVolumes();
+      var found = await _readIndexedPhotos();
+      var status = await widget.api.mediaIndexStatus();
+      if (mounted) setState(() => photos = List.unmodifiable(found));
+      while (mounted && status.isScanning) {
+        await Future<void>.delayed(const Duration(seconds: 2));
+        if (!mounted) return;
+        found = await _readIndexedPhotos();
+        status = await widget.api.mediaIndexStatus();
+        setState(() => photos = List.unmodifiable(found));
+      }
+      if ((status.state == 'failed' || status.state == 'partial') && found.isEmpty) {
+        await _scanLegacy();
+        return;
+      }
+      if (mounted) {
+        setState(() {
+          photos = List.unmodifiable(found);
+          loading = false;
+          error = status.state == 'partial' && found.isEmpty
+              ? status.lastError
+              : null;
+        });
+      }
+    } catch (_) {
+      await _scanLegacy(refresh: refresh);
+    }
+  }
+
+  Future<void> _scanLegacy({bool refresh = false}) async {
     if (refresh) widget.api.invalidateDirectoryCache();
     setState(() { loading = true; error = null; photos = []; selected.clear(); });
     final found = <_Photo>[];
