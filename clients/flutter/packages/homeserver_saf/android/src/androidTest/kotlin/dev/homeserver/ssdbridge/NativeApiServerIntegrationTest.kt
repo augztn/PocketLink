@@ -64,7 +64,7 @@ class NativeApiServerIntegrationTest {
     }
 
     private fun request(port: Int, path: String, authorization: String? = null): Pair<Int, String> {
-        Socket().use { socket ->
+        return Socket().use { socket ->
             socket.connect(InetSocketAddress("127.0.0.1", port), 5_000)
             socket.soTimeout = 15_000
             val headers = buildString {
