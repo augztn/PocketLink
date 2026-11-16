@@ -224,13 +224,11 @@ class AppSettings extends ChangeNotifier {
 
   Future<void> resetFloatingShortcuts() async {
     _floatingShortcuts = List.of(floatingShortcutDefaults);
-    _floatingShortcutEnabled = true;
     notifyListeners();
     final write = _floatingShortcutsWrite.catchError((_) {}).then((_) async {
       final preferences = await SharedPreferences.getInstance();
       await Future.wait([
         preferences.remove(_floatingShortcutsKey),
-        preferences.remove(_floatingShortcutEnabledKey),
       ]);
     });
     _floatingShortcutsWrite = write;
