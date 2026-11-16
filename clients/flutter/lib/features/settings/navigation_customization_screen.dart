@@ -29,10 +29,7 @@ class _NavigationCustomizationScreenState
   @override
   void initState() {
     super.initState();
-    _order = [
-      ..._settings.navigationOrder.where((id) => id != 'browse'),
-      'browse',
-    ];
+    _order = List.of(_settings.navigationOrder);
     _visibleItems = Set.of(_settings.visibleNavigationItems);
   }
 
@@ -76,18 +73,16 @@ class _NavigationCustomizationScreenState
 
   void _reorder(int oldIndex, int newIndex) {
     setState(() {
-      final visibleOrder = _order.where((id) => id != 'browse').toList();
       if (newIndex > oldIndex) newIndex--;
-      final item = visibleOrder.removeAt(oldIndex);
-      visibleOrder.insert(newIndex, item);
-      _order = [...visibleOrder, 'browse'];
+      final item = _order.removeAt(oldIndex);
+      _order.insert(newIndex, item);
     });
     _save();
   }
 
   void _setVisible(String id, bool visible) {
     if (id == 'home') return;
-    if (!visible && _visibleItems.where((id) => id != 'browse').length <= 2) return;
+    if (!visible && _visibleItems.length <= 2) return;
     setState(() {
       if (visible) {
         _visibleItems.add(id);
@@ -143,7 +138,7 @@ class _NavigationCustomizationScreenState
           )),
           const SizedBox(height: 6),
           Text(
-            'Drag Home, Explore or Files to change the dock order. Music is now on the floating shortcut button.',
+            'Drag destinations, including Browse / Music, to change the dock order.',
             style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
           ),
           const SizedBox(height: 12),
@@ -157,12 +152,12 @@ class _NavigationCustomizationScreenState
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               buildDefaultDragHandles: false,
-              itemCount: _order.where((id) => id != 'browse').length,
+              itemCount: _order.length,
               onReorder: _reorder,
               onReorderStart: (_) => HapticFeedback.selectionClick(),
               onReorderEnd: (_) => HapticFeedback.lightImpact(),
               itemBuilder: (context, index) {
-                final id = _order.where((id) => id != 'browse').elementAt(index);
+                final id = _order[index];
                 final detail = _details[id]!;
                 final visible = _visibleItems.contains(id);
                 return Column(
@@ -184,7 +179,7 @@ class _NavigationCustomizationScreenState
                           if (id != 'home')
                             Switch(
                               value: visible,
-                              onChanged: !visible && _visibleItems.where((id) => id != 'browse').length <= 2
+                              onChanged: !visible && _visibleItems.length <= 2
                                   ? null
                                   : (value) => _setVisible(id, value),
                             ),
@@ -204,7 +199,7 @@ class _NavigationCustomizationScreenState
                         ],
                       ),
                     ),
-                    if (index != _order.where((id) => id != 'browse').length - 1)
+                    if (index != _order.length - 1)
                       const Divider(height: 1, indent: 56),
                   ],
                 );
