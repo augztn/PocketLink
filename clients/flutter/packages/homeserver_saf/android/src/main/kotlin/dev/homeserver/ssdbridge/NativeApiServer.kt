@@ -37,7 +37,10 @@ internal class NativeApiServer(
     bindHost: String = "0.0.0.0"
 ) : NanoHTTPD(bindHost, listenPort) {
     private val prefs = context.getSharedPreferences("ssd-bridge", Context.MODE_PRIVATE)
-    private val internalRoot = Environment.getExternalStorageDirectory().canonicalFile
+    // Keep server startup and health checks independent of external-storage availability.
+    private val internalRoot by lazy(LazyThreadSafetyMode.NONE) {
+        Environment.getExternalStorageDirectory().canonicalFile
+    }
 
     override fun serve(session: IHTTPSession): Response {
         // The native listener is cleartext HTTP. Trust only loopback or peers
