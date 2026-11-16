@@ -26,6 +26,7 @@ class FileManagerScreen extends StatefulWidget {
     this.showSearch = true,
     this.isActive = false,
     this.onBackAtRoot,
+    this.onCanNavigateBackChanged,
     super.key,
   });
 
@@ -41,6 +42,7 @@ class FileManagerScreen extends StatefulWidget {
   final bool showSearch;
   final bool isActive;
   final VoidCallback? onBackAtRoot;
+  final ValueChanged<bool>? onCanNavigateBackChanged;
 
   @override
   State<FileManagerScreen> createState() => _FileManagerScreenState();
@@ -127,6 +129,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     _browserState = Provider.of<BrowserStateStore>(context, listen: false);
     final saved = _browserState.fileState(_stateKey);
     _path = widget.locationRequest > 0 ? widget.requestedPath : (widget.initialPath.isNotEmpty ? widget.initialPath : saved.path);
+    widget.onCanNavigateBackChanged?.call(_path.isNotEmpty);
     _category = widget.initialCategory != 'All' ? widget.initialCategory : saved.category;
     _sortBy = saved.sortBy;
     _gridView = saved.gridView;
@@ -266,6 +269,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
       final previousPath = _path;
       final previousVolume = _selectedVolume;
       setState(() { _path = result.path == '.' ? '' : result.path; _listing = result; _saveState(path: _path); });
+      widget.onCanNavigateBackChanged?.call(_path.isNotEmpty);
       if (_path.isNotEmpty && (_path != previousPath || _selectedVolume != previousVolume)) {
         HomeActivityStore.instance.recordFolder(serverUrl: widget.api.baseUrl, path: _path, volume: _selectedVolume);
       }
