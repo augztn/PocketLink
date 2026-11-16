@@ -22,6 +22,8 @@ class AppSettings extends ChangeNotifier {
   static const _homeSectionOrderKey = 'settings_home_section_order';
   static const _floatingShortcutEnabledKey = 'settings_floating_shortcut_enabled';
   static const _floatingShortcutsKey = 'settings_floating_shortcuts';
+  static const _floatingShortcutTapActionKey = 'settings_floating_shortcut_tap_action';
+  static const _floatingShortcutLongPressKey = 'settings_floating_shortcut_long_press';
   static const homeSectionDefaults = <String>['search', 'quick', 'transfers', 'continue', 'recent'];
   static const navigationDefaults = <String>['home', 'explore', 'files', 'browse'];
   static const floatingShortcutDefaults = <String>[
@@ -45,7 +47,9 @@ class AppSettings extends ChangeNotifier {
   List<String> _navigationOrder = List.of(navigationDefaults);
   Set<String> _visibleNavigationItems = Set.of(navigationDefaults);
   Future<void> _navigationWrite = Future<void>.value();
-  bool _floatingShortcutEnabled = true;
+  bool _floatingShortcutEnabled = false;
+  String _floatingShortcutTapAction = 'primary';
+  bool _floatingShortcutLongPressEnabled = true;
   List<String> _floatingShortcuts = List.of(floatingShortcutDefaults);
   Future<void> _floatingShortcutsWrite = Future<void>.value();
 
@@ -63,6 +67,8 @@ class AppSettings extends ChangeNotifier {
   Set<String> get visibleNavigationItems => Set.unmodifiable(_visibleNavigationItems);
   bool get navigationLayoutIsDefault => _navigationOrder.join(',') == navigationDefaults.join(',') && _visibleNavigationItems.length == navigationDefaults.length;
   bool get floatingShortcutEnabled => _floatingShortcutEnabled;
+  String get floatingShortcutTapAction => _floatingShortcutTapAction;
+  bool get floatingShortcutLongPressEnabled => _floatingShortcutLongPressEnabled;
   List<String> get floatingShortcuts => List.unmodifiable(_floatingShortcuts);
 
   Future<void> load() async {
@@ -70,7 +76,10 @@ class AppSettings extends ChangeNotifier {
     try {
       final preferences = await SharedPreferences.getInstance();
       _useLiquidGlass = preferences.getBool(_liquidGlassKey) ?? false;
-      _floatingShortcutEnabled = preferences.getBool(_floatingShortcutEnabledKey) ?? true;
+      _floatingShortcutEnabled = preferences.getBool(_floatingShortcutEnabledKey) ?? false;
+      final tapAction = preferences.getString(_floatingShortcutTapActionKey);
+      _floatingShortcutTapAction = tapAction == 'menu' ? 'menu' : 'primary';
+      _floatingShortcutLongPressEnabled = preferences.getBool(_floatingShortcutLongPressKey) ?? true;
       final rawFloatingShortcuts = preferences.getString(_floatingShortcutsKey);
       if (rawFloatingShortcuts != null) {
         final decoded = jsonDecode(rawFloatingShortcuts);
@@ -203,6 +212,23 @@ class AppSettings extends ChangeNotifier {
     });
     _floatingShortcutsWrite = write;
     await write;
+  }
+
+  Future<void> setFloatingShortcutTapAction(String action) async {
+    if (action != 'primary' && action != 'menu') {
+      throw ArgumentError.value(action, 'action', 'Unsupported floating shortcut tap action');
+    }
+    _floatingShortcutTapAction = action;
+    notifyListeners();
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(_floatingShortcutTapActionKey, action);
+  }
+
+  Future<void> setFloatingShortcutLongPressEnabled(bool enabled) async {
+    _floatingShortcutLongPressEnabled = enabled;
+    notifyListeners();
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_floatingShortcutLongPressKey, enabled);
   }
 
   Future<void> setFloatingShortcuts(List<String> shortcuts) async {
