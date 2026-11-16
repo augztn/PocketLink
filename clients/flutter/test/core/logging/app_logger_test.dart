@@ -28,6 +28,15 @@ void main() {
       expect(sanitized, contains('[REDACTED]'));
     });
 
+    test('redacts IPv6 addresses without altering timestamps', () {
+      final sanitized = AppLogger.sanitizeDiagnosticContent(
+        '2026-11-16T14:10:00Z host: fd7a:115c:a1e0::1234',
+      );
+
+      expect(sanitized, contains('2026-11-16T14:10:00Z'));
+      expect(sanitized, isNot(contains('fd7a:115c:a1e0::1234')));
+    });
+
     test('preserves useful API paths and status codes', () {
       final sanitized = AppLogger.sanitizeDiagnosticContent(
         'GET /api/files/ returned 200',
