@@ -205,6 +205,15 @@ jobs:
       - run: flutter build apk --release
       - name: Run native Android unit tests
         run: cd android && ./gradlew :homeserver_saf:testDebugUnitTest
+      - name: Enable KVM acceleration for Android emulator
+        run: |
+          if [ ! -e /dev/kvm ]; then
+            echo "::error::KVM device is unavailable on this runner"
+            exit 1
+          fi
+          sudo chmod 666 /dev/kvm
+          test -r /dev/kvm && test -w /dev/kvm
+          ls -l /dev/kvm
       - name: Run native Android integration tests
         uses: ReactiveCircus/android-emulator-runner@v2
         with:
