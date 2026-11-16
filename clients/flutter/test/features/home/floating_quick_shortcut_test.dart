@@ -27,16 +27,19 @@ void main() {
 
   testWidgets('long press expands pinned destinations and selection is routed', (tester) async {
     String? selected;
+    var expanded = false;
 
     await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: FloatingQuickShortcut(
-          shortcuts: const ['explore', 'music', 'photos'],
-          expanded: false,
-          useLiquidGlass: false,
-          onTap: () {},
-          onLongPress: () {},
-          onSelect: (id) => selected = id,
+      home: StatefulBuilder(
+        builder: (context, setState) => Scaffold(
+          body: FloatingQuickShortcut(
+            shortcuts: const ['explore', 'music', 'photos'],
+            expanded: expanded,
+            useLiquidGlass: false,
+            onTap: () {},
+            onLongPress: () => setState(() => expanded = true),
+            onSelect: (id) => selected = id,
+          ),
         ),
       ),
     ));
