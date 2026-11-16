@@ -305,10 +305,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     shortcuts: AppSettings.instance.floatingShortcuts,
                     expanded: _quickShortcutsExpanded,
                     useLiquidGlass: AppSettings.instance.useLiquidGlass,
-                    onTap: () => _openFloatingShortcut(
-                      AppSettings.instance.floatingShortcuts.first,
-                    ),
+                    onTap: () {
+                      final settings = AppSettings.instance;
+                      if (settings.floatingShortcutTapAction == 'menu') {
+                        _expandFloatingShortcuts();
+                      } else {
+                        _openFloatingShortcut(settings.floatingShortcuts.first);
+                      }
+                    },
                     onLongPress: _expandFloatingShortcuts,
+                    longPressEnabled: AppSettings.instance.floatingShortcutLongPressEnabled,
                     onSelect: _openFloatingShortcut,
                   ),
                 ),
