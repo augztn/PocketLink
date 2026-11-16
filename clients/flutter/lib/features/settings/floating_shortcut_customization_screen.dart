@@ -85,7 +85,7 @@ class _FloatingShortcutCustomizationScreenState
         _longPressEnabled = true;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Floating shortcuts reset to default')),
+        const SnackBar(content: Text('Floating button reset to defaults')),
       );
     } catch (_) {
       if (mounted) {
@@ -184,7 +184,7 @@ class _FloatingShortcutCustomizationScreenState
           OutlinedButton.icon(
             onPressed: _reset,
             icon: const Icon(Icons.restart_alt_rounded),
-            label: const Text('Reset shortcuts to default'),
+            label: const Text('Reset FAB customization'),
           ),
           const SizedBox(height: 8),
           FilledButton(
