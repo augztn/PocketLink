@@ -10,6 +10,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/network/offline_file_cache.dart';
+import '../../core/logging/app_logger.dart';
 import '../../core/widgets/home_server_app_bar.dart';
 import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
@@ -91,15 +92,34 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     _persistent = PersistentAudioPlayer.instance;
     _player = _persistent.player;
     _persistent.setFullScreen(true);
+    unawaited(AppLogger.info('Now Playing screen initialized', fields: {
+      'queueLength': widget.queue.length,
+      'initialIndex': widget.initialIndex,
+      'resumeExisting': widget.resumeExisting,
+    }));
     _playlistSubscription = _player.stream.playlist.listen((_) => _onTrackChanged());
     unawaited(_initialize());
-    if (!widget.resumeExisting) {
-      unawaited(_persistent.openQueue(
+    if (!widget.resumeExisting) unawaited(_openQueue());
+  }
+
+  Future<void> _openQueue() async {
+    try {
+      await _persistent.openQueue(
         api: widget.api,
         queue: widget.queue,
         initialIndex: widget.initialIndex,
         isMusic: true,
-      ));
+      );
+      await AppLogger.info('Now Playing queue opened', fields: {
+        'queueLength': widget.queue.length,
+      });
+    } catch (error, stackTrace) {
+      await AppLogger.error(
+        'Now Playing queue failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      if (mounted) _message('Could not start playback. Check diagnostics for details.');
     }
   }
 
