@@ -49,64 +49,67 @@ internal class MediaIndexDatabase(context: Context) :
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
 
-    fun upsert(batch: List<IndexedFile>, scanId: String) {
+    fun upsertFiles(batch: List<IndexedFile>, scanId: String) {
         if (batch.isEmpty()) return
-        writableDatabase.beginTransaction()
+        val db = writableDatabase
+        db.beginTransaction()
         try {
-            val db = writableDatabase
-            val fileStatement = db.compileStatement("""
+            val statement = db.compileStatement("""
                 INSERT OR REPLACE INTO files(volume,path,name,type,size,modified,mime,scan_id)
-                VALUES(?,?,?,?,?,?,?,?)
-            """.trimIndent())
-            val mediaStatement = db.compileStatement("""
-                INSERT OR REPLACE INTO media(volume,path,name,category,size,modified,mime,scan_id)
                 VALUES(?,?,?,?,?,?,?,?)
             """.trimIndent())
             try {
                 batch.forEach { item ->
-                    fileStatement.clearBindings()
-                    fileStatement.bindString(1, item.volume)
-                    fileStatement.bindString(2, item.path)
-                    fileStatement.bindString(3, item.name)
-                    fileStatement.bindString(4, item.type)
-                    fileStatement.bindLong(5, item.size)
-                    fileStatement.bindLong(6, item.modified)
-                    fileStatement.bindString(7, item.mime)
-                    fileStatement.bindString(8, scanId)
-                    fileStatement.executeInsert()
-
-                    if (item.category != null && item.type == "file") {
-                        mediaStatement.clearBindings()
-                        mediaStatement.bindString(1, item.volume)
-                        mediaStatement.bindString(2, item.path)
-                        mediaStatement.bindString(3, item.name)
-                        mediaStatement.bindString(4, item.category)
-                        mediaStatement.bindLong(5, item.size)
-                        mediaStatement.bindLong(6, item.modified)
-                        mediaStatement.bindString(7, item.mime)
-                        mediaStatement.bindString(8, scanId)
-                        mediaStatement.executeInsert()
-                    }
+                    statement.clearBindings()
+                    statement.bindString(1, item.volume)
+                    statement.bindString(2, item.path)
+                    statement.bindString(3, item.name)
+                    statement.bindString(4, item.type)
+                    statement.bindLong(5, item.size)
+                    statement.bindLong(6, item.modified)
+                    statement.bindString(7, item.mime)
+                    statement.bindString(8, scanId)
+                    statement.executeInsert()
                 }
-            } finally {
-                fileStatement.close()
-                mediaStatement.close()
-            }
+            } finally { statement.close() }
             db.setTransactionSuccessful()
-        } finally {
-            writableDatabase.endTransaction()
-        }
+        } finally { db.endTransaction() }
     }
 
-    fun finishSource(volume: String, scanId: String) {
-        writableDatabase.beginTransaction()
+    fun upsertMedia(batch: List<IndexedFile>, scanId: String) {
+        val mediaItems = batch.filter { it.category != null && it.type == "file" }
+        if (mediaItems.isEmpty()) return
+        val db = writableDatabase
+        db.beginTransaction()
         try {
-            writableDatabase.delete("files", "volume=? AND scan_id<>?", arrayOf(volume, scanId))
-            writableDatabase.delete("media", "volume=? AND scan_id<>?", arrayOf(volume, scanId))
-            writableDatabase.setTransactionSuccessful()
-        } finally {
-            writableDatabase.endTransaction()
-        }
+            val statement = db.compileStatement("""
+                INSERT OR REPLACE INTO media(volume,path,name,category,size,modified,mime,scan_id)
+                VALUES(?,?,?,?,?,?,?,?)
+            """.trimIndent())
+            try {
+                mediaItems.forEach { item ->
+                    statement.clearBindings()
+                    statement.bindString(1, item.volume)
+                    statement.bindString(2, item.path)
+                    statement.bindString(3, item.name)
+                    statement.bindString(4, item.category!!)
+                    statement.bindLong(5, item.size)
+                    statement.bindLong(6, item.modified)
+                    statement.bindString(7, item.mime)
+                    statement.bindString(8, scanId)
+                    statement.executeInsert()
+                }
+            } finally { statement.close() }
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
+    }
+
+    fun finishFilesSource(volume: String, scanId: String) {
+        writableDatabase.delete("files", "volume=? AND scan_id<>?", arrayOf(volume, scanId))
+    }
+
+    fun finishMediaSource(volume: String, scanId: String) {
+        writableDatabase.delete("media", "volume=? AND scan_id<>?", arrayOf(volume, scanId))
     }
 
     fun queryMedia(category: String, query: String, limit: Int, offset: Int): List<IndexedFile> {
@@ -213,11 +216,22 @@ internal class MediaIndexScanner(
         val scanId = UUID.randomUUID().toString()
         val batch = ArrayList<IndexedFile>(200)
         var complete = true
+        var filesHealthy = true
+        var mediaHealthy = true
         fun flush() {
-            if (batch.isNotEmpty()) {
-                database.upsert(batch.toList(), scanId)
-                batch.clear()
+            if (batch.isEmpty()) return
+            val snapshot = batch.toList()
+            try { database.upsertFiles(snapshot, scanId) } catch (error: Exception) {
+                filesHealthy = false
+                skipped++
+                lastError = error.message ?: "File index update failed"
             }
+            try { database.upsertMedia(snapshot, scanId) } catch (error: Exception) {
+                mediaHealthy = false
+                skipped++
+                lastError = error.message ?: "Media index update failed"
+            }
+            batch.clear()
         }
         fun add(path: String, name: String, directory: Boolean, size: Long, modified: Long, mime: String) {
             val category = if (directory) null else categoryFor(name)
@@ -286,9 +300,10 @@ internal class MediaIndexScanner(
             }
         }
         flush()
-        // Never prune old rows after a partial traversal. This protects the last
-        // known-good index when Android or a SAF provider temporarily denies access.
-        if (complete) database.finishSource(volume, scanId)
+        // Each index is committed and pruned independently. A media-index
+        // failure must not invalidate the general file index, or vice versa.
+        if (complete && filesHealthy) database.finishFilesSource(volume, scanId)
+        if (complete && mediaHealthy) database.finishMediaSource(volume, scanId)
     }
 
     fun status(): org.json.JSONObject {
