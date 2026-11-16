@@ -106,7 +106,7 @@ class AppLogger {
             : credential.startsWith("'")
                 ? "'[REDACTED]'"
                 : '[REDACTED]';
-        return '\${match.group(1)}$replacement';
+        return '${match.group(1)}$replacement';
       },
     );
 
