@@ -240,7 +240,10 @@ internal class MediaIndexScanner(
 
     @Synchronized
     fun requestScan(force: Boolean) {
-        if (running.get()) return
+        if (running.get()) {
+            if (force) dirty.set(true)
+            return
+        }
         if (started && !force && state == "complete") return
         started = true
         lastScanStartedAt = System.currentTimeMillis()
