@@ -21,6 +21,8 @@ internal data class IndexedFile(
     val category: String?
 )
 
+internal data class IndexStamp(val size: Long, val modified: Long, val category: String? = null)
+
 internal class MediaIndexDatabase(context: Context) :
     SQLiteOpenHelper(context, "pocketlink_index.db", null, 1) {
 
@@ -112,6 +114,51 @@ internal class MediaIndexDatabase(context: Context) :
         writableDatabase.delete("media", "volume=? AND scan_id<>?", arrayOf(volume, scanId))
     }
 
+    fun fileSnapshot(volume: String): Map<String, IndexStamp> {
+        val result = mutableMapOf<String, IndexStamp>()
+        readableDatabase.query("files", arrayOf("path", "size", "modified"),
+            "volume=?", arrayOf(volume), null, null, null).use { cursor ->
+            while (cursor.moveToNext()) result[cursor.getString(0)] =
+                IndexStamp(cursor.getLong(1), cursor.getLong(2))
+        }
+        return result
+    }
+
+    fun mediaSnapshot(volume: String): Map<String, IndexStamp> {
+        val result = mutableMapOf<String, IndexStamp>()
+        readableDatabase.query("media", arrayOf("path", "size", "modified", "category"),
+            "volume=?", arrayOf(volume), null, null, null).use { cursor ->
+            while (cursor.moveToNext()) result[cursor.getString(0)] =
+                IndexStamp(cursor.getLong(1), cursor.getLong(2), cursor.getString(3))
+        }
+        return result
+    }
+
+    fun markFilesSeen(volume: String, paths: List<String>, scanId: String) =
+        markSeen("files", volume, paths, scanId)
+
+    fun markMediaSeen(volume: String, paths: List<String>, scanId: String) =
+        markSeen("media", volume, paths, scanId)
+
+    private fun markSeen(table: String, volume: String, paths: List<String>, scanId: String) {
+        if (paths.isEmpty()) return
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            val statement = db.compileStatement("UPDATE $table SET scan_id=? WHERE volume=? AND path=?")
+            try {
+                paths.forEach { path ->
+                    statement.clearBindings()
+                    statement.bindString(1, scanId)
+                    statement.bindString(2, volume)
+                    statement.bindString(3, path)
+                    statement.executeUpdateDelete()
+                }
+            } finally { statement.close() }
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
+    }
+
     fun queryMedia(category: String, query: String, limit: Int, offset: Int): List<IndexedFile> {
         val rows = mutableListOf<IndexedFile>()
         val where = if (query.isBlank()) "category=?" else "category=? AND (name LIKE ? ESCAPE '\\' OR path LIKE ? ESCAPE '\\')"
@@ -201,7 +248,7 @@ internal class MediaIndexScanner(
                         lastError = error.message ?: "One storage source could not be indexed"
                     }
                 }
-                state = if (lastError == null) "complete" else "partial"
+                state = if (lastError == null && skipped == 0) "complete" else "partial"
                 lastCompletedAt = System.currentTimeMillis()
             } catch (error: Exception) {
                 state = "failed"
@@ -214,31 +261,61 @@ internal class MediaIndexScanner(
 
     private fun scanSource(volume: String, root: Any) {
         val scanId = UUID.randomUUID().toString()
+        val fileSnapshot = database.fileSnapshot(volume)
+        val mediaSnapshot = database.mediaSnapshot(volume)
         val batch = ArrayList<IndexedFile>(200)
+        val unchangedFiles = ArrayList<String>(200)
+        val unchangedMedia = ArrayList<String>(200)
         var complete = true
         var filesHealthy = true
         var mediaHealthy = true
         fun flush() {
-            if (batch.isEmpty()) return
             val snapshot = batch.toList()
-            try { database.upsertFiles(snapshot, scanId) } catch (error: Exception) {
+            if (snapshot.isNotEmpty()) {
+                try { database.upsertFiles(snapshot, scanId) } catch (error: Exception) {
+                    filesHealthy = false
+                    skipped++
+                    lastError = error.message ?: "File index update failed"
+                }
+                try { database.upsertMedia(snapshot, scanId) } catch (error: Exception) {
+                    mediaHealthy = false
+                    skipped++
+                    lastError = error.message ?: "Media index update failed"
+                }
+            }
+            try { database.markFilesSeen(volume, unchangedFiles.toList(), scanId) } catch (error: Exception) {
                 filesHealthy = false
                 skipped++
                 lastError = error.message ?: "File index update failed"
             }
-            try { database.upsertMedia(snapshot, scanId) } catch (error: Exception) {
+            try { database.markMediaSeen(volume, unchangedMedia.toList(), scanId) } catch (error: Exception) {
                 mediaHealthy = false
                 skipped++
                 lastError = error.message ?: "Media index update failed"
             }
             batch.clear()
+            unchangedFiles.clear()
+            unchangedMedia.clear()
         }
         fun add(path: String, name: String, directory: Boolean, size: Long, modified: Long, mime: String) {
+            val safeSize = size.coerceAtLeast(0L)
+            val safeModified = modified.coerceAtLeast(0L)
             val category = if (directory) null else categoryFor(name)
-            batch += IndexedFile(volume, path, name, if (directory) "directory" else "file",
-                size.coerceAtLeast(0L), modified.coerceAtLeast(0L), mime, category)
+            val fileUnchanged = fileSnapshot[path] == IndexStamp(safeSize, safeModified)
+            val mediaUnchanged = if (category == null) {
+                mediaSnapshot[path] == null
+            } else {
+                mediaSnapshot[path] == IndexStamp(safeSize, safeModified, category)
+            }
             scanned++
-            if (batch.size >= 200) flush()
+            if (fileUnchanged && mediaUnchanged) {
+                unchangedFiles += path
+                if (category != null) unchangedMedia += path
+            } else {
+                batch += IndexedFile(volume, path, name, if (directory) "directory" else "file",
+                    safeSize, safeModified, mime, category)
+            }
+            if (batch.size >= 200 || unchangedFiles.size >= 200) flush()
         }
 
         when (root) {
