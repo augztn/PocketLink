@@ -28,8 +28,8 @@ void main() {
       ),
     );
 
-    expect(find.byType(FloatingActionButton), findsOneWidget);
-    await tester.tap(find.byType(FloatingActionButton));
+    expect(find.byTooltip('Explore · Hold for shortcuts'), findsOneWidget);
+    await tester.tap(find.byTooltip('Explore · Hold for shortcuts'));
     expect(opened, isTrue);
   });
 
@@ -72,8 +72,9 @@ void main() {
         isTrue,
       );
 
-      await tester.longPress(find.byType(FloatingActionButton));
+      await tester.longPress(find.byTooltip('Explore · Hold for shortcuts'));
       await tester.pumpAndSettle();
+      expect(expanded, isTrue);
 
       expect(find.text('Explore'), findsOneWidget);
       expect(find.text('Music'), findsOneWidget);
