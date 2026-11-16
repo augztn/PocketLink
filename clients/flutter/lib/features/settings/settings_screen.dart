@@ -221,26 +221,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
               SwitchListTile(
                 secondary: const Icon(Icons.bolt_rounded),
                 title: const Text('Floating Quick-Shortcut Button'),
-                subtitle: const Text('Show one quick-access button above the navigation bar'),
+                subtitle: const Text('Off by default · Show a customizable quick-access button above the navigation bar'),
                 value: _settings.floatingShortcutEnabled,
                 onChanged: _settings.setFloatingShortcutEnabled,
               ),
               const Divider(height: 1),
               ListTile(
-                enabled: _settings.floatingShortcutEnabled,
                 leading: const Icon(Icons.tune_rounded),
                 title: const Text('Customize Floating Shortcuts'),
-                subtitle: Text(_settings.floatingShortcutEnabled
-                    ? '${_settings.floatingShortcuts.length} pinned destinations · first item is primary'
-                    : 'Turn on the floating button to customize shortcuts'),
+                subtitle: Text('${_settings.floatingShortcuts.length} pinned destinations · tap action and press behavior'),
                 trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: _settings.floatingShortcutEnabled
-                    ? () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const FloatingShortcutCustomizationScreen(),
-                        ),
-                      )
-                    : null,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const FloatingShortcutCustomizationScreen(),
+                  ),
+                ),
               ),
               SwitchListTile(
                 secondary: const Icon(Icons.dashboard_customize_outlined),
