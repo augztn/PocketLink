@@ -84,17 +84,17 @@ class AppLogger {
   static String _redact(String value) {
     final withSchemesRedacted = value
         .replaceAll(
-          RegExp(r'Basic\\s+[A-Za-z0-9+/=]+', caseSensitive: false),
+          RegExp(r'Basic\s+[A-Za-z0-9+/=]+', caseSensitive: false),
           'Basic [REDACTED]',
         )
         .replaceAll(
-          RegExp(r'Bearer\\s+[^,;\\s}\\\'"]+', caseSensitive: false),
+          RegExp(r'''Bearer\s+[^,;\s}"']+''', caseSensitive: false),
           'Bearer [REDACTED]',
         );
 
     final withCredentialsRedacted = withSchemesRedacted.replaceAllMapped(
       RegExp(
-        r'''((?:password|passwd|authorization|token|secret|api[_-]?key|username|user|login|cookie|set-cookie)\\s*["']?\\s*[:=]\\s*)(?:"[^"]*"|'[^']*'|[^,;\\s}]+)''',
+        r'''((?:password|passwd|authorization|token|secret|api[_-]?key|username|user|login|cookie|set-cookie)\s*["']?\s*[:=]\s*)(?:"[^"]*"|'[^']*'|[^,;\s}]+)''',
         caseSensitive: false,
       ),
       (match) {
@@ -106,14 +106,14 @@ class AppLogger {
             : credential.startsWith("'")
                 ? "'[REDACTED]'"
                 : '[REDACTED]';
-        return '${match.group(1)}$replacement';
+        return '\${match.group(1)}$replacement';
       },
     );
 
     return withCredentialsRedacted
         .replaceAll(
           RegExp(
-            r'(?<![\\d.])(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)(?:\\.(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)){3}(?![\\d.])',
+            r'(?<![\d.])(?:25[0-5]|2[0-4]\d|1?\d?\d)(?:\.(?:25[0-5]|2[0-4]\d|1?\d?\d)){3}(?![\d.])',
           ),
           '[REDACTED_HOST]',
         )
