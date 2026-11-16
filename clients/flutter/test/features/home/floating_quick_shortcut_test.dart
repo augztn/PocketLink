@@ -14,12 +14,14 @@ void main() {
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: FloatingQuickShortcut(
-          shortcuts: const ['explore', 'music'],
-          expanded: false,
-          useLiquidGlass: false,
-          onTap: () => opened = true,
-          onLongPress: () {},
-          onSelect: (_) {},
+              shortcuts: const ['explore', 'music'],
+              expanded: false,
+              useLiquidGlass: false,
+              onTap: () => opened = true,
+              onLongPress: () {},
+              onSelect: (_) {},
+            ),
+          ),
         ),
       ),
     ));
@@ -36,13 +38,18 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: StatefulBuilder(
         builder: (context, setState) => Scaffold(
-          body: FloatingQuickShortcut(
-            shortcuts: const ['explore', 'music', 'photos'],
-            expanded: expanded,
-            useLiquidGlass: false,
-            onTap: () {},
-            onLongPress: () => setState(() => expanded = true),
-            onSelect: (id) => selected = id,
+          body: Align(
+            alignment: Alignment.bottomRight,
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: FloatingQuickShortcut(
+                shortcuts: const ['explore', 'music', 'photos'],
+                expanded: expanded,
+                useLiquidGlass: false,
+                onTap: () {},
+                onLongPress: () => setState(() => expanded = true),
+                onSelect: (id) => selected = id,
+              ),
             ),
           ),
         ),
