@@ -69,7 +69,6 @@ class _NavigationCustomizationScreenState
   }
 
   void _reorder(int oldIndex, int newIndex) {
-    if (oldIndex == 0 || newIndex == 0) return;
     setState(() {
       if (newIndex > oldIndex) newIndex--;
       final item = _order.removeAt(oldIndex);
@@ -136,7 +135,7 @@ class _NavigationCustomizationScreenState
           )),
           const SizedBox(height: 6),
           Text(
-            'Drag to change the order. Home stays pinned.',
+            'Drag any destination, including Home, to change the order.',
             style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
           ),
           const SizedBox(height: 12),
@@ -169,7 +168,7 @@ class _NavigationCustomizationScreenState
                         style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                       subtitle: Text(
-                        id == 'home' ? 'Pinned · Always visible' : detail.description,
+                        id == 'home' ? 'Always visible' : detail.description,
                       ),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -183,7 +182,7 @@ class _NavigationCustomizationScreenState
                             ),
                           ReorderableDelayedDragStartListener(
                             index: index,
-                            enabled: index != 0,
+                            enabled: true,
                             child: Padding(
                               padding: const EdgeInsets.all(8),
                               child: Icon(
@@ -206,7 +205,7 @@ class _NavigationCustomizationScreenState
           ),
           const SizedBox(height: 12),
           Text(
-            'Keep at least two destinations visible. Home is always pinned.',
+            'Keep at least two destinations visible. Home cannot be hidden, but it can be moved.',
             style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
           ),
           const SizedBox(height: 24),
