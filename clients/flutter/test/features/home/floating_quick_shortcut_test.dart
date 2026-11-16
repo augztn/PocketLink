@@ -40,10 +40,10 @@ void main() {
       var expanded = false;
 
       await tester.pumpWidget(
-        MediaQuery(
-          data: const MediaQueryData(disableAnimations: true),
-          child: MaterialApp(
-            home: StatefulBuilder(
+        MaterialApp(
+          home: MediaQuery(
+            data: const MediaQueryData(disableAnimations: true),
+            child: StatefulBuilder(
               builder: (context, setState) => Scaffold(
                 body: Align(
                   alignment: Alignment.bottomRight,
