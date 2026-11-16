@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,6 +15,9 @@ class AppSettings extends ChangeNotifier {
   static const _libraryKey = 'settings_home_library';
   static const _recentKey = 'settings_home_recent';
   static const _liquidGlassKey = 'settings_use_liquid_glass';
+  static const _navigationOrderKey = 'settings_navigation_order';
+  static const _navigationVisibilityKey = 'settings_navigation_visibility';
+  static const navigationDefaults = <String>['home', 'explore', 'files', 'browse'];
 
   ThemeMode _themeMode = ThemeMode.system;
   bool _amoled = false;
@@ -22,6 +27,8 @@ class AppSettings extends ChangeNotifier {
   bool _showRecentFiles = true;
   bool _useLiquidGlass = false;
   bool _loaded = false;
+  List<String> _navigationOrder = List.of(navigationDefaults);
+  Set<String> _visibleNavigationItems = Set.of(navigationDefaults);
 
   ThemeMode get themeMode => _themeMode;
   bool get amoled => _amoled;
@@ -30,12 +37,39 @@ class AppSettings extends ChangeNotifier {
   bool get showLibrary => _showLibrary;
   bool get showRecentFiles => _showRecentFiles;
   bool get useLiquidGlass => _useLiquidGlass;
+  List<String> get navigationOrder => List.unmodifiable(_navigationOrder);
+  Set<String> get visibleNavigationItems => Set.unmodifiable(_visibleNavigationItems);
+  bool get navigationLayoutIsDefault => _navigationOrder.join(',') == navigationDefaults.join(',') && _visibleNavigationItems.length == navigationDefaults.length;
 
   Future<void> load() async {
     if (_loaded) return;
     try {
       final preferences = await SharedPreferences.getInstance();
       _useLiquidGlass = preferences.getBool(_liquidGlassKey) ?? false;
+      final rawOrder = preferences.getString(_navigationOrderKey);
+      final rawVisibility = preferences.getString(_navigationVisibilityKey);
+      if (rawOrder != null) {
+        final decoded = jsonDecode(rawOrder);
+        if (decoded is List) {
+          final values = decoded.whereType<String>().toList();
+          if (values.length == navigationDefaults.length &&
+              values.toSet().length == navigationDefaults.length &&
+              values.toSet().containsAll(navigationDefaults) &&
+              values.first == 'home') {
+            _navigationOrder = values;
+          }
+        }
+      }
+      if (rawVisibility != null) {
+        final decoded = jsonDecode(rawVisibility);
+        if (decoded is List) {
+          final values = decoded.whereType<String>().toSet();
+          if (values.contains('home') && values.length >= 2 &&
+              values.every(navigationDefaults.contains)) {
+            _visibleNavigationItems = values;
+          }
+        }
+      }
     } catch (_) {
       // Keep the default glass appearance if preferences are unavailable.
     }
@@ -62,6 +96,42 @@ class AppSettings extends ChangeNotifier {
     }
     _loaded = true;
     notifyListeners();
+  }
+
+  Future<void> setNavigationLayout({
+    required List<String> order,
+    required Set<String> visibleItems,
+  }) async {
+    if (order.length != navigationDefaults.length ||
+        order.toSet().length != navigationDefaults.length ||
+        !order.toSet().containsAll(navigationDefaults) ||
+        order.first != 'home' ||
+        !visibleItems.contains('home') ||
+        visibleItems.length < 2 ||
+        !visibleItems.every(navigationDefaults.contains)) {
+      throw ArgumentError('Invalid navigation layout');
+    }
+    _navigationOrder = List.of(order);
+    _visibleNavigationItems = Set.of(visibleItems);
+    notifyListeners();
+    final preferences = await SharedPreferences.getInstance();
+    await Future.wait([
+      preferences.setString(_navigationOrderKey, jsonEncode(_navigationOrder)),
+      preferences.setString(_navigationVisibilityKey, jsonEncode(
+        navigationDefaults.where(_visibleNavigationItems.contains).toList(),
+      )),
+    ]);
+  }
+
+  Future<void> resetNavigationLayout() async {
+    _navigationOrder = List.of(navigationDefaults);
+    _visibleNavigationItems = Set.of(navigationDefaults);
+    notifyListeners();
+    final preferences = await SharedPreferences.getInstance();
+    await Future.wait([
+      preferences.remove(_navigationOrderKey),
+      preferences.remove(_navigationVisibilityKey),
+    ]);
   }
 
   Future<void> setThemeMode(ThemeMode value) async {
