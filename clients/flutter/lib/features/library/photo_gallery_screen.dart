@@ -181,7 +181,9 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
       return GridView.builder(
     shrinkWrap: shrinkWrap,
     physics: shrinkWrap ? const NeverScrollableScrollPhysics() : null,
-    padding: EdgeInsets.fromLTRB(2, 2, 2, 104 + MediaQuery.paddingOf(context).bottom),
+    padding: EdgeInsets.fromLTRB(
+      2, 2, 2, shrinkWrap ? 0 : 104 + MediaQuery.paddingOf(context).bottom,
+    ),
     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
       crossAxisCount: gridColumns.clamp(2, 5), crossAxisSpacing: 2, mainAxisSpacing: 2),
     itemCount: items.length,
