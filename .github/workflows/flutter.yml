@@ -229,10 +229,7 @@ jobs:
             adb shell settings put global window_animation_scale 0
             adb shell settings put global transition_animation_scale 0
             adb shell settings put global animator_duration_scale 0
-            GRADLE_DIR="./clients/flutter/android"
-            GRADLEW="$GRADLE_DIR/gradlew"
-            test -x "$GRADLEW" || { echo "::error::Android Gradle wrapper not found at $GRADLEW (working directory: $(pwd))"; exit 1; }
-            "$GRADLEW" -p "$GRADLE_DIR" --no-daemon --stacktrace :homeserver_saf:connectedDebugAndroidTest
+            cd clients/flutter/android && ./gradlew --no-daemon --stacktrace :homeserver_saf:connectedDebugAndroidTest
       - uses: actions/upload-artifact@v4
         with:
           name: PocketLink-Android-APK
