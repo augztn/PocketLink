@@ -20,8 +20,16 @@ class AppSettings extends ChangeNotifier {
   static const _homeSearchKey = 'settings_home_search';
   static const _homeTransfersKey = 'settings_home_transfers';
   static const _homeSectionOrderKey = 'settings_home_section_order';
+  static const _floatingShortcutEnabledKey = 'settings_floating_shortcut_enabled';
+  static const _floatingShortcutsKey = 'settings_floating_shortcuts';
   static const homeSectionDefaults = <String>['search', 'quick', 'transfers', 'continue', 'recent'];
   static const navigationDefaults = <String>['home', 'explore', 'files', 'browse'];
+  static const floatingShortcutDefaults = <String>[
+    'explore', 'music', 'files', 'videos', 'photos', 'documents',
+  ];
+  static const floatingShortcutDestinations = <String>{
+    'explore', 'files', 'music', 'videos', 'photos', 'documents', 'favorites', 'upload',
+  };
 
   ThemeMode _themeMode = ThemeMode.system;
   bool _amoled = false;
@@ -37,6 +45,9 @@ class AppSettings extends ChangeNotifier {
   List<String> _navigationOrder = List.of(navigationDefaults);
   Set<String> _visibleNavigationItems = Set.of(navigationDefaults);
   Future<void> _navigationWrite = Future<void>.value();
+  bool _floatingShortcutEnabled = true;
+  List<String> _floatingShortcuts = List.of(floatingShortcutDefaults);
+  Future<void> _floatingShortcutsWrite = Future<void>.value();
 
   ThemeMode get themeMode => _themeMode;
   bool get amoled => _amoled;
@@ -51,12 +62,27 @@ class AppSettings extends ChangeNotifier {
   List<String> get navigationOrder => List.unmodifiable(_navigationOrder);
   Set<String> get visibleNavigationItems => Set.unmodifiable(_visibleNavigationItems);
   bool get navigationLayoutIsDefault => _navigationOrder.join(',') == navigationDefaults.join(',') && _visibleNavigationItems.length == navigationDefaults.length;
+  bool get floatingShortcutEnabled => _floatingShortcutEnabled;
+  List<String> get floatingShortcuts => List.unmodifiable(_floatingShortcuts);
 
   Future<void> load() async {
     if (_loaded) return;
     try {
       final preferences = await SharedPreferences.getInstance();
       _useLiquidGlass = preferences.getBool(_liquidGlassKey) ?? false;
+      _floatingShortcutEnabled = preferences.getBool(_floatingShortcutEnabledKey) ?? true;
+      final rawFloatingShortcuts = preferences.getString(_floatingShortcutsKey);
+      if (rawFloatingShortcuts != null) {
+        final decoded = jsonDecode(rawFloatingShortcuts);
+        if (decoded is List) {
+          final values = decoded.whereType<String>().toList();
+          if (values.isNotEmpty && values.length == decoded.length &&
+              values.toSet().length == values.length &&
+              values.every(floatingShortcutDestinations.contains)) {
+            _floatingShortcuts = values;
+          }
+        }
+      }
       _showGlobalSearch = preferences.getBool(_homeSearchKey) ?? true;
       _showActiveTransfers = preferences.getBool(_homeTransfersKey) ?? true;
       final rawSectionOrder = preferences.getString(_homeSectionOrderKey);
@@ -164,6 +190,49 @@ class AppSettings extends ChangeNotifier {
       ]);
     });
     _navigationWrite = write;
+    await write;
+  }
+
+  Future<void> setFloatingShortcutEnabled(bool enabled) async {
+    _floatingShortcutEnabled = enabled;
+    notifyListeners();
+    final write = _floatingShortcutsWrite.catchError((_) {}).then((_) async {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setBool(_floatingShortcutEnabledKey, enabled);
+    });
+    _floatingShortcutsWrite = write;
+    await write;
+  }
+
+  Future<void> setFloatingShortcuts(List<String> shortcuts) async {
+    if (shortcuts.isEmpty ||
+        shortcuts.toSet().length != shortcuts.length ||
+        !shortcuts.every(floatingShortcutDestinations.contains)) {
+      throw ArgumentError('Invalid floating shortcuts');
+    }
+    _floatingShortcuts = List.of(shortcuts);
+    notifyListeners();
+    final snapshot = List<String>.of(_floatingShortcuts);
+    final write = _floatingShortcutsWrite.catchError((_) {}).then((_) async {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setString(_floatingShortcutsKey, jsonEncode(snapshot));
+    });
+    _floatingShortcutsWrite = write;
+    await write;
+  }
+
+  Future<void> resetFloatingShortcuts() async {
+    _floatingShortcuts = List.of(floatingShortcutDefaults);
+    _floatingShortcutEnabled = true;
+    notifyListeners();
+    final write = _floatingShortcutsWrite.catchError((_) {}).then((_) async {
+      final preferences = await SharedPreferences.getInstance();
+      await Future.wait([
+        preferences.remove(_floatingShortcutsKey),
+        preferences.remove(_floatingShortcutEnabledKey),
+      ]);
+    });
+    _floatingShortcutsWrite = write;
     await write;
   }
 
