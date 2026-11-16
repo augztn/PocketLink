@@ -826,13 +826,7 @@ class HomeDashboardState extends State<HomeDashboard> {
         ),
       ),
       appBar: AppBar(
-        leading: IconButton(
-          tooltip: 'Settings',
-          icon: const Icon(Icons.settings_outlined),
-          onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
-            builder: (_) => SettingsScreen(onOpenSavedServers: widget.onReturnToConnection),
-          )),
-        ),
+        // Let Scaffold's drawer provide the standard Material hamburger button.
         backgroundColor: Colors.black,
         surfaceTintColor: Colors.transparent,
         titleSpacing: 20,
