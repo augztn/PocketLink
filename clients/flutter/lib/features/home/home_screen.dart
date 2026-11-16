@@ -47,6 +47,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _navigationSettingsChanged() {
     final settings = AppSettings.instance;
+    if (!settings.floatingShortcutEnabled && _quickShortcutsExpanded) {
+      _quickShortcutsExpanded = false;
+    }
     final selectedId = switch (_selectedIndex) {
       0 => 'home',
       1 => 'explore',
