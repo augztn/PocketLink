@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/settings/app_settings.dart';
 import 'navigation_dock.dart';
+import 'floating_quick_shortcut.dart';
 import 'explore_search_screens.dart';
 import 'home_dashboard.dart';
 import '../media/media_player_screen.dart';
 import '../media/now_playing_screen.dart';
+import '../media/media_browser_screen.dart';
+import '../library/photo_gallery_screen.dart';
 import '../media/persistent_audio_player.dart';
 
 import '../../core/network/server_api.dart';
@@ -30,6 +34,8 @@ class _HomeScreenState extends State<HomeScreen> {
   String _fileCategory = 'All';
   int _externalDriveRequest = 0;
   int _fileLocationRequest = 0;
+  int _uploadRequest = 0;
+  bool _quickShortcutsExpanded = false;
   String? _requestedVolume;
   String _requestedPath = '';
 
@@ -108,6 +114,55 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
 
+  void _openFloatingShortcut(String id) {
+    if (_quickShortcutsExpanded) {
+      setState(() => _quickShortcutsExpanded = false);
+    }
+    switch (id) {
+      case 'explore':
+        _openTab(1);
+      case 'files':
+        _openTab(2);
+      case 'music':
+        Navigator.of(context).push(MaterialPageRoute<void>(
+          builder: (_) => MediaBrowserScreen(
+            api: widget.api,
+            type: MediaLibraryType.music,
+          ),
+        ));
+      case 'videos':
+        Navigator.of(context).push(MaterialPageRoute<void>(
+          builder: (_) => MediaBrowserScreen(
+            api: widget.api,
+            type: MediaLibraryType.video,
+          ),
+        ));
+      case 'photos':
+        Navigator.of(context).push(MaterialPageRoute<void>(
+          builder: (_) => PhotoGalleryScreen(api: widget.api),
+        ));
+      case 'documents':
+        Navigator.of(context).push(MaterialPageRoute<void>(
+          builder: (_) => DocumentsBrowserScreen(api: widget.api),
+        ));
+      case 'favorites':
+        Navigator.of(context).push(MaterialPageRoute<void>(
+          builder: (_) => PhotoGalleryScreen(api: widget.api, initialTab: 2),
+        ));
+      case 'upload':
+        setState(() {
+          _initializedTabs.add(2);
+          _selectedIndex = 2;
+          _uploadRequest++;
+        });
+    }
+  }
+
+  void _expandFloatingShortcuts() {
+    HapticFeedback.lightImpact();
+    setState(() => _quickShortcutsExpanded = true);
+  }
+
   void _openNowPlaying(PersistentAudioPlayer player) {
     final item = player.currentItem;
     final api = player.api;
@@ -173,6 +228,7 @@ class _HomeScreenState extends State<HomeScreen> {
           onBackAtRoot: () => _openTab(0),
           externalDriveRequest: _externalDriveRequest,
           locationRequest: _fileLocationRequest,
+          uploadRequest: _uploadRequest,
           requestedVolume: _requestedVolume,
           requestedPath: _requestedPath,
         )
@@ -181,9 +237,14 @@ class _HomeScreenState extends State<HomeScreen> {
     ];
 
     return PopScope(
-      canPop: _selectedIndex == 0,
+      canPop: _selectedIndex == 0 && !_quickShortcutsExpanded,
       onPopInvokedWithResult: (didPop, result) {
-        if (!didPop && _selectedIndex != 0) _openTab(0);
+        if (didPop) return;
+        if (_quickShortcutsExpanded) {
+          setState(() => _quickShortcutsExpanded = false);
+        } else if (_selectedIndex != 0) {
+          _openTab(0);
+        }
       },
       child: AnimatedBuilder(
         animation: AppSettings.instance,
@@ -191,29 +252,57 @@ class _HomeScreenState extends State<HomeScreen> {
         animation: player,
         builder: (context, _) => Scaffold(
           extendBody: true,
-          body: GestureDetector(
-            behavior: HitTestBehavior.deferToChild,
-            onHorizontalDragEnd: (details) {
-              final velocity = details.primaryVelocity ?? 0;
-              if (velocity.abs() < 300) return;
-              final settings = AppSettings.instance;
-              final visibleTabs = settings.navigationOrder
-                  .where((id) => id != 'browse' && settings.visibleNavigationItems.contains(id))
-                  .map((id) => switch (id) {
-                    'explore' => 1,
-                    'files' => 2,
-                    _ => 0,
-                  })
-                  .toList(growable: false);
-              final currentPosition = visibleTabs.indexOf(_selectedIndex);
-              if (currentPosition < 0) return;
-              final nextPosition = velocity < 0
-                  ? (currentPosition + 1).clamp(0, visibleTabs.length - 1)
-                  : (currentPosition - 1).clamp(0, visibleTabs.length - 1);
-              final nextIndex = visibleTabs[nextPosition];
-              if (nextIndex != _selectedIndex) _openTab(nextIndex);
-            },
-            child: IndexedStack(index: _selectedIndex, children: pages),
+          body: Stack(
+            fit: StackFit.expand,
+            children: [
+              GestureDetector(
+                behavior: HitTestBehavior.deferToChild,
+                onHorizontalDragEnd: (details) {
+                  final velocity = details.primaryVelocity ?? 0;
+                  if (velocity.abs() < 300) return;
+                  final settings = AppSettings.instance;
+                  final visibleTabs = settings.navigationOrder
+                      .where((id) => id != 'browse' && settings.visibleNavigationItems.contains(id))
+                      .map((id) => switch (id) {
+                        'explore' => 1,
+                        'files' => 2,
+                        _ => 0,
+                      })
+                      .toList(growable: false);
+                  final currentPosition = visibleTabs.indexOf(_selectedIndex);
+                  if (currentPosition < 0) return;
+                  final nextPosition = velocity < 0
+                      ? (currentPosition + 1).clamp(0, visibleTabs.length - 1)
+                      : (currentPosition - 1).clamp(0, visibleTabs.length - 1);
+                  final nextIndex = visibleTabs[nextPosition];
+                  if (nextIndex != _selectedIndex) _openTab(nextIndex);
+                },
+                child: IndexedStack(index: _selectedIndex, children: pages),
+              ),
+              if (AppSettings.instance.floatingShortcutEnabled && _quickShortcutsExpanded)
+                Positioned.fill(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => setState(() => _quickShortcutsExpanded = false),
+                    child: const SizedBox.expand(),
+                  ),
+                ),
+              if (AppSettings.instance.floatingShortcutEnabled)
+                Positioned(
+                  right: 16,
+                  bottom: 90 + MediaQuery.paddingOf(context).bottom,
+                  child: FloatingQuickShortcut(
+                    shortcuts: AppSettings.instance.floatingShortcuts,
+                    expanded: _quickShortcutsExpanded,
+                    useLiquidGlass: AppSettings.instance.useLiquidGlass,
+                    onTap: () => _openFloatingShortcut(
+                      AppSettings.instance.floatingShortcuts.first,
+                    ),
+                    onLongPress: _expandFloatingShortcuts,
+                    onSelect: _openFloatingShortcut,
+                  ),
+                ),
+            ],
           ),
           bottomNavigationBar: FloatingNavigationDock(
             order: AppSettings.instance.navigationOrder,
