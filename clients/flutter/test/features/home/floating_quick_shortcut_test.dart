@@ -35,8 +35,11 @@ void main() {
     String? selected;
     var expanded = false;
 
-    await tester.pumpWidget(MaterialApp(
-      home: StatefulBuilder(
+    await tester.pumpWidget(
+      MediaQuery(
+        data: const MediaQueryData(disableAnimations: true),
+        child: MaterialApp(
+          home: StatefulBuilder(
         builder: (context, setState) => Scaffold(
           body: Align(
             alignment: Alignment.bottomRight,
@@ -52,9 +55,10 @@ void main() {
               ),
             ),
           ),
+          ),
         ),
       ),
-    ));
+    );
 
     await tester.longPress(find.byType(FloatingActionButton));
     await tester.pumpAndSettle();
