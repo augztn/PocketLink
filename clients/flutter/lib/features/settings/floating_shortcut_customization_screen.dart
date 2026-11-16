@@ -76,12 +76,12 @@ class _FloatingShortcutCustomizationScreenState
   Future<void> _reset() async {
     try {
       await _settings.resetFloatingShortcuts();
-      await _settings.setFloatingShortcutTapAction('primary');
+      await _settings.setFloatingShortcutTapAction('menu');
       await _settings.setFloatingShortcutLongPressEnabled(true);
       if (!mounted) return;
       setState(() {
         _shortcuts = List.of(AppSettings.floatingShortcutDefaults);
-        _tapAction = 'primary';
+        _tapAction = 'menu';
         _longPressEnabled = true;
       });
       ScaffoldMessenger.of(context).showSnackBar(
@@ -119,7 +119,7 @@ class _FloatingShortcutCustomizationScreenState
           Text('Pinned destinations', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
           const SizedBox(height: 5),
           Text(
-            'The first shortcut is the primary action and sets the collapsed button icon. Drag to reorder.',
+            'Choose which destinations appear when the button expands. The first shortcut is used only in Open primary mode.',
             style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
           ),
           const SizedBox(height: 12),
@@ -150,12 +150,12 @@ class _FloatingShortcutCustomizationScreenState
           const Divider(height: 24),
           Text('Button behavior', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
           const SizedBox(height: 8),
-          Text('What should happen when you tap the floating button?', style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
+          Text('Choose what a single tap does.', style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
           const SizedBox(height: 8),
           SegmentedButton<String>(
             segments: const [
               ButtonSegment(value: 'primary', label: Text('Open primary'), icon: Icon(Icons.open_in_new_rounded)),
-              ButtonSegment(value: 'menu', label: Text('Show menu'), icon: Icon(Icons.apps_rounded)),
+              ButtonSegment(value: 'menu', label: Text('Open all options'), icon: Icon(Icons.apps_rounded)),
             ],
             selected: {_tapAction},
             onSelectionChanged: (value) => setState(() => _tapAction = value.first),
