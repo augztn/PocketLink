@@ -68,11 +68,11 @@ class NativeApiServerIntegrationTest {
             socket.connect(InetSocketAddress("127.0.0.1", port), 5_000)
             socket.soTimeout = 15_000
             val headers = buildString {
-                append("GET $path HTTP/1.1\\r\\n")
-                append("Host: 127.0.0.1:$port\\r\\n")
-                append("Connection: close\\r\\n")
-                if (authorization != null) append("Authorization: $authorization\\r\\n")
-                append("\\r\\n")
+                append("GET $path HTTP/1.1\r\n")
+                append("Host: 127.0.0.1:$port\r\n")
+                append("Connection: close\r\n")
+                if (authorization != null) append("Authorization: $authorization\r\n")
+                append("\r\n")
             }
             socket.getOutputStream().write(headers.toByteArray(Charsets.US_ASCII))
             socket.getOutputStream().flush()
