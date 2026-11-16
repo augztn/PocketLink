@@ -8,6 +8,7 @@ import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../core/network/server_api.dart';
+import '../../core/logging/app_logger.dart';
 import '../../core/settings/app_settings.dart';
 import '../media/now_playing_screen.dart';
 import '../media/persistent_audio_player.dart';
@@ -203,6 +204,10 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
   Future<void> _openAudio(FileEntry item) async {
     final volume = _volume;
     if (volume == null) return;
+    await AppLogger.info('Audio open requested', fields: {
+      'source': 'external',
+      'extension': item.name.contains('.') ? item.name.split('.').last.toLowerCase() : 'unknown',
+    });
     await Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute<void>(
         builder: (_) => NowPlayingScreen(
