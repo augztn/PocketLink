@@ -78,4 +78,38 @@ void main() {
     );
   });
 
+  test('floating shortcuts persist, validate and reset', () async {
+    final settings = AppSettings.instance;
+    const shortcuts = ['music', 'files', 'photos', 'upload'];
+
+    await settings.setFloatingShortcutEnabled(false);
+    await settings.setFloatingShortcuts(shortcuts);
+
+    expect(settings.floatingShortcutEnabled, isFalse);
+    expect(settings.floatingShortcuts, shortcuts);
+    final preferences = await SharedPreferences.getInstance();
+    expect(preferences.getBool('settings_floating_shortcut_enabled'), isFalse);
+    expect(preferences.getString('settings_floating_shortcuts'),
+        '["music","files","photos","upload"]');
+
+    await expectLater(
+      settings.setFloatingShortcuts(const ['music', 'music']),
+      throwsArgumentError,
+    );
+    await expectLater(
+      settings.setFloatingShortcuts(const ['unknown']),
+      throwsArgumentError,
+    );
+    await expectLater(
+      settings.setFloatingShortcuts(const []),
+      throwsArgumentError,
+    );
+
+    await settings.resetFloatingShortcuts();
+    expect(settings.floatingShortcutEnabled, isTrue);
+    expect(settings.floatingShortcuts, AppSettings.floatingShortcutDefaults);
+    expect(preferences.getBool('settings_floating_shortcut_enabled'), isNull);
+    expect(preferences.getString('settings_floating_shortcuts'), isNull);
+  });
+
 }
