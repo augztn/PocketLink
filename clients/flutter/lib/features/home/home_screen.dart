@@ -1,9 +1,7 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 import '../../core/settings/app_settings.dart';
-import '../../core/widgets/liquid_glass_pill.dart';
+import 'navigation_dock.dart';
 import 'explore_search_screens.dart';
 import 'home_dashboard.dart';
 import '../media/media_player_screen.dart';
@@ -169,210 +167,18 @@ class _HomeScreenState extends State<HomeScreen> {
             },
             child: IndexedStack(index: _selectedIndex, children: pages),
           ),
-          bottomNavigationBar: _FloatingGlassDock(
+          bottomNavigationBar: FloatingNavigationDock(
+            order: AppSettings.instance.navigationOrder,
+            visibleItems: AppSettings.instance.visibleNavigationItems,
             selectedIndex: _selectedIndex,
             isPlaying: player.isMusic && player.isPlaying,
             hasMedia: player.isActive && player.currentItem != null,
             isVideo: player.isActive && !player.isMusic,
             onSelect: _openTab,
-            onMediaPressed: () => _openNowPlaying(player),
+            onBrowsePressed: () => _openNowPlaying(player),
           ),
         ),
         ),
-      ),
-    );
-  }
-}
-
-class _FloatingGlassDock extends StatelessWidget {
-  const _FloatingGlassDock({
-    required this.selectedIndex,
-    required this.isPlaying,
-    required this.hasMedia,
-    required this.isVideo,
-    required this.onSelect,
-    required this.onMediaPressed,
-  });
-
-  final int selectedIndex;
-  final bool isPlaying;
-  final bool hasMedia;
-  final bool isVideo;
-  final ValueChanged<int> onSelect;
-  final VoidCallback onMediaPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    Widget glass({
-      required Widget child,
-      required BorderRadius radius,
-    }) => LiquidGlassPill(radius: radius, child: child);
-
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
-        child: Row(
-          children: [
-            Expanded(
-              child: glass(
-                radius: BorderRadius.circular(32),
-                child: SizedBox(
-                  height: 64,
-                  child: Row(
-                    children: [
-                      _DockTab(index: 0, selectedIndex: selectedIndex, icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: 'Home', onTap: onSelect, activeColor: colors.primary),
-                      _DockTab(index: 1, selectedIndex: selectedIndex, icon: Icons.explore_outlined, activeIcon: Icons.explore_rounded, label: 'Explore', onTap: onSelect, activeColor: colors.primary),
-                      _DockTab(index: 2, selectedIndex: selectedIndex, icon: Icons.folder_outlined, activeIcon: Icons.folder_rounded, label: 'Files', onTap: onSelect, activeColor: colors.primary),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            glass(
-              radius: BorderRadius.circular(32),
-              child: Material(
-                color: Colors.transparent,
-                shape: const CircleBorder(),
-                child: InkWell(
-                  customBorder: const CircleBorder(),
-                  onTap: onMediaPressed,
-                  child: SizedBox(
-                    width: 64,
-                    height: 64,
-                    child: Center(
-                      child: isPlaying
-                          ? const _AnimatedEqualizer()
-                          : Icon(
-                              hasMedia && isVideo
-                                  ? Icons.play_circle_fill_rounded
-                                  : Icons.music_note_rounded,
-                              color: colors.primary,
-                              size: 27,
-                            ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _DockTab extends StatelessWidget {
-  const _DockTab({
-    required this.index,
-    required this.selectedIndex,
-    required this.icon,
-    required this.activeIcon,
-    required this.label,
-    required this.onTap,
-    required this.activeColor,
-  });
-
-  final int index;
-  final int selectedIndex;
-  final IconData icon;
-  final IconData activeIcon;
-  final String label;
-  final ValueChanged<int> onTap;
-  final Color activeColor;
-
-  @override
-  Widget build(BuildContext context) {
-    final selected = selectedIndex == index;
-    final colors = Theme.of(context).colorScheme;
-    return Expanded(
-      child: Semantics(
-        button: true,
-        selected: selected,
-        label: label,
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(26),
-            onTap: () => onTap(index),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeOutCubic,
-                decoration: BoxDecoration(
-                  color: selected ? activeColor.withOpacity(0.14) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(25),
-                  border: selected
-                      ? Border.all(color: activeColor.withOpacity(0.10))
-                      : null,
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(selected ? activeIcon : icon, size: 21,
-                      color: selected ? activeColor : colors.onSurfaceVariant),
-                    const SizedBox(height: 3),
-                    Text(label, maxLines: 1,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        fontSize: 10,
-                        fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                        color: selected ? activeColor : colors.onSurfaceVariant,
-                      )),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AnimatedEqualizer extends StatefulWidget {
-  const _AnimatedEqualizer();
-
-  @override
-  State<_AnimatedEqualizer> createState() => _AnimatedEqualizerState();
-}
-
-class _AnimatedEqualizerState extends State<_AnimatedEqualizer>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 760),
-  )..repeat();
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final color = Theme.of(context).colorScheme.primary;
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, _) => Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: List.generate(4, (index) {
-          final phase = (_controller.value * math.pi * 2) + index * 1.15;
-          final height = 9.0 + (math.sin(phase).abs() * 17);
-          return Container(
-            width: 3.5,
-            height: height,
-            margin: const EdgeInsets.symmetric(horizontal: 1.5),
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(4),
-            ),
-          );
-        }),
       ),
     );
   }
