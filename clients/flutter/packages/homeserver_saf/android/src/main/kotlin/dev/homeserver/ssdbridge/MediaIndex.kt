@@ -245,6 +245,7 @@ internal class MediaIndexScanner(
         skipped = 0
         lastError = null
         executor.execute {
+            android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND)
             try {
                 val sources = mutableListOf<Pair<String, Any>>()
                 sources += "internal" to internalRoot()
