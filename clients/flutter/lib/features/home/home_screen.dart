@@ -121,8 +121,10 @@ class _HomeScreenState extends State<HomeScreen> {
     switch (id) {
       case 'explore':
         _openTab(1);
+        break;
       case 'files':
         _openTab(2);
+        break;
       case 'music':
         Navigator.of(context).push(MaterialPageRoute<void>(
           builder: (_) => MediaBrowserScreen(
@@ -130,6 +132,7 @@ class _HomeScreenState extends State<HomeScreen> {
             type: MediaLibraryType.music,
           ),
         ));
+        break;
       case 'videos':
         Navigator.of(context).push(MaterialPageRoute<void>(
           builder: (_) => MediaBrowserScreen(
@@ -137,24 +140,29 @@ class _HomeScreenState extends State<HomeScreen> {
             type: MediaLibraryType.video,
           ),
         ));
+        break;
       case 'photos':
         Navigator.of(context).push(MaterialPageRoute<void>(
           builder: (_) => PhotoGalleryScreen(api: widget.api),
         ));
+        break;
       case 'documents':
         Navigator.of(context).push(MaterialPageRoute<void>(
           builder: (_) => DocumentsBrowserScreen(api: widget.api),
         ));
+        break;
       case 'favorites':
         Navigator.of(context).push(MaterialPageRoute<void>(
           builder: (_) => PhotoGalleryScreen(api: widget.api, initialTab: 2),
         ));
+        break;
       case 'upload':
         setState(() {
           _initializedTabs.add(2);
           _selectedIndex = 2;
           _uploadRequest++;
         });
+        break;
     }
   }
 
