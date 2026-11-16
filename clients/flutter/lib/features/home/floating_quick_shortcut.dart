@@ -140,6 +140,7 @@ class _FloatingQuickShortcutState extends State<FloatingQuickShortcut>
           );
 
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onLongPress: widget.onLongPress,
       child: Column(
         mainAxisSize: MainAxisSize.min,
