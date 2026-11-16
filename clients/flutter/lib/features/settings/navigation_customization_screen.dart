@@ -97,14 +97,8 @@ class _NavigationCustomizationScreenState
     final isDefault = _settings.navigationLayoutIsDefault;
 
     return Scaffold(
-      appBar: HomeServerAppBar(
-        title: const Text('Customize Navigation Bar'),
-        actions: [
-          TextButton(
-            onPressed: isDefault ? null : _reset,
-            child: const Text('Reset'),
-          ),
-        ],
+      appBar: const HomeServerAppBar(
+        title: Text('Customize Navigation Bar'),
       ),
       body: ListView(
         padding: EdgeInsets.fromLTRB(
