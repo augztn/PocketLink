@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../core/logging/app_logger.dart';
 import '../../core/settings/app_settings.dart';
+import 'navigation_customization_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({this.onOpenSavedServers, super.key});
@@ -174,6 +175,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 title: const Text('Recent files'),
                 value: _settings.showRecentFiles,
                 onChanged: (value) => _settings.setHomeSections(recentFiles: value),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.tune_rounded),
+                title: const Text('Customize Navigation Bar'),
+                subtitle: const Text('Reorder or show and hide dock destinations'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const NavigationCustomizationScreen(),
+                  ),
+                ),
               ),
             ]),
             _section('Media & Storage', [
