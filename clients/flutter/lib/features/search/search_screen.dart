@@ -171,39 +171,37 @@ class _SearchScreenState extends State<SearchScreen> {
     setState(() { _loading = true; _error = null; if (refresh) _results.clear(); });
     try {
       if (_volumes.isEmpty) await _loadVolumes();
-      var offset = 0;
-      var found = <_Result>[];
-      late MediaIndexStatus status;
-      Future<void> loadPage() async {
-        final page = await widget.api.searchIndexedFiles(query, limit: 500, offset: offset);
-        status = page.status;
-        found.addAll(page.items.map((item) {
-          final volume = item.volume == 'internal' ? null : item.volume;
-          final volumeName = volume == null
-              ? 'Internal storage'
-              : _volumes.where((v) => v.id == volume).map((v) => v.name).firstOrNull ?? 'USB / OTG';
-          return _Result(item.toFileEntry(), item.path, volumeName, volume);
-        }));
-        offset += page.items.length;
+      Future<MediaIndexStatus> loadAllPages() async {
+        final found = <_Result>[];
+        var offset = 0;
+        late MediaIndexStatus status;
+        while (true) {
+          final page = await widget.api.searchIndexedFiles(query, limit: 500, offset: offset);
+          status = page.status;
+          found.addAll(page.items.map((item) {
+            final volume = item.volume == 'internal' ? null : item.volume;
+            final matches = _volumes.where((v) => v.id == volume);
+            final volumeName = volume == null
+                ? 'Internal storage'
+                : matches.isEmpty ? 'USB / OTG' : matches.first.name;
+            return _Result(item.toFileEntry(), item.path, volumeName, volume);
+          }));
+          offset += page.items.length;
+          if (page.items.length < 500) break;
+        }
+        if (generation == _scanGeneration && mounted) {
+          setState(() { _results..clear()..addAll(found); });
+        }
+        return status;
       }
-      await loadPage();
-      while (found.length >= offset && offset > 0) {
-        await loadPage();
-        if (offset == 0 || found.length < offset) break;
-      }
-      if (generation != _scanGeneration) return;
-      setState(() { _results..clear()..addAll(found); });
+
+      var status = await loadAllPages();
       while (mounted && generation == _scanGeneration && status.isScanning) {
         await Future<void>.delayed(const Duration(seconds: 2));
         if (!mounted || generation != _scanGeneration) return;
-        offset = 0;
-        found = [];
-        await loadPage();
-        while (found.length == offset && offset > 0) await loadPage();
-        status = await widget.api.mediaIndexStatus();
-        setState(() { _results..clear()..addAll(found); });
+        status = await loadAllPages();
       }
-      if ((status.state == 'failed' || status.state == 'partial') && found.isEmpty) {
+      if ((status.state == 'failed' || status.state == 'partial') && _results.isEmpty) {
         await _scanLegacy(refresh: true);
         return;
       }
@@ -212,9 +210,7 @@ class _SearchScreenState extends State<SearchScreen> {
         if (query.isNotEmpty) _saveHistory(query);
       }
     } on DioException {
-      if (generation == _scanGeneration) {
-        await _scanLegacy(refresh: true);
-      }
+      if (generation == _scanGeneration) await _scanLegacy(refresh: true);
     } catch (_) {
       if (generation == _scanGeneration) await _scanLegacy(refresh: true);
     }
