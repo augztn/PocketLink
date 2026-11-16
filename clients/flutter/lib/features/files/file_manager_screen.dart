@@ -5,12 +5,15 @@ import 'package:provider/provider.dart';
 import '../../core/widgets/home_server_app_bar.dart';
 
 import '../../core/network/server_api.dart';
+import '../../core/logging/app_logger.dart';
 import '../../core/storage/home_activity_store.dart';
 import '../home/browser_state_store.dart';
 import '../../core/settings/app_settings.dart';
 import '../transfers/transfer_manager.dart';
 import '../transfers/transfer_manager_screen.dart';
 import '../search/search_screen.dart';
+import '../media/now_playing_screen.dart';
+import '../media/persistent_audio_player.dart';
 
 class FileManagerScreen extends StatefulWidget {
   const FileManagerScreen({
@@ -91,6 +94,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     if (_categoryExtensions['Videos']!.contains(extension)) {
       return Icons.video_file_outlined;
     }
+    if (_audioExtensions.contains(extension)) return Icons.audio_file_rounded;
     if (_categoryExtensions['Music']!.contains(extension)) {
       return Icons.audio_file_outlined;
     }
@@ -409,6 +413,41 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     ));
   }
 
+  static const _audioExtensions = {
+    'mp3', 'm4a', 'aac', 'wav', 'flac', 'ogg', 'opus', 'wma', 'aiff', 'alac',
+  };
+
+  bool _isAudio(FileEntry item) => _audioExtensions.contains(_extension(item));
+
+  Future<void> _openAudio(FileEntry item) async {
+    final path = _itemPath(item.name);
+    final volume = _selectedVolume;
+    await AppLogger.info('Audio open requested', fields: {
+      'source': volume == null ? 'internal' : 'external',
+      'extension': _extension(item),
+    });
+    try {
+      await Navigator.of(context, rootNavigator: true).push(
+        MaterialPageRoute<void>(
+          builder: (_) => NowPlayingScreen(
+            api: widget.api,
+            queue: [
+              MediaQueueItem(
+                title: item.name,
+                path: path,
+                volume: volume,
+                size: item.size,
+              ),
+            ],
+          ),
+        ),
+      );
+    } catch (error, stackTrace) {
+      await AppLogger.error('Could not open Now Playing screen', error: error, stackTrace: stackTrace);
+      _showError('Could not open the music player. Check diagnostics for details.');
+    }
+  }
+
   bool _isImage(FileEntry item) {
     final extension = item.name.toLowerCase().split('.').last;
     return const {'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'}.contains(extension);
@@ -590,6 +629,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
               style: TextStyle(color: colors.onSurfaceVariant)),
           onTap: item.isDirectory
               ? () => _load(_itemPath(item.name))
+              : _isAudio(item) ? () => _openAudio(item)
               : _isImage(item) ? () => _previewImage(item) : null,
           trailing: PopupMenuButton<String>(
             tooltip: 'More actions',
@@ -855,6 +895,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                                         return InkWell(
                                           borderRadius: BorderRadius.circular(20),
                                           onTap: item.isDirectory ? () => _load(_itemPath(item.name))
+                                              : _isAudio(item) ? () => _openAudio(item)
                                               : _isImage(item) ? () => _previewImage(item) : null,
                                           child: Container(
                                             padding: const EdgeInsets.all(14),
