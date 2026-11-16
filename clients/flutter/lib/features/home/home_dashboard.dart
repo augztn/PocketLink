@@ -769,6 +769,45 @@ class HomeDashboardState extends State<HomeDashboard> {
     final availableVolumes = _volumes.where((volume) => volume.available).length;
     final appSettings = AppSettings.instance;
 
+
+    Widget sectionTitle(String title, {String? action, VoidCallback? onAction}) {
+      return Row(
+        children: [
+          Expanded(
+            child: Text(title, style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.4,
+            )),
+          ),
+          if (action != null)
+            TextButton(onPressed: onAction, child: Text(action)),
+        ],
+      );
+    }
+
+    Widget quickAction(IconData icon, String label, VoidCallback onTap) {
+      return Material(
+        color: colors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(18),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 23, color: colors.primary),
+                const SizedBox(height: 8),
+                Text(label, maxLines: 1, overflow: TextOverflow.visible, softWrap: false,
+                  style: theme.textTheme.labelLarge?.copyWith(fontSize: 11.5, fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     final sectionBuilders = <String, Widget Function()>{
       'search': () => appSettings.showGlobalSearch
           ? Padding(
@@ -914,43 +953,6 @@ class HomeDashboardState extends State<HomeDashboard> {
     };
 
 
-    Widget sectionTitle(String title, {String? action, VoidCallback? onAction}) {
-      return Row(
-        children: [
-          Expanded(
-            child: Text(title, style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.4,
-            )),
-          ),
-          if (action != null)
-            TextButton(onPressed: onAction, child: Text(action)),
-        ],
-      );
-    }
-
-    Widget quickAction(IconData icon, String label, VoidCallback onTap) {
-      return Material(
-        color: colors.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(18),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(18),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, size: 23, color: colors.primary),
-                const SizedBox(height: 8),
-                Text(label, maxLines: 1, overflow: TextOverflow.visible, softWrap: false,
-                  style: theme.textTheme.labelLarge?.copyWith(fontSize: 11.5, fontWeight: FontWeight.w600)),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
 
     return Scaffold(
       backgroundColor: Colors.black,
