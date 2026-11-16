@@ -202,7 +202,22 @@ jobs:
               raise SystemExit("Could not update file_picker compileSdk to 36")
           print("Updated plugin compile SDK: " + ", ".join(patched))
           PY
-      - run: flutter build apk --release
+      - name: Build Android APK with SDK download retry
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:?Android SDK path is not configured}}"
+          for attempt in 1 2 3; do
+            if flutter build apk --release; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "Android build failed on attempt $attempt; clearing incomplete NDK downloads and retrying."
+              rm -rf "$SDK_ROOT/ndk/28.2.13676358" "$SDK_ROOT/.temp"
+              sleep $((attempt * 10))
+            fi
+          done
+          echo "::error::Android APK build failed after three attempts."
+          exit 1
       - name: Run native Android unit tests
         run: cd android && ./gradlew :homeserver_saf:testDebugUnitTest
       - name: Enable KVM acceleration for Android emulator
