@@ -115,25 +115,22 @@ class _FloatingQuickShortcutState extends State<FloatingQuickShortcut>
           ? AlwaysStoppedAnimation(widget.expanded ? 1 : 0)
           : _controller,
       axisAlignment: 1,
-      child: IgnorePointer(
-        ignoring: !widget.expanded,
-        child: Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              for (var index = 0; index < widget.shortcuts.length; index++) ...[
-                if (index > 0) const SizedBox(height: 8),
-                _buildAnimatedChip(
-                  widget.shortcuts[widget.shortcuts.length - index - 1],
-                  index,
-                  widget.shortcuts.length,
-                  reduceMotion,
-                ),
-              ],
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            for (var index = 0; index < widget.shortcuts.length; index++) ...[
+              if (index > 0) const SizedBox(height: 8),
+              _buildAnimatedChip(
+                widget.shortcuts[widget.shortcuts.length - index - 1],
+                index,
+                widget.shortcuts.length,
+                reduceMotion,
+              ),
             ],
-          ),
+          ],
         ),
       ),
     );
