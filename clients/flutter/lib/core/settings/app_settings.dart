@@ -29,6 +29,7 @@ class AppSettings extends ChangeNotifier {
   bool _loaded = false;
   List<String> _navigationOrder = List.of(navigationDefaults);
   Set<String> _visibleNavigationItems = Set.of(navigationDefaults);
+  Future<void> _navigationWrite = Future<void>.value();
 
   ThemeMode get themeMode => _themeMode;
   bool get amoled => _amoled;
@@ -114,24 +115,34 @@ class AppSettings extends ChangeNotifier {
     _navigationOrder = List.of(order);
     _visibleNavigationItems = Set.of(visibleItems);
     notifyListeners();
-    final preferences = await SharedPreferences.getInstance();
-    await Future.wait([
-      preferences.setString(_navigationOrderKey, jsonEncode(_navigationOrder)),
-      preferences.setString(_navigationVisibilityKey, jsonEncode(
-        navigationDefaults.where(_visibleNavigationItems.contains).toList(),
-      )),
-    ]);
+    final orderSnapshot = List<String>.of(_navigationOrder);
+    final visibilitySnapshot = navigationDefaults
+        .where(_visibleNavigationItems.contains)
+        .toList(growable: false);
+    final write = _navigationWrite.catchError((_) {}).then((_) async {
+      final preferences = await SharedPreferences.getInstance();
+      await Future.wait([
+        preferences.setString(_navigationOrderKey, jsonEncode(orderSnapshot)),
+        preferences.setString(_navigationVisibilityKey, jsonEncode(visibilitySnapshot)),
+      ]);
+    });
+    _navigationWrite = write;
+    await write;
   }
 
   Future<void> resetNavigationLayout() async {
     _navigationOrder = List.of(navigationDefaults);
     _visibleNavigationItems = Set.of(navigationDefaults);
     notifyListeners();
-    final preferences = await SharedPreferences.getInstance();
-    await Future.wait([
-      preferences.remove(_navigationOrderKey),
-      preferences.remove(_navigationVisibilityKey),
-    ]);
+    final write = _navigationWrite.catchError((_) {}).then((_) async {
+      final preferences = await SharedPreferences.getInstance();
+      await Future.wait([
+        preferences.remove(_navigationOrderKey),
+        preferences.remove(_navigationVisibilityKey),
+      ]);
+    });
+    _navigationWrite = write;
+    await write;
   }
 
   Future<void> setThemeMode(ThemeMode value) async {
