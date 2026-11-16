@@ -226,6 +226,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ]
               : [
+                if (widget.category == 'Appearance')
                               _section('Appearance', [
                                 ListTile(
                                   leading: const Icon(Icons.palette_outlined),
@@ -333,7 +334,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   ),
                                 ),
                               ]),
-                              _section('Media & Storage', [
+                  if (widget.category == 'Media & Storage')
+                            _section('Media & Storage', [
                                 ListTile(
                                   leading: const Icon(Icons.high_quality_outlined),
                                   title: const Text('Streaming quality'),
@@ -360,7 +362,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   onTap: _clearingCache ? null : _clearCache,
                                 ),
                               ]),
-                              _section('Connection & Diagnostics', [
+                  if (widget.category == 'Connection & Diagnostics')
+                            _section('Connection & Diagnostics', [
                                 ListTile(
                                   leading: const Icon(Icons.dns_outlined),
                                   title: const Text('Saved servers'),
