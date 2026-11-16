@@ -11,7 +11,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.net.HttpURLConnection
-import java.net.ServerSocket
 import java.net.URL
 import android.util.Base64
 
@@ -28,11 +27,14 @@ class NativeApiServerIntegrationTest {
         val credentials = ServerCredentials(context)
         val password = "integration-test-password"
         credentials.setPassword(password)
-        val port = ServerSocket(0).use { it.localPort }
-        val server = NativeApiServer(context, credentials, port)
+        // Let the OS allocate the port atomically when NanoHTTPD binds. Reserving
+        // and then releasing a ServerSocket port creates a race with other processes.
+        val server = NativeApiServer(context, credentials, 0)
 
-        server.start(15_000, false)
+        server.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false)
         try {
+            val port = server.listeningPort
+            assertTrue("Native API server did not bind an ephemeral port", port > 0)
             val health = request(port, "/health")
             assertEquals(200, health.first)
             assertTrue(health.second.contains("\"status\":\"ok\""))
