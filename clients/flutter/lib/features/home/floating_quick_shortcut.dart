@@ -110,10 +110,9 @@ class _FloatingQuickShortcutState extends State<FloatingQuickShortcut>
                     width: 56,
                     height: 56,
                     child: Center(
-                      child: Icon(
-                        widget.expanded ? Icons.close_rounded : primary.icon,
-                        size: 25,
-                        color: Colors.white,
+                      child: _MainButtonIcon(
+                        expanded: widget.expanded,
+                        primary: primary.icon,
                       ),
                     ),
                   ),
