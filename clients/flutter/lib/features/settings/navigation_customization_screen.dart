@@ -151,6 +151,8 @@ class _NavigationCustomizationScreenState
               buildDefaultDragHandles: false,
               itemCount: _order.length,
               onReorder: _reorder,
+              onReorderStart: (_) => HapticFeedback.selectionClick(),
+              onReorderEnd: (_) => HapticFeedback.lightImpact(),
               itemBuilder: (context, index) {
                 final id = _order[index];
                 final detail = _details[id]!;
