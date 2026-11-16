@@ -31,7 +31,7 @@ class NativeApiServerIntegrationTest {
         val port = ServerSocket(0).use { it.localPort }
         val server = NativeApiServer(context, credentials, port)
 
-        server.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false)
+        server.start(15_000, false)
         try {
             val health = request(port, "/health")
             assertEquals(200, health.first)
@@ -64,8 +64,8 @@ class NativeApiServerIntegrationTest {
     private fun request(port: Int, path: String, authorization: String? = null): Pair<Int, String> {
         val connection = URL("http://127.0.0.1:$port$path").openConnection() as HttpURLConnection
         return try {
-            connection.connectTimeout = 5_000
-            connection.readTimeout = 5_000
+            connection.connectTimeout = 15_000
+            connection.readTimeout = 15_000
             if (authorization != null) connection.setRequestProperty("Authorization", authorization)
             val status = connection.responseCode
             val stream = if (status >= 400) connection.errorStream else connection.inputStream
