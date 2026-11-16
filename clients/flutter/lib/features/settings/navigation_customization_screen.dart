@@ -29,7 +29,10 @@ class _NavigationCustomizationScreenState
   @override
   void initState() {
     super.initState();
-    _order = List.of(_settings.navigationOrder);
+    _order = [
+      ..._settings.navigationOrder.where((id) => id != 'browse'),
+      'browse',
+    ];
     _visibleItems = Set.of(_settings.visibleNavigationItems);
   }
 
@@ -53,7 +56,10 @@ class _NavigationCustomizationScreenState
       await _settings.resetNavigationLayout();
       if (!mounted) return;
       setState(() {
-        _order = List.of(AppSettings.navigationDefaults);
+        _order = [
+          ...AppSettings.navigationDefaults.where((id) => id != 'browse'),
+          'browse',
+        ];
         _visibleItems = Set.of(AppSettings.navigationDefaults);
       });
       ScaffoldMessenger.of(context).showSnackBar(
@@ -70,9 +76,11 @@ class _NavigationCustomizationScreenState
 
   void _reorder(int oldIndex, int newIndex) {
     setState(() {
+      final visibleOrder = _order.where((id) => id != 'browse').toList();
       if (newIndex > oldIndex) newIndex--;
-      final item = _order.removeAt(oldIndex);
-      _order.insert(newIndex, item);
+      final item = visibleOrder.removeAt(oldIndex);
+      visibleOrder.insert(newIndex, item);
+      _order = [...visibleOrder, 'browse'];
     });
     _save();
   }
@@ -135,7 +143,7 @@ class _NavigationCustomizationScreenState
           )),
           const SizedBox(height: 6),
           Text(
-            'Drag any destination, including Home, to change the order.',
+            'Drag Home, Explore or Files to change the dock order. Music is now on the floating shortcut button.',
             style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
           ),
           const SizedBox(height: 12),
@@ -149,12 +157,12 @@ class _NavigationCustomizationScreenState
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               buildDefaultDragHandles: false,
-              itemCount: _order.length,
+              itemCount: _order.where((id) => id != 'browse').length,
               onReorder: _reorder,
               onReorderStart: (_) => HapticFeedback.selectionClick(),
               onReorderEnd: (_) => HapticFeedback.lightImpact(),
               itemBuilder: (context, index) {
-                final id = _order[index];
+                final id = _order.where((id) => id != 'browse').elementAt(index);
                 final detail = _details[id]!;
                 final visible = _visibleItems.contains(id);
                 return Column(
