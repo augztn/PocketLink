@@ -140,7 +140,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
           const ListTile(
             leading: Icon(Icons.privacy_tip_outlined),
             title: Text('Privacy'),
-            subtitle: Text('Passwords, Basic authentication headers and common token fields are redacted. Logs may still contain device errors, server addresses and file-system error details. Review the file before sending it.'),
+            subtitle: Text('Passwords, usernames, authentication headers, tokens and IP addresses are redacted from exported logs. Device errors and file-system details may still be present. Review the file before sending it.'),
             isThreeLine: true,
           ),
           const ListTile(
