@@ -87,7 +87,7 @@ class _NavigationCustomizationScreenState
 
   void _setVisible(String id, bool visible) {
     if (id == 'home') return;
-    if (!visible && _visibleItems.length <= 2) return;
+    if (!visible && _visibleItems.where((id) => id != 'browse').length <= 2) return;
     setState(() {
       if (visible) {
         _visibleItems.add(id);
@@ -184,7 +184,7 @@ class _NavigationCustomizationScreenState
                           if (id != 'home')
                             Switch(
                               value: visible,
-                              onChanged: !visible && _visibleItems.length <= 2
+                              onChanged: !visible && _visibleItems.where((id) => id != 'browse').length <= 2
                                   ? null
                                   : (value) => _setVisible(id, value),
                             ),
@@ -204,7 +204,7 @@ class _NavigationCustomizationScreenState
                         ],
                       ),
                     ),
-                    if (index != _order.length - 1)
+                    if (index != _order.where((id) => id != 'browse').length - 1)
                       const Divider(height: 1, indent: 56),
                   ],
                 );
