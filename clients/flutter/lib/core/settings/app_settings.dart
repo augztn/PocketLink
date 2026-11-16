@@ -48,7 +48,7 @@ class AppSettings extends ChangeNotifier {
   Set<String> _visibleNavigationItems = Set.of(navigationDefaults);
   Future<void> _navigationWrite = Future<void>.value();
   bool _floatingShortcutEnabled = false;
-  String _floatingShortcutTapAction = 'primary';
+  String _floatingShortcutTapAction = 'menu';
   bool _floatingShortcutLongPressEnabled = true;
   List<String> _floatingShortcuts = List.of(floatingShortcutDefaults);
   Future<void> _floatingShortcutsWrite = Future<void>.value();
@@ -78,7 +78,7 @@ class AppSettings extends ChangeNotifier {
       _useLiquidGlass = preferences.getBool(_liquidGlassKey) ?? false;
       _floatingShortcutEnabled = preferences.getBool(_floatingShortcutEnabledKey) ?? false;
       final tapAction = preferences.getString(_floatingShortcutTapActionKey);
-      _floatingShortcutTapAction = tapAction == 'menu' ? 'menu' : 'primary';
+      _floatingShortcutTapAction = tapAction == 'primary' ? 'primary' : 'menu';
       _floatingShortcutLongPressEnabled = preferences.getBool(_floatingShortcutLongPressKey) ?? true;
       final rawFloatingShortcuts = preferences.getString(_floatingShortcutsKey);
       if (rawFloatingShortcuts != null) {
