@@ -86,7 +86,6 @@ void main() {
       expect(selected, 'music');
     },
   );
-}
 
   testWidgets('long press can be disabled without affecting single tap', (tester) async {
     var opened = false;
@@ -115,3 +114,4 @@ void main() {
     await tester.tap(find.byTooltip('Explore'));
     expect(opened, isTrue);
   });
+}
