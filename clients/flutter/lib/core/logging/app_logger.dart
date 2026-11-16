@@ -84,7 +84,7 @@ class AppLogger {
   static String _redact(String value) => value
       .replaceAll(
         RegExp(
-          r'((?:password|passwd|authorization|token|secret|api[_-]?key|username|user|login|cookie|set-cookie)(?:["\']?\s*[:=]\s*["\']?))[^,;\s}"\']+',
+          r"""((?:password|passwd|authorization|token|secret|api[_-]?key|username|user|login|cookie|set-cookie)(?:["']?\s*[:=]\s*["']?))[^,;\s}"']+""",
           caseSensitive: false,
         ),
         r'$1[REDACTED]',
@@ -94,7 +94,7 @@ class AppLogger {
         'Basic [REDACTED]',
       )
       .replaceAll(
-        RegExp(r'Bearer\s+[^,;\s}"\']+', caseSensitive: false),
+        RegExp(r"""Bearer\s+[^,;\s}"']+""", caseSensitive: false),
         'Bearer [REDACTED]',
       )
       .replaceAll(
