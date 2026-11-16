@@ -38,21 +38,25 @@ class FloatingQuickShortcut extends StatelessWidget {
         ? Tooltip(
             message: '${primary.label} · Hold for shortcuts',
             child: LiquidGlassPill(
-            radius: BorderRadius.circular(28),
-            child: SizedBox(
-              width: 56,
-              height: 56,
-              child: Material(
-                color: Colors.transparent,
-                shape: const CircleBorder(),
-                child: InkWell(
-                  customBorder: const CircleBorder(),
-                  onTap: onTap,
-                  child: Icon(primary.icon, color: Theme.of(context).colorScheme.primary, size: 25),
+              radius: BorderRadius.circular(28),
+              child: SizedBox(
+                width: 56,
+                height: 56,
+                child: Material(
+                  color: Colors.transparent,
+                  shape: const CircleBorder(),
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: onTap,
+                    child: Icon(
+                      primary.icon,
+                      color: Theme.of(context).colorScheme.primary,
+                      size: 25,
+                    ),
+                  ),
                 ),
               ),
             ),
-          ),
           )
         : FloatingActionButton(
             heroTag: 'pocketlink-floating-shortcut',
