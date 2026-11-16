@@ -208,13 +208,20 @@ jobs:
       - name: Run native Android integration tests
         uses: ReactiveCircus/android-emulator-runner@v2
         with:
-          api-level: 35
+          api-level: 34
           target: google_apis
           arch: x86_64
           profile: pixel_2
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none -camera-front none
           disable-animations: true
-          script: cd clients/flutter/android && ./gradlew :homeserver_saf:connectedDebugAndroidTest
+          script: |
+            adb wait-for-device
+            adb shell 'while [ "$(getprop sys.boot_completed)" != "1" ]; do sleep 2; done'
+            adb shell settings put global window_animation_scale 0
+            adb shell settings put global transition_animation_scale 0
+            adb shell settings put global animator_duration_scale 0
+            cd clients/flutter/android
+            ./gradlew --no-daemon --stacktrace :homeserver_saf:connectedDebugAndroidTest
       - uses: actions/upload-artifact@v4
         with:
           name: PocketLink-Android-APK
