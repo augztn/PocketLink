@@ -43,59 +43,93 @@ class FloatingNavigationDock extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final activeItems = order.where(visibleItems.contains).toList(growable: false);
-    final content = LiquidGlassPill(
-      radius: BorderRadius.circular(32),
-      child: SizedBox(
-        height: 64,
-        child: Row(
-          children: [
-            for (final id in activeItems)
-              if (id == 'browse')
-                SizedBox(
-                  width: 58,
-                  child: Material(
-                    color: Colors.transparent,
-                    shape: const CircleBorder(),
-                    child: InkWell(
-                      customBorder: const CircleBorder(),
-                      onTap: onBrowsePressed,
-                      child: Center(
-                        child: isPlaying
-                            ? const _AnimatedEqualizer()
-                            : Icon(
-                                hasMedia && isVideo
-                                    ? Icons.play_circle_fill_rounded
-                                    : Icons.music_note_rounded,
-                                color: colors.primary,
-                                size: 25,
-                              ),
+    final segments = <Widget>[];
+    var tabGroup = <String>[];
+
+    void addTabGroup() {
+      if (tabGroup.isEmpty) return;
+      final ids = List<String>.of(tabGroup);
+      segments.add(
+        Expanded(
+          child: LiquidGlassPill(
+            radius: BorderRadius.circular(32),
+            child: SizedBox(
+              height: 64,
+              child: Row(
+                children: [
+                  for (final id in ids)
+                    Expanded(
+                      child: _DockTab(
+                        index: _indices[id]!,
+                        selectedIndex: selectedIndex,
+                        icon: switch (id) {
+                          'home' => Icons.home_outlined,
+                          'explore' => Icons.explore_outlined,
+                          _ => Icons.folder_outlined,
+                        },
+                        activeIcon: switch (id) {
+                          'home' => Icons.home_rounded,
+                          'explore' => Icons.explore_rounded,
+                          _ => Icons.folder_rounded,
+                        },
+                        label: _labels[id]!,
+                        onTap: onSelect,
+                        activeColor: colors.primary,
                       ),
                     ),
-                  ),
-                )
-              else
-                Expanded(
-                  child: _DockTab(
-                    index: _indices[id]!,
-                    selectedIndex: selectedIndex,
-                    icon: switch (id) {
-                      'home' => Icons.home_outlined,
-                      'explore' => Icons.explore_outlined,
-                      _ => Icons.folder_outlined,
-                    },
-                    activeIcon: switch (id) {
-                      'home' => Icons.home_rounded,
-                      'explore' => Icons.explore_rounded,
-                      _ => Icons.folder_rounded,
-                    },
-                    label: _labels[id]!,
-                    onTap: onSelect,
-                    activeColor: colors.primary,
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      tabGroup = <String>[];
+    }
+
+    for (final id in activeItems) {
+      if (id == 'browse') {
+        addTabGroup();
+        segments.add(
+          SizedBox(
+            width: 64,
+            height: 64,
+            child: LiquidGlassPill(
+              radius: BorderRadius.circular(32),
+              child: Material(
+                color: Colors.transparent,
+                shape: const CircleBorder(),
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: onBrowsePressed,
+                  child: Center(
+                    child: isPlaying
+                        ? const _AnimatedEqualizer()
+                        : Icon(
+                            hasMedia && isVideo
+                                ? Icons.play_circle_fill_rounded
+                                : Icons.music_note_rounded,
+                            color: colors.primary,
+                            size: 25,
+                          ),
                   ),
                 ),
-          ],
-        ),
-      ),
+              ),
+            ),
+          ),
+        );
+      } else {
+        tabGroup.add(id);
+      }
+    }
+    addTabGroup();
+
+    final content = Row(
+      children: [
+        for (var index = 0; index < segments.length; index++) ...[
+          if (index > 0) const SizedBox(width: 10),
+          segments[index],
+        ],
+      ],
     );
 
     if (preview) {
