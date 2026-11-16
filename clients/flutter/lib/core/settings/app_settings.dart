@@ -79,8 +79,7 @@ class AppSettings extends ChangeNotifier {
           final values = decoded.whereType<String>().toList();
           if (values.length == navigationDefaults.length &&
               values.toSet().length == navigationDefaults.length &&
-              values.toSet().containsAll(navigationDefaults) &&
-              values.first == 'home') {
+              values.toSet().containsAll(navigationDefaults)) {
             _navigationOrder = values;
           }
         }
@@ -130,7 +129,6 @@ class AppSettings extends ChangeNotifier {
     if (order.length != navigationDefaults.length ||
         order.toSet().length != navigationDefaults.length ||
         !order.toSet().containsAll(navigationDefaults) ||
-        order.first != 'home' ||
         !visibleItems.contains('home') ||
         visibleItems.length < 2 ||
         !visibleItems.every(navigationDefaults.contains)) {
