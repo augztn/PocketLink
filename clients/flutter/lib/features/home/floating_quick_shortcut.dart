@@ -110,30 +110,34 @@ class _FloatingQuickShortcutState extends State<FloatingQuickShortcut>
           );
 
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
-    final menu = SizeTransition(
-      sizeFactor: reduceMotion
-          ? AlwaysStoppedAnimation(widget.expanded ? 1 : 0)
-          : _controller,
-      axisAlignment: 1,
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            for (var index = 0; index < widget.shortcuts.length; index++) ...[
-              if (index > 0) const SizedBox(height: 8),
-              _buildAnimatedChip(
-                widget.shortcuts[widget.shortcuts.length - index - 1],
-                index,
-                widget.shortcuts.length,
-                reduceMotion,
-              ),
-            ],
+    final menuContent = Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          for (var index = 0; index < widget.shortcuts.length; index++) ...[
+            if (index > 0) const SizedBox(height: 8),
+            _buildAnimatedChip(
+              widget.shortcuts[widget.shortcuts.length - index - 1],
+              index,
+              widget.shortcuts.length,
+              reduceMotion,
+            ),
           ],
-        ),
+        ],
       ),
     );
+    // Avoid a zero-sized animated render subtree in reduced-motion mode.
+    // The menu is inserted at its final size so every shortcut is immediately
+    // laid out and hit-testable when expanded.
+    final menu = reduceMotion
+        ? (widget.expanded ? menuContent : const SizedBox.shrink())
+        : SizeTransition(
+            sizeFactor: _controller,
+            axisAlignment: 1,
+            child: menuContent,
+          );
 
     return GestureDetector(
       onLongPress: widget.onLongPress,
