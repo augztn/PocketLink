@@ -93,7 +93,7 @@ class _FloatingShortcutCustomizationScreenState
     return Scaffold(
       appBar: HomeServerAppBar(
         title: const Text('Customize Floating Shortcuts'),
-        actions: [
+        actionsBeforeHome: [
           IconButton(
             tooltip: 'Save shortcuts',
             onPressed: _saving ? null : _save,
