@@ -88,7 +88,7 @@ class AppLogger {
           'Basic [REDACTED]',
         )
         .replaceAll(
-          RegExp(r'''Bearer\s+[^,;\s}"']+''', caseSensitive: false),
+          RegExp(r'Bearer\s+[A-Za-z0-9._~+/-]+=*', caseSensitive: false),
           'Bearer [REDACTED]',
         );
 
