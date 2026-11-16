@@ -20,6 +20,11 @@ void main() {
     expect(settings.navigationOrder, order);
     expect(settings.visibleNavigationItems, visible);
     expect(settings.navigationLayoutIsDefault, isFalse);
+    final preferences = await SharedPreferences.getInstance();
+    expect(preferences.getString('settings_navigation_order'),
+        '["home","files","browse","explore"]');
+    expect(preferences.getString('settings_navigation_visibility'),
+        '["home","files","browse"]');
   });
 
   test('navigation layout rejects invalid visibility and unpinned home', () async {
@@ -53,5 +58,8 @@ void main() {
     expect(settings.navigationOrder, AppSettings.navigationDefaults);
     expect(settings.visibleNavigationItems, AppSettings.navigationDefaults.toSet());
     expect(settings.navigationLayoutIsDefault, isTrue);
+    final preferences = await SharedPreferences.getInstance();
+    expect(preferences.getString('settings_navigation_order'), isNull);
+    expect(preferences.getString('settings_navigation_visibility'), isNull);
   });
 }
