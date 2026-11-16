@@ -129,7 +129,9 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     _browserState = Provider.of<BrowserStateStore>(context, listen: false);
     final saved = _browserState.fileState(_stateKey);
     _path = widget.locationRequest > 0 ? widget.requestedPath : (widget.initialPath.isNotEmpty ? widget.initialPath : saved.path);
-    widget.onCanNavigateBackChanged?.call(_path.isNotEmpty);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.onCanNavigateBackChanged?.call(_path.isNotEmpty);
+    });
     _category = widget.initialCategory != 'All' ? widget.initialCategory : saved.category;
     _sortBy = saved.sortBy;
     _gridView = saved.gridView;
