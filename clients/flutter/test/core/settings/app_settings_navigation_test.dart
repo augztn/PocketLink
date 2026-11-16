@@ -83,7 +83,7 @@ void main() {
     const shortcuts = ['music', 'files', 'photos', 'upload'];
 
     expect(settings.floatingShortcutEnabled, isFalse);
-    expect(settings.floatingShortcutTapAction, 'primary');
+    expect(settings.floatingShortcutTapAction, 'menu');
     expect(settings.floatingShortcutLongPressEnabled, isTrue);
 
     await settings.setFloatingShortcutEnabled(true);
