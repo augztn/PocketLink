@@ -81,34 +81,49 @@ class AppLogger {
   @visibleForTesting
   static String sanitizeDiagnosticContent(String value) => _redact(value);
 
-  static String _redact(String value) => value
-      .replaceAll(
-        RegExp(
-          r"""((?:password|passwd|authorization|token|secret|api[_-]?key|username|user|login|cookie|set-cookie)(?:["']?\s*[:=]\s*["']?))[^,;\s}"']+""",
-          caseSensitive: false,
-        ),
-        r'$1[REDACTED]',
-      )
-      .replaceAll(
-        RegExp(r'Basic\s+[A-Za-z0-9+/=]+', caseSensitive: false),
-        'Basic [REDACTED]',
-      )
-      .replaceAll(
-        RegExp(r"""Bearer\s+[^,;\s}"']+""", caseSensitive: false),
-        'Bearer [REDACTED]',
-      )
-      .replaceAll(
-        RegExp(
-          r'(?<![\d.])(?:25[0-5]|2[0-4]\d|1?\d?\d)(?:\.(?:25[0-5]|2[0-4]\d|1?\d?\d)){3}(?![\d.])',
-        ),
-        '[REDACTED_HOST]',
-      )
-      .replaceAll(
-        RegExp(
-          r'(?<![0-9A-Fa-f:])(?=[0-9A-Fa-f:]*[A-Fa-f]|[0-9A-Fa-f:]*::)(?:[0-9A-Fa-f]{0,4}:){2,7}[0-9A-Fa-f]{0,4}(?![0-9A-Fa-f:])',
-        ),
-        '[REDACTED_HOST]',
-      );
+  static String _redact(String value) {
+    final withSchemesRedacted = value
+        .replaceAll(
+          RegExp(r'Basic\\s+[A-Za-z0-9+/=]+', caseSensitive: false),
+          'Basic [REDACTED]',
+        )
+        .replaceAll(
+          RegExp(r'Bearer\\s+[^,;\\s}\\\'"]+', caseSensitive: false),
+          'Bearer [REDACTED]',
+        );
+
+    final withCredentialsRedacted = withSchemesRedacted.replaceAllMapped(
+      RegExp(
+        r'''((?:password|passwd|authorization|token|secret|api[_-]?key|username|user|login|cookie|set-cookie)\\s*["']?\\s*[:=]\\s*)(?:"[^"]*"|'[^']*'|[^,;\\s}]+)''',
+        caseSensitive: false,
+      ),
+      (match) {
+        final original = match.group(0)!;
+        final valueStart = match.group(1)!.length;
+        final credential = original.substring(valueStart);
+        final replacement = credential.startsWith('"')
+            ? '"[REDACTED]"'
+            : credential.startsWith("'")
+                ? "'[REDACTED]'"
+                : '[REDACTED]';
+        return '${match.group(1)}$replacement';
+      },
+    );
+
+    return withCredentialsRedacted
+        .replaceAll(
+          RegExp(
+            r'(?<![\\d.])(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)(?:\\.(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)){3}(?![\\d.])',
+          ),
+          '[REDACTED_HOST]',
+        )
+        .replaceAll(
+          RegExp(
+            r'(?<![0-9A-Fa-f:])(?=[0-9A-Fa-f:]*[A-Fa-f]|[0-9A-Fa-f:]*::)(?:[0-9A-Fa-f]{0,4}:){2,7}[0-9A-Fa-f]{0,4}(?![0-9A-Fa-f:])',
+          ),
+          '[REDACTED_HOST]',
+        );
+  }
 
   static Future<void> _rotateIfNeeded() async {
     final file = _logFile;
