@@ -131,7 +131,88 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         .contains(extension);
   }
 
+  Future<List<_MediaFile>> _readIndexedMedia() async {
+    final category = _isMusic ? 'music' : 'video';
+    final found = <_MediaFile>[];
+    var offset = 0;
+    late MediaIndexStatus status;
+    while (true) {
+      final page = await widget.api.indexedMedia(
+        category,
+        query: _searchQuery,
+        limit: 500,
+        offset: offset,
+      );
+      status = page.status;
+      found.addAll(page.items.map((item) => _MediaFile(
+        entry: item.toFileEntry(),
+        path: item.path,
+        volume: item.volume == 'internal' ? null : item.volume,
+      )));
+      if (page.items.length < 500) break;
+      offset += page.items.length;
+    }
+    found.sort((a, b) =>
+        a.entry.name.toLowerCase().compareTo(b.entry.name.toLowerCase()));
+    return found;
+  }
+
   Future<void> _scan({bool refresh = false}) async {
+    if (refresh) {
+      widget.api.invalidateDirectoryCache();
+      try {
+        await widget.api.startMediaIndexScan();
+      } on DioException {
+        await _scanLegacy(refresh: refresh);
+        return;
+      }
+    }
+    widget.api.clearMediaCache();
+    setState(() {
+      _loading = true;
+      _error = null;
+      _media = const [];
+      _scannedDirectories = 0;
+      _skippedDirectories = 0;
+    });
+
+    try {
+      var found = await _readIndexedMedia();
+      var status = await widget.api.mediaIndexStatus();
+      if (mounted) setState(() => _media = List.unmodifiable(found));
+
+      // The first host scan may take time. Show indexed results immediately,
+      // then refresh from SQLite while the host continues scanning.
+      while (mounted && status.isScanning) {
+        await Future<void>.delayed(const Duration(seconds: 2));
+        if (!mounted) return;
+        found = await _readIndexedMedia();
+        status = await widget.api.mediaIndexStatus();
+        setState(() => _media = List.unmodifiable(found));
+      }
+
+      if ((status.state == 'failed' || status.state == 'partial') && found.isEmpty) {
+        await _scanLegacy();
+        return;
+      }
+      if (mounted) {
+        setState(() {
+          _media = List.unmodifiable(found);
+          _loading = false;
+          _error = status.state == 'partial' && found.isEmpty
+              ? status.lastError
+              : null;
+        });
+        WidgetsBinding.instance.addPostFrameCallback((_) => _restoreScrollOffset());
+      }
+    } on DioException {
+      await _scanLegacy(refresh: refresh);
+    } catch (_) {
+      await _scanLegacy(refresh: refresh);
+    }
+  }
+
+  Future<void> _scanLegacy({bool refresh = false}) async {
     if (refresh) widget.api.invalidateDirectoryCache();
     widget.api.clearMediaCache();
     setState(() {
