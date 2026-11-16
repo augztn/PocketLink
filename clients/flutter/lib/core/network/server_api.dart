@@ -107,6 +107,72 @@ class StorageVolume {
       );
 }
 
+class IndexedFile {
+  const IndexedFile({
+    required this.volume, required this.path, required this.name,
+    required this.type, required this.size, required this.modified,
+    required this.mime, this.category,
+  });
+  final String volume;
+  final String path;
+  final String name;
+  final String type;
+  final int size;
+  final String modified;
+  final String mime;
+  final String? category;
+  bool get isDirectory => type == 'directory';
+
+  factory IndexedFile.fromJson(Map<String, dynamic> json) => IndexedFile(
+    volume: json['volume'] as String? ?? 'internal',
+    path: json['path'] as String? ?? '',
+    name: json['name'] as String? ?? '',
+    type: json['type'] as String? ?? 'file',
+    size: (json['size'] as num?)?.toInt() ?? 0,
+    modified: json['modified']?.toString() ?? '',
+    mime: json['mime']?.toString() ?? 'application/octet-stream',
+    category: json['category']?.toString(),
+  );
+
+  FileEntry toFileEntry() => FileEntry(
+    name: name, type: type, size: size, modified: modified,
+  );
+}
+
+class MediaIndexStatus {
+  const MediaIndexStatus({
+    required this.state, required this.scanned, required this.skipped,
+    required this.lastCompletedAt, required this.fileCount,
+    required this.mediaCount, this.lastError,
+  });
+  final String state;
+  final int scanned;
+  final int skipped;
+  final int lastCompletedAt;
+  final int fileCount;
+  final int mediaCount;
+  final String? lastError;
+  bool get isScanning => state == 'scanning';
+  bool get isUsable => state == 'complete' || state == 'partial';
+
+  factory MediaIndexStatus.fromJson(Map<String, dynamic> json) =>
+      MediaIndexStatus(
+        state: json['state']?.toString() ?? 'idle',
+        scanned: (json['scanned'] as num?)?.toInt() ?? 0,
+        skipped: (json['skipped'] as num?)?.toInt() ?? 0,
+        lastCompletedAt: (json['last_completed_at'] as num?)?.toInt() ?? 0,
+        fileCount: (json['file_count'] as num?)?.toInt() ?? 0,
+        mediaCount: (json['media_count'] as num?)?.toInt() ?? 0,
+        lastError: json['last_error']?.toString(),
+      );
+}
+
+class IndexedMediaPage {
+  const IndexedMediaPage({required this.items, required this.status});
+  final List<IndexedFile> items;
+  final MediaIndexStatus status;
+}
+
 class _RequestGate {
   _RequestGate(this.limit);
 
@@ -578,6 +644,48 @@ class ServerApi {
     });
     _volumesRequest = request;
     return request;
+  }
+
+  Future<MediaIndexStatus> mediaIndexStatus() async {
+    final response = await _dio.get<Map<String, dynamic>>('/api/index/status');
+    return MediaIndexStatus.fromJson(response.data ?? const {});
+  }
+
+  Future<MediaIndexStatus> startMediaIndexScan() async {
+    final response = await _dio.post<Map<String, dynamic>>('/api/index/scan');
+    return MediaIndexStatus.fromJson(response.data ?? const {});
+  }
+
+  Future<IndexedMediaPage> indexedMedia(
+    String category, {String query = '', int limit = 500, int offset = 0}
+  ) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/index/media',
+      queryParameters: {'category': category, 'q': query, 'limit': limit, 'offset': offset},
+    );
+    final data = response.data ?? const <String, dynamic>{};
+    return IndexedMediaPage(
+      items: (data['items'] as List<dynamic>? ?? const [])
+          .map((item) => IndexedFile.fromJson(item as Map<String, dynamic>))
+          .toList(growable: false),
+      status: MediaIndexStatus.fromJson(data['status'] as Map<String, dynamic>? ?? const {}),
+    );
+  }
+
+  Future<IndexedMediaPage> searchIndexedFiles(
+    String query, {int limit = 100, int offset = 0}
+  ) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/index/files',
+      queryParameters: {'q': query, 'limit': limit, 'offset': offset},
+    );
+    final data = response.data ?? const <String, dynamic>{};
+    return IndexedMediaPage(
+      items: (data['items'] as List<dynamic>? ?? const [])
+          .map((item) => IndexedFile.fromJson(item as Map<String, dynamic>))
+          .toList(growable: false),
+      status: MediaIndexStatus.fromJson(data['status'] as Map<String, dynamic>? ?? const {}),
+    );
   }
 
   Future<DirectoryListing> listStorageDirectory(
