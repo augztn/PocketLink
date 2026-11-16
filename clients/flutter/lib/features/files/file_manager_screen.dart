@@ -19,6 +19,7 @@ class FileManagerScreen extends StatefulWidget {
     this.initialVolume,
     this.externalDriveRequest = 0,
     this.locationRequest = 0,
+    this.uploadRequest = 0,
     this.requestedVolume,
     this.requestedPath = '',
     this.initialCategory = 'All',
@@ -33,6 +34,7 @@ class FileManagerScreen extends StatefulWidget {
   final String? initialVolume;
   final int externalDriveRequest;
   final int locationRequest;
+  final int uploadRequest;
   final String? requestedVolume;
   final String requestedPath;
   final String initialCategory;
@@ -99,6 +101,11 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   @override
   void didUpdateWidget(covariant FileManagerScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.uploadRequest != widget.uploadRequest && widget.uploadRequest > 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _uploadFile();
+      });
+    }
     if (oldWidget.initialCategory != widget.initialCategory) {
       _category = widget.initialCategory;
     }
@@ -127,6 +134,11 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     _selectedVolume = widget.locationRequest > 0 ? widget.requestedVolume : widget.initialVolume ?? saved.selectedVolume;
     _scrollController.addListener(_saveScrollOffset);
     _loadVolumesAndDirectory(selectFirstExternal: widget.locationRequest == 0 && widget.externalDriveRequest > 0);
+    if (widget.uploadRequest > 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _uploadFile();
+      });
+    }
   }
 
   void _restoreScrollOffset() {
