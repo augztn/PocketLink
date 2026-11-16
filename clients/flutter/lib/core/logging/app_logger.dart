@@ -55,7 +55,7 @@ class AppLogger {
     }
     final safeFields = fields.map((key, value) => MapEntry(
       key,
-      RegExp(r'password|passwd|authorization|token|secret|api[_-]?key', caseSensitive: false).hasMatch(key)
+      RegExp(r'password|passwd|authorization|token|secret|api[_-]?key|username|user|login|cookie', caseSensitive: false).hasMatch(key)
           ? '[REDACTED]'
           : _redact(value.toString()),
     ));
@@ -78,12 +78,31 @@ class AppLogger {
     });
   }
 
+  @visibleForTesting
+  static String sanitizeDiagnosticContent(String value) => _redact(value);
+
   static String _redact(String value) => value
       .replaceAll(
-        RegExp(r'(password|passwd|authorization|token|secret|api[_-]?key)(\s*[:=]\s*)[^,;\s]+', caseSensitive: false),
-        r'$1$2[REDACTED]',
+        RegExp(
+          r'((?:password|passwd|authorization|token|secret|api[_-]?key|username|user|login|cookie|set-cookie)(?:["\']?\s*[:=]\s*["\']?))[^,;\s}"\']+',
+          caseSensitive: false,
+        ),
+        r'$1[REDACTED]',
       )
-      .replaceAll(RegExp(r'Basic\s+[A-Za-z0-9+/=]+', caseSensitive: false), 'Basic [REDACTED]');
+      .replaceAll(
+        RegExp(r'Basic\s+[A-Za-z0-9+/=]+', caseSensitive: false),
+        'Basic [REDACTED]',
+      )
+      .replaceAll(
+        RegExp(r'Bearer\s+[^,;\s}"\']+', caseSensitive: false),
+        'Bearer [REDACTED]',
+      )
+      .replaceAll(
+        RegExp(
+          r'(?<![\d.])(?:25[0-5]|2[0-4]\d|1?\d?\d)(?:\.(?:25[0-5]|2[0-4]\d|1?\d?\d)){3}(?![\d.])',
+        ),
+        '[REDACTED_HOST]',
+      );
 
   static Future<void> _rotateIfNeeded() async {
     final file = _logFile;
@@ -114,7 +133,7 @@ class AppLogger {
 
   static Future<File> createDiagnosticFile() async {
     final directory = _directory ?? await getApplicationSupportDirectory();
-    final content = await readLogs();
+    final content = sanitizeDiagnosticContent(await readLogs());
     final file = File('${directory.path}/pocketlink-diagnostics-${DateTime.now().toUtc().millisecondsSinceEpoch}.txt');
     await file.writeAsString(content, flush: true);
     return file;
