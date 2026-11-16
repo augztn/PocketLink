@@ -248,6 +248,7 @@ internal class MediaIndexScanner(
                         lastError = error.message ?: "One storage source could not be indexed"
                     }
                 }
+                if (lastError == null && skipped > 0) lastError = "Some files or folders could not be indexed."
                 state = if (lastError == null && skipped == 0) "complete" else "partial"
                 lastCompletedAt = System.currentTimeMillis()
             } catch (error: Exception) {
