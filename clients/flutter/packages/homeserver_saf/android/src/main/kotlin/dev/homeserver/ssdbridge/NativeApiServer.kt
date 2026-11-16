@@ -33,8 +33,9 @@ import android.util.Base64
 internal class NativeApiServer(
     private val context: Context,
     private val credentials: ServerCredentials,
-    listenPort: Int = PORT
-) : NanoHTTPD("0.0.0.0", listenPort) {
+    listenPort: Int = PORT,
+    bindHost: String = "0.0.0.0"
+) : NanoHTTPD(bindHost, listenPort) {
     private val prefs = context.getSharedPreferences("ssd-bridge", Context.MODE_PRIVATE)
     private val internalRoot = Environment.getExternalStorageDirectory().canonicalFile
 
