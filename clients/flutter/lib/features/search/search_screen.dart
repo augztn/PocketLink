@@ -170,6 +170,7 @@ class _SearchScreenState extends State<SearchScreen> {
     final generation = ++_scanGeneration;
     setState(() { _loading = true; _error = null; if (refresh) _results.clear(); });
     try {
+      if (refresh) await widget.api.startMediaIndexScan();
       if (_volumes.isEmpty) await _loadVolumes();
       Future<MediaIndexStatus> loadAllPages() async {
         final found = <_Result>[];
