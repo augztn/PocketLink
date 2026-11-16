@@ -220,9 +220,17 @@ internal class MediaIndexScanner(
     @Volatile private var state = "idle"
     @Volatile private var lastError: String? = null
     @Volatile private var lastCompletedAt: Long = 0L
+    @Volatile private var lastScanStartedAt: Long = 0L
 
     fun ensureStarted() {
-        if (!started) requestScan(force = false)
+        val now = System.currentTimeMillis()
+        if (!started) {
+            requestScan(force = false)
+        } else if (!running.get() && now - lastScanStartedAt >= RESCAN_INTERVAL_MS) {
+            // Periodically discover files added or removed outside PocketLink.
+            // The scanner compares size/mtime and only rewrites changed rows.
+            requestScan(force = true)
+        }
     }
 
     @Synchronized
@@ -230,6 +238,7 @@ internal class MediaIndexScanner(
         if (running.get()) return
         if (started && !force && state == "complete") return
         started = true
+        lastScanStartedAt = System.currentTimeMillis()
         running.set(true)
         state = "scanning"
         scanned = 0
@@ -405,7 +414,7 @@ internal class MediaIndexScanner(
         database.searchFiles(query, limit, offset)
 
     companion object {
-        private const val MAX_DEPTH = 64
+        private const val RESCAN_INTERVAL_MS = 10 * 60 * 1000L\n        private const val MAX_DEPTH = 64
         private val AUDIO = setOf("mp3","m4a","aac","wav","flac","ogg","opus","wma","aiff","alac")
         private val VIDEO = setOf("mp4","m4v","mov","mkv","webm","avi","wmv","mpeg","mpg","3gp","ts","m2ts","mts","flv","f4v","3g2","m2v","ogv","vob","rmvb")
         private val PHOTO = setOf("jpg","jpeg","png","webp","gif","bmp","heic","heif","avif")
