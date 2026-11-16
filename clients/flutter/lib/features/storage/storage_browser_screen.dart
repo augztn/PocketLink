@@ -203,7 +203,7 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
   Future<void> _openAudio(FileEntry item) async {
     final volume = _volume;
     if (volume == null) return;
-    await Navigator.of(context).push(
+    await Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute<void>(
         builder: (_) => NowPlayingScreen(
           api: widget.api,
