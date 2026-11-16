@@ -17,6 +17,8 @@ class _FloatingShortcutCustomizationScreenState
   final _settings = AppSettings.instance;
   late List<String> _shortcuts = List.of(_settings.floatingShortcuts);
   bool _saving = false;
+  late String _tapAction = _settings.floatingShortcutTapAction;
+  late bool _longPressEnabled = _settings.floatingShortcutLongPressEnabled;
 
   static const _details = <String, ({String label, String description, IconData icon})>{
     'explore': (label: 'Explore', description: 'Browse all destinations', icon: Icons.explore_rounded),
@@ -53,6 +55,8 @@ class _FloatingShortcutCustomizationScreenState
     setState(() => _saving = true);
     try {
       await _settings.setFloatingShortcuts(_shortcuts);
+      await _settings.setFloatingShortcutTapAction(_tapAction);
+      await _settings.setFloatingShortcutLongPressEnabled(_longPressEnabled);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Floating shortcuts saved')),
@@ -72,8 +76,14 @@ class _FloatingShortcutCustomizationScreenState
   Future<void> _reset() async {
     try {
       await _settings.resetFloatingShortcuts();
+      await _settings.setFloatingShortcutTapAction('primary');
+      await _settings.setFloatingShortcutLongPressEnabled(true);
       if (!mounted) return;
-      setState(() => _shortcuts = List.of(AppSettings.floatingShortcutDefaults));
+      setState(() {
+        _shortcuts = List.of(AppSettings.floatingShortcutDefaults);
+        _tapAction = 'primary';
+        _longPressEnabled = true;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Floating shortcuts reset to default')),
       );
@@ -136,6 +146,26 @@ class _FloatingShortcutCustomizationScreenState
                 ),
               );
             },
+          ),
+          const Divider(height: 24),
+          Text('Button behavior', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 8),
+          Text('What should happen when you tap the floating button?', style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
+          const SizedBox(height: 8),
+          SegmentedButton<String>(
+            segments: const [
+              ButtonSegment(value: 'primary', label: Text('Open primary'), icon: Icon(Icons.open_in_new_rounded)),
+              ButtonSegment(value: 'menu', label: Text('Show menu'), icon: Icon(Icons.apps_rounded)),
+            ],
+            selected: {_tapAction},
+            onSelectionChanged: (value) => setState(() => _tapAction = value.first),
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Long-press shortcut menu'),
+            subtitle: const Text('Hold the button to expand pinned destinations'),
+            value: _longPressEnabled,
+            onChanged: (value) => setState(() => _longPressEnabled = value),
           ),
           const Divider(height: 24),
           Text('Available destinations', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
