@@ -35,7 +35,9 @@ class FloatingQuickShortcut extends StatelessWidget {
   Widget build(BuildContext context) {
     final primary = _details[shortcuts.first]!;
     final button = useLiquidGlass
-        ? LiquidGlassPill(
+        ? Tooltip(
+            message: '${primary.label} · Hold for shortcuts',
+            child: LiquidGlassPill(
             radius: BorderRadius.circular(28),
             child: SizedBox(
               width: 56,
@@ -50,6 +52,7 @@ class FloatingQuickShortcut extends StatelessWidget {
                 ),
               ),
             ),
+          ),
           )
         : FloatingActionButton(
             heroTag: 'pocketlink-floating-shortcut',
