@@ -91,7 +91,7 @@ jobs:
           retention-days: 14
 
   android-apk:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     defaults:
       run:
         working-directory: clients/flutter
@@ -209,7 +209,11 @@ jobs:
         uses: ReactiveCircus/android-emulator-runner@v2
         with:
           api-level: 35
+          target: google_apis
           arch: x86_64
+          profile: pixel_2
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          disable-animations: true
           script: cd clients/flutter/android && ./gradlew :homeserver_saf:connectedDebugAndroidTest
       - uses: actions/upload-artifact@v4
         with:
