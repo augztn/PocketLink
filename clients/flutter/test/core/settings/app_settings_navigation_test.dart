@@ -62,4 +62,21 @@ void main() {
     expect(preferences.getString('settings_navigation_order'), isNull);
     expect(preferences.getString('settings_navigation_visibility'), isNull);
   });
+  test('Home section order persists and rejects incomplete layouts', () async {
+    final settings = AppSettings.instance;
+    const order = ['recent', 'search', 'continue', 'quick', 'transfers'];
+
+    await settings.setHomeSectionOrder(order);
+
+    expect(settings.homeSectionOrder, order);
+    final preferences = await SharedPreferences.getInstance();
+    expect(preferences.getString('settings_home_section_order'),
+        '["recent","search","continue","quick","transfers"]');
+
+    await expectLater(
+      settings.setHomeSectionOrder(const ['search', 'quick']),
+      throwsArgumentError,
+    );
+  });
+
 }
