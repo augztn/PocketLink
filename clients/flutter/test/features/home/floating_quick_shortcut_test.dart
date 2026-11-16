@@ -20,6 +20,7 @@ void main() {
                 useLiquidGlass: false,
                 onTap: () => opened = true,
                 onLongPress: () {},
+                longPressEnabled: true,
                 onSelect: (_) {},
               ),
             ),
@@ -55,6 +56,7 @@ void main() {
                       useLiquidGlass: false,
                       onTap: () {},
                       onLongPress: () => setState(() => expanded = true),
+                      longPressEnabled: true,
                       onSelect: (id) => selected = id,
                     ),
                   ),
@@ -85,3 +87,31 @@ void main() {
     },
   );
 }
+
+  testWidgets('long press can be disabled without affecting single tap', (tester) async {
+    var opened = false;
+    var expanded = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: FloatingQuickShortcut(
+            shortcuts: const ['explore', 'music'],
+            expanded: false,
+            useLiquidGlass: false,
+            onTap: () => opened = true,
+            onLongPress: () => expanded = true,
+            longPressEnabled: false,
+            onSelect: (_) {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byTooltip('Explore'), findsOneWidget);
+    await tester.longPress(find.byTooltip('Explore'));
+    expect(expanded, isFalse);
+
+    await tester.tap(find.byTooltip('Explore'));
+    expect(opened, isTrue);
+  });
