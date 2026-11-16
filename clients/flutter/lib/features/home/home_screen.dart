@@ -33,6 +33,42 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _requestedVolume;
   String _requestedPath = '';
 
+  @override
+  void initState() {
+    super.initState();
+    AppSettings.instance.addListener(_navigationSettingsChanged);
+  }
+
+  void _navigationSettingsChanged() {
+    final settings = AppSettings.instance;
+    final selectedId = switch (_selectedIndex) {
+      0 => 'home',
+      1 => 'explore',
+      2 => 'files',
+      _ => 'home',
+    };
+    if (settings.visibleNavigationItems.contains(selectedId)) return;
+    final nextId = settings.navigationOrder.firstWhere(
+      (id) => id != 'browse' && settings.visibleNavigationItems.contains(id),
+      orElse: () => 'home',
+    );
+    final nextIndex = switch (nextId) {
+      'explore' => 1,
+      'files' => 2,
+      _ => 0,
+    };
+    if (mounted) setState(() {
+      _selectedIndex = nextIndex;
+      _initializedTabs.add(nextIndex);
+    });
+  }
+
+  @override
+  void dispose() {
+    AppSettings.instance.removeListener(_navigationSettingsChanged);
+    super.dispose();
+  }
+
   void _openTab(int index) => setState(() {
     _initializedTabs.add(index);
     _selectedIndex = index;
@@ -160,9 +196,21 @@ class _HomeScreenState extends State<HomeScreen> {
             onHorizontalDragEnd: (details) {
               final velocity = details.primaryVelocity ?? 0;
               if (velocity.abs() < 300) return;
-              final nextIndex = velocity < 0
-                  ? (_selectedIndex + 1).clamp(0, pages.length - 1)
-                  : (_selectedIndex - 1).clamp(0, pages.length - 1);
+              final settings = AppSettings.instance;
+              final visibleTabs = settings.navigationOrder
+                  .where((id) => id != 'browse' && settings.visibleNavigationItems.contains(id))
+                  .map((id) => switch (id) {
+                    'explore' => 1,
+                    'files' => 2,
+                    _ => 0,
+                  })
+                  .toList(growable: false);
+              final currentPosition = visibleTabs.indexOf(_selectedIndex);
+              if (currentPosition < 0) return;
+              final nextPosition = velocity < 0
+                  ? (currentPosition + 1).clamp(0, visibleTabs.length - 1)
+                  : (currentPosition - 1).clamp(0, visibleTabs.length - 1);
+              final nextIndex = visibleTabs[nextPosition];
               if (nextIndex != _selectedIndex) _openTab(nextIndex);
             },
             child: IndexedStack(index: _selectedIndex, children: pages),
