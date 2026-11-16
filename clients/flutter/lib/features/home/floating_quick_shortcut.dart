@@ -109,7 +109,7 @@ class _FloatingQuickShortcutState extends State<FloatingQuickShortcut>
                 child: InkWell(
                   customBorder: const CircleBorder(),
                   onTap: widget.onTap,
-                  onLongPress: widget.onLongPress,
+                  onLongPress: widget.longPressEnabled ? widget.onLongPress : null,
                   child: SizedBox(
                     width: 56,
                     height: 56,
