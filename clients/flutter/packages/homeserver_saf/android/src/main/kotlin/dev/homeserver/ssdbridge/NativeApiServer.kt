@@ -243,7 +243,7 @@ internal class NativeApiServer(
             if (!staging.renameTo(target)) {
                 staging.delete()
                 jsonError(Response.Status.INTERNAL_ERROR, "Could not finalize uploaded file")
-            } else json(JSONObject().put("ok", true).put("name", name))
+            } else json(JSONObject().put("ok", true).put("name", name)).also { markMediaIndexDirty() }
         } finally {
             temp.delete()
             if (staging.exists()) staging.delete()
@@ -413,7 +413,7 @@ internal class NativeApiServer(
                 temp.inputStream().use { input -> input.copyTo(output) }
             } ?: return jsonError(Response.Status.INTERNAL_ERROR, "Cannot write file")
             if (!staged.renameTo(name)) jsonError(Response.Status.INTERNAL_ERROR, "Could not finalize uploaded file")
-            else json(JSONObject().put("ok", true).put("name", name))
+            else json(JSONObject().put("ok", true).put("name", name)).also { markMediaIndexDirty() }
         } finally {
             temp.delete()
             if (staged.exists()) staged.delete()
@@ -436,7 +436,7 @@ internal class NativeApiServer(
             if (target.parentFile?.findFile(name) != null) return jsonError(Response.Status.CONFLICT, "Name already exists")
             if (!target.renameTo(name)) return jsonError(Response.Status.INTERNAL_ERROR, "Rename failed")
         }
-        return json(JSONObject().put("ok", true).put("name", target.name ?: name))
+        return json(JSONObject().put("ok", true).put("name", target.name ?: name)).also { markMediaIndexDirty() }
     }
 
     private fun deleteExternal(volume: String?, relative: String): Response {
