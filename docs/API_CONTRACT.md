@@ -43,6 +43,10 @@ This document describes the native Android implementation in `clients/flutter/pa
 | DELETE | `/api/storage/item` | Query: `volume`, `path` | Delete external item |
 | GET | `/api/media/metadata` | Query: `path`; optional `volume` | Read video duration, width, and height |
 | GET | `/api/media/thumbnail` | Query: `path`; optional `volume` | Generate a JPEG video preview thumbnail |
+| GET | `/api/index/status` | — | Start the first background index scan if needed and return scan/index status |
+| POST | `/api/index/scan` | — | Request a full index refresh |
+| GET | `/api/index/media` | Query: `category` (`music`, `video`, `photo`), optional `q`, `limit`, `offset` | Search indexed media metadata |
+| GET | `/api/index/files` | Query: optional `q`, `limit`, `offset` | Search indexed files and folders |
 
 ## Response shapes
 
@@ -51,6 +55,16 @@ Directory listings return `{"path":"...","items":[...]}`. Each item includes `na
 Volume listings return `{"items":[{"id":"...","name":"...","available":true,"writable":true}]}`.
 
 Mutation and upload success responses return `{"ok":true,"name":"..."}` (delete returns `{"ok":true}`). Video metadata returns `duration_ms`, `width`, and `height`.
+
+## Persistent indexing and fallback
+
+- The Android host maintains a SQLite file index and a separate media index for music, videos, and photos.
+- The first authenticated index request starts a background scan of internal storage and granted USB/SSD SAF volumes. Requests read persisted rows while a refresh runs.
+- Explicit refresh requests a new scan. Complete source scans prune deleted entries; partial or failed scans retain previous rows.
+- File and media tables are written and pruned independently. A failure in one index does not invalidate the other.
+- Flutter media and search screens fall back to their existing directory-walk implementations when index endpoints are unavailable or the index cannot provide results.
+- SAF providers can expose incomplete directory listings or unreliable timestamps. Partial scans are reported and do not remove older indexed entries.
+- The index stores metadata and paths only. It never copies, resizes, transcodes, compresses, or modifies original files.
 
 ## Upload and download behavior
 
