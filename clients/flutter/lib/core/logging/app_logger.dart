@@ -24,7 +24,7 @@ class AppLogger {
         'debug': kDebugMode,
       });
     } catch (error) {
-      debugPrint('PocketLink logger initialization failed: $error');
+      debugPrint('PocketLink logger initialization failed: ${_redact(error.toString())}');
     }
   }
 
@@ -50,7 +50,7 @@ class AppLogger {
   }) async {
     final file = _logFile;
     if (file == null) {
-      debugPrint('[$level] $message');
+      debugPrint('[$level] ${_redact(message)}');
       return;
     }
     final safeFields = fields.map((key, value) => MapEntry(
@@ -73,7 +73,7 @@ class AppLogger {
         await _rotateIfNeeded();
         await file.writeAsString(line.toString(), mode: FileMode.append, flush: true);
       } catch (writeError) {
-        debugPrint('PocketLink log write failed: $writeError');
+        debugPrint('PocketLink log write failed: ${_redact(writeError.toString())}');
       }
     });
   }
@@ -100,6 +100,12 @@ class AppLogger {
       .replaceAll(
         RegExp(
           r'(?<![\d.])(?:25[0-5]|2[0-4]\d|1?\d?\d)(?:\.(?:25[0-5]|2[0-4]\d|1?\d?\d)){3}(?![\d.])',
+        ),
+        '[REDACTED_HOST]',
+      )
+      .replaceAll(
+        RegExp(
+          r'(?<![0-9A-Fa-f:])(?:[0-9A-Fa-f]{0,4}:){2,7}[0-9A-Fa-f]{0,4}(?![0-9A-Fa-f:])',
         ),
         '[REDACTED_HOST]',
       );
