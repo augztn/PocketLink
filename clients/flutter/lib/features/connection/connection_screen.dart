@@ -543,16 +543,73 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                   ),
                 ],
                 const SizedBox(height: 14),
-                OutlinedButton.icon(
-                  onPressed: _isConnecting
-                      ? null
-                      : () => Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => const LocalStorageSetupScreen(),
+                Card(
+                  clipBehavior: Clip.antiAlias,
+                  margin: EdgeInsets.zero,
+                  color: colors.surfaceContainerLow,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    side: BorderSide(
+                      color: colors.outlineVariant.withValues(alpha: 0.45),
+                    ),
+                  ),
+                  child: InkWell(
+                    onTap: _isConnecting
+                        ? null
+                        : () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const LocalStorageSetupScreen(),
+                              ),
+                            ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: colors.primaryContainer,
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            child: Icon(
+                              Icons.phone_android_rounded,
+                              color: colors.onPrimaryContainer,
+                              size: 25,
                             ),
                           ),
-                  icon: const Icon(Icons.dns_outlined),
-                  label: const Text('Host PocketLink on this phone'),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Host PocketLink on this device',
+                                  style: theme.textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Turn this phone into your server and configure storage access.',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: colors.onSurfaceVariant,
+                                    height: 1.35,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 16,
+                            color: colors.onSurfaceVariant,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 18),
                 Text(
