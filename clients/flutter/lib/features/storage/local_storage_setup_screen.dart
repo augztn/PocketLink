@@ -138,19 +138,13 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
     try {
       final initial = await _channel.invokeMethod<String>('refreshMediaIndex');
       if (initial != null && mounted) {
-        setState(() => _mediaScanStatus =
-            Map<String, dynamic>.from(jsonDecode(initial) as Map));
-      }
-      // Poll only while this user-requested scan is active; no permanent timer.
-      for (var attempt = 0; attempt < 240; attempt++) {
-        if (!mounted) return;
-        await Future<void>.delayed(const Duration(seconds: 1));
-        final raw = await _channel.invokeMethod<String>('mediaIndexStatus');
-        if (raw == null) continue;
-        final status = Map<String, dynamic>.from(jsonDecode(raw) as Map);
-        if (!mounted) return;
-        setState(() => _mediaScanStatus = status);
-        if (status['state'] != 'scanning') break;
+        final status = Map<String, dynamic>.from(jsonDecode(initial) as Map);
+        setState(() {
+          _mediaScanStatus = status;
+          _scanningMedia = status['state'] == 'scanning';
+        });
+        // Poll only while this user-requested scan is active; no permanent timer.
+        if (_scanningMedia) await _watchMediaScan();
       }
     } on PlatformException catch (error) {
       if (mounted) setState(() => _error =
