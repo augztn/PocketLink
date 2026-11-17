@@ -536,7 +536,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
           ),
           Expanded(
             child: Center(
-              child: AppSettings.instance.showNowPlayingFolder ? Text(
+              child: Text(
                 'PLAYING FROM ${_folderName.toUpperCase()}',
                 textAlign: TextAlign.center,
                 maxLines: 1,
@@ -547,7 +547,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                   letterSpacing: 1.25,
                   fontWeight: FontWeight.w600,
                 ),
-              ) : const SizedBox.shrink(),
+              ),
             ),
           ),
           SizedBox(
@@ -862,7 +862,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                               ),
                             ),
                             const SizedBox(height: 3),
-                            if (AppSettings.instance.showNowPlayingFolder) Text(
+                            Text(
                               _folderName,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
