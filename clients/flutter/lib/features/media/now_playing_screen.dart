@@ -10,7 +10,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/network/offline_file_cache.dart';
-import '../../core/logging/app_logger.dart';
+import '../../core/logging/app_logger.dart';\nimport '../../core/settings/app_settings.dart';
 import '../../core/widgets/home_server_app_bar.dart';
 import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
@@ -800,7 +800,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
         onVerticalDragUpdate: (details) => _dismissDragDistance += details.primaryDelta ?? 0,
         onHorizontalDragStart: (_) => _trackSwipeDistance = 0,
         onHorizontalDragUpdate: (details) => _trackSwipeDistance += details.primaryDelta ?? 0,
-        onVerticalDragEnd: (details) {
+        onVerticalDragEnd: AppSettings.instance.enableNowPlayingGestures ? (details) {
           if (_dismissDragDistance > 100 || (details.primaryVelocity ?? 0) > 500) {
             Navigator.maybePop(context);
           }
@@ -822,7 +822,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             _header(),
             Expanded(
               child: Center(
-                child: _artworkCard(),
+                child: AppSettings.instance.showNowPlayingArtwork ? _artworkCard() : const SizedBox.shrink(),
               ),
             ),
             Padding(
@@ -902,7 +902,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            _bottomUtilities(),
+            if (AppSettings.instance.showNowPlayingUtilities) _bottomUtilities(),
             const SizedBox(height: 2),
             const Text(
               'This device',
