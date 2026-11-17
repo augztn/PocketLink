@@ -85,37 +85,19 @@ void main() {
     await tester.tap(find.text('Device'));
     await tester.pumpAndSettle();
 
-    final deviceList = find.byKey(
-      const PageStorageKey<String>('host-storage'),
-    );
-    final deviceScrollable = find.descendant(
-      of: deviceList,
-      matching: find.byType(Scrollable),
-    ).first;
+    // Keep the complete Device page in the test viewport. The production
+    // ListView remains lazy; a tall viewport avoids coupling this test to
+    // nested Scrollable implementation details.
+    tester.view.physicalSize = const Size(1200, 4000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpAndSettle();
 
-    // ListView lazily builds off-screen volume tiles. Scroll each assertion
-    // into view so the test verifies the rendered UI, not eager construction.
-    await tester.scrollUntilVisible(
-      find.text('SD card'),
-      250,
-      scrollable: deviceScrollable,
-    );
     expect(find.text('SD card'), findsOneWidget);
     expect(find.text('Direct access · read-only'), findsOneWidget);
-
-    await tester.scrollUntilVisible(
-      find.text('USB drive'),
-      250,
-      scrollable: deviceScrollable,
-    );
     expect(find.text('USB drive'), findsOneWidget);
     expect(find.text('Detected · tap to approve folder access'), findsOneWidget);
-
-    await tester.scrollUntilVisible(
-      find.text('Choose a folder manually'),
-      250,
-      scrollable: deviceScrollable,
-    );
     expect(find.text('Choose a folder manually'), findsOneWidget);
   });
 
