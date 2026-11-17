@@ -219,7 +219,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
   Future<void> _requestBackgroundAccess() async {
     setState(() { _busy = true; _error = null; });
     try {
-      final alreadyAllowed = await _channel.invokeMethod<bool>('requestBackgroundAccess');
+      await _channel.invokeMethod<bool>('requestBackgroundAccess');
       await _refresh();
     } on PlatformException catch (error) {
       if (mounted) setState(() {
