@@ -9,7 +9,8 @@ import 'package:share_plus/share_plus.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/settings/app_settings.dart';
 import 'navigation_customization_screen.dart';
-import 'floating_shortcut_customization_screen.dart';\nimport 'now_playing_settings_screen.dart';
+import 'floating_shortcut_customization_screen.dart';
+import 'now_playing_settings_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({this.onOpenSavedServers, this.category, super.key});
