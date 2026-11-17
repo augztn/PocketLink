@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import '../../core/widgets/home_server_app_bar.dart';
 import 'package:flutter/services.dart';
 
+import '../diagnostics/diagnostics_screen.dart';
+
 class LocalStorageSetupScreen extends StatefulWidget {
   const LocalStorageSetupScreen({super.key});
 
@@ -18,6 +20,8 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
   String? _token;
   final _serverPasswordController = TextEditingController();
   bool _serverPasswordConfigured = false;
+  bool _obscureServerPassword = true;
+  bool _refreshingStatus = false;
   String? _error;
   bool _busy = false;
   bool _refreshingStorage = false;
@@ -78,6 +82,19 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
       if (mounted) setState(() => _error = 'Native Android storage support is unavailable in this build.');
     } on PlatformException catch (error) {
       if (mounted) setState(() => _error = error.message ?? 'Could not read storage status.');
+    }
+  }
+
+  Future<void> _refreshDeviceStatus() async {
+    if (_refreshingStatus || _busy) return;
+    setState(() {
+      _refreshingStatus = true;
+      _error = null;
+    });
+    try {
+      await _refresh();
+    } finally {
+      if (mounted) setState(() => _refreshingStatus = false);
     }
   }
 
@@ -314,7 +331,20 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
     final completedScanAt = _formatScanTimestamp(_mediaScanStatus['last_completed_at']);
 
     return Scaffold(
-      appBar: const HomeServerAppBar(title: Text('Host PocketLink')),
+      appBar: HomeServerAppBar(
+        title: const Text('Host PocketLink'),
+        actions: [
+          HomeServerAppBarAction(
+            label: 'Logs & diagnostics',
+            icon: Icons.article_outlined,
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const DiagnosticsScreen(),
+              ),
+            ),
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
         children: [
@@ -403,8 +433,14 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
           ],
           const SizedBox(height: 8),
           OutlinedButton.icon(
-            onPressed: _busy ? null : _refresh,
-            icon: const Icon(Icons.refresh_rounded, size: 18),
+            onPressed: _busy || _refreshingStatus ? null : _refreshDeviceStatus,
+            icon: _refreshingStatus
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.refresh_rounded, size: 18),
             label: const Text('Refresh device status'),
             style: OutlinedButton.styleFrom(
               minimumSize: const Size.fromHeight(48),
@@ -443,12 +479,24 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                 const SizedBox(height: 14),
                 TextField(
                   controller: _serverPasswordController,
-                  obscureText: true,
+                  obscureText: _obscureServerPassword,
                   enabled: !_busy,
                   decoration: InputDecoration(
                     labelText: 'New server password',
                     helperText: 'Never uploaded or stored in plaintext.',
                     prefixIcon: const Icon(Icons.password_rounded),
+                    suffixIcon: IconButton(
+                      tooltip: _obscureServerPassword ? 'Show password' : 'Hide password',
+                      onPressed: _busy
+                          ? null
+                          : () => setState(() =>
+                              _obscureServerPassword = !_obscureServerPassword),
+                      icon: Icon(
+                        _obscureServerPassword
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
+                    ),
                     filled: true,
                     fillColor: colors.surface,
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
