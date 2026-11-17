@@ -54,6 +54,11 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
   bool _startingMediaScan = false;
   bool _watchingMediaScan = false;
   HostSystemTelemetry? _hostTelemetry;
+  String? _telemetryError;
+  String? _mediaScanError;
+  String? _volumeError;
+  String? _recentFilesError;
+  int _refreshGeneration = 0;
   Timer? _telemetryTimer;
   Future<void>? _telemetryRequest;
   final QuickActionsStore _quickActionsStore = QuickActionsStore();
@@ -442,9 +447,12 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
     request = () async {
       try {
         final telemetry = await widget.api.systemTelemetry();
-        if (mounted) setState(() => _hostTelemetry = telemetry);
+        if (mounted) setState(() {
+          _hostTelemetry = telemetry;
+          _telemetryError = null;
+        });
       } catch (_) {
-        // Hardware telemetry is optional; it must not change server connectivity.
+        if (mounted) setState(() => _telemetryError = 'Could not read host device health. Pull to refresh and try again.');
       } finally {
         if (identical(_telemetryRequest, request)) _telemetryRequest = null;
       }
@@ -1062,11 +1070,17 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
 
   Future<void> _startHostMediaScan() async {
     if (_startingMediaScan || (_mediaScanStatus?.isScanning ?? false)) return;
-    setState(() => _startingMediaScan = true);
+    setState(() {
+      _startingMediaScan = true;
+      _mediaScanError = null;
+    });
     try {
       final status = await widget.api.startMediaIndexScan();
       if (!mounted) return;
-      setState(() => _mediaScanStatus = status);
+      setState(() {
+        _mediaScanStatus = status;
+        _mediaScanError = status.state == 'failed' ? (status.lastError ?? 'The host scan failed.') : null;
+      });
       if (status.isScanning) unawaited(_watchHostMediaScan());
       else if (status.state == 'failed' || status.state == 'partial') {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1075,6 +1089,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
       }
     } catch (_) {
       if (mounted) {
+        setState(() => _mediaScanError = 'Could not start the host scan. Check the host connection and storage permissions.');
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Could not start a scan on the host device. Check the server connection.')),
         );
@@ -1152,51 +1167,84 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
     );
   }
 
+  Future<void> _refreshMediaIndexStatus(int generation) async {
+    try {
+      final status = await widget.api.mediaIndexStatus();
+      if (!mounted || generation != _refreshGeneration) return;
+      setState(() {
+        _mediaScanStatus = status;
+        _mediaScanError = null;
+      });
+      if (status.isScanning) unawaited(_watchHostMediaScan());
+    } catch (_) {
+      if (mounted && generation == _refreshGeneration) {
+        setState(() => _mediaScanError = 'Host media index is unavailable. Check the native host service.');
+      }
+    }
+  }
+
+  Future<void> _refreshVolumesAndRecentFiles(int generation) async {
+    List<StorageVolume> volumes;
+    try {
+      volumes = await widget.api.listStorageVolumes();
+      if (!mounted || generation != _refreshGeneration) return;
+      setState(() {
+        _volumes = volumes;
+        _volumeError = null;
+      });
+    } catch (_) {
+      if (!mounted || generation != _refreshGeneration) return;
+      setState(() => _volumeError = 'Could not load mounted storage from the host.');
+      return;
+    }
+
+    try {
+      final recentFiles = await widget.api.listRecentFiles(volumes: volumes);
+      if (!mounted || generation != _refreshGeneration) return;
+      setState(() {
+        _recentFiles = recentFiles;
+        _recentFilesError = null;
+      });
+    } catch (_) {
+      if (mounted && generation == _refreshGeneration) {
+        setState(() => _recentFilesError = 'Could not load recent files from the host.');
+      }
+    }
+  }
+
   Future<void> _refreshStatus({bool forceRefresh = false}) async {
     if (_checking) return;
     if (forceRefresh) widget.api.invalidateDirectoryCache();
+    final generation = ++_refreshGeneration;
     if (mounted) setState(() => _checking = true);
-    var online = false;
-    var volumes = <StorageVolume>[];
     final stopwatch = Stopwatch()..start();
     try {
+      // Only the authenticated root request determines whether the host is online.
+      // Optional panels load independently so slow storage scans cannot keep the
+      // entire dashboard stuck in the "Checking" state.
       await widget.api.authenticate();
       stopwatch.stop();
-      await _refreshHostTelemetry();
-      online = true;
-      if (mounted) setState(() => _latency = stopwatch.elapsed);
-      try {
-        final scanStatus = await widget.api.mediaIndexStatus();
-        if (mounted) {
-          setState(() => _mediaScanStatus = scanStatus);
-          if (scanStatus.isScanning) unawaited(_watchHostMediaScan());
-        }
-      } catch (_) {
-        // The server can be online even when media indexing is unavailable.
-      }
-      try {
-        volumes = await widget.api.listStorageVolumes();
-      } catch (_) {
-        // The server can be reachable even when the optional volume endpoint fails.
-      }
-      try {
-        final recentFiles = await widget.api.listRecentFiles(volumes: volumes);
-        if (mounted) setState(() => _recentFiles = recentFiles);
-      } catch (_) {
-        // A recent-file scan failure must not mark a reachable server as offline.
-      }
+      if (!mounted || generation != _refreshGeneration) return;
+      setState(() {
+        _serverOnline = true;
+        _latency = stopwatch.elapsed;
+        _lastCheckedAt = DateTime.now();
+        _checking = false;
+      });
+
+      unawaited(_refreshHostTelemetry());
+      unawaited(_refreshMediaIndexStatus(generation));
+      unawaited(_refreshVolumesAndRecentFiles(generation));
     } catch (_) {
       stopwatch.stop();
-      online = false;
-      if (mounted) setState(() => _latency = null);
+      if (!mounted || generation != _refreshGeneration) return;
+      setState(() {
+        _serverOnline = false;
+        _latency = null;
+        _lastCheckedAt = DateTime.now();
+        _checking = false;
+      });
     }
-    if (!mounted) return;
-    setState(() {
-      _serverOnline = online;
-      _volumes = volumes;
-      _lastCheckedAt = DateTime.now();
-      _checking = false;
-    });
   }
 
   @override
