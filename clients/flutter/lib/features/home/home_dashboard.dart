@@ -640,66 +640,66 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                 telemetry.cpuCores == null ? null : '${telemetry.cpuCores} cores',
               ),
           ],
-            if (_volumes.isNotEmpty) ...[
-              const SizedBox(height: 5),
-              Text('EXTERNAL STORAGE', style: theme.textTheme.labelSmall?.copyWith(
-                color: muted, letterSpacing: 0.65, fontWeight: FontWeight.w800,
-              )),
-              const SizedBox(height: 7),
-              for (final volume in _volumes) ...[
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 9),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Row(children: [
-                      Icon(Icons.usb_rounded, size: 15, color: muted),
-                      const SizedBox(width: 8),
-                      Expanded(child: Text(volume.name, maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.labelMedium?.copyWith(
-                          color: foreground, fontWeight: FontWeight.w700,
-                        ))),
-                      Text(
-                        !volume.available ? 'Disconnected' : volume.writable ? 'Writable' : 'Read only',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: !volume.available ? muted : volume.writable
-                              ? const Color(0xFF4ADE80) : const Color(0xFFFBBF24),
-                          fontWeight: FontWeight.w700,
-                        ),
+          if (_volumes.isNotEmpty) ...[
+            const SizedBox(height: 5),
+            Text('EXTERNAL STORAGE', style: theme.textTheme.labelSmall?.copyWith(
+              color: muted, letterSpacing: 0.65, fontWeight: FontWeight.w800,
+            )),
+            const SizedBox(height: 7),
+            for (final volume in _volumes) ...[
+              Padding(
+                padding: const EdgeInsets.only(bottom: 9),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Icon(Icons.usb_rounded, size: 15, color: muted),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(volume.name, maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: foreground, fontWeight: FontWeight.w700,
+                      ))),
+                    Text(
+                      !volume.available ? 'Disconnected' : volume.writable ? 'Writable' : 'Read only',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: !volume.available ? muted : volume.writable
+                            ? const Color(0xFF4ADE80) : const Color(0xFFFBBF24),
+                        fontWeight: FontWeight.w700,
                       ),
-                    ]),
-                    if (volume.available &&
-                        volume.totalBytes != null &&
-                        volume.usedBytes != null &&
-                        volume.availableBytes != null &&
-                        volume.usagePercent != null) ...[
-                      const SizedBox(height: 5),
-                      Row(children: [
-                        Expanded(child: Text(
-                          '${_formatBytes(volume.usedBytes!)} of ${_formatBytes(volume.totalBytes!)} used',
-                          style: theme.textTheme.labelSmall?.copyWith(color: muted),
-                        )),
-                        Text('${_formatBytes(volume.availableBytes!)} free',
-                          style: theme.textTheme.labelSmall?.copyWith(color: muted)),
-                      ]),
-                      const SizedBox(height: 5),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: (volume.usagePercent!.clamp(0, 100)) / 100,
-                          minHeight: 4,
-                          backgroundColor: Colors.white.withValues(alpha: 0.10),
-                          color: const Color(0xFF60A5FA),
-                        ),
-                      ),
-                    ] else if (volume.available) ...[
-                      const SizedBox(height: 3),
-                      Text('Capacity unavailable on this Android version or storage provider',
-                        style: theme.textTheme.labelSmall?.copyWith(color: muted)),
-                    ],
+                    ),
                   ]),
-                ),
-              ],
+                  if (volume.available &&
+                      volume.totalBytes != null &&
+                      volume.usedBytes != null &&
+                      volume.availableBytes != null &&
+                      volume.usagePercent != null) ...[
+                    const SizedBox(height: 5),
+                    Row(children: [
+                      Expanded(child: Text(
+                        '${_formatBytes(volume.usedBytes!)} of ${_formatBytes(volume.totalBytes!)} used',
+                        style: theme.textTheme.labelSmall?.copyWith(color: muted),
+                      )),
+                      Text('${_formatBytes(volume.availableBytes!)} free',
+                        style: theme.textTheme.labelSmall?.copyWith(color: muted)),
+                    ]),
+                    const SizedBox(height: 5),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: (volume.usagePercent!.clamp(0, 100)) / 100,
+                        minHeight: 4,
+                        backgroundColor: Colors.white.withValues(alpha: 0.10),
+                        color: const Color(0xFF60A5FA),
+                      ),
+                    ),
+                  ] else if (volume.available) ...[
+                    const SizedBox(height: 3),
+                    Text('Capacity unavailable on this Android version or storage provider',
+                      style: theme.textTheme.labelSmall?.copyWith(color: muted)),
+                  ],
+                ]),
+              ),
             ],
+          ],
         ],
       ),
     );
