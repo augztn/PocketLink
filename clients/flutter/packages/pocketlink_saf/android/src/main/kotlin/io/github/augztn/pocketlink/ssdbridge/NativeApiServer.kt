@@ -97,7 +97,7 @@ internal class NativeApiServer(
         }
 
         return try {
-            val query = session.parms
+            val query = session.parameters.mapValues { (_, values) -> values.firstOrNull().orEmpty() }
             val path = query["path"].orEmpty()
             when {
                 session.uri == "/api/files/" && session.method == Method.GET ->
