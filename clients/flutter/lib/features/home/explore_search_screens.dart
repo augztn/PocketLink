@@ -57,7 +57,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
     return NavigatorPopHandler<void>(
       enabled: _navigatorKey.currentState?.canPop() ?? false,
       onPop: () => _navigatorKey.currentState?.maybePop(),
-      child: Navigator(
+      child: HomeServerNavigationScope(
+        onHome: () {
+          _navigatorKey.currentState?.popUntil((route) => route.isFirst);
+          widget.onBackAtRoot?.call();
+        },
+        child: Navigator(
         key: _navigatorKey,
         observers: [_observer],
         onGenerateInitialRoutes: (navigator, initialRoute) => [
@@ -72,6 +77,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
             ),
           ),
         ],
+      ),
       ),
     );
   }
