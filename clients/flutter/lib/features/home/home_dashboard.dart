@@ -519,9 +519,13 @@ class HomeDashboardState extends State<HomeDashboard> {
             telemetry?.storageTotalBytes != null
         ? '${_formatBytes(telemetry!.storageUsedBytes!)} / ${_formatBytes(telemetry.storageTotalBytes!)} used'
         : 'Storage details unavailable';
-    final batteryDetail = telemetry == null || telemetry.batteryPercent == null
+    final batteryDetail = telemetry == null
         ? 'Battery status unavailable'
-        : telemetry.isCharging ? 'Charging' : 'Not charging';
+        : switch (telemetry.batteryStatus) {
+            'charging' => 'Charging',
+            'not_charging' => 'Not charging',
+            _ => 'Status unavailable',
+          };
     final deviceName = [
       telemetry?.manufacturer,
       telemetry?.deviceModel,
@@ -551,7 +555,7 @@ class HomeDashboardState extends State<HomeDashboard> {
               ))),
             if (sampledAt != null)
               Text(
-                'Updated ${sampledAt.hour.toString().padLeft(2, '0')}:${sampledAt.minute.toString().padLeft(2, '0')}',
+                '${_serverOnline == true ? 'Updated' : 'Last known'} ${sampledAt.hour.toString().padLeft(2, '0')}:${sampledAt.minute.toString().padLeft(2, '0')}',
                 style: theme.textTheme.labelSmall?.copyWith(color: muted),
               ),
           ]),
