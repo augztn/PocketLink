@@ -347,6 +347,7 @@ class ServerApi {
   static const _maxCachedDirectories = 512;
   final Map<String, _CacheEntry<DirectoryListing>> _directoryCache = {};
   final Map<String, Future<DirectoryListing>> _directoryRequests = {};
+  static final Map<String, Future<Object?>> _sharedReadRequests = {};
   _CacheEntry<List<StorageVolume>>? _volumesCache;
   Future<List<StorageVolume>>? _volumesRequest;
   int _cacheGeneration = 0;
@@ -364,6 +365,34 @@ class ServerApi {
       hash = (hash * 0x01000193) & 0xffffffff;
     }
     return hash.toRadixString(16).padLeft(8, '0');
+  }
+
+  String _stableHash(String value) {
+    var hash = 0x811c9dc5;
+    for (final unit in value.codeUnits) {
+      hash ^= unit;
+      hash = (hash * 0x01000193) & 0xffffffff;
+    }
+    return hash.toRadixString(16).padLeft(8, '0');
+  }
+
+  Future<T> _sharedRead<T>(
+    String resourceKey,
+    Future<T> Function() load,
+  ) {
+    final authorization = _dio.options.headers['Authorization']?.toString() ?? '';
+    final key = '${_dio.options.baseUrl}:${_stableHash(authorization)}:$resourceKey';
+    final existing = _sharedReadRequests[key];
+    if (existing != null) return existing.then((value) => value as T);
+
+    late final Future<T> request;
+    request = load().whenComplete(() {
+      if (identical(_sharedReadRequests[key], request)) {
+        _sharedReadRequests.remove(key);
+      }
+    });
+    _sharedReadRequests[key] = request;
+    return request;
   }
 
   void _releaseRequestSlot(RequestOptions options) {
@@ -676,12 +705,13 @@ class ServerApi {
 
     final generation = _cacheGeneration;
     late final Future<List<StorageVolume>> request;
-    request = () async {
+    request = _sharedRead('storage:volumes', () async {
       final response =
           await _dio.get<Map<String, dynamic>>('/api/storage/volumes');
-      final volumes = (response.data?['items'] as List<dynamic>? ?? const [])
+      return (response.data?['items'] as List<dynamic>? ?? const [])
           .map((item) => StorageVolume.fromJson(item as Map<String, dynamic>))
           .toList(growable: false);
+    }).then((volumes) {
       if (generation != _cacheGeneration) {
         if (identical(_volumesRequest, request)) _volumesRequest = null;
         return listStorageVolumes();
@@ -691,7 +721,7 @@ class ServerApi {
         DateTime.now().add(_directoryCacheTtl),
       );
       return volumes;
-    }().whenComplete(() {
+    }).whenComplete(() {
       if (identical(_volumesRequest, request)) _volumesRequest = null;
     });
     _volumesRequest = request;
@@ -747,13 +777,13 @@ class ServerApi {
         'storage:$volume:$path',
         _directoryCache,
         _directoryRequests,
-        () async {
+        () => _sharedRead('storage:$volume:$path', () async {
           final response = await _dio.get<Map<String, dynamic>>(
             '/api/storage/list',
             queryParameters: {'volume': volume, 'path': path},
           );
           return DirectoryListing.fromJson(response.data ?? const {});
-        },
+        }),
       );
 
   Future<void> uploadStorageFile(
