@@ -239,10 +239,21 @@ class PocketLinkSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
         "usb1" to volumeName("usb1"),
         "usb2" to volumeName("usb2"),
         "discoveredVolumes" to discoverVolumes().map { (id, volume) ->
+            val directory = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) volume.directory else null
+            val directAccess = internalStorageGranted() && directory?.isDirectory == true &&
+                directory.canRead() && directory.listFiles() != null
+            val safSelected = prefs.getString("volume_uri_$id", null) != null
             mapOf(
                 "id" to id,
                 "name" to volume.getDescription(context),
-                "selected" to (prefs.getString("volume_uri_$id", null) != null),
+                "selected" to (directAccess || safSelected),
+                "access" to when {
+                    directAccess -> "direct"
+                    safSelected -> "saf"
+                    else -> "not_granted"
+                },
+                "readable" to (directAccess || safSelected),
+                "writable" to if (directAccess) directory?.canWrite() == true else safSelected,
                 "state" to volume.state
             )
         },
