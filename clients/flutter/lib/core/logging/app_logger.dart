@@ -12,6 +12,11 @@ class AppLogger {
   static Directory? _directory;
   static Future<void> _writeQueue = Future<void>.value();
   static File? _logFile;
+  static final DateTime _sessionStartedAt = DateTime.now().toUtc();
+  static int _eventSequence = 0;
+
+  static String nextEventId([String prefix = 'evt']) =>
+      '$prefix-${++_eventSequence}';
 
   static Future<void> initialize() async {
     try {
@@ -22,6 +27,9 @@ class AppLogger {
       await info('Application started', fields: {
         'platform': Platform.operatingSystem,
         'debug': kDebugMode,
+        'session': nextEventId('session'),
+        'pid': pid,
+        'processors': Platform.numberOfProcessors,
       });
     } catch (error) {
       debugPrint('PocketLink logger initialization failed: ${_redact(error.toString())}');
@@ -152,9 +160,31 @@ class AppLogger {
     return parts.join('\n');
   }
 
+  static Future<String> _diagnosticHeader() async {
+    final now = DateTime.now().toUtc();
+    final uptime = now.difference(_sessionStartedAt);
+    final lines = <String>[
+      'PocketLink diagnostic report',
+      'Captured: ${now.toIso8601String()}',
+      'Session started: ${_sessionStartedAt.toIso8601String()}',
+      'Session uptime: ${uptime.inSeconds}s',
+      'Platform: ${Platform.operatingSystem}',
+      'OS version: ${Platform.operatingSystemVersion}',
+      'Dart: ${Platform.version.split(' ').first}',
+      'CPU cores: ${Platform.numberOfProcessors}',
+    ];
+    try {
+      lines.add('Process RSS: ${(ProcessInfo.currentRss / (1024 * 1024)).toStringAsFixed(1)} MB');
+      lines.add('Peak process RSS: ${(ProcessInfo.maxRss / (1024 * 1024)).toStringAsFixed(1)} MB');
+    } catch (_) {
+      lines.add('Process memory: unavailable');
+    }
+    return '${lines.join('\\n')}\\n\\n';
+  }
+
   static Future<File> createDiagnosticFile() async {
     final directory = _directory ?? await getApplicationSupportDirectory();
-    final content = sanitizeDiagnosticContent(await readLogs());
+    final content = sanitizeDiagnosticContent('${await _diagnosticHeader()}${await readLogs()}');
     final file = File('${directory.path}/pocketlink-diagnostics-${DateTime.now().toUtc().millisecondsSinceEpoch}.txt');
     await file.writeAsString(content, flush: true);
     return file;
