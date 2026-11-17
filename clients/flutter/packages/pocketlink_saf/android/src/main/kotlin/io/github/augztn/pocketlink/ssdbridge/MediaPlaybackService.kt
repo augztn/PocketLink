@@ -100,7 +100,7 @@ class MediaPlaybackService : Service() {
                 return START_NOT_STICKY
             }
             ACTION_DISMISS, LEGACY_ACTION_DISMISS -> {
-                stopForeground(true)
+                stopForegroundCompat()
                 stopSelf()
                 return START_NOT_STICKY
             }
