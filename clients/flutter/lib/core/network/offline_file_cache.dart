@@ -78,6 +78,7 @@ class OfflineFileCache {
     final support = await getApplicationSupportDirectory();
     final root = Directory('${support.path}/pocketlink/offline-cache');
     final legacy = Directory('${support.path}/homeserver/offline-cache');
+    await root.parent.create(recursive: true);
     if (!await root.exists() && await legacy.exists()) {
       await legacy.rename(root.path);
     }
