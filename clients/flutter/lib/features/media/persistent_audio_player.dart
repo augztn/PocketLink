@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 
 import '../../core/network/server_api.dart';
 import '../../core/storage/home_activity_store.dart';
@@ -51,6 +52,12 @@ class PersistentAudioPlayer extends ChangeNotifier {
   static const MethodChannel _mediaChannel = MethodChannel('homeserver/media');
 
   late final Player player;
+  VideoController? _videoController;
+
+  /// Reuse one video output for the lifetime of the app-scoped Player.
+  /// media_kit_video releases its controller when the Player is disposed.
+  VideoController get videoController =>
+      _videoController ??= VideoController(player);
   StreamSubscription<Playlist>? _playlistSubscription;
   StreamSubscription<bool>? _playingSubscription;
   StreamSubscription<bool>? _completedSubscription;
