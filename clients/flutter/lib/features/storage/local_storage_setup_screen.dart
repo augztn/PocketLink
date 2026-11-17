@@ -129,6 +129,16 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
     }
   }
 
+  String? _formatScanTimestamp(dynamic value) {
+    final milliseconds = value is num ? value.toInt() : int.tryParse(value?.toString() ?? '');
+    if (milliseconds == null || milliseconds <= 0) return null;
+    final date = DateTime.fromMillisecondsSinceEpoch(milliseconds).toLocal();
+    final hour = date.hour % 12 == 0 ? 12 : date.hour % 12;
+    final minute = date.minute.toString().padLeft(2, '0');
+    final period = date.hour < 12 ? 'AM' : 'PM';
+    return '${date.day}/${date.month}/${date.year} · $hour:$minute $period';
+  }
+
   Future<void> _scanMediaAndFiles() async {
     if (_scanningMedia || _busy) return;
     setState(() {
@@ -555,6 +565,21 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                   '${_mediaScanStatus['scanned'] ?? 0} items checked in this scan',
                   style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
                 ),
+                if (_scanningMedia && _mediaScanStatus['current_source'] != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Scanning ${_mediaScanStatus['current_source'] == 'internal' ? 'internal storage' : 'external storage'} · ${((_mediaScanStatus['elapsed_ms'] as num?)?.toInt() ?? 0) ~/ 1000}s elapsed',
+                    style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+                  ),
+                ],
+                if ((_mediaScanStatus['skipped'] as num?)?.toInt() case final skipped? when skipped > 0) ...[
+                  const SizedBox(height: 4),
+                  Text('$skipped items skipped', style: theme.textTheme.bodySmall?.copyWith(color: colors.error)),
+                ],
+                if (!_scanningMedia && _formatScanTimestamp(_mediaScanStatus['last_completed_at']) case final completedAt?) ...[
+                  const SizedBox(height: 4),
+                  Text('Last completed: $completedAt', style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
+                ],
                 if (_scanningMedia) ...[
                   const SizedBox(height: 10),
                   const LinearProgressIndicator(),
