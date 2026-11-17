@@ -216,7 +216,7 @@ internal class MediaIndexDatabase(context: Context) :
 internal class MediaIndexScanner(
     context: Context,
     private val internalRoot: () -> File,
-    private val externalRoots: () -> List<Pair<String, DocumentFile>>
+    private val externalRoots: () -> List<Pair<String, Any>>
 ) {
     private val database = MediaIndexDatabase(context.applicationContext)
     private val executor = Executors.newSingleThreadExecutor { runnable ->

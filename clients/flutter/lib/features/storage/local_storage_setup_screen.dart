@@ -754,7 +754,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                 _PermissionRow(
                   icon: Icons.folder_open_rounded,
                   title: 'All-files access',
-                  description: 'Enables direct access to shared storage and supported USB / SD volumes. SAF remains available for restricted locations.',
+                  description: 'Required to read internal shared storage',
                   status: !_statusLoaded ? 'Checking' : internalGranted ? 'Enabled' : 'Needs access',
                   granted: _statusLoaded && internalGranted,
                   neutral: !_statusLoaded,

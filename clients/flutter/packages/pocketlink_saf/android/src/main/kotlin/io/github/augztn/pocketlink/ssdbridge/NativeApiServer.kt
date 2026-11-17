@@ -58,7 +58,11 @@ internal class NativeApiServer(
                 }
                 if (prefs.getString("usb1", null) != null) ids.add("usb1")
                 if (prefs.getString("usb2", null) != null) ids.add("usb2")
-                ids.mapNotNull { id -> externalRoot(id)?.let { root -> id to root } }
+                discoverRemovableVolumes().forEach { ids.add(it.first) }
+                ids.mapNotNull { id ->
+                    val root: Any = directExternalRoot(id) ?: externalRoot(id) ?: return@mapNotNull null
+                    id to root
+                }
             }
         )
     }
