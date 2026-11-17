@@ -124,7 +124,19 @@ class TransferManager extends ChangeNotifier {
     }
   }
 
+  void _trimHistory() {
+    final finished = _tasks
+        .where((task) => task.status != TransferStatus.running)
+        .toList()
+      ..sort((a, b) => b.startedAt.compareTo(a.startedAt));
+    if (finished.length <= 100) return;
+    final retainedIds = finished.take(100).map((task) => task.id).toSet();
+    _tasks.removeWhere((task) =>
+        task.status != TransferStatus.running && !retainedIds.contains(task.id));
+  }
+
   Future<void> _persist() async {
+    _trimHistory();
     try {
       final snapshot = _tasks.take(100).map((task) => task.toJson()).toList();
       await (await _storeFuture).save(snapshot);
