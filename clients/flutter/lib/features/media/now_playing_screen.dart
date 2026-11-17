@@ -51,20 +51,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   double _dismissDragDistance = 0;
   double _trackSwipeDistance = 0;
 
-  void _handlePlayerSwipeEnd() {
-    if (_dismissDragDistance > 100) {
-      Navigator.maybePop(context);
-    }
-    _dismissDragDistance = 0;
-    if (_trackSwipeDistance.abs() > 80) {
-      if (_trackSwipeDistance < 0) {
-        unawaited(_player.next());
-      } else {
-        unawaited(_player.previous());
-      }
-    }
-    _trackSwipeDistance = 0;
-  }
 
   MediaQueueItem get _track =>
       _persistent.currentItem ??
