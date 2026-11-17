@@ -175,6 +175,7 @@ class MediaPlaybackService : Service() {
     }
 
     private fun updateSession() {
+        MediaPlaybackBridge.isPlaying = playing
         val activeSession = session ?: return
         activeSession.setMetadata(
             MediaMetadataCompat.Builder()
@@ -279,5 +280,6 @@ class MediaPlaybackService : Service() {
 }
 
 internal object MediaPlaybackBridge {
+    @Volatile var isPlaying: Boolean = false
     @Volatile var commandHandler: ((String, Long?) -> Unit)? = null
 }
