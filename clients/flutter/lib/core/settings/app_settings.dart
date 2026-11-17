@@ -27,7 +27,6 @@ class AppSettings extends ChangeNotifier {
   static const _nowPlayingMiniPlayerKey = 'settings_now_playing_mini_player';
   static const _nowPlayingGesturesKey = 'settings_now_playing_gestures';
   static const _nowPlayingFolderKey = 'settings_now_playing_folder';
-  static const _nowPlayingFolderKey = 'settings_now_playing_folder';
   static const homeSectionDefaults = <String>['search', 'quick', 'transfers', 'continue', 'recent'];
   static const navigationDefaults = <String>['home', 'explore', 'files', 'browse'];
   static const floatingShortcutDefaults = <String>[
@@ -58,7 +57,6 @@ class AppSettings extends ChangeNotifier {
   Future<void> _floatingShortcutsWrite = Future<void>.value();
   bool _showMiniPlayer = true;
   bool _enableNowPlayingGestures = true;
-  bool _showNowPlayingFolder = true;
 
   ThemeMode get themeMode => _themeMode;
   bool get amoled => _amoled;
@@ -80,7 +78,6 @@ class AppSettings extends ChangeNotifier {
   bool get showMiniPlayer => _showMiniPlayer;
   bool get enableNowPlayingGestures => _enableNowPlayingGestures;
   bool get showNowPlayingFolder => _showNowPlayingFolder;
-  bool get showNowPlayingFolder => _showNowPlayingFolder;
 
   Future<void> load() async {
     if (_loaded) return;
@@ -89,7 +86,6 @@ class AppSettings extends ChangeNotifier {
       _useLiquidGlass = preferences.getBool(_liquidGlassKey) ?? false;
       _showMiniPlayer = preferences.getBool(_nowPlayingMiniPlayerKey) ?? true;
       _enableNowPlayingGestures = preferences.getBool(_nowPlayingGesturesKey) ?? true;
-      _showNowPlayingFolder = preferences.getBool(_nowPlayingFolderKey) ?? true;
       _showNowPlayingFolder = preferences.getBool(_nowPlayingFolderKey) ?? true;
       _floatingShortcutEnabled = preferences.getBool(_floatingShortcutEnabledKey) ?? false;
       final tapAction = preferences.getString(_floatingShortcutTapActionKey);
@@ -307,11 +303,9 @@ class AppSettings extends ChangeNotifier {
   Future<void> setNowPlayingOptions({
     bool? miniPlayer,
     bool? gestures,
-    bool? folder,
   }) async {
     if (miniPlayer != null) _showMiniPlayer = miniPlayer;
     if (gestures != null) _enableNowPlayingGestures = gestures;
-    if (folder != null) _showNowPlayingFolder = folder;
     if (folder != null) _showNowPlayingFolder = folder;
     notifyListeners();
     final preferences = await SharedPreferences.getInstance();
@@ -319,20 +313,17 @@ class AppSettings extends ChangeNotifier {
       if (miniPlayer != null) preferences.setBool(_nowPlayingMiniPlayerKey, miniPlayer),
       if (gestures != null) preferences.setBool(_nowPlayingGesturesKey, gestures),
       if (folder != null) preferences.setBool(_nowPlayingFolderKey, folder),
-      if (folder != null) preferences.setBool(_nowPlayingFolderKey, folder),
     ]);
   }
 
   Future<void> resetNowPlayingOptions() async {
     _showMiniPlayer = true;
     _enableNowPlayingGestures = true;
-    _showNowPlayingFolder = true;
     notifyListeners();
     final preferences = await SharedPreferences.getInstance();
     await Future.wait([
       preferences.remove(_nowPlayingMiniPlayerKey),
       preferences.remove(_nowPlayingGesturesKey),
-      preferences.remove(_nowPlayingFolderKey),
     ]);
   }
 
