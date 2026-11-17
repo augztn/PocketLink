@@ -76,9 +76,11 @@ class _AboutScreenState extends State<AboutScreen> {
         future: _packageInfo,
         builder: (context, snapshot) {
           final info = snapshot.data;
-          final version = info == null ? 'Loading…' : _displayVersion(info);
+          final version = info == null
+              ? (snapshot.hasError ? 'Unavailable' : 'Loading…')
+              : _displayVersion(info);
           final versionLabel = info == null
-              ? 'Loading application details'
+              ? (snapshot.hasError ? 'Version unavailable' : 'Loading application details')
               : 'Version ${info.version} (${info.buildNumber})';
 
           return ListView(
