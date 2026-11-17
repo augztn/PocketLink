@@ -15,7 +15,7 @@ on:
 permissions:
   contents: read
 
-# Feature branches are validated by pull_request; main is validated by push.
+# Feature branches are validated by pull_request; main is validated by push. Keep checks required.
 # Cancel superseded runs for the same ref instead of wasting runner time.
 concurrency:
   group: flutter-ci-${{ github.ref }}
