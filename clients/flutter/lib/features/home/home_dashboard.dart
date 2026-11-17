@@ -639,6 +639,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                 cpuName ?? 'CPU',
                 telemetry.cpuCores == null ? null : '${telemetry.cpuCores} cores',
               ),
+          ],
             if (_volumes.isNotEmpty) ...[
               const SizedBox(height: 5),
               Text('EXTERNAL STORAGE', style: theme.textTheme.labelSmall?.copyWith(
@@ -699,7 +700,6 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                 ),
               ],
             ],
-          ],
         ],
       ),
     );
