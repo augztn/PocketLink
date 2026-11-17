@@ -23,7 +23,7 @@ class AppLogger {
   static Future<void> initialize() async {
     if (_initialized) return;
     _sessionStartedAt = DateTime.now().toUtc();
-    _sessionId = 'session-$pid-\${_sessionStartedAt!.microsecondsSinceEpoch}';
+    _sessionId = 'session-$pid-${_sessionStartedAt!.microsecondsSinceEpoch}';
     try {
       _directory = await getApplicationSupportDirectory();
       await _directory!.create(recursive: true);
