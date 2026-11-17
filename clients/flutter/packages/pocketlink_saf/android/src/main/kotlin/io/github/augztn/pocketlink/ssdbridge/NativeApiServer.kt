@@ -7,6 +7,9 @@ import java.io.ByteArrayOutputStream
 import java.io.ByteArrayInputStream
 import android.os.Environment
 import android.os.Build
+import android.os.StatFs
+import android.os.storage.StorageManager
+import android.provider.DocumentsContract
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
 import fi.iki.elonen.NanoHTTPD
@@ -315,14 +318,57 @@ internal class NativeApiServer(
         if (prefs.getString("usb2", null) != null) ids.add("usb2")
         ids.forEach { id ->
             val root = externalRoot(id)
+            val available = root?.exists() == true
             val legacyName = when (id) { "usb1" -> "USB Storage 1"; "usb2" -> "USB Storage 2"; else -> id }
-            items.put(JSONObject()
+            val item = JSONObject()
                 .put("id", id)
                 .put("name", prefs.getString("volume_name_$id", null) ?: legacyName)
-                .put("available", root?.exists() == true)
-                .put("writable", root?.canWrite() == true))
+                .put("available", available)
+                .put("writable", available && root?.canWrite() == true)
+
+            if (available && root != null) {
+                readExternalVolumeCapacity(root.uri)?.let { capacity ->
+                    item.put("total_bytes", capacity.totalBytes)
+                        .put("used_bytes", capacity.usedBytes)
+                        .put("available_bytes", capacity.availableBytes)
+                        .put("usage_percent", capacity.usagePercent)
+                }
+            }
+            items.put(item)
         }
         return json(JSONObject().put("items", items))
+    }
+
+    /**
+     * Reads real filesystem capacity for Android's external-storage document provider.
+     * Other SAF providers and Android versions without a public volume directory API
+     * intentionally return no capacity rather than estimating it from directory contents.
+     */
+    private fun readExternalVolumeCapacity(treeUri: Uri): ExternalVolumeCapacity? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return null
+        if (treeUri.authority != "com.android.externalstorage.documents") return null
+
+        return try {
+            val documentId = DocumentsContract.getTreeDocumentId(treeUri)
+            val volumeId = externalStorageVolumeId(documentId) ?: return null
+            val storageManager = context.getSystemService(Context.STORAGE_SERVICE) as? StorageManager
+                ?: return null
+            val storageVolume = storageManager.storageVolumes.firstOrNull { volume ->
+                volume.uuid?.equals(volumeId, ignoreCase = true) == true &&
+                    volume.state in setOf(
+                        Environment.MEDIA_MOUNTED,
+                        Environment.MEDIA_MOUNTED_READ_ONLY
+                    )
+            } ?: return null
+            val directory = storageVolume.directory
+            if (!directory.isDirectory) return null
+
+            val stats = StatFs(directory.absolutePath)
+            externalVolumeCapacity(stats.totalBytes, stats.availableBytes)
+        } catch (_: Exception) {
+            // Capacity is optional; a provider/stat failure must not break volume discovery.
+            null
+        }
     }
 
     private fun listExternal(volume: String?, relative: String): Response {

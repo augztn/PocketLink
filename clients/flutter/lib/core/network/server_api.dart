@@ -180,18 +180,30 @@ class StorageVolume {
     required this.name,
     required this.available,
     required this.writable,
+    this.totalBytes,
+    this.usedBytes,
+    this.availableBytes,
+    this.usagePercent,
   });
 
   final String id;
   final String name;
   final bool available;
   final bool writable;
+  final int? totalBytes;
+  final int? usedBytes;
+  final int? availableBytes;
+  final double? usagePercent;
 
   factory StorageVolume.fromJson(Map<String, dynamic> json) => StorageVolume(
         id: json['id'] as String,
         name: json['name'] as String,
         available: json['available'] as bool? ?? false,
         writable: json['writable'] as bool? ?? false,
+        totalBytes: (json['total_bytes'] as num?)?.toInt(),
+        usedBytes: (json['used_bytes'] as num?)?.toInt(),
+        availableBytes: (json['available_bytes'] as num?)?.toInt(),
+        usagePercent: (json['usage_percent'] as num?)?.toDouble(),
       );
 }
 

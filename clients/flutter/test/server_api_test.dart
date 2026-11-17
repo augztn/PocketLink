@@ -167,17 +167,39 @@ void main() {
       expect(listing.items.single.size, 1024);
     });
 
-    test('parses separate external storage volume status', () {
+    test('parses external storage capacity when the host exposes it', () {
       final volume = StorageVolume.fromJson({
         'id': 'usb1',
         'name': 'USB Storage 1',
         'available': true,
         'writable': true,
+        'total_bytes': 32_000,
+        'used_bytes': 20_000,
+        'available_bytes': 12_000,
+        'usage_percent': 62.5,
       });
 
       expect(volume.id, 'usb1');
       expect(volume.available, isTrue);
       expect(volume.writable, isTrue);
+      expect(volume.totalBytes, 32_000);
+      expect(volume.usedBytes, 20_000);
+      expect(volume.availableBytes, 12_000);
+      expect(volume.usagePercent, 62.5);
+    });
+
+    test('keeps external storage capacity unavailable when not supplied', () {
+      final volume = StorageVolume.fromJson({
+        'id': 'usb1',
+        'name': 'USB Storage 1',
+        'available': true,
+        'writable': false,
+      });
+
+      expect(volume.totalBytes, isNull);
+      expect(volume.usedBytes, isNull);
+      expect(volume.availableBytes, isNull);
+      expect(volume.usagePercent, isNull);
     });
 
     test('parses the existing backend file listing format', () {

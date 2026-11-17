@@ -53,7 +53,7 @@ This document describes the native Android implementation in `clients/flutter/pa
 
 Directory listings return `{"path":"...","items":[...]}`. Each item includes `name`, `type` (`file` or `directory`), `size`, and `modified`; `created` is included only when Android exposes a reliable creation timestamp.
 
-Volume listings return `{"items":[{"id":"...","name":"...","available":true,"writable":true}]}`.
+Volume listings return `{"items":[{"id":"...","name":"...","available":true,"writable":true,"total_bytes":123,"used_bytes":45,"available_bytes":78,"usage_percent":36.6}]}`. Capacity fields are optional and are included only when Android can map the SAF tree to a mounted external-storage volume and read its filesystem statistics (Android 11+). Other SAF providers or unsupported Android versions omit capacity fields; PocketLink never estimates capacity by scanning files.
 
 System telemetry returns a timestamp and separate `device`, `cpu`, `memory`, `storage`, and `battery` objects. CPU utilization is sampled from `/proc/stat` counter deltas and may be unavailable on devices that restrict access; the first sample is marked `sampling`. Guest CPU counters are excluded from the total because Linux already includes them in user/nice counters. Memory and shared-storage values are reported in bytes with percentage usage. Battery state is `charging`, `not_charging`, or `unknown`. GPU utilization is not exposed through standard Android APIs and is intentionally not included.
 
