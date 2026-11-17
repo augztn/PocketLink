@@ -316,6 +316,7 @@ internal class NativeApiServer(
         }
         if (prefs.getString("usb1", null) != null) ids.add("usb1")
         if (prefs.getString("usb2", null) != null) ids.add("usb2")
+        discoveredRemovableVolumes().forEach { (id, _) -> ids.add(id) }
         ids.forEach { id ->
             val root = externalRoot(id)
             val available = root?.exists() == true
@@ -327,11 +328,19 @@ internal class NativeApiServer(
                 .put("writable", available && root?.canWrite() == true)
 
             if (available && root != null) {
-                readExternalVolumeCapacity(root.uri)?.let { capacity ->
-                    item.put("total_bytes", capacity.totalBytes)
-                        .put("used_bytes", capacity.usedBytes)
-                        .put("available_bytes", capacity.availableBytes)
-                        .put("usage_percent", capacity.usagePercent)
+                val capacity = if (root.uri.scheme == "file") {
+                    try {
+                        val stats = StatFs(root.uri.path ?: return@forEach)
+                        externalVolumeCapacity(stats.totalBytes, stats.availableBytes)
+                    } catch (_: Exception) { null }
+                } else {
+                    readExternalVolumeCapacity(root.uri)
+                }
+                capacity?.let {
+                    item.put("total_bytes", it.totalBytes)
+                        .put("used_bytes", it.usedBytes)
+                        .put("available_bytes", it.availableBytes)
+                        .put("usage_percent", it.usagePercent)
                 }
             }
             items.put(item)
@@ -600,8 +609,43 @@ internal class NativeApiServer(
         } ?: return null
         val raw = prefs.getString("volume_uri_$id", null)
             ?: prefs.getString(id, null)
-            ?: return null
-        return DocumentFile.fromTreeUri(context, Uri.parse(raw))
+        if (raw != null) {
+            DocumentFile.fromTreeUri(context, Uri.parse(raw))?.let { return it }
+        }
+
+        // StorageManager exposes mounted removable-volume paths to the Android
+        // app process. Termux cannot inherit this app's all-files permission, so
+        // all direct SD-card I/O stays inside this native server.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R ||
+            !Environment.isExternalStorageManager()
+        ) return null
+        val volumeInfo = discoveredRemovableVolumes().firstOrNull { it.first == id } ?: return null
+        val directory = volumeInfo.second.directory ?: return null
+        if (!directory.isDirectory || !directory.canRead()) return null
+        return DocumentFile.fromFile(directory)
+    }
+
+    private fun discoveredRemovableVolumes(): List<Pair<String, android.os.storage.StorageVolume>> {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return emptyList()
+        val manager = context.getSystemService(Context.STORAGE_SERVICE) as? StorageManager
+            ?: return emptyList()
+        return manager.storageVolumes.mapNotNull { volume ->
+            if (!volume.isRemovable || volume.state !in setOf(
+                    Environment.MEDIA_MOUNTED,
+                    Environment.MEDIA_MOUNTED_READ_ONLY
+                )
+            ) return@mapNotNull null
+            val directory = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) volume.directory else null
+            val identity = externalVolumeIdentity(
+                volume.uuid,
+                directory?.absolutePath,
+                volume.getDescription(context).toString()
+            )
+            val suffix = MessageDigest.getInstance("SHA-256")
+                .digest(identity.toByteArray(Charsets.UTF_8))
+                .take(8).joinToString("") { "%02x".format(it) }
+            "usb-$suffix" to volume
+        }
     }
 
     private fun resolveDocument(root: DocumentFile, relative: String): DocumentFile? {

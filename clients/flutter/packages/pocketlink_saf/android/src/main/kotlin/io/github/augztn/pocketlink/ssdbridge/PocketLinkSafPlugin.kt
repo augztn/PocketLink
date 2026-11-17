@@ -280,10 +280,7 @@ class PocketLinkSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
                 directoryPath = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) volume.directory?.absolutePath else null,
                 description = volume.getDescription(context).toString()
             )
-            val suffix = MessageDigest.getInstance("SHA-256")
-                .digest(identity.toByteArray(Charsets.UTF_8))
-                .take(8).joinToString("") { "%02x".format(it) }
-            "usb-$suffix" to volume
+            externalVolumeKey(identity) to volume
         }
     }
 

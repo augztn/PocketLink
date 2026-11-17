@@ -6,3 +6,10 @@ internal fun externalVolumeIdentity(uuid: String?, directoryPath: String?, descr
     directoryPath?.trim()?.takeIf { it.isNotEmpty() }?.let { return "path:$it" }
     return "description:${description.trim().lowercase()}"
 }
+
+internal fun externalVolumeKey(identity: String): String {
+    val suffix = java.security.MessageDigest.getInstance("SHA-256")
+        .digest(identity.toByteArray(Charsets.UTF_8))
+        .take(8).joinToString("") { "%02x".format(it) }
+    return "usb-$suffix"
+}
