@@ -37,13 +37,30 @@ class _HomeScreenState extends State<HomeScreen> {
   int _uploadRequest = 0;
   bool _quickShortcutsExpanded = false;
   bool _filesCanNavigateBack = false;
+  bool _miniPlayerDismissed = false;
+  late bool _lastPlayerPlaying;
   String? _requestedVolume;
   String _requestedPath = '';
 
   @override
   void initState() {
     super.initState();
+    _lastPlayerPlaying = PersistentAudioPlayer.instance.isPlaying;
+    PersistentAudioPlayer.instance.addListener(_playerStateChanged);
     AppSettings.instance.addListener(_navigationSettingsChanged);
+  }
+
+  void _playerStateChanged() {
+    final isPlaying = PersistentAudioPlayer.instance.isPlaying;
+    if (isPlaying && !_lastPlayerPlaying && _miniPlayerDismissed && mounted) {
+      setState(() => _miniPlayerDismissed = false);
+    }
+    _lastPlayerPlaying = isPlaying;
+  }
+
+  void _dismissMiniPlayer() {
+    if (PersistentAudioPlayer.instance.isPlaying || _miniPlayerDismissed) return;
+    setState(() => _miniPlayerDismissed = true);
   }
 
   void _navigationSettingsChanged() {
@@ -76,6 +93,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     AppSettings.instance.removeListener(_navigationSettingsChanged);
+    PersistentAudioPlayer.instance.removeListener(_playerStateChanged);
     super.dispose();
   }
 
@@ -334,14 +352,22 @@ class _HomeScreenState extends State<HomeScreen> {
           bottomNavigationBar: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (AppSettings.instance.showMiniPlayer &&
-                  player.isMusic &&
-                  player.isActive &&
-                  player.currentItem != null)
-                _MiniPlayerBar(
-                  player: player,
-                  onOpen: () => _openNowPlaying(player),
-                ),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeInOutCubic,
+                alignment: Alignment.bottomCenter,
+                child: AppSettings.instance.showMiniPlayer &&
+                        player.isMusic &&
+                        player.isActive &&
+                        player.currentItem != null &&
+                        !_miniPlayerDismissed
+                    ? _MiniPlayerBar(
+                        player: player,
+                        onOpen: () => _openNowPlaying(player),
+                        onDismiss: _dismissMiniPlayer,
+                      )
+                    : const SizedBox(width: double.infinity, height: 0),
+              ),
                 FloatingNavigationDock(
                 order: AppSettings.instance.navigationOrder,
                 visibleItems: AppSettings.instance.visibleNavigationItems,
@@ -364,10 +390,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
 
 class _MiniPlayerBar extends StatelessWidget {
-  const _MiniPlayerBar({required this.player, required this.onOpen});
+  const _MiniPlayerBar({required this.player, required this.onOpen, required this.onDismiss});
 
   final PersistentAudioPlayer player;
   final VoidCallback onOpen;
+  final VoidCallback onDismiss;
 
   @override
   Widget build(BuildContext context) {
@@ -377,10 +404,16 @@ class _MiniPlayerBar extends StatelessWidget {
       child: Material(
         color: Theme.of(context).colorScheme.surfaceContainerHigh,
         borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: onOpen,
-          child: SizedBox(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onVerticalDragEnd: (details) {
+            final velocity = details.primaryVelocity ?? 0;
+            if (!player.isPlaying && velocity > 300) onDismiss();
+          },
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: onOpen,
+            child: SizedBox(
             height: 58,
             child: Row(
               children: [
@@ -414,6 +447,7 @@ class _MiniPlayerBar extends StatelessWidget {
                 ),
                 const SizedBox(width: 4),
               ],
+            ),
             ),
           ),
         ),
