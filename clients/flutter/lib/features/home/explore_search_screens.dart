@@ -56,7 +56,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   Widget build(BuildContext context) {
     return NavigatorPopHandler<void>(
       enabled: _navigatorKey.currentState?.canPop() ?? false,
-      onPop: () => _navigatorKey.currentState?.maybePop(),
+      onPopWithResult: (_) => _navigatorKey.currentState?.maybePop(),
       child: PocketLinkNavigationScope(
         onHome: () {
           _navigatorKey.currentState?.popUntil((route) => route.isFirst);
