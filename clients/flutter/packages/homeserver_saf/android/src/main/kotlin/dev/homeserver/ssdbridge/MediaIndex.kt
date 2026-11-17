@@ -199,7 +199,17 @@ internal class MediaIndexDatabase(context: Context) :
         fun count(table: String): Int = db.rawQuery("SELECT COUNT(*) FROM $table", null).use {
             if (it.moveToFirst()) it.getInt(0) else 0
         }
-        return mapOf("files" to count("files"), "media" to count("media"))
+        fun countCategory(category: String): Int =
+            db.rawQuery("SELECT COUNT(*) FROM media WHERE category=?", arrayOf(category)).use {
+                if (it.moveToFirst()) it.getInt(0) else 0
+            }
+        return mapOf(
+            "files" to count("files"),
+            "media" to count("media"),
+            "photo" to countCategory("photo"),
+            "video" to countCategory("video"),
+            "music" to countCategory("music")
+        )
     }
 }
 
