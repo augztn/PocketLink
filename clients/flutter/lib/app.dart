@@ -72,7 +72,9 @@ class _PocketLinkAppState extends State<PocketLinkApp> {
       theme: _theme(brightness: Brightness.light),
       darkTheme: _theme(brightness: Brightness.dark, amoled: _settings.amoled),
       home: const ConnectionScreen(),
-      builder: (context, child) => child ?? const SizedBox.shrink(),
+      builder: (context, child) => MaterialUiCompatibilityBridge(
+        child: child ?? const SizedBox.shrink(),
+      ),
       ),
     );
   }
