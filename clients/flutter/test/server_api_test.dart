@@ -57,11 +57,6 @@ void main() {
           'available_bytes': 6000,
           'usage_percent': 40,
         },
-        'gpu': {
-          'renderer': 'Adreno',
-          'vendor': 'Qualcomm',
-          'version': 'OpenGL ES 3.2',
-        },
         'battery': {'percent': 87, 'status': 'charging'},
       });
 
@@ -71,7 +66,6 @@ void main() {
       expect(telemetry.cpuUsageStatus, 'sampling');
       expect(telemetry.memoryUsagePercent, 62.5);
       expect(telemetry.storageAvailableBytes, 6000);
-      expect(telemetry.gpuRenderer, 'Adreno');
       expect(telemetry.batteryPercent, 87);
       expect(telemetry.isCharging, isTrue);
     });

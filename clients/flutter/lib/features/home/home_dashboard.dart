@@ -470,13 +470,9 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
     String percentLabel(double? value) =>
         value == null ? '—' : '${value.clamp(0, 100).toStringAsFixed(0)}%';
 
-    String cpuDetail() {
-      if (telemetry == null) return 'Waiting for host data';
-      if (telemetry.cpuUsagePercent != null) return 'Live device usage';
-      return telemetry.cpuUsageStatus == 'sampling'
-          ? 'Sampling CPU activity'
-          : 'Usage unavailable';
-    }
+    String cpuDetail() => telemetry?.cpuUsagePercent != null
+        ? 'Live device usage'
+        : 'Waiting for next sample';
 
     Widget metric(
       String label,
@@ -533,11 +529,11 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
     final memoryDetail = telemetry?.memoryUsedBytes != null &&
             telemetry?.memoryTotalBytes != null
         ? '${_formatBytes(telemetry!.memoryUsedBytes!)} / ${_formatBytes(telemetry.memoryTotalBytes!)} used'
-        : 'Memory details unavailable';
+        : '';
     final storageDetail = telemetry?.storageUsedBytes != null &&
             telemetry?.storageTotalBytes != null
         ? '${_formatBytes(telemetry!.storageUsedBytes!)} / ${_formatBytes(telemetry.storageTotalBytes!)} used'
-        : 'Storage details unavailable';
+        : '';
     final batteryDetail = telemetry == null
         ? 'Battery status unavailable'
         : switch (telemetry.batteryStatus) {
@@ -549,8 +545,14 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
       telemetry?.manufacturer,
       telemetry?.deviceModel,
     ].whereType<String>().where((part) => part.isNotEmpty).join(' ');
-    final cpuName = telemetry?.cpuModel ?? 'CPU details unavailable';
-    final gpuName = telemetry?.gpuRenderer ?? 'GPU details unavailable';
+    final cpuName = telemetry?.cpuModel;
+    final hasCpu = telemetry?.cpuUsagePercent != null ||
+        telemetry?.cpuUsageStatus == 'sampling';
+    final hasMemory = telemetry?.memoryUsagePercent != null &&
+        memoryDetail.isNotEmpty;
+    final hasStorage = telemetry?.storageUsagePercent != null &&
+        storageDetail.isNotEmpty;
+    final hasBattery = telemetry?.batteryPercent != null;
     final sampledAt = telemetry?.sampledAtMs == null
         ? null
         : DateTime.fromMillisecondsSinceEpoch(telemetry!.sampledAtMs!).toLocal();
@@ -587,43 +589,56 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
               style: theme.textTheme.bodySmall?.copyWith(color: muted),
             )
           else ...[
-            Row(children: [
-              metric('CPU', percentLabel(telemetry.cpuUsagePercent),
-                  telemetry.cpuUsagePercent, cpuDetail(), Icons.speed_rounded),
-              const SizedBox(width: 9),
-              metric('MEMORY', percentLabel(telemetry.memoryUsagePercent),
-                  telemetry.memoryUsagePercent, memoryDetail, Icons.memory_rounded),
-            ]),
-            const SizedBox(height: 9),
-            Row(children: [
-              metric('STORAGE', percentLabel(telemetry.storageUsagePercent),
-                  telemetry.storageUsagePercent, storageDetail, Icons.storage_rounded),
-              const SizedBox(width: 9),
-              metric(
-                'BATTERY',
-                telemetry.batteryPercent == null ? '—' : '${telemetry.batteryPercent}%',
-                telemetry.batteryPercent?.toDouble(),
-                batteryDetail,
-                Icons.battery_charging_full_rounded,
+            if (hasCpu || hasMemory)
+              Row(children: [
+                if (hasCpu)
+                  metric(
+                    'CPU',
+                    telemetry.cpuUsagePercent == null
+                        ? 'Sampling'
+                        : percentLabel(telemetry.cpuUsagePercent),
+                    telemetry.cpuUsagePercent,
+                    cpuDetail(),
+                    Icons.speed_rounded,
+                  ),
+                if (hasCpu && hasMemory) const SizedBox(width: 9),
+                if (hasMemory)
+                  metric('MEMORY', percentLabel(telemetry.memoryUsagePercent),
+                      telemetry.memoryUsagePercent, memoryDetail, Icons.memory_rounded),
+              ]),
+            if (hasStorage || hasBattery) ...[
+              if (hasCpu || hasMemory) const SizedBox(height: 9),
+              Row(children: [
+                if (hasStorage)
+                  metric('STORAGE', percentLabel(telemetry.storageUsagePercent),
+                      telemetry.storageUsagePercent, storageDetail, Icons.storage_rounded),
+                if (hasStorage && hasBattery) const SizedBox(width: 9),
+                if (hasBattery)
+                  metric(
+                    'BATTERY',
+                    '${telemetry.batteryPercent}%',
+                    telemetry.batteryPercent!.toDouble(),
+                    batteryDetail,
+                    Icons.battery_charging_full_rounded,
+                  ),
+              ]),
+            ],
+            if (!hasCpu && !hasMemory && !hasStorage && !hasBattery)
+              Text(
+                'No system readings are currently available.',
+                style: theme.textTheme.bodySmall?.copyWith(color: muted),
               ),
-            ]),
             const SizedBox(height: 12),
             if (deviceName.isNotEmpty)
               _deviceDetailRow(theme, muted, Icons.phone_android_rounded,
                   deviceName, telemetry.androidVersion == null
                       ? null : 'Android ${telemetry.androidVersion}'),
-            _deviceDetailRow(
-              theme, muted, Icons.memory_rounded, cpuName,
-              telemetry.cpuCores == null ? null : '${telemetry.cpuCores} cores',
-            ),
-            _deviceDetailRow(
-              theme, muted, Icons.developer_board_rounded, gpuName,
-              telemetry.gpuVendor,
-            ),
-            Text(
-              'GPU utilization is not exposed reliably by standard Android APIs.',
-              style: theme.textTheme.labelSmall?.copyWith(color: muted),
-            ),
+            if (cpuName != null || telemetry.cpuCores != null)
+              _deviceDetailRow(
+                theme, muted, Icons.memory_rounded,
+                cpuName ?? 'CPU',
+                telemetry.cpuCores == null ? null : '${telemetry.cpuCores} cores',
+              ),
           ],
         ],
       ),

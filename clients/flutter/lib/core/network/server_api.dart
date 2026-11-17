@@ -105,9 +105,6 @@ class HostSystemTelemetry {
     required this.storageUsedBytes,
     required this.storageAvailableBytes,
     required this.storageUsagePercent,
-    required this.gpuRenderer,
-    required this.gpuVendor,
-    required this.gpuVersion,
     required this.batteryPercent,
     required this.batteryStatus,
   });
@@ -128,9 +125,6 @@ class HostSystemTelemetry {
   final int? storageUsedBytes;
   final int? storageAvailableBytes;
   final double? storageUsagePercent;
-  final String? gpuRenderer;
-  final String? gpuVendor;
-  final String? gpuVersion;
   final int? batteryPercent;
   final String batteryStatus;
 
@@ -155,7 +149,6 @@ class HostSystemTelemetry {
     final cpu = section('cpu');
     final memory = section('memory');
     final storage = section('storage');
-    final gpu = section('gpu');
     final battery = section('battery');
 
     return HostSystemTelemetry(
@@ -175,9 +168,6 @@ class HostSystemTelemetry {
       storageUsedBytes: integer(storage['used_bytes']),
       storageAvailableBytes: integer(storage['available_bytes']),
       storageUsagePercent: decimal(storage['usage_percent']),
-      gpuRenderer: string(gpu['renderer']),
-      gpuVendor: string(gpu['vendor']),
-      gpuVersion: string(gpu['version']),
       batteryPercent: integer(battery['percent']),
       batteryStatus: string(battery['status']) ?? 'unknown',
     );

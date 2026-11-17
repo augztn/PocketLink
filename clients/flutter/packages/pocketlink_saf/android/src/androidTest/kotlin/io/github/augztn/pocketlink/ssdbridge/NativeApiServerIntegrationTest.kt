@@ -69,8 +69,9 @@ class NativeApiServerIntegrationTest {
                 "Basic " + Base64.encodeToString("admin:$password".toByteArray(), Base64.NO_WRAP)
             )
             assertEquals(200, telemetry.first)
-            listOf("\"device\"", "\"cpu\"", "\"memory\"", "\"storage\"", "\"gpu\"", "\"battery\"")
+            listOf("\"device\"", "\"cpu\"", "\"memory\"", "\"storage\"", "\"battery\"")
                 .forEach { key -> assertTrue("Missing telemetry field $key", telemetry.second.contains(key)) }
+            assertTrue("Unsupported GPU telemetry must not be advertised", !telemetry.second.contains("\"gpu\""))
         } finally {
             server.stop()
             context.getSharedPreferences("integration-test-pocketlink-auth", Context.MODE_PRIVATE)
