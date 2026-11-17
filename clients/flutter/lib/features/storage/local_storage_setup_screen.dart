@@ -464,6 +464,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                   description: 'Required to read internal shared storage',
                   status: !_statusLoaded ? 'Checking' : internalGranted ? 'Enabled' : 'Needs access',
                   granted: _statusLoaded && internalGranted,
+                  neutral: !_statusLoaded,
                   onTap: !_statusLoaded || internalGranted || _busy ? null : _requestInternalStorageAccess,
                 ),
                 _PermissionRow(
@@ -483,8 +484,13 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                       : _discoveredVolumes.isEmpty
                           ? 'Connect a drive to grant folder access'
                           : '${_discoveredVolumes.length} drive(s) detected · access not granted',
-                  status: selectedVolumeCount > 0 ? 'Granted' : 'Optional',
+                  status: selectedVolumeCount > 0
+                      ? 'Granted'
+                      : _discoveredVolumes.isEmpty
+                          ? 'Not connected'
+                          : 'Not granted',
                   granted: selectedVolumeCount > 0,
+                  neutral: selectedVolumeCount == 0,
                   onTap: _busy ? null : _refreshStorage,
                 ),
                 const SizedBox(height: 8),
@@ -815,6 +821,7 @@ class _PermissionRow extends StatelessWidget {
     required this.granted,
     required this.onTap,
     this.recommended = false,
+    this.neutral = false,
   });
 
   final IconData icon;
@@ -823,13 +830,20 @@ class _PermissionRow extends StatelessWidget {
   final String status;
   final bool granted;
   final bool recommended;
+  final bool neutral;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final statusColor = granted ? Colors.green : recommended ? colors.tertiary : colors.error;
+    final statusColor = granted
+        ? Colors.green
+        : recommended
+            ? colors.tertiary
+            : neutral
+                ? colors.onSurfaceVariant
+                : colors.error;
     return Material(
       color: Colors.transparent,
       child: InkWell(
