@@ -274,7 +274,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
         case 'download':
           if (recent.volume == null) {
             final bytes = await widget.api.downloadFile(path);
-            final saved = await FilePicker.platform.saveFile(
+            final saved = await FilePicker.saveFile(
               dialogTitle: 'Save ${recent.file.name}',
               fileName: recent.file.name,
               bytes: bytes,
@@ -282,7 +282,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
             if (saved == null) return;
           } else {
             final bytes = await widget.api.downloadStorageFile(recent.volume!, path);
-            final saved = await FilePicker.platform.saveFile(
+            final saved = await FilePicker.saveFile(
               dialogTitle: 'Save ${recent.file.name}',
               fileName: recent.file.name,
               bytes: bytes,
@@ -406,13 +406,9 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
 
   Future<void> _quickUpload() async {
     try {
-      final result = await FilePicker.platform.pickFiles(
-        allowMultiple: false,
-        withData: true,
-      );
-      if (result == null || result.files.isEmpty) return;
-      final file = result.files.single;
-      final bytes = file.bytes;
+      final file = await FilePicker.pickFile();
+      if (file == null) return;
+      final bytes = await file.readAsBytes();
       if (bytes == null) {
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Could not read the selected file.')),

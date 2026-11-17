@@ -347,22 +347,13 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
 
   Future<void> _uploadFile() async {
     try {
-      final selection = await FilePicker.platform.pickFiles(
-        allowMultiple: false,
-        withData: true,
-      );
-      if (selection == null || selection.files.isEmpty) return;
-      final file = selection.files.single;
-      final bytes = file.bytes;
+      final file = await FilePicker.pickFile();
+      if (file == null) return;
+      final bytes = await file.readAsBytes();
       if (bytes == null) {
         _showError('Could not read the selected file on this device.');
         return;
       }
-      if (bytes.length > 100 * 1024 * 1024) {
-        _showError('File exceeds the server 100 MB upload limit.');
-        return;
-      }
-
       final volume = _selectedVolume;
       final completed = await TransferManager.instance.run(
         name: file.name, direction: 'Upload',
@@ -393,7 +384,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
           ? await widget.api.downloadFile(_itemPath(item.name), cancelToken: token, onReceiveProgress: progress)
           : await widget.api.downloadStorageFile(_selectedVolume!, _itemPath(item.name), cancelToken: token, onReceiveProgress: progress);
         if (token.isCancelled) return;
-        final savedPath = await FilePicker.platform.saveFile(
+        final savedPath = await FilePicker.saveFile(
           dialogTitle: 'Save ${item.name}',
           fileName: item.name,
           initialDirectory: AppSettings.instance.downloadDirectory,

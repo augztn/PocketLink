@@ -207,14 +207,12 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
 
   Future<void> _pickExternalSubtitle() async {
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final file = await FilePicker.pickFile(
         type: FileType.custom,
         allowedExtensions: const ['srt', 'ass', 'ssa', 'vtt'],
-        withData: true,
       );
-      if (result == null || result.files.isEmpty) return;
-      final file = result.files.single;
-      final bytes = file.bytes;
+      if (file == null) return;
+      final bytes = await file.readAsBytes();
       if (bytes == null || bytes.isEmpty) {
         throw StateError('Could not read the selected subtitle file.');
       }

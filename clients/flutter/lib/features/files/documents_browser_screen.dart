@@ -143,7 +143,7 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
       final bytes = document.volume == null
           ? await widget.api.downloadFile(document.path)
           : await widget.api.downloadStorageFile(document.volume!, document.path);
-      final saved = await FilePicker.platform.saveFile(
+      final saved = await FilePicker.saveFile(
         dialogTitle: 'Save document',
         fileName: document.entry.name,
         bytes: bytes,

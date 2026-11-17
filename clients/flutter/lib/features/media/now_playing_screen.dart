@@ -293,7 +293,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   Future<void> _downloadTrack() async {
     try {
       final bytes = await _fileBytes();
-      final saved = await FilePicker.platform.saveFile(
+      final saved = await FilePicker.saveFile(
         dialogTitle: 'Save original audio file',
         fileName: _track.path.split('/').last,
         bytes: bytes,
@@ -307,9 +307,12 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   Future<void> _shareTrack() async {
     try {
       final bytes = await _fileBytes();
-      await Share.shareXFiles([
-        XFile.fromData(bytes, name: _track.path.split('/').last),
-      ], text: _fileName);
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile.fromData(bytes, name: _track.path.split('/').last)],
+          text: _fileName,
+        ),
+      );
     } catch (_) {
       _message('Could not share this track.');
     }

@@ -30,7 +30,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _chooseDownloadDirectory() async {
     try {
-      final path = await FilePicker.platform.getDirectoryPath();
+      final path = await FilePicker.getDirectoryPath();
       if (path != null) await _settings.setDownloadDirectory(path);
     } catch (_) {
       _message('Could not select a download directory.');
@@ -78,10 +78,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _exportingLogs = true);
     try {
       final file = await AppLogger.createDiagnosticFile();
-      await Share.shareXFiles(
-        [XFile(file.path, mimeType: 'text/plain')],
-        subject: 'PocketLink diagnostic logs',
-        text: 'Review the diagnostic file before sharing. It may contain server addresses and filesystem error details.',
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path, mimeType: 'text/plain')],
+          subject: 'PocketLink diagnostic logs',
+          text: 'Review the diagnostic file before sharing. It may contain server addresses and filesystem error details.',
+        ),
       );
       await AppLogger.info('Diagnostic log export requested from Settings');
     } catch (error, stack) {

@@ -189,7 +189,7 @@ class _LibraryBrowserScreenState extends State<LibraryBrowserScreen> {
     try {
       final bytes = await widget.api.downloadFile(file.path);
       if (!mounted) return;
-      final saved = await FilePicker.platform.saveFile(
+      final saved = await FilePicker.saveFile(
         dialogTitle: 'Save ${file.entry.name}',
         fileName: file.entry.name,
         bytes: bytes,

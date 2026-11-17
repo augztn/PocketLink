@@ -150,10 +150,9 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
     final volume = _volume;
     if (volume == null) return;
     try {
-      final picked = await FilePicker.platform.pickFiles(withData: true);
-      if (picked == null || picked.files.isEmpty) return;
-      final file = picked.files.single;
-      final bytes = file.bytes;
+      final file = await FilePicker.pickFile();
+      if (file == null) return;
+      final bytes = await file.readAsBytes();
       if (bytes == null) {
         _message('Could not read the selected file.');
         return;
@@ -274,7 +273,7 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
           onReceiveProgress: progress,
         );
         if (token.isCancelled) return;
-        final savedPath = await FilePicker.platform.saveFile(
+        final savedPath = await FilePicker.saveFile(
           dialogTitle: 'Save ${item.name}',
           fileName: item.name,
           initialDirectory: AppSettings.instance.downloadDirectory,

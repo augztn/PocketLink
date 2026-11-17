@@ -503,14 +503,22 @@ class _SearchScreenState extends State<SearchScreen> {
   Future<void> _download(_Result r) async {
     try {
       final bytes = await _bytes(r);
-      final saved = await FilePicker.platform.saveFile(dialogTitle: 'Save ${r.file.name}', fileName: r.file.name, bytes: bytes);
+      final saved = await FilePicker.saveFile(dialogTitle: 'Save ${r.file.name}', fileName: r.file.name, bytes: bytes);
       if (saved != null && mounted) _message('Saved ${r.file.name}');
     } catch (_) { _message('Could not download this file.'); }
   }
 
   Future<void> _share(_Result r) async {
-    try { await Share.shareXFiles([XFile.fromData(await _bytes(r), name: r.file.name)], text: r.file.name); }
-    catch (_) { _message('Could not prepare this file for sharing.'); }
+    try {
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile.fromData(await _bytes(r), name: r.file.name)],
+          text: r.file.name,
+        ),
+      );
+    } catch (_) {
+      _message('Could not prepare this file for sharing.');
+    }
   }
 
   Future<void> _rename(_Result r) async {
