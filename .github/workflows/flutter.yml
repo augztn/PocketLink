@@ -221,8 +221,16 @@ jobs:
           )
           if count != 1:
               raise SystemExit("Could not set Android compileSdk to 36")
+          updated, min_sdk_count = re.subn(
+              r"(?m)^(\\s*)minSdk(?:Version)?\\s*(?:=\\s*)?flutter\\.minSdkVersion",
+              r"\\g<1>minSdk = 24" if gradle.suffix == ".kts" else r"\\g<1>minSdkVersion 24",
+              updated,
+              count=1,
+          )
+          if min_sdk_count != 1:
+              raise SystemExit("Could not set Android minSdk to API 24")
           gradle.write_text(updated)
-          print(f"Configured {gradle} to compile against Android API 36")
+          print(f"Configured {gradle} for compileSdk 36 and minSdk 24 (Android 7.0+)")
           PY
           python3 - <<'PY'
           from pathlib import Path
