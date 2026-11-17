@@ -381,7 +381,7 @@ class ServerApi {
     Future<T> Function() load,
   ) {
     final authorization = _dio.options.headers['Authorization']?.toString() ?? '';
-    final key = '${_dio.options.baseUrl}:${_stableHash(authorization)}:$resourceKey';
+    final key = '${_dio.options.baseUrl}:$authorization:$resourceKey';
     final existing = _sharedReadRequests[key];
     if (existing != null) return existing.then((value) => value as T);
 
