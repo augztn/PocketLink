@@ -35,6 +35,37 @@ class _NetworkHandoffAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+class _RetryAfterAdapter implements HttpClientAdapter {
+  int requests = 0;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    requests++;
+    if (requests == 1) {
+      return ResponseBody.fromString(
+        '{"detail":"slow down"}',
+        429,
+        headers: {
+          Headers.contentTypeHeader: ['application/json'],
+          'retry-after': ['0'],
+        },
+      );
+    }
+    return ResponseBody.fromString(
+      '{"path":"","items":[]}',
+      200,
+      headers: {Headers.contentTypeHeader: ['application/json']},
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
 class _SequenceAdapter implements HttpClientAdapter {
   _SequenceAdapter(this.statuses, {this.delay = Duration.zero});
   final List<int> statuses;
@@ -106,6 +137,23 @@ void main() {
       final listing = await api.authenticate();
       expect(listing.items, isEmpty);
       expect(adapter.requests, 2);
+    });
+
+    test('honors a zero-second Retry-After response', () async {
+      final adapter = _RetryAfterAdapter();
+      final api = ServerApi(
+        baseUrl: 'http://127.0.0.1:8000',
+        username: 'admin',
+        password: 'secret',
+        httpClientAdapter: adapter,
+      );
+
+      final stopwatch = Stopwatch()..start();
+      final listing = await api.authenticate();
+
+      expect(listing.items, isEmpty);
+      expect(adapter.requests, 2);
+      expect(stopwatch.elapsed, lessThan(const Duration(milliseconds: 900)));
     });
 
     test('retries a connection timeout on a fresh socket after network handoff', () async {
