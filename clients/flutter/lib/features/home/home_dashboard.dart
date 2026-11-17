@@ -43,7 +43,7 @@ class HomeDashboard extends StatefulWidget {
   State<HomeDashboard> createState() => HomeDashboardState();
 }
 
-class HomeDashboardState extends State<HomeDashboard> {
+class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserver {
   bool _checking = true;
   bool? _serverOnline;
   Duration? _latency;
@@ -62,19 +62,38 @@ class HomeDashboardState extends State<HomeDashboard> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadQuickActions();
     HomeActivityStore.instance.load();
     _refreshStatus();
-    _telemetryTimer = Timer.periodic(const Duration(seconds: 20), (_) {
-      if (!mounted || _serverOnline != true || _checking) return;
-      unawaited(_refreshHostTelemetry());
-    });
+    _startTelemetryPolling();
   }
 
   @override
   void dispose() {
     _telemetryTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _startTelemetryPolling();
+      if (_serverOnline == true) unawaited(_refreshHostTelemetry());
+    } else {
+      _telemetryTimer?.cancel();
+      _telemetryTimer = null;
+    }
+  }
+
+  void _startTelemetryPolling() {
+    _telemetryTimer?.cancel();
+    if (WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) return;
+    _telemetryTimer = Timer.periodic(const Duration(seconds: 20), (_) {
+      if (!mounted || _serverOnline != true || _checking) return;
+      unawaited(_refreshHostTelemetry());
+    });
   }
 
   static const _quickActionDetails = <String, ({String label, IconData icon})>{
