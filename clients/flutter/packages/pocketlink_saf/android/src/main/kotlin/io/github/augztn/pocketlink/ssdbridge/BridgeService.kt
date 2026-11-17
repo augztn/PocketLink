@@ -71,7 +71,7 @@ class BridgeService : Service() {
         } catch (error: Exception) {
             stopServers()
             lastError = error.message ?: "Could not start the PocketLink service."
-            stopForeground(true)
+            stopForegroundCompat()
             stopSelf()
         }
     }
