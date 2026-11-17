@@ -274,7 +274,11 @@ internal class MediaIndexScanner(
                 state = "failed"
                 lastError = error.message ?: "Index scan failed"
             } finally {
-                running.set(false)
+                val scanAgain = synchronized(this) {
+                    running.set(false)
+                    dirty.getAndSet(false)
+                }
+                if (scanAgain) requestScan(force = true)
             }
         }
     }
