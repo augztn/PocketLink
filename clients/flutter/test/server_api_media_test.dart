@@ -83,7 +83,5 @@ void main() {
       expect(status.elapsedMs, 12500);
       expect(status.currentSource, 'internal');
       expect(status.lastScanStartedAt, 1794900000000);
-    });
-    });
   });
 }
