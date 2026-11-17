@@ -300,9 +300,11 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
           final shareBytes = recent.volume == null
               ? await widget.api.downloadFile(path)
               : await widget.api.downloadStorageFile(recent.volume!, path);
-          await Share.shareXFiles(
-            [XFile.fromData(shareBytes, name: recent.file.name)],
-            text: recent.file.name,
+          await SharePlus.instance.share(
+            ShareParams(
+              files: [XFile.fromData(shareBytes, name: recent.file.name)],
+              text: recent.file.name,
+            ),
           );
           break;
         case 'rename':
