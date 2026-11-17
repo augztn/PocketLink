@@ -73,7 +73,6 @@ class _NavigationCustomizationScreenState
 
   void _reorder(int oldIndex, int newIndex) {
     setState(() {
-      if (newIndex > oldIndex) newIndex--;
       final item = _order.removeAt(oldIndex);
       _order.insert(newIndex, item);
     });
@@ -153,7 +152,7 @@ class _NavigationCustomizationScreenState
               physics: const NeverScrollableScrollPhysics(),
               buildDefaultDragHandles: false,
               itemCount: _order.length,
-              onReorder: _reorder,
+              onReorderItem: _reorder,
               onReorderStart: (_) => HapticFeedback.selectionClick(),
               onReorderEnd: (_) => HapticFeedback.lightImpact(),
               itemBuilder: (context, index) {
