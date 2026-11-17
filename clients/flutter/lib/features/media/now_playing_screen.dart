@@ -192,12 +192,19 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     // HomeServer currently exposes raw files, not embedded-artwork metadata.
     // Use an existing folder cover file when present; otherwise show the
     // compact artwork fallback rather than a blank full-height region.
-    for (final name in const [
-      'cover.jpg', 'cover.jpeg', 'cover.png', 'cover.webp',
-      'folder.jpg', 'folder.png', 'album.jpg', 'album.png', 'front.jpg',
-    ]) {
-      final path = '$_folder/$name';
-      try {
+    try {
+      final listing = _track.volume == null
+          ? await widget.api.listDirectory(_folder)
+          : await widget.api.listStorageDirectory(_track.volume!, _folder);
+      const candidates = {
+        'cover.jpg', 'cover.jpeg', 'cover.png', 'cover.webp',
+        'folder.jpg', 'folder.png', 'album.jpg', 'album.png', 'front.jpg',
+      };
+      final cover = listing.items.where((item) =>
+        !item.isDirectory && candidates.contains(item.name.toLowerCase()),
+      ).firstOrNull;
+      if (cover != null) {
+        final path = '$_folder/${cover.name}';
         final bytes = _track.volume == null
             ? await widget.api.downloadFile(path)
             : await widget.api.downloadStorageFile(_track.volume!, path);
@@ -206,9 +213,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
           setState(() { _artwork = bytes; _artworkKey = key; });
           return;
         }
-      } catch (_) {
-        // Try the next conventional folder-cover filename.
       }
+    } catch (_) {
+      // Artwork is optional; playback must not depend on it.
     }
     if (mounted && request == _artworkRequest) {
       setState(() { _artwork = null; _artworkKey = key; });
