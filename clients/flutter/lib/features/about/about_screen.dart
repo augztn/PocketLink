@@ -48,7 +48,9 @@ class AboutScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final architecture = Abi.current().toString().split('.').last;
+    final architecture = Abi.current().toString().split('.').last
+        .replaceFirst(RegExp(r'^(android|linux|windows|macOS|iOS)'), '')
+        .toUpperCase();
     final platform = Platform.isAndroid
         ? 'Android'
         : Platform.isLinux
@@ -145,9 +147,17 @@ class AboutScreen extends StatelessWidget {
                 ),
                 const Divider(height: 1, indent: 56),
                 ListTile(
+                  leading: const Icon(Icons.article_outlined),
+                  title: const Text('MIT License'),
+                  subtitle: const Text('PocketLink project license'),
+                  trailing: const Icon(Icons.open_in_new_rounded, size: 18),
+                  onTap: () => _openLink(context, '$_sourceUrl/blob/main/LICENSE'),
+                ),
+                const Divider(height: 1, indent: 56),
+                ListTile(
                   leading: const Icon(Icons.description_outlined),
-                  title: const Text('Open-source licenses'),
-                  subtitle: const Text('MIT License and third-party notices'),
+                  title: const Text('Third-party licenses'),
+                  subtitle: const Text('Notices for included open-source packages'),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () => _openLicenses(context),
                 ),
