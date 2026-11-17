@@ -44,12 +44,22 @@ class HomeServerAppBar extends StatelessWidget implements PreferredSizeWidget {
   static const dashboardRouteName = '/homeserver-dashboard';
 
   static void goToDashboard(BuildContext context) {
-    Navigator.of(context).popUntil(
+    final scopedHome = HomeServerNavigationScope.maybeOnHome(context);
+    if (scopedHome != null) {
+      scopedHome();
+      return;
+    }
+    Navigator.of(context, rootNavigator: true).popUntil(
       (route) => route.settings.name == dashboardRouteName,
     );
   }
 
   void _goHome(BuildContext context) {
+    final scopedHome = HomeServerNavigationScope.maybeOnHome(context);
+    if (scopedHome != null) {
+      scopedHome();
+      return;
+    }
     if (onHome != null) {
       onHome!();
       return;
@@ -96,4 +106,23 @@ class HomeServerAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+}
+
+
+/// Supplies dashboard navigation to screens hosted inside nested navigators.
+class HomeServerNavigationScope extends InheritedWidget {
+  const HomeServerNavigationScope({
+    required this.onHome,
+    required super.child,
+    super.key,
+  });
+
+  final VoidCallback onHome;
+
+  static VoidCallback? maybeOnHome(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<HomeServerNavigationScope>()?.onHome;
+
+  @override
+  bool updateShouldNotify(HomeServerNavigationScope oldWidget) =>
+      onHome != oldWidget.onHome;
 }
