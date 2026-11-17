@@ -582,10 +582,12 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
           const SizedBox(height: 11),
           if (telemetry == null)
             Text(
-              _serverOnline == true
-                  ? 'Reading system information from the host…'
-                  : 'System information appears when the host is connected.',
-              style: theme.textTheme.bodySmall?.copyWith(color: muted),
+              _serverOnline != true
+                  ? 'System information appears when the host is connected.'
+                  : _telemetryError ?? 'Reading system information from the host…',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: _telemetryError == null ? muted : const Color(0xFFFBBF24),
+              ),
             )
           else ...[
             if (hasCpu || hasMemory)
@@ -878,6 +880,10 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                   Text('Internal storage${mountedVolumes.isEmpty ? '' : ' · ${mountedVolumes.map((volume) => volume.name).join(' · ')}'}',
                     maxLines: 1, overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.labelSmall?.copyWith(color: muted)),
+                  if (_volumeError != null) ...[
+                    const SizedBox(height: 5),
+                    Text(_volumeError!, style: theme.textTheme.labelSmall?.copyWith(color: const Color(0xFFFBBF24))),
+                  ],
                 ]),
               ),
             ],
@@ -1121,9 +1127,9 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
           Expanded(child: Text('Host media library', style: theme.textTheme.titleSmall?.copyWith(
             color: Colors.white, fontWeight: FontWeight.w800,
           ))),
-          Text(scanning ? 'Scanning' : status == null ? 'Ready' : status.state == 'failed' ? 'Failed' : status.state == 'partial' ? 'Partial' : status.state == 'complete' ? 'Up to date' : 'Ready',
+          Text(scanning ? 'Scanning' : _mediaScanError != null ? 'Unavailable' : status == null ? 'Checking' : status.state == 'failed' ? 'Failed' : status.state == 'partial' ? 'Partial' : status.state == 'complete' ? 'Up to date' : 'Ready',
             style: theme.textTheme.labelSmall?.copyWith(
-              color: scanning ? const Color(0xFFFBBF24) : Colors.white70,
+              color: scanning || _mediaScanError != null ? const Color(0xFFFBBF24) : Colors.white70,
               fontWeight: FontWeight.w700,
             )),
         ]),
@@ -1134,6 +1140,10 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
               : 'Refresh the host device media and file index remotely.',
           style: theme.textTheme.bodySmall?.copyWith(color: Colors.white60),
         ),
+        if (_mediaScanError != null) ...[
+          const SizedBox(height: 7),
+          Text(_mediaScanError!, style: theme.textTheme.bodySmall?.copyWith(color: const Color(0xFFFBBF24))),
+        ],
         if (status != null) ...[
           const SizedBox(height: 7),
           Text(
@@ -1369,9 +1379,9 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          _checking
+                          _recentFilesError ?? (_checking
                               ? 'Checking your folders for recent files…'
-                              : 'No recent files found in the scanned folders.',
+                              : 'No recent files found in the scanned folders.'),
                           style: theme.textTheme.bodyMedium?.copyWith(color: colors.onSurfaceVariant),
                         ),
                       ),
