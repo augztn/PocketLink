@@ -331,7 +331,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
             ],
           ),
-          bottomNavigationBar: FloatingNavigationDock(
+          bottomNavigationBar: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (AppSettings.instance.showMiniPlayer &&
+                  player.isMusic &&
+                  player.isActive &&
+                  player.currentItem != null)
+                _MiniPlayerBar(
+                  player: player,
+                  onOpen: () => _openNowPlaying(player),
+                ),
+              FloatingNavigationDock(
             order: AppSettings.instance.navigationOrder,
             visibleItems: AppSettings.instance.visibleNavigationItems,
             selectedIndex: _selectedIndex,
@@ -348,3 +359,63 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
+
+
+class _MiniPlayerBar extends StatelessWidget {
+  const _MiniPlayerBar({required this.player, required this.onOpen});
+
+  final PersistentAudioPlayer player;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final item = player.currentItem!;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
+      child: Material(
+        color: Theme.of(context).colorScheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onOpen,
+          child: SizedBox(
+            height: 58,
+            child: Row(
+              children: [
+                const SizedBox(width: 14),
+                Icon(Icons.music_note_rounded, color: Theme.of(context).colorScheme.primary),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w700)),
+                      const Text('NOW PLAYING', style: TextStyle(fontSize: 9, letterSpacing: 1.1)),
+                    ],
+                  ),
+                ),
+                StreamBuilder<bool>(
+                  stream: player.player.stream.playing,
+                  initialData: player.player.state.playing,
+                  builder: (context, snapshot) => IconButton(
+                    tooltip: (snapshot.data ?? false) ? 'Pause' : 'Play',
+                    onPressed: player.playOrPause,
+                    icon: Icon((snapshot.data ?? false) ? Icons.pause_rounded : Icons.play_arrow_rounded),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Next track',
+                  onPressed: player.next,
+                  icon: const Icon(Icons.skip_next_rounded),
+                ),
+                const SizedBox(width: 4),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
