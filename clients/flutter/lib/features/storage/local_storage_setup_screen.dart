@@ -26,6 +26,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
   final _serverPasswordController = TextEditingController();
   bool _serverPasswordConfigured = false;
   bool _obscureServerPassword = true;
+  bool _obscureBridgeToken = true;
   bool _refreshingStatus = false;
   bool _statusLoaded = false;
   String? _error;
@@ -219,6 +220,19 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Future<void> _copyBridgeToken() async {
+    final token = _token;
+    if (token == null || token.isEmpty) return;
+    await Clipboard.setData(ClipboardData(text: token));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Backend bridge token copied.'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   Future<void> _requestBackgroundAccess() async {
@@ -850,27 +864,81 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
     ];
     final tokenSections = <Widget>[
           const SizedBox(height: 24),
-          ExpansionTile(
-            tilePadding: EdgeInsets.zero,
-            childrenPadding: const EdgeInsets.only(bottom: 12),
-            leading: const Icon(Icons.key_outlined),
-            title: const Text('Backend bridge token'),
-            subtitle: const Text('Temporary compatibility setting'),
-            children: [
-              SelectableText(_token ?? 'Loading…'),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  onPressed: _token == null ? null : () => Clipboard.setData(ClipboardData(text: _token!)),
-                  icon: const Icon(Icons.copy_rounded, size: 18),
-                  label: const Text('Copy token'),
+          const _SetupSectionTitle(
+            title: 'Backend bridge',
+            subtitle: 'Authentication for the Termux backend to access Android storage.',
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: colors.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.4)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.key_outlined, color: colors.primary),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Backend bridge token',
+                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                    _StatusPill(
+                      label: _token != null ? 'Ready' : _statusLoaded ? 'Unavailable' : 'Loading',
+                      granted: _token != null,
+                    ),
+                  ],
                 ),
-              ),
-              Text(
-                'This token is used by the current Termux backend. It will no longer be needed once the native PocketLink API is enabled.',
-                style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
-              ),
-            ],
+                const SizedBox(height: 8),
+                Text(
+                  'Used by the Termux backend to authenticate with this phone’s Android USB storage bridge. It is separate from the native server password.',
+                  style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant, height: 1.4),
+                ),
+                const SizedBox(height: 12),
+                if (_token == null)
+                  Text(
+                    _statusLoaded ? 'The bridge token could not be loaded. Refresh the device status and try again.' : 'Loading bridge token…',
+                    style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: colors.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.4)),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: SelectableText(
+                            _obscureBridgeToken ? '••••••••••••••••••••••••' : _token!,
+                            style: theme.textTheme.bodyMedium?.copyWith(fontFamily: 'monospace'),
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: _obscureBridgeToken ? 'Show bridge token' : 'Hide bridge token',
+                          onPressed: () => setState(() => _obscureBridgeToken = !_obscureBridgeToken),
+                          icon: Icon(
+                            _obscureBridgeToken ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Copy bridge token',
+                          onPressed: _copyBridgeToken,
+                          icon: const Icon(Icons.copy_rounded),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
           ),
     ];
 
