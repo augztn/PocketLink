@@ -390,6 +390,20 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                         'Prepare this phone for reliable file access and background server operation.',
                         style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant, height: 1.4),
                       ),
+                      const SizedBox(height: 14),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: _busy || (!running && !canStart)
+                              ? null
+                              : (running ? _stop : _start),
+                          icon: Icon(running ? Icons.stop_rounded : Icons.play_arrow_rounded),
+                          label: Text(running ? 'Stop storage service' : 'Start storage service'),
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size.fromHeight(48),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -616,12 +630,36 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                   ],
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  'Photos ${_mediaScanStatus['photo_count'] ?? 0} · '
-                  'Videos ${_mediaScanStatus['video_count'] ?? 0} · '
-                  'Music ${_mediaScanStatus['music_count'] ?? 0} · '
-                  'Files ${_mediaScanStatus['file_count'] ?? 0}',
-                  style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+                const SizedBox(height: 4),
+                GridView.count(
+                  crossAxisCount: 2,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  mainAxisSpacing: 8,
+                  crossAxisSpacing: 8,
+                  childAspectRatio: 2.7,
+                  children: [
+                    _MediaMetric(
+                      label: 'Photos',
+                      value: _mediaScanStatus['photo_count'] ?? 0,
+                      icon: Icons.photo_outlined,
+                    ),
+                    _MediaMetric(
+                      label: 'Videos',
+                      value: _mediaScanStatus['video_count'] ?? 0,
+                      icon: Icons.video_library_outlined,
+                    ),
+                    _MediaMetric(
+                      label: 'Music',
+                      value: _mediaScanStatus['music_count'] ?? 0,
+                      icon: Icons.music_note_rounded,
+                    ),
+                    _MediaMetric(
+                      label: 'Files',
+                      value: _mediaScanStatus['file_count'] ?? 0,
+                      icon: Icons.insert_drive_file_outlined,
+                    ),
+                  ],
                 ),
                 Text(
                   '${_mediaScanStatus['scanned'] ?? 0} items checked in this scan',
@@ -695,42 +733,6 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
             ),
             const SizedBox(height: 12),
           ],
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: colors.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.35)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(running ? Icons.cloud_done_rounded : Icons.cloud_off_rounded, color: running ? Colors.green : colors.onSurfaceVariant),
-                    const SizedBox(width: 10),
-                    Expanded(child: Text('Local storage service', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800))),
-                    _StatusPill(label: running ? 'Running' : 'Stopped', granted: running),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  running ? 'Your device storage bridge is active.' : 'Start the service when your storage permissions are ready.',
-                  style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
-                ),
-                const SizedBox(height: 14),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: _busy || (!running && !canStart) ? null : (running ? _stop : _start),
-                    icon: Icon(running ? Icons.stop_rounded : Icons.play_arrow_rounded),
-                    label: Text(running ? 'Stop storage service' : 'Start storage service'),
-                    style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(50)),
-                  ),
-                ),
-              ],
-            ),
-          ),
           const SizedBox(height: 24),
           ExpansionTile(
             tilePadding: EdgeInsets.zero,
@@ -753,6 +755,61 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                 style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MediaMetric extends StatelessWidget {
+  const _MediaMetric({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+
+  final String label;
+  final dynamic value;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerHighest.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 17, color: colors.onSurfaceVariant),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value.toString(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: colors.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
