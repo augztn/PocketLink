@@ -365,6 +365,7 @@ internal class MediaIndexScanner(
                 stack.add(base to 0)
                 while (stack.isNotEmpty()) {
                     val (directory, depth) = stack.removeLast()
+                    waitForPlaybackToPause()
                     val children = try { directory.listFiles() } catch (_: Exception) { null }
                     if (children == null) {
                         complete = false
@@ -396,6 +397,7 @@ internal class MediaIndexScanner(
                 while (stack.isNotEmpty()) {
                     val (entry, depth) = stack.removeLast()
                     val (directory, parentPath) = entry
+                    waitForPlaybackToPause()
                     val children = try { directory.listFiles() } catch (_: Exception) { null }
                     if (children == null) {
                         complete = false
@@ -421,6 +423,21 @@ internal class MediaIndexScanner(
         // failure must not invalidate the general file index, or vice versa.
         if (complete && filesHealthy) database.finishFilesSource(volume, scanId)
         if (complete && mediaHealthy) database.finishMediaSource(volume, scanId)
+    }
+
+    /**
+     * Storage providers can perform blocking I/O. Yield between directory reads
+     * while audio is playing so indexing does not compete with active playback.
+     */
+    private fun waitForPlaybackToPause() {
+        while (MediaPlaybackBridge.isPlaying) {
+            try {
+                Thread.sleep(1_000L)
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+                return
+            }
+        }
     }
 
     fun status(): org.json.JSONObject {
