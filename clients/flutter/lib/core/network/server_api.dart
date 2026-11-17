@@ -247,27 +247,44 @@ class ServerApi {
           handler.reject(error);
           return;
         }
-        AppLogger.info('API request', fields: {
+        final requestId = AppLogger.nextEventId('http');
+        options.extra['pocketlink.requestId'] = requestId;
+        options.extra['pocketlink.requestStopwatch'] = Stopwatch()..start();
+        AppLogger.info('API request started', fields: {
+          'requestId': requestId,
           'method': options.method,
           'path': options.uri.path,
+          'retry': options.extra['homeserver.retryCount'] ?? 0,
+          'activeRequestLimit': 4,
         });
         handler.next(options);
       },
       onResponse: (response, handler) {
         _releaseRequestSlot(response.requestOptions);
-        AppLogger.info('API response', fields: {
-          'method': response.requestOptions.method,
-          'path': response.requestOptions.uri.path,
+        final options = response.requestOptions;
+        final stopwatch = options.extra['pocketlink.requestStopwatch'] as Stopwatch?;
+        AppLogger.info('API request completed', fields: {
+          'requestId': options.extra['pocketlink.requestId'] ?? 'unknown',
+          'method': options.method,
+          'path': options.uri.path,
           'status': response.statusCode,
+          'durationMs': stopwatch?.elapsedMilliseconds,
+          'retry': options.extra['homeserver.retryCount'] ?? 0,
         });
         handler.next(response);
       },
       onError: (error, handler) async {
+        final failedOptions = error.requestOptions;
+        final stopwatch = failedOptions.extra['pocketlink.requestStopwatch'] as Stopwatch?;
         AppLogger.warning('API request failed', fields: {
-          'method': error.requestOptions.method,
-          'path': error.requestOptions.uri.path,
+          'requestId': failedOptions.extra['pocketlink.requestId'] ?? 'unknown',
+          'method': failedOptions.method,
+          'path': failedOptions.uri.path,
           'type': error.type.name,
           'status': error.response?.statusCode,
+          'durationMs': stopwatch?.elapsedMilliseconds,
+          'retry': failedOptions.extra['homeserver.retryCount'] ?? 0,
+          'cancelled': failedOptions.cancelToken?.isCancelled ?? false,
         });
 
         final options = error.requestOptions;
@@ -283,6 +300,13 @@ class ServerApi {
         if (options.method.toUpperCase() == 'GET' &&
             attempts < 3 && !cancelled && (transientNetwork || transientStatus)) {
           options.extra['homeserver.retryCount'] = attempts + 1;
+          AppLogger.warning('API retry scheduled', fields: {
+            'requestId': options.extra['pocketlink.requestId'] ?? 'unknown',
+            'method': options.method,
+            'path': options.uri.path,
+            'nextAttempt': attempts + 1,
+            'delaySeconds': 1 << attempts,
+          });
           await Future<void>.delayed(Duration(seconds: 1 << attempts));
           if (options.cancelToken?.isCancelled ?? false) {
             handler.next(error);
