@@ -602,6 +602,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                       : 'Needs approval',
               granted: selectedVolumeCount > 0,
               neutral: _discoveredVolumes.isEmpty,
+              onTap: null,
             ),
           ),
           const SizedBox(height: 10),
