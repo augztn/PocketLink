@@ -144,8 +144,8 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         limit: 500,
         offset: offset,
       );
-      if (!mounted) break;
       status = page.status;
+      if (!mounted) break;
       found.addAll(page.items.map((item) => _MediaFile(
         entry: item.toFileEntry(),
         path: item.path,
