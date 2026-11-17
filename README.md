@@ -70,6 +70,14 @@ The Android SAF bridge is a local Flutter plugin at `clients/flutter/packages/ho
 - Treat unavailable Android storage providers as unavailable; do not silently substitute another volume.
 - Preserve original media bytes and HTTP Range behavior.
 
+## Credits & attribution
+
+PocketLink is created and maintained by [augztn](https://github.com/augztn).
+
+If you use PocketLink, redistribute it, or build on its code, a mention of PocketLink and a link to [the original repository](https://github.com/augztn/PocketLink) are always appreciated. Thank you for helping the project reach more people. ❤️
+
+This is a friendly request, not an additional condition of the MIT License. The license's existing copyright and license-notice requirements still apply.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
