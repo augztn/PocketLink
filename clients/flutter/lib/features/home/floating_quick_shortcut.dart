@@ -151,7 +151,7 @@ class _FloatingQuickShortcutState extends State<FloatingQuickShortcut>
         ? (widget.expanded ? menuContent : const SizedBox.shrink())
         : SizeTransition(
             sizeFactor: _controller,
-            axisAlignment: 1,
+            alignment: Alignment.bottomCenter,
             child: menuContent,
           );
 
