@@ -62,6 +62,18 @@ internal class NativeApiServer(
         if (mediaIndexDelegate.isInitialized()) mediaIndex.markDirty()
     }
 
+    fun ensureMediaIndexStarted() = mediaIndex.ensureStarted()
+
+    fun mediaIndexStatus(): String {
+        mediaIndex.ensureStarted()
+        return mediaIndex.status().toString()
+    }
+
+    fun refreshMediaIndex(): String {
+        mediaIndex.requestScan(force = true)
+        return mediaIndex.status().toString()
+    }
+
     override fun serve(session: IHTTPSession): Response {
         // The native listener is cleartext HTTP. Trust only loopback or peers
         // arriving through Tailscale's encrypted WireGuard address ranges.
