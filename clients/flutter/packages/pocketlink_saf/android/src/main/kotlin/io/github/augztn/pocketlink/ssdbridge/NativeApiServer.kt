@@ -316,27 +316,102 @@ internal class NativeApiServer(
         }
         if (prefs.getString("usb1", null) != null) ids.add("usb1")
         if (prefs.getString("usb2", null) != null) ids.add("usb2")
+        discoverRemovableVolumes().forEach { ids.add(it.first) }
+
         ids.forEach { id ->
-            val root = externalRoot(id)
-            val available = root?.exists() == true
+            val direct = directExternalRoot(id)
+            val document = externalRoot(id)
+            val available = direct?.isDirectory == true || document?.exists() == true
+            val discovered = discoverRemovableVolumes().firstOrNull { it.first == id }?.second
             val legacyName = when (id) { "usb1" -> "USB Storage 1"; "usb2" -> "USB Storage 2"; else -> id }
+            val writable = when {
+                direct != null -> direct.canWrite()
+                document != null -> document.canWrite()
+                else -> false
+            }
+            val readable = when {
+                direct != null -> direct.canRead() && direct.listFiles() != null
+                document != null -> document.canRead() && document.isDirectory
+                else -> false
+            }
             val item = JSONObject()
                 .put("id", id)
-                .put("name", prefs.getString("volume_name_$id", null) ?: legacyName)
+                .put("name", prefs.getString("volume_name_$id", null)
+                    ?: discovered?.getDescription(context)?.toString()
+                    ?: legacyName)
                 .put("available", available)
-                .put("writable", available && root?.canWrite() == true)
+                .put("readable", readable)
+                .put("writable", available && writable)
+                .put("access", if (direct != null) "direct" else if (document != null) "saf" else "unavailable")
 
-            if (available && root != null) {
-                readExternalVolumeCapacity(root.uri)?.let { capacity ->
-                    item.put("total_bytes", capacity.totalBytes)
-                        .put("used_bytes", capacity.usedBytes)
-                        .put("available_bytes", capacity.availableBytes)
-                        .put("usage_percent", capacity.usagePercent)
-                }
+            val capacity = direct?.let { readExternalFileCapacity(it) }
+                ?: document?.let { readExternalVolumeCapacity(it.uri) }
+            capacity?.let {
+                item.put("total_bytes", it.totalBytes)
+                    .put("used_bytes", it.usedBytes)
+                    .put("available_bytes", it.availableBytes)
+                    .put("usage_percent", it.usagePercent)
             }
             items.put(item)
         }
         return json(JSONObject().put("items", items))
+    }
+
+    private fun discoverRemovableVolumes(): List<Pair<String, android.os.storage.StorageVolume>> {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return emptyList()
+        val manager = context.getSystemService(Context.STORAGE_SERVICE) as? StorageManager ?: return emptyList()
+        return manager.storageVolumes.mapNotNull { volume ->
+            if (!volume.isRemovable || volume.state !in setOf(
+                    Environment.MEDIA_MOUNTED, Environment.MEDIA_MOUNTED_READ_ONLY
+                )) return@mapNotNull null
+            val identity = externalVolumeIdentity(
+                volume.uuid,
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) volume.directory?.absolutePath else null,
+                volume.getDescription(context).toString()
+            )
+            val suffix = MessageDigest.getInstance("SHA-256")
+                .digest(identity.toByteArray(Charsets.UTF_8))
+                .take(8).joinToString("") { "%02x".format(it) }
+            "usb-$suffix" to volume
+        }
+    }
+
+    /**
+     * Direct filesystem access is available only when the user granted Android
+     * All files access and the mounted removable volume exposes a public directory.
+     * Otherwise callers retain the persisted SAF tree-URI implementation.
+     */
+    private fun directExternalRoot(volumeId: String?): File? {
+        if (volumeId.isNullOrBlank() || Build.VERSION.SDK_INT < Build.VERSION_CODES.R ||
+            !Environment.isExternalStorageManager()
+        ) return null
+        val volume = discoverRemovableVolumes().firstOrNull { it.first == volumeId }?.second ?: return null
+        val directory = volume.directory ?: return null
+        return try {
+            directory.canonicalFile.takeIf { it.isDirectory && it.canRead() }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun resolveExternalFile(root: File, relative: String): File? {
+        if (relative.isBlank()) return root
+        val parts = relative.split('/')
+        if (parts.any { !validName(it) }) return null
+        return try {
+            val target = File(root, relative).canonicalFile
+            val prefix = root.canonicalPath + File.separator
+            target.takeIf { it.path == root.canonicalPath || it.path.startsWith(prefix) }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun readExternalFileCapacity(root: File): ExternalVolumeCapacity? = try {
+        val stats = StatFs(root.absolutePath)
+        externalVolumeCapacity(stats.totalBytes, stats.availableBytes)
+    } catch (_: Exception) {
+        null
     }
 
     /**
@@ -373,6 +448,18 @@ internal class NativeApiServer(
     }
 
     private fun listExternal(volume: String?, relative: String): Response {
+        val directRoot = directExternalRoot(volume)
+        if (directRoot != null) {
+            val directory = resolveExternalFile(directRoot, relative) ?: return notFound("Folder not found")
+            if (!directory.isDirectory || !directory.canRead()) return bad("Not a readable directory")
+            val items = JSONArray()
+            (directory.listFiles() ?: return jsonError(Response.Status.FORBIDDEN, "Cannot list this folder"))
+                .asSequence()
+                .filter { !it.name.startsWith(".") }
+                .sortedWith(compareBy<File>({ !it.isDirectory }, { it.name.lowercase(Locale.ROOT) }))
+                .forEach { items.put(fileJson(it)) }
+            return json(JSONObject().put("path", relative).put("items", items))
+        }
         val root = externalRoot(volume) ?: return notFound("Storage permission not granted")
         val directory = resolveDocument(root, relative) ?: return notFound("Folder not found")
         if (!directory.isDirectory) return bad("Not a directory")
@@ -388,6 +475,12 @@ internal class NativeApiServer(
     }
 
     private fun serveExternalFile(volume: String?, relative: String, session: IHTTPSession): Response {
+        val directRoot = directExternalRoot(volume)
+        if (directRoot != null) {
+            val file = resolveExternalFile(directRoot, relative) ?: return notFound("File not found")
+            if (!file.isFile || !file.canRead()) return notFound("File not found")
+            return fileResponse(file, session, inline = false)
+        }
         val root = externalRoot(volume) ?: return notFound("Storage permission not granted")
         val item = resolveDocument(root, relative) ?: return notFound("File not found")
         if (!item.isFile) return bad("Not a file")
@@ -398,24 +491,18 @@ internal class NativeApiServer(
             val input = context.contentResolver.openInputStream(item.uri)
                 ?: return notFound("Cannot open file")
             val buffered = BufferedInputStream(input, STREAM_BUFFER_SIZE)
-            if (length > 0L) {
-                newFixedLengthResponse(Response.Status.OK, mime, buffered, length)
-            } else {
-                newChunkedResponse(Response.Status.OK, mime, buffered)
-            }
+            if (length > 0L) newFixedLengthResponse(Response.Status.OK, mime, buffered, length)
+            else newChunkedResponse(Response.Status.OK, mime, buffered)
         } else {
-            if (length <= 0L) {
-                return jsonError(Response.Status.RANGE_NOT_SATISFIABLE, "Byte ranges are unavailable for this storage provider")
-            }
+            if (length <= 0L) return jsonError(Response.Status.RANGE_NOT_SATISFIABLE, "Byte ranges are unavailable for this storage provider")
             val bounds = parseRange(range, length)
                 ?: return jsonError(Response.Status.RANGE_NOT_SATISFIABLE, "Invalid byte range")
                     .apply { addHeader("Content-Range", "bytes */$length") }
             val (start, end) = bounds
             val input = openExternalRangeStream(item.uri, start)
                 ?: return jsonError(Response.Status.RANGE_NOT_SATISFIABLE, "Could not seek to byte range")
-            newFixedLengthResponse(
-                Response.Status.PARTIAL_CONTENT, mime, input, end - start + 1
-            ).apply { addHeader("Content-Range", "bytes $start-$end/$length") }
+            newFixedLengthResponse(Response.Status.PARTIAL_CONTENT, mime, input, end - start + 1)
+                .apply { addHeader("Content-Range", "bytes $start-$end/$length") }
         }
         if (length > 0L) response.addHeader("Accept-Ranges", "bytes")
         response.addHeader("Cache-Control", "no-transform")
@@ -470,6 +557,26 @@ internal class NativeApiServer(
     }
 
     private fun uploadExternal(volume: String?, relative: String, session: IHTTPSession): Response {
+        val directRoot = directExternalRoot(volume)
+        if (directRoot != null) {
+            val parent = resolveExternalFile(directRoot, relative) ?: return notFound("Destination folder not found")
+            if (!parent.isDirectory || !parent.canWrite()) return bad("Destination is not writable")
+            val (name, temp) = multipartFile(session) ?: return bad("Multipart field 'file' is required")
+            if (!validName(name)) { temp.delete(); return bad("Invalid filename") }
+            val target = File(parent, name)
+            if (target.exists()) { temp.delete(); return jsonError(Response.Status.CONFLICT, "An item with this name already exists") }
+            val staging = File(parent, ".pocketlink-upload-${UUID.randomUUID()}.part")
+            return try {
+                temp.inputStream().use { input -> staging.outputStream().use { output -> input.copyTo(output) } }
+                if (!staging.renameTo(target)) jsonError(Response.Status.INTERNAL_ERROR, "Could not finalize uploaded file")
+                else json(JSONObject().put("ok", true).put("name", name)).also { markMediaIndexDirty() }
+            } catch (error: Exception) {
+                jsonError(Response.Status.INTERNAL_ERROR, error.message ?: "Upload failed")
+            } finally {
+                temp.delete()
+                if (staging.exists()) staging.delete()
+            }
+        }
         val root = externalRoot(volume) ?: return notFound("Storage permission not granted")
         val parent = resolveDocument(root, relative) ?: return notFound("Destination folder not found")
         if (!parent.isDirectory) return bad("Destination is not a folder")
@@ -492,10 +599,31 @@ internal class NativeApiServer(
 
     private fun mutateExternal(session: IHTTPSession, operation: String): Response {
         val body = jsonBody(session) ?: return bad("Invalid JSON body")
-        val root = externalRoot(body.optString("volume")) ?: return notFound("Storage permission not granted")
+        val volume = body.optString("volume")
         val relative = body.optString("path")
         val name = if (operation == "mkdir") body.optString("name") else body.optString("new_name")
         if (!validName(name)) return bad("Invalid name")
+        val directRoot = directExternalRoot(volume)
+        if (directRoot != null) {
+            val target: File
+            if (operation == "mkdir") {
+                val parent = resolveExternalFile(directRoot, relative) ?: return notFound("Folder not found")
+                if (!parent.isDirectory || !parent.canWrite()) return bad("Destination is not writable")
+                target = File(parent, name)
+                if (target.exists()) return jsonError(Response.Status.CONFLICT, "Name already exists")
+                if (!target.mkdir()) return jsonError(Response.Status.INTERNAL_ERROR, "Could not create folder")
+            } else {
+                val old = resolveExternalFile(directRoot, relative) ?: return notFound("Item not found")
+                if (old == directRoot) return bad("Cannot rename storage root")
+                val parent = old.parentFile ?: return bad("Invalid parent folder")
+                target = File(parent, name)
+                if (target.exists()) return jsonError(Response.Status.CONFLICT, "Name already exists")
+                if (!old.renameTo(target)) return jsonError(Response.Status.INTERNAL_ERROR, "Rename failed")
+            }
+            return json(JSONObject().put("ok", true).put("name", target.name)).also { markMediaIndexDirty() }
+        }
+
+        val root = externalRoot(volume) ?: return notFound("Storage permission not granted")
         val target: DocumentFile
         if (operation == "mkdir") {
             val parent = resolveDocument(root, relative) ?: return notFound("Folder not found")
@@ -510,8 +638,17 @@ internal class NativeApiServer(
     }
 
     private fun deleteExternal(volume: String?, relative: String): Response {
-        val root = externalRoot(volume) ?: return notFound("Storage permission not granted")
         if (relative.isBlank()) return bad("Cannot delete storage root")
+        val directRoot = directExternalRoot(volume)
+        if (directRoot != null) {
+            val file = resolveExternalFile(directRoot, relative) ?: return notFound("Item not found")
+            if (file.isDirectory && file.list()?.isNotEmpty() == true) return bad("Folder is not empty")
+            return if (file.delete()) {
+                markMediaIndexDirty()
+                json(JSONObject().put("ok", true))
+            } else jsonError(Response.Status.INTERNAL_ERROR, "Delete failed")
+        }
+        val root = externalRoot(volume) ?: return notFound("Storage permission not granted")
         val item = resolveDocument(root, relative) ?: return notFound("Item not found")
         return if (item.delete()) {
             markMediaIndexDirty()
@@ -528,10 +665,17 @@ internal class NativeApiServer(
                 if (!file.isFile || !file.canRead() || !isVideoFile(file.name)) return bad("Not a readable video")
                 retriever.setDataSource(file.absolutePath)
             } else {
-                val root = externalRoot(volume) ?: return notFound("Storage permission not granted")
-                val document = resolveDocument(root, relative) ?: return notFound("Video not found")
-                if (!document.isFile || !isVideoFile(document.name.orEmpty())) return bad("Not a video file")
-                retriever.setDataSource(context, document.uri)
+                val directRoot = directExternalRoot(volume)
+                if (directRoot != null) {
+                    val file = resolveExternalFile(directRoot, relative) ?: return notFound("Video not found")
+                    if (!file.isFile || !file.canRead() || !isVideoFile(file.name)) return bad("Not a readable video")
+                    retriever.setDataSource(file.absolutePath)
+                } else {
+                    val root = externalRoot(volume) ?: return notFound("Storage permission not granted")
+                    val document = resolveDocument(root, relative) ?: return notFound("Video not found")
+                    if (!document.isFile || !isVideoFile(document.name.orEmpty())) return bad("Not a video file")
+                    retriever.setDataSource(context, document.uri)
+                }
             }
             action(retriever)
         } catch (_: SecurityException) {
