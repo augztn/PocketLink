@@ -419,15 +419,16 @@ class ServerApi {
           // A network handoff can leave an idle pooled socket bound to the old
           // Wi-Fi/mobile route. Force the retry onto a fresh TCP connection.
           options.headers[Headers.connectionHeader] = 'close';
+          final retryDelay = _retryDelay(error, attempts);
           AppLogger.warning('API retry scheduled', fields: {
             'requestId': options.extra['pocketlink.requestId'] ?? 'unknown',
             'method': options.method,
             'path': options.uri.path,
             'nextAttempt': attempts + 1,
-            'delaySeconds': 1 << attempts,
+            'delayMs': retryDelay.inMilliseconds,
             'freshConnection': true,
           });
-          await Future<void>.delayed(Duration(seconds: 1 << attempts));
+          await Future<void>.delayed(retryDelay);
           if (options.cancelToken?.isCancelled ?? false) {
             handler.next(error);
             return;
@@ -495,6 +496,29 @@ class ServerApi {
     });
     _sharedReadRequests[key] = request;
     return request;
+  }
+
+  Duration _retryDelay(DioException error, int attempts) {
+    final retryAfter = error.response?.headers.value('retry-after')?.trim();
+    Duration? serverDelay;
+    if (retryAfter != null && retryAfter.isNotEmpty) {
+      final seconds = int.tryParse(retryAfter);
+      if (seconds != null) {
+        serverDelay = Duration(seconds: seconds);
+      } else {
+        final retryAt = DateTime.tryParse(retryAfter)?.toUtc();
+        if (retryAt != null) {
+          serverDelay = retryAt.difference(DateTime.now().toUtc());
+        }
+      }
+    }
+
+    // Respect server back-pressure, but never let an untrusted header stall
+    // the client for more than 30 seconds.
+    final delay = serverDelay ?? Duration(seconds: 1 << attempts);
+    return Duration(
+      milliseconds: delay.inMilliseconds.clamp(0, 30000).toInt(),
+    );
   }
 
   void _releaseRequestSlot(RequestOptions options) {
