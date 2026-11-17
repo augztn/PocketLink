@@ -175,6 +175,10 @@ class PersistentAudioPlayer extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> skipToNext() async {
+    await player.next();
+  }
+
   Future<void> dismiss() async {
     cancelSleepTimer();
     await player.stop();
