@@ -551,9 +551,14 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '${_mediaScanStatus['scanned'] ?? 0} items scanned · '
-                  '${_mediaScanStatus['media_count'] ?? 0} media · '
-                  '${_mediaScanStatus['file_count'] ?? 0} files',
+                  'Photos ${_mediaScanStatus['photo_count'] ?? 0} · '
+                  'Videos ${_mediaScanStatus['video_count'] ?? 0} · '
+                  'Music ${_mediaScanStatus['music_count'] ?? 0} · '
+                  'Files ${_mediaScanStatus['file_count'] ?? 0}',
+                  style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+                ),
+                Text(
+                  '${_mediaScanStatus['scanned'] ?? 0} items checked in this scan',
                   style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
                 ),
                 if (_scanningMedia) ...[
