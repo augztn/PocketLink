@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+
+import '../../core/settings/app_settings.dart';
 import '../../core/widgets/home_server_app_bar.dart';
 import 'package:flutter/services.dart';
 
@@ -15,8 +17,10 @@ class LocalStorageSetupScreen extends StatefulWidget {
   State<LocalStorageSetupScreen> createState() => _LocalStorageSetupScreenState();
 }
 
-class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with WidgetsBindingObserver {
+class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   static const _channel = MethodChannel('homeserver/saf');
+  final _settings = AppSettings.instance;
+  late final TabController _hostTabController;
   Map<String, dynamic> _status = const {};
   String? _token;
   final _serverPasswordController = TextEditingController();
@@ -35,9 +39,29 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
   @override
   void initState() {
     super.initState();
+    _hostTabController = TabController(length: 3, vsync: this);
+    unawaited(_loadSettings());
     WidgetsBinding.instance.addObserver(this);
     _channel.setMethodCallHandler(_onNativeEvent);
     _refresh();
+  }
+
+  Future<void> _loadSettings() async {
+    await _settings.load();
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _setHostSetupTabbedLayout(bool value) async {
+    try {
+      await _settings.setHostSetupTabbedLayout(value);
+      if (mounted) setState(() {});
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not save the Host PocketLink layout preference.')),
+        );
+      }
+    }
   }
 
   @override
@@ -306,6 +330,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _hostTabController.dispose();
     _serverPasswordController.dispose();
     _channel.setMethodCallHandler(null);
     super.dispose();
@@ -348,9 +373,9 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
-        children: [
+
+    final hostSections = <Widget>[
+
           Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
@@ -378,19 +403,16 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                       Row(
                         children: [
                           Expanded(child: Text('Host PocketLink on this device', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800))),
-                          _StatusPill(label: running ? 'Running' : 'Stopped', granted: running),
                         ],
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        running
-                            ? 'This phone is actively hosting PocketLink.'
-                            : 'Configure storage access below, then start the service when you are ready.',
+                        'This phone can host PocketLink and provide local storage access to your clients.',
                         style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
                       ),
                       const SizedBox(height: 5),
                       Text(
-                        'Prepare this phone for reliable file access and background server operation.',
+                        'Configure permissions, external drives and media indexing below.',
                         style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant, height: 1.4),
                       ),
                     ],
@@ -399,6 +421,8 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
               ],
             ),
           ),
+    ];
+    final securitySections = <Widget>[
           const SizedBox(height: 22),
           const _SetupSectionTitle(title: 'Server security', subtitle: 'Set the password used by remote clients to connect.'),
           const SizedBox(height: 10),
@@ -467,6 +491,8 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
               ],
             ),
           ),
+    ];
+    final permissionSections = <Widget>[
           const SizedBox(height: 24),
           Container(
             padding: const EdgeInsets.all(16),
@@ -556,6 +582,8 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
               ],
             ),
           ),
+    ];
+    final usbSections = <Widget>[
           const SizedBox(height: 24),
           Row(
             children: [
@@ -642,6 +670,8 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
               ),
             );
           }),
+    ];
+    final serviceSections = <Widget>[
           const SizedBox(height: 22),
           Container(
             padding: const EdgeInsets.all(18),
@@ -713,6 +743,8 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
               ],
             ),
           ),
+    ];
+    final mediaSections = <Widget>[
           const SizedBox(height: 24),
           const _SetupSectionTitle(
             title: 'Device media & files',
@@ -833,6 +865,8 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
               ],
             ),
           ),
+    ];
+    final feedbackSections = <Widget>[
           const SizedBox(height: 12),
           if (_busy) ...[
             const LinearProgressIndicator(),
@@ -856,6 +890,8 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
             ),
             const SizedBox(height: 12),
           ],
+    ];
+    final tokenSections = <Widget>[
           const SizedBox(height: 24),
           ExpansionTile(
             tilePadding: EdgeInsets.zero,
@@ -878,7 +914,104 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                 style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
               ),
             ],
+          ),    ];
+
+    final normalSections = <Widget>[
+      ...hostSections,
+      ...securitySections,
+      ...permissionSections,
+      ...usbSections,
+      ...serviceSections,
+      ...mediaSections,
+      ...feedbackSections,
+      ...tokenSections,
+    ];
+    Widget sectionList(String storageKey, List<Widget> sections) => ListView(
+      key: PageStorageKey<String>(storageKey),
+      padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
+      children: sections,
+    );
+
+    final layoutSelector = Padding(
+      padding: const EdgeInsets.fromLTRB(18, 10, 18, 10),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              'Layout',
+              style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+            ),
           ),
+          SegmentedButton<bool>(
+            showSelectedIcon: false,
+            segments: const [
+              ButtonSegment<bool>(
+                value: true,
+                icon: Icon(Icons.tab_rounded),
+                label: Text('Tabbed'),
+              ),
+              ButtonSegment<bool>(
+                value: false,
+                icon: Icon(Icons.view_agenda_outlined),
+                label: Text('Normal'),
+              ),
+            ],
+            selected: {_settings.hostSetupTabbedLayout},
+            onSelectionChanged: (selection) {
+              unawaited(_setHostSetupTabbedLayout(selection.single));
+            },
+          ),
+        ],
+      ),
+    );
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
+      body: Column(
+        children: [
+          layoutSelector,
+          if (_settings.hostSetupTabbedLayout)
+            Expanded(
+              child: Column(
+                children: [
+                  Material(
+                    color: colors.surface,
+                    child: TabBar(
+                      controller: _hostTabController,
+                      tabs: const [
+                        Tab(icon: Icon(Icons.dashboard_outlined), text: 'Overview'),
+                        Tab(icon: Icon(Icons.storage_rounded), text: 'Storage'),
+                        Tab(icon: Icon(Icons.lock_outline_rounded), text: 'Security'),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: TabBarView(
+                      controller: _hostTabController,
+                      children: [
+                        sectionList('host-overview', [
+                          ...hostSections,
+                          ...serviceSections,
+                          ...feedbackSections,
+                        ]),
+                        sectionList('host-storage', [
+                          ...permissionSections,
+                          ...usbSections,
+                          ...mediaSections,
+                          ...feedbackSections,
+                        ]),
+                        sectionList('host-security', [
+                          ...securitySections,
+                          ...tokenSections,
+                          ...feedbackSections,
+                        ]),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            Expanded(child: sectionList('host-setup-normal', normalSections)),
         ],
       ),
     );
