@@ -17,6 +17,7 @@ import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.PluginRegistry
+import java.security.MessageDigest
 
 class PocketLinkSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler,
     PluginRegistry.ActivityResultListener {
@@ -27,6 +28,14 @@ class PocketLinkSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
     private var binding: ActivityPluginBinding? = null
     private var pendingVolumeId: String? = null
     private val prefs by lazy { context.getSharedPreferences("ssd-bridge", Context.MODE_PRIVATE) }
+    private var storageManager: StorageManager? = null
+    private val volumeCallback by lazy {
+        object : StorageManager.StorageVolumeCallback() {
+            override fun onStateChanged(volume: StorageVolume) {
+                channel.invokeMethod("storageChanged", status())
+            }
+        }
+    }
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         context = binding.applicationContext
@@ -34,6 +43,14 @@ class PocketLinkSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
         mediaChannel = MethodChannel(binding.binaryMessenger, "pocketlink/media")
         channel.setMethodCallHandler(this)
         mediaChannel.setMethodCallHandler(this)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            storageManager = context.getSystemService(Context.STORAGE_SERVICE) as? StorageManager
+            try {
+                storageManager?.registerStorageVolumeCallback(context.mainExecutor, volumeCallback)
+            } catch (_: RuntimeException) {
+                storageManager = null
+            }
+        }
         MediaPlaybackBridge.commandHandler = { action, position ->
             mediaChannel.invokeMethod("mediaCommand", mapOf("action" to action, "position" to position))
         }
@@ -246,8 +263,12 @@ class PocketLinkSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
                     Environment.MEDIA_MOUNTED,
                     Environment.MEDIA_MOUNTED_READ_ONLY
                 )) return@mapIndexedNotNull null
-            val identity = volume.uuid?.lowercase() ?: "${volume.getDescription(context)}-$index"
-            val suffix = java.security.MessageDigest.getInstance("SHA-256")
+            val identity = externalVolumeIdentity(
+                uuid = volume.uuid,
+                directoryPath = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) volume.directory?.absolutePath else null,
+                description = volume.getDescription(context).toString()
+            )
+            val suffix = MessageDigest.getInstance("SHA-256")
                 .digest(identity.toByteArray(Charsets.UTF_8))
                 .take(8).joinToString("") { "%02x".format(it) }
             "usb-$suffix" to volume
@@ -316,6 +337,10 @@ class PocketLinkSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         MediaPlaybackBridge.commandHandler = null
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            try { storageManager?.unregisterStorageVolumeCallback(volumeCallback) } catch (_: RuntimeException) { }
+        }
+        storageManager = null
         channel.setMethodCallHandler(null)
         mediaChannel.setMethodCallHandler(null)
     }
