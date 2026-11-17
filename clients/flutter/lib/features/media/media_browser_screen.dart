@@ -144,6 +144,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         limit: 500,
         offset: offset,
       );
+      if (!mounted) break;
       status = page.status;
       found.addAll(page.items.map((item) => _MediaFile(
         entry: item.toFileEntry(),
@@ -159,15 +160,18 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   }
 
   Future<void> _scan({bool refresh = false}) async {
+    if (!mounted) return;
     if (refresh) {
       widget.api.invalidateDirectoryCache();
       try {
         await widget.api.startMediaIndexScan();
+        if (!mounted) return;
       } on DioException {
         await _scanLegacy(refresh: refresh);
         return;
       }
     }
+    if (!mounted) return;
     widget.api.clearMediaCache();
     setState(() {
       _loading = true;
@@ -191,6 +195,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         if (!mounted) return;
         status = await widget.api.mediaIndexStatus();
       }
+      if (!mounted) return;
       if (wasScanning && status.state != 'failed') {
         result = await _readIndexedMedia();
         found = result.items;
@@ -256,7 +261,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       );
 
       var cursor = 0;
-      while (cursor < pending.length && visited.length < _maxDirectories) {
+      while (mounted && cursor < pending.length && visited.length < _maxDirectories) {
         final current = pending[cursor++];
         final visitKey = '${current.volume ?? 'internal'}:${current.path}';
         if (!visited.add(visitKey)) continue;
@@ -269,6 +274,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                   current.volume!,
                   current.path,
                 );
+          if (!mounted) return;
           _scannedDirectories++;
         } on DioException catch (error) {
           if (error.response?.statusCode == 404) continue;
