@@ -33,13 +33,6 @@ jobs:
         with:
           channel: stable
           cache: true
-      - name: Cache Dart and Flutter packages
-        uses: actions/cache@v6
-        with:
-          path: ~/.pub-cache
-          key: ${{ runner.os }}-pub-${{ hashFiles('clients/flutter/pubspec.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-pub-
       - run: flutter pub get
       - run: flutter analyze --no-fatal-infos
       - run: flutter test
@@ -55,13 +48,6 @@ jobs:
         with:
           channel: stable
           cache: true
-      - name: Cache Dart and Flutter packages
-        uses: actions/cache@v6
-        with:
-          path: ~/.pub-cache
-          key: ${{ runner.os }}-pub-${{ hashFiles('clients/flutter/pubspec.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-pub-
       - name: Install Linux build dependencies
         run: |
           sudo apt-get update
@@ -147,7 +133,7 @@ jobs:
       - name: Cache Android NDK
         uses: actions/cache@v6
         with:
-          path: ${{ env.ANDROID_HOME }}/ndk/28.2.13676358
+          path: /usr/local/lib/android/sdk/ndk/28.2.13676358
           key: ${{ runner.os }}-android-ndk-28.2.13676358
       - name: Generate Android project
         run: flutter create --platforms=android --org io.github.augztn --project-name pocketlink .
