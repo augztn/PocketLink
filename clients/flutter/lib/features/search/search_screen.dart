@@ -722,7 +722,7 @@ class _SearchScreenState extends State<SearchScreen> {
           Text('Search in', style: theme.textTheme.labelLarge),
           const SizedBox(width: 10),
           Expanded(child: DropdownButtonFormField<String?>(
-            value: _scope, isDense: true, items: scopes, onChanged: _chooseScope,
+            initialValue: _scope, isDense: true, items: scopes, onChanged: _chooseScope,
             decoration: InputDecoration(contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
               filled: true, fillColor: theme.colorScheme.surfaceContainerLow,
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)),
