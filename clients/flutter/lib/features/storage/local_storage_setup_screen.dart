@@ -340,7 +340,19 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Host PocketLink here', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+                      Row(
+                        children: [
+                          Expanded(child: Text('Host PocketLink here', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800))),
+                          _StatusPill(label: running ? 'Running' : 'Stopped', granted: running),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        running
+                            ? 'This phone is actively hosting PocketLink.'
+                            : 'Start the host when storage access is ready.',
+                        style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+                      ),
                       const SizedBox(height: 5),
                       Text(
                         'Prepare this phone for reliable file access and background server operation.',
