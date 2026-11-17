@@ -173,18 +173,18 @@ void main() {
         'name': 'USB Storage 1',
         'available': true,
         'writable': true,
-        'total_bytes': 32_000,
-        'used_bytes': 20_000,
-        'available_bytes': 12_000,
+        'total_bytes': 32000,
+        'used_bytes': 20000,
+        'available_bytes': 12000,
         'usage_percent': 62.5,
       });
 
       expect(volume.id, 'usb1');
       expect(volume.available, isTrue);
       expect(volume.writable, isTrue);
-      expect(volume.totalBytes, 32_000);
-      expect(volume.usedBytes, 20_000);
-      expect(volume.availableBytes, 12_000);
+      expect(volume.totalBytes, 32000);
+      expect(volume.usedBytes, 20000);
+      expect(volume.availableBytes, 12000);
       expect(volume.usagePercent, 62.5);
     });
 
