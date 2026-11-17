@@ -114,10 +114,12 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
       try {
         await widget.api.startMediaIndexScan();
       } catch (_) {
+        if (!mounted) return;
         await _scanLegacy(refresh: refresh);
         return;
       }
     }
+    if (!mounted) return;
     setState(() { loading = true; error = null; photos = []; selected.clear(); });
     try {
       volumes = await widget.api.listStorageVolumes();
