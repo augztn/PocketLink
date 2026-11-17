@@ -1236,11 +1236,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
         controller: _sectionPageController,
         onPageChanged: (index) {
           if (_selectedSectionIndex != index) {
-            _sectionPageController.animateToPage(
-              index,
-              duration: const Duration(milliseconds: 260),
-              curve: Curves.easeOutCubic,
-            );
+            setState(() => _selectedSectionIndex = index);
           }
         },
         children: [
@@ -1270,9 +1266,13 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         selectedIndex: _selectedSectionIndex,
         onDestinationSelected: (index) {
-          if (_selectedSectionIndex != index) {
-            setState(() => _selectedSectionIndex = index);
-          }
+          if (_selectedSectionIndex == index) return;
+          setState(() => _selectedSectionIndex = index);
+          _sectionPageController.animateToPage(
+            index,
+            duration: const Duration(milliseconds: 260),
+            curve: Curves.easeOutCubic,
+          );
         },
         destinations: const [
           NavigationDestination(
