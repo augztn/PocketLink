@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import '../../core/widgets/home_server_app_bar.dart';
 import 'package:flutter/services.dart';
@@ -17,6 +19,9 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
   bool _serverPasswordConfigured = false;
   String? _error;
   bool _busy = false;
+  bool _refreshingStorage = false;
+  bool _scanningMedia = false;
+  Map<String, dynamic> _mediaScanStatus = const {};
   List<Map<String, dynamic>> _discoveredVolumes = const [];
 
   @override
@@ -50,12 +55,18 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
     try {
       final status = await _channel.invokeMapMethod<String, dynamic>('status');
       final token = await _channel.invokeMethod<String>('token');
+      final scanStatusRaw = await _channel.invokeMethod<String>('mediaIndexStatus');
+      final scanStatus = scanStatusRaw == null
+          ? const <String, dynamic>{}
+          : Map<String, dynamic>.from(jsonDecode(scanStatusRaw) as Map);
       if (!mounted) return;
       setState(() {
         _status = status ?? const {};
         _discoveredVolumes = (status?['discoveredVolumes'] as List<dynamic>? ?? const [])
             .whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList();
         _token = token;
+        _mediaScanStatus = scanStatus;
+        _scanningMedia = scanStatus['state'] == 'scanning';
         _serverPasswordConfigured = status?['serverPasswordConfigured'] == true;
         _error = status?['error']?.toString();
         _busy = false;
@@ -64,6 +75,54 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
       if (mounted) setState(() => _error = 'Native Android storage support is unavailable in this build.');
     } on PlatformException catch (error) {
       if (mounted) setState(() => _error = error.message ?? 'Could not read storage status.');
+    }
+  }
+
+  Future<void> _refreshStorage() async {
+    if (_refreshingStorage || _busy) return;
+    setState(() {
+      _refreshingStorage = true;
+      _error = null;
+    });
+    try {
+      await _refresh();
+    } finally {
+      if (mounted) setState(() => _refreshingStorage = false);
+    }
+  }
+
+  Future<void> _scanMediaAndFiles() async {
+    if (_scanningMedia || _busy) return;
+    setState(() {
+      _scanningMedia = true;
+      _error = null;
+    });
+    try {
+      final initial = await _channel.invokeMethod<String>('refreshMediaIndex');
+      if (initial != null && mounted) {
+        setState(() => _mediaScanStatus =
+            Map<String, dynamic>.from(jsonDecode(initial) as Map));
+      }
+      // Poll only while this user-requested scan is active; no permanent timer.
+      for (var attempt = 0; attempt < 240; attempt++) {
+        if (!mounted) return;
+        await Future<void>.delayed(const Duration(seconds: 1));
+        final raw = await _channel.invokeMethod<String>('mediaIndexStatus');
+        if (raw == null) continue;
+        final status = Map<String, dynamic>.from(jsonDecode(raw) as Map);
+        if (!mounted) return;
+        setState(() => _mediaScanStatus = status);
+        if (status['state'] != 'scanning') break;
+      }
+    } on PlatformException catch (error) {
+      if (mounted) setState(() => _error =
+          error.message ?? 'Could not start the media and file scan.');
+    } on FormatException {
+      if (mounted) setState(() => _error = 'The media scan returned an invalid status.');
+    } finally {
+      if (mounted) {
+        setState(() => _scanningMedia = _mediaScanStatus['state'] == 'scanning');
+      }
     }
   }
 
@@ -211,7 +270,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
     final canStart = internalGranted || legacySelected || selectedVolumeCount > 0;
 
     return Scaffold(
-      appBar: const HomeServerAppBar(title: Text('This device')),
+      appBar: const HomeServerAppBar(title: Text('Host PocketLink')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
         children: [
@@ -353,7 +412,23 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
             ),
           ),
           const SizedBox(height: 24),
-          const _SetupSectionTitle(title: 'USB / SSD storage', subtitle: 'Connect a removable drive. Detected drives will appear here.'),
+          Row(
+            children: [
+              const Expanded(
+                child: _SetupSectionTitle(
+                  title: 'USB / External Storage',
+                  subtitle: 'Connect a USB drive or external SSD. Detected drives appear here.',
+                ),
+              ),
+              IconButton(
+                tooltip: 'Refresh connected storage',
+                onPressed: _busy || _refreshingStorage ? null : _refreshStorage,
+                icon: _refreshingStorage
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.refresh_rounded),
+              ),
+            ],
+          ),
           const SizedBox(height: 10),
           if (_discoveredVolumes.isEmpty)
             Container(
@@ -397,6 +472,82 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
               ),
             );
           }),
+          const SizedBox(height: 24),
+          const _SetupSectionTitle(
+            title: 'Device media & files',
+            subtitle: 'Index photos, videos, music and searchable files in the background.',
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: colors.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.35)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      _scanningMedia ? Icons.sync_rounded : Icons.perm_media_outlined,
+                      color: colors.primary,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        switch (_mediaScanStatus['state']) {
+                          'scanning' => 'Scanning device storage',
+                          'complete' => 'Media and files indexed',
+                          'partial' => 'Scan completed with skipped items',
+                          'failed' => 'Scan failed',
+                          _ => 'Media scan ready',
+                        },
+                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                    if (_mediaScanStatus['state'] == 'complete')
+                      const _StatusPill(label: 'Complete', granted: true),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '${_mediaScanStatus['scanned'] ?? 0} items scanned · '
+                  '${_mediaScanStatus['media_count'] ?? 0} media · '
+                  '${_mediaScanStatus['file_count'] ?? 0} files',
+                  style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+                ),
+                if (_scanningMedia) ...[
+                  const SizedBox(height: 10),
+                  const LinearProgressIndicator(),
+                ],
+                if (_mediaScanStatus['last_error'] != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    _mediaScanStatus['last_error'].toString(),
+                    style: theme.textTheme.bodySmall?.copyWith(color: colors.error),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _scanningMedia || _busy ? null : _scanMediaAndFiles,
+                    icon: _scanningMedia
+                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.refresh_rounded, size: 18),
+                    label: Text(_scanningMedia ? 'Scanning…' : 'Scan media & files now'),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'The scan runs on the host in the background. Existing indexed results remain available while it updates.',
+                  style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant, height: 1.35),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 12),
           if (_busy) ...[
             const LinearProgressIndicator(),
