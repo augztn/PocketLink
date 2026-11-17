@@ -22,7 +22,7 @@ class SafHttpServer(private val context: Context, private val token: String) : N
             )) return text(Response.Status.UNAUTHORIZED, "Unauthorized")
 
         return try {
-            val q = session.parms
+            val q = session.parameters.mapValues { (_, values) -> values.firstOrNull().orEmpty() }
             if (session.uri == "/v1/volumes" && session.method == Method.GET) return volumes()
             val volume = q["volume"] ?: return bad("volume is required")
             val root = rootFor(volume) ?: return jsonError(Response.Status.NOT_FOUND, "Storage permission not granted")
