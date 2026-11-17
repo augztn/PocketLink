@@ -96,6 +96,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
       final page = await widget.api.indexedMedia(
         'photo', limit: 500, offset: offset,
       );
+      if (!mounted) break;
       found.addAll(page.items.map((item) => _Photo(
         item.toFileEntry(),
         item.path,
@@ -126,12 +127,15 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
       var found = await _readIndexedPhotos();
       var status = await widget.api.mediaIndexStatus();
       if (mounted) setState(() => photos = List.unmodifiable(found));
+      final wasScanning = status.isScanning;
       while (mounted && status.isScanning) {
         await Future<void>.delayed(const Duration(seconds: 2));
         if (!mounted) return;
-        found = await _readIndexedPhotos();
         status = await widget.api.mediaIndexStatus();
-        setState(() => photos = List.unmodifiable(found));
+      }
+      if (!mounted) return;
+      if (wasScanning && status.state != 'failed') {
+        found = await _readIndexedPhotos();
       }
       if ((status.state == 'failed' || status.state == 'partial') && found.isEmpty) {
         await _scanLegacy();
@@ -169,7 +173,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
         pending.add((path: root, volume: null, depth: 0));
       }
       var cursor = 0;
-      while (cursor < pending.length && visited.length < 3000) {
+      while (mounted && cursor < pending.length && visited.length < 3000) {
         final current = pending[cursor++];
         final key = '${current.volume ?? 'internal'}:${current.path}';
         if (!visited.add(key)) continue;
@@ -177,6 +181,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
           final listing = current.volume == null
               ? await widget.api.listDirectory(current.path)
               : await widget.api.listStorageDirectory(current.volume!, current.path);
+          if (!mounted) return;
           for (final item in listing.items) {
             final path = current.path.isEmpty ? item.name : '${current.path}/${item.name}';
             if (item.isDirectory) {
