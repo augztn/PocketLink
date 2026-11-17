@@ -48,6 +48,9 @@ class HomeDashboardState extends State<HomeDashboard> {
   DateTime? _lastCheckedAt;
   List<StorageVolume> _volumes = const [];
   List<RecentFile> _recentFiles = const [];
+  MediaIndexStatus? _mediaScanStatus;
+  bool _startingMediaScan = false;
+  bool _watchingMediaScan = false;
   final QuickActionsStore _quickActionsStore = QuickActionsStore();
   List<String> _quickActions = List.of(QuickActionsStore.defaults);
 
@@ -726,6 +729,119 @@ class HomeDashboardState extends State<HomeDashboard> {
     );
   }
 
+  Future<void> _watchHostMediaScan() async {
+    if (_watchingMediaScan) return;
+    _watchingMediaScan = true;
+    try {
+      while (mounted && (_mediaScanStatus?.isScanning ?? false)) {
+        await Future<void>.delayed(const Duration(seconds: 2));
+        if (!mounted) return;
+        final status = await widget.api.mediaIndexStatus();
+        if (!mounted) return;
+        setState(() => _mediaScanStatus = status);
+      }
+      if (mounted) await _refreshStatus();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not update host scan progress.')),
+        );
+      }
+    } finally {
+      _watchingMediaScan = false;
+    }
+  }
+
+  Future<void> _startHostMediaScan() async {
+    if (_startingMediaScan || (_mediaScanStatus?.isScanning ?? false)) return;
+    setState(() => _startingMediaScan = true);
+    try {
+      final status = await widget.api.startMediaIndexScan();
+      if (!mounted) return;
+      setState(() => _mediaScanStatus = status);
+      if (status.isScanning) unawaited(_watchHostMediaScan());
+      else if (status.state == 'failed' || status.state == 'partial') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(status.lastError ?? 'The host scan did not complete fully.')),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not start a scan on the host device. Check the server connection.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _startingMediaScan = false);
+    }
+  }
+
+  Widget _buildHostMediaScanCard(ThemeData theme, ColorScheme colors) {
+    final status = _mediaScanStatus;
+    final scanning = status?.isScanning ?? false;
+    final source = status?.currentSource;
+    final elapsed = ((status?.elapsedMs ?? 0) / 1000).floor();
+    final sourceLabel = source == 'internal'
+        ? 'Internal storage'
+        : source == null ? 'Preparing storage' : 'External storage';
+    return Container(
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E2025),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Icon(Icons.manage_search_rounded, color: colors.primary, size: 20),
+          const SizedBox(width: 9),
+          Expanded(child: Text('Host media library', style: theme.textTheme.titleSmall?.copyWith(
+            color: Colors.white, fontWeight: FontWeight.w800,
+          ))),
+          Text(scanning ? 'Scanning' : status == null ? 'Ready' : status.state == 'failed' ? 'Failed' : status.state == 'partial' ? 'Partial' : status.state == 'complete' ? 'Up to date' : 'Ready',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: scanning ? const Color(0xFFFBBF24) : Colors.white70,
+              fontWeight: FontWeight.w700,
+            )),
+        ]),
+        const SizedBox(height: 7),
+        Text(
+          scanning
+              ? 'Scanning $sourceLabel · ${elapsed}s elapsed'
+              : 'Refresh the host device media and file index remotely.',
+          style: theme.textTheme.bodySmall?.copyWith(color: Colors.white60),
+        ),
+        if (status != null) ...[
+          const SizedBox(height: 7),
+          Text(
+            'Photos ${status.state == 'idle' ? '—' : status.mediaCount} total media · '
+            '${status.scanned} checked · ${status.skipped} skipped',
+            style: theme.textTheme.labelSmall?.copyWith(color: Colors.white70),
+          ),
+          if (status.lastError != null && status.lastError!.isNotEmpty) ...[
+            const SizedBox(height: 5),
+            Text(status.lastError!, style: theme.textTheme.bodySmall?.copyWith(color: colors.error)),
+          ],
+        ],
+        if (scanning) ...[
+          const SizedBox(height: 10),
+          const LinearProgressIndicator(),
+        ],
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: scanning || _startingMediaScan || !_serverOnline! ? null : _startHostMediaScan,
+            icon: _startingMediaScan || scanning
+                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.refresh_rounded, size: 18),
+            label: Text(scanning ? 'Scanning on host…' : _startingMediaScan ? 'Starting…' : 'Scan host now'),
+          ),
+        ),
+      ]),
+    );
+  }
+
   Future<void> _refreshStatus() async {
     widget.api.invalidateDirectoryCache();
     if (mounted) setState(() => _checking = true);
@@ -737,6 +853,15 @@ class HomeDashboardState extends State<HomeDashboard> {
       stopwatch.stop();
       online = true;
       if (mounted) setState(() => _latency = stopwatch.elapsed);
+      try {
+        final scanStatus = await widget.api.mediaIndexStatus();
+        if (mounted) {
+          setState(() => _mediaScanStatus = scanStatus);
+          if (scanStatus.isScanning) unawaited(_watchHostMediaScan());
+        }
+      } catch (_) {
+        // The server can be online even when media indexing is unavailable.
+      }
       try {
         volumes = await widget.api.listStorageVolumes();
       } catch (_) {
@@ -1107,6 +1232,8 @@ class HomeDashboardState extends State<HomeDashboard> {
           padding: EdgeInsets.fromLTRB(18, 6, 18, 104 + MediaQuery.paddingOf(context).bottom),
           children: [
             _buildServerTelemetry(context, theme, colors),
+            const SizedBox(height: 12),
+            _buildHostMediaScanCard(theme, colors),
             const SizedBox(height: 18),
             for (final section in appSettings.homeSectionOrder)
               if (sectionBuilders.containsKey(section)) sectionBuilders[section]!(),
