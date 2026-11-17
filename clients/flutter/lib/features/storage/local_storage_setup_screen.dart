@@ -452,7 +452,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                                 ? 'Checking Android access…'
                                 : requiredAccessReady
                                     ? 'Required access is ready'
-                                    : 'One required permission needs attention',
+                                    : 'Internal storage access is not enabled',
                             style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
                           ),
                         ],
@@ -463,7 +463,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                           ? 'Checking'
                           : requiredAccessReady
                               ? 'Ready'
-                              : 'Action needed',
+                              : 'Needs access',
                       granted: requiredAccessReady,
                     ),
                   ],
@@ -475,7 +475,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                   icon: Icons.folder_open_rounded,
                   title: 'All-files access',
                   description: 'Required to read internal shared storage',
-                  status: !_statusLoaded ? 'Checking' : internalGranted ? 'Enabled' : 'Required',
+                  status: !_statusLoaded ? 'Checking' : internalGranted ? 'Enabled' : 'Needs access',
                   granted: _statusLoaded && internalGranted,
                   onTap: !_statusLoaded || internalGranted || _busy ? null : _requestInternalStorageAccess,
                 ),
@@ -486,7 +486,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                   status: !_statusLoaded ? 'Checking' : backgroundGranted ? 'Allowed' : 'Recommended',
                   granted: _statusLoaded && backgroundGranted,
                   recommended: _statusLoaded && !backgroundGranted,
-                  onTap: !_statusLoaded || backgroundGranted || _busy ? null : _openBackgroundSettings,
+                  onTap: !_statusLoaded || backgroundGranted || _busy ? null : _requestBackgroundAccess,
                 ),
                 _PermissionRow(
                   icon: Icons.usb_rounded,
@@ -981,72 +981,6 @@ class _StatusPill extends StatelessWidget {
         borderRadius: BorderRadius.circular(30),
       ),
       child: Text(label, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: color, fontWeight: FontWeight.w700)),
-    );
-  }
-}
-
-class _SetupStatusTile extends StatelessWidget {
-  const _SetupStatusTile({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.status,
-    required this.granted,
-    required this.onTap,
-  });
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final String status;
-  final bool granted;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Material(
-      color: colors.surfaceContainerLow,
-      borderRadius: BorderRadius.circular(18),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: Padding(
-          padding: const EdgeInsets.all(15),
-          child: Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: (granted ? Colors.green : colors.primary).withValues(alpha: 0.13),
-                  borderRadius: BorderRadius.circular(13),
-                ),
-                child: Icon(icon, color: granted ? Colors.green : colors.primary),
-              ),
-              const SizedBox(width: 13),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 4),
-                    Text(subtitle, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant, height: 1.35)),
-                    const SizedBox(height: 8),
-                    _StatusPill(label: status, granted: granted),
-                  ],
-                ),
-              ),
-              if (onTap != null) ...[
-                const SizedBox(width: 8),
-                Icon(Icons.chevron_right_rounded, color: colors.onSurfaceVariant),
-              ] else if (granted) ...[
-                const SizedBox(width: 8),
-                const Icon(Icons.check_circle_rounded, color: Colors.green),
-              ],
-            ],
-          ),
-        ),
-      ),
     );
   }
 }
