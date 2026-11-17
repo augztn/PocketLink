@@ -9,7 +9,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/settings/app_settings.dart';
 import 'navigation_customization_screen.dart';
-import 'floating_shortcut_customization_screen.dart';
+import 'floating_shortcut_customization_screen.dart';\nimport 'now_playing_settings_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({this.onOpenSavedServers, this.category, super.key});
@@ -336,6 +336,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ]),
                   if (widget.category == 'Media & Storage')
                             _section('Media & Storage', [
+                                ListTile(
+                                  leading: const Icon(Icons.graphic_eq_rounded),
+                                  title: const Text('Now Playing customization'),
+                                  subtitle: const Text('Mini-player, artwork, controls and swipe gestures'),
+                                  trailing: const Icon(Icons.chevron_right_rounded),
+                                  onTap: () => Navigator.of(context).push(
+                                    MaterialPageRoute<void>(
+                                      builder: (_) => const NowPlayingSettingsScreen(),
+                                    ),
+                                  ),
+                                ),
+                                const Divider(height: 1),
                                 ListTile(
                                   leading: const Icon(Icons.high_quality_outlined),
                                   title: const Text('Streaming quality'),
