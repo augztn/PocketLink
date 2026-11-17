@@ -48,6 +48,23 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   bool _cached = false;
   Set<String> _favorites = <String>{};
   double? _dragPosition;
+  double _dismissDragDistance = 0;
+  double _trackSwipeDistance = 0;
+
+  void _handlePlayerSwipeEnd() {
+    if (_dismissDragDistance > 100) {
+      Navigator.maybePop(context);
+    }
+    _dismissDragDistance = 0;
+    if (_trackSwipeDistance.abs() > 80) {
+      if (_trackSwipeDistance < 0) {
+        unawaited(_player.next());
+      } else {
+        unawaited(_player.previous());
+      }
+    }
+    _trackSwipeDistance = 0;
+  }
 
   MediaQueueItem get _track =>
       _persistent.currentItem ??
@@ -791,9 +808,31 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Column(
-          children: [
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onVerticalDragStart: (_) => _dismissDragDistance = 0,
+        onVerticalDragUpdate: (details) => _dismissDragDistance += details.primaryDelta ?? 0,
+        onHorizontalDragStart: (_) => _trackSwipeDistance = 0,
+        onHorizontalDragUpdate: (details) => _trackSwipeDistance += details.primaryDelta ?? 0,
+        onVerticalDragEnd: (details) {
+          if (_dismissDragDistance > 100 || (details.primaryVelocity ?? 0) > 500) {
+            Navigator.maybePop(context);
+          }
+          _dismissDragDistance = 0;
+        },
+        onHorizontalDragEnd: (details) {
+          final distance = _trackSwipeDistance;
+          final velocity = details.primaryVelocity ?? 0;
+          if (distance < -80 || velocity < -500) {
+            unawaited(_player.next());
+          } else if (distance > 80 || velocity > 500) {
+            unawaited(_player.previous());
+          }
+          _trackSwipeDistance = 0;
+        },
+        child: SafeArea(
+          child: Column(
+            children: [
             _header(),
             Expanded(
               child: Center(
@@ -884,7 +923,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
               style: TextStyle(color: Colors.white38, fontSize: 11),
             ),
             const SizedBox(height: 8),
-          ],
+            ],
+          ),
         ),
       ),
     );
