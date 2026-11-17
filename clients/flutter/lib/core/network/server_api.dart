@@ -725,10 +725,10 @@ class ServerApi {
       return (response.data?['items'] as List<dynamic>? ?? const [])
           .map((item) => StorageVolume.fromJson(item as Map<String, dynamic>))
           .toList(growable: false);
-    }).then((volumes) {
+    }).then<List<StorageVolume>>((volumes) async {
       if (generation != _cacheGeneration) {
         if (identical(_volumesRequest, request)) _volumesRequest = null;
-        return listStorageVolumes();
+        return await listStorageVolumes();
       }
       _volumesCache = _CacheEntry(
         volumes,
