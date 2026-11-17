@@ -111,9 +111,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             height: 380,
             child: ReorderableListView.builder(
               itemCount: draft.length,
-              onReorder: (oldIndex, newIndex) {
+              onReorderItem: (oldIndex, newIndex) {
                 setDialogState(() {
-                  if (newIndex > oldIndex) newIndex--;
                   final item = draft.removeAt(oldIndex);
                   draft.insert(newIndex, item);
                 });
