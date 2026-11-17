@@ -150,6 +150,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
   }
 
   Future<void> _scanLegacy({bool refresh = false}) async {
+    if (!mounted) return;
     if (refresh) widget.api.invalidateDirectoryCache();
     setState(() { loading = true; error = null; photos = []; selected.clear(); });
     final found = <_Photo>[];
