@@ -41,7 +41,6 @@ class MediaPlayerScreen extends StatefulWidget {
 class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
   late final PersistentAudioPlayer _persistent;
   late final Player _player;
-  late final VideoController _videoController;
   String? _openError;
   int _currentIndex = 0;
   bool _shuffle = false;
@@ -68,7 +67,6 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
     super.initState();
     _persistent = PersistentAudioPlayer.instance;
     _player = _persistent.player;
-    _videoController = VideoController(_player);
     _currentIndex = widget.resumeExisting
         ? _persistent.currentIndex
         : widget.initialIndex.clamp(0, _queue.length - 1).toInt();
@@ -534,7 +532,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Video(controller: _videoController, controls: NoVideoControls),
+          Video(controller: _persistent.videoController, controls: NoVideoControls),
           Positioned.fill(
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
