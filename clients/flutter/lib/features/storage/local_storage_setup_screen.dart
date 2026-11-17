@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -21,6 +22,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
   bool _busy = false;
   bool _refreshingStorage = false;
   bool _scanningMedia = false;
+  bool _watchingMediaScan = false;
   Map<String, dynamic> _mediaScanStatus = const {};
   List<Map<String, dynamic>> _discoveredVolumes = const [];
 
@@ -71,6 +73,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
         _error = status?['error']?.toString();
         _busy = false;
       });
+      if (_scanningMedia) unawaited(_watchMediaScan());
     } on MissingPluginException {
       if (mounted) setState(() => _error = 'Native Android storage support is unavailable in this build.');
     } on PlatformException catch (error) {
@@ -88,6 +91,41 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
       await _refresh();
     } finally {
       if (mounted) setState(() => _refreshingStorage = false);
+    }
+  }
+
+  Future<void> _watchMediaScan() async {
+    if (_watchingMediaScan) return;
+    _watchingMediaScan = true;
+    try {
+      while (mounted && _scanningMedia) {
+        await Future<void>.delayed(const Duration(seconds: 2));
+        if (!mounted) return;
+        final raw = await _channel.invokeMethod<String>('mediaIndexStatus');
+        if (raw == null) continue;
+        final status = Map<String, dynamic>.from(jsonDecode(raw) as Map);
+        if (!mounted) return;
+        setState(() {
+          _mediaScanStatus = status;
+          _scanningMedia = status['state'] == 'scanning';
+        });
+      }
+    } on PlatformException catch (error) {
+      if (mounted) {
+        setState(() {
+          _scanningMedia = false;
+          _error = error.message ?? 'Could not read media scan progress.';
+        });
+      }
+    } on FormatException {
+      if (mounted) {
+        setState(() {
+          _scanningMedia = false;
+          _error = 'The media scan returned an invalid status.';
+        });
+      }
+    } finally {
+      _watchingMediaScan = false;
     }
   }
 
