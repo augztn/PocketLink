@@ -814,7 +814,7 @@ class HomeDashboardState extends State<HomeDashboard> {
         if (status != null) ...[
           const SizedBox(height: 7),
           Text(
-            'Photos ${status.state == 'idle' ? '—' : status.mediaCount} total media · '
+            '${status.mediaCount} media · ${status.fileCount} files · '
             '${status.scanned} checked · ${status.skipped} skipped',
             style: theme.textTheme.labelSmall?.copyWith(color: Colors.white70),
           ),
@@ -831,7 +831,9 @@ class HomeDashboardState extends State<HomeDashboard> {
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
-            onPressed: scanning || _startingMediaScan || !_serverOnline! ? null : _startHostMediaScan,
+            onPressed: scanning || _startingMediaScan || _checking || _serverOnline != true
+                ? null
+                : _startHostMediaScan,
             icon: _startingMediaScan || scanning
                 ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                 : const Icon(Icons.refresh_rounded, size: 18),
