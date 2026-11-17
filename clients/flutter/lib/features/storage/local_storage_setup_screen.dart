@@ -2,10 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/settings/app_settings.dart';
 import '../../core/widgets/home_server_app_bar.dart';
-import 'package:flutter/services.dart';
 
 import '../diagnostics/diagnostics_screen.dart';
 import '../about/about_screen.dart';
@@ -350,29 +350,6 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
     final canStart = internalGranted || legacySelected || selectedVolumeCount > 0;
     final skippedScanItems = (_mediaScanStatus['skipped'] as num?)?.toInt() ?? 0;
     final completedScanAt = _formatScanTimestamp(_mediaScanStatus['last_completed_at']);
-
-    return Scaffold(
-      appBar: HomeServerAppBar(
-        title: const Text('Host PocketLink'),
-        actions: [
-          HomeServerAppBarAction(
-            label: 'About PocketLink',
-            icon: Icons.info_outline_rounded,
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const AboutScreen()),
-            ),
-          ),
-          HomeServerAppBarAction(
-            label: 'Logs & diagnostics',
-            icon: Icons.article_outlined,
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => const DiagnosticsScreen(),
-              ),
-            ),
-          ),
-        ],
-      ),
 
     final hostSections = <Widget>[
 
@@ -966,6 +943,30 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
     );
       body: ListView(
         padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
+
+    return Scaffold(
+      appBar: HomeServerAppBar(
+        title: const Text('Host PocketLink'),
+        actions: [
+          HomeServerAppBarAction(
+            label: 'About PocketLink',
+            icon: Icons.info_outline_rounded,
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const AboutScreen()),
+            ),
+          ),
+          HomeServerAppBarAction(
+            label: 'Logs & diagnostics',
+            icon: Icons.article_outlined,
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const DiagnosticsScreen(),
+              ),
+            ),
+          ),
+        ],
+      ),
+
       body: Column(
         children: [
           layoutSelector,
