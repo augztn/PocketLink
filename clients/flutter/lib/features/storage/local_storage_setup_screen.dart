@@ -310,6 +310,8 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
     final backgroundGranted = _status['backgroundAccessGranted'] == true;
     final selectedVolumeCount = _discoveredVolumes.where((v) => v['selected'] == true).length;
     final canStart = internalGranted || legacySelected || selectedVolumeCount > 0;
+    final skippedScanItems = (_mediaScanStatus['skipped'] as num?)?.toInt() ?? 0;
+    final completedScanAt = _formatScanTimestamp(_mediaScanStatus['last_completed_at']);
 
     return Scaffold(
       appBar: const HomeServerAppBar(title: Text('Host PocketLink')),
@@ -584,13 +586,13 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                     style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
                   ),
                 ],
-                if ((_mediaScanStatus['skipped'] as num?)?.toInt() case final skipped? when skipped > 0) ...[
+                if (skippedScanItems > 0) ...[
                   const SizedBox(height: 4),
-                  Text('$skipped items skipped', style: theme.textTheme.bodySmall?.copyWith(color: colors.error)),
+                  Text('$skippedScanItems items skipped', style: theme.textTheme.bodySmall?.copyWith(color: colors.error)),
                 ],
-                if (!_scanningMedia && _formatScanTimestamp(_mediaScanStatus['last_completed_at']) case final completedAt?) ...[
+                if (!_scanningMedia && completedScanAt != null) ...[
                   const SizedBox(height: 4),
-                  Text('Last completed: $completedAt', style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
+                  Text('Last completed: $completedScanAt', style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
                 ],
                 if (_scanningMedia) ...[
                   const SizedBox(height: 10),
