@@ -151,12 +151,7 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
     if (volume == null) return;
     try {
       final file = await FilePicker.pickFile();
-      if (file == null) return;
       final bytes = await file.readAsBytes();
-      if (bytes == null) {
-        _message('Could not read the selected file.');
-        return;
-      }
       final completed = await TransferManager.instance.run(
         name: file.name,
         direction: 'Upload',
