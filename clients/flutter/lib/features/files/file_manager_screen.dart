@@ -348,7 +348,6 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   Future<void> _uploadFile() async {
     try {
       final file = await FilePicker.pickFile();
-      if (file == null) return;
       final bytes = await file.readAsBytes();
       if (bytes == null) {
         _showError('Could not read the selected file on this device.');

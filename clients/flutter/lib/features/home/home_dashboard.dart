@@ -407,7 +407,6 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
   Future<void> _quickUpload() async {
     try {
       final file = await FilePicker.pickFile();
-      if (file == null) return;
       final bytes = await file.readAsBytes();
       if (bytes == null) {
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(

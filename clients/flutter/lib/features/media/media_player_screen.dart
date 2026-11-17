@@ -211,7 +211,6 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
         type: FileType.custom,
         allowedExtensions: const ['srt', 'ass', 'ssa', 'vtt'],
       );
-      if (file == null) return;
       final bytes = await file.readAsBytes();
       if (bytes == null || bytes.isEmpty) {
         throw StateError('Could not read the selected subtitle file.');
