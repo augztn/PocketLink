@@ -255,7 +255,7 @@ class ServerApi {
           'method': options.method,
           'path': options.uri.path,
           'retry': options.extra['homeserver.retryCount'] ?? 0,
-          'activeRequestLimit': 4,
+          'concurrencyLimit': 4,
         });
         handler.next(options);
       },
