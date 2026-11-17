@@ -203,11 +203,13 @@ internal class SystemTelemetryReader(private val context: Context) {
                         EGL14.EGL_NO_CONTEXT,
                     )
                 }
-                if (eglContext != null && eglContext != EGL14.EGL_NO_CONTEXT) {
-                    runCatching { EGL14.eglDestroyContext(activeDisplay, eglContext) }
+                val activeContext = eglContext
+                if (activeContext != null && activeContext != EGL14.EGL_NO_CONTEXT) {
+                    runCatching { EGL14.eglDestroyContext(activeDisplay, activeContext) }
                 }
-                if (surface != null && surface != EGL14.EGL_NO_SURFACE) {
-                    runCatching { EGL14.eglDestroySurface(activeDisplay, surface) }
+                val activeSurface = surface
+                if (activeSurface != null && activeSurface != EGL14.EGL_NO_SURFACE) {
+                    runCatching { EGL14.eglDestroySurface(activeDisplay, activeSurface) }
                 }
                 if (initialized) runCatching { EGL14.eglTerminate(activeDisplay) }
             }

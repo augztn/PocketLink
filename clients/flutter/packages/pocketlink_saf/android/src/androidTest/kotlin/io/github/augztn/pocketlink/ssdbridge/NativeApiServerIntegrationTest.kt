@@ -45,6 +45,9 @@ class NativeApiServerIntegrationTest {
             val unauthenticatedIndex = request(port, "/api/index/status")
             assertEquals(401, unauthenticatedIndex.first)
 
+            val unauthenticatedTelemetry = request(port, "/api/system/telemetry")
+            assertEquals(401, unauthenticatedTelemetry.first)
+
             val wrongPassword = request(
                 port,
                 "/api/storage/volumes",
