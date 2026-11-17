@@ -222,8 +222,8 @@ jobs:
           if count != 1:
               raise SystemExit("Could not set Android compileSdk to 36")
           updated, min_sdk_count = re.subn(
-              r"(?m)^(\\s*)minSdk(?:Version)?\\s*(?:=\\s*)?flutter\\.minSdkVersion",
-              r"\\g<1>minSdk = 24" if gradle.suffix == ".kts" else r"\\g<1>minSdkVersion 24",
+              r"(?m)^(\s*)minSdk(?:Version)?\s*(?:=\s*)?flutter\.minSdkVersion",
+              r"\g<1>minSdk = 24" if gradle.suffix == ".kts" else r"\g<1>minSdkVersion 24",
               updated,
               count=1,
           )
@@ -243,7 +243,7 @@ jobs:
               if not line.strip().startswith("android.builtInKotlin=")
           ]
           lines.append("android.builtInKotlin=true")
-          properties.write_text("\\n".join(lines) + "\\n")
+          properties.write_text("\n".join(lines) + "\n")
           print("Enabled AGP built-in Kotlin after migrating app plugins")
           PY
       - run: flutter pub get
