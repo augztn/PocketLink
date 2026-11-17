@@ -6,6 +6,7 @@ import '../../core/widgets/home_server_app_bar.dart';
 import 'package:flutter/services.dart';
 
 import '../diagnostics/diagnostics_screen.dart';
+import '../about/about_screen.dart';
 
 class LocalStorageSetupScreen extends StatefulWidget {
   const LocalStorageSetupScreen({super.key});
@@ -329,6 +330,13 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
       appBar: HomeServerAppBar(
         title: const Text('Host PocketLink'),
         actions: [
+          HomeServerAppBarAction(
+            label: 'About PocketLink',
+            icon: Icons.info_outline_rounded,
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const AboutScreen()),
+            ),
+          ),
           HomeServerAppBarAction(
             label: 'Logs & diagnostics',
             icon: Icons.article_outlined,
