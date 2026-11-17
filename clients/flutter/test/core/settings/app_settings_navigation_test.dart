@@ -128,4 +128,25 @@ void main() {
     expect(preferences.getString('settings_floating_shortcuts'), isNull);
   });
 
+  test('stats for nerds setting persists, can be disabled and resets enabled', () async {
+    final settings = AppSettings.instance;
+    await settings.setNowPlayingOptions(statsForNerds: true);
+    expect(settings.showStatsForNerds, isTrue);
+
+    await settings.setNowPlayingOptions(statsForNerds: false);
+    expect(settings.showStatsForNerds, isFalse);
+
+    final preferences = await SharedPreferences.getInstance();
+    expect(
+      preferences.getBool('settings_now_playing_stats_for_nerds'),
+      isFalse,
+    );
+
+    await settings.resetNowPlayingOptions();
+    expect(settings.showStatsForNerds, isTrue);
+    expect(
+      preferences.getBool('settings_now_playing_stats_for_nerds'),
+      isNull,
+    );
+  });
 }

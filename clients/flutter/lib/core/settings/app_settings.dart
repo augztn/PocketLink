@@ -26,6 +26,7 @@ class AppSettings extends ChangeNotifier {
   static const _floatingShortcutLongPressKey = 'settings_floating_shortcut_long_press';
   static const _nowPlayingMiniPlayerKey = 'settings_now_playing_mini_player';
   static const _nowPlayingGesturesKey = 'settings_now_playing_gestures';
+  static const _nowPlayingStatsForNerdsKey = 'settings_now_playing_stats_for_nerds';
   static const homeSectionDefaults = <String>['search', 'quick', 'transfers', 'continue', 'recent'];
   static const navigationDefaults = <String>['home', 'explore', 'files', 'browse'];
   static const floatingShortcutDefaults = <String>[
@@ -56,6 +57,7 @@ class AppSettings extends ChangeNotifier {
   Future<void> _floatingShortcutsWrite = Future<void>.value();
   bool _showMiniPlayer = true;
   bool _enableNowPlayingGestures = true;
+  bool _showStatsForNerds = true;
 
   ThemeMode get themeMode => _themeMode;
   bool get amoled => _amoled;
@@ -76,6 +78,7 @@ class AppSettings extends ChangeNotifier {
   List<String> get floatingShortcuts => List.unmodifiable(_floatingShortcuts);
   bool get showMiniPlayer => _showMiniPlayer;
   bool get enableNowPlayingGestures => _enableNowPlayingGestures;
+  bool get showStatsForNerds => _showStatsForNerds;
 
   Future<void> load() async {
     if (_loaded) return;
@@ -84,6 +87,7 @@ class AppSettings extends ChangeNotifier {
       _useLiquidGlass = preferences.getBool(_liquidGlassKey) ?? false;
       _showMiniPlayer = preferences.getBool(_nowPlayingMiniPlayerKey) ?? true;
       _enableNowPlayingGestures = preferences.getBool(_nowPlayingGesturesKey) ?? true;
+      _showStatsForNerds = preferences.getBool(_nowPlayingStatsForNerdsKey) ?? true;
       _floatingShortcutEnabled = preferences.getBool(_floatingShortcutEnabledKey) ?? false;
       final tapAction = preferences.getString(_floatingShortcutTapActionKey);
       _floatingShortcutTapAction = tapAction == 'primary' ? 'primary' : 'menu';
@@ -300,25 +304,30 @@ class AppSettings extends ChangeNotifier {
   Future<void> setNowPlayingOptions({
     bool? miniPlayer,
     bool? gestures,
+    bool? statsForNerds,
   }) async {
     if (miniPlayer != null) _showMiniPlayer = miniPlayer;
     if (gestures != null) _enableNowPlayingGestures = gestures;
+    if (statsForNerds != null) _showStatsForNerds = statsForNerds;
     notifyListeners();
     final preferences = await SharedPreferences.getInstance();
     await Future.wait([
       if (miniPlayer != null) preferences.setBool(_nowPlayingMiniPlayerKey, miniPlayer),
       if (gestures != null) preferences.setBool(_nowPlayingGesturesKey, gestures),
+      if (statsForNerds != null) preferences.setBool(_nowPlayingStatsForNerdsKey, statsForNerds),
     ]);
   }
 
   Future<void> resetNowPlayingOptions() async {
     _showMiniPlayer = true;
     _enableNowPlayingGestures = true;
+    _showStatsForNerds = true;
     notifyListeners();
     final preferences = await SharedPreferences.getInstance();
     await Future.wait([
       preferences.remove(_nowPlayingMiniPlayerKey),
       preferences.remove(_nowPlayingGesturesKey),
+      preferences.remove(_nowPlayingStatsForNerdsKey),
     ]);
   }
 

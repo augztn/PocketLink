@@ -501,6 +501,129 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     );
   }
 
+  void _showStatsForNerds() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF1C1C1E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              const Row(
+                children: [
+                  Icon(Icons.query_stats_rounded, color: Color(0xFFD8C9FF)),
+                  SizedBox(width: 10),
+                  Text(
+                    'Stats for nerds',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              StreamBuilder<Track>(
+                stream: _player.stream.track,
+                initialData: _player.state.track,
+                builder: (context, trackSnapshot) {
+                  final audioTrack =
+                      (trackSnapshot.data ?? _player.state.track).audio;
+                  return StreamBuilder<double?>(
+                    stream: _player.stream.audioBitrate,
+                    initialData: _player.state.audioBitrate,
+                    builder: (context, bitrateSnapshot) =>
+                        StreamBuilder<AudioParams>(
+                      stream: _player.stream.audioParams,
+                      initialData: _player.state.audioParams,
+                      builder: (context, paramsSnapshot) {
+                        final trackBitrate = audioTrack.bitrate;
+                        final streamBitrate = bitrateSnapshot.data ??
+                            _player.state.audioBitrate;
+                        final bitrate = _formatBitrate(
+                          trackBitrate != null && trackBitrate > 0
+                              ? trackBitrate.toDouble()
+                              : streamBitrate,
+                        );
+                        final sourceSampleRate = audioTrack.samplerate;
+                        final outputSampleRate = paramsSnapshot.data?.sampleRate ??
+                            _player.state.audioParams.sampleRate;
+                        final sampleRate = sourceSampleRate != null &&
+                                sourceSampleRate > 0
+                            ? _formatSampleRate(sourceSampleRate)
+                            : outputSampleRate != null && outputSampleRate > 0
+                                ? '${_formatSampleRate(outputSampleRate)} (output)'
+                                : 'Not available';
+                        final rawCodec = audioTrack.codec?.trim();
+                        final codec = rawCodec == null || rawCodec.isEmpty
+                            ? 'Not available'
+                            : rawCodec.toUpperCase();
+
+                        return Column(
+                          children: [
+                            _InfoLine('Codec', codec),
+                            const Divider(height: 18, color: Colors.white12),
+                            _InfoLine('Bitrate', bitrate),
+                            const Divider(height: 18, color: Colors.white12),
+                            _InfoLine('Sample rate', sampleRate),
+                          ],
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 14),
+              const Text(
+                'Values are reported by the media source. Some files and streams do not provide every detail.',
+                style: TextStyle(color: Colors.white38, fontSize: 11, height: 1.4),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _formatBitrate(double? bitsPerSecond) {
+    if (bitsPerSecond == null ||
+        !bitsPerSecond.isFinite ||
+        bitsPerSecond <= 0) {
+      return 'Not available';
+    }
+    if (bitsPerSecond >= 1000000) {
+      return '${(bitsPerSecond / 1000000).toStringAsFixed(2)} Mbps';
+    }
+    final kilobitsPerSecond = bitsPerSecond / 1000;
+    final precision =
+        kilobitsPerSecond == kilobitsPerSecond.roundToDouble() ? 0 : 1;
+    return '${kilobitsPerSecond.toStringAsFixed(precision)} kbps';
+  }
+
+  String _formatSampleRate(int sampleRate) {
+    final kilohertz = sampleRate / 1000;
+    final precision = kilohertz == kilohertz.roundToDouble() ? 0 : 1;
+    return '${kilohertz.toStringAsFixed(precision)} kHz';
+  }
+
   void _message(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -573,9 +696,32 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                 PopupMenuButton<String>(
                   tooltip: 'More actions',
                   icon: const Icon(Icons.more_vert_rounded, color: Colors.white70, size: 21),
-                  onSelected: (_) => _showOptions(),
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(value: 'track_options', child: Text('Track options')),
+                  onSelected: (value) {
+                    switch (value) {
+                      case 'stats':
+                        _showStatsForNerds();
+                        break;
+                      case 'track_options':
+                        _showOptions();
+                        break;
+                    }
+                  },
+                  itemBuilder: (_) => [
+                    if (AppSettings.instance.showStatsForNerds)
+                      const PopupMenuItem(
+                        value: 'stats',
+                        child: Row(
+                          children: [
+                            Icon(Icons.query_stats_rounded, size: 19),
+                            SizedBox(width: 10),
+                            Text('Stats for nerds'),
+                          ],
+                        ),
+                      ),
+                    const PopupMenuItem(
+                      value: 'track_options',
+                      child: Text('Track options'),
+                    ),
                   ],
                 ),
               ],
