@@ -65,15 +65,11 @@ void main() {
     expect(find.text('Native server password'), findsOneWidget);
     expect(find.text('Backend bridge token'), findsOneWidget);
     expect(find.text('test-token'), findsNothing);
-    final securityScrollView = find.descendant(
-      of: find.byKey(const PageStorageKey<String>('host-security')),
-      matching: find.byType(Scrollable),
+    await tester.drag(
+      find.byKey(const PageStorageKey<String>('host-security')),
+      const Offset(0, -420),
     );
-    await tester.scrollUntilVisible(
-      find.byTooltip('Show bridge token'),
-      240,
-      scrollable: securityScrollView,
-    );
+    await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Show bridge token'));
     await tester.pumpAndSettle();
     expect(find.text('test-token'), findsOneWidget);
