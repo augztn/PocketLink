@@ -131,28 +131,31 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         .contains(extension);
   }
 
-  Future<List<_MediaFile>> _readIndexedMedia() async {
+  Future<({List<_MediaFile> items, MediaIndexStatus status})>
+      _readIndexedMedia() async {
     final category = _isMusic ? 'music' : 'video';
     final found = <_MediaFile>[];
     var offset = 0;
-    while (true) {
+    late MediaIndexStatus status;
+    do {
       final page = await widget.api.indexedMedia(
         category,
         query: _searchQuery,
         limit: 500,
         offset: offset,
       );
+      status = page.status;
       found.addAll(page.items.map((item) => _MediaFile(
         entry: item.toFileEntry(),
         path: item.path,
         volume: item.volume == 'internal' ? null : item.volume,
       )));
-      if (page.items.length < 500) break;
       offset += page.items.length;
-    }
+      if (page.items.length < 500) break;
+    } while (true);
     found.sort((a, b) =>
         a.entry.name.toLowerCase().compareTo(b.entry.name.toLowerCase()));
-    return found;
+    return (items: found, status: status);
   }
 
   Future<void> _scan({bool refresh = false}) async {
@@ -175,18 +178,23 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     });
 
     try {
-      var found = await _readIndexedMedia();
-      var status = await widget.api.mediaIndexStatus();
+      var result = await _readIndexedMedia();
+      var found = result.items;
+      var status = result.status;
       if (mounted) setState(() => _media = List.unmodifiable(found));
 
-      // The first host scan may take time. Show indexed results immediately,
-      // then refresh from SQLite while the host continues scanning.
+      // Keep the existing index visible while scanning. Poll only lightweight
+      // status; reload media once after the scan finishes.
+      final wasScanning = status.isScanning;
       while (mounted && status.isScanning) {
         await Future<void>.delayed(const Duration(seconds: 2));
         if (!mounted) return;
-        found = await _readIndexedMedia();
         status = await widget.api.mediaIndexStatus();
-        setState(() => _media = List.unmodifiable(found));
+      }
+      if (wasScanning && status.state != 'failed') {
+        result = await _readIndexedMedia();
+        found = result.items;
+        status = result.status;
       }
 
       if ((status.state == 'failed' || status.state == 'partial') && found.isEmpty) {
