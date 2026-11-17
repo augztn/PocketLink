@@ -39,13 +39,13 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
     if (_busy) return;
     setState(() => _busy = true);
     try {
+      await AppLogger.info('Diagnostic log export requested');
       final file = await AppLogger.createDiagnosticFile();
       await Share.shareXFiles(
         [XFile(file.path, mimeType: 'text/plain')],
         subject: 'PocketLink diagnostic logs',
         text: 'PocketLink diagnostic logs. Review before sharing; logs are designed to exclude passwords and authentication headers.',
       );
-      await AppLogger.info('Diagnostic log export requested');
     } catch (error, stack) {
       await AppLogger.error('Diagnostic log export failed', error: error, stackTrace: stack);
       if (mounted) {
@@ -107,7 +107,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                   Text('$_sizeLabel saved on this device'),
                   const SizedBox(height: 8),
                   const Text(
-                    'PocketLink records connection attempts, API status codes, app errors and crash details. Logs are stored privately on this device and rotate automatically to limit storage use.',
+                    'PocketLink records connection attempts, API request IDs, response times, retries, navigation events, app foreground/background transitions, memory snapshots, errors and crash details. Logs are stored privately on this device and rotate automatically to limit storage use.',
                   ),
                   if (_error != null) ...[
                     const SizedBox(height: 10),
@@ -140,7 +140,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
           const ListTile(
             leading: Icon(Icons.privacy_tip_outlined),
             title: Text('Privacy'),
-            subtitle: Text('Passwords, usernames, authentication headers, tokens and IP addresses are redacted from exported logs. Device errors and file-system details may still be present. Review the file before sending it.'),
+            subtitle: Text('Passwords, usernames, authentication headers, tokens, server addresses and IP addresses are redacted from exported logs. Device OS details, error messages and file-system details may still be present. Review the file before sending it.'),
             isThreeLine: true,
           ),
           const ListTile(
