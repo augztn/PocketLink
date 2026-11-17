@@ -11,6 +11,7 @@ import '../../core/settings/app_settings.dart';
 import 'navigation_customization_screen.dart';
 import 'floating_shortcut_customization_screen.dart';
 import 'now_playing_settings_screen.dart';
+import '../about/about_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({this.onOpenSavedServers, this.category, super.key});
@@ -225,6 +226,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title: 'Connection & Diagnostics',
                     subtitle: 'Saved servers and troubleshooting logs',
                   ),
+                  _categoryTile(
+                    icon: Icons.info_outline_rounded,
+                    title: 'About PocketLink',
+                    subtitle: 'Version, developer, source code and licenses',
+                  ),
                 ]
               : [
                 if (widget.category == 'Appearance')
@@ -375,6 +381,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   onTap: _clearingCache ? null : _clearCache,
                                 ),
                               ]),
+                  if (widget.category == 'About PocketLink')
+                    const AboutScreen(),
                   if (widget.category == 'Connection & Diagnostics')
                             _section('Connection & Diagnostics', [
                                 ListTile(
