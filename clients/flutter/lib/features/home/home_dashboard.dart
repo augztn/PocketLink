@@ -14,7 +14,6 @@ import '../media/now_playing_screen.dart';
 import '../media/persistent_audio_player.dart';
 import '../../core/network/server_api.dart';
 import '../library/photo_gallery_screen.dart';
-import '../storage/local_storage_setup_screen.dart';
 import '../transfers/transfer_manager_screen.dart';
 import '../transfers/transfer_manager.dart';
 import '../search/search_screen.dart';
@@ -26,6 +25,7 @@ class HomeDashboard extends StatefulWidget {
     required this.onOpenExplore,
     required this.onOpenFiles,
     required this.onOpenExternalStorage,
+    required this.onOpenHostSetup,
     required this.onOpenFileLocation,
     this.onReturnToConnection,
   });
@@ -35,6 +35,7 @@ class HomeDashboard extends StatefulWidget {
   final void Function(ExploreCategory category, {String? fileCategory}) onOpenExplore;
   final VoidCallback onOpenFiles;
   final VoidCallback onOpenExternalStorage;
+  final VoidCallback onOpenHostSetup;
   final void Function(String? volume, String path) onOpenFileLocation;
   final VoidCallback? onReturnToConnection;
 
@@ -358,7 +359,7 @@ class HomeDashboardState extends State<HomeDashboard> {
               subtitle: const Text('Set up this device as a PocketLink server', style: TextStyle(color: Colors.white60)),
               onTap: () {
                 Navigator.pop(sheetContext);
-                Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LocalStorageSetupScreen()));
+                widget.onOpenHostSetup();
               },
             ),
           ]),
@@ -1144,9 +1145,7 @@ class HomeDashboardState extends State<HomeDashboard> {
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () {
                   Navigator.pop(context);
-                  Navigator.of(context).push(MaterialPageRoute<void>(
-                    builder: (_) => const LocalStorageSetupScreen(),
-                  ));
+                  widget.onOpenHostSetup();
                 },
               ),
               const Divider(height: 24),

@@ -15,6 +15,7 @@ import '../media/persistent_audio_player.dart';
 import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
 import '../files/documents_browser_screen.dart';
+import '../storage/local_storage_setup_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({required this.api, this.serverName, this.onReturnToConnection, super.key});
@@ -29,6 +30,8 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
+  bool _hostSetupOpen = false;
+  bool _hostSetupInitialized = false;
   final Set<int> _initializedTabs = {0};
   ExploreCategory _exploreCategory = ExploreCategory.files;
   String _fileCategory = 'All';
@@ -62,6 +65,19 @@ class _HomeScreenState extends State<HomeScreen> {
   void _dismissMiniPlayer() {
     if (PersistentAudioPlayer.instance.isPlaying || _miniPlayerDismissed) return;
     setState(() => _miniPlayerDismissed = true);
+  }
+
+  void _openHostSetup() {
+    setState(() {
+      _hostSetupInitialized = true;
+      _hostSetupOpen = true;
+      _quickShortcutsExpanded = false;
+    });
+  }
+
+  void _closeHostSetup() {
+    if (!_hostSetupOpen) return;
+    setState(() => _hostSetupOpen = false);
   }
 
   void _navigationSettingsChanged() {
@@ -99,12 +115,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openTab(int index) => setState(() {
+    _hostSetupOpen = false;
     _initializedTabs.add(index);
     _selectedIndex = index;
   });
 
   void _openFileLocation(String? volume, String path) {
     setState(() {
+      _hostSetupOpen = false;
       _initializedTabs.add(2);
       _selectedIndex = 2;
       _requestedVolume = volume;
@@ -115,6 +133,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _openExternalStorage() {
     setState(() {
+      _hostSetupOpen = false;
       _initializedTabs.add(2);
       _selectedIndex = 2;
       _externalDriveRequest++;
@@ -129,6 +148,7 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     setState(() {
+      _hostSetupOpen = false;
       _initializedTabs.add(1);
       _exploreCategory = category;
       _fileCategory = fileCategory ?? 'All';
@@ -240,6 +260,7 @@ class _HomeScreenState extends State<HomeScreen> {
         onOpenExplore: _openExplore,
         onOpenFiles: () => _openTab(2),
         onOpenExternalStorage: _openExternalStorage,
+        onOpenHostSetup: _openHostSetup,
         onOpenFileLocation: _openFileLocation,
         onReturnToConnection: widget.onReturnToConnection,
       ),
@@ -278,13 +299,19 @@ class _HomeScreenState extends State<HomeScreen> {
         )
       else
         const SizedBox.shrink(),
+      if (_hostSetupInitialized)
+        LocalStorageSetupScreen(onHome: _closeHostSetup)
+      else
+        const SizedBox.shrink(),
     ];
 
     return PopScope(
-      canPop: _selectedIndex == 0 && !_quickShortcutsExpanded,
+      canPop: !_hostSetupOpen && _selectedIndex == 0 && !_quickShortcutsExpanded,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
-        if (_quickShortcutsExpanded) {
+        if (_hostSetupOpen) {
+          _closeHostSetup();
+        } else if (_quickShortcutsExpanded) {
           setState(() => _quickShortcutsExpanded = false);
         } else if (_selectedIndex == 2 && _filesCanNavigateBack) {
           // FileManagerScreen handles folder-level back navigation.
@@ -297,13 +324,14 @@ class _HomeScreenState extends State<HomeScreen> {
         builder: (context, __) => AnimatedBuilder(
         animation: player,
         builder: (context, _) => Scaffold(
-          extendBody: true,
+          extendBody: !_hostSetupOpen,
           body: Stack(
             fit: StackFit.expand,
             children: [
               GestureDetector(
                 behavior: HitTestBehavior.deferToChild,
                 onHorizontalDragEnd: (details) {
+                  if (_hostSetupOpen) return;
                   final velocity = details.primaryVelocity ?? 0;
                   if (velocity.abs() < 300) return;
                   final settings = AppSettings.instance;
@@ -323,9 +351,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   final nextIndex = visibleTabs[nextPosition];
                   if (nextIndex != _selectedIndex) _openTab(nextIndex);
                 },
-                child: IndexedStack(index: _selectedIndex, children: pages),
+                child: IndexedStack(index: _hostSetupOpen ? 3 : _selectedIndex, children: pages),
               ),
-              if (AppSettings.instance.floatingShortcutEnabled && _quickShortcutsExpanded)
+              if (!_hostSetupOpen && AppSettings.instance.floatingShortcutEnabled && _quickShortcutsExpanded)
                 Positioned.fill(
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
@@ -333,7 +361,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: const SizedBox.expand(),
                   ),
                 ),
-              if (AppSettings.instance.floatingShortcutEnabled)
+              if (!_hostSetupOpen && AppSettings.instance.floatingShortcutEnabled)
                 Positioned(
                   right: 16,
                   bottom: 90 + MediaQuery.paddingOf(context).bottom,
@@ -383,7 +411,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 hasMedia: player.isActive && player.currentItem != null,
                 isVideo: player.isActive && !player.isMusic,
                 onSelect: _openTab,
-                onBrowsePressed: () => _openNowPlaying(player),
+                onBrowsePressed: () {
+                  _closeHostSetup();
+                  _openNowPlaying(player);
+                },
               ),
             ],
           ),
