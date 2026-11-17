@@ -40,12 +40,10 @@ internal class SystemTelemetryReader(private val context: Context) {
         previousCpuSample = current
         if (previous == null) return null to "sampling"
 
-        val totalDelta = current.totalTicks - previous.totalTicks
-        val idleDelta = current.idleTicks - previous.idleTicks
-        if (totalDelta <= 0L || idleDelta < 0L) return null to "sampling"
-
-        val usage = ((totalDelta - idleDelta).toDouble() * 100.0 / totalDelta)
-            .coerceIn(0.0, 100.0)
+        val usage = calculateCpuUsagePercent(
+            previous.totalTicks, previous.idleTicks,
+            current.totalTicks, current.idleTicks,
+        ) ?: return null to "sampling"
         return usage to "available"
     }
 
@@ -222,4 +220,18 @@ internal class SystemTelemetryReader(private val context: Context) {
         val third: C,
         val fourth: D,
     )
+}
+
+
+internal fun calculateCpuUsagePercent(
+    previousTotalTicks: Long,
+    previousIdleTicks: Long,
+    currentTotalTicks: Long,
+    currentIdleTicks: Long,
+): Double? {
+    val totalDelta = currentTotalTicks - previousTotalTicks
+    val idleDelta = currentIdleTicks - previousIdleTicks
+    if (totalDelta <= 0L || idleDelta < 0L || idleDelta > totalDelta) return null
+    return ((totalDelta - idleDelta).toDouble() * 100.0 / totalDelta)
+        .coerceIn(0.0, 100.0)
 }
