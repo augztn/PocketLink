@@ -200,9 +200,13 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
         'cover.jpg', 'cover.jpeg', 'cover.png', 'cover.webp',
         'folder.jpg', 'folder.png', 'album.jpg', 'album.png', 'front.jpg',
       };
-      final cover = listing.items.where((item) =>
-        !item.isDirectory && candidates.contains(item.name.toLowerCase()),
-      ).firstOrNull;
+      FileEntry? cover;
+      for (final item in listing.items) {
+        if (!item.isDirectory && candidates.contains(item.name.toLowerCase())) {
+          cover = item;
+          break;
+        }
+      }
       if (cover != null) {
         final path = '$_folder/${cover.name}';
         final bytes = _track.volume == null
