@@ -21,6 +21,7 @@ class LocalStorageSetupScreen extends StatefulWidget {
 class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with WidgetsBindingObserver {
   static const _channel = MethodChannel('pocketlink/saf');
   int _selectedSectionIndex = 0;
+  final PageController _sectionPageController = PageController();
   Map<String, dynamic> _status = const {};
   String? _token;
   final _serverPasswordController = TextEditingController();
@@ -337,6 +338,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _serverPasswordController.dispose();
+    _sectionPageController.dispose();
     _channel.setMethodCallHandler(null);
     super.dispose();
   }
@@ -1207,8 +1209,17 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
         ],
       ),
 
-      body: IndexedStack(
-        index: _selectedSectionIndex,
+      body: PageView(
+        controller: _sectionPageController,
+        onPageChanged: (index) {
+          if (_selectedSectionIndex != index) {
+            _sectionPageController.animateToPage(
+              index,
+              duration: const Duration(milliseconds: 260),
+              curve: Curves.easeOutCubic,
+            );
+          }
+        },
         children: [
           sectionList('host-overview', [
             ...hostSections,
