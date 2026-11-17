@@ -14,6 +14,6 @@ class ExternalVolumeIdentityTest {
         assertEquals("description:usb drive", externalVolumeIdentity(null, null, " USB Drive "))
     }
     @Test fun createsStableStorageManagerVolumeKey() {
-        assertEquals("usb-9a7c1a2b3c4d5e6f", externalVolumeKey("uuid:abcd"))
+        assertEquals("usb-ad3ef737f718aec6", externalVolumeKey("uuid:abcd"))
     }
 }

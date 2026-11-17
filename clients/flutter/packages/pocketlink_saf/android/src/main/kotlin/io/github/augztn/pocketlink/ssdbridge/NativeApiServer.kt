@@ -641,10 +641,7 @@ internal class NativeApiServer(
                 directory?.absolutePath,
                 volume.getDescription(context).toString()
             )
-            val suffix = MessageDigest.getInstance("SHA-256")
-                .digest(identity.toByteArray(Charsets.UTF_8))
-                .take(8).joinToString("") { "%02x".format(it) }
-            "usb-$suffix" to volume
+            externalVolumeKey(identity) to volume
         }
     }
 
