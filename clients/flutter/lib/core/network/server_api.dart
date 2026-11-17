@@ -547,13 +547,20 @@ class ServerApi {
         'files:$path',
         _directoryCache,
         _directoryRequests,
-        () async {
-          final response = await _dio.get<Map<String, dynamic>>(
-            '/api/files/',
-            queryParameters: {'path': path},
-            cancelToken: cancelToken,
-          );
-          return DirectoryListing.fromJson(response.data ?? const {});
+        () {
+          Future<DirectoryListing> load() async {
+            final response = await _dio.get<Map<String, dynamic>>(
+              '/api/files/',
+              queryParameters: {'path': path},
+              cancelToken: cancelToken,
+            );
+            return DirectoryListing.fromJson(response.data ?? const {});
+          }
+
+          // A cancellable caller owns its request; only non-cancellable reads are shared.
+          return cancelToken == null
+              ? _sharedRead('files:$path', load)
+              : load();
         },
       );
 
