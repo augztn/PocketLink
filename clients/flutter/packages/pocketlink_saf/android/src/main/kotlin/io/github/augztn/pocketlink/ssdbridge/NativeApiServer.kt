@@ -24,7 +24,6 @@ import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 import java.util.UUID
-import java.security.MessageDigest
 import android.util.Base64
 
 /**
@@ -610,7 +609,9 @@ internal class NativeApiServer(
         val raw = prefs.getString("volume_uri_$id", null)
             ?: prefs.getString(id, null)
         if (raw != null) {
-            DocumentFile.fromTreeUri(context, Uri.parse(raw))?.let { return it }
+            DocumentFile.fromTreeUri(context, Uri.parse(raw))
+                ?.takeIf { it.exists() && it.canRead() }
+                ?.let { return it }
         }
 
         // StorageManager exposes mounted removable-volume paths to the Android
