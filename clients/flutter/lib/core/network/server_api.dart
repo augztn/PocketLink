@@ -461,9 +461,12 @@ class ServerApi {
     if (_thumbnailCache.length > 160) _thumbnailCache.remove(_thumbnailCache.keys.first);
     return future;
   }
-  Future<DirectoryListing> authenticate() async => listDirectory('');
+  Future<DirectoryListing> authenticate({CancelToken? cancelToken}) =>
+      listDirectory('', cancelToken: cancelToken);
 
-  Future<DirectoryListing> listDirectory(String path) => _cachedGet(
+  Future<DirectoryListing> listDirectory(
+    String path, {CancelToken? cancelToken}
+  ) => _cachedGet(
         'files:$path',
         _directoryCache,
         _directoryRequests,
@@ -471,6 +474,7 @@ class ServerApi {
           final response = await _dio.get<Map<String, dynamic>>(
             '/api/files/',
             queryParameters: {'path': path},
+            cancelToken: cancelToken,
           );
           return DirectoryListing.fromJson(response.data ?? const {});
         },
