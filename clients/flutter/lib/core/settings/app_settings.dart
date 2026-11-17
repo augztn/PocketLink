@@ -15,6 +15,7 @@ class AppSettings extends ChangeNotifier {
   static const _libraryKey = 'settings_home_library';
   static const _recentKey = 'settings_home_recent';
   static const _liquidGlassKey = 'settings_use_liquid_glass';
+  static const _hostSetupTabbedLayoutKey = 'settings_host_setup_tabbed_layout';
   static const _navigationOrderKey = 'settings_navigation_order';
   static const _navigationVisibilityKey = 'settings_navigation_visibility';
   static const _homeSearchKey = 'settings_home_search';
@@ -45,6 +46,7 @@ class AppSettings extends ChangeNotifier {
   bool _showActiveTransfers = true;
   List<String> _homeSectionOrder = List.of(homeSectionDefaults);
   bool _useLiquidGlass = false;
+  bool _hostSetupTabbedLayout = true;
   bool _loaded = false;
   List<String> _navigationOrder = List.of(navigationDefaults);
   Set<String> _visibleNavigationItems = Set.of(navigationDefaults);
@@ -67,6 +69,7 @@ class AppSettings extends ChangeNotifier {
   bool get showActiveTransfers => _showActiveTransfers;
   List<String> get homeSectionOrder => List.unmodifiable(_homeSectionOrder);
   bool get useLiquidGlass => _useLiquidGlass;
+  bool get hostSetupTabbedLayout => _hostSetupTabbedLayout;
   List<String> get navigationOrder => List.unmodifiable(_navigationOrder);
   Set<String> get visibleNavigationItems => Set.unmodifiable(_visibleNavigationItems);
   bool get navigationLayoutIsDefault => _navigationOrder.join(',') == navigationDefaults.join(',') && _visibleNavigationItems.length == navigationDefaults.length;
@@ -82,6 +85,7 @@ class AppSettings extends ChangeNotifier {
     try {
       final preferences = await SharedPreferences.getInstance();
       _useLiquidGlass = preferences.getBool(_liquidGlassKey) ?? false;
+      _hostSetupTabbedLayout = preferences.getBool(_hostSetupTabbedLayoutKey) ?? true;
       _showMiniPlayer = preferences.getBool(_nowPlayingMiniPlayerKey) ?? true;
       _enableNowPlayingGestures = preferences.getBool(_nowPlayingGesturesKey) ?? true;
       _floatingShortcutEnabled = preferences.getBool(_floatingShortcutEnabledKey) ?? false;
@@ -320,6 +324,13 @@ class AppSettings extends ChangeNotifier {
       preferences.remove(_nowPlayingMiniPlayerKey),
       preferences.remove(_nowPlayingGesturesKey),
     ]);
+  }
+
+  Future<void> setHostSetupTabbedLayout(bool value) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_hostSetupTabbedLayoutKey, value);
+    _hostSetupTabbedLayout = value;
+    notifyListeners();
   }
 
   Future<void> setUseLiquidGlass(bool value) async {
