@@ -554,10 +554,10 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      Colors.black.withOpacity(0.68),
+                      Colors.black.withValues(alpha: 0.68),
                       Colors.transparent,
                       Colors.transparent,
-                      Colors.black.withOpacity(0.78),
+                      Colors.black.withValues(alpha: 0.78),
                     ],
                     stops: const [0, 0.28, 0.58, 1],
                   ),
@@ -848,7 +848,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF8064D8).withOpacity(0.28),
+              color: const Color(0xFF8064D8).withValues(alpha: 0.28),
               blurRadius: 42,
               spreadRadius: 2,
               offset: const Offset(0, 18),
@@ -877,7 +877,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                 height: 190,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white.withOpacity(0.10), width: 1.5),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.10), width: 1.5),
                 ),
               ),
             ),
@@ -889,7 +889,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                 height: 230,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white.withOpacity(0.10), width: 1.5),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.10), width: 1.5),
                 ),
               ),
             ),
@@ -899,8 +899,8 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
               height: 174,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.black.withOpacity(0.18),
-                border: Border.all(color: Colors.white.withOpacity(0.18), width: 1),
+                color: Colors.black.withValues(alpha: 0.18),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.18), width: 1),
               ),
               child: Stack(
                 alignment: Alignment.center,
@@ -911,7 +911,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                       height: size,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white.withOpacity(0.13)),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.13)),
                       ),
                     ),
                   Container(
@@ -933,7 +933,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
               child: Text(
                 'HOMESERVER • AUDIO',
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.72),
+                  color: Colors.white.withValues(alpha: 0.72),
                   fontSize: 10,
                   letterSpacing: 2.2,
                   fontWeight: FontWeight.w700,
@@ -1003,7 +1003,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                     thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
                     overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
                     activeTrackColor: const Color(0xFFD8C9FF),
-                    inactiveTrackColor: Colors.white.withOpacity(0.16),
+                    inactiveTrackColor: Colors.white.withValues(alpha: 0.16),
                     thumbColor: const Color(0xFFF4F0FF),
                   ),
                   child: Slider(
@@ -1037,9 +1037,9 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.07),
+        color: Colors.white.withValues(alpha: 0.07),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       child: Row(
         children: [
