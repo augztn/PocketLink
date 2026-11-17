@@ -221,10 +221,6 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
     try {
       final alreadyAllowed = await _channel.invokeMethod<bool>('requestBackgroundAccess');
       await _refresh();
-      if (mounted && alreadyAllowed != true) {
-        setState(() => _error =
-            'If Android shows a battery restriction prompt, choose Allow. Then return here and refresh status.');
-      }
     } on PlatformException catch (error) {
       if (mounted) setState(() {
         _busy = false;
@@ -232,15 +228,6 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
       });
     } finally {
       if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _openBackgroundSettings() async {
-    try {
-      await _channel.invokeMethod<bool>('openBackgroundAccessSettings');
-    } on PlatformException catch (error) {
-      if (mounted) setState(() =>
-          _error = error.message ?? 'Could not open Android battery settings.');
     }
   }
 
@@ -482,8 +469,8 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                 _PermissionRow(
                   icon: Icons.battery_charging_full_rounded,
                   title: 'Background activity',
-                  description: 'Battery exemption can reduce Android interruptions',
-                  status: !_statusLoaded ? 'Checking' : backgroundGranted ? 'Allowed' : 'Recommended',
+                  description: 'Battery exemption may reduce background restrictions',
+                  status: !_statusLoaded ? 'Checking' : backgroundGranted ? 'Exempt' : 'Recommended',
                   granted: _statusLoaded && backgroundGranted,
                   recommended: _statusLoaded && !backgroundGranted,
                   onTap: !_statusLoaded || backgroundGranted || _busy ? null : _requestBackgroundAccess,
