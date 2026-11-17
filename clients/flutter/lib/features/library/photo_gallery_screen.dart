@@ -124,8 +124,11 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     setState(() { loading = true; error = null; photos = []; selected.clear(); });
     try {
       volumes = await widget.api.listStorageVolumes();
+      if (!mounted) return;
       var found = await _readIndexedPhotos();
+      if (!mounted) return;
       var status = await widget.api.mediaIndexStatus();
+      if (!mounted) return;
       if (mounted) setState(() => photos = List.unmodifiable(found));
       final wasScanning = status.isScanning;
       while (mounted && status.isScanning) {
