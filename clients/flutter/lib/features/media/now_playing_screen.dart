@@ -561,7 +561,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                   icon: const Icon(Icons.home_rounded, color: Colors.white70, size: 21),
                   visualDensity: VisualDensity.compact,
                 ),
-                if (AppSettings.instance.showNowPlayingTrackOptions) PopupMenuButton<String>(
+                PopupMenuButton<String>(
                   tooltip: 'More actions',
                   icon: const Icon(Icons.more_vert_rounded, color: Colors.white70, size: 21),
                   onSelected: (_) => _showOptions(),
@@ -823,7 +823,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             _header(),
             Expanded(
               child: Center(
-                child: AppSettings.instance.showNowPlayingArtwork ? _artworkCard() : const SizedBox.shrink(),
+                child: _artworkCard(),
               ),
             ),
             Padding(
@@ -839,7 +839,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            if (AppSettings.instance.showNowPlayingFormat) Text(
+                            Text(
                               _formatTag,
                               maxLines: 1,
                               style: const TextStyle(
@@ -850,7 +850,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                               ),
                             ),
                             const SizedBox(height: 5),
-                            if (AppSettings.instance.showNowPlayingTitle) Text(
+                            Text(
                               _fileName,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -875,7 +875,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                         ),
                       ),
                       const SizedBox(width: 10),
-                      if (AppSettings.instance.showNowPlayingFavorite) _roundAction(
+                      _roundAction(
                         icon: _isFavorite
                             ? Icons.star_rounded
                             : Icons.star_border_rounded,
@@ -886,22 +886,22 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                         onTap: () => unawaited(_toggleFavorite()),
                       ),
                       const SizedBox(width: 8),
-                      if (AppSettings.instance.showNowPlayingTrackOptions) _roundAction(
+                      _roundAction(
                         icon: Icons.more_horiz_rounded,
                         tooltip: 'More options',
                         onTap: _showOptions,
                       ),
                     ],
                   ),
-                  if (AppSettings.instance.showNowPlayingTimeline) ...[
+                  ... [
                     const SizedBox(height: 16),
                     _timeline(),
                   ],
-                  if (AppSettings.instance.showNowPlayingTransport) ...[
+                  ... [
                     const SizedBox(height: 16),
                     _transport(),
                   ],
-                  if (AppSettings.instance.showNowPlayingVolume) ...[
+                  ... [
                     const SizedBox(height: 12),
                     _volume(),
                   ],
@@ -909,7 +909,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            if (AppSettings.instance.showNowPlayingUtilities) _bottomUtilities(),
+            _bottomUtilities(),
             const SizedBox(height: 2),
             const Text(
               'This device',
