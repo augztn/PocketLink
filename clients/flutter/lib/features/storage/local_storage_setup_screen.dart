@@ -28,6 +28,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
   bool _obscureServerPassword = true;
   bool _obscureBridgeToken = true;
   bool _refreshingStatus = false;
+  DateTime? _lastStatusRefreshAt;
   bool _statusLoaded = false;
   String? _error;
   bool _busy = false;
@@ -76,6 +77,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
       setState(() {
         _status = status ?? const {};
         _statusLoaded = true;
+        _lastStatusRefreshAt = DateTime.now();
         _discoveredVolumes = (status?['discoveredVolumes'] as List<dynamic>? ?? const [])
             .whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList();
         _token = token;
@@ -87,9 +89,19 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
       });
       if (_scanningMedia) unawaited(_watchMediaScan());
     } on MissingPluginException {
-      if (mounted) setState(() => _error = 'Native Android storage support is unavailable in this build.');
+      if (mounted) {
+        setState(() {
+          _statusLoaded = true;
+          _error = 'Native Android storage support is unavailable in this build.';
+        });
+      }
     } on PlatformException catch (error) {
-      if (mounted) setState(() => _error = error.message ?? 'Could not read storage status.');
+      if (mounted) {
+        setState(() {
+          _statusLoaded = true;
+          _error = error.message ?? 'Could not read storage status.';
+        });
+      }
     }
   }
 
@@ -344,53 +356,276 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
     final skippedScanItems = (_mediaScanStatus['skipped'] as num?)?.toInt() ?? 0;
     final completedScanAt = _formatScanTimestamp(_mediaScanStatus['last_completed_at']);
 
-    final hostSections = <Widget>[
+    final apiRunning = _status['apiRunning'] == true;
+    final bridgeRunning = _status['bridgeRunning'] == true;
+    final detectedVolumeCount = _discoveredVolumes.length;
+    final usbStatus = selectedVolumeCount > 0
+        ? '$selectedVolumeCount ready'
+        : detectedVolumeCount > 0
+            ? '$detectedVolumeCount detected · access needed'
+            : 'Not connected';
 
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: colors.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.35)),
+    String statusCheckedLabel() {
+      final checkedAt = _lastStatusRefreshAt;
+      if (checkedAt == null) return 'Status has not been checked yet';
+      final date = checkedAt.toLocal();
+      final hour = date.hour % 12 == 0 ? 12 : date.hour % 12;
+      final minute = date.minute.toString().padLeft(2, '0');
+      final period = date.hour < 12 ? 'AM' : 'PM';
+      return 'Updated ${date.day}/${date.month} · $hour:$minute $period';
+    }
+
+    Widget hostStatusRow(
+      String label,
+      String value, {
+      required bool ready,
+      bool neutral = false,
+    }) {
+      final statusColor = ready
+          ? Colors.green
+          : neutral
+              ? colors.onSurfaceVariant
+              : colors.tertiary;
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 7),
+        child: Row(
+          children: [
+            Icon(
+              ready
+                  ? Icons.check_circle_rounded
+                  : neutral
+                      ? Icons.remove_circle_outline_rounded
+                      : Icons.info_outline_rounded,
+              size: 18,
+              color: statusColor,
             ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: colors.primaryContainer,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Icon(Icons.phonelink_setup_rounded, color: colors.onPrimaryContainer),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                label,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(child: Text('Host PocketLink on this device', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800))),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'This phone can host PocketLink and provide local storage access to your clients.',
-                        style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
-                      ),
-                      const SizedBox(height: 5),
-                      Text(
-                        'Configure permissions, external drives and media indexing below.',
-                        style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant, height: 1.4),
-                      ),
-                    ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                value,
+                textAlign: TextAlign.end,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: statusColor,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final hostSections = <Widget>[
+      Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: colors.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.35)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: colors.primaryContainer,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                Icons.phonelink_setup_rounded,
+                color: colors.onPrimaryContainer,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Host PocketLink on this device',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Manage this phone’s host service, Android storage bridge and access readiness.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colors.onSurfaceVariant,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 14),
+      Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: colors.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.4)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Host status',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                _StatusPill(
+                  label: !_statusLoaded
+                      ? 'Checking'
+                      : running
+                          ? 'Running'
+                          : 'Stopped',
+                  granted: running,
+                ),
+                const SizedBox(width: 2),
+                IconButton(
+                  tooltip: 'Refresh host status',
+                  onPressed: _refreshingStatus || _busy
+                      ? null
+                      : _refreshDeviceStatus,
+                  icon: _refreshingStatus
+                      ? const SizedBox(
+                          width: 19,
+                          height: 19,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.refresh_rounded),
                 ),
               ],
             ),
-          ),
+            Text(
+              'Live status reported by the Android host service.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colors.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 8),
+            if (!_statusLoaded)
+              const LinearProgressIndicator()
+            else ...[
+              hostStatusRow(
+                'Storage service',
+                running ? 'Running' : 'Stopped',
+                ready: running,
+                neutral: !running,
+              ),
+              hostStatusRow(
+                'Native server API',
+                apiRunning
+                    ? 'Running'
+                    : _serverPasswordConfigured
+                        ? 'Stopped'
+                        : 'Password not set',
+                ready: apiRunning,
+                neutral: !running && !_serverPasswordConfigured,
+              ),
+              hostStatusRow(
+                'Android storage bridge',
+                bridgeRunning ? 'Running' : 'Stopped',
+                ready: bridgeRunning,
+                neutral: !running,
+              ),
+              hostStatusRow(
+                'Internal storage',
+                internalGranted ? 'Access granted' : 'Needs access',
+                ready: internalGranted,
+              ),
+              hostStatusRow(
+                'USB / external drives',
+                usbStatus,
+                ready: selectedVolumeCount > 0,
+                neutral: detectedVolumeCount == 0,
+              ),
+            ],
+            const SizedBox(height: 6),
+            Text(
+              statusCheckedLabel(),
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: colors.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 14),
+      Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: colors.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.35)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Quick actions',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Jump directly to the controls you need.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colors.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: () => setState(() => _selectedSectionIndex = 1),
+                  icon: const Icon(Icons.storage_outlined, size: 18),
+                  label: const Text('Manage storage'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => setState(() => _selectedSectionIndex = 2),
+                  icon: const Icon(Icons.lock_outline_rounded, size: 18),
+                  label: const Text('Security settings'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const DiagnosticsScreen(),
+                    ),
+                  ),
+                  icon: const Icon(Icons.article_outlined, size: 18),
+                  label: const Text('Diagnostics'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     ];
     final securitySections = <Widget>[
           const SizedBox(height: 22),

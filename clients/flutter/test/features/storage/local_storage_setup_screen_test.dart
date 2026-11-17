@@ -15,7 +15,9 @@ void main() {
       switch (call.method) {
         case 'status':
           return <String, Object?>{
-            'running': false,
+            'running': true,
+            'apiRunning': true,
+            'bridgeRunning': true,
             'internalStorageGranted': true,
             'backgroundAccessGranted': true,
             'serverPasswordConfigured': false,
@@ -44,6 +46,11 @@ void main() {
 
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.text('Host PocketLink on this device'), findsOneWidget);
+    expect(find.text('Host status'), findsOneWidget);
+    expect(find.text('Android storage bridge'), findsOneWidget);
+    expect(find.text('Manage storage'), findsOneWidget);
+    expect(find.text('Security settings'), findsOneWidget);
+    expect(find.byTooltip('Refresh host status'), findsOneWidget);
     expect(find.text('Layout'), findsNothing);
     expect(find.text('Device permissions'), findsNothing);
 
