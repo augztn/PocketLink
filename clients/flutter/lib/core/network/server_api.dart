@@ -240,6 +240,7 @@ class ServerApi {
     if (httpClientAdapter != null) _dio.httpClientAdapter = httpClientAdapter;
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
+        final queueStopwatch = Stopwatch()..start();
         try {
           await _requestGate.acquire(options.cancelToken);
           options.extra['homeserver.requestSlot'] = true;
@@ -249,11 +250,15 @@ class ServerApi {
         }
         final requestId = AppLogger.nextEventId('http');
         options.extra['pocketlink.requestId'] = requestId;
+        options.extra['pocketlink.queueWaitMs'] = queueStopwatch.elapsedMilliseconds;
+        options.extra['pocketlink.queryKey'] = _diagnosticQueryKey(options);
         options.extra['pocketlink.requestStopwatch'] = Stopwatch()..start();
         AppLogger.info('API request started', fields: {
           'requestId': requestId,
           'method': options.method,
           'path': options.uri.path,
+          'queryKey': options.extra['pocketlink.queryKey'],
+          'queueWaitMs': options.extra['pocketlink.queueWaitMs'],
           'retry': options.extra['homeserver.retryCount'] ?? 0,
           'concurrencyLimit': 4,
         });
@@ -269,6 +274,8 @@ class ServerApi {
           'path': options.uri.path,
           'status': response.statusCode,
           'durationMs': stopwatch?.elapsedMilliseconds,
+          'queueWaitMs': options.extra['pocketlink.queueWaitMs'],
+          'queryKey': options.extra['pocketlink.queryKey'],
           'retry': options.extra['homeserver.retryCount'] ?? 0,
         });
         handler.next(response);
@@ -283,6 +290,8 @@ class ServerApi {
           'type': error.type.name,
           'status': error.response?.statusCode,
           'durationMs': stopwatch?.elapsedMilliseconds,
+          'queueWaitMs': failedOptions.extra['pocketlink.queueWaitMs'],
+          'queryKey': failedOptions.extra['pocketlink.queryKey'],
           'retry': failedOptions.extra['homeserver.retryCount'] ?? 0,
           'cancelled': failedOptions.cancelToken?.isCancelled ?? false,
         });
@@ -341,6 +350,21 @@ class ServerApi {
   _CacheEntry<List<StorageVolume>>? _volumesCache;
   Future<List<StorageVolume>>? _volumesRequest;
   int _cacheGeneration = 0;
+
+  String _diagnosticQueryKey(RequestOptions options) {
+    final entries = options.queryParameters.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+    final encoded = jsonEncode(entries.map((entry) => [
+      entry.key,
+      entry.value,
+    ]).toList(growable: false));
+    var hash = 0x811c9dc5;
+    for (final unit in encoded.codeUnits) {
+      hash ^= unit;
+      hash = (hash * 0x01000193) & 0xffffffff;
+    }
+    return hash.toRadixString(16).padLeft(8, '0');
+  }
 
   void _releaseRequestSlot(RequestOptions options) {
     if (options.extra['homeserver.requestSlot'] == true) {
