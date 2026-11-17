@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'features/home/browser_state_store.dart';
 
 import 'core/settings/app_settings.dart';
+import 'core/logging/diagnostic_observer.dart';
 import 'features/connection/connection_screen.dart';
 
 class HomeServerApp extends StatefulWidget {
@@ -66,6 +67,7 @@ class _HomeServerAppState extends State<HomeServerApp> {
       child: MaterialApp(
       title: 'HomeServer',
       debugShowCheckedModeBanner: false,
+      navigatorObservers: [DiagnosticNavigatorObserver.instance],
       themeMode: mode,
       theme: _theme(brightness: Brightness.light),
       darkTheme: _theme(brightness: Brightness.dark, amoled: _settings.amoled),
