@@ -38,6 +38,60 @@ void main() {
         .setMockMethodCallHandler(channel, null);
   });
 
+  testWidgets('shows detected removable storage and its access method', (tester) async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+      switch (call.method) {
+        case 'status':
+          return <String, Object?>{
+            'running': true,
+            'apiRunning': true,
+            'bridgeRunning': true,
+            'internalStorageGranted': true,
+            'backgroundAccessGranted': true,
+            'serverPasswordConfigured': true,
+            'discoveredVolumes': <Object?>[
+              <String, Object?>{
+                'id': 'usb-test-volume',
+                'name': 'SD card',
+                'selected': true,
+                'access': 'direct',
+                'writable': false,
+                'state': 'mounted_ro',
+              },
+              <String, Object?>{
+                'id': 'usb-second-volume',
+                'name': 'USB drive',
+                'selected': false,
+                'access': 'not_granted',
+                'writable': false,
+                'state': 'mounted',
+              },
+            ],
+          };
+        case 'token':
+          return 'test-token';
+        case 'mediaIndexStatus':
+          return jsonEncode({'state': 'idle'});
+        default:
+          return null;
+      }
+    });
+
+    await tester.pumpWidget(
+      const MaterialApp(home: LocalStorageSetupScreen()),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Device'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('SD card'), findsOneWidget);
+    expect(find.text('Direct access · read-only'), findsOneWidget);
+    expect(find.text('USB drive'), findsOneWidget);
+    expect(find.text('Detected · tap to approve folder access'), findsOneWidget);
+    expect(find.text('Choose a folder manually'), findsOneWidget);
+  });
+
   testWidgets('Host navigation switches sections and keeps one layout', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(home: LocalStorageSetupScreen()),

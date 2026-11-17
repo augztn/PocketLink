@@ -756,7 +756,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                 _PermissionRow(
                   icon: Icons.folder_open_rounded,
                   title: 'All-files access',
-                  description: 'Required to read internal shared storage',
+                  description: 'Direct access to shared and supported removable storage. Some drives may still need folder approval.',
                   status: !_statusLoaded ? 'Checking' : internalGranted ? 'Enabled' : 'Needs access',
                   granted: _statusLoaded && internalGranted,
                   neutral: !_statusLoaded,
@@ -797,7 +797,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
               const Expanded(
                 child: _SetupSectionTitle(
                   title: 'USB / External Storage',
-                  subtitle: 'Connect a USB drive or external SSD. Detected drives appear here.',
+                  subtitle: 'PocketLink detects mounted SD cards and USB drives automatically. Direct access is preferred; folder approval is the fallback.',
                 ),
               ),
               IconButton(
@@ -872,12 +872,35 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
               padding: const EdgeInsets.only(bottom: 10),
               child: _VolumeTile(
                 title: volume['name']?.toString() ?? 'USB storage',
-                value: selected ? 'Access granted · ready to use' : 'Detected · approve access to use',
+                value: volume['access'] == 'direct'
+                    ? (volume['writable'] == true ? 'Direct access · read and write' : 'Direct access · read-only')
+                    : volume['access'] == 'saf'
+                        ? 'Folder permission saved · ready to use'
+                        : 'Detected · tap to approve folder access',
                 selected: selected,
                 onTap: _busy || selected ? null : () => _select(volume['id'].toString()),
+                accessType: volume['access']?.toString() ?? 'not_granted',
               ),
             );
           }),
+          if (_discoveredVolumes.isNotEmpty) ...[
+            const SizedBox(height: 2),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _busy ? null : () => _select(
+                  'usb-manual-${DateTime.now().microsecondsSinceEpoch.toRadixString(16).padLeft(16, '0').substring(0, 16)}',
+                ),
+                icon: const Icon(Icons.folder_open_rounded, size: 18),
+                label: const Text('Choose a folder manually'),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Use this if Android does not expose the drive directly or you need to select a specific folder.',
+              style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant, height: 1.35),
+            ),
+          ],
     ];
     final serviceSections = <Widget>[
           const SizedBox(height: 22),
@@ -1448,11 +1471,12 @@ class _StatusPill extends StatelessWidget {
 }
 
 class _VolumeTile extends StatelessWidget {
-  const _VolumeTile({required this.title, required this.value, required this.selected, required this.onTap});
+  const _VolumeTile({required this.title, required this.value, required this.selected, required this.onTap, required this.accessType});
   final String title;
   final String value;
   final bool selected;
   final VoidCallback? onTap;
+  final String accessType;
 
   @override
   Widget build(BuildContext context) {
@@ -1471,7 +1495,10 @@ class _VolumeTile extends StatelessWidget {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(color: colors.surfaceContainerHighest, borderRadius: BorderRadius.circular(13)),
-                child: Icon(Icons.usb_rounded, color: colors.onSurfaceVariant),
+                child: Icon(
+                  accessType == 'direct' ? Icons.sd_storage_rounded : Icons.usb_rounded,
+                  color: selected ? Colors.green : colors.onSurfaceVariant,
+                ),
               ),
               const SizedBox(width: 13),
               Expanded(
