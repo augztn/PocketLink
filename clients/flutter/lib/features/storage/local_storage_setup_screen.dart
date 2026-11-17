@@ -891,7 +891,8 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                 style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
               ),
             ],
-          ),    ];
+          ),
+    ];
 
     final normalSections = <Widget>[
       ...hostSections,
@@ -941,9 +942,6 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
         ],
       ),
     );
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
-
     return Scaffold(
       appBar: HomeServerAppBar(
         title: const Text('Host PocketLink'),
