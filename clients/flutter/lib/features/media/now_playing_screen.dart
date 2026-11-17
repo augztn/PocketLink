@@ -535,7 +535,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
           ),
           Expanded(
             child: Center(
-              child: Text(
+              child: AppSettings.instance.showNowPlayingFolder ? Text(
                 'PLAYING FROM ${_folderName.toUpperCase()}',
                 textAlign: TextAlign.center,
                 maxLines: 1,
@@ -546,7 +546,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                   letterSpacing: 1.25,
                   fontWeight: FontWeight.w600,
                 ),
-              ),
+              ) : const SizedBox.shrink(),
             ),
           ),
           SizedBox(
@@ -560,7 +560,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                   icon: const Icon(Icons.home_rounded, color: Colors.white70, size: 21),
                   visualDensity: VisualDensity.compact,
                 ),
-                PopupMenuButton<String>(
+                if (AppSettings.instance.showNowPlayingTrackOptions) PopupMenuButton<String>(
                   tooltip: 'More actions',
                   icon: const Icon(Icons.more_vert_rounded, color: Colors.white70, size: 21),
                   onSelected: (_) => _showOptions(),
@@ -838,7 +838,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
+                            if (AppSettings.instance.showNowPlayingFormat) Text(
                               _formatTag,
                               maxLines: 1,
                               style: const TextStyle(
@@ -849,7 +849,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                               ),
                             ),
                             const SizedBox(height: 5),
-                            Text(
+                            if (AppSettings.instance.showNowPlayingTitle) Text(
                               _fileName,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -861,7 +861,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                               ),
                             ),
                             const SizedBox(height: 3),
-                            Text(
+                            if (AppSettings.instance.showNowPlayingFolder) Text(
                               _folderName,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -874,7 +874,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                         ),
                       ),
                       const SizedBox(width: 10),
-                      _roundAction(
+                      if (AppSettings.instance.showNowPlayingFavorite) _roundAction(
                         icon: _isFavorite
                             ? Icons.star_rounded
                             : Icons.star_border_rounded,
@@ -885,17 +885,21 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                         onTap: () => unawaited(_toggleFavorite()),
                       ),
                       const SizedBox(width: 8),
-                      _roundAction(
+                      if (AppSettings.instance.showNowPlayingTrackOptions) _roundAction(
                         icon: Icons.more_horiz_rounded,
                         tooltip: 'More options',
                         onTap: _showOptions,
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  _timeline(),
-                  const SizedBox(height: 16),
-                  _transport(),
+                  if (AppSettings.instance.showNowPlayingTimeline) ...[
+                    const SizedBox(height: 16),
+                    _timeline(),
+                  ],
+                  if (AppSettings.instance.showNowPlayingTransport) ...[
+                    const SizedBox(height: 16),
+                    _transport(),
+                  ],
                   if (AppSettings.instance.showNowPlayingVolume) ...[
                     const SizedBox(height: 12),
                     _volume(),
