@@ -186,6 +186,8 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
   }
 
   Future<void> _connect() async {
+    // Ignore repeated taps while an authentication or navigation attempt is active.
+    if (_isConnecting) return;
     final host = _addressController.text.trim();
     final port = int.tryParse(_portController.text.trim());
     final username = _usernameController.text.trim();
@@ -209,13 +211,20 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
 
     final address = '$host:$port';
     late final ServerApi api;
+    final authenticationCancelToken = CancelToken();
     try {
       api = ServerApi(
         baseUrl: address,
         username: username,
         password: password,
       );
-      await api.authenticate().timeout(const Duration(seconds: 15));
+      await api.authenticate(cancelToken: authenticationCancelToken).timeout(
+        const Duration(seconds: 45),
+        onTimeout: () {
+          authenticationCancelToken.cancel('Authentication deadline exceeded.');
+          throw TimeoutException('Server authentication timed out.');
+        },
+      );
       await AppLogger.info('Server authentication succeeded', fields: {'host': host, 'port': port});
     } on DioException catch (error) {
       await AppLogger.warning('Server authentication failed', fields: {'host': host, 'port': port, 'type': error.type.name, 'status': error.response?.statusCode});
