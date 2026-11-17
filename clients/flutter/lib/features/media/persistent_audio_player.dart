@@ -44,8 +44,9 @@ class PersistentAudioPlayer extends ChangeNotifier {
       notifyListeners();
       unawaited(_syncMediaSession());
     });
-    _positionSubscription = player.stream.position.listen((_) => unawaited(_syncMediaSession()));
-    _durationSubscription = player.stream.duration.listen((_) => unawaited(_syncMediaSession()));
+    // Do not publish every decoder position/duration tick over the platform
+    // channel. Android's media session extrapolates position from playback
+    // state; syncing on track and play-state changes is sufficient.
   }
 
   static final PersistentAudioPlayer instance = PersistentAudioPlayer._();
@@ -61,8 +62,6 @@ class PersistentAudioPlayer extends ChangeNotifier {
   StreamSubscription<Playlist>? _playlistSubscription;
   StreamSubscription<bool>? _playingSubscription;
   StreamSubscription<bool>? _completedSubscription;
-  StreamSubscription<Duration>? _positionSubscription;
-  StreamSubscription<Duration>? _durationSubscription;
   bool _nativeSessionStarted = false;
   Timer? _sleepTimer;
 
@@ -260,8 +259,6 @@ class PersistentAudioPlayer extends ChangeNotifier {
     unawaited(_playlistSubscription?.cancel());
     unawaited(_playingSubscription?.cancel());
     unawaited(_completedSubscription?.cancel());
-    unawaited(_positionSubscription?.cancel());
-    unawaited(_durationSubscription?.cancel());
     _mediaChannel.setMethodCallHandler(null);
     unawaited(player.dispose());
     super.dispose();
