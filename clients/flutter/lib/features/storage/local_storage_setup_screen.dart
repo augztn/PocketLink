@@ -200,7 +200,12 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
       _serverPasswordController.clear();
       await _refresh();
       if (mounted) {
-        setState(() => _error = 'Native server password saved. It is stored as a salted verifier.');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Native server password saved securely.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     } on PlatformException catch (error) {
       if (mounted) setState(() => _error = error.message ?? 'Could not save server password.');
