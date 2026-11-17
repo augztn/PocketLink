@@ -5,6 +5,19 @@ import '../../core/widgets/home_server_app_bar.dart';
 class NowPlayingSettingsScreen extends StatelessWidget {
   const NowPlayingSettingsScreen({super.key});
 
+  Widget _section(String title, List<Widget> children) => Card(
+    clipBehavior: Clip.antiAlias,
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Padding(padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+        child: Text(title, style: const TextStyle(fontWeight: FontWeight.w700))),
+      ...children,
+    ]),
+  );
+
+  Widget _setting(String title, String subtitle, IconData icon, bool value, ValueChanged<bool> onChanged) =>
+      SwitchListTile(secondary: Icon(icon), title: Text(title), subtitle: Text(subtitle),
+        value: value, onChanged: onChanged);
+
   @override
   Widget build(BuildContext context) {
     final settings = AppSettings.instance;
@@ -15,9 +28,7 @@ class NowPlayingSettingsScreen extends StatelessWidget {
         body: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
           children: [
-            Card(
-              clipBehavior: Clip.antiAlias,
-              child: Column(children: [
+            _section('General layout', [
                 SwitchListTile(
                   secondary: const Icon(Icons.picture_in_picture_alt_rounded),
                   title: const Text('Mini-player'),
@@ -57,8 +68,20 @@ class NowPlayingSettingsScreen extends StatelessWidget {
                   value: settings.enableNowPlayingGestures,
                   onChanged: (value) => settings.setNowPlayingOptions(gestures: value),
                 ),
-              ]),
-            ),
+            ]),
+            const SizedBox(height: 12),
+            _section('Track information', [
+              _setting('File format', 'Show the audio format label', Icons.audio_file_rounded, settings.showNowPlayingFormat, (v) => settings.setNowPlayingOptions(format: v)),
+              _setting('Track title', 'Show the current track name', Icons.title_rounded, settings.showNowPlayingTitle, (v) => settings.setNowPlayingOptions(title: v)),
+              _setting('Folder name', 'Show the current folder', Icons.folder_rounded, settings.showNowPlayingFolder, (v) => settings.setNowPlayingOptions(folder: v)),
+            ]),
+            const SizedBox(height: 12),
+            _section('Playback controls', [
+              _setting('Progress timeline', 'Show seek bar and elapsed/remaining time', Icons.linear_scale_rounded, settings.showNowPlayingTimeline, (v) => settings.setNowPlayingOptions(timeline: v)),
+              _setting('Main playback controls', 'Show previous, play/pause and next', Icons.skip_next_rounded, settings.showNowPlayingTransport, (v) => settings.setNowPlayingOptions(transport: v)),
+              _setting('Favorite button', 'Show the quick favorite action', Icons.star_outline_rounded, settings.showNowPlayingFavorite, (v) => settings.setNowPlayingOptions(favorite: v)),
+              _setting('Track options button', 'Show download, share, queue and file actions', Icons.more_horiz_rounded, settings.showNowPlayingTrackOptions, (v) => settings.setNowPlayingOptions(trackOptions: v)),
+            ]),
             const SizedBox(height: 12),
             Align(
               alignment: Alignment.centerRight,
