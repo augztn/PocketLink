@@ -60,6 +60,30 @@ void main() {
       expect(status.isScanning, isTrue);
       expect(status.fileCount, 80);
       expect(status.lastError, isNull);
+      expect(status.lastScanStartedAt, 0);
+      expect(status.elapsedMs, 0);
+      expect(status.currentSource, isNull);
+    });
+
+    test('parses remote host scan progress details', () {
+      final status = MediaIndexStatus.fromJson({
+        'state': 'scanning',
+        'scanned': 420,
+        'skipped': 2,
+        'last_completed_at': 0,
+        'last_scan_started_at': 1794900000000,
+        'elapsed_ms': 12500,
+        'current_source': 'internal',
+        'file_count': 900,
+        'media_count': 240,
+      });
+
+      expect(status.isScanning, isTrue);
+      expect(status.scanned, 420);
+      expect(status.elapsedMs, 12500);
+      expect(status.currentSource, 'internal');
+      expect(status.lastScanStartedAt, 1794900000000);
+    });
     });
   });
 }
