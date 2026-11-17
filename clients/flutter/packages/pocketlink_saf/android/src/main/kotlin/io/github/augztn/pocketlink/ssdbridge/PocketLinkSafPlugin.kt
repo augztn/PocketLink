@@ -82,6 +82,12 @@ class PocketLinkSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
                 context.stopService(Intent(context, MediaPlaybackService::class.java))
                 result.success(true)
             }
+            "getAutoStartOnBoot" -> result.success(prefs.getBoolean(KEY_AUTO_START_ON_BOOT, false))
+            "setAutoStartOnBoot" -> {
+                val enabled = call.argument<Boolean>("enabled") ?: false
+                prefs.edit().putBoolean(KEY_AUTO_START_ON_BOOT, enabled).apply()
+                result.success(enabled)
+            }
             "status" -> result.success(status())
             "mediaIndexStatus" -> result.success(BridgeService.mediaIndexStatus())
             "refreshMediaIndex" -> {
@@ -353,5 +359,8 @@ class PocketLinkSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
         mediaChannel.setMethodCallHandler(null)
     }
 
-    companion object { private const val REQUEST_TREE = 8764 }
+    companion object {
+        private const val REQUEST_TREE = 8764
+        const val KEY_AUTO_START_ON_BOOT = "auto_start_on_boot"
+    }
 }
