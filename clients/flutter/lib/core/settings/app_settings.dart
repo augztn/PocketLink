@@ -24,6 +24,11 @@ class AppSettings extends ChangeNotifier {
   static const _floatingShortcutsKey = 'settings_floating_shortcuts';
   static const _floatingShortcutTapActionKey = 'settings_floating_shortcut_tap_action';
   static const _floatingShortcutLongPressKey = 'settings_floating_shortcut_long_press';
+  static const _nowPlayingMiniPlayerKey = 'settings_now_playing_mini_player';
+  static const _nowPlayingArtworkKey = 'settings_now_playing_artwork';
+  static const _nowPlayingVolumeKey = 'settings_now_playing_volume';
+  static const _nowPlayingUtilitiesKey = 'settings_now_playing_utilities';
+  static const _nowPlayingGesturesKey = 'settings_now_playing_gestures';
   static const homeSectionDefaults = <String>['search', 'quick', 'transfers', 'continue', 'recent'];
   static const navigationDefaults = <String>['home', 'explore', 'files', 'browse'];
   static const floatingShortcutDefaults = <String>[
@@ -52,6 +57,11 @@ class AppSettings extends ChangeNotifier {
   bool _floatingShortcutLongPressEnabled = true;
   List<String> _floatingShortcuts = List.of(floatingShortcutDefaults);
   Future<void> _floatingShortcutsWrite = Future<void>.value();
+  bool _showMiniPlayer = true;
+  bool _showNowPlayingArtwork = true;
+  bool _showNowPlayingVolume = true;
+  bool _showNowPlayingUtilities = true;
+  bool _enableNowPlayingGestures = true;
 
   ThemeMode get themeMode => _themeMode;
   bool get amoled => _amoled;
@@ -70,12 +80,22 @@ class AppSettings extends ChangeNotifier {
   String get floatingShortcutTapAction => _floatingShortcutTapAction;
   bool get floatingShortcutLongPressEnabled => _floatingShortcutLongPressEnabled;
   List<String> get floatingShortcuts => List.unmodifiable(_floatingShortcuts);
+  bool get showMiniPlayer => _showMiniPlayer;
+  bool get showNowPlayingArtwork => _showNowPlayingArtwork;
+  bool get showNowPlayingVolume => _showNowPlayingVolume;
+  bool get showNowPlayingUtilities => _showNowPlayingUtilities;
+  bool get enableNowPlayingGestures => _enableNowPlayingGestures;
 
   Future<void> load() async {
     if (_loaded) return;
     try {
       final preferences = await SharedPreferences.getInstance();
       _useLiquidGlass = preferences.getBool(_liquidGlassKey) ?? false;
+      _showMiniPlayer = preferences.getBool(_nowPlayingMiniPlayerKey) ?? true;
+      _showNowPlayingArtwork = preferences.getBool(_nowPlayingArtworkKey) ?? true;
+      _showNowPlayingVolume = preferences.getBool(_nowPlayingVolumeKey) ?? true;
+      _showNowPlayingUtilities = preferences.getBool(_nowPlayingUtilitiesKey) ?? true;
+      _enableNowPlayingGestures = preferences.getBool(_nowPlayingGesturesKey) ?? true;
       _floatingShortcutEnabled = preferences.getBool(_floatingShortcutEnabledKey) ?? false;
       final tapAction = preferences.getString(_floatingShortcutTapActionKey);
       _floatingShortcutTapAction = tapAction == 'primary' ? 'primary' : 'menu';
@@ -287,6 +307,46 @@ class AppSettings extends ChangeNotifier {
     } else {
       await _storage.write(key: _downloadKey, value: value);
     }
+  }
+
+  Future<void> setNowPlayingOptions({
+    bool? miniPlayer,
+    bool? artwork,
+    bool? volume,
+    bool? utilities,
+    bool? gestures,
+  }) async {
+    if (miniPlayer != null) _showMiniPlayer = miniPlayer;
+    if (artwork != null) _showNowPlayingArtwork = artwork;
+    if (volume != null) _showNowPlayingVolume = volume;
+    if (utilities != null) _showNowPlayingUtilities = utilities;
+    if (gestures != null) _enableNowPlayingGestures = gestures;
+    notifyListeners();
+    final preferences = await SharedPreferences.getInstance();
+    await Future.wait([
+      if (miniPlayer != null) preferences.setBool(_nowPlayingMiniPlayerKey, miniPlayer),
+      if (artwork != null) preferences.setBool(_nowPlayingArtworkKey, artwork),
+      if (volume != null) preferences.setBool(_nowPlayingVolumeKey, volume),
+      if (utilities != null) preferences.setBool(_nowPlayingUtilitiesKey, utilities),
+      if (gestures != null) preferences.setBool(_nowPlayingGesturesKey, gestures),
+    ]);
+  }
+
+  Future<void> resetNowPlayingOptions() async {
+    _showMiniPlayer = true;
+    _showNowPlayingArtwork = true;
+    _showNowPlayingVolume = true;
+    _showNowPlayingUtilities = true;
+    _enableNowPlayingGestures = true;
+    notifyListeners();
+    final preferences = await SharedPreferences.getInstance();
+    await Future.wait([
+      preferences.remove(_nowPlayingMiniPlayerKey),
+      preferences.remove(_nowPlayingArtworkKey),
+      preferences.remove(_nowPlayingVolumeKey),
+      preferences.remove(_nowPlayingUtilitiesKey),
+      preferences.remove(_nowPlayingGesturesKey),
+    ]);
   }
 
   Future<void> setUseLiquidGlass(bool value) async {
