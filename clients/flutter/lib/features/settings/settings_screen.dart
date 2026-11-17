@@ -192,10 +192,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       trailing: const Icon(Icons.chevron_right_rounded),
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => SettingsScreen(
-            onOpenSavedServers: widget.onOpenSavedServers,
-            category: title,
-          ),
+          builder: (_) => title == 'About PocketLink'
+              ? const AboutScreen()
+              : SettingsScreen(
+                  onOpenSavedServers: widget.onOpenSavedServers,
+                  category: title,
+                ),
         ),
       ),
     ),
@@ -381,8 +383,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   onTap: _clearingCache ? null : _clearCache,
                                 ),
                               ]),
-                  if (widget.category == 'About PocketLink')
-                    const AboutScreen(),
                   if (widget.category == 'Connection & Diagnostics')
                             _section('Connection & Diagnostics', [
                                 ListTile(
