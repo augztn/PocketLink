@@ -10,7 +10,8 @@ import 'package:media_kit/media_kit.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/network/offline_file_cache.dart';
-import '../../core/logging/app_logger.dart';\nimport '../../core/settings/app_settings.dart';
+import '../../core/logging/app_logger.dart';
+import '../../core/settings/app_settings.dart';
 import '../../core/widgets/home_server_app_bar.dart';
 import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
