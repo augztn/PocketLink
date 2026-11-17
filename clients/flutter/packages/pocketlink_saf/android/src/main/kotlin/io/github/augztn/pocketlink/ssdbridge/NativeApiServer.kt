@@ -37,6 +37,9 @@ internal class NativeApiServer(
     bindHost: String = "0.0.0.0"
 ) : NanoHTTPD(bindHost, listenPort) {
     private val prefs = context.getSharedPreferences("ssd-bridge", Context.MODE_PRIVATE)
+    private val systemTelemetry by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        SystemTelemetryReader(context)
+    }
     // Keep server startup and health checks independent of external-storage availability.
     private val internalRoot by lazy(LazyThreadSafetyMode.NONE) {
         Environment.getExternalStorageDirectory().canonicalFile
@@ -109,6 +112,8 @@ internal class NativeApiServer(
                     deleteInternal(path)
                 session.uri == "/api/storage/volumes" && session.method == Method.GET ->
                     listVolumes()
+                session.uri == "/api/system/telemetry" && session.method == Method.GET ->
+                    json(systemTelemetry.snapshot())
                 session.uri == "/api/storage/list" && session.method == Method.GET ->
                     listExternal(query["volume"], path)
                 session.uri == "/api/storage/download" && session.method == Method.GET ->

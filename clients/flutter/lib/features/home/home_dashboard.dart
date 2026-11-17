@@ -53,6 +53,9 @@ class HomeDashboardState extends State<HomeDashboard> {
   MediaIndexStatus? _mediaScanStatus;
   bool _startingMediaScan = false;
   bool _watchingMediaScan = false;
+  HostSystemTelemetry? _hostTelemetry;
+  Timer? _telemetryTimer;
+  Future<void>? _telemetryRequest;
   final QuickActionsStore _quickActionsStore = QuickActionsStore();
   List<String> _quickActions = List.of(QuickActionsStore.defaults);
 
@@ -62,6 +65,16 @@ class HomeDashboardState extends State<HomeDashboard> {
     _loadQuickActions();
     HomeActivityStore.instance.load();
     _refreshStatus();
+    _telemetryTimer = Timer.periodic(const Duration(seconds: 20), (_) {
+      if (!mounted || _serverOnline != true || _checking) return;
+      unawaited(_refreshHostTelemetry());
+    });
+  }
+
+  @override
+  void dispose() {
+    _telemetryTimer?.cancel();
+    super.dispose();
   }
 
   static const _quickActionDetails = <String, ({String label, IconData icon})>{
@@ -408,6 +421,210 @@ class HomeDashboardState extends State<HomeDashboard> {
         const SnackBar(content: Text('Could not upload the selected file.')),
       );
     }
+  }
+
+
+  Future<void> _refreshHostTelemetry() {
+    final pending = _telemetryRequest;
+    if (pending != null) return pending;
+
+    late final Future<void> request;
+    request = () async {
+      try {
+        final telemetry = await widget.api.systemTelemetry();
+        if (mounted) setState(() => _hostTelemetry = telemetry);
+      } catch (_) {
+        // Hardware telemetry is optional; it must not change server connectivity.
+      } finally {
+        if (identical(_telemetryRequest, request)) _telemetryRequest = null;
+      }
+    }();
+    _telemetryRequest = request;
+    return request;
+  }
+
+  Widget _buildHostDeviceMetrics(ThemeData theme) {
+    final telemetry = _hostTelemetry;
+    final muted = Colors.white.withValues(alpha: 0.58);
+    final foreground = Colors.white;
+
+    String percentLabel(double? value) =>
+        value == null ? '—' : '${value.clamp(0, 100).toStringAsFixed(0)}%';
+
+    String cpuDetail() {
+      if (telemetry == null) return 'Waiting for host data';
+      if (telemetry.cpuUsagePercent != null) return 'Live device usage';
+      return telemetry.cpuUsageStatus == 'sampling'
+          ? 'Sampling CPU activity'
+          : 'Usage unavailable';
+    }
+
+    Widget metric(
+      String label,
+      String value,
+      double? progress,
+      String detail,
+      IconData icon,
+    ) {
+      return Expanded(
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.035),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.055)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                Icon(icon, size: 15, color: muted),
+                const SizedBox(width: 6),
+                Text(label, style: theme.textTheme.labelSmall?.copyWith(
+                  color: muted, letterSpacing: 0.55, fontWeight: FontWeight.w700,
+                )),
+              ]),
+              const SizedBox(height: 7),
+              Text(value, style: theme.textTheme.titleMedium?.copyWith(
+                color: foreground, fontWeight: FontWeight.w800,
+              )),
+              if (progress != null) ...[
+                const SizedBox(height: 7),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: (progress / 100).clamp(0.0, 1.0),
+                    minHeight: 4,
+                    backgroundColor: Colors.white.withValues(alpha: 0.10),
+                    color: icon == Icons.battery_charging_full_rounded
+                        ? const Color(0xFF4ADE80)
+                        : const Color(0xFF60A5FA),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 5),
+              Text(detail, maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.labelSmall?.copyWith(color: muted)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final memoryDetail = telemetry?.memoryUsedBytes != null &&
+            telemetry?.memoryTotalBytes != null
+        ? '${_formatBytes(telemetry!.memoryUsedBytes!)} / ${_formatBytes(telemetry.memoryTotalBytes!)} used'
+        : 'Memory details unavailable';
+    final storageDetail = telemetry?.storageUsedBytes != null &&
+            telemetry?.storageTotalBytes != null
+        ? '${_formatBytes(telemetry!.storageUsedBytes!)} / ${_formatBytes(telemetry.storageTotalBytes!)} used'
+        : 'Storage details unavailable';
+    final batteryDetail = telemetry == null || telemetry.batteryPercent == null
+        ? 'Battery status unavailable'
+        : telemetry.isCharging ? 'Charging' : 'Not charging';
+    final deviceName = [
+      telemetry?.manufacturer,
+      telemetry?.deviceModel,
+    ].whereType<String>().where((part) => part.isNotEmpty).join(' ');
+    final cpuName = telemetry?.cpuModel ?? 'CPU details unavailable';
+    final gpuName = telemetry?.gpuRenderer ?? 'GPU details unavailable';
+    final sampledAt = telemetry?.sampledAtMs == null
+        ? null
+        : DateTime.fromMillisecondsSinceEpoch(telemetry!.sampledAtMs!).toLocal();
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E2025),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            const Icon(Icons.memory_rounded, size: 18, color: Colors.white70),
+            const SizedBox(width: 8),
+            Expanded(child: Text('HOST DEVICE HEALTH',
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: foreground, fontWeight: FontWeight.w800, letterSpacing: 0.65,
+              ))),
+            if (sampledAt != null)
+              Text(
+                'Updated ${sampledAt.hour.toString().padLeft(2, '0')}:${sampledAt.minute.toString().padLeft(2, '0')}',
+                style: theme.textTheme.labelSmall?.copyWith(color: muted),
+              ),
+          ]),
+          const SizedBox(height: 11),
+          if (telemetry == null)
+            Text(
+              _serverOnline == true
+                  ? 'Reading system information from the host…'
+                  : 'System information appears when the host is connected.',
+              style: theme.textTheme.bodySmall?.copyWith(color: muted),
+            )
+          else ...[
+            Row(children: [
+              metric('CPU', percentLabel(telemetry.cpuUsagePercent),
+                  telemetry.cpuUsagePercent, cpuDetail(), Icons.speed_rounded),
+              const SizedBox(width: 9),
+              metric('MEMORY', percentLabel(telemetry.memoryUsagePercent),
+                  telemetry.memoryUsagePercent, memoryDetail, Icons.memory_rounded),
+            ]),
+            const SizedBox(height: 9),
+            Row(children: [
+              metric('STORAGE', percentLabel(telemetry.storageUsagePercent),
+                  telemetry.storageUsagePercent, storageDetail, Icons.storage_rounded),
+              const SizedBox(width: 9),
+              metric(
+                'BATTERY',
+                telemetry.batteryPercent == null ? '—' : '${telemetry.batteryPercent}%',
+                telemetry.batteryPercent?.toDouble(),
+                batteryDetail,
+                Icons.battery_charging_full_rounded,
+              ),
+            ]),
+            const SizedBox(height: 12),
+            if (deviceName.isNotEmpty)
+              _deviceDetailRow(theme, muted, Icons.phone_android_rounded,
+                  deviceName, telemetry.androidVersion == null
+                      ? null : 'Android ${telemetry.androidVersion}'),
+            _deviceDetailRow(
+              theme, muted, Icons.memory_rounded, cpuName,
+              telemetry.cpuCores == null ? null : '${telemetry.cpuCores} cores',
+            ),
+            _deviceDetailRow(
+              theme, muted, Icons.developer_board_rounded, gpuName,
+              telemetry.gpuVendor,
+            ),
+            Text(
+              'GPU utilization is not exposed reliably by standard Android APIs.',
+              style: theme.textTheme.labelSmall?.copyWith(color: muted),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _deviceDetailRow(
+    ThemeData theme,
+    Color muted,
+    IconData icon,
+    String title,
+    String? trailing,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 7),
+      child: Row(children: [
+        Icon(icon, size: 15, color: muted),
+        const SizedBox(width: 8),
+        Expanded(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.labelMedium?.copyWith(color: Colors.white70))),
+        if (trailing != null)
+          Text(trailing, style: theme.textTheme.labelSmall?.copyWith(color: muted)),
+      ]),
+    );
   }
 
   Widget _buildServerTelemetry(BuildContext context, ThemeData theme, ColorScheme colors) {
@@ -855,6 +1072,7 @@ class HomeDashboardState extends State<HomeDashboard> {
     try {
       await widget.api.authenticate();
       stopwatch.stop();
+      await _refreshHostTelemetry();
       online = true;
       if (mounted) setState(() => _latency = stopwatch.elapsed);
       try {
@@ -1234,6 +1452,8 @@ class HomeDashboardState extends State<HomeDashboard> {
           padding: EdgeInsets.fromLTRB(18, 6, 18, 104 + MediaQuery.paddingOf(context).bottom),
           children: [
             _buildServerTelemetry(context, theme, colors),
+            const SizedBox(height: 12),
+            _buildHostDeviceMetrics(theme),
             const SizedBox(height: 12),
             _buildHostMediaScanCard(theme, colors),
             const SizedBox(height: 18),

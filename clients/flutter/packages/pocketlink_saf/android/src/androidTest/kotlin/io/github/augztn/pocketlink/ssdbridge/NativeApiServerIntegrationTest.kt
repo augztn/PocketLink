@@ -59,6 +59,15 @@ class NativeApiServerIntegrationTest {
             )
             assertEquals(200, authorized.first)
             assertTrue(authorized.second.contains("\"items\""))
+
+            val telemetry = request(
+                port,
+                "/api/system/telemetry",
+                "Basic " + Base64.encodeToString("admin:$password".toByteArray(), Base64.NO_WRAP)
+            )
+            assertEquals(200, telemetry.first)
+            listOf("\"device\"", "\"cpu\"", "\"memory\"", "\"storage\"", "\"gpu\"", "\"battery\"")
+                .forEach { key -> assertTrue("Missing telemetry field $key", telemetry.second.contains(key)) }
         } finally {
             server.stop()
             context.getSharedPreferences("integration-test-pocketlink-auth", Context.MODE_PRIVATE)

@@ -31,6 +31,50 @@ class _SequenceAdapter implements HttpClientAdapter {
 
 void main() {
   group('ServerApi', () {
+    test('parses host telemetry without inventing unavailable readings', () {
+      final telemetry = HostSystemTelemetry.fromJson({
+        'sampled_at_ms': 1794940000000,
+        'device': {
+          'manufacturer': 'Samsung',
+          'model': 'Galaxy',
+          'android_version': '16',
+        },
+        'cpu': {
+          'model': 'Snapdragon',
+          'cores': 8,
+          'usage_percent': null,
+          'usage_status': 'sampling',
+        },
+        'memory': {
+          'total_bytes': 8000,
+          'used_bytes': 5000,
+          'available_bytes': 3000,
+          'usage_percent': 62.5,
+        },
+        'storage': {
+          'total_bytes': 10000,
+          'used_bytes': 4000,
+          'available_bytes': 6000,
+          'usage_percent': 40,
+        },
+        'gpu': {
+          'renderer': 'Adreno',
+          'vendor': 'Qualcomm',
+          'version': 'OpenGL ES 3.2',
+        },
+        'battery': {'percent': 87, 'status': 'charging'},
+      });
+
+      expect(telemetry.deviceModel, 'Galaxy');
+      expect(telemetry.cpuCores, 8);
+      expect(telemetry.cpuUsagePercent, isNull);
+      expect(telemetry.cpuUsageStatus, 'sampling');
+      expect(telemetry.memoryUsagePercent, 62.5);
+      expect(telemetry.storageAvailableBytes, 6000);
+      expect(telemetry.gpuRenderer, 'Adreno');
+      expect(telemetry.batteryPercent, 87);
+      expect(telemetry.isCharging, isTrue);
+    });
     test('retries transient GET failures and then succeeds', () async {
       final adapter = _SequenceAdapter([503, 200]);
       final api = ServerApi(baseUrl: 'http://127.0.0.1:8000', username: 'admin', password: 'secret', httpClientAdapter: adapter);

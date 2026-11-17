@@ -35,6 +35,7 @@ This document describes the native Android implementation in `clients/flutter/pa
 | PATCH | `/api/files/rename` | JSON: `{path, new_name}` | Rename internal file/directory |
 | DELETE | `/api/files/item` | Query: `path` | Delete internal file or empty directory |
 | GET | `/api/storage/volumes` | — | List SAF volumes and availability |
+| GET | `/api/system/telemetry` | — | Read host device, CPU, memory, shared-storage, GPU identification, and battery telemetry |
 | GET | `/api/storage/list` | Query: `volume`, `path` | List external directory |
 | GET | `/api/storage/download` | Query: `volume`, `path` | Download/stream original external file |
 | POST | `/api/storage/upload` | Query: `volume`, `path`; multipart: `file` | Upload to external directory |
@@ -53,6 +54,8 @@ This document describes the native Android implementation in `clients/flutter/pa
 Directory listings return `{"path":"...","items":[...]}`. Each item includes `name`, `type` (`file` or `directory`), `size`, and `modified`; `created` is included only when Android exposes a reliable creation timestamp.
 
 Volume listings return `{"items":[{"id":"...","name":"...","available":true,"writable":true}]}`.
+
+System telemetry returns a timestamp and separate `device`, `cpu`, `memory`, `storage`, `gpu`, and `battery` objects. CPU utilization is sampled from `/proc/stat` and may be unavailable on devices that restrict access; the first sample is marked `sampling`. Memory and shared-storage values are reported in bytes with percentage usage. GPU renderer/vendor/version are queried through EGL; Android does not expose a dependable GPU-utilization percentage to ordinary applications, so no utilization value is fabricated. Battery state is `charging`, `not_charging`, or `unknown`.
 
 Mutation and upload success responses return `{"ok":true,"name":"..."}` (delete returns `{"ok":true}`). Video metadata returns `duration_ms`, `width`, and `height`.
 
@@ -84,5 +87,5 @@ PocketLink does not impose an application-level upload or download size limit. A
 - Deleting an internal non-empty directory is rejected; delete its contents first.
 - SAF providers differ in seek support. Range requests prefer a seekable file descriptor and fall back to stream skipping; a provider that cannot seek may reject a range.
 - SAF providers may not expose creation timestamps.
-- Copy/move/search, persistent offline caching, server hardware telemetry, and arbitrary shell execution are not exposed by this native API.
+- Copy/move/search, persistent offline caching, GPU utilization percentage, and arbitrary shell execution are not exposed by this native API.
 - API evolution should preserve these existing routes and the raw-stream contract; add versioned routes for future incompatible changes.

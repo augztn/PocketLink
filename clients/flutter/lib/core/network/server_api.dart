@@ -86,6 +86,104 @@ class VideoMetadata {
   String get resolution => width > 0 && height > 0 ? '${width}×${height}' : '';
 }
 
+
+class HostSystemTelemetry {
+  const HostSystemTelemetry({
+    required this.sampledAtMs,
+    required this.manufacturer,
+    required this.deviceModel,
+    required this.androidVersion,
+    required this.cpuModel,
+    required this.cpuCores,
+    required this.cpuUsagePercent,
+    required this.cpuUsageStatus,
+    required this.memoryTotalBytes,
+    required this.memoryUsedBytes,
+    required this.memoryAvailableBytes,
+    required this.memoryUsagePercent,
+    required this.storageTotalBytes,
+    required this.storageUsedBytes,
+    required this.storageAvailableBytes,
+    required this.storageUsagePercent,
+    required this.gpuRenderer,
+    required this.gpuVendor,
+    required this.gpuVersion,
+    required this.batteryPercent,
+    required this.batteryStatus,
+  });
+
+  final int? sampledAtMs;
+  final String? manufacturer;
+  final String? deviceModel;
+  final String? androidVersion;
+  final String? cpuModel;
+  final int? cpuCores;
+  final double? cpuUsagePercent;
+  final String cpuUsageStatus;
+  final int? memoryTotalBytes;
+  final int? memoryUsedBytes;
+  final int? memoryAvailableBytes;
+  final double? memoryUsagePercent;
+  final int? storageTotalBytes;
+  final int? storageUsedBytes;
+  final int? storageAvailableBytes;
+  final double? storageUsagePercent;
+  final String? gpuRenderer;
+  final String? gpuVendor;
+  final String? gpuVersion;
+  final int? batteryPercent;
+  final String batteryStatus;
+
+  bool get isCharging => batteryStatus == 'charging';
+
+  factory HostSystemTelemetry.fromJson(Map<String, dynamic> json) {
+    Map<String, dynamic> section(String key) {
+      final value = json[key];
+      return value is Map<String, dynamic> ? value : const {};
+    }
+
+    int? integer(Object? value) =>
+        value is num ? value.toInt() : int.tryParse(value?.toString() ?? '');
+    double? decimal(Object? value) =>
+        value is num ? value.toDouble() : double.tryParse(value?.toString() ?? '');
+    String? string(Object? value) {
+      final text = value?.toString().trim();
+      return text == null || text.isEmpty ? null : text;
+    }
+
+    final device = section('device');
+    final cpu = section('cpu');
+    final memory = section('memory');
+    final storage = section('storage');
+    final gpu = section('gpu');
+    final battery = section('battery');
+
+    return HostSystemTelemetry(
+      sampledAtMs: integer(json['sampled_at_ms']),
+      manufacturer: string(device['manufacturer']),
+      deviceModel: string(device['model']),
+      androidVersion: string(device['android_version']),
+      cpuModel: string(cpu['model']),
+      cpuCores: integer(cpu['cores']),
+      cpuUsagePercent: decimal(cpu['usage_percent']),
+      cpuUsageStatus: string(cpu['usage_status']) ?? 'unavailable',
+      memoryTotalBytes: integer(memory['total_bytes']),
+      memoryUsedBytes: integer(memory['used_bytes']),
+      memoryAvailableBytes: integer(memory['available_bytes']),
+      memoryUsagePercent: decimal(memory['usage_percent']),
+      storageTotalBytes: integer(storage['total_bytes']),
+      storageUsedBytes: integer(storage['used_bytes']),
+      storageAvailableBytes: integer(storage['available_bytes']),
+      storageUsagePercent: decimal(storage['usage_percent']),
+      gpuRenderer: string(gpu['renderer']),
+      gpuVendor: string(gpu['vendor']),
+      gpuVersion: string(gpu['version']),
+      batteryPercent: integer(battery['percent']),
+      batteryStatus: string(battery['status']) ?? 'unknown',
+    );
+  }
+}
+
 class StorageVolume {
   const StorageVolume({
     required this.id,
@@ -731,6 +829,11 @@ class ServerApi {
     });
     _volumesRequest = request;
     return request;
+  }
+
+  Future<HostSystemTelemetry> systemTelemetry() async {
+    final response = await _dio.get<Map<String, dynamic>>('/api/system/telemetry');
+    return HostSystemTelemetry.fromJson(response.data ?? const {});
   }
 
   Future<MediaIndexStatus> mediaIndexStatus() async {
