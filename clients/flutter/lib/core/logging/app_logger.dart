@@ -63,7 +63,7 @@ class AppLogger {
     }
     final safeFields = fields.map((key, value) => MapEntry(
       key,
-      RegExp(r'password|passwd|authorization|token|secret|api[_-]?key|username|user|login|cookie', caseSensitive: false).hasMatch(key)
+      RegExp(r'password|passwd|authorization|token|secret|api[_-]?key|username|user|login|cookie|host|hostname|address|server', caseSensitive: false).hasMatch(key)
           ? '[REDACTED]'
           : _redact(value.toString()),
     ));
