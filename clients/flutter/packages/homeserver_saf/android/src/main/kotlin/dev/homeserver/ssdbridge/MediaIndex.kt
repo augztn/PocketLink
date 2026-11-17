@@ -429,6 +429,9 @@ internal class MediaIndexScanner(
             .put("last_error", lastError)
             .put("file_count", counts["files"] ?: 0)
             .put("media_count", counts["media"] ?: 0)
+            .put("photo_count", counts["photo"] ?: 0)
+            .put("video_count", counts["video"] ?: 0)
+            .put("music_count", counts["music"] ?: 0)
     }
 
     fun media(category: String, query: String, limit: Int, offset: Int) =
