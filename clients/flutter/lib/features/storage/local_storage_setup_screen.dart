@@ -22,6 +22,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
   bool _serverPasswordConfigured = false;
   bool _obscureServerPassword = true;
   bool _refreshingStatus = false;
+  bool _statusLoaded = false;
   String? _error;
   bool _busy = false;
   bool _refreshingStorage = false;
@@ -68,6 +69,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
       if (!mounted) return;
       setState(() {
         _status = status ?? const {};
+        _statusLoaded = true;
         _discoveredVolumes = (status?['discoveredVolumes'] as List<dynamic>? ?? const [])
             .whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList();
         _token = token;
@@ -330,6 +332,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
     final running = _status['running'] == true;
     final internalGranted = _status['internalStorageGranted'] == true;
     final backgroundGranted = _status['backgroundAccessGranted'] == true;
+    final requiredAccessReady = _statusLoaded && internalGranted;
     final selectedVolumeCount = _discoveredVolumes.where((v) => v['selected'] == true).length;
     final canStart = internalGranted || legacySelected || selectedVolumeCount > 0;
     final skippedScanItems = (_mediaScanStatus['skipped'] as num?)?.toInt() ?? 0;
@@ -416,57 +419,106 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
             ),
           ),
           const SizedBox(height: 24),
-          const _SetupSectionTitle(title: 'Device permissions', subtitle: 'Allow the access PocketLink needs to host your files.'),
-          const SizedBox(height: 10),
-          _SetupStatusTile(
-            icon: Icons.folder_rounded,
-            title: 'Internal shared storage',
-            subtitle: internalGranted
-                ? 'All-files access is enabled.'
-                : 'Needed for Music, Movies, Pictures, DCIM and Download.',
-            status: internalGranted ? 'Enabled' : 'Action needed',
-            granted: internalGranted,
-            onTap: _busy || internalGranted ? null : _requestInternalStorageAccess,
-          ),
-          const SizedBox(height: 10),
-          _SetupStatusTile(
-            icon: Icons.battery_charging_full_rounded,
-            title: 'Background connection',
-            subtitle: backgroundGranted
-                ? 'Battery optimization is disabled for this app.'
-                : 'Allow background activity to reduce the chance Android suspends the server.',
-            status: backgroundGranted ? 'Protected' : 'Recommended',
-            granted: backgroundGranted,
-            onTap: _busy || backgroundGranted ? null : _requestBackgroundAccess,
-          ),
-          if (!backgroundGranted) ...[
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: _busy ? null : _openBackgroundSettings,
-                icon: const Icon(Icons.settings_outlined, size: 18),
-                label: const Text('Open battery settings'),
-              ),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: colors.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.4)),
             ),
-          ],
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: _busy || _refreshingStatus ? null : _refreshDeviceStatus,
-            icon: _refreshingStatus
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.refresh_rounded, size: 18),
-            label: const Text('Refresh device status'),
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size.fromHeight(48),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: colors.primaryContainer,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(Icons.shield_outlined, color: colors.onPrimaryContainer),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Device permissions', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+                          const SizedBox(height: 2),
+                          Text(
+                            !_statusLoaded
+                                ? 'Checking Android access…'
+                                : requiredAccessReady
+                                    ? 'Required access is ready'
+                                    : 'One required permission needs attention',
+                            style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+                          ),
+                        ],
+                      ),
+                    ),
+                    _StatusPill(
+                      label: !_statusLoaded
+                          ? 'Checking'
+                          : requiredAccessReady
+                              ? 'Ready'
+                              : 'Action needed',
+                      granted: requiredAccessReady,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Divider(height: 1, color: colors.outlineVariant.withValues(alpha: 0.45)),
+                const SizedBox(height: 4),
+                _PermissionRow(
+                  icon: Icons.folder_open_rounded,
+                  title: 'All-files access',
+                  description: 'Required to read internal shared storage',
+                  status: !_statusLoaded ? 'Checking' : internalGranted ? 'Enabled' : 'Required',
+                  granted: _statusLoaded && internalGranted,
+                  onTap: !_statusLoaded || internalGranted || _busy ? null : _requestInternalStorageAccess,
+                ),
+                _PermissionRow(
+                  icon: Icons.battery_charging_full_rounded,
+                  title: 'Background activity',
+                  description: 'Battery exemption can reduce Android interruptions',
+                  status: !_statusLoaded ? 'Checking' : backgroundGranted ? 'Allowed' : 'Recommended',
+                  granted: _statusLoaded && backgroundGranted,
+                  recommended: _statusLoaded && !backgroundGranted,
+                  onTap: !_statusLoaded || backgroundGranted || _busy ? null : _openBackgroundSettings,
+                ),
+                _PermissionRow(
+                  icon: Icons.usb_rounded,
+                  title: 'USB / external storage',
+                  description: selectedVolumeCount > 0
+                      ? '$selectedVolumeCount drive permission(s) saved'
+                      : _discoveredVolumes.isEmpty
+                          ? 'Connect a drive to grant folder access'
+                          : '${_discoveredVolumes.length} drive(s) detected · access not granted',
+                  status: selectedVolumeCount > 0 ? 'Granted' : 'Optional',
+                  granted: selectedVolumeCount > 0,
+                  onTap: _busy ? null : _refreshStorage,
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton.icon(
+                    onPressed: _busy || _refreshingStatus ? null : _refreshDeviceStatus,
+                    icon: _refreshingStatus
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.refresh_rounded, size: 18),
+                    label: Text(_refreshingStatus ? 'Checking permissions…' : 'Refresh permission status'),
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size.fromHeight(42),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 22),
           const _SetupSectionTitle(title: 'Server security', subtitle: 'Set the password used by remote clients to connect.'),
           const SizedBox(height: 10),
           Container(
@@ -762,6 +814,79 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _PermissionRow extends StatelessWidget {
+  const _PermissionRow({
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.status,
+    required this.granted,
+    required this.onTap,
+    this.recommended = false,
+  });
+
+  final IconData icon;
+  final String title;
+  final String description;
+  final String status;
+  final bool granted;
+  final bool recommended;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final statusColor = granted ? Colors.green : recommended ? colors.tertiary : colors.error;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 2),
+          child: Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, size: 20, color: statusColor),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 2),
+                    Text(description, style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant, height: 1.3)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  _StatusPill(label: status, granted: granted),
+                  if (onTap != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 3),
+                      child: Icon(Icons.chevron_right_rounded, size: 18, color: colors.onSurfaceVariant),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
