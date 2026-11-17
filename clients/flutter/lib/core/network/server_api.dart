@@ -334,7 +334,7 @@ class ServerApi {
         _dio = Dio(
           BaseOptions(
             baseUrl: _normalizeBaseUrl(baseUrl),
-            connectTimeout: const Duration(seconds: 15),
+            connectTimeout: const Duration(seconds: 10),
             receiveTimeout: const Duration(seconds: 30),
             sendTimeout: const Duration(seconds: 30),
             headers: {
@@ -416,12 +416,16 @@ class ServerApi {
         if (options.method.toUpperCase() == 'GET' &&
             attempts < 3 && !cancelled && (transientNetwork || transientStatus)) {
           options.extra['pocketlink.retryCount'] = attempts + 1;
+          // A network handoff can leave an idle pooled socket bound to the old
+          // Wi-Fi/mobile route. Force the retry onto a fresh TCP connection.
+          options.headers[Headers.connectionHeader] = 'close';
           AppLogger.warning('API retry scheduled', fields: {
             'requestId': options.extra['pocketlink.requestId'] ?? 'unknown',
             'method': options.method,
             'path': options.uri.path,
             'nextAttempt': attempts + 1,
             'delaySeconds': 1 << attempts,
+            'freshConnection': true,
           });
           await Future<void>.delayed(Duration(seconds: 1 << attempts));
           if (options.cancelToken?.isCancelled ?? false) {

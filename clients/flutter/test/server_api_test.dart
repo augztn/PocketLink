@@ -4,6 +4,37 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pocketlink_client/core/network/server_api.dart';
 
+class _NetworkHandoffAdapter implements HttpClientAdapter {
+  int requests = 0;
+  bool retryUsedFreshConnection = false;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    requests++;
+    if (requests == 1) {
+      throw DioException(
+        requestOptions: options,
+        type: DioExceptionType.connectionTimeout,
+        message: 'Simulated network handoff',
+      );
+    }
+    retryUsedFreshConnection =
+        options.headers[Headers.connectionHeader] == 'close';
+    return ResponseBody.fromString(
+      '{"path":"","items":[]}',
+      200,
+      headers: {Headers.contentTypeHeader: ['application/json']},
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
 class _SequenceAdapter implements HttpClientAdapter {
   _SequenceAdapter(this.statuses, {this.delay = Duration.zero});
   final List<int> statuses;
@@ -75,6 +106,22 @@ void main() {
       final listing = await api.authenticate();
       expect(listing.items, isEmpty);
       expect(adapter.requests, 2);
+    });
+
+    test('retries a connection timeout on a fresh socket after network handoff', () async {
+      final adapter = _NetworkHandoffAdapter();
+      final api = ServerApi(
+        baseUrl: 'http://100.114.216.8:8000',
+        username: 'admin',
+        password: 'secret',
+        httpClientAdapter: adapter,
+      );
+
+      final listing = await api.authenticate();
+
+      expect(listing.items, isEmpty);
+      expect(adapter.requests, 2);
+      expect(adapter.retryUsedFreshConnection, isTrue);
     });
 
     test('deduplicates identical in-flight directory requests and caches briefly', () async {
