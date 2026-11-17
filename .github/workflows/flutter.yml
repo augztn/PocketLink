@@ -224,6 +224,20 @@ jobs:
           gradle.write_text(updated)
           print(f"Configured {gradle} to compile against Android API 36")
           PY
+          python3 - <<'PY'
+          from pathlib import Path
+
+          properties = Path("android/gradle.properties")
+          if not properties.exists():
+              raise SystemExit("Generated Android gradle.properties was not found")
+          lines = [
+              line for line in properties.read_text().splitlines()
+              if not line.strip().startswith("android.builtInKotlin=")
+          ]
+          lines.append("android.builtInKotlin=true")
+          properties.write_text("\\n".join(lines) + "\\n")
+          print("Enabled AGP built-in Kotlin after migrating app plugins")
+          PY
       - run: flutter pub get
       - name: Align Android plugin compile SDK
         run: |
