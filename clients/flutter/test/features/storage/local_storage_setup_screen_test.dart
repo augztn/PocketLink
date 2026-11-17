@@ -91,7 +91,7 @@ void main() {
     final deviceScrollable = find.descendant(
       of: deviceList,
       matching: find.byType(Scrollable),
-    );
+    ).first;
 
     // ListView lazily builds off-screen volume tiles. Scroll each assertion
     // into view so the test verifies the rendered UI, not eager construction.
