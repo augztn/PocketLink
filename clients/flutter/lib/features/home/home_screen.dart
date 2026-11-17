@@ -221,7 +221,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final item = player.currentItem;
     final api = player.api;
     if (player.isActive && item != null && api != null) {
-      _nowPlayingRouteOpen = true;
+      setState(() => _nowPlayingRouteOpen = true);
       try {
         await Navigator.of(context).push<void>(MaterialPageRoute<void>(
           builder: (_) => player.isMusic
@@ -243,7 +243,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
         ));
       } finally {
-        _nowPlayingRouteOpen = false;
+        if (mounted) setState(() => _nowPlayingRouteOpen = false);
       }
     } else {
       _openExplore(ExploreCategory.music);
@@ -395,7 +395,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         player.isMusic &&
                         player.isActive &&
                         player.currentItem != null &&
-                        !_miniPlayerDismissed
+                        !_miniPlayerDismissed &&
+                        !_nowPlayingRouteOpen
                     ? _MiniPlayerBar(
                         player: player,
                         onOpen: () => _openNowPlaying(player),
