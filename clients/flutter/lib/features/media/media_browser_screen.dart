@@ -342,7 +342,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     final index = queueItems.indexWhere(
       (item) => item.path == media.path && item.volume == media.volume,
     );
-    await Navigator.of(context, rootNavigator: true).push(
+    await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => _isMusic
             ? NowPlayingScreen(
