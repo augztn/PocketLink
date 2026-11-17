@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:collection';
 import 'dart:convert';
+import 'dart:io' show HttpDate;
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
@@ -506,7 +507,12 @@ class ServerApi {
       if (seconds != null) {
         serverDelay = Duration(seconds: seconds);
       } else {
-        final retryAt = DateTime.tryParse(retryAfter)?.toUtc();
+        DateTime? retryAt;
+        try {
+          retryAt = HttpDate.parse(retryAfter).toUtc();
+        } on FormatException {
+          retryAt = DateTime.tryParse(retryAfter)?.toUtc();
+        }
         if (retryAt != null) {
           serverDelay = retryAt.difference(DateTime.now().toUtc());
         }
