@@ -796,17 +796,17 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
       backgroundColor: Colors.black,
       body: GestureDetector(
         behavior: HitTestBehavior.translucent,
-        onVerticalDragStart: (_) => _dismissDragDistance = 0,
-        onVerticalDragUpdate: (details) => _dismissDragDistance += details.primaryDelta ?? 0,
-        onHorizontalDragStart: (_) => _trackSwipeDistance = 0,
-        onHorizontalDragUpdate: (details) => _trackSwipeDistance += details.primaryDelta ?? 0,
+        onVerticalDragStart: AppSettings.instance.enableNowPlayingGestures ? (_) => _dismissDragDistance = 0 : null,
+        onVerticalDragUpdate: AppSettings.instance.enableNowPlayingGestures ? (details) => _dismissDragDistance += details.primaryDelta ?? 0 : null,
+        onHorizontalDragStart: AppSettings.instance.enableNowPlayingGestures ? (_) => _trackSwipeDistance = 0 : null,
+        onHorizontalDragUpdate: AppSettings.instance.enableNowPlayingGestures ? (details) => _trackSwipeDistance += details.primaryDelta ?? 0 : null,
         onVerticalDragEnd: AppSettings.instance.enableNowPlayingGestures ? (details) {
           if (_dismissDragDistance > 100 || (details.primaryVelocity ?? 0) > 500) {
             Navigator.maybePop(context);
           }
           _dismissDragDistance = 0;
         },
-        onHorizontalDragEnd: (details) {
+        onHorizontalDragEnd: AppSettings.instance.enableNowPlayingGestures ? (details) {
           final distance = _trackSwipeDistance;
           final velocity = details.primaryVelocity ?? 0;
           if (distance < -80 || velocity < -500) {
@@ -815,7 +815,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             unawaited(_player.previous());
           }
           _trackSwipeDistance = 0;
-        },
+        } : null,
         child: SafeArea(
           child: Column(
             children: [
@@ -896,8 +896,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                   _timeline(),
                   const SizedBox(height: 16),
                   _transport(),
-                  const SizedBox(height: 12),
-                  _volume(),
+                  if (AppSettings.instance.showNowPlayingVolume) ...[
+                    const SizedBox(height: 12),
+                    _volume(),
+                  ],
                 ],
               ),
             ),
