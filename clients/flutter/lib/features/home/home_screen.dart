@@ -38,6 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _quickShortcutsExpanded = false;
   bool _filesCanNavigateBack = false;
   bool _miniPlayerDismissed = false;
+  bool _nowPlayingRouteOpen = false;
   late bool _lastPlayerPlaying;
   String? _requestedVolume;
   String _requestedPath = '';
@@ -195,29 +196,35 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _quickShortcutsExpanded = true);
   }
 
-  void _openNowPlaying(PersistentAudioPlayer player) {
+  Future<void> _openNowPlaying(PersistentAudioPlayer player) async {
+    if (_nowPlayingRouteOpen) return;
     final item = player.currentItem;
     final api = player.api;
     if (player.isActive && item != null && api != null) {
-      Navigator.of(context).push(MaterialPageRoute<void>(
-        builder: (_) => player.isMusic
-            ? NowPlayingScreen(
-                api: api,
-                queue: player.queue,
-                initialIndex: player.currentIndex,
-                resumeExisting: true,
-              )
-            : MediaPlayerScreen(
-                api: api,
-                title: item.title,
-                path: item.path,
-                volume: item.volume,
-                isVideo: true,
-                queue: player.queue,
-                initialIndex: player.currentIndex,
-                resumeExisting: true,
-              ),
-      ));
+      _nowPlayingRouteOpen = true;
+      try {
+        await Navigator.of(context).push<void>(MaterialPageRoute<void>(
+          builder: (_) => player.isMusic
+              ? NowPlayingScreen(
+                  api: api,
+                  queue: player.queue,
+                  initialIndex: player.currentIndex,
+                  resumeExisting: true,
+                )
+              : MediaPlayerScreen(
+                  api: api,
+                  title: item.title,
+                  path: item.path,
+                  volume: item.volume,
+                  isVideo: true,
+                  queue: player.queue,
+                  initialIndex: player.currentIndex,
+                  resumeExisting: true,
+                ),
+        ));
+      } finally {
+        _nowPlayingRouteOpen = false;
+      }
     } else {
       _openExplore(ExploreCategory.music);
     }
