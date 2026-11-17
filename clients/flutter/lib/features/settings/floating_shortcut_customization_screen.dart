@@ -43,7 +43,6 @@ class _FloatingShortcutCustomizationScreenState
 
   void _reorder(int oldIndex, int newIndex) {
     setState(() {
-      if (newIndex > oldIndex) newIndex--;
       final item = _shortcuts.removeAt(oldIndex);
       _shortcuts.insert(newIndex, item);
     });
@@ -128,7 +127,7 @@ class _FloatingShortcutCustomizationScreenState
             physics: const NeverScrollableScrollPhysics(),
             buildDefaultDragHandles: false,
             itemCount: _shortcuts.length,
-            onReorder: _reorder,
+            onReorderItem: _reorder,
             itemBuilder: (context, index) {
               final id = _shortcuts[index];
               final detail = _details[id]!;
