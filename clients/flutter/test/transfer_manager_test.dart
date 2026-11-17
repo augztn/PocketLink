@@ -140,6 +140,20 @@ void main() {
     restored.dispose();
   });
 
+  test('keeps completed transfer history bounded in memory', () async {
+    for (var index = 0; index < 105; index++) {
+      await manager.run(
+        name: 'file-$index.bin',
+        direction: 'Download',
+        location: 'Internal storage',
+        operation: (token, progress) async {},
+      );
+    }
+
+    expect(manager.tasks, hasLength(100));
+    expect(await store.load(), hasLength(100));
+  });
+
   test('marks interrupted transfers as failed on restore', () async {
     await store.save([{
       'id': 'interrupted-1',
