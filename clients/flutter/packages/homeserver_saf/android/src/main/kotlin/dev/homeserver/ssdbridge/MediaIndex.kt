@@ -231,6 +231,7 @@ internal class MediaIndexScanner(
     @Volatile private var lastError: String? = null
     @Volatile private var lastCompletedAt: Long = 0L
     @Volatile private var lastScanStartedAt: Long = 0L
+    @Volatile private var currentSource: String? = null
 
     fun markDirty() {
         dirty.set(true)
@@ -270,11 +271,14 @@ internal class MediaIndexScanner(
                 sources += "internal" to internalRoot()
                 externalRoots().forEach { (id, root) -> sources += id to root }
                 sources.forEach { (id, root) ->
+                    currentSource = id
                     try {
                         scanSource(id, root)
                     } catch (error: Exception) {
                         skipped++
                         lastError = error.message ?: "One storage source could not be indexed"
+                    } finally {
+                        currentSource = null
                     }
                 }
                 if (lastError == null && skipped > 0) lastError = "Some files or folders could not be indexed."
@@ -426,6 +430,9 @@ internal class MediaIndexScanner(
             .put("scanned", scanned)
             .put("skipped", skipped)
             .put("last_completed_at", lastCompletedAt)
+            .put("last_scan_started_at", lastScanStartedAt)
+            .put("elapsed_ms", if (state == "scanning") System.currentTimeMillis() - lastScanStartedAt else (lastCompletedAt - lastScanStartedAt).coerceAtLeast(0L))
+            .put("current_source", currentSource)
             .put("last_error", lastError)
             .put("file_count", counts["files"] ?: 0)
             .put("media_count", counts["media"] ?: 0)
