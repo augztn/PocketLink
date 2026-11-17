@@ -53,7 +53,11 @@ class BridgeService : Service() {
 
             val credentials = ServerCredentials(this)
             if (credentials.isConfigured()) {
-                apiServer = NativeApiServer(this, credentials).also { it.start() }
+                apiServer = NativeApiServer(this, credentials).also {
+                    it.start()
+                    activeApiServer = it
+                    it.ensureMediaIndexStarted()
+                }
                 apiRunning = true
             }
 
@@ -82,6 +86,7 @@ class BridgeService : Service() {
     private fun stopServers() {
         try { apiServer?.stop() } catch (_: Exception) { }
         try { bridgeServer?.stop() } catch (_: Exception) { }
+        apiServer?.let { if (activeApiServer === it) activeApiServer = null }
         apiServer = null
         bridgeServer = null
         apiRunning = false
@@ -96,5 +101,10 @@ class BridgeService : Service() {
         @Volatile var apiRunning: Boolean = false
         @Volatile var bridgeRunning: Boolean = false
         @Volatile var lastError: String? = null
+        @Volatile private var activeApiServer: NativeApiServer? = null
+
+        fun mediaIndexStatus(): String? = activeApiServer?.mediaIndexStatus()
+
+        fun refreshMediaIndex(): String? = activeApiServer?.refreshMediaIndex()
     }
 }
