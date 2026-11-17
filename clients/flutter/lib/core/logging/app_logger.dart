@@ -25,7 +25,16 @@ class AppLogger {
     try {
       _directory = await getApplicationSupportDirectory();
       await _directory!.create(recursive: true);
-      _logFile = File('${_directory!.path}/homeserver.log');
+      _logFile = File('${_directory!.path}/pocketlink.log');
+      final legacyLog = File('${_directory!.path}/homeserver.log');
+      final legacyBackup = File('${_directory!.path}/homeserver.log.1');
+      if (!await _logFile!.exists() && await legacyLog.exists()) {
+        await legacyLog.rename(_logFile!.path);
+      }
+      final backup = File('${_logFile!.path}.1');
+      if (!await backup.exists() && await legacyBackup.exists()) {
+        await legacyBackup.rename(backup.path);
+      }
       await _rotateIfNeeded();
       await info('Application started', fields: {
         'platform': Platform.operatingSystem,

@@ -1,5 +1,5 @@
 import 'dart:io';
-import '../../core/widgets/home_server_app_bar.dart';
+import '../../core/widgets/pocketlink_app_bar.dart';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -80,7 +80,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final file = await AppLogger.createDiagnosticFile();
       await Share.shareXFiles(
         [XFile(file.path, mimeType: 'text/plain')],
-        subject: 'HomeServer diagnostic logs',
+        subject: 'PocketLink diagnostic logs',
         text: 'Review the diagnostic file before sharing. It may contain server addresses and filesystem error details.',
       );
       await AppLogger.info('Diagnostic log export requested from Settings');
@@ -208,7 +208,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return AnimatedBuilder(
       animation: _settings,
       builder: (context, _) => Scaffold(
-        appBar: HomeServerAppBar(title: Text(widget.category ?? 'Settings')),
+        appBar: PocketLinkAppBar(title: Text(widget.category ?? 'Settings')),
         body: ListView(
           padding: EdgeInsets.fromLTRB(16, 8, 16, 32 + MediaQuery.paddingOf(context).bottom),
           children: widget.category == null
@@ -388,7 +388,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ListTile(
                                   leading: const Icon(Icons.dns_outlined),
                                   title: const Text('Saved servers'),
-                                  subtitle: const Text('Manage and switch HomeServer connections'),
+                                  subtitle: const Text('Manage and switch PocketLink connections'),
                                   trailing: const Icon(Icons.chevron_right_rounded),
                                   onTap: widget.onOpenSavedServers,
                                 ),

@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../core/widgets/home_server_app_bar.dart';
+import '../../core/widgets/pocketlink_app_bar.dart';
 
 class AboutScreen extends StatefulWidget {
   const AboutScreen({super.key});
@@ -71,7 +71,7 @@ class _AboutScreenState extends State<AboutScreen> {
             : Platform.operatingSystem;
 
     return Scaffold(
-      appBar: const HomeServerAppBar(title: Text('About PocketLink')),
+      appBar: const PocketLinkAppBar(title: Text('About PocketLink')),
       body: FutureBuilder<PackageInfo>(
         future: _packageInfo,
         builder: (context, snapshot) {

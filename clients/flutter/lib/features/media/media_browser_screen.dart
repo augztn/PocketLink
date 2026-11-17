@@ -1,5 +1,5 @@
 import 'dart:typed_data';
-import '../../core/widgets/home_server_app_bar.dart';
+import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/compact_search_field.dart';
 
 import 'package:dio/dio.dart';
@@ -834,18 +834,18 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         if (!didPop && _libraryView == 'folders' && !_atFolderRoot) _goUpFolder();
       },
       child: Scaffold(
-      appBar: HomeServerAppBar(
+      appBar: PocketLinkAppBar(
         title: Text(_title),
         onHome: widget.onHome,
         actions: [
-          HomeServerAppBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded, onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen()))),
+          PocketLinkAppBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded, onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen()))),
           if (!_isMusic)
-            HomeServerAppBarAction(
+            PocketLinkAppBarAction(
               label: _layoutMode == 'grid' ? 'List view' : 'Grid view',
               icon: _layoutMode == 'grid' ? Icons.view_list_rounded : Icons.grid_view_rounded,
               onPressed: () { setState(() { _layoutMode = _layoutMode == 'grid' ? 'list' : 'grid'; }); _saveState(); },
             ),
-          HomeServerAppBarAction(label: 'Scan again', icon: Icons.refresh, onPressed: _loading ? null : () => _scan(refresh: true)),
+          PocketLinkAppBarAction(label: 'Scan again', icon: Icons.refresh, onPressed: _loading ? null : () => _scan(refresh: true)),
         ],
       ),
       body: Column(

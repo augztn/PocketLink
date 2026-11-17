@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/network/server_api.dart';
 import 'photo_favorites_store.dart';
 import '../transfers/transfer_manager_screen.dart';
-import '../../core/widgets/home_server_app_bar.dart';
+import '../../core/widgets/pocketlink_app_bar.dart';
 
 class _Photo {
   const _Photo(this.file, this.path, this.volume);
@@ -379,7 +379,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     final count=selected.length;
     final ok=await showDialog<bool>(context:context,builder:(context)=>AlertDialog(
       title:Text('Delete $count selected photos?'),
-      content:const Text('This permanently deletes the selected files from HomeServer storage.'),
+      content:const Text('This permanently deletes the selected files from PocketLink storage.'),
       actions:[
         TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text('Cancel')),
         FilledButton(onPressed:()=>Navigator.pop(context,true),child:const Text('Delete')),
@@ -545,7 +545,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     final items = visible;
     final selecting = selected.isNotEmpty;
     return Scaffold(
-      appBar: HomeServerAppBar(
+      appBar: PocketLinkAppBar(
         title: Text(selecting ? '${selected.length} selected' : 'Photos'),
         leading: selecting
             ? IconButton(
@@ -554,19 +554,19 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
               )
             : null,
         actions: [
-          HomeServerAppBarAction(
+          PocketLinkAppBarAction(
             label: 'Transfers', icon: Icons.swap_vert_rounded,
             onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
               builder: (_) => const TransferManagerScreen(),
             )),
           ),
           if (!selecting && widget.showSearch)
-            HomeServerAppBarAction(
+            PocketLinkAppBarAction(
               label: searchOpen ? 'Close search' : 'Search',
               icon: searchOpen ? Icons.close : Icons.search,
               onPressed: () => setState(() => searchOpen = !searchOpen),
             ),
-          HomeServerAppBarAction(
+          PocketLinkAppBarAction(
             label: 'Scan again', icon: Icons.refresh_rounded,
             onPressed: loading ? null : () => scan(refresh: true),
           ),
@@ -689,7 +689,7 @@ class _PhotoAlbum extends StatelessWidget {
   final String title;final List<_Photo> photos;final ServerApi api;final ValueChanged<int> onOpen;
   @override
   Widget build(BuildContext context)=>Scaffold(
-    appBar:HomeServerAppBar(title:Text(title)),
+    appBar:PocketLinkAppBar(title:Text(title)),
     body:GridView.builder(
       padding:const EdgeInsets.all(2),
       gridDelegate:const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount:3,crossAxisSpacing:2,mainAxisSpacing:2),
@@ -720,7 +720,7 @@ class _PhotoViewerState extends State<_PhotoViewer>{
     final p=widget.photos[index];
     return Scaffold(
       backgroundColor:Colors.black,
-      appBar:controls?HomeServerAppBar(
+      appBar:controls?PocketLinkAppBar(
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         title:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
@@ -728,7 +728,7 @@ class _PhotoViewerState extends State<_PhotoViewer>{
           Text('${index+1} / ${widget.photos.length}',style:const TextStyle(fontSize:11,color:Colors.white70)),
         ]),
         actions:[
-          HomeServerAppBarAction(
+          PocketLinkAppBarAction(
             label: widget.favorite(p) ? 'Remove favorite' : 'Add favorite',
             icon: widget.favorite(p) ? Icons.favorite : Icons.favorite_border,
             onPressed: () => setState(() => widget.onFavorite(p)),

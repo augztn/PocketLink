@@ -1,5 +1,5 @@
-name: homeserver_client
-description: Cross-platform client for managing self-hosted HomeServer instances.
+name: pocketlink_client
+description: PocketLink Flutter client and native Android host.
 publish_to: "none"
 version: 0.1.0+1
 
@@ -25,8 +25,8 @@ dependencies:
   media_kit: ^1.2.6
   media_kit_video: ^2.0.1
   media_kit_libs_video: ^1.0.7
-  homeserver_saf:
-    path: packages/homeserver_saf
+  pocketlink_saf:
+    path: packages/pocketlink_saf
 
 dev_dependencies:
   flutter_test:

@@ -250,7 +250,7 @@ class ServerApi {
         final queueStopwatch = Stopwatch()..start();
         try {
           await _requestGate.acquire(options.cancelToken);
-          options.extra['homeserver.requestSlot'] = true;
+          options.extra['pocketlink.requestSlot'] = true;
         } on DioException catch (error) {
           handler.reject(error);
           return;
@@ -266,7 +266,7 @@ class ServerApi {
           'path': options.uri.path,
           'queryKey': options.extra['pocketlink.queryKey'],
           'queueWaitMs': options.extra['pocketlink.queueWaitMs'],
-          'retry': options.extra['homeserver.retryCount'] ?? 0,
+          'retry': options.extra['pocketlink.retryCount'] ?? 0,
           'concurrencyLimit': 4,
         });
         handler.next(options);
@@ -283,7 +283,7 @@ class ServerApi {
           'durationMs': stopwatch?.elapsedMilliseconds,
           'queueWaitMs': options.extra['pocketlink.queueWaitMs'],
           'queryKey': options.extra['pocketlink.queryKey'],
-          'retry': options.extra['homeserver.retryCount'] ?? 0,
+          'retry': options.extra['pocketlink.retryCount'] ?? 0,
         });
         handler.next(response);
       },
@@ -299,13 +299,13 @@ class ServerApi {
           'durationMs': stopwatch?.elapsedMilliseconds,
           'queueWaitMs': failedOptions.extra['pocketlink.queueWaitMs'],
           'queryKey': failedOptions.extra['pocketlink.queryKey'],
-          'retry': failedOptions.extra['homeserver.retryCount'] ?? 0,
+          'retry': failedOptions.extra['pocketlink.retryCount'] ?? 0,
           'cancelled': failedOptions.cancelToken?.isCancelled ?? false,
         });
 
         final options = error.requestOptions;
         _releaseRequestSlot(options);
-        final attempts = options.extra['homeserver.retryCount'] as int? ?? 0;
+        final attempts = options.extra['pocketlink.retryCount'] as int? ?? 0;
         final cancelled = options.cancelToken?.isCancelled ?? false;
         final status = error.response?.statusCode;
         final transientStatus = status == 408 || status == 425 || status == 429 ||
@@ -315,7 +315,7 @@ class ServerApi {
             error.type == DioExceptionType.receiveTimeout;
         if (options.method.toUpperCase() == 'GET' &&
             attempts < 3 && !cancelled && (transientNetwork || transientStatus)) {
-          options.extra['homeserver.retryCount'] = attempts + 1;
+          options.extra['pocketlink.retryCount'] = attempts + 1;
           AppLogger.warning('API retry scheduled', fields: {
             'requestId': options.extra['pocketlink.requestId'] ?? 'unknown',
             'method': options.method,
@@ -394,8 +394,8 @@ class ServerApi {
   }
 
   void _releaseRequestSlot(RequestOptions options) {
-    if (options.extra['homeserver.requestSlot'] == true) {
-      options.extra['homeserver.requestSlot'] = false;
+    if (options.extra['pocketlink.requestSlot'] == true) {
+      options.extra['pocketlink.requestSlot'] = false;
       _requestGate.release();
     }
   }

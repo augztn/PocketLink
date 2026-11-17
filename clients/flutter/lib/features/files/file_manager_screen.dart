@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../core/widgets/home_server_app_bar.dart';
+import '../../core/widgets/pocketlink_app_bar.dart';
 
 import '../../core/network/server_api.dart';
 import '../../core/logging/app_logger.dart';
@@ -660,7 +660,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
         }
       },
       child: Scaffold(
-        appBar: HomeServerAppBar(
+        appBar: PocketLinkAppBar(
           title: const Text('Files', style: TextStyle(fontWeight: FontWeight.w800)),
           onHome: () => _load(''),
           actionsBeforeHome: widget.showSearch ? [
@@ -671,10 +671,10 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
             ),
           ] : const [],
           actions: [
-            HomeServerAppBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded, onPressed: _openTransfers),
-            HomeServerAppBarAction(label: 'Upload file', icon: Icons.cloud_upload_outlined, onPressed: _uploadFile),
-            HomeServerAppBarAction(label: 'New folder', icon: Icons.create_new_folder_outlined, onPressed: _createFolder),
-            HomeServerAppBarAction(label: 'Refresh', icon: Icons.refresh_rounded, onPressed: _loading ? null : _refreshDirectory),
+            PocketLinkAppBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded, onPressed: _openTransfers),
+            PocketLinkAppBarAction(label: 'Upload file', icon: Icons.cloud_upload_outlined, onPressed: _uploadFile),
+            PocketLinkAppBarAction(label: 'New folder', icon: Icons.create_new_folder_outlined, onPressed: _createFolder),
+            PocketLinkAppBarAction(label: 'Refresh', icon: Icons.refresh_rounded, onPressed: _loading ? null : _refreshDirectory),
           ],
         ),
         body: Column(

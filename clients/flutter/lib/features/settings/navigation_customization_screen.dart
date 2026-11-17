@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/settings/app_settings.dart';
-import '../../core/widgets/home_server_app_bar.dart';
+import '../../core/widgets/pocketlink_app_bar.dart';
 import '../home/navigation_dock.dart';
 
 class NavigationCustomizationScreen extends StatefulWidget {
@@ -100,7 +100,7 @@ class _NavigationCustomizationScreenState
     final isDefault = _settings.navigationLayoutIsDefault;
 
     return Scaffold(
-      appBar: const HomeServerAppBar(
+      appBar: const PocketLinkAppBar(
         title: Text('Customize Navigation Bar'),
       ),
       body: ListView(

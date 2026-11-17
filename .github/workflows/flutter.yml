@@ -45,40 +45,40 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev libmpv-dev mpv wget
       - name: Generate Linux desktop project
-        run: flutter create --platforms=linux --project-name homeserver_client .
+        run: flutter create --platforms=linux --project-name pocketlink .
       - run: flutter pub get
       - run: flutter build linux --release
       - name: Package AppImage
         run: |
           set -euo pipefail
           APPDIR="$PWD/AppDir"
-          mkdir -p "$APPDIR/usr/lib/homeserver" "$APPDIR/usr/bin"
-          cp -a build/linux/x64/release/bundle/. "$APPDIR/usr/lib/homeserver/"
+          mkdir -p "$APPDIR/usr/lib/pocketlink" "$APPDIR/usr/bin"
+          cp -a build/linux/x64/release/bundle/. "$APPDIR/usr/lib/pocketlink/"
           cat > "$APPDIR/AppRun" <<'EOF'
           #!/bin/sh
           HERE="$(dirname "$(readlink -f "$0")")"
-          export LD_LIBRARY_PATH="$HERE/usr/lib/homeserver/lib:${LD_LIBRARY_PATH:-}"
-          exec "$HERE/usr/lib/homeserver/homeserver_client" "$@"
+          export LD_LIBRARY_PATH="$HERE/usr/lib/pocketlink/lib:${LD_LIBRARY_PATH:-}"
+          exec "$HERE/usr/lib/pocketlink/pocketlink" "$@"
           EOF
           chmod +x "$APPDIR/AppRun"
-          cat > "$APPDIR/homeserver.desktop" <<'EOF'
+          cat > "$APPDIR/pocketlink.desktop" <<'EOF'
           [Desktop Entry]
           Type=Application
           Name=PocketLink
           Comment=Manage your private PocketLink server
           Exec=AppRun
-          Icon=homeserver
+          Icon=pocketlink
           Categories=Utility;FileTransfer;
           Terminal=false
           EOF
-          cat > "$APPDIR/homeserver.svg" <<'EOF'
+          cat > "$APPDIR/pocketlink.svg" <<'EOF'
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
             <rect width="128" height="128" rx="26" fill="#536DFE"/>
             <path d="M22 60 64 24l42 36v43H75V76H53v27H22Z" fill="#fff"/>
             <path d="M49 53h30v8H49z" fill="#536DFE"/>
           </svg>
           EOF
-          cp "$APPDIR/homeserver.svg" "$APPDIR/.DirIcon"
+          cp "$APPDIR/pocketlink.svg" "$APPDIR/.DirIcon"
           wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
           chmod +x appimagetool
           ARCH=x86_64 ./appimagetool --appimage-extract-and-run "$APPDIR" "$PWD/PocketLink-x86_64.AppImage"
@@ -227,7 +227,7 @@ jobs:
           echo "::error::Android APK build failed after three attempts."
           exit 1
       - name: Run native Android unit tests
-        run: cd android && ./gradlew :homeserver_saf:testDebugUnitTest
+        run: cd android && ./gradlew :pocketlink_saf:testDebugUnitTest
       - name: Enable KVM acceleration for Android emulator
         run: |
           if [ ! -e /dev/kvm ]; then
@@ -252,7 +252,7 @@ jobs:
             adb shell settings put global window_animation_scale 0
             adb shell settings put global transition_animation_scale 0
             adb shell settings put global animator_duration_scale 0
-            cd clients/flutter/android && ./gradlew --no-daemon --stacktrace :homeserver_saf:connectedDebugAndroidTest
+            cd clients/flutter/android && ./gradlew --no-daemon --stacktrace :pocketlink_saf:connectedDebugAndroidTest
       - uses: actions/upload-artifact@v4
         with:
           name: PocketLink-Android-APK

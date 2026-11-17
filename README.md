@@ -52,12 +52,12 @@ flutter test
 flutter build apk --release
 ```
 
-The Android SAF bridge is a local Flutter plugin at `clients/flutter/packages/homeserver_saf`. Its Kotlin unit tests are in that module's `src/test` source set.
+The Android SAF bridge is a local Flutter plugin at `clients/flutter/packages/pocketlink_saf`. Its Kotlin unit tests are in that module's `src/test` source set.
 
 ## Repository layout
 
 - `clients/flutter/lib`: Flutter UI, state, networking, media, and transfer features.
-- `clients/flutter/packages/homeserver_saf`: native Android storage bridge, foreground server, and API implementation.
+- `clients/flutter/packages/pocketlink_saf`: native Android storage bridge, foreground server, and API implementation.
 - `.github/workflows`: analysis, tests, and platform build workflows.
 - `docs`: API and deployment documentation.
 

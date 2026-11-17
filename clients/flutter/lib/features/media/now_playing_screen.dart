@@ -12,7 +12,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../core/network/offline_file_cache.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/settings/app_settings.dart';
-import '../../core/widgets/home_server_app_bar.dart';
+import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
 import '../storage/storage_browser_screen.dart';
@@ -63,6 +63,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   String get _favoriteId => '${_track.volume ?? 'internal'}:${_track.path}';
 
   String get _favoriteStorageKey =>
+      'pocketlink.music.favorites.${Uri.encodeComponent(widget.api.baseUrl)}';
+
+  String get _legacyFavoriteStorageKey =>
       'homeserver.music.favorites.${Uri.encodeComponent(widget.api.baseUrl)}';
 
   bool get _isFavorite => _favorites.contains(_favoriteId);
@@ -137,7 +140,13 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
 
   Future<void> _loadFavorites() async {
     try {
-      final raw = await _secureStorage.read(key: _favoriteStorageKey);
+      var raw = await _secureStorage.read(key: _favoriteStorageKey);
+      if (raw == null) {
+        raw = await _secureStorage.read(key: _legacyFavoriteStorageKey);
+        if (raw != null) {
+          await _secureStorage.write(key: _favoriteStorageKey, value: raw);
+        }
+      }
       if (raw == null || raw.isEmpty) return;
       final decoded = jsonDecode(raw);
       if (decoded is List) {
@@ -193,7 +202,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
       return;
     }
 
-    // HomeServer currently exposes raw files, not embedded-artwork metadata.
+    // PocketLink currently exposes raw files, not embedded-artwork metadata.
     // Use an existing folder cover file when present; otherwise show the
     // compact artwork fallback rather than a blank full-height region.
     try {
@@ -557,7 +566,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
               children: [
                 IconButton(
                   tooltip: 'Home',
-                  onPressed: () => HomeServerAppBar.goToDashboard(context),
+                  onPressed: () => PocketLinkAppBar.goToDashboard(context),
                   icon: const Icon(Icons.home_rounded, color: Colors.white70, size: 21),
                   visualDensity: VisualDensity.compact,
                 ),

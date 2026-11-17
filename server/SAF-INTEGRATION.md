@@ -10,20 +10,20 @@ The native API currently implements the Flutter file and USB storage routes:
 - USB/SSD SAF roots: volume status, list, download with byte ranges, upload, create folder, rename, delete
 - Public `GET /health`
 
-Server-phone setup is available directly from the connection screen via **Set up this phone as a HomeServer**. Grant all-files access for internal shared storage, set the native server password, select USB roots as needed, then start the service. The client connects to the server phone's Tailscale IP on port `8000`, username `admin`, and the password configured in the app.
+Server-phone setup is available directly from the connection screen via **Set up this phone as a PocketLink**. Grant all-files access for internal shared storage, set the native server password, select USB roots as needed, then start the service. The client connects to the server phone's Tailscale IP on port `8000`, username `admin`, and the password configured in the app.
 
 This is a migration build, not yet a verified plug-and-play release. Keep the existing Termux backend installed until the APK is built, installed on the server phone, and internal + USB read/write/stream operations have been tested on the actual devices. The legacy port-8765 SAF bridge remains optional compatibility code in this branch.
 
 
-USB access is built into the main HomeServer Android app through the local `homeserver_saf` Flutter plugin. Install the same HomeServer APK on the Android phone that runs Termux and has the SSD attached. The remote Flutter client can remain on your second phone.
+USB access is built into the main PocketLink Android app through the local `pocketlink_saf` Flutter plugin. Install the same PocketLink APK on the Android phone that runs Termux and has the SSD attached. The remote Flutter client can remain on your second phone.
 
 ## Setup on the server phone
 
-1. Install and open the main HomeServer Android APK.
-2. Connect the SSD and open **HomeServer → Set up USB storage on this device**.
+1. Install and open the main PocketLink Android APK.
+2. Connect the SSD and open **PocketLink → Set up USB storage on this device**.
 3. Select **USB Storage 1** and choose its root folder in Android's system picker.
 4. Repeat for **USB Storage 2**.
-5. Tap **Start local storage service**. Android shows an ongoing HomeServer notification while the service is running.
+5. Tap **Start local storage service**. Android shows an ongoing PocketLink notification while the service is running.
 6. Copy the private bridge token shown on this screen.
 
 The app uses Android's Storage Access Framework and persists the read/write grants. It does not mount, format, repartition, or require root access to the SSD. Actual write support depends on the Android document provider and the filesystem; verify each partition with a small test file before relying on it.
@@ -44,14 +44,14 @@ The app uses Android's Storage Access Framework and persists the read/write gran
    app.include_router(storage_router)
    ```
 
-4. Store the token copied from the main HomeServer app in a private file:
+4. Store the token copied from the main PocketLink app in a private file:
 
    ```sh
-   printf '%s' 'PASTE_TOKEN_FROM_HOMESERVER_APP' > /opt/homeserver/ssd-bridge-token.txt
-   chmod 600 /opt/homeserver/ssd-bridge-token.txt
+   printf '%s' 'PASTE_TOKEN_FROM_HOMESERVER_APP' > /opt/pocketlink/ssd-bridge-token.txt
+   chmod 600 /opt/pocketlink/ssd-bridge-token.txt
    ```
 
-5. Restart the existing HomeServer FastAPI process.
+5. Restart the existing PocketLink FastAPI process.
 
 ## API
 
@@ -71,6 +71,11 @@ The native bridge listens only on `127.0.0.1:8765` and accepts a bearer token. I
 ## Security and limitations
 
 - Never commit or share the bridge token.
-- Android may revoke a persisted grant; reselect the partition in the HomeServer app if that happens.
-- Keep the HomeServer app installed on the SSD host phone and start the local service after reboot if Android has stopped it.
+- Android may revoke a persisted grant; reselect the partition in the PocketLink app if that happens.
+- Keep the PocketLink app installed on the SSD host phone and start the local service after reboot if Android has stopped it.
 - SAF providers vary. Listing, reading, writing, renaming, and deleting must be verified on the actual SSD partitions before declaring full support.
+
+
+### Legacy backend compatibility
+
+Existing deployments that still use `/opt/homeserver/ssd-bridge-token.txt` or the `HOMESERVER_SAF_BRIDGE_*` environment variables continue to work. New deployments should use `/opt/pocketlink/ssd-bridge-token.txt` and the corresponding `POCKETLINK_SAF_BRIDGE_*` variables.

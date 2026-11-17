@@ -3,11 +3,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:homeserver_client/features/storage/local_storage_setup_screen.dart';
+import 'package:pocketlink_client/features/storage/local_storage_setup_screen.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  const channel = MethodChannel('homeserver/saf');
+  const channel = MethodChannel('pocketlink/saf');
 
   setUp(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger

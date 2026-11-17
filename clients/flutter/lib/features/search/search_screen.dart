@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
-import '../../core/widgets/home_server_app_bar.dart';
+import '../../core/widgets/pocketlink_app_bar.dart';
 
 import 'package:cross_file/cross_file.dart';
 import 'package:dio/dio.dart';
@@ -42,7 +42,8 @@ class _SearchScreenState extends State<SearchScreen> {
   static const _video = {'mp4','m4v','mov','mkv','webm','avi','wmv','mpeg','mpg','3gp','ts','m2ts','mts','flv','ogv'};
   static const _photo = {'jpg','jpeg','png','webp','gif','bmp','heic','heif','avif'};
   static const _docs = {'pdf','doc','docx','xls','xlsx','ppt','pptx','txt','rtf','odt','ods','csv','md'};
-  static const _historyKey = 'homeserver_recent_searches';
+  static const _historyKey = 'pocketlink_recent_searches';
+  static const _legacyHistoryKey = 'homeserver_recent_searches';
   static const _secure = FlutterSecureStorage();
 
   final _controller = TextEditingController();
@@ -84,7 +85,11 @@ class _SearchScreenState extends State<SearchScreen> {
 
   Future<void> _loadHistory() async {
     try {
-      final raw = await _secure.read(key: _historyKey);
+      var raw = await _secure.read(key: _historyKey);
+      if (raw == null) {
+        raw = await _secure.read(key: _legacyHistoryKey);
+        if (raw != null) await _secure.write(key: _historyKey, value: raw);
+      }
       if (!mounted || raw == null) return;
       final value = jsonDecode(raw);
       if (value is List) setState(() => _history = value.whereType<String>().take(8).toList());
@@ -418,7 +423,7 @@ class _SearchScreenState extends State<SearchScreen> {
     final audio = _audio.contains(e), video = _video.contains(e);
     if (r.localPath != null && _photo.contains(e)) {
       await Navigator.push(context, MaterialPageRoute<void>(builder: (_) => Scaffold(
-        appBar: HomeServerAppBar(title: Text(r.file.name)),
+        appBar: PocketLinkAppBar(title: Text(r.file.name)),
         body: Center(child: InteractiveViewer(child: Image.file(File(r.localPath!), fit: BoxFit.contain))))));
     } else if (audio || video) {
       final queue = r.localPath != null
@@ -433,7 +438,7 @@ class _SearchScreenState extends State<SearchScreen> {
             isVideo: true, queue: queue, initialIndex: index < 0 ? 0 : index)));
     } else if (_photo.contains(e)) {
       await Navigator.push(context, MaterialPageRoute<void>(builder: (_) => Scaffold(
-        appBar: HomeServerAppBar(title: Text(r.file.name)),
+        appBar: PocketLinkAppBar(title: Text(r.file.name)),
         body: Center(child: InteractiveViewer(child: Image.network(
           widget.api.mediaStreamUrl(r.path, volume: r.volume), headers: widget.api.mediaHeaders,
           fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Icon(Icons.broken_image_outlined, size: 56)))))));
@@ -680,7 +685,7 @@ class _SearchScreenState extends State<SearchScreen> {
       for (final v in _volumes) DropdownMenuItem(value: v.id, child: Text(v.name, overflow: TextOverflow.ellipsis)),
     ];
     return Scaffold(
-      appBar: HomeServerAppBar(
+      appBar: PocketLinkAppBar(
         title: const Text('Search'),
         onHome: widget.onHome,
         leading: widget.onHome == null ? null : IconButton(

@@ -1,1 +1,1 @@
-"""HomeServer backend package."""
+"""PocketLink backend package."""

@@ -8,14 +8,31 @@ from typing import AsyncIterator
 import httpx
 from fastapi import HTTPException, UploadFile
 
-BRIDGE_URL = os.getenv("HOMESERVER_SAF_BRIDGE_URL", "http://127.0.0.1:8765").rstrip("/")
-TOKEN_FILE = Path(os.getenv("HOMESERVER_SAF_BRIDGE_TOKEN_FILE", "/opt/homeserver/ssd-bridge-token.txt"))
+BRIDGE_URL = (
+    os.getenv("POCKETLINK_SAF_BRIDGE_URL")
+    or os.getenv("HOMESERVER_SAF_BRIDGE_URL")
+    or "http://127.0.0.1:8765"
+).rstrip("/")
+TOKEN_FILE = Path(
+    os.getenv("POCKETLINK_SAF_BRIDGE_TOKEN_FILE")
+    or os.getenv("HOMESERVER_SAF_BRIDGE_TOKEN_FILE")
+    or "/opt/pocketlink/ssd-bridge-token.txt"
+)
+LEGACY_TOKEN_FILE = Path("/opt/homeserver/ssd-bridge-token.txt")
 
 
 def _token() -> str:
-    value = os.getenv("HOMESERVER_SAF_BRIDGE_TOKEN", "").strip()
-    if not value and TOKEN_FILE.is_file():
-        value = TOKEN_FILE.read_text(encoding="utf-8").strip()
+    value = (
+        os.getenv("POCKETLINK_SAF_BRIDGE_TOKEN")
+        or os.getenv("HOMESERVER_SAF_BRIDGE_TOKEN")
+        or ""
+    ).strip()
+    if not value:
+        for token_file in (TOKEN_FILE, LEGACY_TOKEN_FILE):
+            if token_file.is_file():
+                value = token_file.read_text(encoding="utf-8").strip()
+                if value:
+                    break
     if not value:
         raise HTTPException(503, "SSD bridge token is not configured")
     return value

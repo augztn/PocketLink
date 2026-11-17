@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:homeserver_client/core/logging/app_logger.dart';
+import 'package:pocketlink_client/core/logging/app_logger.dart';
 
 void main() {
   group('AppLogger.sanitizeDiagnosticContent', () {

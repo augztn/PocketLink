@@ -23,5 +23,5 @@ Future<void> main() async {
     return false;
   };
   PersistentAudioPlayer.instance;
-  runApp(const HomeServerApp());
+  runApp(const PocketLinkApp());
 }

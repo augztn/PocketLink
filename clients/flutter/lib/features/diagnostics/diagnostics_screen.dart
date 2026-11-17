@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
-import '../../core/widgets/home_server_app_bar.dart';
+import '../../core/widgets/pocketlink_app_bar.dart';
 
 import '../../core/logging/app_logger.dart';
 
@@ -86,7 +86,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const HomeServerAppBar(title: Text('Diagnostics & logs')),
+      appBar: const PocketLinkAppBar(title: Text('Diagnostics & logs')),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [

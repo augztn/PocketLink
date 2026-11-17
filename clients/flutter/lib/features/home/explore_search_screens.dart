@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/network/server_api.dart';
-import '../../core/widgets/home_server_app_bar.dart';
+import '../../core/widgets/pocketlink_app_bar.dart';
 import '../files/file_manager_screen.dart';
 import '../files/documents_browser_screen.dart';
 import '../library/photo_gallery_screen.dart';
@@ -57,7 +57,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
     return NavigatorPopHandler<void>(
       enabled: _navigatorKey.currentState?.canPop() ?? false,
       onPop: () => _navigatorKey.currentState?.maybePop(),
-      child: HomeServerNavigationScope(
+      child: PocketLinkNavigationScope(
         onHome: () {
           _navigatorKey.currentState?.popUntil((route) => route.isFirst);
           widget.onBackAtRoot?.call();
@@ -171,7 +171,7 @@ class _ExploreGrid extends StatelessWidget {
     }
 
     return Scaffold(
-      appBar: HomeServerAppBar(
+      appBar: PocketLinkAppBar(
         title: const Text('Explore'),
         onHome: onHome,
         leading: onHome == null ? null : IconButton(

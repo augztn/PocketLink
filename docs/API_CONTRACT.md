@@ -1,6 +1,6 @@
 # PocketLink Native Android API Contract
 
-This document describes the native Android implementation in `clients/flutter/packages/homeserver_saf`. It supersedes the older FastAPI deployment contract.
+This document describes the native Android implementation in `clients/flutter/packages/pocketlink_saf`. It supersedes the older FastAPI deployment contract.
 
 ## Connection and security
 

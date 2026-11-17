@@ -1,6 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import '../../core/widgets/home_server_app_bar.dart';
+import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/compact_search_field.dart';
 
 import '../../core/network/server_api.dart';
@@ -181,10 +181,10 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
     ).toList(growable: false);
 
     return Scaffold(
-      appBar: HomeServerAppBar(
+      appBar: PocketLinkAppBar(
         title: const Text('Documents', style: TextStyle(fontWeight: FontWeight.w800)),
         actions: [
-          HomeServerAppBarAction(label: 'Scan again', icon: Icons.refresh_rounded, onPressed: _loading ? null : () => _scan(refresh: true)),
+          PocketLinkAppBarAction(label: 'Scan again', icon: Icons.refresh_rounded, onPressed: _loading ? null : () => _scan(refresh: true)),
         ],
       ),
       body: Column(

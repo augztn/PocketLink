@@ -62,7 +62,7 @@ class PersistentMiniPlayer extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              'HomeServer • Now playing',
+                              'PocketLink • Now playing',
                               style: TextStyle(
                                 color: Colors.white.withOpacity(0.6),
                                 fontSize: 11,

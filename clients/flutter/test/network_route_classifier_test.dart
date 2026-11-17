@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:homeserver_client/features/home/network_route_classifier.dart';
+import 'package:pocketlink_client/features/home/network_route_classifier.dart';
 
 void main() {
   group('networkRouteLabel', () {

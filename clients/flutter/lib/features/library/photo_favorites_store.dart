@@ -11,9 +11,14 @@ class PhotoFavoritesStore {
 
   static Future<PhotoFavoritesStore> inApplicationSupportDirectory() async {
     final support = await getApplicationSupportDirectory();
-    final directory = Directory('${support.path}/homeserver');
+    final directory = Directory('${support.path}/pocketlink');
     await directory.create(recursive: true);
-    return PhotoFavoritesStore(file: File('${directory.path}/photo-favorites.json'));
+    final file = File('${directory.path}/photo-favorites.json');
+    final legacy = File('${support.path}/homeserver/photo-favorites.json');
+    if (!await file.exists() && await legacy.exists()) {
+      await legacy.copy(file.path);
+    }
+    return PhotoFavoritesStore(file: file);
   }
 
   Future<Set<String>> load() async {

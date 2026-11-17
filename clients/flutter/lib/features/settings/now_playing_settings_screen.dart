@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/settings/app_settings.dart';
-import '../../core/widgets/home_server_app_bar.dart';
+import '../../core/widgets/pocketlink_app_bar.dart';
 
 class NowPlayingSettingsScreen extends StatelessWidget {
   const NowPlayingSettingsScreen({super.key});
@@ -11,7 +11,7 @@ class NowPlayingSettingsScreen extends StatelessWidget {
     return AnimatedBuilder(
       animation: settings,
       builder: (context, _) => Scaffold(
-        appBar: HomeServerAppBar(title: const Text('Now Playing')),
+        appBar: PocketLinkAppBar(title: const Text('Now Playing')),
         body: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
           children: [

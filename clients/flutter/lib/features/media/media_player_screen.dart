@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
-import '../../core/widgets/home_server_app_bar.dart';
+import '../../core/widgets/pocketlink_app_bar.dart';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -1076,7 +1076,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
       backgroundColor: const Color(0xFF0B0A12),
       appBar: widget.isVideo && _isVideoFullscreen
           ? null
-          : HomeServerAppBar(
+          : PocketLinkAppBar(
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -1121,7 +1121,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    widget.isVideo ? 'Streaming from your HomeServer' : 'Your personal music library',
+                    widget.isVideo ? 'Streaming from your PocketLink' : 'Your personal music library',
                     textAlign: TextAlign.center,
                     style: const TextStyle(color: Colors.white60, fontSize: 14),
                   ),

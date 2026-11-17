@@ -50,7 +50,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
   }
 
   static final PersistentAudioPlayer instance = PersistentAudioPlayer._();
-  static const MethodChannel _mediaChannel = MethodChannel('homeserver/media');
+  static const MethodChannel _mediaChannel = MethodChannel('pocketlink/media');
 
   late final Player player;
   VideoController? _videoController;
@@ -206,23 +206,23 @@ class PersistentAudioPlayer extends ChangeNotifier {
     final args = Map<Object?, Object?>.from(call.arguments as Map);
     final action = args['action']?.toString();
     switch (action) {
-      case 'dev.homeserver.media.PLAY':
+      case 'io.github.augztn.pocketlink.media.PLAY':
         await player.play();
         break;
-      case 'dev.homeserver.media.PAUSE':
+      case 'io.github.augztn.pocketlink.media.PAUSE':
         await player.pause();
         break;
-      case 'dev.homeserver.media.NEXT':
+      case 'io.github.augztn.pocketlink.media.NEXT':
         await player.next();
         break;
-      case 'dev.homeserver.media.PREVIOUS':
+      case 'io.github.augztn.pocketlink.media.PREVIOUS':
         await player.previous();
         break;
-      case 'dev.homeserver.media.SEEK':
+      case 'io.github.augztn.pocketlink.media.SEEK':
         final position = args['position'];
         if (position is num) await player.seek(Duration(milliseconds: position.toInt()));
         break;
-      case 'dev.homeserver.media.STOP':
+      case 'io.github.augztn.pocketlink.media.STOP':
         await dismiss();
         break;
     }
@@ -235,7 +235,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
     if (track == null) return;
     final args = <String, Object>{
       'title': track.title.replaceAll(RegExp(r'\.[^.]+$'), ''),
-      'artist': 'HomeServer music library',
+      'artist': 'PocketLink music library',
       'playing': player.state.playing,
       'positionMs': player.state.position.inMilliseconds,
       'durationMs': player.state.duration.inMilliseconds,

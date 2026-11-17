@@ -266,7 +266,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       if (_initializedTabs.contains(1))
         ExploreScreen(
-          key: const PageStorageKey<String>('homeserver-explore'),
+          key: const PageStorageKey<String>('pocketlink-explore'),
           api: widget.api,
           category: _exploreCategory,
           fileCategory: _fileCategory,
@@ -282,7 +282,7 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox.shrink(),
       if (_initializedTabs.contains(2))
         FileManagerScreen(
-          key: PageStorageKey<String>('homeserver-files-${widget.api.baseUrl}'),
+          key: PageStorageKey<String>('pocketlink-files-${widget.api.baseUrl}'),
           api: widget.api,
           isActive: true,
           onBackAtRoot: () => _openTab(0),

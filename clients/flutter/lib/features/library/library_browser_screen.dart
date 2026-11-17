@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import '../../core/widgets/home_server_app_bar.dart';
+import '../../core/widgets/pocketlink_app_bar.dart';
 
 import '../../core/network/server_api.dart';
 
@@ -155,7 +155,7 @@ class _LibraryBrowserScreenState extends State<LibraryBrowserScreen> {
         context: context,
         builder: (context) => Dialog.fullscreen(
           child: Scaffold(
-            appBar: HomeServerAppBar(title: Text(file.entry.name)),
+            appBar: PocketLinkAppBar(title: Text(file.entry.name)),
             body: Center(
               child: InteractiveViewer(
                 child: Image.memory(
@@ -233,10 +233,10 @@ class _LibraryBrowserScreenState extends State<LibraryBrowserScreen> {
     final files = _visibleFiles;
     final colors = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: HomeServerAppBar(
+      appBar: PocketLinkAppBar(
         title: Text(_title),
         actions: [
-          HomeServerAppBarAction(label: 'Scan again', icon: Icons.refresh, onPressed: _loading ? null : _scan),
+          PocketLinkAppBarAction(label: 'Scan again', icon: Icons.refresh, onPressed: _loading ? null : _scan),
         ],
       ),
       body: Column(

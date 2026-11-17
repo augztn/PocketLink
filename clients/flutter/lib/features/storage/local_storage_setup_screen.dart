@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../core/widgets/home_server_app_bar.dart';
+import '../../core/widgets/pocketlink_app_bar.dart';
 
 import '../diagnostics/diagnostics_screen.dart';
 import '../about/about_screen.dart';
@@ -19,7 +19,7 @@ class LocalStorageSetupScreen extends StatefulWidget {
 }
 
 class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with WidgetsBindingObserver {
-  static const _channel = MethodChannel('homeserver/saf');
+  static const _channel = MethodChannel('pocketlink/saf');
   int _selectedSectionIndex = 0;
   Map<String, dynamic> _status = const {};
   String? _token;
@@ -1184,18 +1184,18 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
     );
 
     return Scaffold(
-      appBar: HomeServerAppBar(
+      appBar: PocketLinkAppBar(
         title: const Text('Host PocketLink'),
         onHome: widget.onHome,
         actions: [
-          HomeServerAppBarAction(
+          PocketLinkAppBarAction(
             label: 'About PocketLink',
             icon: Icons.info_outline_rounded,
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute<void>(builder: (_) => const AboutScreen()),
             ),
           ),
-          HomeServerAppBarAction(
+          PocketLinkAppBarAction(
             label: 'Logs & diagnostics',
             icon: Icons.article_outlined,
             onPressed: () => Navigator.of(context).push(

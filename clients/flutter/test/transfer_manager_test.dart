@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:homeserver_client/features/transfers/transfer_history_store.dart';
-import 'package:homeserver_client/features/transfers/transfer_manager.dart';
+import 'package:pocketlink_client/features/transfers/transfer_history_store.dart';
+import 'package:pocketlink_client/features/transfers/transfer_manager.dart';
 
 void main() {
   late Directory directory;
@@ -11,7 +11,7 @@ void main() {
   late TransferManager manager;
 
   setUp(() async {
-    directory = await Directory.systemTemp.createTemp('homeserver-transfers-');
+    directory = await Directory.systemTemp.createTemp('pocketlink-transfers-');
     store = TransferHistoryStore(file: File('${directory.path}/history.json'));
     manager = TransferManager.forTesting(store);
   });

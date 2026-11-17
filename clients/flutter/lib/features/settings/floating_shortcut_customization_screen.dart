@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/settings/app_settings.dart';
-import '../../core/widgets/home_server_app_bar.dart';
+import '../../core/widgets/pocketlink_app_bar.dart';
 
 class FloatingShortcutCustomizationScreen extends StatefulWidget {
   const FloatingShortcutCustomizationScreen({super.key});
@@ -101,7 +101,7 @@ class _FloatingShortcutCustomizationScreenState
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     return Scaffold(
-      appBar: HomeServerAppBar(
+      appBar: PocketLinkAppBar(
         title: const Text('Customize Floating Shortcuts'),
         actionsBeforeHome: [
           IconButton(

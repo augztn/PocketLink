@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:homeserver_client/features/home/floating_quick_shortcut.dart';
+import 'package:pocketlink_client/features/home/floating_quick_shortcut.dart';
 
 void main() {
   testWidgets('single tap opens the primary pinned shortcut', (tester) async {

@@ -1,5 +1,5 @@
 import 'dart:io';
-import '../../core/widgets/home_server_app_bar.dart';
+import '../../core/widgets/pocketlink_app_bar.dart';
 
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
@@ -80,9 +80,9 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
       if (_volume != null) await _loadDirectory(widget.initialPath);
     } on DioException catch (error) {
       if (mounted) setState(() => _error = switch (error.response?.statusCode) {
-        401 => 'HomeServer rejected the saved login (401). Go back to the connection screen and enter the current server admin password. The SAF bridge token is separate.',
-        403 => 'HomeServer denied access to external storage (403). Check the server account permissions.',
-        404 => 'SSD support is not enabled on the HomeServer backend yet.',
+        401 => 'PocketLink rejected the saved login (401). Go back to the connection screen and enter the current server admin password. The SAF bridge token is separate.',
+        403 => 'PocketLink denied access to external storage (403). Check the server account permissions.',
+        404 => 'SSD support is not enabled on the PocketLink backend yet.',
         _ => error.message ?? 'Could not detect external storage.',
       });
     } catch (_) {
@@ -106,7 +106,7 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
     } on DioException catch (error) {
       if (!mounted) return;
       setState(() => _error = switch (error.response?.statusCode) {
-        401 => 'HomeServer rejected the saved login (401). Go back to the connection screen and enter the current server admin password. The SAF bridge token is separate.',
+        401 => 'PocketLink rejected the saved login (401). Go back to the connection screen and enter the current server admin password. The SAF bridge token is separate.',
         403 => 'Android denied access to this SSD.',
         404 => 'Storage folder not found or permission not granted.',
         _ => error.message ?? 'Could not read this folder.',
@@ -240,7 +240,7 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
       if (!mounted) return;
 
       final temp = await getTemporaryDirectory();
-      final openDirectory = Directory('${temp.path}/homeserver-open');
+      final openDirectory = Directory('${temp.path}/pocketlink-open');
       await openDirectory.create(recursive: true);
       final localFile = File('${openDirectory.path}/${item.name}');
       await localFile.writeAsBytes(bytes, flush: true);
@@ -380,13 +380,13 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
         if (!didPop && _path.isNotEmpty) _goUp();
       },
       child: Scaffold(
-        appBar: HomeServerAppBar(
+        appBar: PocketLinkAppBar(
           title: const Text('External storage', style: TextStyle(fontWeight: FontWeight.w800)),
           actions: [
-            HomeServerAppBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded, onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen()))),
-            HomeServerAppBarAction(label: 'Upload', icon: Icons.cloud_upload_outlined, onPressed: _volume == null ? null : _upload),
-            HomeServerAppBarAction(label: 'New folder', icon: Icons.create_new_folder_outlined, onPressed: _volume == null ? null : _createFolder),
-            HomeServerAppBarAction(label: 'Refresh', icon: Icons.refresh_rounded, onPressed: _loading ? null : _refreshVolumes),
+            PocketLinkAppBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded, onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen()))),
+            PocketLinkAppBarAction(label: 'Upload', icon: Icons.cloud_upload_outlined, onPressed: _volume == null ? null : _upload),
+            PocketLinkAppBarAction(label: 'New folder', icon: Icons.create_new_folder_outlined, onPressed: _volume == null ? null : _createFolder),
+            PocketLinkAppBarAction(label: 'Refresh', icon: Icons.refresh_rounded, onPressed: _loading ? null : _refreshVolumes),
           ],
         ),
         body: Column(children: [

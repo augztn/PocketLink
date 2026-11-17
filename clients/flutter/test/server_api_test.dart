@@ -2,7 +2,7 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:homeserver_client/core/network/server_api.dart';
+import 'package:pocketlink_client/core/network/server_api.dart';
 
 class _SequenceAdapter implements HttpClientAdapter {
   _SequenceAdapter(this.statuses, {this.delay = Duration.zero});

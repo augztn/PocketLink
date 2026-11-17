@@ -1,5 +1,5 @@
 import 'dart:async';
-import '../../core/widgets/home_server_app_bar.dart';
+import '../../core/widgets/pocketlink_app_bar.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -320,7 +320,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
           settings: const RouteSettings(
-            name: HomeServerAppBar.dashboardRouteName,
+            name: PocketLinkAppBar.dashboardRouteName,
           ),
           builder: (_) => HomeScreen(
             api: api,
@@ -376,11 +376,11 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: HomeServerAppBar(
+      appBar: PocketLinkAppBar(
         title: const Text('PocketLink'),
         showHome: false,
         actions: [
-          HomeServerAppBarAction(
+          PocketLinkAppBarAction(
             label: 'Diagnostics & logs',
             icon: Icons.bug_report_outlined,
             onPressed: () => Navigator.of(context).push(
