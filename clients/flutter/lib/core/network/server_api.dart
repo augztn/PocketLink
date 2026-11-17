@@ -144,6 +144,7 @@ class MediaIndexStatus {
     required this.state, required this.scanned, required this.skipped,
     required this.lastCompletedAt, required this.fileCount,
     required this.mediaCount, this.lastError,
+    this.lastScanStartedAt = 0, this.elapsedMs = 0, this.currentSource,
   });
   final String state;
   final int scanned;
@@ -152,6 +153,9 @@ class MediaIndexStatus {
   final int fileCount;
   final int mediaCount;
   final String? lastError;
+  final int lastScanStartedAt;
+  final int elapsedMs;
+  final String? currentSource;
   bool get isScanning => state == 'scanning';
   bool get isUsable => state == 'complete' || state == 'partial';
 
@@ -164,6 +168,9 @@ class MediaIndexStatus {
         fileCount: (json['file_count'] as num?)?.toInt() ?? 0,
         mediaCount: (json['media_count'] as num?)?.toInt() ?? 0,
         lastError: json['last_error']?.toString(),
+        lastScanStartedAt: (json['last_scan_started_at'] as num?)?.toInt() ?? 0,
+        elapsedMs: (json['elapsed_ms'] as num?)?.toInt() ?? 0,
+        currentSource: json['current_source']?.toString(),
       );
 }
 
