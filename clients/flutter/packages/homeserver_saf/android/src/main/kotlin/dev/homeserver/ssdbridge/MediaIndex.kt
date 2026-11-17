@@ -252,7 +252,8 @@ internal class MediaIndexScanner(
     @Synchronized
     fun requestScan(force: Boolean) {
         if (running.get()) {
-            if (force) dirty.set(true)
+            // A manual refresh is idempotent while a scan is active. Mutations
+            // set dirty separately and still schedule one follow-up pass.
             return
         }
         if (started && !force && state == "complete") return
