@@ -250,6 +250,7 @@ class MediaPlaybackService : Service() {
     }
 
     override fun onDestroy() {
+        MediaPlaybackBridge.isPlaying = false
         abandonAudioFocus()
         resumeAfterFocus = false
         session?.isActive = false
