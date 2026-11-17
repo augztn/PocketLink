@@ -2,6 +2,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pocketlink_client/core/logging/app_logger.dart';
 
 void main() {
+  group('AppLogger.filterSessionLogs', () {
+    test('keeps only events tagged with the active session', () {
+      const logs = '2026-11-17T10:00:00Z [INFO] old event | {session: session-old}\n'
+          '2026-11-17T10:01:00Z [INFO] current event | {session: session-new}\n'
+          '  stack trace detail\n'
+          '2026-11-17T10:02:00Z [INFO] later old event | {session: session-old}\n';
+      final filtered = AppLogger.filterSessionLogs(logs, 'session-new');
+      expect(filtered, contains('current event'));
+      expect(filtered, contains('stack trace detail'));
+      expect(filtered, isNot(contains('old event')));
+    });
+  });
+
   group('AppLogger.sanitizeDiagnosticContent', () {
     test('redacts usernames and private IPv4 addresses', () {
       final sanitized = AppLogger.sanitizeDiagnosticContent(

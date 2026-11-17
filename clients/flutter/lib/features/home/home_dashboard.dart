@@ -818,7 +818,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                 Row(children: [
                   Expanded(child: Text('Server is unreachable. Check the network or server service.',
                     style: theme.textTheme.bodySmall?.copyWith(color: Colors.white70))),
-                  TextButton(onPressed: _refreshStatus, child: const Text('Reconnect')),
+                  TextButton(onPressed: () => _refreshStatus(forceRefresh: true), child: const Text('Reconnect')),
                   TextButton(onPressed: widget.onReturnToConnection, child: const Text('Switch')),
                 ]),
               ],
@@ -1161,8 +1161,9 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
     );
   }
 
-  Future<void> _refreshStatus() async {
-    widget.api.invalidateDirectoryCache();
+  Future<void> _refreshStatus({bool forceRefresh = false}) async {
+    if (_checking) return;
+    if (forceRefresh) widget.api.invalidateDirectoryCache();
     if (mounted) setState(() => _checking = true);
     var online = false;
     var volumes = <StorageVolume>[];
@@ -1537,14 +1538,14 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
           ),
           IconButton(
             tooltip: 'Refresh server status',
-            onPressed: _checking ? null : _refreshStatus,
+            onPressed: _checking ? null : () => _refreshStatus(forceRefresh: true),
             icon: const Icon(Icons.refresh_rounded),
           ),
           const SizedBox(width: 6),
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: _refreshStatus,
+        onRefresh: () => _refreshStatus(forceRefresh: true),
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.fromLTRB(18, 6, 18, 104 + MediaQuery.paddingOf(context).bottom),

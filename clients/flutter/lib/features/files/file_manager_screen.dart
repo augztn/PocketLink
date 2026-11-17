@@ -64,6 +64,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   int _loadGeneration = 0;
   List<StorageVolume> _volumes = const [];
   String? _selectedVolume;
+  bool _openingAudio = false;
 
   late String _category = widget.initialCategory;
   bool _gridView = false;
@@ -420,6 +421,8 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   bool _isAudio(FileEntry item) => _audioExtensions.contains(_extension(item));
 
   Future<void> _openAudio(FileEntry item) async {
+    if (_openingAudio) return;
+    _openingAudio = true;
     final path = _itemPath(item.name);
     final volume = _selectedVolume;
     await AppLogger.info('Audio open requested', fields: {
@@ -445,6 +448,8 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     } catch (error, stackTrace) {
       await AppLogger.error('Could not open Now Playing screen', error: error, stackTrace: stackTrace);
       _showError('Could not open the music player. Check diagnostics for details.');
+    } finally {
+      _openingAudio = false;
     }
   }
 

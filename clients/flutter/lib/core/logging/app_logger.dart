@@ -15,13 +15,15 @@ class AppLogger {
   static DateTime? _sessionStartedAt;
   static int _eventSequence = 0;
   static String? _sessionId;
+  static bool _initialized = false;
 
   static String nextEventId([String prefix = 'evt']) =>
       '$prefix-${++_eventSequence}';
 
   static Future<void> initialize() async {
-    _sessionStartedAt ??= DateTime.now().toUtc();
-    _sessionId ??= nextEventId('session');
+    if (_initialized) return;
+    _sessionStartedAt = DateTime.now().toUtc();
+    _sessionId = 'session-$pid-\${_sessionStartedAt!.microsecondsSinceEpoch}';
     try {
       _directory = await getApplicationSupportDirectory();
       await _directory!.create(recursive: true);
@@ -36,6 +38,7 @@ class AppLogger {
         await legacyBackup.rename(backup.path);
       }
       await _rotateIfNeeded();
+      _initialized = true;
       await info('Application started', fields: {
         'platform': Platform.operatingSystem,
         'debug': kDebugMode,
@@ -73,7 +76,10 @@ class AppLogger {
       debugPrint('[$level] ${_redact(message)}');
       return;
     }
-    final safeFields = fields.map((key, value) => MapEntry(
+    final safeFields = <String, Object?>{
+      ...fields,
+      'session': _sessionId ?? 'uninitialized',
+    }.map((key, value) => MapEntry(
       key,
       RegExp(r'password|passwd|authorization|token|secret|api[_-]?key|username|user|login|cookie|host|hostname|address|server', caseSensitive: false).hasMatch(key)
           ? '[REDACTED]'
@@ -161,7 +167,7 @@ class AppLogger {
     }
   }
 
-  static Future<String> readLogs() async {
+  static Future<String> readLogs({bool currentSessionOnly = false}) async {
     await _writeQueue;
     final file = _logFile;
     if (file == null || !await file.exists()) return 'No diagnostic logs yet.';
@@ -169,7 +175,23 @@ class AppLogger {
     final parts = <String>[];
     if (await backup.exists()) parts.add(await backup.readAsString());
     parts.add(await file.readAsString());
-    return parts.join('\n');
+    final logs = parts.join('\n');
+    return currentSessionOnly
+        ? filterSessionLogs(logs, _sessionId ?? 'uninitialized')
+        : logs;
+  }
+
+  @visibleForTesting
+  static String filterSessionLogs(String logs, String sessionId) {
+    final result = <String>[];
+    var includeEvent = false;
+    for (final line in logs.split('\n')) {
+      if (RegExp(r'^\d{4}-\d{2}-\d{2}T').hasMatch(line)) {
+        includeEvent = line.contains('session: $sessionId');
+      }
+      if (includeEvent) result.add(line);
+    }
+    return result.join('\n').trimRight();
   }
 
   static Future<String> _diagnosticHeader() async {
@@ -193,12 +215,14 @@ class AppLogger {
     } catch (_) {
       lines.add('Process memory: unavailable');
     }
-    return '${lines.join('\\n')}\\n\\n';
+    return '${lines.join('\n')}\n\n';
   }
 
   static Future<File> createDiagnosticFile() async {
     final directory = _directory ?? await getApplicationSupportDirectory();
-    final content = sanitizeDiagnosticContent('${await _diagnosticHeader()}${await readLogs()}');
+    final content = sanitizeDiagnosticContent(
+      '${await _diagnosticHeader()}${await readLogs(currentSessionOnly: true)}',
+    );
     final file = File('${directory.path}/pocketlink-diagnostics-${DateTime.now().toUtc().millisecondsSinceEpoch}.txt');
     await file.writeAsString(content, flush: true);
     return file;

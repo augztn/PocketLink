@@ -61,6 +61,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   late final BrowserStateStore _browserState;
   final ScrollController _contentScrollController = ScrollController();
   double _pendingScrollOffset = 0;
+  bool _openingMedia = false;
 
   bool get _isMusic => widget.type == MediaLibraryType.music;
   String get _title => _isMusic ? 'Music' : 'Videos';
@@ -338,6 +339,8 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   }
 
   Future<void> _openMedia(_MediaFile media, List<_MediaFile> queueItems) async {
+    if (_openingMedia) return;
+    _openingMedia = true;
     final queue = queueItems
         .map((item) => MediaQueueItem(
               title: item.entry.name,
@@ -349,9 +352,10 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     final index = queueItems.indexWhere(
       (item) => item.path == media.path && item.volume == media.volume,
     );
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => _isMusic
+    try {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => _isMusic
             ? NowPlayingScreen(
                 api: widget.api,
                 queue: queue,
@@ -366,8 +370,11 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                 queue: queue,
                 initialIndex: index < 0 ? 0 : index,
               ),
-      ),
-    );
+        ),
+      );
+    } finally {
+      _openingMedia = false;
+    }
   }
 
   String _formatBytes(int bytes) {
