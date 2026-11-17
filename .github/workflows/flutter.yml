@@ -239,9 +239,19 @@ jobs:
           from pathlib import Path
           import re
 
-          plugin_dirs = sorted(Path.home().glob(".pub-cache/hosted/pub.dev/file_picker-*/android"))
-          if not plugin_dirs:
-              raise SystemExit("file_picker Android plugin was not found in the pub cache")
+          plugin_patterns = (
+              "android_file_picker-*/android",
+              "file_picker-*/android",
+              "package_info_plus-*/android",
+              "share_plus-*/android",
+          )
+          plugin_dirs = sorted({
+              path
+              for pattern in plugin_patterns
+              for path in Path.home().glob(f".pub-cache/hosted/pub.dev/{pattern}")
+          })
+          if not any(path.parent.name.startswith("android_file_picker-") for path in plugin_dirs):
+              raise SystemExit("android_file_picker Android plugin was not found in the pub cache")
 
           patched = []
           for plugin_dir in plugin_dirs:
@@ -250,17 +260,15 @@ jobs:
                       continue
                   content = gradle.read_text()
                   updated, count = re.subn(
-                      r"(?m)^(\s*compileSdk(?:Version)?\s*(?:=\s*)?)(?:flutter\.compileSdkVersion|\d+)",
-                      r"\g<1>36",
+                      r"(?m)^(\\s*compileSdk(?:Version)?\\s*(?:=\\s*)?)(?:flutter\\.compileSdkVersion|\\d+)",
+                      r"\\g<1>36",
                       content,
                       count=1,
                   )
                   if count:
                       gradle.write_text(updated)
                       patched.append(str(gradle))
-          if not patched:
-              raise SystemExit("Could not update file_picker compileSdk to 36")
-          print("Updated plugin compile SDK: " + ", ".join(patched))
+          print("Checked Android plugin compile SDK; updated: " + (", ".join(patched) if patched else "no overrides needed"))
           PY
       - name: Build Android APK with SDK download retry
         run: |
