@@ -12,13 +12,16 @@ class AppLogger {
   static Directory? _directory;
   static Future<void> _writeQueue = Future<void>.value();
   static File? _logFile;
-  static final DateTime _sessionStartedAt = DateTime.now().toUtc();
+  static DateTime? _sessionStartedAt;
   static int _eventSequence = 0;
+  static String? _sessionId;
 
   static String nextEventId([String prefix = 'evt']) =>
       '$prefix-${++_eventSequence}';
 
   static Future<void> initialize() async {
+    _sessionStartedAt ??= DateTime.now().toUtc();
+    _sessionId ??= nextEventId('session');
     try {
       _directory = await getApplicationSupportDirectory();
       await _directory!.create(recursive: true);
@@ -27,7 +30,7 @@ class AppLogger {
       await info('Application started', fields: {
         'platform': Platform.operatingSystem,
         'debug': kDebugMode,
-        'session': nextEventId('session'),
+        'session': _sessionId!,
         'pid': pid,
         'processors': Platform.numberOfProcessors,
       });
@@ -162,11 +165,13 @@ class AppLogger {
 
   static Future<String> _diagnosticHeader() async {
     final now = DateTime.now().toUtc();
-    final uptime = now.difference(_sessionStartedAt);
+    final sessionStartedAt = _sessionStartedAt ?? now;
+    final uptime = now.difference(sessionStartedAt);
     final lines = <String>[
       'PocketLink diagnostic report',
       'Captured: ${now.toIso8601String()}',
-      'Session started: ${_sessionStartedAt.toIso8601String()}',
+      'Session: ${_sessionId ?? 'uninitialized'}',
+      'Session started: ${sessionStartedAt.toIso8601String()}',
       'Session uptime: ${uptime.inSeconds}s',
       'Platform: ${Platform.operatingSystem}',
       'OS version: ${Platform.operatingSystemVersion}',
