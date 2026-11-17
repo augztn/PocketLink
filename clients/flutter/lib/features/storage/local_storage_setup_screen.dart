@@ -377,7 +377,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                     children: [
                       Row(
                         children: [
-                          Expanded(child: Text('Host PocketLink here', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800))),
+                          Expanded(child: Text('Host PocketLink on this device', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800))),
                           _StatusPill(label: running ? 'Running' : 'Stopped', granted: running),
                         ],
                       ),
@@ -385,7 +385,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                       Text(
                         running
                             ? 'This phone is actively hosting PocketLink.'
-                            : 'Start the host when storage access is ready.',
+                            : 'Configure storage access below, then start the service when you are ready.',
                         style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
                       ),
                       const SizedBox(height: 5),
@@ -393,21 +393,75 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                         'Prepare this phone for reliable file access and background server operation.',
                         style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant, height: 1.4),
                       ),
-                      const SizedBox(height: 14),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          onPressed: _busy || (!running && !canStart)
-                              ? null
-                              : (running ? _stop : _start),
-                          icon: Icon(running ? Icons.stop_rounded : Icons.play_arrow_rounded),
-                          label: Text(running ? 'Stop storage service' : 'Start storage service'),
-                          style: FilledButton.styleFrom(
-                            minimumSize: const Size.fromHeight(48),
-                          ),
-                        ),
-                      ),
                     ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 22),
+          const _SetupSectionTitle(title: 'Server security', subtitle: 'Set the password used by remote clients to connect.'),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: colors.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.35)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.lock_outline_rounded, color: colors.primary),
+                    const SizedBox(width: 10),
+                    Expanded(child: Text('Native server password', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800))),
+                    if (_serverPasswordConfigured)
+                      const _StatusPill(label: 'Configured', granted: true),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  _serverPasswordConfigured
+                      ? 'A salted password verifier is saved on this device.'
+                      : 'Choose a password with at least 12 characters.',
+                  style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant, height: 1.4),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: _serverPasswordController,
+                  obscureText: _obscureServerPassword,
+                  enabled: !_busy,
+                  decoration: InputDecoration(
+                    labelText: 'New server password',
+                    helperText: 'Never uploaded or stored in plaintext.',
+                    prefixIcon: const Icon(Icons.password_rounded),
+                    suffixIcon: IconButton(
+                      tooltip: _obscureServerPassword ? 'Show password' : 'Hide password',
+                      onPressed: _busy
+                          ? null
+                          : () => setState(() =>
+                              _obscureServerPassword = !_obscureServerPassword),
+                      icon: Icon(
+                        _obscureServerPassword
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
+                    ),
+                    filled: true,
+                    fillColor: colors.surface,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: _busy ? null : _saveServerPassword,
+                    icon: const Icon(Icons.shield_outlined, size: 18),
+                    label: Text(_serverPasswordConfigured ? 'Update password' : 'Save password'),
+                    style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
                   ),
                 ),
               ],
@@ -484,23 +538,6 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                   recommended: _statusLoaded && !backgroundGranted,
                   onTap: !_statusLoaded || backgroundGranted || _busy ? null : _requestBackgroundAccess,
                 ),
-                _PermissionRow(
-                  icon: Icons.usb_rounded,
-                  title: 'USB / external storage',
-                  description: selectedVolumeCount > 0
-                      ? '$selectedVolumeCount drive permission(s) saved'
-                      : _discoveredVolumes.isEmpty
-                          ? 'Connect a drive to grant folder access'
-                          : '${_discoveredVolumes.length} drive(s) detected · access not granted',
-                  status: selectedVolumeCount > 0
-                      ? 'Granted'
-                      : _discoveredVolumes.isEmpty
-                          ? 'Not connected'
-                          : 'Not granted',
-                  granted: selectedVolumeCount > 0,
-                  neutral: selectedVolumeCount == 0,
-                  onTap: _busy ? null : _refreshStorage,
-                ),
                 const SizedBox(height: 8),
                 SizedBox(
                   width: double.infinity,
@@ -514,74 +551,6 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                       minimumSize: const Size.fromHeight(42),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
                     ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 22),
-          const _SetupSectionTitle(title: 'Server security', subtitle: 'Set the password used by remote clients to connect.'),
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: colors.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.35)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.lock_outline_rounded, color: colors.primary),
-                    const SizedBox(width: 10),
-                    Expanded(child: Text('Native server password', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800))),
-                    if (_serverPasswordConfigured)
-                      const _StatusPill(label: 'Configured', granted: true),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  _serverPasswordConfigured
-                      ? 'A salted password verifier is saved on this device.'
-                      : 'Choose a password with at least 12 characters.',
-                  style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant, height: 1.4),
-                ),
-                const SizedBox(height: 14),
-                TextField(
-                  controller: _serverPasswordController,
-                  obscureText: _obscureServerPassword,
-                  enabled: !_busy,
-                  decoration: InputDecoration(
-                    labelText: 'New server password',
-                    helperText: 'Never uploaded or stored in plaintext.',
-                    prefixIcon: const Icon(Icons.password_rounded),
-                    suffixIcon: IconButton(
-                      tooltip: _obscureServerPassword ? 'Show password' : 'Hide password',
-                      onPressed: _busy
-                          ? null
-                          : () => setState(() =>
-                              _obscureServerPassword = !_obscureServerPassword),
-                      icon: Icon(
-                        _obscureServerPassword
-                            ? Icons.visibility_outlined
-                            : Icons.visibility_off_outlined,
-                      ),
-                    ),
-                    filled: true,
-                    fillColor: colors.surface,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: _busy ? null : _saveServerPassword,
-                    icon: const Icon(Icons.shield_outlined, size: 18),
-                    label: Text(_serverPasswordConfigured ? 'Update password' : 'Save password'),
-                    style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
                   ),
                 ),
               ],
@@ -604,6 +573,32 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                     : const Icon(Icons.refresh_rounded),
               ),
             ],
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+            decoration: BoxDecoration(
+              color: colors.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.35)),
+            ),
+            child: _PermissionRow(
+              icon: Icons.usb_rounded,
+              title: 'USB folder access',
+              description: selectedVolumeCount > 0
+                  ? '$selectedVolumeCount drive permission(s) saved'
+                  : _discoveredVolumes.isEmpty
+                      ? 'Connect a drive or choose a folder manually'
+                      : '${_discoveredVolumes.length} drive(s) detected · approve access to use',
+              status: selectedVolumeCount > 0
+                  ? 'Granted'
+                  : _discoveredVolumes.isEmpty
+                      ? 'Not connected'
+                      : 'Needs approval',
+              granted: selectedVolumeCount > 0,
+              neutral: _discoveredVolumes.isEmpty,
+              onTap: _busy ? null : _refreshStorage,
+            ),
           ),
           const SizedBox(height: 10),
           if (_discoveredVolumes.isEmpty)
@@ -648,6 +643,77 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
               ),
             );
           }),
+          const SizedBox(height: 22),
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: colors.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.4)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: running ? colors.primaryContainer : colors.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(
+                        Icons.dns_outlined,
+                        color: running ? colors.onPrimaryContainer : colors.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Storage service', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+                          const SizedBox(height: 2),
+                          Text(
+                            running
+                                ? 'PocketLink storage access is running on this phone.'
+                                : canStart
+                                    ? 'Your storage setup is ready. Start the service when needed.'
+                                    : 'Complete a storage permission above before starting.',
+                            style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant, height: 1.35),
+                          ),
+                        ],
+                      ),
+                    ),
+                    _StatusPill(label: running ? 'Running' : 'Stopped', granted: running),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: _busy || (!running && !canStart)
+                        ? null
+                        : (running ? _stop : _start),
+                    icon: Icon(running ? Icons.stop_rounded : Icons.play_arrow_rounded),
+                    label: Text(running ? 'Stop storage service' : 'Start storage service'),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(50),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                  ),
+                ),
+                if (!running && !canStart) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Enable All-files access or grant access to a USB folder to continue.',
+                    style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+                  ),
+                ],
+              ],
+            ),
+          ),
           const SizedBox(height: 24),
           const _SetupSectionTitle(
             title: 'Device media & files',
