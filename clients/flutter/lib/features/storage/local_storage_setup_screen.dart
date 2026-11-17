@@ -200,166 +200,284 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
     final legacySelected = (_status['usb1'] != null && _status['usb1'] != 'Not selected') ||
         (_status['usb2'] != null && _status['usb2'] != 'Not selected');
     final running = _status['running'] == true;
     final internalGranted = _status['internalStorageGranted'] == true;
+    final backgroundGranted = _status['backgroundAccessGranted'] == true;
+    final selectedVolumeCount = _discoveredVolumes.where((v) => v['selected'] == true).length;
+    final canStart = internalGranted || legacySelected || selectedVolumeCount > 0;
+
     return Scaffold(
-      appBar: const HomeServerAppBar(title: Text('This device · Storage setup')),
+      appBar: const HomeServerAppBar(title: Text('This device')),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
         children: [
-          const Text(
-            'Set up the Android phone that will host HomeServer. Internal storage access is needed for shared folders such as Music, Movies, Pictures, DCIM and Download.',
-          ),
-          const SizedBox(height: 16),
-          Card(
-            child: ListTile(
-              leading: Icon(
-                internalGranted ? Icons.check_circle : Icons.folder_special,
-                color: internalGranted ? Colors.green : null,
-              ),
-              title: const Text('Internal shared storage'),
-              subtitle: Text(internalGranted
-                  ? 'All-files access is enabled.'
-                  : 'Android requires you to approve “Allow access to manage all files”.'),
-              trailing: internalGranted
-                  ? const Icon(Icons.verified)
-                  : const Icon(Icons.chevron_right),
-              onTap: _busy || internalGranted ? null : _requestInternalStorageAccess,
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: colors.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.35)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: colors.primaryContainer,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(Icons.phonelink_setup_rounded, color: colors.onPrimaryContainer),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Host PocketLink here', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+                      const SizedBox(height: 5),
+                      Text(
+                        'Prepare this phone for reliable file access and background server operation.',
+                        style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant, height: 1.4),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 12),
-          Card(
-            child: ListTile(
-              leading: Icon(
-                _status['backgroundAccessGranted'] == true
-                    ? Icons.battery_charging_full
-                    : Icons.battery_alert,
-                color: _status['backgroundAccessGranted'] == true
-                    ? Colors.green
-                    : Theme.of(context).colorScheme.error,
-              ),
-              title: const Text('Background connection protection'),
-              subtitle: Text(_status['backgroundAccessGranted'] == true
-                  ? 'Battery optimization is disabled for HomeServer.'
-                  : 'Allow unrestricted battery use so Android is less likely to suspend the server when the screen is off.'),
-              isThreeLine: true,
-              trailing: const Icon(Icons.chevron_right),
-              onTap: _busy || _status['backgroundAccessGranted'] == true
-                  ? null
-                  : _requestBackgroundAccess,
-            ),
+          const SizedBox(height: 24),
+          const _SetupSectionTitle(title: 'Device permissions', subtitle: 'Allow the access PocketLink needs to host your files.'),
+          const SizedBox(height: 10),
+          _SetupStatusTile(
+            icon: Icons.folder_rounded,
+            title: 'Internal shared storage',
+            subtitle: internalGranted
+                ? 'All-files access is enabled.'
+                : 'Needed for Music, Movies, Pictures, DCIM and Download.',
+            status: internalGranted ? 'Enabled' : 'Action needed',
+            granted: internalGranted,
+            onTap: _busy || internalGranted ? null : _requestInternalStorageAccess,
           ),
-          if (_status['backgroundAccessGranted'] != true)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: OutlinedButton.icon(
+          const SizedBox(height: 10),
+          _SetupStatusTile(
+            icon: Icons.battery_charging_full_rounded,
+            title: 'Background connection',
+            subtitle: backgroundGranted
+                ? 'Battery optimization is disabled for this app.'
+                : 'Allow background activity to reduce the chance Android suspends the server.',
+            status: backgroundGranted ? 'Protected' : 'Recommended',
+            granted: backgroundGranted,
+            onTap: _busy || backgroundGranted ? null : _requestBackgroundAccess,
+          ),
+          if (!backgroundGranted) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
                 onPressed: _busy ? null : _openBackgroundSettings,
-                icon: const Icon(Icons.settings),
+                icon: const Icon(Icons.settings_outlined, size: 18),
                 label: const Text('Open battery settings'),
               ),
             ),
+          ],
           const SizedBox(height: 8),
           OutlinedButton.icon(
             onPressed: _busy ? null : _refresh,
-            icon: const Icon(Icons.refresh),
-            label: const Text('Refresh permission status'),
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+            label: const Text('Refresh device status'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+            ),
           ),
-          const SizedBox(height: 16),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Native server password',
-                      style: TextStyle(fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 6),
-                  Text(_serverPasswordConfigured
-                      ? 'A password verifier is saved on this device.'
-                      : 'Set a password of at least 12 characters for remote access.'),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _serverPasswordController,
-                    obscureText: true,
-                    enabled: !_busy,
-                    decoration: const InputDecoration(
-                      labelText: 'New server password',
-                      helperText: 'Not uploaded or stored in plaintext.',
-                    ),
+          const SizedBox(height: 24),
+          const _SetupSectionTitle(title: 'Server security', subtitle: 'Set the password used by remote clients to connect.'),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: colors.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.35)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.lock_outline_rounded, color: colors.primary),
+                    const SizedBox(width: 10),
+                    Expanded(child: Text('Native server password', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800))),
+                    if (_serverPasswordConfigured)
+                      const _StatusPill(label: 'Configured', granted: true),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  _serverPasswordConfigured
+                      ? 'A salted password verifier is saved on this device.'
+                      : 'Choose a password with at least 12 characters.',
+                  style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant, height: 1.4),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: _serverPasswordController,
+                  obscureText: true,
+                  enabled: !_busy,
+                  decoration: InputDecoration(
+                    labelText: 'New server password',
+                    helperText: 'Never uploaded or stored in plaintext.',
+                    prefixIcon: const Icon(Icons.password_rounded),
+                    filled: true,
+                    fillColor: colors.surface,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
                   ),
-                  const SizedBox(height: 8),
-                  FilledButton(
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
                     onPressed: _busy ? null : _saveServerPassword,
-                    child: Text(_serverPasswordConfigured
-                        ? 'Update server password'
-                        : 'Save server password'),
+                    icon: const Icon(Icons.shield_outlined, size: 18),
+                    label: Text(_serverPasswordConfigured ? 'Update password' : 'Save password'),
+                    style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          const _SetupSectionTitle(title: 'USB / SSD storage', subtitle: 'Connect a removable drive. Detected drives will appear here.'),
+          const SizedBox(height: 10),
+          if (_discoveredVolumes.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: colors.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.35)),
+              ),
+              child: Column(
+                children: [
+                  Icon(Icons.usb_rounded, size: 34, color: colors.onSurfaceVariant),
+                  const SizedBox(height: 10),
+                  Text('No removable drive detected', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Connect or reconnect your USB drive. You can also choose its folder manually.',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant, height: 1.4),
+                  ),
+                  const SizedBox(height: 14),
+                  OutlinedButton.icon(
+                    onPressed: _busy ? null : () => _select(
+                      'usb-manual-${DateTime.now().microsecondsSinceEpoch.toRadixString(16).padLeft(16, '0').substring(0, 16)}',
+                    ),
+                    icon: const Icon(Icons.folder_open_rounded, size: 18),
+                    label: const Text('Choose storage folder'),
                   ),
                 ],
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'USB / SSD storage',
-            style: TextStyle(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 8),
-          const Text('Detected removable drives appear here automatically. Select a drive once to approve its access; Android remembers the permission.'),
-          const SizedBox(height: 12),
-          if (_discoveredVolumes.isEmpty)
-            const Card(child: ListTile(
-              leading: Icon(Icons.usb_off),
-              title: Text('No removable drive detected'),
-              subtitle: Text('Connect or reconnect your USB drive, then refresh.'),
-            )),
-          if (_discoveredVolumes.isEmpty)
-            OutlinedButton.icon(
-              onPressed: _busy ? null : () => _select(
-                'usb-manual-${DateTime.now().microsecondsSinceEpoch.toRadixString(16).padLeft(16, '0').substring(0, 16)}',
-              ),
-              icon: const Icon(Icons.folder_open),
-              label: const Text('Choose storage folder manually'),
-            ),
           ..._discoveredVolumes.map((volume) {
             final selected = volume['selected'] == true;
-            return _VolumeTile(
-              title: volume['name']?.toString() ?? 'USB storage',
-              value: selected ? 'Access granted' : 'Detected · permission required',
-              onTap: _busy || selected ? null : () => _select(volume['id'].toString()),
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _VolumeTile(
+                title: volume['name']?.toString() ?? 'USB storage',
+                value: selected ? 'Access granted · ready to use' : 'Detected · approve access to use',
+                selected: selected,
+                onTap: _busy || selected ? null : () => _select(volume['id'].toString()),
+              ),
             );
           }),
-
           const SizedBox(height: 12),
-          if (_busy) const LinearProgressIndicator(),
-          if (_error != null) ...[
+          if (_busy) ...[
+            const LinearProgressIndicator(),
             const SizedBox(height: 12),
-            Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
           ],
-          const SizedBox(height: 12),
-          FilledButton.icon(
-            onPressed: _busy || (!internalGranted && !legacySelected && !_discoveredVolumes.any((v) => v['selected'] == true))
-                ? null
-                : (running ? _stop : _start),
-            icon: Icon(running ? Icons.stop : Icons.play_arrow),
-            label: Text(running ? 'Stop local storage service' : 'Start local storage service'),
-          ),
-          const SizedBox(height: 20),
-          const Text('Backend bridge token', style: TextStyle(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 6),
-          SelectableText(_token ?? 'Loading…'),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: _token == null ? null : () => Clipboard.setData(ClipboardData(text: _token!)),
-              icon: const Icon(Icons.copy),
-              label: const Text('Copy token'),
+          if (_error != null) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: colors.errorContainer.withValues(alpha: 0.55),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.info_outline_rounded, color: colors.error, size: 19),
+                  const SizedBox(width: 9),
+                  Expanded(child: Text(_error!, style: theme.textTheme.bodySmall?.copyWith(color: colors.onErrorContainer))),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: colors.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.35)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(running ? Icons.cloud_done_rounded : Icons.cloud_off_rounded, color: running ? Colors.green : colors.onSurfaceVariant),
+                    const SizedBox(width: 10),
+                    Expanded(child: Text('Local storage service', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800))),
+                    _StatusPill(label: running ? 'Running' : 'Stopped', granted: running),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  running ? 'Your device storage bridge is active.' : 'Start the service when your storage permissions are ready.',
+                  style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: _busy || (!running && !canStart) ? null : (running ? _stop : _start),
+                    icon: Icon(running ? Icons.stop_rounded : Icons.play_arrow_rounded),
+                    label: Text(running ? 'Stop storage service' : 'Start storage service'),
+                    style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+                  ),
+                ),
+              ],
             ),
           ),
-          const Text(
-            'Temporary compatibility setting for the current Termux backend. This token will no longer be needed once the native HomeServer API is enabled.',
-            style: TextStyle(fontSize: 12),
+          const SizedBox(height: 24),
+          ExpansionTile(
+            tilePadding: EdgeInsets.zero,
+            childrenPadding: const EdgeInsets.only(bottom: 12),
+            leading: const Icon(Icons.key_outlined),
+            title: const Text('Backend bridge token'),
+            subtitle: const Text('Temporary compatibility setting'),
+            children: [
+              SelectableText(_token ?? 'Loading…'),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: _token == null ? null : () => Clipboard.setData(ClipboardData(text: _token!)),
+                  icon: const Icon(Icons.copy_rounded, size: 18),
+                  label: const Text('Copy token'),
+                ),
+              ),
+              Text(
+                'This token is used by the current Termux backend. It will no longer be needed once the native PocketLink API is enabled.',
+                style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+              ),
+            ],
           ),
         ],
       ),
@@ -367,20 +485,156 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
   }
 }
 
-class _VolumeTile extends StatelessWidget {
-  const _VolumeTile({required this.title, required this.value, required this.onTap});
+class _SetupSectionTitle extends StatelessWidget {
+  const _SetupSectionTitle({required this.title, required this.subtitle});
   final String title;
-  final String value;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+        const SizedBox(height: 4),
+        Text(subtitle, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+      ],
+    );
+  }
+}
+
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({required this.label, required this.granted});
+  final String label;
+  final bool granted;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final color = granted ? Colors.green : colors.tertiary;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(30),
+      ),
+      child: Text(label, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: color, fontWeight: FontWeight.w700)),
+    );
+  }
+}
+
+class _SetupStatusTile extends StatelessWidget {
+  const _SetupStatusTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.status,
+    required this.granted,
+    required this.onTap,
+  });
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final String status;
+  final bool granted;
   final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) => Card(
-        child: ListTile(
-          leading: const Icon(Icons.usb),
-          title: Text(title),
-          subtitle: Text(value),
-          trailing: const Icon(Icons.folder_open),
-          onTap: onTap,
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Material(
+      color: colors.surfaceContainerLow,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Padding(
+          padding: const EdgeInsets.all(15),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: (granted ? Colors.green : colors.primary).withValues(alpha: 0.13),
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: Icon(icon, color: granted ? Colors.green : colors.primary),
+              ),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 4),
+                    Text(subtitle, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant, height: 1.35)),
+                    const SizedBox(height: 8),
+                    _StatusPill(label: status, granted: granted),
+                  ],
+                ),
+              ),
+              if (onTap != null) ...[
+                const SizedBox(width: 8),
+                Icon(Icons.chevron_right_rounded, color: colors.onSurfaceVariant),
+              ] else if (granted) ...[
+                const SizedBox(width: 8),
+                const Icon(Icons.check_circle_rounded, color: Colors.green),
+              ],
+            ],
+          ),
         ),
-      );
+      ),
+    );
+  }
+}
+
+class _VolumeTile extends StatelessWidget {
+  const _VolumeTile({required this.title, required this.value, required this.selected, required this.onTap});
+  final String title;
+  final String value;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Material(
+      color: colors.surfaceContainerLow,
+      borderRadius: BorderRadius.circular(17),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(17),
+        child: Padding(
+          padding: const EdgeInsets.all(15),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(color: colors.surfaceContainerHighest, borderRadius: BorderRadius.circular(13)),
+                child: Icon(Icons.usb_rounded, color: colors.onSurfaceVariant),
+              ),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 4),
+                    Text(value, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
+                  ],
+                ),
+              ),
+              if (selected)
+                const Icon(Icons.check_circle_rounded, color: Colors.green)
+              else
+                Icon(Icons.folder_open_rounded, color: colors.onSurfaceVariant),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
