@@ -805,7 +805,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             Navigator.maybePop(context);
           }
           _dismissDragDistance = 0;
-        },
+        } : null,
         onHorizontalDragEnd: AppSettings.instance.enableNowPlayingGestures ? (details) {
           final distance = _trackSwipeDistance;
           final velocity = details.primaryVelocity ?? 0;
