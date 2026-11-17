@@ -270,7 +270,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
       // returns; never assume the permission was granted just because settings opened.
       if (mounted) {
         setState(() {
-          _error = 'Enable “Allow access to manage all files” for HomeServer, return here, then refresh status.';
+          _error = 'Enable “Allow access to manage all files” for PocketLink, return here, then refresh status.';
           _busy = false;
         });
       }
@@ -1247,9 +1247,9 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
             label: 'Overview',
           ),
           NavigationDestination(
-            icon: Icon(Icons.storage_outlined),
-            selectedIcon: Icon(Icons.storage_rounded),
-            label: 'Storage',
+            icon: Icon(Icons.devices_outlined),
+            selectedIcon: Icon(Icons.devices_rounded),
+            label: 'Device',
           ),
           NavigationDestination(
             icon: Icon(Icons.lock_outline_rounded),

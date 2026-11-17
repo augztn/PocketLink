@@ -106,7 +106,7 @@ jobs:
           channel: stable
           cache: true
       - name: Generate Android project
-        run: flutter create --platforms=android --project-name homeserver_client .
+        run: flutter create --platforms=android --org io.github.augztn --project-name pocketlink .
       - name: Enable network access for HTTP and HTTPS servers
         run: |
           python3 - <<'PY'
@@ -161,6 +161,14 @@ jobs:
           if gradle is None:
               raise SystemExit("Android app Gradle file not found")
           content = gradle.read_text()
+          expected_package = "io.github.augztn.pocketlink"
+          normalized = content.replace("'", '"')
+          for field in ("namespace", "applicationId"):
+              pattern = rf'(?m)^\s*{field}\s*(?:=\s*)?"{re.escape(expected_package)}"'
+              if not re.search(pattern, normalized):
+                  raise SystemExit(
+                      f"Expected Android {field} to be {expected_package}"
+                  )
           updated, count = re.subn(
               r"compileSdk\s*(?:=)?\s*flutter\.compileSdkVersion",
               "compileSdk = 36" if gradle.suffix == ".kts" else "compileSdkVersion 36",

@@ -53,8 +53,9 @@ void main() {
     expect(find.byTooltip('Refresh host status'), findsOneWidget);
     expect(find.text('Layout'), findsNothing);
     expect(find.text('Device permissions'), findsNothing);
+    expect(find.text('Storage'), findsNothing);
 
-    await tester.tap(find.text('Storage'));
+    await tester.tap(find.text('Device'));
     await tester.pumpAndSettle();
     expect(find.text('Device permissions'), findsOneWidget);
     expect(find.text('USB / External Storage'), findsOneWidget);
