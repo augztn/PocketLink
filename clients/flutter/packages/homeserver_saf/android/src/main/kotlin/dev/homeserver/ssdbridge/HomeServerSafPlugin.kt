@@ -66,6 +66,15 @@ class HomeServerSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
                 result.success(true)
             }
             "status" -> result.success(status())
+            "mediaIndexStatus" -> result.success(BridgeService.mediaIndexStatus())
+            "refreshMediaIndex" -> {
+                val scanStatus = BridgeService.refreshMediaIndex()
+                if (scanStatus == null) {
+                    result.error("SERVER_NOT_RUNNING", "Start the native PocketLink server before scanning device media.", null)
+                } else {
+                    result.success(scanStatus)
+                }
+            }
             "requestBackgroundAccess" -> result.success(requestBackgroundAccess())
             "openBackgroundAccessSettings" -> {
                 try {
