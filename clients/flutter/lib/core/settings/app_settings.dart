@@ -29,6 +29,13 @@ class AppSettings extends ChangeNotifier {
   static const _nowPlayingVolumeKey = 'settings_now_playing_volume';
   static const _nowPlayingUtilitiesKey = 'settings_now_playing_utilities';
   static const _nowPlayingGesturesKey = 'settings_now_playing_gestures';
+  static const _nowPlayingFormatKey = 'settings_now_playing_format';
+  static const _nowPlayingTitleKey = 'settings_now_playing_title';
+  static const _nowPlayingFolderKey = 'settings_now_playing_folder';
+  static const _nowPlayingFavoriteKey = 'settings_now_playing_favorite';
+  static const _nowPlayingTrackOptionsKey = 'settings_now_playing_track_options';
+  static const _nowPlayingTimelineKey = 'settings_now_playing_timeline';
+  static const _nowPlayingTransportKey = 'settings_now_playing_transport';
   static const homeSectionDefaults = <String>['search', 'quick', 'transfers', 'continue', 'recent'];
   static const navigationDefaults = <String>['home', 'explore', 'files', 'browse'];
   static const floatingShortcutDefaults = <String>[
@@ -62,6 +69,9 @@ class AppSettings extends ChangeNotifier {
   bool _showNowPlayingVolume = true;
   bool _showNowPlayingUtilities = true;
   bool _enableNowPlayingGestures = true;
+  bool _showNowPlayingFormat = true, _showNowPlayingTitle = true, _showNowPlayingFolder = true;
+  bool _showNowPlayingFavorite = true, _showNowPlayingTrackOptions = true;
+  bool _showNowPlayingTimeline = true, _showNowPlayingTransport = true;
 
   ThemeMode get themeMode => _themeMode;
   bool get amoled => _amoled;
@@ -85,6 +95,13 @@ class AppSettings extends ChangeNotifier {
   bool get showNowPlayingVolume => _showNowPlayingVolume;
   bool get showNowPlayingUtilities => _showNowPlayingUtilities;
   bool get enableNowPlayingGestures => _enableNowPlayingGestures;
+  bool get showNowPlayingFormat => _showNowPlayingFormat;
+  bool get showNowPlayingTitle => _showNowPlayingTitle;
+  bool get showNowPlayingFolder => _showNowPlayingFolder;
+  bool get showNowPlayingFavorite => _showNowPlayingFavorite;
+  bool get showNowPlayingTrackOptions => _showNowPlayingTrackOptions;
+  bool get showNowPlayingTimeline => _showNowPlayingTimeline;
+  bool get showNowPlayingTransport => _showNowPlayingTransport;
 
   Future<void> load() async {
     if (_loaded) return;
@@ -96,6 +113,13 @@ class AppSettings extends ChangeNotifier {
       _showNowPlayingVolume = preferences.getBool(_nowPlayingVolumeKey) ?? true;
       _showNowPlayingUtilities = preferences.getBool(_nowPlayingUtilitiesKey) ?? true;
       _enableNowPlayingGestures = preferences.getBool(_nowPlayingGesturesKey) ?? true;
+      _showNowPlayingFormat = preferences.getBool(_nowPlayingFormatKey) ?? true;
+      _showNowPlayingTitle = preferences.getBool(_nowPlayingTitleKey) ?? true;
+      _showNowPlayingFolder = preferences.getBool(_nowPlayingFolderKey) ?? true;
+      _showNowPlayingFavorite = preferences.getBool(_nowPlayingFavoriteKey) ?? true;
+      _showNowPlayingTrackOptions = preferences.getBool(_nowPlayingTrackOptionsKey) ?? true;
+      _showNowPlayingTimeline = preferences.getBool(_nowPlayingTimelineKey) ?? true;
+      _showNowPlayingTransport = preferences.getBool(_nowPlayingTransportKey) ?? true;
       _floatingShortcutEnabled = preferences.getBool(_floatingShortcutEnabledKey) ?? false;
       final tapAction = preferences.getString(_floatingShortcutTapActionKey);
       _floatingShortcutTapAction = tapAction == 'primary' ? 'primary' : 'menu';
@@ -315,12 +339,21 @@ class AppSettings extends ChangeNotifier {
     bool? volume,
     bool? utilities,
     bool? gestures,
+    bool? format, bool? title, bool? folder, bool? favorite,
+    bool? trackOptions, bool? timeline, bool? transport,
   }) async {
     if (miniPlayer != null) _showMiniPlayer = miniPlayer;
     if (artwork != null) _showNowPlayingArtwork = artwork;
     if (volume != null) _showNowPlayingVolume = volume;
     if (utilities != null) _showNowPlayingUtilities = utilities;
     if (gestures != null) _enableNowPlayingGestures = gestures;
+    if (format != null) _showNowPlayingFormat = format;
+    if (title != null) _showNowPlayingTitle = title;
+    if (folder != null) _showNowPlayingFolder = folder;
+    if (favorite != null) _showNowPlayingFavorite = favorite;
+    if (trackOptions != null) _showNowPlayingTrackOptions = trackOptions;
+    if (timeline != null) _showNowPlayingTimeline = timeline;
+    if (transport != null) _showNowPlayingTransport = transport;
     notifyListeners();
     final preferences = await SharedPreferences.getInstance();
     await Future.wait([
@@ -329,6 +362,13 @@ class AppSettings extends ChangeNotifier {
       if (volume != null) preferences.setBool(_nowPlayingVolumeKey, volume),
       if (utilities != null) preferences.setBool(_nowPlayingUtilitiesKey, utilities),
       if (gestures != null) preferences.setBool(_nowPlayingGesturesKey, gestures),
+      if (format != null) preferences.setBool(_nowPlayingFormatKey, format),
+      if (title != null) preferences.setBool(_nowPlayingTitleKey, title),
+      if (folder != null) preferences.setBool(_nowPlayingFolderKey, folder),
+      if (favorite != null) preferences.setBool(_nowPlayingFavoriteKey, favorite),
+      if (trackOptions != null) preferences.setBool(_nowPlayingTrackOptionsKey, trackOptions),
+      if (timeline != null) preferences.setBool(_nowPlayingTimelineKey, timeline),
+      if (transport != null) preferences.setBool(_nowPlayingTransportKey, transport),
     ]);
   }
 
@@ -338,6 +378,9 @@ class AppSettings extends ChangeNotifier {
     _showNowPlayingVolume = true;
     _showNowPlayingUtilities = true;
     _enableNowPlayingGestures = true;
+    _showNowPlayingFormat = _showNowPlayingTitle = _showNowPlayingFolder = true;
+    _showNowPlayingFavorite = _showNowPlayingTrackOptions = true;
+    _showNowPlayingTimeline = _showNowPlayingTransport = true;
     notifyListeners();
     final preferences = await SharedPreferences.getInstance();
     await Future.wait([
@@ -346,6 +389,10 @@ class AppSettings extends ChangeNotifier {
       preferences.remove(_nowPlayingVolumeKey),
       preferences.remove(_nowPlayingUtilitiesKey),
       preferences.remove(_nowPlayingGesturesKey),
+      preferences.remove(_nowPlayingFormatKey), preferences.remove(_nowPlayingTitleKey),
+      preferences.remove(_nowPlayingFolderKey), preferences.remove(_nowPlayingFavoriteKey),
+      preferences.remove(_nowPlayingTrackOptionsKey), preferences.remove(_nowPlayingTimelineKey),
+      preferences.remove(_nowPlayingTransportKey),
     ]);
   }
 
