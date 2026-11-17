@@ -354,13 +354,14 @@ internal class NativeApiServer(
             val storageManager = context.getSystemService(Context.STORAGE_SERVICE) as? StorageManager
                 ?: return null
             val storageVolume = storageManager.storageVolumes.firstOrNull { volume ->
-                volume.uuid?.equals(volumeId, ignoreCase = true) == true &&
+                volume.isRemovable &&
+                    volume.uuid?.equals(volumeId, ignoreCase = true) == true &&
                     volume.state in setOf(
                         Environment.MEDIA_MOUNTED,
                         Environment.MEDIA_MOUNTED_READ_ONLY
                     )
             } ?: return null
-            val directory = storageVolume.directory
+            val directory = storageVolume.directory ?: return null
             if (!directory.isDirectory) return null
 
             val stats = StatFs(directory.absolutePath)
