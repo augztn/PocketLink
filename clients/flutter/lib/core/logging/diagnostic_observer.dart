@@ -29,7 +29,7 @@ class DiagnosticNavigatorObserver extends NavigatorObserver {
         !_isControlsSuppressed(currentRoute);
     controlsVisible.value = canShowControls;
     dashboardVisible.value =
-        canShowControls && currentRoute?.settings.name == dashboardRoute;
+        canShowControls && currentRoute.settings.name == dashboardRoute;
   }
 
   String _routeLabel(Route<dynamic>? route) =>
