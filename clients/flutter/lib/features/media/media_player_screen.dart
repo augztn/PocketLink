@@ -846,7 +846,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                           icon: const Icon(Icons.queue_play_next_rounded, color: Colors.white),
                         ),
                         PopupMenuButton<String>(
-                          tooltip: 'Audio and subtitles',
+                          tooltip: 'Video options',
                           color: const Color(0xFF24202E),
                           onSelected: (value) {
                             if (value == 'audio') {
