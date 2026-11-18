@@ -24,7 +24,9 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay> {
 
   bool _openingNowPlaying = false;
   MediaQueueItem? _lastTrack;
+  int _lastTrackIndex = 0;
   MediaQueueItem? _trackPopup;
+  int _trackDirection = 1;
   Offset? _trackPopupOffset;
   Timer? _trackPopupTimer;
 
@@ -34,6 +36,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay> {
   void initState() {
     super.initState();
     _lastTrack = _player.currentItem;
+    _lastTrackIndex = _player.currentIndex;
     _player.addListener(_onPlayerChanged);
   }
 
@@ -49,13 +52,20 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay> {
     final previous = _lastTrack;
     final changed = current?.path != previous?.path ||
         current?.volume != previous?.volume;
+    final currentIndex = _player.currentIndex;
+    final previousIndex = _lastTrackIndex;
     _lastTrack = current;
+    _lastTrackIndex = currentIndex;
     if (!changed || previous == null || current == null || !_player.isMusic) {
       return;
     }
 
+    final queueLength = _player.queue.length;
+    final movedForward = currentIndex > previousIndex ||
+        (previousIndex == queueLength - 1 && currentIndex == 0);
     _trackPopupTimer?.cancel();
     setState(() {
+      _trackDirection = movedForward ? 1 : -1;
       _trackPopup = current;
       _trackPopupOffset = null;
     });
@@ -78,14 +88,12 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay> {
 
     final buttonPosition = button.localToGlobal(Offset.zero, ancestor: overlay);
     final size = overlay.size;
-    const popupWidth = 248.0;
-    const popupHeight = 56.0;
-    final left = (buttonPosition.dx + button.size.width / 2 - popupWidth / 2)
-        .clamp(12.0, math.max(12.0, size.width - popupWidth - 12.0))
-        .toDouble();
+    const popupWidth = 184.0;
+    const popupHeight = 44.0;
+    final left = 14.0.clamp(0.0, math.max(0.0, size.width - popupWidth));
     final miniPlayerOffset = _shouldShowMiniPlayer() ? _miniPlayerHeight : 0.0;
-    final top = (buttonPosition.dy - popupHeight - 10 - miniPlayerOffset)
-        .clamp(12.0, math.max(12.0, size.height - popupHeight - 12.0))
+    final top = (buttonPosition.dy - popupHeight - 8 - miniPlayerOffset)
+        .clamp(8.0, math.max(8.0, size.height - popupHeight - 8))
         .toDouble();
     if (mounted) setState(() => _trackPopupOffset = Offset(left, top));
   }
@@ -214,6 +222,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay> {
                         ? _TrackChangePopup(
                             key: ValueKey('${_trackPopup!.volume}:${_trackPopup!.path}'),
                             item: _trackPopup!,
+                            direction: _trackDirection,
                           )
                         : const SizedBox.shrink(),
                   ),
@@ -228,37 +237,38 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay> {
 }
 
 class _TrackChangePopup extends StatelessWidget {
-  const _TrackChangePopup({required this.item, super.key});
+  const _TrackChangePopup({required this.item, required this.direction, super.key});
 
   final MediaQueueItem item;
+  final int direction;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     return Material(
-      elevation: 8,
+      elevation: 6,
       color: colors.surfaceContainerHigh,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(15),
       child: Container(
-        width: 248,
-        height: 56,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        width: 184,
+        height: 44,
+        padding: const EdgeInsets.symmetric(horizontal: 9),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.55)),
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.5)),
         ),
         child: Row(
           children: [
             Container(
-              width: 36,
-              height: 36,
+              width: 28,
+              height: 28,
               decoration: BoxDecoration(
                 color: colors.primary.withValues(alpha: 0.14),
-                borderRadius: BorderRadius.circular(11),
+                borderRadius: BorderRadius.circular(9),
               ),
-              child: Icon(Icons.graphic_eq_rounded, color: colors.primary, size: 21),
+              child: Icon(Icons.graphic_eq_rounded, color: colors.primary, size: 17),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 7),
             Expanded(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -268,25 +278,55 @@ class _TrackChangePopup extends StatelessWidget {
                     item.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 10.5),
                   ),
                   Text(
                     'NOW PLAYING',
                     style: TextStyle(
                       color: colors.onSurfaceVariant,
-                      fontSize: 9,
-                      letterSpacing: 1.1,
+                      fontSize: 8,
+                      letterSpacing: 0.9,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
               ),
             ),
+            const SizedBox(width: 5),
+            _AnimatedTrackDirection(direction: direction, color: colors.primary),
           ],
         ),
       ),
     );
   }
+}
+
+class _AnimatedTrackDirection extends StatelessWidget {
+  const _AnimatedTrackDirection({required this.direction, required this.color});
+
+  final int direction;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => AnimatedSwitcher(
+        duration: const Duration(milliseconds: 220),
+        transitionBuilder: (child, animation) => FadeTransition(
+          opacity: animation,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: Offset(direction > 0 ? -0.45 : 0.45, 0),
+              end: Offset.zero,
+            ).animate(animation),
+            child: child,
+          ),
+        ),
+        child: Icon(
+          direction > 0 ? Icons.arrow_forward_rounded : Icons.arrow_back_rounded,
+          key: ValueKey(direction),
+          color: color,
+          size: 19,
+        ),
+      );
 }
 
 class _GlobalMiniPlayerBar extends StatelessWidget {
