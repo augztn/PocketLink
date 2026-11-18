@@ -2,7 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../core/settings/app_settings.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
-import 'floating_shortcut_customization_screen.dart';
+import 'music_shortcut_customization_screen.dart';
 
 class NowPlayingSettingsScreen extends StatelessWidget {
   const NowPlayingSettingsScreen({super.key});
@@ -84,13 +84,13 @@ class NowPlayingSettingsScreen extends StatelessWidget {
                     leading: const Icon(Icons.grid_view_rounded),
                     title: const Text('Customize shortcut destinations'),
                     subtitle: Text(
-                      '${settings.floatingShortcuts.length} destinations · reorder and choose what appears',
+                      '${settings.musicButtonShortcuts.length} destinations · reorder and choose what appears',
                     ),
                     trailing: const Icon(Icons.chevron_right_rounded),
                     enabled: settings.musicButtonLongPressEnabled,
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute<void>(
-                        builder: (_) => const FloatingShortcutCustomizationScreen(),
+                        builder: (_) => const MusicShortcutCustomizationScreen(),
                       ),
                     ),
                   ),
@@ -148,7 +148,7 @@ class NowPlayingSettingsScreen extends StatelessWidget {
                 onPressed: () async {
                   await settings.resetMusicButtonOptions();
                   await settings.resetNowPlayingOptions();
-                  await settings.resetFloatingShortcuts();
+                  await settings.resetMusicButtonShortcuts();
                 },
                 icon: const Icon(Icons.restart_alt_rounded),
                 label: const Text('Reset music button settings'),
