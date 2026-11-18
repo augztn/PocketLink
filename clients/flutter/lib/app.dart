@@ -73,14 +73,14 @@ class _PocketLinkAppState extends State<PocketLinkApp> {
       theme: _theme(brightness: Brightness.light),
       darkTheme: _theme(brightness: Brightness.dark, amoled: _settings.amoled),
       home: const ConnectionScreen(),
-      builder: (context, child) => MaterialUiCompatibilityBridge(
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            child ?? const SizedBox.shrink(),
-            const AppWideControls(),
-          ],
-        ),
+      builder: (context, child) => Stack(
+        fit: StackFit.expand,
+        children: [
+          MaterialUiCompatibilityBridge(
+            child: child ?? const SizedBox.shrink(),
+          ),
+          const AppWideControls(),
+        ],
       ),
       ),
     );
