@@ -11,7 +11,7 @@ class DiagnosticNavigatorObserver extends NavigatorObserver {
 
   static final instance = DiagnosticNavigatorObserver._();
   final List<Route<dynamic>> _routes = [];
-  final ValueNotifier<bool> controlsVisible = ValueNotifier(false);
+  final ValueNotifier<bool> controlsVisible = ValueNotifier(true);
   final ValueNotifier<bool> dashboardVisible = ValueNotifier(false);
 
   static bool _isControlsSuppressed(Route<dynamic>? route) {
@@ -22,8 +22,11 @@ class DiagnosticNavigatorObserver extends NavigatorObserver {
 
   void _updateControlVisibility() {
     final currentRoute = _routes.isEmpty ? null : _routes.last;
-    final canShowControls =
-        currentRoute is PageRoute && !_isControlsSuppressed(currentRoute);
+    // HomeScreen attaches the controls only after a successful connection.
+    // Treat an empty observer stack as visible rather than hiding every control
+    // if the Navigator's initial route was installed before observer callbacks.
+    final canShowControls = currentRoute == null ||
+        (currentRoute is PageRoute && !_isControlsSuppressed(currentRoute));
     controlsVisible.value = canShowControls;
     dashboardVisible.value = canShowControls &&
         currentRoute.settings.name == PocketLinkAppBar.dashboardRouteName;
