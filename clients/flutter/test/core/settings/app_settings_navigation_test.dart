@@ -149,4 +149,56 @@ void main() {
       isNull,
     );
   });
+  test('Music button swipe and hold preferences validate and persist', () async {
+    final settings = AppSettings.instance;
+
+    await settings.setMusicButtonOptions(
+      swipeEnabled: true,
+      swipeLeftAction: 'next',
+      swipeRightAction: 'previous',
+      longPressEnabled: true,
+    );
+
+    expect(settings.musicButtonSwipeEnabled, isTrue);
+    expect(settings.musicButtonSwipeLeftAction, 'next');
+    expect(settings.musicButtonSwipeRightAction, 'previous');
+    expect(settings.musicButtonLongPressEnabled, isTrue);
+
+    final preferences = await SharedPreferences.getInstance();
+    expect(preferences.getBool('settings_music_button_swipe_enabled'), isTrue);
+    expect(preferences.getString('settings_music_button_swipe_left_action'), 'next');
+    expect(preferences.getString('settings_music_button_swipe_right_action'), 'previous');
+    expect(preferences.getBool('settings_music_button_long_press_enabled'), isTrue);
+
+    await expectLater(
+      settings.setMusicButtonOptions(swipeLeftAction: 'invalid'),
+      throwsArgumentError,
+    );
+    await expectLater(
+      settings.setMusicButtonOptions(swipeRightAction: 'invalid'),
+      throwsArgumentError,
+    );
+
+    await settings.setMusicButtonOptions(
+      swipeEnabled: false,
+      swipeLeftAction: 'none',
+      swipeRightAction: 'none',
+      longPressEnabled: false,
+    );
+    expect(settings.musicButtonSwipeEnabled, isFalse);
+    expect(settings.musicButtonSwipeLeftAction, 'none');
+    expect(settings.musicButtonSwipeRightAction, 'none');
+    expect(settings.musicButtonLongPressEnabled, isFalse);
+
+    await settings.resetMusicButtonOptions();
+    expect(settings.musicButtonSwipeEnabled, isTrue);
+    expect(settings.musicButtonSwipeLeftAction, 'next');
+    expect(settings.musicButtonSwipeRightAction, 'previous');
+    expect(settings.musicButtonLongPressEnabled, isTrue);
+    expect(preferences.getBool('settings_music_button_swipe_enabled'), isNull);
+    expect(preferences.getString('settings_music_button_swipe_left_action'), isNull);
+    expect(preferences.getString('settings_music_button_swipe_right_action'), isNull);
+    expect(preferences.getBool('settings_music_button_long_press_enabled'), isNull);
+  });
+
 }
