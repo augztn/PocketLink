@@ -253,6 +253,16 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final player = PersistentAudioPlayer.instance;
+    final showMiniPlayer = AppSettings.instance.showMiniPlayer &&
+        player.isMusic &&
+        player.isActive &&
+        player.currentItem != null &&
+        !_miniPlayerDismissed &&
+        !_nowPlayingRouteOpen;
+    final bottomSafeArea = MediaQuery.paddingOf(context).bottom;
+    // Keep the floating shortcut above the mini-player instead of letting
+    // both controls occupy the same bottom-right area.
+    final shortcutBottom = 90 + bottomSafeArea + (showMiniPlayer ? 66 : 0);
     final pages = [
       HomeDashboard(
         api: widget.api,
@@ -364,7 +374,7 @@ class _HomeScreenState extends State<HomeScreen> {
               if (!_hostSetupOpen && AppSettings.instance.floatingShortcutEnabled)
                 Positioned(
                   right: 16,
-                  bottom: 90 + MediaQuery.paddingOf(context).bottom,
+                  bottom: shortcutBottom,
                   child: FloatingQuickShortcut(
                     shortcuts: AppSettings.instance.floatingShortcuts,
                     expanded: _quickShortcutsExpanded,
@@ -391,12 +401,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 duration: const Duration(milliseconds: 220),
                 curve: Curves.easeInOutCubic,
                 alignment: Alignment.bottomCenter,
-                child: AppSettings.instance.showMiniPlayer &&
-                        player.isMusic &&
-                        player.isActive &&
-                        player.currentItem != null &&
-                        !_miniPlayerDismissed &&
-                        !_nowPlayingRouteOpen
+                child: showMiniPlayer
                     ? _MiniPlayerBar(
                         player: player,
                         onOpen: () => _openNowPlaying(player),
