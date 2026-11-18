@@ -83,7 +83,9 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay> {
               data: media.copyWith(
                 size: Size(
                   media.size.width,
-                  (media.size.height - reservedHeight).clamp(0.0, double.infinity),
+                  (media.size.height - reservedHeight)
+                      .clamp(0.0, double.infinity)
+                      .toDouble(),
                 ),
                 padding: media.padding.copyWith(bottom: 0),
                 viewPadding: media.viewPadding.copyWith(bottom: 0),
