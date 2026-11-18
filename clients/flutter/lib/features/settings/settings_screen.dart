@@ -243,17 +243,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _categoryTile(
                     icon: Icons.palette_outlined,
                     title: 'Appearance',
-                    subtitle: 'Themes, colors, navigation and dashboard layout',
+                    subtitle: 'Theme and display style',
+                  ),
+                  _categoryTile(
+                    icon: Icons.home_outlined,
+                    title: 'Home screen',
+                    subtitle: 'Dashboard sections and their order',
+                  ),
+                  _categoryTile(
+                    icon: Icons.dock_outlined,
+                    title: 'Navigation & shortcuts',
+                    subtitle: 'Dock layout, Music gestures and floating shortcuts',
                   ),
                   _categoryTile(
                     icon: Icons.perm_media_outlined,
-                    title: 'Media & Storage',
-                    subtitle: 'Streaming, downloads and cached data',
+                    title: 'Media & playback',
+                    subtitle: 'Now Playing and original-quality streaming',
                   ),
                   _categoryTile(
                     icon: Icons.wifi_rounded,
-                    title: 'Connection & Diagnostics',
-                    subtitle: 'Saved servers and troubleshooting logs',
+                    title: 'Connection & diagnostics',
+                    subtitle: 'Saved servers and diagnostic reports',
                   ),
                   _categoryTile(
                     icon: Icons.info_outline_rounded,
@@ -263,7 +273,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ]
               : [
                 if (widget.category == 'Appearance')
-                              _section('Theme & effects', [
+                              _section('Theme', [
                                 ListTile(
                                   leading: const Icon(Icons.palette_outlined),
                                   title: const Text('Theme mode'),
@@ -310,7 +320,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   ),
                                 ),
                               ]),
-                  _section('Home screen', [
+                  if (widget.category == 'Home screen') _section('Home screen', [
                                 SwitchListTile(
                                   secondary: const Icon(Icons.dashboard_customize_outlined),
                                   title: const Text('Quick actions'),
@@ -351,7 +361,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   onTap: _customizeDashboardOrder,
                                 ),
                               ]),
-                  _section('Navigation', [
+                  if (widget.category == 'Navigation & shortcuts') _section('Navigation', [
                                 ListTile(
                                   leading: const Icon(Icons.tune_rounded),
                                   title: const Text('Customize Navigation Bar'),
@@ -412,7 +422,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   ),
                                 ),
                               ]),
-                  if (widget.category == 'Media & Storage')
+                  if (widget.category == 'Media & playback')
                             _section('Media & Storage', [
                                 ListTile(
                                   leading: const Icon(Icons.graphic_eq_rounded),
@@ -453,7 +463,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   onTap: _clearingCache ? null : _clearCache,
                                 ),
                               ]),
-                  if (widget.category == 'Connection & Diagnostics')
+                  if (widget.category == 'Connection & diagnostics')
                             _section('Connection & Diagnostics', [
                                 ListTile(
                                   leading: const Icon(Icons.dns_outlined),
