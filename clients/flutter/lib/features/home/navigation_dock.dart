@@ -249,7 +249,18 @@ class _AnimatedEqualizerState extends State<_AnimatedEqualizer>
   late final AnimationController _controller = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 760),
-  )..repeat();
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _controller.stop();
+      _controller.value = 0.35;
+    } else if (!_controller.isAnimating) {
+      _controller.repeat();
+    }
+  }
 
   @override
   void dispose() {
@@ -260,6 +271,23 @@ class _AnimatedEqualizerState extends State<_AnimatedEqualizer>
   @override
   Widget build(BuildContext context) {
     final color = Theme.of(context).colorScheme.primary;
+    if (MediaQuery.disableAnimationsOf(context)) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: List.generate(
+          4,
+          (index) => Container(
+            width: 3.5,
+            height: index.isEven ? 14 : 21,
+            margin: const EdgeInsets.symmetric(horizontal: 1.5),
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+        ),
+      );
+    }
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, _) => Row(
