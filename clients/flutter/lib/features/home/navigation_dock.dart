@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/widgets/liquid_glass_pill.dart';
+import 'floating_quick_shortcut.dart';
 
 class FloatingNavigationDock extends StatelessWidget {
   const FloatingNavigationDock({
@@ -15,6 +16,12 @@ class FloatingNavigationDock extends StatelessWidget {
     this.hasMedia = false,
     this.isVideo = false,
     this.preview = false,
+    this.musicShortcuts = const <String>[],
+    this.musicShortcutsExpanded = false,
+    this.onMusicShortcutLongPress,
+    this.onMusicShortcutSelected,
+    this.onBrowseSwipeLeft,
+    this.onBrowseSwipeRight,
     super.key,
   });
 
@@ -27,6 +34,12 @@ class FloatingNavigationDock extends StatelessWidget {
   final bool hasMedia;
   final bool isVideo;
   final bool preview;
+  final List<String> musicShortcuts;
+  final bool musicShortcutsExpanded;
+  final VoidCallback? onMusicShortcutLongPress;
+  final ValueChanged<String>? onMusicShortcutSelected;
+  final VoidCallback? onBrowseSwipeLeft;
+  final VoidCallback? onBrowseSwipeRight;
 
   static const _labels = <String, String>{
     'home': 'Home',
@@ -90,31 +103,59 @@ class FloatingNavigationDock extends StatelessWidget {
       if (id == 'browse') {
         addTabGroup();
         segments.add(
-          SizedBox(
-            width: 64,
-            height: 64,
-            child: LiquidGlassPill(
-              radius: BorderRadius.circular(32),
-              child: Material(
-                color: Colors.transparent,
-                shape: const CircleBorder(),
-                child: InkWell(
-                  customBorder: const CircleBorder(),
-                  onTap: onBrowsePressed,
-                  child: Center(
-                    child: isPlaying
-                        ? const _AnimatedEqualizer()
-                        : Icon(
-                            hasMedia && isVideo
-                                ? Icons.play_circle_fill_rounded
-                                : Icons.music_note_rounded,
-                            color: colors.primary,
-                            size: 25,
-                          ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (musicShortcutsExpanded && musicShortcuts.isNotEmpty)
+                FloatingQuickShortcut(
+                  shortcuts: musicShortcuts,
+                  expanded: true,
+                  useLiquidGlass: false,
+                  onTap: () {},
+                  onLongPress: onMusicShortcutLongPress ?? () {},
+                  longPressEnabled: false,
+                  onSelect: onMusicShortcutSelected ?? (_) {},
+                  showButton: false,
+                ),
+              GestureDetector(
+                onHorizontalDragEnd: (details) {
+                  final velocity = details.primaryVelocity ?? 0;
+                  if (velocity.abs() < 300) return;
+                  if (velocity < 0) {
+                    onBrowseSwipeLeft?.call();
+                  } else {
+                    onBrowseSwipeRight?.call();
+                  }
+                },
+                child: SizedBox(
+                  width: 64,
+                  height: 64,
+                  child: LiquidGlassPill(
+                    radius: BorderRadius.circular(32),
+                    child: Material(
+                      color: Colors.transparent,
+                      shape: const CircleBorder(),
+                      child: InkWell(
+                        customBorder: const CircleBorder(),
+                        onTap: onBrowsePressed,
+                        onLongPress: onMusicShortcutLongPress,
+                        child: Center(
+                          child: isPlaying
+                              ? const _AnimatedEqualizer()
+                              : Icon(
+                                  hasMedia && isVideo
+                                      ? Icons.play_circle_fill_rounded
+                                      : Icons.music_note_rounded,
+                                  color: colors.primary,
+                                  size: 25,
+                                ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
+            ],
           ),
         );
       } else {
