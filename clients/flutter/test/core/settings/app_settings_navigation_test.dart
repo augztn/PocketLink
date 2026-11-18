@@ -78,53 +78,31 @@ void main() {
     );
   });
 
-  test('floating shortcuts persist, validate and reset', () async {
+  test('Music button shortcuts persist, validate and reset', () async {
     final settings = AppSettings.instance;
     const shortcuts = ['music', 'files', 'photos', 'upload'];
 
-    expect(settings.floatingShortcutEnabled, isFalse);
-    expect(settings.floatingShortcutTapAction, 'menu');
-    expect(settings.floatingShortcutLongPressEnabled, isTrue);
-
-    await settings.setFloatingShortcutEnabled(true);
-    await settings.setFloatingShortcutTapAction('menu');
-    await settings.setFloatingShortcutLongPressEnabled(false);
-    await settings.setFloatingShortcuts(shortcuts);
-
-    expect(settings.floatingShortcutEnabled, isTrue);
-    expect(settings.floatingShortcutTapAction, 'menu');
-    expect(settings.floatingShortcutLongPressEnabled, isFalse);
-    expect(settings.floatingShortcuts, shortcuts);
+    await settings.setMusicButtonShortcuts(shortcuts);
+    expect(settings.musicButtonShortcuts, shortcuts);
     final preferences = await SharedPreferences.getInstance();
-    expect(preferences.getBool('settings_floating_shortcut_enabled'), isTrue);
-    expect(preferences.getString('settings_floating_shortcut_tap_action'), 'menu');
-    expect(preferences.getBool('settings_floating_shortcut_long_press'), isFalse);
     expect(preferences.getString('settings_floating_shortcuts'),
         '["music","files","photos","upload"]');
 
     await expectLater(
-      settings.setFloatingShortcuts(const ['music', 'music']),
+      settings.setMusicButtonShortcuts(const ['music', 'music']),
       throwsArgumentError,
     );
     await expectLater(
-      settings.setFloatingShortcuts(const ['unknown']),
+      settings.setMusicButtonShortcuts(const ['unknown']),
       throwsArgumentError,
     );
     await expectLater(
-      settings.setFloatingShortcutTapAction('invalid'),
-      throwsArgumentError,
-    );
-    await expectLater(
-      settings.setFloatingShortcuts(const []),
+      settings.setMusicButtonShortcuts(const []),
       throwsArgumentError,
     );
 
-    await settings.resetFloatingShortcuts();
-    expect(settings.floatingShortcutEnabled, isTrue);
-    expect(settings.floatingShortcutTapAction, 'menu');
-    expect(settings.floatingShortcutLongPressEnabled, isFalse);
-    expect(settings.floatingShortcuts, AppSettings.floatingShortcutDefaults);
-    expect(preferences.getBool('settings_floating_shortcut_enabled'), isTrue);
+    await settings.resetMusicButtonShortcuts();
+    expect(settings.musicButtonShortcuts, AppSettings.musicButtonShortcutDefaults);
     expect(preferences.getString('settings_floating_shortcuts'), isNull);
   });
 
