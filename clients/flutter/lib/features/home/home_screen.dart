@@ -64,13 +64,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _closeHostSetup() {
     if (!_hostSetupOpen) return;
-    setState(() => _hostSetupOpen = false);
+    setState(() {
+      _hostSetupOpen = false;
+      _quickShortcutsExpanded = false;
+      _musicShortcutsExpanded = false;
+    });
   }
 
   void _navigationSettingsChanged() {
     final settings = AppSettings.instance;
     if (!settings.floatingShortcutEnabled && _quickShortcutsExpanded) {
       _quickShortcutsExpanded = false;
+    }
+    if (!settings.musicButtonLongPressEnabled && _musicShortcutsExpanded) {
+      _musicShortcutsExpanded = false;
     }
     final selectedId = switch (_selectedIndex) {
       0 => 'home',
@@ -102,6 +109,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _openTab(int index) => setState(() {
     _hostSetupOpen = false;
+    _quickShortcutsExpanded = false;
+    _musicShortcutsExpanded = false;
     _initializedTabs.add(index);
     _selectedIndex = index;
   });
@@ -109,6 +118,8 @@ class _HomeScreenState extends State<HomeScreen> {
   void _openFileLocation(String? volume, String path) {
     setState(() {
       _hostSetupOpen = false;
+      _quickShortcutsExpanded = false;
+      _musicShortcutsExpanded = false;
       _initializedTabs.add(2);
       _selectedIndex = 2;
       _requestedVolume = volume;
@@ -135,6 +146,8 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     setState(() {
       _hostSetupOpen = false;
+      _quickShortcutsExpanded = false;
+      _musicShortcutsExpanded = false;
       _initializedTabs.add(1);
       _exploreCategory = category;
       _fileCategory = fileCategory ?? 'All';
@@ -213,13 +226,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _expandFloatingShortcuts() {
     HapticFeedback.lightImpact();
-    setState(() => _quickShortcutsExpanded = true);
+    setState(() {
+      _quickShortcutsExpanded = true;
+      _musicShortcutsExpanded = false;
+    });
   }
 
   void _expandMusicShortcuts() {
     if (!AppSettings.instance.musicButtonLongPressEnabled) return;
     HapticFeedback.lightImpact();
-    setState(() => _musicShortcutsExpanded = true);
+    setState(() {
+      _musicShortcutsExpanded = true;
+      _quickShortcutsExpanded = false;
+    });
   }
 
   void _handleMusicButtonSwipe({required bool left}) {
