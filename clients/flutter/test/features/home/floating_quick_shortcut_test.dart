@@ -17,7 +17,6 @@ void main() {
               child: FloatingQuickShortcut(
                 shortcuts: const ['explore', 'music'],
                 expanded: false,
-                useLiquidGlass: false,
                 onTap: () => opened = true,
                 onLongPress: () {},
                 longPressEnabled: true,
@@ -53,8 +52,7 @@ void main() {
                     child: FloatingQuickShortcut(
                       shortcuts: const ['explore', 'music', 'photos'],
                       expanded: expanded,
-                      useLiquidGlass: false,
-                      onTap: () {},
+                            onTap: () {},
                       onLongPress: () => setState(() => expanded = true),
                       longPressEnabled: true,
                       onSelect: (id) => selected = id,
@@ -97,7 +95,6 @@ void main() {
           body: FloatingQuickShortcut(
             shortcuts: const ['explore', 'music'],
             expanded: false,
-            useLiquidGlass: false,
             onTap: () => opened = true,
             onLongPress: () => expanded = true,
             longPressEnabled: false,
