@@ -261,6 +261,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     subtitle: 'Now Playing and original-quality streaming',
                   ),
                   _categoryTile(
+                    icon: Icons.folder_outlined,
+                    title: 'Storage & downloads',
+                    subtitle: 'Download location and cache management',
+                  ),
+                  _categoryTile(
                     icon: Icons.wifi_rounded,
                     title: 'Connection & diagnostics',
                     subtitle: 'Saved servers and diagnostic reports',
@@ -300,25 +305,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     },
                                   ),
                                 ),
-                                SwitchListTile(
-                                  secondary: const Icon(Icons.bolt_rounded),
-                                  title: const Text('Floating Quick-Shortcut Button'),
-                                  subtitle: const Text('Off by default · Show a customizable quick-access button above the navigation bar'),
-                                  value: _settings.floatingShortcutEnabled,
-                                  onChanged: _settings.setFloatingShortcutEnabled,
-                                ),
-                                ListTile(
-                                  leading: const Icon(Icons.tune_rounded),
-                                  title: const Text('Customize Floating Shortcuts'),
-                                  subtitle: Text('${_settings.floatingShortcuts.length} pinned destinations · tap action and press behavior'),
-                                  trailing: const Icon(Icons.chevron_right_rounded),
-                                  onTap: () => Navigator.of(context).push(
-                                    MaterialPageRoute<void>(
-                                      settings: const RouteSettings(name: '/pocketlink-settings/shortcuts'),
-                                      builder: (_) => const FloatingShortcutCustomizationScreen(),
-                                    ),
-                                  ),
-                                ),
+
                               ]),
                   if (widget.category == 'Home screen') _section('Home screen', [
                                 SwitchListTile(
@@ -374,6 +361,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     ),
                                   ),
                                 ),
+                              ]),
+                  _section('Floating shortcuts', [
+                                SwitchListTile(
+                                  secondary: const Icon(Icons.bolt_rounded),
+                                  title: const Text('Floating Quick-Shortcut Button'),
+                                  subtitle: const Text('Off by default · Show a customizable quick-access button above the navigation bar'),
+                                  value: _settings.floatingShortcutEnabled,
+                                  onChanged: _settings.setFloatingShortcutEnabled,
+                                ),
+                                ListTile(
+                                  leading: const Icon(Icons.tune_rounded),
+                                  title: const Text('Customize Floating Shortcuts'),
+                                  subtitle: Text('${_settings.floatingShortcuts.length} pinned destinations · tap action and press behavior'),
+                                  trailing: const Icon(Icons.chevron_right_rounded),
+                                  onTap: () => Navigator.of(context).push(
+                                    MaterialPageRoute<void>(
+                                      settings: const RouteSettings(name: '/pocketlink-settings/shortcuts'),
+                                      builder: (_) => const FloatingShortcutCustomizationScreen(),
+                                    ),
+                                  ),
+                                ),
+                              ]),
+                  _section('Music button gestures', [
                                 SwitchListTile(
                                   secondary: const Icon(Icons.swipe_rounded),
                                   title: const Text('Swipe to change music'),
@@ -446,6 +456,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     avatar: Icon(Icons.verified_rounded, size: 16),
                                   ),
                                 ),
+
+                              ]),
+                  if (widget.category == 'Storage & downloads')
+                            _section('Downloads & cache', [
                                 ListTile(
                                   leading: const Icon(Icons.folder_outlined),
                                   title: const Text('Download directory'),
