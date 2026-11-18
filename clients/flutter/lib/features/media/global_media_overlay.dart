@@ -24,11 +24,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay> {
 
   bool _shouldShowMiniPlayer() {
     final player = _player;
-    return AppSettings.instance.showMiniPlayer &&
-        player.isMusic &&
-        player.isActive &&
-        player.currentItem != null &&
-        !player.isMiniPlayerDismissed;
+    return AppSettings.instance.showMiniPlayer && player.shouldShowMiniPlayer;
   }
 
   Future<void> _openNowPlaying() async {
@@ -82,15 +78,18 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay> {
 
           final Widget navigatorContent;
           if (visible && !onDashboard) {
+            final reservedHeight = _miniPlayerHeight + bottomInset;
             navigatorContent = MediaQuery(
               data: media.copyWith(
+                size: Size(
+                  media.size.width,
+                  (media.size.height - reservedHeight).clamp(0.0, double.infinity),
+                ),
                 padding: media.padding.copyWith(bottom: 0),
                 viewPadding: media.viewPadding.copyWith(bottom: 0),
               ),
               child: Padding(
-                padding: EdgeInsets.only(
-                  bottom: _miniPlayerHeight + bottomInset,
-                ),
+                padding: EdgeInsets.only(bottom: reservedHeight),
                 child: widget.child,
               ),
             );
