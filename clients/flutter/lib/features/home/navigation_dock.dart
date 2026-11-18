@@ -131,7 +131,7 @@ class FloatingNavigationDock extends StatelessWidget {
                   child: GestureDetector(
                     onHorizontalDragEnd: (details) {
                       final velocity = details.primaryVelocity ?? 0;
-                      if (velocity.abs() < 300) return;
+                      if (velocity.abs() < 150) return;
                       if (velocity < 0) {
                         onBrowseSwipeLeft?.call();
                       } else {
