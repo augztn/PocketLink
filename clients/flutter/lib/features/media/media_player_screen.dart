@@ -65,6 +65,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
   String? _gestureMode;
   double? _gestureValue;
   static const MethodChannel _videoControlChannel = MethodChannel('pocketlink/media');
+  final TransformationController _videoTransformController = TransformationController();
 
   List<MediaQueueItem> get _queue => widget.queue.isEmpty
       ? [MediaQueueItem(title: widget.title, path: widget.path, volume: widget.volume)]
@@ -87,6 +88,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
           _currentIndex = index;
           _coverBytes = null;
           _coverForTrack = null;
+          _videoTransformController.value = _videoTransformController.value.clone()..setIdentity();
         });
         unawaited(_loadArtwork(_queue[index]));
       }
@@ -284,6 +286,9 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
       MaterialPageRoute<void>(builder: (_) => const VideoPlayerSettingsScreen()),
     );
     if (!mounted) return;
+    if (!AppSettings.instance.videoPinchZoomEnabled) {
+      _videoTransformController.value = _videoTransformController.value.clone()..setIdentity();
+    }
     setState(() {});
     _revealVideoControls();
   }
@@ -520,6 +525,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
   void dispose() {
     _sleepTimer?.cancel();
     _videoControlsTimer?.cancel();
+    _videoTransformController.dispose();
     if (widget.isVideo) unawaited(_restoreVideoBrightness());
     if (_isVideoFullscreen) {
       unawaited(SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge));
@@ -668,7 +674,13 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Video(
+          InteractiveViewer(
+            transformationController: _videoTransformController,
+            minScale: 1,
+            maxScale: 4,
+            scaleEnabled: AppSettings.instance.videoPinchZoomEnabled,
+            panEnabled: AppSettings.instance.videoPinchZoomEnabled,
+            child: Video(
             controller: _persistent.videoController,
             controls: NoVideoControls,
             fit: switch (AppSettings.instance.videoFitMode) {
@@ -688,6 +700,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
               textAlign: TextAlign.center,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             ),
+          ),
           ),
           Positioned.fill(
             child: GestureDetector(
@@ -714,6 +727,15 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                   ? _updateVerticalVideoGesture
                   : null,
               onVerticalDragEnd: (_) => _endVerticalVideoGesture(),
+              onHorizontalDragEnd: AppSettings.instance.videoGesturesEnabled
+                  ? (details) {
+                      final velocity = details.primaryVelocity ?? 0;
+                      if (velocity.abs() < 250) return;
+                      final seconds = AppSettings.instance.videoSeekSeconds *
+                          (velocity.abs() / 1000).clamp(1, 4).round();
+                      _seekRelative(Duration(seconds: velocity > 0 ? seconds : -seconds));
+                    }
+                  : null,
               child: const SizedBox.expand(),
             ),
           ),
