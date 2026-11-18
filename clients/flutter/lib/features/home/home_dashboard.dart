@@ -1631,7 +1631,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
         onRefresh: () => _refreshStatus(forceRefresh: true),
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: EdgeInsets.fromLTRB(18, 6, 18, 104 + MediaQuery.paddingOf(context).bottom),
+          padding: EdgeInsets.fromLTRB(18, 6, 18, 120 + MediaQuery.paddingOf(context).bottom),
           children: [
             _buildServerTelemetry(context, theme, colors),
             const SizedBox(height: 12),
