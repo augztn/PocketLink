@@ -895,6 +895,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
   }
 
   Widget _buildContinueStrip(BuildContext context, ThemeData theme, ColorScheme colors) {
+    final player = PersistentAudioPlayer.instance;
     final items = HomeActivityStore.instance.itemsForServer(widget.api.baseUrl).take(8).toList();
     if (items.isEmpty) {
       return Container(
@@ -935,6 +936,12 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                       path: recent.path,
                       volume: recent.volume,
                     );
+                    await player.openQueue(
+                      api: widget.api,
+                      queue: [queueItem],
+                      initialIndex: 0,
+                      isMusic: true,
+                    );
                     await Navigator.of(context, rootNavigator: true).push<void>(
                       MaterialPageRoute<void>(
                         settings: const RouteSettings(
@@ -942,8 +949,9 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                         ),
                         builder: (_) => NowPlayingScreen(
                           api: widget.api,
-                          queue: [queueItem],
-                          initialIndex: 0,
+                          queue: player.queue,
+                          initialIndex: player.currentIndex,
+                          resumeExisting: true,
                         ),
                       ),
                     );
