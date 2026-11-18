@@ -142,12 +142,15 @@ class _AppWideControlsState extends State<AppWideControls> {
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () => setState(() => _shortcutsExpanded = false),
-                  child: const SizedBox.expand(),
+                  child: ColoredBox(
+                    color: Colors.black.withValues(alpha: 0.45),
+                    child: const SizedBox.expand(),
+                  ),
                 ),
               ),
             Positioned(
               left: 14,
-              right: 16,
+              right: showShortcut ? 174 : 16,
               bottom: controlsBottom,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
@@ -174,8 +177,8 @@ class _AppWideControlsState extends State<AppWideControls> {
                 child: CompositedTransformFollower(
                   link: _controller.musicButtonLink,
                   showWhenUnlinked: false,
-                  targetAnchor: Alignment.center,
-                  followerAnchor: Alignment.bottomCenter,
+                  targetAnchor: Alignment.centerRight,
+                  followerAnchor: Alignment.bottomRight,
                   offset: const Offset(0, 28),
                   child: FloatingQuickShortcut(
                     shortcuts: _settings.floatingShortcuts,
