@@ -459,7 +459,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                                 Text(
                                                   'Mini-player, artwork, controls and swipe gestures',
                                                   softWrap: true,
-                                                  style: TextStyle(color: Colors.white70),
+                                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                                  ),
                                                 ),
                                               ],
                                             ),
