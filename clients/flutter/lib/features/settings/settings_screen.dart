@@ -11,6 +11,7 @@ import '../../core/settings/app_settings.dart';
 import 'navigation_customization_screen.dart';
 import 'floating_shortcut_customization_screen.dart';
 import 'now_playing_settings_screen.dart';
+import 'video_player_settings_screen.dart';
 import '../about/about_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -359,14 +360,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ),
                                 const Divider(height: 1),
                                 ListTile(
-                                  leading: const Icon(Icons.high_quality_outlined),
-                                  title: const Text('Streaming quality'),
-                                  subtitle: const Text('RAW · Original source quality · No transcoding or compression'),
-                                  trailing: const Chip(
-                                    label: Text('ORIGINAL'),
-                                    avatar: Icon(Icons.verified_rounded, size: 16),
+                                  leading: const Icon(Icons.movie_creation_outlined),
+                                  title: const Text('Video player customization'),
+                                  subtitle: const Text('Gestures, seek shortcuts, controls, scaling and subtitles'),
+                                  trailing: const Icon(Icons.chevron_right_rounded),
+                                  onTap: () => Navigator.of(context).push(
+                                    MaterialPageRoute<void>(
+                                      builder: (_) => const VideoPlayerSettingsScreen(),
+                                    ),
                                   ),
                                 ),
+                                const Divider(height: 1),
                                 ListTile(
                                   leading: const Icon(Icons.folder_outlined),
                                   title: const Text('Download directory'),

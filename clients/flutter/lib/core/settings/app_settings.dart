@@ -27,6 +27,17 @@ class AppSettings extends ChangeNotifier {
   static const _nowPlayingMiniPlayerKey = 'settings_now_playing_mini_player';
   static const _nowPlayingGesturesKey = 'settings_now_playing_gestures';
   static const _nowPlayingStatsForNerdsKey = 'settings_now_playing_stats_for_nerds';
+  static const _videoControlsTimeoutKey = 'settings_video_controls_timeout';
+  static const _videoSeekSecondsKey = 'settings_video_seek_seconds';
+  static const _videoDefaultSpeedKey = 'settings_video_default_speed';
+  static const _videoFitModeKey = 'settings_video_fit_mode';
+  static const _videoGesturesKey = 'settings_video_gestures';
+  static const _videoPinchZoomKey = 'settings_video_pinch_zoom';
+  static const _videoTapToggleKey = 'settings_video_tap_toggle';
+  static const _videoSubtitleFontSizeKey = 'settings_video_subtitle_font_size';
+  static const _videoSubtitleBackgroundKey = 'settings_video_subtitle_background';
+  static const _videoAutoFullscreenKey = 'settings_video_auto_fullscreen';
+  static const _videoFullscreenOrientationKey = 'settings_video_fullscreen_orientation';
   static const homeSectionDefaults = <String>['search', 'quick', 'transfers', 'continue', 'recent'];
   static const navigationDefaults = <String>['home', 'explore', 'files', 'browse'];
   static const floatingShortcutDefaults = <String>[
@@ -58,6 +69,17 @@ class AppSettings extends ChangeNotifier {
   bool _showMiniPlayer = true;
   bool _enableNowPlayingGestures = true;
   bool _showStatsForNerds = true;
+  int _videoControlsTimeoutSeconds = 4;
+  int _videoSeekSeconds = 10;
+  double _videoDefaultSpeed = 1.0;
+  String _videoFitMode = 'contain';
+  bool _videoGesturesEnabled = true;
+  bool _videoPinchZoomEnabled = true;
+  bool _videoTapToTogglePlayback = false;
+  double _videoSubtitleFontSize = 20;
+  bool _videoSubtitleBackground = true;
+  bool _videoAutoFullscreen = false;
+  String _videoFullscreenOrientation = 'landscape';
 
   ThemeMode get themeMode => _themeMode;
   bool get amoled => _amoled;
@@ -79,6 +101,17 @@ class AppSettings extends ChangeNotifier {
   bool get showMiniPlayer => _showMiniPlayer;
   bool get enableNowPlayingGestures => _enableNowPlayingGestures;
   bool get showStatsForNerds => _showStatsForNerds;
+  int get videoControlsTimeoutSeconds => _videoControlsTimeoutSeconds;
+  int get videoSeekSeconds => _videoSeekSeconds;
+  double get videoDefaultSpeed => _videoDefaultSpeed;
+  String get videoFitMode => _videoFitMode;
+  bool get videoGesturesEnabled => _videoGesturesEnabled;
+  bool get videoPinchZoomEnabled => _videoPinchZoomEnabled;
+  bool get videoTapToTogglePlayback => _videoTapToTogglePlayback;
+  double get videoSubtitleFontSize => _videoSubtitleFontSize;
+  bool get videoSubtitleBackground => _videoSubtitleBackground;
+  bool get videoAutoFullscreen => _videoAutoFullscreen;
+  String get videoFullscreenOrientation => _videoFullscreenOrientation;
 
   Future<void> load() async {
     if (_loaded) return;
@@ -88,6 +121,17 @@ class AppSettings extends ChangeNotifier {
       _showMiniPlayer = preferences.getBool(_nowPlayingMiniPlayerKey) ?? true;
       _enableNowPlayingGestures = preferences.getBool(_nowPlayingGesturesKey) ?? true;
       _showStatsForNerds = preferences.getBool(_nowPlayingStatsForNerdsKey) ?? true;
+      _videoControlsTimeoutSeconds = preferences.getInt(_videoControlsTimeoutKey) ?? 4;
+      _videoSeekSeconds = preferences.getInt(_videoSeekSecondsKey) ?? 10;
+      _videoDefaultSpeed = preferences.getDouble(_videoDefaultSpeedKey) ?? 1.0;
+      _videoFitMode = preferences.getString(_videoFitModeKey) ?? 'contain';
+      _videoGesturesEnabled = preferences.getBool(_videoGesturesKey) ?? true;
+      _videoPinchZoomEnabled = preferences.getBool(_videoPinchZoomKey) ?? true;
+      _videoTapToTogglePlayback = preferences.getBool(_videoTapToggleKey) ?? false;
+      _videoSubtitleFontSize = preferences.getDouble(_videoSubtitleFontSizeKey) ?? 20;
+      _videoSubtitleBackground = preferences.getBool(_videoSubtitleBackgroundKey) ?? true;
+      _videoAutoFullscreen = preferences.getBool(_videoAutoFullscreenKey) ?? false;
+      _videoFullscreenOrientation = preferences.getString(_videoFullscreenOrientationKey) ?? 'landscape';
       _floatingShortcutEnabled = preferences.getBool(_floatingShortcutEnabledKey) ?? false;
       final tapAction = preferences.getString(_floatingShortcutTapActionKey);
       _floatingShortcutTapAction = tapAction == 'primary' ? 'primary' : 'menu';
@@ -328,6 +372,70 @@ class AppSettings extends ChangeNotifier {
       preferences.remove(_nowPlayingMiniPlayerKey),
       preferences.remove(_nowPlayingGesturesKey),
       preferences.remove(_nowPlayingStatsForNerdsKey),
+    ]);
+  }
+
+  Future<void> setVideoPlayerOptions({
+    int? controlsTimeoutSeconds, int? seekSeconds, double? defaultSpeed,
+    String? fitMode, bool? gesturesEnabled, bool? pinchZoomEnabled, bool? tapToTogglePlayback,
+    double? subtitleFontSize, bool? subtitleBackground, bool? autoFullscreen,
+    String? fullscreenOrientation,
+  }) async {
+    const speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 3.0, 4.0];
+    if (controlsTimeoutSeconds != null && ![0, 3, 4, 5, 8, 12].contains(controlsTimeoutSeconds)) throw ArgumentError.value(controlsTimeoutSeconds, 'controlsTimeoutSeconds');
+    if (seekSeconds != null && ![5, 10, 15, 30].contains(seekSeconds)) throw ArgumentError.value(seekSeconds, 'seekSeconds');
+    if (defaultSpeed != null && !speeds.contains(defaultSpeed)) throw ArgumentError.value(defaultSpeed, 'defaultSpeed');
+    if (fitMode != null && !['contain', 'cover', 'fill'].contains(fitMode)) throw ArgumentError.value(fitMode, 'fitMode');
+    if (subtitleFontSize != null && (subtitleFontSize < 14 || subtitleFontSize > 32)) throw ArgumentError.value(subtitleFontSize, 'subtitleFontSize');
+    if (fullscreenOrientation != null && !['landscape', 'portrait', 'auto'].contains(fullscreenOrientation)) throw ArgumentError.value(fullscreenOrientation, 'fullscreenOrientation');
+    if (controlsTimeoutSeconds != null) _videoControlsTimeoutSeconds = controlsTimeoutSeconds;
+    if (seekSeconds != null) _videoSeekSeconds = seekSeconds;
+    if (defaultSpeed != null) _videoDefaultSpeed = defaultSpeed;
+    if (fitMode != null) _videoFitMode = fitMode;
+    if (gesturesEnabled != null) _videoGesturesEnabled = gesturesEnabled;
+    if (pinchZoomEnabled != null) _videoPinchZoomEnabled = pinchZoomEnabled;
+    if (tapToTogglePlayback != null) _videoTapToTogglePlayback = tapToTogglePlayback;
+    if (subtitleFontSize != null) _videoSubtitleFontSize = subtitleFontSize;
+    if (subtitleBackground != null) _videoSubtitleBackground = subtitleBackground;
+    if (autoFullscreen != null) _videoAutoFullscreen = autoFullscreen;
+    if (fullscreenOrientation != null) _videoFullscreenOrientation = fullscreenOrientation;
+    notifyListeners();
+    final preferences = await SharedPreferences.getInstance();
+    await Future.wait([
+      if (controlsTimeoutSeconds != null) preferences.setInt(_videoControlsTimeoutKey, controlsTimeoutSeconds),
+      if (seekSeconds != null) preferences.setInt(_videoSeekSecondsKey, seekSeconds),
+      if (defaultSpeed != null) preferences.setDouble(_videoDefaultSpeedKey, defaultSpeed),
+      if (fitMode != null) preferences.setString(_videoFitModeKey, fitMode),
+      if (gesturesEnabled != null) preferences.setBool(_videoGesturesKey, gesturesEnabled),
+      if (pinchZoomEnabled != null) preferences.setBool(_videoPinchZoomKey, pinchZoomEnabled),
+      if (tapToTogglePlayback != null) preferences.setBool(_videoTapToggleKey, tapToTogglePlayback),
+      if (subtitleFontSize != null) preferences.setDouble(_videoSubtitleFontSizeKey, subtitleFontSize),
+      if (subtitleBackground != null) preferences.setBool(_videoSubtitleBackgroundKey, subtitleBackground),
+      if (autoFullscreen != null) preferences.setBool(_videoAutoFullscreenKey, autoFullscreen),
+      if (fullscreenOrientation != null) preferences.setString(_videoFullscreenOrientationKey, fullscreenOrientation),
+    ]);
+  }
+
+  Future<void> resetVideoPlayerOptions() async {
+    _videoControlsTimeoutSeconds = 4;
+    _videoSeekSeconds = 10;
+    _videoDefaultSpeed = 1.0;
+    _videoFitMode = 'contain';
+    _videoGesturesEnabled = true;
+    _videoPinchZoomEnabled = true;
+    _videoTapToTogglePlayback = false;
+    _videoSubtitleFontSize = 20;
+    _videoSubtitleBackground = true;
+    _videoAutoFullscreen = false;
+    _videoFullscreenOrientation = 'landscape';
+    notifyListeners();
+    final preferences = await SharedPreferences.getInstance();
+    await Future.wait([
+      preferences.remove(_videoControlsTimeoutKey), preferences.remove(_videoSeekSecondsKey),
+      preferences.remove(_videoDefaultSpeedKey), preferences.remove(_videoFitModeKey),
+      preferences.remove(_videoGesturesKey), preferences.remove(_videoPinchZoomKey), preferences.remove(_videoTapToggleKey),
+      preferences.remove(_videoSubtitleFontSizeKey), preferences.remove(_videoSubtitleBackgroundKey),
+      preferences.remove(_videoAutoFullscreenKey), preferences.remove(_videoFullscreenOrientationKey),
     ]);
   }
 
