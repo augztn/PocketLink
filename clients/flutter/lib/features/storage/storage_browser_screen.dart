@@ -8,6 +8,7 @@ import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../core/network/server_api.dart';
+import '../../core/navigation/pocketlink_navigation.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/settings/app_settings.dart';
 import '../media/now_playing_screen.dart';
@@ -203,8 +204,11 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
       'source': 'external',
       'extension': item.name.contains('.') ? item.name.split('.').last.toLowerCase() : 'unknown',
     });
-    await Navigator.of(context, rootNavigator: true).push(
+    await Navigator.of(context, rootNavigator: true).push<void>(
       MaterialPageRoute<void>(
+        settings: const RouteSettings(
+          name: PocketLinkRouteNames.nowPlaying,
+        ),
         builder: (_) => NowPlayingScreen(
           api: widget.api,
           queue: [
