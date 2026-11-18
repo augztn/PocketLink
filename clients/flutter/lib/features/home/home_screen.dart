@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/navigation/pocketlink_navigation.dart';
 import 'navigation_dock.dart';
-import 'floating_quick_shortcut.dart';
 import 'explore_search_screens.dart';
 import 'home_dashboard.dart';
 import '../media/media_player_screen.dart';
@@ -40,7 +39,6 @@ class _HomeScreenState extends State<HomeScreen> {
   int _externalDriveRequest = 0;
   int _fileLocationRequest = 0;
   int _uploadRequest = 0;
-  bool _quickShortcutsExpanded = false;
   bool _musicShortcutsExpanded = false;
   bool _filesCanNavigateBack = false;
   bool _openingNowPlaying = false;
@@ -57,7 +55,7 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _hostSetupInitialized = true;
       _hostSetupOpen = true;
-      _quickShortcutsExpanded = false;
+      _musicShortcutsExpanded = false;
       _musicShortcutsExpanded = false;
     });
   }
@@ -66,16 +64,13 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!_hostSetupOpen) return;
     setState(() {
       _hostSetupOpen = false;
-      _quickShortcutsExpanded = false;
+      _musicShortcutsExpanded = false;
       _musicShortcutsExpanded = false;
     });
   }
 
   void _navigationSettingsChanged() {
     final settings = AppSettings.instance;
-    if (!settings.floatingShortcutEnabled && _quickShortcutsExpanded) {
-      _quickShortcutsExpanded = false;
-    }
     if (!settings.musicButtonLongPressEnabled && _musicShortcutsExpanded) {
       _musicShortcutsExpanded = false;
     }
@@ -109,7 +104,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _openTab(int index) => setState(() {
     _hostSetupOpen = false;
-    _quickShortcutsExpanded = false;
+    _musicShortcutsExpanded = false;
     _musicShortcutsExpanded = false;
     _initializedTabs.add(index);
     _selectedIndex = index;
@@ -118,7 +113,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _openFileLocation(String? volume, String path) {
     setState(() {
       _hostSetupOpen = false;
-      _quickShortcutsExpanded = false;
+      _musicShortcutsExpanded = false;
       _musicShortcutsExpanded = false;
       _initializedTabs.add(2);
       _selectedIndex = 2;
@@ -131,7 +126,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _openExternalStorage() {
     setState(() {
       _hostSetupOpen = false;
-      _quickShortcutsExpanded = false;
+      _musicShortcutsExpanded = false;
       _musicShortcutsExpanded = false;
       _initializedTabs.add(2);
       _selectedIndex = 2;
@@ -148,7 +143,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     setState(() {
       _hostSetupOpen = false;
-      _quickShortcutsExpanded = false;
+      _musicShortcutsExpanded = false;
       _musicShortcutsExpanded = false;
       _initializedTabs.add(1);
       _exploreCategory = category;
@@ -158,13 +153,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
 
-  void _openFloatingShortcut(String id) {
-    if (_quickShortcutsExpanded || _musicShortcutsExpanded) {
-      setState(() {
-        _quickShortcutsExpanded = false;
-        _musicShortcutsExpanded = false;
-      });
-    }
+  void _openMusicShortcut(String id) {
     switch (id) {
       case 'explore':
         _openTab(1);
@@ -226,20 +215,12 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _expandFloatingShortcuts() {
-    HapticFeedback.lightImpact();
-    setState(() {
-      _quickShortcutsExpanded = true;
-      _musicShortcutsExpanded = false;
-    });
-  }
-
   void _expandMusicShortcuts() {
     if (!AppSettings.instance.musicButtonLongPressEnabled) return;
     HapticFeedback.lightImpact();
     setState(() {
       _musicShortcutsExpanded = true;
-      _quickShortcutsExpanded = false;
+      _musicShortcutsExpanded = false;
     });
   }
 
@@ -261,12 +242,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _openNowPlaying(PersistentAudioPlayer player) async {
     if (_openingNowPlaying) return;
-    if (_musicShortcutsExpanded || _quickShortcutsExpanded) {
-      setState(() {
-        _musicShortcutsExpanded = false;
-        _quickShortcutsExpanded = false;
-      });
-    }
     final item = player.currentItem;
     final api = player.api;
     if (player.isActive && item != null && api != null) {
@@ -360,14 +335,14 @@ class _HomeScreenState extends State<HomeScreen> {
     ];
 
     return PopScope(
-      canPop: !_hostSetupOpen && _selectedIndex == 0 && !_quickShortcutsExpanded && !_musicShortcutsExpanded,
+      canPop: !_hostSetupOpen && _selectedIndex == 0 && !_musicShortcutsExpanded,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
         if (_hostSetupOpen) {
           _closeHostSetup();
-        } else if (_quickShortcutsExpanded || _musicShortcutsExpanded) {
+        } else if (_musicShortcutsExpanded) {
           setState(() {
-            _quickShortcutsExpanded = false;
+            _musicShortcutsExpanded = false;
             _musicShortcutsExpanded = false;
           });
         } else if (_selectedIndex == 2 && _filesCanNavigateBack) {
@@ -410,36 +385,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
                 child: IndexedStack(index: _hostSetupOpen ? 3 : _selectedIndex, children: pages),
               ),
-              if (!_hostSetupOpen && (_quickShortcutsExpanded || _musicShortcutsExpanded))
+              if (!_hostSetupOpen && _musicShortcutsExpanded)
                 Positioned.fill(
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onTap: () => setState(() {
-                      _quickShortcutsExpanded = false;
-                      _musicShortcutsExpanded = false;
-                    }),
+                    onTap: () => setState(() => _musicShortcutsExpanded = false),
                     child: const SizedBox.expand(),
-                  ),
-                ),
-              if (!_hostSetupOpen && AppSettings.instance.floatingShortcutEnabled)
-                Positioned(
-                  right: 16,
-                  bottom: 90 + MediaQuery.paddingOf(context).bottom,
-                  child: FloatingQuickShortcut(
-                    shortcuts: AppSettings.instance.floatingShortcuts,
-                    expanded: _quickShortcutsExpanded,
-                    useLiquidGlass: AppSettings.instance.useLiquidGlass,
-                    onTap: () {
-                      final settings = AppSettings.instance;
-                      if (settings.floatingShortcutTapAction == 'menu') {
-                        _expandFloatingShortcuts();
-                      } else {
-                        _openFloatingShortcut(settings.floatingShortcuts.first);
-                      }
-                    },
-                    onLongPress: _expandFloatingShortcuts,
-                    longPressEnabled: AppSettings.instance.floatingShortcutLongPressEnabled,
-                    onSelect: _openFloatingShortcut,
                   ),
                 ),
             ],
@@ -457,12 +408,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 hasMedia: player.isActive && player.currentItem != null,
                 isVideo: player.isActive && !player.isMusic,
                 onSelect: _openTab,
-                musicShortcuts: AppSettings.instance.floatingShortcuts,
+                musicShortcuts: AppSettings.instance.musicButtonShortcuts,
                 musicShortcutsExpanded: _musicShortcutsExpanded,
                 musicShortcutsBottomOffset: 64.0 +
                     (AppSettings.instance.showMiniPlayer && player.shouldShowMiniPlayer ? 62.0 : 0.0),
                 onMusicShortcutLongPress: _expandMusicShortcuts,
-                onMusicShortcutSelected: _openFloatingShortcut,
+                onMusicShortcutSelected: _openMusicShortcut,
                 onBrowseSwipeLeft: () => _handleMusicButtonSwipe(left: true),
                 onBrowseSwipeRight: () => _handleMusicButtonSwipe(left: false),
                 onBrowsePressed: () {
