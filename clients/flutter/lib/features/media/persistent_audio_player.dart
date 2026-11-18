@@ -36,7 +36,8 @@ class PersistentAudioPlayer extends ChangeNotifier {
       notifyListeners();
       unawaited(_syncMediaSession());
     });
-    _playingSubscription = player.stream.playing.listen((_) {
+    _playingSubscription = player.stream.playing.listen((playing) {
+      if (playing) _miniPlayerDismissed = false;
       notifyListeners();
       unawaited(_syncMediaSession());
     });
@@ -70,14 +71,14 @@ class PersistentAudioPlayer extends ChangeNotifier {
   int _currentIndex = 0;
   bool _active = false;
   bool _music = false;
-  bool _fullScreen = false;
+  bool _miniPlayerDismissed = false;
 
   List<MediaQueueItem> get queue => _queue;
   ServerApi? get api => _api;
   int get currentIndex => _currentIndex;
   bool get isActive => _active;
   bool get isMusic => _music;
-  bool get isFullScreen => _fullScreen;
+  bool get isMiniPlayerDismissed => _miniPlayerDismissed;
   bool get isPlaying => player.state.playing;
   bool get hasSleepTimer => _sleepTimer?.isActive ?? false;
 
@@ -98,10 +99,6 @@ class PersistentAudioPlayer extends ChangeNotifier {
   MediaQueueItem? get currentItem =>
       _queue.isEmpty ? null : _queue[_currentIndex.clamp(0, _queue.length - 1).toInt()];
 
-  /// Legacy mini-player widget is intentionally kept hidden; Home uses a FAB.
-  bool get showMiniPlayer => false;
-
-
   Future<void> openQueue({
     required ServerApi api,
     required List<MediaQueueItem> queue,
@@ -114,7 +111,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
     _currentIndex = initialIndex.clamp(0, _queue.length - 1).toInt();
     _music = isMusic;
     _active = true;
-    _fullScreen = true;
+    _miniPlayerDismissed = false;
     notifyListeners();
 
     final tracks = _queue.map((item) => Media(
@@ -152,17 +149,16 @@ class PersistentAudioPlayer extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setFullScreen(bool value) {
-    _fullScreen = value;
+  void dismissMiniPlayer() {
+    if (player.state.playing || _miniPlayerDismissed) return;
+    _miniPlayerDismissed = true;
     notifyListeners();
   }
 
   Future<void> closePlayerScreen({required bool isVideo}) async {
-    // Keep the queue and position so HomeScreen can reopen the current session.
+    // Keep the queue and position when a player surface closes.
     // Pause video when its surface closes; audio continues in the background.
     if (isVideo && player.state.playing) await player.pause();
-    _fullScreen = false;
-    notifyListeners();
   }
 
   Future<void> togglePlayback() async {
@@ -193,7 +189,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
     _nativeSessionStarted = false;
     _active = false;
     _music = false;
-    _fullScreen = false;
+    _miniPlayerDismissed = false;
     _queue = const [];
     _currentIndex = 0;
     _api = null;
