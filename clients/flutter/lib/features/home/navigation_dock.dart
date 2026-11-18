@@ -353,7 +353,7 @@ class _MusicDockButtonState extends State<_MusicDockButton>
         label: widget.hasMedia && widget.isVideo ? 'Video player' : 'Music',
         customSemanticsActions: {
           ...?semanticsActions,
-          CustomSemanticsAction(label: 'Open Explore'): () => widget.onLongPress?.call(),
+          CustomSemanticsAction(label: 'Open shortcuts'): () => widget.onLongPress?.call(),
         },
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
