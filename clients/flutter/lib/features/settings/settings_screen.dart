@@ -362,7 +362,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   ),
                                 ),
                               ]),
-                  _section('Floating shortcuts', [
+                  if (widget.category == 'Navigation & shortcuts')
+                    _section('Floating shortcuts', [
                                 SwitchListTile(
                                   secondary: const Icon(Icons.bolt_rounded),
                                   title: const Text('Floating Quick-Shortcut Button'),
@@ -383,7 +384,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   ),
                                 ),
                               ]),
-                  _section('Music button gestures', [
+                  if (widget.category == 'Navigation & shortcuts')
+                    _section('Music button gestures', [
                                 SwitchListTile(
                                   secondary: const Icon(Icons.swipe_rounded),
                                   title: const Text('Swipe to change music'),
@@ -433,7 +435,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ),
                               ]),
                   if (widget.category == 'Media & playback')
-                            _section('Media & Storage', [
+                            _section('Playback', [
                                 ListTile(
                                   leading: const Icon(Icons.graphic_eq_rounded),
                                   title: const Text('Now Playing customization'),
