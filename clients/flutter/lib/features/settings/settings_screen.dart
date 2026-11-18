@@ -291,13 +291,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   ),
                                 ),
                                 SwitchListTile(
-                                  secondary: const Icon(Icons.blur_on_rounded),
-                                  title: const Text('Liquid Glass UI'),
-                                  subtitle: const Text('Translucent frosted blur on floating navigation and action pills'),
-                                  value: _settings.useLiquidGlass,
-                                  onChanged: _settings.setUseLiquidGlass,
-                                ),
-                                SwitchListTile(
                                   secondary: const Icon(Icons.bolt_rounded),
                                   title: const Text('Floating Quick-Shortcut Button'),
                                   subtitle: const Text('Off by default · Show a customizable quick-access button above the navigation bar'),
