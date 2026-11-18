@@ -79,6 +79,8 @@ class PersistentAudioPlayer extends ChangeNotifier {
   bool get isActive => _active;
   bool get isMusic => _music;
   bool get isMiniPlayerDismissed => _miniPlayerDismissed;
+  bool get shouldShowMiniPlayer =>
+      _music && _active && currentItem != null && !_miniPlayerDismissed;
   bool get isPlaying => player.state.playing;
   bool get hasSleepTimer => _sleepTimer?.isActive ?? false;
 
