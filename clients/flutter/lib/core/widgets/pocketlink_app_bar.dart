@@ -1,5 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../navigation/pocketlink_navigation.dart';
+
 class PocketLinkAppBarAction {
   const PocketLinkAppBarAction({
     required this.label,
