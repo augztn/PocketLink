@@ -23,11 +23,16 @@ class PersistentMiniPlayer extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final radius = BorderRadius.circular(28);
 
+    var verticalDragDistance = 0.0;
+
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
+      onVerticalDragStart: (_) => verticalDragDistance = 0,
+      onVerticalDragUpdate: (details) => verticalDragDistance += details.delta.dy,
       onVerticalDragEnd: (details) {
         final velocity = details.primaryVelocity ?? 0;
-        if (!player.isPlaying && velocity > 300) onDismiss();
+        final swipedUp = verticalDragDistance < -24 || velocity < -250;
+        if (!player.isPlaying && swipedUp) onDismiss();
       },
       child: LiquidGlassPill(
         radius: radius,
