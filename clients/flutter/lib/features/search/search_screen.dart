@@ -12,6 +12,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/network/server_api.dart';
+import '../../core/navigation/pocketlink_navigation.dart';
 import '../../core/network/offline_file_cache.dart';
 import 'dart:io';
 import '../files/file_manager_screen.dart';
@@ -431,11 +432,18 @@ class _SearchScreenState extends State<SearchScreen> {
         : _visible.where((v) => audio ? _audio.contains(_ext(v.file.name)) : _video.contains(_ext(v.file.name)))
           .map((v) => MediaQueueItem(title: v.file.name, path: v.path, volume: v.volume, localPath: v.localPath, size: v.file.size)).toList(growable: false);
       final index = queue.indexWhere((v) => v.path == r.path && v.volume == r.volume);
-      await Navigator.push(context, MaterialPageRoute<void>(builder: (_) => audio
+      await Navigator.of(context, rootNavigator: true).push<void>(
+        MaterialPageRoute<void>(
+          settings: audio
+              ? const RouteSettings(name: PocketLinkRouteNames.nowPlaying)
+              : null,
+          builder: (_) => audio
         ? NowPlayingScreen(api: widget.api, queue: queue, initialIndex: index < 0 ? 0 : index)
         : MediaPlayerScreen(
             api: widget.api, title: r.file.name, path: r.path, volume: r.volume,
-            isVideo: true, queue: queue, initialIndex: index < 0 ? 0 : index)));
+            isVideo: true, queue: queue, initialIndex: index < 0 ? 0 : index),
+        ),
+      );
     } else if (_photo.contains(e)) {
       await Navigator.push(context, MaterialPageRoute<void>(builder: (_) => Scaffold(
         appBar: PocketLinkAppBar(title: Text(r.file.name)),
