@@ -43,6 +43,9 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   };
   static const _maxDirectories = 10000;
   static const _maxDepth = 24;
+  static final Map<String, List<_MediaFile>> _sessionMediaCache = {};
+
+  String get _cacheKey => '${widget.api.baseUrl}::${widget.type.name}';
 
   List<_MediaFile> _media = const [];
   bool _loading = true;
@@ -73,6 +76,8 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     _stateKey = widget.api.baseUrl;
     _browserState = Provider.of<BrowserStateStore>(context, listen: false);
     final saved = _browserState.mediaState(_stateKey, widget.type.name);
+    _media = _sessionMediaCache[_cacheKey] ?? const [];
+    _loading = !_sessionMediaCache.containsKey(_cacheKey);
     _selectedVolume = saved.selectedVolume;
     _libraryView = saved.view;
     _layoutMode = saved.layoutMode;
@@ -175,9 +180,9 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     if (!mounted) return;
     widget.api.clearMediaCache();
     setState(() {
-      _loading = true;
+      // Keep the last indexed list on screen while this visit refreshes it.
+      _loading = _media.isEmpty;
       _error = null;
-      _media = const [];
       _scannedDirectories = 0;
       _skippedDirectories = 0;
     });
@@ -186,7 +191,11 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       var result = await _readIndexedMedia();
       var found = result.items;
       var status = result.status;
-      if (mounted) setState(() => _media = List.unmodifiable(found));
+      if (mounted && found.isNotEmpty) {
+        final snapshot = List<_MediaFile>.unmodifiable(found);
+        _sessionMediaCache[_cacheKey] = snapshot;
+        setState(() => _media = snapshot);
+      }
 
       // Keep the existing index visible while scanning. Poll only lightweight
       // status; reload media once after the scan finishes.
@@ -208,8 +217,10 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         return;
       }
       if (mounted) {
+        final snapshot = List<_MediaFile>.unmodifiable(found);
+        _sessionMediaCache[_cacheKey] = snapshot;
         setState(() {
-          _media = List.unmodifiable(found);
+          _media = snapshot;
           _loading = false;
           _error = status.state == 'partial' && found.isEmpty
               ? status.lastError
@@ -229,14 +240,14 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     if (refresh) widget.api.invalidateDirectoryCache();
     widget.api.clearMediaCache();
     setState(() {
-      _loading = true;
+      _loading = _media.isEmpty;
       _error = null;
-      _media = const [];
       _scannedDirectories = 0;
       _skippedDirectories = 0;
     });
 
     final found = <_MediaFile>[];
+    var completed = false;
     final visited = <String>{};
     final pending = <({String path, int depth, String? volume})>[];
 
@@ -309,14 +320,12 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
           }
         }
 
-        if (mounted) {
-          setState(() => _media = List.unmodifiable(found));
-        }
       }
 
       if (cursor < pending.length) _skippedDirectories++;
       found.sort((a, b) =>
           a.entry.name.toLowerCase().compareTo(b.entry.name.toLowerCase()));
+      completed = true;
     } on DioException catch (error) {
       if (!mounted) return;
       final status = error.response?.statusCode;
@@ -329,8 +338,12 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       if (mounted) setState(() => _error = 'Could not scan media folders.');
     } finally {
       if (mounted) {
+        if (completed) {
+          final snapshot = List<_MediaFile>.unmodifiable(found);
+          _sessionMediaCache[_cacheKey] = snapshot;
+          _media = snapshot;
+        }
         setState(() {
-          _media = List.unmodifiable(found);
           _loading = false;
         });
         WidgetsBinding.instance.addPostFrameCallback((_) => _restoreScrollOffset());
