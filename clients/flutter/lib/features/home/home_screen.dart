@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 
 import '../../core/settings/app_settings.dart';
 import 'navigation_dock.dart';
-import 'floating_quick_shortcut.dart';
 import 'explore_search_screens.dart';
 import 'home_dashboard.dart';
 import '../media/media_player_screen.dart';
@@ -11,6 +10,7 @@ import '../media/now_playing_screen.dart';
 import '../media/media_browser_screen.dart';
 import '../library/photo_gallery_screen.dart';
 import '../media/persistent_audio_player.dart';
+import '../media/global_media_controls.dart';
 
 import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
@@ -38,9 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _externalDriveRequest = 0;
   int _fileLocationRequest = 0;
   int _uploadRequest = 0;
-  bool _quickShortcutsExpanded = false;
   bool _filesCanNavigateBack = false;
-  bool _miniPlayerDismissed = false;
   bool _nowPlayingRouteOpen = false;
   late bool _lastPlayerPlaying;
   String? _requestedVolume;
@@ -51,27 +49,25 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _lastPlayerPlaying = PersistentAudioPlayer.instance.isPlaying;
     PersistentAudioPlayer.instance.addListener(_playerStateChanged);
+    GlobalMediaControlsController.instance.attach(
+      onOpenNowPlaying: () => _openNowPlaying(PersistentAudioPlayer.instance),
+      onShortcut: _openFloatingShortcut,
+    );
     AppSettings.instance.addListener(_navigationSettingsChanged);
   }
 
   void _playerStateChanged() {
     final isPlaying = PersistentAudioPlayer.instance.isPlaying;
-    if (isPlaying && !_lastPlayerPlaying && _miniPlayerDismissed && mounted) {
-      setState(() => _miniPlayerDismissed = false);
+    if (isPlaying && !_lastPlayerPlaying) {
+      GlobalMediaControlsController.instance.restoreMiniPlayer();
     }
     _lastPlayerPlaying = isPlaying;
-  }
-
-  void _dismissMiniPlayer() {
-    if (PersistentAudioPlayer.instance.isPlaying || _miniPlayerDismissed) return;
-    setState(() => _miniPlayerDismissed = true);
   }
 
   void _openHostSetup() {
     setState(() {
       _hostSetupInitialized = true;
       _hostSetupOpen = true;
-      _quickShortcutsExpanded = false;
     });
   }
 
@@ -82,9 +78,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _navigationSettingsChanged() {
     final settings = AppSettings.instance;
-    if (!settings.floatingShortcutEnabled && _quickShortcutsExpanded) {
-      _quickShortcutsExpanded = false;
-    }
     final selectedId = switch (_selectedIndex) {
       0 => 'home',
       1 => 'explore',
@@ -158,9 +151,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
 
   void _openFloatingShortcut(String id) {
-    if (_quickShortcutsExpanded) {
-      setState(() => _quickShortcutsExpanded = false);
-    }
+    GlobalMediaControlsController.instance.collapseShortcuts();
     switch (id) {
       case 'explore':
         _openTab(1);
@@ -211,17 +202,13 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _expandFloatingShortcuts() {
-    HapticFeedback.lightImpact();
-    setState(() => _quickShortcutsExpanded = true);
-  }
-
   Future<void> _openNowPlaying(PersistentAudioPlayer player) async {
     if (_nowPlayingRouteOpen) return;
     final item = player.currentItem;
     final api = player.api;
     if (player.isActive && item != null && api != null) {
       setState(() => _nowPlayingRouteOpen = true);
+      GlobalMediaControlsController.instance.setNowPlayingRouteOpen(true);
       try {
         await Navigator.of(context).push<void>(MaterialPageRoute<void>(
           builder: (_) => player.isMusic
@@ -243,6 +230,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
         ));
       } finally {
+        GlobalMediaControlsController.instance.setNowPlayingRouteOpen(false);
         if (mounted) setState(() => _nowPlayingRouteOpen = false);
       }
     } else {
@@ -253,16 +241,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final player = PersistentAudioPlayer.instance;
-    final showMiniPlayer = AppSettings.instance.showMiniPlayer &&
-        player.isMusic &&
-        player.isActive &&
-        player.currentItem != null &&
-        !_miniPlayerDismissed &&
-        !_nowPlayingRouteOpen;
-    final bottomSafeArea = MediaQuery.paddingOf(context).bottom;
-    // Keep the floating shortcut above the mini-player instead of letting
-    // both controls occupy the same bottom-right area.
-    final shortcutBottom = 90 + bottomSafeArea + (showMiniPlayer ? 66 : 0);
     final pages = [
       HomeDashboard(
         api: widget.api,
@@ -316,13 +294,11 @@ class _HomeScreenState extends State<HomeScreen> {
     ];
 
     return PopScope(
-      canPop: !_hostSetupOpen && _selectedIndex == 0 && !_quickShortcutsExpanded,
+      canPop: !_hostSetupOpen && _selectedIndex == 0,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
         if (_hostSetupOpen) {
           _closeHostSetup();
-        } else if (_quickShortcutsExpanded) {
-          setState(() => _quickShortcutsExpanded = false);
         } else if (_selectedIndex == 2 && _filesCanNavigateBack) {
           // FileManagerScreen handles folder-level back navigation.
         } else if (_selectedIndex != 0) {
@@ -363,55 +339,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
                 child: IndexedStack(index: _hostSetupOpen ? 3 : _selectedIndex, children: pages),
               ),
-              if (!_hostSetupOpen && AppSettings.instance.floatingShortcutEnabled && _quickShortcutsExpanded)
-                Positioned.fill(
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => setState(() => _quickShortcutsExpanded = false),
-                    child: const SizedBox.expand(),
-                  ),
-                ),
-              if (!_hostSetupOpen && AppSettings.instance.floatingShortcutEnabled)
-                AnimatedPositioned(
-                  duration: const Duration(milliseconds: 220),
-                  curve: Curves.easeInOutCubic,
-                  right: 16,
-                  bottom: shortcutBottom,
-                  child: FloatingQuickShortcut(
-                    shortcuts: AppSettings.instance.floatingShortcuts,
-                    expanded: _quickShortcutsExpanded,
-                    useLiquidGlass: AppSettings.instance.useLiquidGlass,
-                    onTap: () {
-                      final settings = AppSettings.instance;
-                      if (settings.floatingShortcutTapAction == 'menu') {
-                        _expandFloatingShortcuts();
-                      } else {
-                        _openFloatingShortcut(settings.floatingShortcuts.first);
-                      }
-                    },
-                    onLongPress: _expandFloatingShortcuts,
-                    longPressEnabled: AppSettings.instance.floatingShortcutLongPressEnabled,
-                    onSelect: _openFloatingShortcut,
-                  ),
-                ),
             ],
           ),
           bottomNavigationBar: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              AnimatedSize(
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeInOutCubic,
-                alignment: Alignment.bottomCenter,
-                child: showMiniPlayer
-                    ? _MiniPlayerBar(
-                        player: player,
-                        onOpen: () => _openNowPlaying(player),
-                        onDismiss: _dismissMiniPlayer,
-                      )
-                    : const SizedBox(width: double.infinity, height: 0),
-              ),
-                FloatingNavigationDock(
+              FloatingNavigationDock(
                 order: AppSettings.instance.navigationOrder,
                 visibleItems: AppSettings.instance.visibleNavigationItems,
                 selectedIndex: _selectedIndex,
@@ -434,70 +367,3 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 
-
-class _MiniPlayerBar extends StatelessWidget {
-  const _MiniPlayerBar({required this.player, required this.onOpen, required this.onDismiss});
-
-  final PersistentAudioPlayer player;
-  final VoidCallback onOpen;
-  final VoidCallback onDismiss;
-
-  @override
-  Widget build(BuildContext context) {
-    final item = player.currentItem!;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
-      child: Material(
-        color: Theme.of(context).colorScheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(16),
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onVerticalDragEnd: (details) {
-            final velocity = details.primaryVelocity ?? 0;
-            if (!player.isPlaying && velocity > 300) onDismiss();
-          },
-          child: InkWell(
-            borderRadius: BorderRadius.circular(16),
-            onTap: onOpen,
-            child: SizedBox(
-            height: 58,
-            child: Row(
-              children: [
-                const SizedBox(width: 14),
-                Icon(Icons.music_note_rounded, color: Theme.of(context).colorScheme.primary),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w700)),
-                      const Text('NOW PLAYING', style: TextStyle(fontSize: 9, letterSpacing: 1.1)),
-                    ],
-                  ),
-                ),
-                StreamBuilder<bool>(
-                  stream: player.player.stream.playing,
-                  initialData: player.player.state.playing,
-                  builder: (context, snapshot) => IconButton(
-                    tooltip: (snapshot.data ?? false) ? 'Pause' : 'Play',
-                    onPressed: player.togglePlayback,
-                    icon: Icon((snapshot.data ?? false) ? Icons.pause_rounded : Icons.play_arrow_rounded),
-                  ),
-                ),
-                IconButton(
-                  tooltip: 'Next track',
-                  onPressed: player.skipToNext,
-                  icon: const Icon(Icons.skip_next_rounded),
-                ),
-                const SizedBox(width: 4),
-              ],
-            ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
