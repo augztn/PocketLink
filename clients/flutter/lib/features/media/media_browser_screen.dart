@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import '../../core/widgets/pocketlink_app_bar.dart';
+import '../../core/logging/diagnostic_observer.dart';
 import '../../core/widgets/compact_search_field.dart';
 
 import 'package:dio/dio.dart';
@@ -387,6 +388,13 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         ),
       );
     } finally {
+      // Reconcile global controls after returning from Now Playing. This is
+      // also required when the media browser is hosted by a nested Navigator.
+      if (mounted) {
+        DiagnosticNavigatorObserver.instance.refreshForRoute(
+          ModalRoute.of(context),
+        );
+      }
       _openingMedia = false;
     }
   }
