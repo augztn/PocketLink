@@ -23,7 +23,7 @@ class _NetworkHandoffAdapter implements HttpClientAdapter {
       );
     }
     retryUsedFreshConnection =
-        options.headers[Headers.connectionHeader] == 'close';
+        options.headers['connection'] == 'close';
     return ResponseBody.fromString(
       '{"path":"","items":[]}',
       200,
