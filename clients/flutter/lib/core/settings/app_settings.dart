@@ -61,7 +61,7 @@ class AppSettings extends ChangeNotifier {
   bool _floatingShortcutLongPressEnabled = true;
   List<String> _floatingShortcuts = List.of(floatingShortcutDefaults);
   Future<void> _floatingShortcutsWrite = Future<void>.value();
-  bool _showMiniPlayer = true;
+  bool _showMiniPlayer = false;
   bool _enableNowPlayingGestures = true;
   bool _showStatsForNerds = true;
 
@@ -94,7 +94,7 @@ class AppSettings extends ChangeNotifier {
     try {
       final preferences = await SharedPreferences.getInstance();
       _useLiquidGlass = preferences.getBool(_liquidGlassKey) ?? false;
-      _showMiniPlayer = preferences.getBool(_nowPlayingMiniPlayerKey) ?? true;
+      _showMiniPlayer = preferences.getBool(_nowPlayingMiniPlayerKey) ?? false;
       _navigationMusicSwipeEnabled = preferences.getBool(_navigationMusicSwipeKey) ?? true;
        final leftAction = preferences.getString(_navigationMusicSwipeLeftKey);
        final rightAction = preferences.getString(_navigationMusicSwipeRightKey);
