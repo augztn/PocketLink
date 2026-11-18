@@ -56,7 +56,6 @@ class _HomeScreenState extends State<HomeScreen> {
       _hostSetupInitialized = true;
       _hostSetupOpen = true;
       _musicShortcutsExpanded = false;
-      _musicShortcutsExpanded = false;
     });
   }
 
@@ -64,7 +63,6 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!_hostSetupOpen) return;
     setState(() {
       _hostSetupOpen = false;
-      _musicShortcutsExpanded = false;
       _musicShortcutsExpanded = false;
     });
   }
@@ -105,7 +103,6 @@ class _HomeScreenState extends State<HomeScreen> {
   void _openTab(int index) => setState(() {
     _hostSetupOpen = false;
     _musicShortcutsExpanded = false;
-    _musicShortcutsExpanded = false;
     _initializedTabs.add(index);
     _selectedIndex = index;
   });
@@ -113,7 +110,6 @@ class _HomeScreenState extends State<HomeScreen> {
   void _openFileLocation(String? volume, String path) {
     setState(() {
       _hostSetupOpen = false;
-      _musicShortcutsExpanded = false;
       _musicShortcutsExpanded = false;
       _initializedTabs.add(2);
       _selectedIndex = 2;
@@ -126,7 +122,6 @@ class _HomeScreenState extends State<HomeScreen> {
   void _openExternalStorage() {
     setState(() {
       _hostSetupOpen = false;
-      _musicShortcutsExpanded = false;
       _musicShortcutsExpanded = false;
       _initializedTabs.add(2);
       _selectedIndex = 2;
@@ -144,7 +139,6 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _hostSetupOpen = false;
       _musicShortcutsExpanded = false;
-      _musicShortcutsExpanded = false;
       _initializedTabs.add(1);
       _exploreCategory = category;
       _fileCategory = fileCategory ?? 'All';
@@ -154,6 +148,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
 
   void _openMusicShortcut(String id) {
+    if (_musicShortcutsExpanded) {
+      setState(() => _musicShortcutsExpanded = false);
+    }
     switch (id) {
       case 'explore':
         _openTab(1);
@@ -218,10 +215,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _expandMusicShortcuts() {
     if (!AppSettings.instance.musicButtonLongPressEnabled) return;
     HapticFeedback.lightImpact();
-    setState(() {
-      _musicShortcutsExpanded = true;
-      _musicShortcutsExpanded = false;
-    });
+    setState(() => _musicShortcutsExpanded = true);
   }
 
   void _handleMusicButtonSwipe({required bool left}) {
@@ -342,7 +336,6 @@ class _HomeScreenState extends State<HomeScreen> {
           _closeHostSetup();
         } else if (_musicShortcutsExpanded) {
           setState(() {
-            _musicShortcutsExpanded = false;
             _musicShortcutsExpanded = false;
           });
         } else if (_selectedIndex == 2 && _filesCanNavigateBack) {
