@@ -429,15 +429,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ]),
                   if (widget.category == 'Media & playback')
                             _section('Playback', [
-                                ListTile(
-                                  leading: const Icon(Icons.graphic_eq_rounded),
-                                  title: const Text('Now Playing customization'),
-                                  subtitle: const Text('Mini-player, artwork, controls and swipe gestures'),
-                                  trailing: const Icon(Icons.chevron_right_rounded),
-                                  onTap: () => Navigator.of(context).push(
-                                    MaterialPageRoute<void>(
-                                      settings: const RouteSettings(name: '/pocketlink-settings/now-playing'),
-                                      builder: (_) => const NowPlayingSettingsScreen(),
+                                Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: () => Navigator.of(context).push(
+                                      MaterialPageRoute<void>(
+                                        settings: const RouteSettings(name: '/pocketlink-settings/now-playing'),
+                                        builder: (_) => const NowPlayingSettingsScreen(),
+                                      ),
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                      child: Row(
+                                        children: [
+                                          const Icon(Icons.graphic_eq_rounded),
+                                          const SizedBox(width: 16),
+                                          const Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Text(
+                                                  'Now Playing customization',
+                                                  maxLines: 2,
+                                                  overflow: TextOverflow.ellipsis,
+                                                  style: TextStyle(fontWeight: FontWeight.w500),
+                                                ),
+                                                SizedBox(height: 4),
+                                                Text(
+                                                  'Mini-player, artwork, controls and swipe gestures',
+                                                  softWrap: true,
+                                                  style: TextStyle(color: Colors.white70),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          const Icon(Icons.chevron_right_rounded),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
