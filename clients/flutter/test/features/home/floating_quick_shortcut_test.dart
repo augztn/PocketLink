@@ -114,4 +114,42 @@ void main() {
     await tester.tap(find.byTooltip('Explore'));
     expect(opened, isTrue);
   });
+  testWidgets('menu-only mode shows Search and Drives for the Music button', (tester) async {
+    String? selected;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(disableAnimations: true),
+          child: Scaffold(
+            body: Align(
+              alignment: Alignment.bottomRight,
+              child: FloatingQuickShortcut(
+                shortcuts: const ['photos', 'music', 'videos', 'documents', 'files', 'search', 'drives'],
+                expanded: true,
+                useLiquidGlass: false,
+                onTap: () {},
+                onLongPress: () {},
+                longPressEnabled: false,
+                onSelect: (id) => selected = id,
+                showButton: false,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Photos'), findsOneWidget);
+    expect(find.text('Music'), findsOneWidget);
+    expect(find.text('Videos'), findsOneWidget);
+    expect(find.text('Documents'), findsOneWidget);
+    expect(find.text('Files'), findsOneWidget);
+    expect(find.text('Search'), findsOneWidget);
+    expect(find.text('Drives'), findsOneWidget);
+    expect(find.byTooltip('Photos'), findsNothing);
+
+    await tester.tap(find.text('Drives'));
+    expect(selected, 'drives');
+  });
+
 }
