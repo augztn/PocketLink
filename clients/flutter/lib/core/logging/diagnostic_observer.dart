@@ -20,13 +20,10 @@ class DiagnosticNavigatorObserver extends NavigatorObserver {
         (name?.startsWith('/pocketlink-settings') ?? false);
   }
 
-  void _updateControlVisibility() {
-    final currentRoute = _routes.isEmpty ? null : _routes.last;
-    // HomeScreen attaches the controls only after a successful connection.
-    // Treat an empty observer stack as visible rather than hiding every control
-    // if the Navigator's initial route was installed before observer callbacks.
-    // Suppress only screens that explicitly replace the global controls.
-    // Unknown route types must not accidentally hide playback controls.
+  void _updateControlVisibility(Route<dynamic>? currentRoute) {
+    // Use the route supplied by Navigator callbacks as the source of truth.
+    // The tracked list is retained for diagnostics only; relying on its last
+    // entry can leave global controls hidden after a route is popped/replaced.
     final canShowControls = !_isControlsSuppressed(currentRoute);
     controlsVisible.value = canShowControls;
     dashboardVisible.value = canShowControls &&
@@ -44,7 +41,7 @@ class DiagnosticNavigatorObserver extends NavigatorObserver {
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
     _routes.add(route);
-    _updateControlVisibility();
+    _updateControlVisibility(route);
     AppLogger.info('Navigation route pushed', fields: {
       'route': _routeLabel(route),
       'previousRoute': _routeLabel(previousRoute),
@@ -56,7 +53,7 @@ class DiagnosticNavigatorObserver extends NavigatorObserver {
   @override
   void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
     _routes.remove(route);
-    _updateControlVisibility();
+    _updateControlVisibility(previousRoute);
     AppLogger.info('Navigation route popped', fields: {
       'route': _routeLabel(route),
       'revealedRoute': _routeLabel(previousRoute),
@@ -68,7 +65,7 @@ class DiagnosticNavigatorObserver extends NavigatorObserver {
   @override
   void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
     _routes.remove(route);
-    _updateControlVisibility();
+    _updateControlVisibility(previousRoute);
     AppLogger.info('Navigation route removed', fields: {
       'route': _routeLabel(route),
       'stackDepth': _routes.length,
@@ -84,7 +81,7 @@ class DiagnosticNavigatorObserver extends NavigatorObserver {
     } else if (newRoute != null) {
       _routes.add(newRoute);
     }
-    _updateControlVisibility();
+    _updateControlVisibility(newRoute ?? (_routes.isEmpty ? null : _routes.last));
     AppLogger.info('Navigation route replaced', fields: {
       'oldRoute': _routeLabel(oldRoute),
       'newRoute': _routeLabel(newRoute),
