@@ -11,6 +11,7 @@ import 'package:media_kit_video/media_kit_video.dart';
 
 import '../../core/network/server_api.dart';
 import 'persistent_audio_player.dart';
+import '../home/global_playback_overlay.dart';
 
 class MediaPlayerScreen extends StatefulWidget {
   const MediaPlayerScreen({
@@ -462,6 +463,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
 
   @override
   void dispose() {
+    if (widget.isVideo) GlobalPlaybackOverlay.instance.setSuppressed(false);
     _sleepTimer?.cancel();
     _videoControlsTimer?.cancel();
     if (_isVideoFullscreen) {
@@ -509,6 +511,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
       _isVideoFullscreen = next;
       _showVideoControls = true;
     });
+    if (widget.isVideo) GlobalPlaybackOverlay.instance.setSuppressed(next);
     if (next) {
       await SystemChrome.setPreferredOrientations(const [
         DeviceOrientation.landscapeLeft,
