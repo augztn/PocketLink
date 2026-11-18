@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/settings/app_settings.dart';
+import '../../core/widgets/pocketlink_app_bar.dart';
 import 'navigation_dock.dart';
 import 'app_wide_controls.dart';
 import 'explore_search_screens.dart';
@@ -140,6 +141,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
 
   void _openFloatingShortcut(String id) {
+    Navigator.of(context).popUntil(
+      (route) => route.settings.name == PocketLinkAppBar.dashboardRouteName,
+    );
     switch (id) {
       case 'explore':
         _openTab(1);
