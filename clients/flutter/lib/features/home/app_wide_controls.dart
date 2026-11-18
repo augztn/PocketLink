@@ -17,10 +17,21 @@ class AppWideControlsController extends ChangeNotifier {
   Object? _owner;
   VoidCallback? _openNowPlaying;
   ValueChanged<String>? _selectShortcut;
+  VoidCallback? _expandShortcuts;
 
   VoidCallback? get openNowPlaying => _openNowPlaying;
   ValueChanged<String>? get selectShortcut => _selectShortcut;
   bool get isAttached => _owner != null;
+
+  void registerShortcutExpander(VoidCallback callback) {
+    _expandShortcuts = callback;
+  }
+
+  void unregisterShortcutExpander(VoidCallback callback) {
+    if (identical(_expandShortcuts, callback)) _expandShortcuts = null;
+  }
+
+  void openShortcuts() => _expandShortcuts?.call();
 
   void attach({
     required Object owner,
@@ -60,6 +71,7 @@ class _AppWideControlsState extends State<AppWideControls> {
   @override
   void initState() {
     super.initState();
+    _controller.registerShortcutExpander(_expandShortcuts);
     _lastPlaying = _player.isPlaying;
     _player.addListener(_playerChanged);
     _settings.addListener(_settingsChanged);
@@ -81,6 +93,7 @@ class _AppWideControlsState extends State<AppWideControls> {
 
   @override
   void dispose() {
+    _controller.unregisterShortcutExpander(_expandShortcuts);
     _player.removeListener(_playerChanged);
     _settings.removeListener(_settingsChanged);
     super.dispose();
@@ -120,7 +133,7 @@ class _AppWideControlsState extends State<AppWideControls> {
             item != null &&
             !_miniPlayerDismissed &&
             _controller.openNowPlaying != null;
-        final showShortcut = _settings.floatingShortcutEnabled &&
+        final showShortcut = (_settings.floatingShortcutEnabled || _shortcutsExpanded) &&
             _controller.selectShortcut != null;
         final dashboardVisible = observer.dashboardVisible.value;
 
@@ -128,7 +141,10 @@ class _AppWideControlsState extends State<AppWideControls> {
           return const SizedBox.shrink();
         }
 
-        final controlsBottom = dashboardVisible ? 82.0 + safeBottom : 8.0 + safeBottom;
+        // When opened from the dock, align the menu with the Music button.
+        final controlsBottom = _shortcutsExpanded
+            ? 8.0 + safeBottom
+            : dashboardVisible ? 82.0 + safeBottom : 8.0 + safeBottom;
 
         return Stack(
           fit: StackFit.expand,
@@ -166,6 +182,7 @@ class _AppWideControlsState extends State<AppWideControls> {
                     FloatingQuickShortcut(
                       shortcuts: _settings.floatingShortcuts,
                       expanded: _shortcutsExpanded,
+                      showButton: _settings.floatingShortcutEnabled,
                       useLiquidGlass: _settings.useLiquidGlass,
                       onTap: () {
                         if (_settings.floatingShortcutTapAction == 'menu') {
