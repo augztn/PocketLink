@@ -375,14 +375,8 @@ class _HomeScreenState extends State<HomeScreen> {
           bottomNavigationBar: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              AnimatedSize(
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeInOutCubic,
-                alignment: Alignment.bottomCenter,
-                child: AppSettings.instance.showMiniPlayer && player.shouldShowMiniPlayer
-                    ? const SizedBox(height: 62)
-                    : const SizedBox.shrink(),
-              ),
+              if (AppSettings.instance.showMiniPlayer && player.shouldShowMiniPlayer)
+                const SizedBox(height: 62),
                 FloatingNavigationDock(
                 order: AppSettings.instance.navigationOrder,
                 visibleItems: AppSettings.instance.visibleNavigationItems,
