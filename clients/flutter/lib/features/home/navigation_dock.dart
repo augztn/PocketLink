@@ -5,6 +5,7 @@ import 'package:flutter/semantics.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/widgets/liquid_glass_pill.dart';
+import 'app_wide_controls.dart';
 
 class FloatingNavigationDock extends StatelessWidget {
   const FloatingNavigationDock({
@@ -108,7 +109,9 @@ class FloatingNavigationDock extends StatelessWidget {
       if (id == 'browse') {
         addTabGroup();
         segments.add(
-          _MusicDockButton(
+          CompositedTransformTarget(
+            link: AppWideControlsController.instance.musicButtonLink,
+            child: _MusicDockButton(
             isPlaying: isPlaying,
             hasMedia: hasMedia,
             isVideo: isVideo,
@@ -121,6 +124,7 @@ class FloatingNavigationDock extends StatelessWidget {
             onNext: onNextTrack,
             onPrevious: onPreviousTrack,
             activeColor: colors.primary,
+            ),
           ),
         );
       } else {
