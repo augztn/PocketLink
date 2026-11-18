@@ -1,17 +1,10 @@
-import 'dart:async';
-
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter/services.dart';
 
-import '../../core/logging/diagnostic_observer.dart';
-import '../../core/logging/app_logger.dart';
 import '../../core/settings/app_settings.dart';
-import '../media/persistent_audio_player.dart';
-import '../media/persistent_mini_player.dart';
-import 'floating_quick_shortcut.dart';
+import '../../core/logging/diagnostic_observer.dart';
 
-/// The HomeScreen supplies navigation actions while this widget stays above
-/// the root Navigator, so controls remain available on pushed content routes.
+/// HomeScreen supplies navigation while this widget owns only the shortcut
+/// surface. Mini-player visibility and lifecycle live in GlobalMiniPlayer.
 class AppWideControlsController extends ChangeNotifier {
   AppWideControlsController._();
 
@@ -66,39 +59,24 @@ class AppWideControls extends StatefulWidget {
 
 class _AppWideControlsState extends State<AppWideControls> {
   final _settings = AppSettings.instance;
-  final _player = PersistentAudioPlayer.instance;
   final _controller = AppWideControlsController.instance;
   bool _shortcutsExpanded = false;
-  bool _miniPlayerDismissed = false;
-  late bool _lastPlaying;
-  String? _lastVisibilitySignature;
 
   @override
   void initState() {
     super.initState();
     _controller.registerShortcutExpander(_expandShortcuts);
-    _lastPlaying = _player.isPlaying;
-    _player.addListener(_playerChanged);
-  }
-
-  void _playerChanged() {
-    final playing = _player.isPlaying;
-    if (playing && !_lastPlaying && _miniPlayerDismissed && mounted) {
-      setState(() => _miniPlayerDismissed = false);
-    }
-    _lastPlaying = playing;
   }
 
   @override
   void dispose() {
     _controller.unregisterShortcutExpander(_expandShortcuts);
-    _player.removeListener(_playerChanged);
     super.dispose();
   }
 
   void _expandShortcuts() {
     HapticFeedback.lightImpact();
-    setState(() => _shortcutsExpanded = true);
+    if (mounted) setState(() => _shortcutsExpanded = true);
   }
 
   void _selectShortcut(String id) {
@@ -108,119 +86,55 @@ class _AppWideControlsState extends State<AppWideControls> {
 
   @override
   Widget build(BuildContext context) {
+    final observer = DiagnosticNavigatorObserver.instance;
     return AnimatedBuilder(
       animation: Listenable.merge([
         _settings,
-        _player,
         _controller,
-        DiagnosticNavigatorObserver.instance.controlsVisible,
-        DiagnosticNavigatorObserver.instance.dashboardVisible,
+        observer.controlsVisible,
       ]),
       builder: (context, _) {
-        final observer = DiagnosticNavigatorObserver.instance;
         if (!observer.controlsVisible.value || !_controller.isAttached) {
           return const SizedBox.shrink();
         }
 
-        final safeBottom = MediaQuery.paddingOf(context).bottom;
-        final settingEnabled = _settings.showMiniPlayer;
-        final playerEligible = _player.showMiniPlayer;
-        final attached = _controller.isAttached;
-        final routeVisible = observer.controlsVisible.value;
-        final openActionAvailable = _controller.openNowPlaying != null;
-        final showMiniPlayer = settingEnabled &&
-            playerEligible &&
-            !_miniPlayerDismissed &&
-            openActionAvailable;
-
-        // Log only when a visibility input changes; never log track metadata or paths.
-        final visibilitySignature = [
-          'setting=$settingEnabled',
-          'playerEligible=$playerEligible',
-          'active=${_player.isActive}',
-          'music=${_player.isMusic}',
-          'hasItem=${_player.currentItem != null}',
-          'playing=${_player.isPlaying}',
-          'attached=$attached',
-          'routeVisible=$routeVisible',
-          'dashboard=${observer.dashboardVisible.value}',
-          'openAction=$openActionAvailable',
-          'dismissed=$_miniPlayerDismissed',
-          'shown=$showMiniPlayer',
-        ].join('|');
-        if (_lastVisibilitySignature != visibilitySignature) {
-          _lastVisibilitySignature = visibilitySignature;
-          unawaited(AppLogger.info('Global mini-player visibility changed',
-              fields: {'state': visibilitySignature}));
-        }
-        // Shortcuts are opened exclusively by long-pressing the Music dock button.
-        final showShortcut = _shortcutsExpanded && _controller.selectShortcut != null;
-        final dashboardVisible = observer.dashboardVisible.value;
-
-        if (!showMiniPlayer && !showShortcut) {
-          return const SizedBox.shrink();
-        }
-
-        // When opened from the dock, align the menu with the Music button.
-        final controlsBottom = dashboardVisible ? 82.0 + safeBottom : 8.0 + safeBottom;
+        final showShortcut =
+            _shortcutsExpanded && _controller.selectShortcut != null;
+        if (!showShortcut) return const SizedBox.shrink();
 
         return Stack(
           fit: StackFit.expand,
           children: [
-            if (_shortcutsExpanded)
-              Positioned.fill(
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => setState(() => _shortcutsExpanded = false),
-                  child: ColoredBox(
-                    color: Colors.black.withValues(alpha: 0.45),
-                    child: const SizedBox.expand(),
-                  ),
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => setState(() => _shortcutsExpanded = false),
+                child: ColoredBox(
+                  color: Colors.black.withValues(alpha: 0.45),
+                  child: const SizedBox.expand(),
                 ),
-              ),
-            Positioned(
-              left: 14,
-              right: showShortcut ? 190 : 16,
-              bottom: controlsBottom,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  if (showMiniPlayer)
-                    Expanded(
-                      child: PersistentMiniPlayer(
-                        player: _player,
-                        onOpen: () => _controller.openNowPlaying?.call(),
-                        onDismiss: () {
-                          if (!_player.isPlaying) {
-                            setState(() => _miniPlayerDismissed = true);
-                          }
-                        },
-                      ),
-                    ),
-                ],
               ),
             ),
-            if (showShortcut)
-              Positioned(
-                left: 0,
-                top: 0,
-                child: CompositedTransformFollower(
-                  link: _controller.musicButtonLink,
-                  showWhenUnlinked: false,
-                  targetAnchor: Alignment.topRight,
-                  followerAnchor: Alignment.bottomRight,
-                  offset: const Offset(0, -8),
-                  child: FloatingQuickShortcut(
-                    shortcuts: _settings.floatingShortcuts,
-                    expanded: true,
-                    showButton: false,
-                    onTap: () => setState(() => _shortcutsExpanded = false),
-                    onLongPress: _expandShortcuts,
-                    longPressEnabled: false,
-                    onSelect: _selectShortcut,
-                  ),
+            Positioned(
+              left: 0,
+              top: 0,
+              child: CompositedTransformFollower(
+                link: _controller.musicButtonLink,
+                showWhenUnlinked: false,
+                targetAnchor: Alignment.topRight,
+                followerAnchor: Alignment.bottomRight,
+                offset: const Offset(0, -8),
+                child: FloatingQuickShortcut(
+                  shortcuts: _settings.floatingShortcuts,
+                  expanded: true,
+                  showButton: false,
+                  onTap: () => setState(() => _shortcutsExpanded = false),
+                  onLongPress: _expandShortcuts,
+                  longPressEnabled: false,
+                  onSelect: _selectShortcut,
                 ),
               ),
+            ),
           ],
         );
       },
