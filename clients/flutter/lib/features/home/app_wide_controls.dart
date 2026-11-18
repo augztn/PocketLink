@@ -183,7 +183,6 @@ class _AppWideControlsState extends State<AppWideControls> {
                       shortcuts: _settings.floatingShortcuts,
                       expanded: _shortcutsExpanded,
                       showButton: _settings.floatingShortcutEnabled,
-                      useLiquidGlass: _settings.useLiquidGlass,
                       onTap: () {
                         if (_settings.floatingShortcutTapAction == 'menu') {
                           _expandShortcuts();
