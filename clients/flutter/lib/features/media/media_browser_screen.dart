@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/network/server_api.dart';
+import '../../core/navigation/pocketlink_navigation.dart';
 import 'media_player_screen.dart';
 import 'now_playing_screen.dart';
 import 'persistent_audio_player.dart';
@@ -353,8 +354,11 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       (item) => item.path == media.path && item.volume == media.volume,
     );
     try {
-      await Navigator.of(context).push(
+      await Navigator.of(context, rootNavigator: true).push<void>(
         MaterialPageRoute<void>(
+          settings: _isMusic
+              ? const RouteSettings(name: PocketLinkRouteNames.nowPlaying)
+              : null,
           builder: (_) => _isMusic
             ? NowPlayingScreen(
                 api: widget.api,
