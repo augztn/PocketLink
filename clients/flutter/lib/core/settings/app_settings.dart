@@ -163,11 +163,13 @@ class AppSettings extends ChangeNotifier {
             jsonEncode(_musicButtonShortcuts),
           ),
           preferences.remove(_legacyFloatingShortcutsKey),
-          preferences.remove('settings_floating_shortcut_enabled'),
-          preferences.remove('settings_floating_shortcut_tap_action'),
-          preferences.remove('settings_floating_shortcut_long_press'),
         ]);
       }
+      await Future.wait([
+        preferences.remove('settings_floating_shortcut_enabled'),
+        preferences.remove('settings_floating_shortcut_tap_action'),
+        preferences.remove('settings_floating_shortcut_long_press'),
+      ]);
       _showGlobalSearch = preferences.getBool(_homeSearchKey) ?? true;
       _showActiveTransfers = preferences.getBool(_homeTransfersKey) ?? true;
       final rawSectionOrder = preferences.getString(_homeSectionOrderKey);
