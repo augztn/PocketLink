@@ -8,6 +8,7 @@ class GlobalPlaybackOverlay extends ChangeNotifier {
   static final GlobalPlaybackOverlay instance = GlobalPlaybackOverlay._();
 
   WidgetBuilder? _builder;
+  bool _suppressed = false;
 
   void setBuilder(WidgetBuilder builder) {
     _builder = builder;
@@ -20,8 +21,15 @@ class GlobalPlaybackOverlay extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setSuppressed(bool value) {
+    if (_suppressed == value) return;
+    _suppressed = value;
+    notifyListeners();
+  }
+
   void refresh() => notifyListeners();
 
-  Widget build(BuildContext context) =>
-      _builder?.call(context) ?? const SizedBox.shrink();
+  Widget build(BuildContext context) => _suppressed
+      ? const SizedBox.shrink()
+      : _builder?.call(context) ?? const SizedBox.shrink();
 }
