@@ -371,6 +371,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     ),
                                   ),
                                 ),
+                                SwitchListTile(
+                                  secondary: const Icon(Icons.swipe_rounded),
+                                  title: const Text('Swipe to change music'),
+                                  subtitle: const Text('Swipe the Music button left or right to change tracks'),
+                                  value: _settings.navigationMusicSwipeEnabled,
+                                  onChanged: _settings.setNavigationMusicSwipeEnabled,
+                                ),
                               ]),
                   if (widget.category == 'Media & Storage')
                             _section('Media & Storage', [
