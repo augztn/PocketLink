@@ -24,6 +24,10 @@ class AppSettings extends ChangeNotifier {
   static const _floatingShortcutsKey = 'settings_floating_shortcuts';
   static const _floatingShortcutTapActionKey = 'settings_floating_shortcut_tap_action';
   static const _floatingShortcutLongPressKey = 'settings_floating_shortcut_long_press';
+  static const _musicButtonSwipeEnabledKey = 'settings_music_button_swipe_enabled';
+  static const _musicButtonSwipeLeftActionKey = 'settings_music_button_swipe_left_action';
+  static const _musicButtonSwipeRightActionKey = 'settings_music_button_swipe_right_action';
+  static const _musicButtonLongPressEnabledKey = 'settings_music_button_long_press_enabled';
   static const _nowPlayingMiniPlayerKey = 'settings_now_playing_mini_player';
   static const _nowPlayingGesturesKey = 'settings_now_playing_gestures';
   static const _nowPlayingStatsForNerdsKey = 'settings_now_playing_stats_for_nerds';
@@ -41,10 +45,10 @@ class AppSettings extends ChangeNotifier {
   static const homeSectionDefaults = <String>['search', 'quick', 'transfers', 'continue', 'recent'];
   static const navigationDefaults = <String>['home', 'explore', 'files', 'browse'];
   static const floatingShortcutDefaults = <String>[
-    'explore', 'music', 'files', 'videos', 'photos', 'documents',
+    'photos', 'music', 'videos', 'documents', 'files', 'search', 'drives',
   ];
   static const floatingShortcutDestinations = <String>{
-    'explore', 'files', 'music', 'videos', 'photos', 'documents', 'favorites', 'upload',
+    'explore', 'files', 'music', 'videos', 'photos', 'documents', 'favorites', 'upload', 'search', 'drives',
   };
 
   ThemeMode _themeMode = ThemeMode.system;
@@ -64,6 +68,10 @@ class AppSettings extends ChangeNotifier {
   bool _floatingShortcutEnabled = false;
   String _floatingShortcutTapAction = 'menu';
   bool _floatingShortcutLongPressEnabled = true;
+  bool _musicButtonSwipeEnabled = true;
+  String _musicButtonSwipeLeftAction = 'next';
+  String _musicButtonSwipeRightAction = 'previous';
+  bool _musicButtonLongPressEnabled = true;
   List<String> _floatingShortcuts = List.of(floatingShortcutDefaults);
   Future<void> _floatingShortcutsWrite = Future<void>.value();
   bool _showMiniPlayer = true;
@@ -98,6 +106,10 @@ class AppSettings extends ChangeNotifier {
   String get floatingShortcutTapAction => _floatingShortcutTapAction;
   bool get floatingShortcutLongPressEnabled => _floatingShortcutLongPressEnabled;
   List<String> get floatingShortcuts => List.unmodifiable(_floatingShortcuts);
+  bool get musicButtonSwipeEnabled => _musicButtonSwipeEnabled;
+  String get musicButtonSwipeLeftAction => _musicButtonSwipeLeftAction;
+  String get musicButtonSwipeRightAction => _musicButtonSwipeRightAction;
+  bool get musicButtonLongPressEnabled => _musicButtonLongPressEnabled;
   bool get showMiniPlayer => _showMiniPlayer;
   bool get enableNowPlayingGestures => _enableNowPlayingGestures;
   bool get showStatsForNerds => _showStatsForNerds;
@@ -136,12 +148,19 @@ class AppSettings extends ChangeNotifier {
       final tapAction = preferences.getString(_floatingShortcutTapActionKey);
       _floatingShortcutTapAction = tapAction == 'primary' ? 'primary' : 'menu';
       _floatingShortcutLongPressEnabled = preferences.getBool(_floatingShortcutLongPressKey) ?? true;
+      _musicButtonSwipeEnabled = preferences.getBool(_musicButtonSwipeEnabledKey) ?? true;
+      _musicButtonSwipeLeftAction = _validMusicSwipeAction(preferences.getString(_musicButtonSwipeLeftActionKey), 'next');
+      _musicButtonSwipeRightAction = _validMusicSwipeAction(preferences.getString(_musicButtonSwipeRightActionKey), 'previous');
+      _musicButtonLongPressEnabled = preferences.getBool(_musicButtonLongPressEnabledKey) ?? true;
       final rawFloatingShortcuts = preferences.getString(_floatingShortcutsKey);
       if (rawFloatingShortcuts != null) {
         final decoded = jsonDecode(rawFloatingShortcuts);
         if (decoded is List) {
           final values = decoded.whereType<String>().toList();
-          if (values.isNotEmpty && values.length == decoded.length &&
+          const legacyDefaults = ['explore', 'music', 'files', 'videos', 'photos', 'documents'];
+          if (values.length == legacyDefaults.length && values.toSet().containsAll(legacyDefaults)) {
+            _floatingShortcuts = List.of(floatingShortcutDefaults);
+          } else if (values.isNotEmpty && values.length == decoded.length &&
               values.toSet().length == values.length &&
               values.every(floatingShortcutDestinations.contains)) {
             _floatingShortcuts = values;
@@ -343,6 +362,52 @@ class AppSettings extends ChangeNotifier {
     } else {
       await _storage.write(key: _downloadKey, value: value);
     }
+  }
+
+  static String _validMusicSwipeAction(String? action, String fallback) =>
+      const {'next', 'previous', 'none'}.contains(action) ? action! : fallback;
+
+  Future<void> setMusicButtonOptions({
+    bool? swipeEnabled,
+    String? swipeLeftAction,
+    String? swipeRightAction,
+    bool? longPressEnabled,
+  }) async {
+    if (swipeLeftAction != null &&
+        !const {'next', 'previous', 'none'}.contains(swipeLeftAction)) {
+      throw ArgumentError.value(swipeLeftAction, 'swipeLeftAction');
+    }
+    if (swipeRightAction != null &&
+        !const {'next', 'previous', 'none'}.contains(swipeRightAction)) {
+      throw ArgumentError.value(swipeRightAction, 'swipeRightAction');
+    }
+    if (swipeEnabled != null) _musicButtonSwipeEnabled = swipeEnabled;
+    if (swipeLeftAction != null) _musicButtonSwipeLeftAction = swipeLeftAction;
+    if (swipeRightAction != null) _musicButtonSwipeRightAction = swipeRightAction;
+    if (longPressEnabled != null) _musicButtonLongPressEnabled = longPressEnabled;
+    notifyListeners();
+    final preferences = await SharedPreferences.getInstance();
+    await Future.wait([
+      if (swipeEnabled != null) preferences.setBool(_musicButtonSwipeEnabledKey, swipeEnabled),
+      if (swipeLeftAction != null) preferences.setString(_musicButtonSwipeLeftActionKey, swipeLeftAction),
+      if (swipeRightAction != null) preferences.setString(_musicButtonSwipeRightActionKey, swipeRightAction),
+      if (longPressEnabled != null) preferences.setBool(_musicButtonLongPressEnabledKey, longPressEnabled),
+    ]);
+  }
+
+  Future<void> resetMusicButtonOptions() async {
+    _musicButtonSwipeEnabled = true;
+    _musicButtonSwipeLeftAction = 'next';
+    _musicButtonSwipeRightAction = 'previous';
+    _musicButtonLongPressEnabled = true;
+    notifyListeners();
+    final preferences = await SharedPreferences.getInstance();
+    await Future.wait([
+      preferences.remove(_musicButtonSwipeEnabledKey),
+      preferences.remove(_musicButtonSwipeLeftActionKey),
+      preferences.remove(_musicButtonSwipeRightActionKey),
+      preferences.remove(_musicButtonLongPressEnabledKey),
+    ]);
   }
 
   Future<void> setNowPlayingOptions({
