@@ -131,6 +131,8 @@ class _HomeScreenState extends State<HomeScreen> {
   void _openExternalStorage() {
     setState(() {
       _hostSetupOpen = false;
+      _quickShortcutsExpanded = false;
+      _musicShortcutsExpanded = false;
       _initializedTabs.add(2);
       _selectedIndex = 2;
       _externalDriveRequest++;
