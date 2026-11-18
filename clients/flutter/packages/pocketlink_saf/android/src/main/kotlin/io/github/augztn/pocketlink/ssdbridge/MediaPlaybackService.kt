@@ -45,8 +45,11 @@ class MediaPlaybackService : Service() {
                     updateSessionAndNotification()
                 }
             }
-            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
-            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
+            // Notification sounds and other short, duckable sounds should not
+            // pause music. Android may briefly lower media volume automatically.
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> Unit
+            // Calls and other non-duckable interruptions still pause playback.
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
                 hasAudioFocus = false
                 resumeAfterFocus = playing
                 pauseForFocusLoss()
@@ -150,7 +153,6 @@ class MediaPlaybackService : Service() {
                         .build()
                 )
                 .setOnAudioFocusChangeListener(audioFocusListener)
-                .setWillPauseWhenDucked(true)
                 .build()
                 .also { audioFocusRequest = it }
             audioManager.requestAudioFocus(request) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
