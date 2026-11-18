@@ -378,6 +378,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   value: _settings.navigationMusicSwipeEnabled,
                                   onChanged: _settings.setNavigationMusicSwipeEnabled,
                                 ),
+                                ListTile(
+                                  leading: const Icon(Icons.swipe_left_rounded),
+                                  title: const Text('Swipe left'),
+                                  trailing: DropdownButton<String>(
+                                    value: _settings.navigationMusicSwipeLeftAction,
+                                    underline: const SizedBox.shrink(),
+                                    items: const [
+                                      DropdownMenuItem(value: 'forward', child: Text('Forward')),
+                                      DropdownMenuItem(value: 'backward', child: Text('Backward')),
+                                    ],
+                                    onChanged: (value) {
+                                      if (value != null) {
+                                        _settings.setNavigationMusicSwipeActions(
+                                          left: value,
+                                          right: _settings.navigationMusicSwipeRightAction,
+                                        );
+                                      }
+                                    },
+                                  ),
+                                ),
+                                ListTile(
+                                  leading: const Icon(Icons.swipe_right_rounded),
+                                  title: const Text('Swipe right'),
+                                  trailing: DropdownButton<String>(
+                                    value: _settings.navigationMusicSwipeRightAction,
+                                    underline: const SizedBox.shrink(),
+                                    items: const [
+                                      DropdownMenuItem(value: 'backward', child: Text('Backward')),
+                                      DropdownMenuItem(value: 'forward', child: Text('Forward')),
+                                    ],
+                                    onChanged: (value) {
+                                      if (value != null) {
+                                        _settings.setNavigationMusicSwipeActions(
+                                          left: _settings.navigationMusicSwipeLeftAction,
+                                          right: value,
+                                        );
+                                      }
+                                    },
+                                  ),
+                                ),
                               ]),
                   if (widget.category == 'Media & Storage')
                             _section('Media & Storage', [
