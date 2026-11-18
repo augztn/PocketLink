@@ -20,10 +20,8 @@ class AppSettings extends ChangeNotifier {
   static const _homeSearchKey = 'settings_home_search';
   static const _homeTransfersKey = 'settings_home_transfers';
   static const _homeSectionOrderKey = 'settings_home_section_order';
-  static const _floatingShortcutEnabledKey = 'settings_floating_shortcut_enabled';
-  static const _floatingShortcutsKey = 'settings_floating_shortcuts';
-  static const _floatingShortcutTapActionKey = 'settings_floating_shortcut_tap_action';
-  static const _floatingShortcutLongPressKey = 'settings_floating_shortcut_long_press';
+  // Keep the existing preference key so saved shortcut choices survive the cleanup.
+  static const _musicButtonShortcutsKey = 'settings_floating_shortcuts';
   static const _musicButtonSwipeEnabledKey = 'settings_music_button_swipe_enabled';
   static const _musicButtonSwipeLeftActionKey = 'settings_music_button_swipe_left_action';
   static const _musicButtonSwipeRightActionKey = 'settings_music_button_swipe_right_action';
@@ -44,10 +42,10 @@ class AppSettings extends ChangeNotifier {
   static const _videoFullscreenOrientationKey = 'settings_video_fullscreen_orientation';
   static const homeSectionDefaults = <String>['search', 'quick', 'transfers', 'continue', 'recent'];
   static const navigationDefaults = <String>['home', 'explore', 'files', 'browse'];
-  static const floatingShortcutDefaults = <String>[
+  static const musicButtonShortcutDefaults = <String>[
     'photos', 'music', 'videos', 'documents', 'files', 'search', 'drives',
   ];
-  static const floatingShortcutDestinations = <String>{
+  static const musicButtonShortcutDestinations = <String>{
     'explore', 'files', 'music', 'videos', 'photos', 'documents', 'favorites', 'upload', 'search', 'drives',
   };
 
@@ -65,15 +63,12 @@ class AppSettings extends ChangeNotifier {
   List<String> _navigationOrder = List.of(navigationDefaults);
   Set<String> _visibleNavigationItems = Set.of(navigationDefaults);
   Future<void> _navigationWrite = Future<void>.value();
-  bool _floatingShortcutEnabled = false;
-  String _floatingShortcutTapAction = 'menu';
-  bool _floatingShortcutLongPressEnabled = true;
   bool _musicButtonSwipeEnabled = true;
   String _musicButtonSwipeLeftAction = 'next';
   String _musicButtonSwipeRightAction = 'previous';
   bool _musicButtonLongPressEnabled = true;
-  List<String> _floatingShortcuts = List.of(floatingShortcutDefaults);
-  Future<void> _floatingShortcutsWrite = Future<void>.value();
+  List<String> _musicButtonShortcuts = List.of(musicButtonShortcutDefaults);
+  Future<void> _musicButtonShortcutsWrite = Future<void>.value();
   bool _showMiniPlayer = true;
   bool _enableNowPlayingGestures = true;
   bool _showStatsForNerds = true;
@@ -102,10 +97,7 @@ class AppSettings extends ChangeNotifier {
   List<String> get navigationOrder => List.unmodifiable(_navigationOrder);
   Set<String> get visibleNavigationItems => Set.unmodifiable(_visibleNavigationItems);
   bool get navigationLayoutIsDefault => _navigationOrder.join(',') == navigationDefaults.join(',') && _visibleNavigationItems.length == navigationDefaults.length;
-  bool get floatingShortcutEnabled => _floatingShortcutEnabled;
-  String get floatingShortcutTapAction => _floatingShortcutTapAction;
-  bool get floatingShortcutLongPressEnabled => _floatingShortcutLongPressEnabled;
-  List<String> get floatingShortcuts => List.unmodifiable(_floatingShortcuts);
+  List<String> get musicButtonShortcuts => List.unmodifiable(_musicButtonShortcuts);
   bool get musicButtonSwipeEnabled => _musicButtonSwipeEnabled;
   String get musicButtonSwipeLeftAction => _musicButtonSwipeLeftAction;
   String get musicButtonSwipeRightAction => _musicButtonSwipeRightAction;
@@ -144,25 +136,21 @@ class AppSettings extends ChangeNotifier {
       _videoSubtitleBackground = preferences.getBool(_videoSubtitleBackgroundKey) ?? true;
       _videoAutoFullscreen = preferences.getBool(_videoAutoFullscreenKey) ?? false;
       _videoFullscreenOrientation = preferences.getString(_videoFullscreenOrientationKey) ?? 'landscape';
-      _floatingShortcutEnabled = preferences.getBool(_floatingShortcutEnabledKey) ?? false;
-      final tapAction = preferences.getString(_floatingShortcutTapActionKey);
-      _floatingShortcutTapAction = tapAction == 'primary' ? 'primary' : 'menu';
-      _floatingShortcutLongPressEnabled = preferences.getBool(_floatingShortcutLongPressKey) ?? true;
       _musicButtonSwipeEnabled = preferences.getBool(_musicButtonSwipeEnabledKey) ?? true;
       _musicButtonSwipeLeftAction = _validMusicSwipeAction(preferences.getString(_musicButtonSwipeLeftActionKey), 'next');
       _musicButtonSwipeRightAction = _validMusicSwipeAction(preferences.getString(_musicButtonSwipeRightActionKey), 'previous');
       _musicButtonLongPressEnabled = preferences.getBool(_musicButtonLongPressEnabledKey) ?? true;
-      final rawFloatingShortcuts = preferences.getString(_floatingShortcutsKey);
+      final rawFloatingShortcuts = preferences.getString(_musicButtonShortcutsKey);
       if (rawFloatingShortcuts != null) {
         final decoded = jsonDecode(rawFloatingShortcuts);
         if (decoded is List) {
           final values = decoded.whereType<String>().toList();
           const legacyDefaults = ['explore', 'music', 'files', 'videos', 'photos', 'documents'];
           if (values.length == legacyDefaults.length && values.toSet().containsAll(legacyDefaults)) {
-            _floatingShortcuts = List.of(floatingShortcutDefaults);
+            _floatingShortcuts = List.of(musicButtonShortcutDefaults);
           } else if (values.isNotEmpty && values.length == decoded.length &&
               values.toSet().length == values.length &&
-              values.every(floatingShortcutDestinations.contains)) {
+              values.every(musicButtonShortcutDestinations.contains)) {
             _floatingShortcuts = values;
           }
         }
@@ -278,35 +266,7 @@ class AppSettings extends ChangeNotifier {
     await write;
   }
 
-  Future<void> setFloatingShortcutEnabled(bool enabled) async {
-    _floatingShortcutEnabled = enabled;
-    notifyListeners();
-    final write = _floatingShortcutsWrite.catchError((_) {}).then((_) async {
-      final preferences = await SharedPreferences.getInstance();
-      await preferences.setBool(_floatingShortcutEnabledKey, enabled);
-    });
-    _floatingShortcutsWrite = write;
-    await write;
-  }
-
-  Future<void> setFloatingShortcutTapAction(String action) async {
-    if (action != 'primary' && action != 'menu') {
-      throw ArgumentError.value(action, 'action', 'Unsupported floating shortcut tap action');
-    }
-    _floatingShortcutTapAction = action;
-    notifyListeners();
-    final preferences = await SharedPreferences.getInstance();
-    await preferences.setString(_floatingShortcutTapActionKey, action);
-  }
-
-  Future<void> setFloatingShortcutLongPressEnabled(bool enabled) async {
-    _floatingShortcutLongPressEnabled = enabled;
-    notifyListeners();
-    final preferences = await SharedPreferences.getInstance();
-    await preferences.setBool(_floatingShortcutLongPressKey, enabled);
-  }
-
-  Future<void> setFloatingShortcuts(List<String> shortcuts) async {
+  Future<void> setMusicButtonShortcuts(List<String> shortcuts) async {
     if (shortcuts.isEmpty ||
         shortcuts.toSet().length != shortcuts.length ||
         !shortcuts.every(floatingShortcutDestinations.contains)) {
@@ -323,7 +283,7 @@ class AppSettings extends ChangeNotifier {
     await write;
   }
 
-  Future<void> resetFloatingShortcuts() async {
+  Future<void> resetMusicButtonShortcuts() async {
     _floatingShortcuts = List.of(floatingShortcutDefaults);
     notifyListeners();
     final write = _floatingShortcutsWrite.catchError((_) {}).then((_) async {
