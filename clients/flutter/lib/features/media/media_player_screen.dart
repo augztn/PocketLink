@@ -592,8 +592,15 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
   }
 
 
+  double get _videoGestureWidth {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    return _isVideoFullscreen
+        ? screenWidth
+        : (screenWidth - 48).clamp(1, 512).toDouble();
+  }
+
   Future<void> _beginVerticalVideoGesture(DragStartDetails details) async {
-    final width = MediaQuery.sizeOf(context).width;
+    final width = _videoGestureWidth;
     if (details.localPosition.dx < width * 0.45) {
       try {
         final brightness = await _videoControlChannel.invokeMethod<double>('getVideoBrightness') ?? 0.5;
@@ -716,7 +723,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                       },
                       onDoubleTapDown: AppSettings.instance.videoGesturesEnabled
                           ? (details) {
-                              final width = MediaQuery.sizeOf(context).width;
+                              final width = _videoGestureWidth;
                               final seconds = AppSettings.instance.videoSeekSeconds;
                               _seekRelative(Duration(
                                 seconds: details.localPosition.dx < width / 2 ? -seconds : seconds,
