@@ -267,7 +267,6 @@ class _MusicDockButtonState extends State<_MusicDockButton>
   void initState() {
     super.initState();
     if (widget.canChangeTracks) _playSwipeHint();
-    _showTrackPopup(widget.currentTrackTitle);
   }
 
   void _showTrackPopup(String? title) {
