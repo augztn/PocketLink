@@ -6,7 +6,6 @@ class FloatingQuickShortcut extends StatefulWidget {
   const FloatingQuickShortcut({
     required this.shortcuts,
     required this.expanded,
-    required this.useLiquidGlass,
     required this.onTap,
     required this.onLongPress,
     required this.longPressEnabled,
@@ -17,7 +16,6 @@ class FloatingQuickShortcut extends StatefulWidget {
 
   final List<String> shortcuts;
   final bool expanded;
-  final bool useLiquidGlass;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
   final bool longPressEnabled;
@@ -80,50 +78,28 @@ class _FloatingQuickShortcutState extends State<FloatingQuickShortcut>
           : primary.label,
       child: Hero(
         tag: 'pocketlink-floating-shortcut',
-        child: widget.useLiquidGlass
-            ? LiquidGlassPill(
-                radius: BorderRadius.circular(28),
-                child: SizedBox(
-                  width: 56,
-                  height: 56,
-                  child: Material(
-                    color: Colors.transparent,
-                    shape: const CircleBorder(),
-                    child: InkWell(
-                      customBorder: const CircleBorder(),
-                      onTap: widget.onTap,
-                      onLongPress: widget.longPressEnabled ? widget.onLongPress : null,
-                      child: _MainButtonIcon(
-                        expanded: widget.expanded,
-                        primary: primary.icon,
-                      ),
-                    ),
-                  ),
-                ),
-              )
-            : Material(
-                color: const Color(0xFF1E2025),
-                elevation: 5,
-                shape: CircleBorder(
-                  side: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: InkWell(
-                  customBorder: const CircleBorder(),
-                  onTap: widget.onTap,
-                  onLongPress: widget.longPressEnabled ? widget.onLongPress : null,
-                  child: SizedBox(
-                    width: 56,
-                    height: 56,
-                    child: Center(
-                      child: _MainButtonIcon(
-                        expanded: widget.expanded,
-                        primary: primary.icon,
-                      ),
-                    ),
+        child: SolidPill(
+          radius: BorderRadius.circular(28),
+          child: SizedBox(
+            width: 56,
+            height: 56,
+            child: Material(
+              color: Colors.transparent,
+              shape: const CircleBorder(),
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: widget.onTap,
+                onLongPress: widget.longPressEnabled ? widget.onLongPress : null,
+                child: Center(
+                  child: _MainButtonIcon(
+                    expanded: widget.expanded,
+                    primary: primary.icon,
                   ),
                 ),
               ),
+            ),
+          ),
+        )
       ),
     );
 
