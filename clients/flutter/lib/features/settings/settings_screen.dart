@@ -290,7 +290,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     },
                                   ),
                                 ),
-SwitchListTile(
+                                SwitchListTile(
                                   secondary: const Icon(Icons.blur_on_rounded),
                                   title: const Text('Liquid Glass UI'),
                                   subtitle: const Text('Translucent frosted blur on floating navigation and action pills'),
@@ -304,7 +304,7 @@ SwitchListTile(
                                   value: _settings.floatingShortcutEnabled,
                                   onChanged: _settings.setFloatingShortcutEnabled,
                                 ),
-ListTile(
+                                ListTile(
                                   leading: const Icon(Icons.tune_rounded),
                                   title: const Text('Customize Floating Shortcuts'),
                                   subtitle: Text('${_settings.floatingShortcuts.length} pinned destinations · tap action and press behavior'),
@@ -318,7 +318,7 @@ ListTile(
                                 ),
                               ]),
                   _section('Home screen', [
-SwitchListTile(
+                                SwitchListTile(
                                   secondary: const Icon(Icons.dashboard_customize_outlined),
                                   title: const Text('Quick actions'),
                                   value: _settings.showQuickActions,
@@ -350,7 +350,7 @@ SwitchListTile(
                                   value: _settings.showActiveTransfers,
                                   onChanged: (value) => _settings.setHomeSections(activeTransfers: value),
                                 ),
-ListTile(
+                                ListTile(
                                   leading: const Icon(Icons.reorder_rounded),
                                   title: const Text('Reorder Home sections'),
                                   subtitle: const Text('Choose the order of dashboard sections'),
@@ -359,7 +359,7 @@ ListTile(
                                 ),
                               ]),
                   _section('Navigation', [
-ListTile(
+                                ListTile(
                                   leading: const Icon(Icons.tune_rounded),
                                   title: const Text('Customize Navigation Bar'),
                                   subtitle: const Text('Reorder or show and hide dock destinations'),
