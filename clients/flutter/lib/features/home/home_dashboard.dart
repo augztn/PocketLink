@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 import 'quick_actions_store.dart';
 import 'network_route_classifier.dart';
 import '../../core/settings/app_settings.dart';
+import '../../core/logging/diagnostic_observer.dart';
 import '../../core/storage/home_activity_store.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
 import '../settings/settings_screen.dart';
@@ -965,7 +966,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                 onTap: () async {
                   if (isTrack) {
                     final queueItem = MediaQueueItem(title: recent.title, path: recent.path, volume: recent.volume);
-                    Navigator.of(context).push(MaterialPageRoute<void>(
+                    await Navigator.of(context).push(MaterialPageRoute<void>(
                       settings: const RouteSettings(name: '/pocketlink-now-playing'),
                       builder: (_) => NowPlayingScreen(
                         api: widget.api,
@@ -973,6 +974,11 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                         initialIndex: 0,
                       ),
                     ));
+                    if (mounted) {
+                      DiagnosticNavigatorObserver.instance.refreshForRoute(
+                        ModalRoute.of(context),
+                      );
+                    }
                   } else {
                     final path = isFolder ? recent.path : recent.parentPath;
                     widget.onOpenFileLocation(recent.volume, path);
