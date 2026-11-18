@@ -40,31 +40,14 @@ class _HomeScreenState extends State<HomeScreen> {
   int _uploadRequest = 0;
   bool _quickShortcutsExpanded = false;
   bool _filesCanNavigateBack = false;
-  bool _miniPlayerDismissed = false;
-  bool _nowPlayingRouteOpen = false;
-  late bool _lastPlayerPlaying;
+  bool _openingNowPlaying = false;
   String? _requestedVolume;
   String _requestedPath = '';
 
   @override
   void initState() {
     super.initState();
-    _lastPlayerPlaying = PersistentAudioPlayer.instance.isPlaying;
-    PersistentAudioPlayer.instance.addListener(_playerStateChanged);
     AppSettings.instance.addListener(_navigationSettingsChanged);
-  }
-
-  void _playerStateChanged() {
-    final isPlaying = PersistentAudioPlayer.instance.isPlaying;
-    if (isPlaying && !_lastPlayerPlaying && _miniPlayerDismissed && mounted) {
-      setState(() => _miniPlayerDismissed = false);
-    }
-    _lastPlayerPlaying = isPlaying;
-  }
-
-  void _dismissMiniPlayer() {
-    if (PersistentAudioPlayer.instance.isPlaying || _miniPlayerDismissed) return;
-    setState(() => _miniPlayerDismissed = true);
   }
 
   void _openHostSetup() {
@@ -110,7 +93,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     AppSettings.instance.removeListener(_navigationSettingsChanged);
-    PersistentAudioPlayer.instance.removeListener(_playerStateChanged);
     super.dispose();
   }
 
@@ -217,33 +199,38 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _openNowPlaying(PersistentAudioPlayer player) async {
-    if (_nowPlayingRouteOpen) return;
+    if (_openingNowPlaying) return;
     final item = player.currentItem;
     final api = player.api;
     if (player.isActive && item != null && api != null) {
-      setState(() => _nowPlayingRouteOpen = true);
+      _openingNowPlaying = true;
       try {
-        await Navigator.of(context).push<void>(MaterialPageRoute<void>(
-          builder: (_) => player.isMusic
-              ? NowPlayingScreen(
-                  api: api,
-                  queue: player.queue,
-                  initialIndex: player.currentIndex,
-                  resumeExisting: true,
-                )
-              : MediaPlayerScreen(
-                  api: api,
-                  title: item.title,
-                  path: item.path,
-                  volume: item.volume,
-                  isVideo: true,
-                  queue: player.queue,
-                  initialIndex: player.currentIndex,
-                  resumeExisting: true,
-                ),
-        ));
+        await Navigator.of(context, rootNavigator: true).push<void>(
+          MaterialPageRoute<void>(
+            settings: const RouteSettings(
+              name: PocketLinkRouteNames.nowPlaying,
+            ),
+            builder: (_) => player.isMusic
+                ? NowPlayingScreen(
+                    api: api,
+                    queue: player.queue,
+                    initialIndex: player.currentIndex,
+                    resumeExisting: true,
+                  )
+                : MediaPlayerScreen(
+                    api: api,
+                    title: item.title,
+                    path: item.path,
+                    volume: item.volume,
+                    isVideo: true,
+                    queue: player.queue,
+                    initialIndex: player.currentIndex,
+                    resumeExisting: true,
+                  ),
+          ),
+        );
       } finally {
-        if (mounted) setState(() => _nowPlayingRouteOpen = false);
+        _openingNowPlaying = false;
       }
     } else {
       _openExplore(ExploreCategory.music);
@@ -395,14 +382,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         player.isMusic &&
                         player.isActive &&
                         player.currentItem != null &&
-                        !_miniPlayerDismissed &&
-                        !_nowPlayingRouteOpen
-                    ? _MiniPlayerBar(
-                        player: player,
-                        onOpen: () => _openNowPlaying(player),
-                        onDismiss: _dismissMiniPlayer,
-                      )
-                    : const SizedBox(width: double.infinity, height: 0),
+                        !player.isMiniPlayerDismissed
+                    ? const SizedBox(height: 62)
+                    : const SizedBox.shrink(),
               ),
                 FloatingNavigationDock(
                 order: AppSettings.instance.navigationOrder,
@@ -428,69 +410,3 @@ class _HomeScreenState extends State<HomeScreen> {
 
 
 
-class _MiniPlayerBar extends StatelessWidget {
-  const _MiniPlayerBar({required this.player, required this.onOpen, required this.onDismiss});
-
-  final PersistentAudioPlayer player;
-  final VoidCallback onOpen;
-  final VoidCallback onDismiss;
-
-  @override
-  Widget build(BuildContext context) {
-    final item = player.currentItem!;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
-      child: Material(
-        color: Theme.of(context).colorScheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(16),
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onVerticalDragEnd: (details) {
-            final velocity = details.primaryVelocity ?? 0;
-            if (!player.isPlaying && velocity > 300) onDismiss();
-          },
-          child: InkWell(
-            borderRadius: BorderRadius.circular(16),
-            onTap: onOpen,
-            child: SizedBox(
-            height: 58,
-            child: Row(
-              children: [
-                const SizedBox(width: 14),
-                Icon(Icons.music_note_rounded, color: Theme.of(context).colorScheme.primary),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w700)),
-                      const Text('NOW PLAYING', style: TextStyle(fontSize: 9, letterSpacing: 1.1)),
-                    ],
-                  ),
-                ),
-                StreamBuilder<bool>(
-                  stream: player.player.stream.playing,
-                  initialData: player.player.state.playing,
-                  builder: (context, snapshot) => IconButton(
-                    tooltip: (snapshot.data ?? false) ? 'Pause' : 'Play',
-                    onPressed: player.togglePlayback,
-                    icon: Icon((snapshot.data ?? false) ? Icons.pause_rounded : Icons.play_arrow_rounded),
-                  ),
-                ),
-                IconButton(
-                  tooltip: 'Next track',
-                  onPressed: player.skipToNext,
-                  icon: const Icon(Icons.skip_next_rounded),
-                ),
-                const SizedBox(width: 4),
-              ],
-            ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
