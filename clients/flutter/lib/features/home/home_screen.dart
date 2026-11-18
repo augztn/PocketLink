@@ -301,7 +301,9 @@ class _HomeScreenState extends State<HomeScreen> {
       canPop: !_hostSetupOpen && _selectedIndex == 0,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
-        if (_hostSetupOpen) {
+        if (GlobalMediaControlsController.instance.expanded) {
+          GlobalMediaControlsController.instance.collapseShortcuts();
+        } else if (_hostSetupOpen) {
           _closeHostSetup();
         } else if (_selectedIndex == 2 && _filesCanNavigateBack) {
           // FileManagerScreen handles folder-level back navigation.
