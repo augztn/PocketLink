@@ -31,14 +31,21 @@ class _GlobalMiniPlayerState extends State<GlobalMiniPlayer> {
       animation: Listenable.merge([
         settings,
         player,
-        observer.controlsVisible,
+        observer.settingsVisible,
         observer.dashboardVisible,
       ]),
       builder: (context, _) {
         final settingEnabled = settings.showMiniPlayer;
         final playerEligible = player.showMiniPlayer;
-        final routeVisible = observer.controlsVisible.value;
-        final visible = settingEnabled && playerEligible && routeVisible;
+        // The player owns Now Playing visibility. Navigator observers can miss
+        // nested-route pops, so do not use route visibility to decide whether
+        // the mini-player returns after Now Playing is dismissed.
+        final fullScreen = player.isFullScreen;
+        final settingsRoute = observer.settingsVisible.value;
+        final visible = settingEnabled &&
+            playerEligible &&
+            !fullScreen &&
+            !settingsRoute;
 
         final signature = [
           'setting=$settingEnabled',
@@ -46,7 +53,8 @@ class _GlobalMiniPlayerState extends State<GlobalMiniPlayer> {
           'music=${player.isMusic}',
           'hasItem=${player.currentItem != null}',
           'playing=${player.isPlaying}',
-          'routeVisible=$routeVisible',
+          'fullScreen=$fullScreen',
+          'settingsRoute=$settingsRoute',
           'dashboard=${observer.dashboardVisible.value}',
           'controllerAttached=${controls.isAttached}',
           'openAction=${controls.openNowPlaying != null}',
