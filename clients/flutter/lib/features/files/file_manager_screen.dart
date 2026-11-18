@@ -582,6 +582,8 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final allItems = _listing?.items ?? const <FileEntry>[];
+    final fileCount = allItems.where((item) => !item.isDirectory).length;
+    final folderCount = allItems.where((item) => item.isDirectory).length;
     final items = allItems.where(_matchesCategory).toList();
     items.sort((a, b) {
       if (a.isDirectory != b.isDirectory) return a.isDirectory ? -1 : 1;
@@ -726,7 +728,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  '${allItems.where((e) => e.isDirectory).length} folders • ${allItems.where((e) => !e.isDirectory).length} files',
+                                  '$folderCount ${folderCount == 1 ? 'folder' : 'folders'} • $fileCount ${fileCount == 1 ? 'file' : 'files'}',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
@@ -801,21 +803,33 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
               height: 40,
               child: Row(children: [
                 Expanded(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        for (final category in const ['All', 'Images', 'Videos', 'Music', 'Documents'])
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            child: ChoiceChip(
-                              label: Text(category),
-                              selected: _category == category,
-                              onSelected: (_) { setState(() => _category = category); _saveState(); },
-                              showCheckmark: false,
-                            ),
-                          ),
-                      ],
+                  child: ClipRect(
+                    child: ShaderMask(
+                      blendMode: BlendMode.dstIn,
+                      shaderCallback: (bounds) => const LinearGradient(
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                        colors: [Colors.white, Colors.white, Colors.transparent],
+                        stops: [0, 0.86, 1],
+                      ).createShader(bounds),
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            for (final category in const ['All', 'Images', 'Videos', 'Music', 'Documents'])
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 4),
+                                child: ChoiceChip(
+                                  label: Text(category),
+                                  selected: _category == category,
+                                  onSelected: (_) { setState(() => _category = category); _saveState(); },
+                                  showCheckmark: false,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
