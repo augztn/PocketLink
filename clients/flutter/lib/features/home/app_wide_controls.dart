@@ -15,6 +15,7 @@ class AppWideControlsController extends ChangeNotifier {
   static final instance = AppWideControlsController._();
 
   Object? _owner;
+  final LayerLink musicButtonLink = LayerLink();
   VoidCallback? _openNowPlaying;
   ValueChanged<String>? _selectShortcut;
   VoidCallback? _expandShortcuts;
@@ -131,9 +132,7 @@ class _AppWideControlsState extends State<AppWideControls> {
         }
 
         // When opened from the dock, align the menu with the Music button.
-        final controlsBottom = _shortcutsExpanded
-            ? 8.0 + safeBottom
-            : dashboardVisible ? 82.0 + safeBottom : 8.0 + safeBottom;
+        final controlsBottom = dashboardVisible ? 82.0 + safeBottom : 8.0 + safeBottom;
 
         return Stack(
           fit: StackFit.expand,
@@ -165,27 +164,30 @@ class _AppWideControlsState extends State<AppWideControls> {
                         },
                       ),
                     ),
-                  if (showMiniPlayer && showShortcut)
-                    const SizedBox(width: 8),
-                  if (showShortcut)
-                    FloatingQuickShortcut(
-                      shortcuts: _settings.floatingShortcuts,
-                      expanded: _shortcutsExpanded,
-                      showButton: false,
-                      onTap: () {
-                        if (_settings.floatingShortcutTapAction == 'menu') {
-                          _expandShortcuts();
-                        } else {
-                          _selectShortcut(_settings.floatingShortcuts.first);
-                        }
-                      },
-                      onLongPress: _expandShortcuts,
-                      longPressEnabled: _settings.floatingShortcutLongPressEnabled,
-                      onSelect: _selectShortcut,
-                    ),
                 ],
               ),
             ),
+            if (showShortcut)
+              Positioned(
+                left: 0,
+                top: 0,
+                child: CompositedTransformFollower(
+                  link: _controller.musicButtonLink,
+                  showWhenUnlinked: false,
+                  targetAnchor: Alignment.topCenter,
+                  followerAnchor: Alignment.bottomCenter,
+                  offset: const Offset(0, -8),
+                  child: FloatingQuickShortcut(
+                    shortcuts: _settings.floatingShortcuts,
+                    expanded: true,
+                    showButton: false,
+                    onTap: _expandShortcuts,
+                    onLongPress: _expandShortcuts,
+                    longPressEnabled: false,
+                    onSelect: _selectShortcut,
+                  ),
+                ),
+              ),
           ],
         );
       },
