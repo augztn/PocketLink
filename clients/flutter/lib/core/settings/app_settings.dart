@@ -53,7 +53,7 @@ class AppSettings extends ChangeNotifier {
   List<String> _navigationOrder = List.of(navigationDefaults);
   Set<String> _visibleNavigationItems = Set.of(navigationDefaults);
   Future<void> _navigationWrite = Future<void>.value();
-  bool _navigationMusicSwipeEnabled = false;
+  bool _navigationMusicSwipeEnabled = true;
    String _navigationMusicSwipeLeftAction = 'forward';
    String _navigationMusicSwipeRightAction = 'backward';
   bool _floatingShortcutEnabled = false;
@@ -95,7 +95,7 @@ class AppSettings extends ChangeNotifier {
       final preferences = await SharedPreferences.getInstance();
       _useLiquidGlass = preferences.getBool(_liquidGlassKey) ?? false;
       _showMiniPlayer = preferences.getBool(_nowPlayingMiniPlayerKey) ?? true;
-      _navigationMusicSwipeEnabled = preferences.getBool(_navigationMusicSwipeKey) ?? false;
+      _navigationMusicSwipeEnabled = preferences.getBool(_navigationMusicSwipeKey) ?? true;
        final leftAction = preferences.getString(_navigationMusicSwipeLeftKey);
        final rightAction = preferences.getString(_navigationMusicSwipeRightKey);
        _navigationMusicSwipeLeftAction = leftAction == 'backward' ? 'backward' : 'forward';
