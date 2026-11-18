@@ -107,7 +107,7 @@ class FloatingNavigationDock extends StatelessWidget {
         addTabGroup();
         segments.add(
           SizedBox(
-            key: PocketLinkNavigation.musicButtonKey,
+            key: preview ? null : PocketLinkNavigation.musicButtonKey,
             width: 64,
             height: 64,
             child: Stack(
