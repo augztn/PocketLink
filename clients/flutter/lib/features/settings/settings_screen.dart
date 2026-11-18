@@ -372,15 +372,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ),
                                 const Divider(height: 1),
                                 ListTile(
-                                  leading: const Icon(Icons.high_quality_outlined),
-                                  title: const Text('Streaming quality'),
-                                  subtitle: const Text('RAW · Original source quality · No transcoding or compression'),
-                                  trailing: const Chip(
-                                    label: Text('ORIGINAL'),
-                                    avatar: Icon(Icons.verified_rounded, size: 16),
-                                  ),
-                                ),
-                                ListTile(
                                   leading: const Icon(Icons.folder_outlined),
                                   title: const Text('Download directory'),
                                   subtitle: Text(_settings.downloadDirectory ?? 'Use the system default'),
