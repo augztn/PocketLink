@@ -600,12 +600,13 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
         ),
       ),
       const SizedBox(height: 14),
-      Container(
-        decoration: BoxDecoration(
-          color: colors.surfaceContainerLow,
+      Material(
+        color: colors.surfaceContainerLow,
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.35)),
+          side: BorderSide(color: colors.outlineVariant.withValues(alpha: 0.35)),
         ),
+        clipBehavior: Clip.antiAlias,
         child: SwitchListTile(
           secondary: const Icon(Icons.restart_alt_rounded),
           title: const Text('Start server on device boot'),
