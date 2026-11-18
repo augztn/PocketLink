@@ -419,6 +419,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     try {
       await Navigator.of(context, rootNavigator: true).push(
         MaterialPageRoute<void>(
+          settings: const RouteSettings(name: '/pocketlink-now-playing'),
           builder: (_) => NowPlayingScreen(
             api: widget.api,
             queue: [
