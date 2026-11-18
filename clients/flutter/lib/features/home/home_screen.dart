@@ -312,6 +312,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   _openFloatingShortcut(settings.floatingShortcuts.first);
                 }
               },
+              onCollapse: () => setState(() => _quickShortcutsExpanded = false),
               onLongPress: _expandFloatingShortcuts,
               longPressEnabled: settings.floatingShortcutLongPressEnabled,
               onSelect: _openFloatingShortcut,
