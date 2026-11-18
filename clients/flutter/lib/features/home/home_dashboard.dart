@@ -1546,6 +1546,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                 onTap: () {
                   Navigator.pop(context);
                   Navigator.of(context).push(MaterialPageRoute<void>(
+                     settings: const RouteSettings(name: '/pocketlink-settings'),
                     builder: (_) => SettingsScreen(
                       onOpenSavedServers: widget.onReturnToConnection,
                     ),
