@@ -63,7 +63,7 @@ class _MusicShortcutMenuState extends State<MusicShortcutMenu>
 
   @override
   Widget build(BuildContext context) {
-    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
     final items = widget.shortcuts.reversed.toList(growable: false);
     final menu = Column(
       mainAxisSize: MainAxisSize.min,
