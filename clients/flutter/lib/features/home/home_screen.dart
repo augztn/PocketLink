@@ -343,6 +343,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 isPlaying: player.isMusic && player.isPlaying,
                 hasMedia: player.isActive && player.currentItem != null,
                 isVideo: player.isActive && !player.isMusic,
+                enableMusicSwipe: AppSettings.instance.navigationMusicSwipeEnabled,
                 canChangeTracks: player.isActive && player.isMusic && player.queue.length > 1,
                 onNextTrack: player.skipToNext,
                 onPreviousTrack: player.skipToPrevious,
