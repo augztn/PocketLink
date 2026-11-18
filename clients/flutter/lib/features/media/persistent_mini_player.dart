@@ -3,7 +3,8 @@ import 'package:material_ui/material_ui.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
 import 'persistent_audio_player.dart';
 
-class PersistentMiniPlayer extends StatelessWidget {
+/// Compact representation of the app-scoped music session.
+class PersistentMiniPlayer extends StatefulWidget {
   const PersistentMiniPlayer({
     required this.player,
     required this.onOpen,
@@ -16,23 +17,34 @@ class PersistentMiniPlayer extends StatelessWidget {
   final VoidCallback onDismiss;
 
   @override
+  State<PersistentMiniPlayer> createState() => _PersistentMiniPlayerState();
+}
+
+class _PersistentMiniPlayerState extends State<PersistentMiniPlayer> {
+  double _verticalDragDistance = 0;
+
+  @override
   Widget build(BuildContext context) {
-    final item = player.currentItem;
+    final item = widget.player.currentItem;
     if (item == null) return const SizedBox.shrink();
 
     final colors = Theme.of(context).colorScheme;
     final radius = BorderRadius.circular(28);
 
-    var verticalDragDistance = 0.0;
-
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onVerticalDragStart: (_) => verticalDragDistance = 0,
-      onVerticalDragUpdate: (details) => verticalDragDistance += details.delta.dy,
+      onVerticalDragStart: (_) => _verticalDragDistance = 0,
+      onVerticalDragUpdate: (details) {
+        _verticalDragDistance += details.delta.dy;
+      },
       onVerticalDragEnd: (details) {
         final velocity = details.primaryVelocity ?? 0;
-        final swipedUp = verticalDragDistance < -24 || velocity < -250;
-        if (!player.isPlaying && swipedUp) onDismiss();
+        final swipedUp =
+            _verticalDragDistance < -24 || velocity < -250;
+        _verticalDragDistance = 0;
+        if (!widget.player.isPlaying && swipedUp) {
+          widget.onDismiss();
+        }
       },
       child: SolidPill(
         radius: radius,
@@ -40,13 +52,14 @@ class PersistentMiniPlayer extends StatelessWidget {
           color: Colors.transparent,
           child: InkWell(
             borderRadius: radius,
-            onTap: onOpen,
+            onTap: widget.onOpen,
             child: SizedBox(
               height: 56,
               child: Row(
                 children: [
                   const SizedBox(width: 12),
-                  Icon(Icons.music_note_rounded, color: colors.primary, size: 20),
+                  Icon(Icons.music_note_rounded,
+                      color: colors.primary, size: 20),
                   const SizedBox(width: 9),
                   Expanded(
                     child: Text(
@@ -58,22 +71,15 @@ class PersistentMiniPlayer extends StatelessWidget {
                           ),
                     ),
                   ),
-                  StreamBuilder<bool>(
-                    stream: player.player.stream.playing,
-                    initialData: player.player.state.playing,
-                    builder: (context, snapshot) {
-                      final playing = snapshot.data ?? false;
-                      return IconButton(
-                        tooltip: playing ? 'Pause' : 'Play',
-                        visualDensity: VisualDensity.compact,
-                        onPressed: player.togglePlayback,
-                        iconSize: 21,
-                        color: colors.primary,
-                        icon: Icon(
-                          playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                        ),
-                      );
-                    },
+                  IconButton(
+                    tooltip: widget.player.isPlaying ? 'Pause' : 'Play',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: widget.player.togglePlayback,
+                    iconSize: 21,
+                    color: colors.primary,
+                    icon: Icon(widget.player.isPlaying
+                        ? Icons.pause_rounded
+                        : Icons.play_arrow_rounded),
                   ),
                   const SizedBox(width: 4),
                 ],
