@@ -453,8 +453,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 onSelect: _openTab,
                 musicShortcuts: AppSettings.instance.floatingShortcuts,
                 musicShortcutsExpanded: _musicShortcutsExpanded,
-                musicShortcutsBottomOffset: 64 +
-                    (AppSettings.instance.showMiniPlayer && player.shouldShowMiniPlayer ? 62 : 0),
+                musicShortcutsBottomOffset: 64.0 +
+                    (AppSettings.instance.showMiniPlayer && player.shouldShowMiniPlayer ? 62.0 : 0.0),
                 onMusicShortcutLongPress: _expandMusicShortcuts,
                 onMusicShortcutSelected: _openFloatingShortcut,
                 onBrowseSwipeLeft: () => _handleMusicButtonSwipe(left: true),
