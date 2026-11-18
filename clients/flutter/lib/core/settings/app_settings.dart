@@ -32,6 +32,7 @@ class AppSettings extends ChangeNotifier {
   static const _videoDefaultSpeedKey = 'settings_video_default_speed';
   static const _videoFitModeKey = 'settings_video_fit_mode';
   static const _videoGesturesKey = 'settings_video_gestures';
+  static const _videoPinchZoomKey = 'settings_video_pinch_zoom';
   static const _videoTapToggleKey = 'settings_video_tap_toggle';
   static const _videoSubtitleFontSizeKey = 'settings_video_subtitle_font_size';
   static const _videoSubtitleBackgroundKey = 'settings_video_subtitle_background';
@@ -73,6 +74,7 @@ class AppSettings extends ChangeNotifier {
   double _videoDefaultSpeed = 1.0;
   String _videoFitMode = 'contain';
   bool _videoGesturesEnabled = true;
+  bool _videoPinchZoomEnabled = true;
   bool _videoTapToTogglePlayback = false;
   double _videoSubtitleFontSize = 20;
   bool _videoSubtitleBackground = true;
@@ -104,6 +106,7 @@ class AppSettings extends ChangeNotifier {
   double get videoDefaultSpeed => _videoDefaultSpeed;
   String get videoFitMode => _videoFitMode;
   bool get videoGesturesEnabled => _videoGesturesEnabled;
+  bool get videoPinchZoomEnabled => _videoPinchZoomEnabled;
   bool get videoTapToTogglePlayback => _videoTapToTogglePlayback;
   double get videoSubtitleFontSize => _videoSubtitleFontSize;
   bool get videoSubtitleBackground => _videoSubtitleBackground;
@@ -123,6 +126,7 @@ class AppSettings extends ChangeNotifier {
       _videoDefaultSpeed = preferences.getDouble(_videoDefaultSpeedKey) ?? 1.0;
       _videoFitMode = preferences.getString(_videoFitModeKey) ?? 'contain';
       _videoGesturesEnabled = preferences.getBool(_videoGesturesKey) ?? true;
+      _videoPinchZoomEnabled = preferences.getBool(_videoPinchZoomKey) ?? true;
       _videoTapToTogglePlayback = preferences.getBool(_videoTapToggleKey) ?? false;
       _videoSubtitleFontSize = preferences.getDouble(_videoSubtitleFontSizeKey) ?? 20;
       _videoSubtitleBackground = preferences.getBool(_videoSubtitleBackgroundKey) ?? true;
@@ -373,7 +377,7 @@ class AppSettings extends ChangeNotifier {
 
   Future<void> setVideoPlayerOptions({
     int? controlsTimeoutSeconds, int? seekSeconds, double? defaultSpeed,
-    String? fitMode, bool? gesturesEnabled, bool? tapToTogglePlayback,
+    String? fitMode, bool? gesturesEnabled, bool? pinchZoomEnabled, bool? tapToTogglePlayback,
     double? subtitleFontSize, bool? subtitleBackground, bool? autoFullscreen,
     String? fullscreenOrientation,
   }) async {
@@ -389,6 +393,7 @@ class AppSettings extends ChangeNotifier {
     if (defaultSpeed != null) _videoDefaultSpeed = defaultSpeed;
     if (fitMode != null) _videoFitMode = fitMode;
     if (gesturesEnabled != null) _videoGesturesEnabled = gesturesEnabled;
+    if (pinchZoomEnabled != null) _videoPinchZoomEnabled = pinchZoomEnabled;
     if (tapToTogglePlayback != null) _videoTapToTogglePlayback = tapToTogglePlayback;
     if (subtitleFontSize != null) _videoSubtitleFontSize = subtitleFontSize;
     if (subtitleBackground != null) _videoSubtitleBackground = subtitleBackground;
@@ -402,6 +407,7 @@ class AppSettings extends ChangeNotifier {
       if (defaultSpeed != null) preferences.setDouble(_videoDefaultSpeedKey, defaultSpeed),
       if (fitMode != null) preferences.setString(_videoFitModeKey, fitMode),
       if (gesturesEnabled != null) preferences.setBool(_videoGesturesKey, gesturesEnabled),
+      if (pinchZoomEnabled != null) preferences.setBool(_videoPinchZoomKey, pinchZoomEnabled),
       if (tapToTogglePlayback != null) preferences.setBool(_videoTapToggleKey, tapToTogglePlayback),
       if (subtitleFontSize != null) preferences.setDouble(_videoSubtitleFontSizeKey, subtitleFontSize),
       if (subtitleBackground != null) preferences.setBool(_videoSubtitleBackgroundKey, subtitleBackground),
@@ -416,6 +422,7 @@ class AppSettings extends ChangeNotifier {
     _videoDefaultSpeed = 1.0;
     _videoFitMode = 'contain';
     _videoGesturesEnabled = true;
+    _videoPinchZoomEnabled = true;
     _videoTapToTogglePlayback = false;
     _videoSubtitleFontSize = 20;
     _videoSubtitleBackground = true;
@@ -426,7 +433,7 @@ class AppSettings extends ChangeNotifier {
     await Future.wait([
       preferences.remove(_videoControlsTimeoutKey), preferences.remove(_videoSeekSecondsKey),
       preferences.remove(_videoDefaultSpeedKey), preferences.remove(_videoFitModeKey),
-      preferences.remove(_videoGesturesKey), preferences.remove(_videoTapToggleKey),
+      preferences.remove(_videoGesturesKey), preferences.remove(_videoPinchZoomKey), preferences.remove(_videoTapToggleKey),
       preferences.remove(_videoSubtitleFontSizeKey), preferences.remove(_videoSubtitleBackgroundKey),
       preferences.remove(_videoAutoFullscreenKey), preferences.remove(_videoFullscreenOrientationKey),
     ]);
