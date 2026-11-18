@@ -129,10 +129,7 @@ class _AppWideControlsState extends State<AppWideControls> {
           return const SizedBox.shrink();
         }
 
-        final miniPlayerHeight = showMiniPlayer ? 66.0 : 0.0;
-        final miniPlayerBottom = dashboardVisible ? 82.0 + safeBottom : 8.0 + safeBottom;
-        final shortcutBottom = 90.0 + safeBottom +
-            (showMiniPlayer && dashboardVisible ? miniPlayerHeight : 0.0);
+        final controlsBottom = dashboardVisible ? 82.0 + safeBottom : 8.0 + safeBottom;
 
         return Stack(
           fit: StackFit.expand,
@@ -145,41 +142,46 @@ class _AppWideControlsState extends State<AppWideControls> {
                   child: const SizedBox.expand(),
                 ),
               ),
-            if (showMiniPlayer)
-              Positioned(
-                left: 14,
-                right: 14,
-                bottom: miniPlayerBottom,
-                child: PersistentMiniPlayer(
-                  player: _player,
-                  onOpen: () => _controller.openNowPlaying?.call(),
-                  onDismiss: () {
-                    if (!_player.isPlaying) {
-                      setState(() => _miniPlayerDismissed = true);
-                    }
-                  },
-                ),
+            Positioned(
+              left: 14,
+              right: 16,
+              bottom: controlsBottom,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if (showMiniPlayer)
+                    Expanded(
+                      child: PersistentMiniPlayer(
+                        player: _player,
+                        onOpen: () => _controller.openNowPlaying?.call(),
+                        onDismiss: () {
+                          if (!_player.isPlaying) {
+                            setState(() => _miniPlayerDismissed = true);
+                          }
+                        },
+                      ),
+                    ),
+                  if (showMiniPlayer && showShortcut)
+                    const SizedBox(width: 8),
+                  if (showShortcut)
+                    FloatingQuickShortcut(
+                      shortcuts: _settings.floatingShortcuts,
+                      expanded: _shortcutsExpanded,
+                      useLiquidGlass: _settings.useLiquidGlass,
+                      onTap: () {
+                        if (_settings.floatingShortcutTapAction == 'menu') {
+                          _expandShortcuts();
+                        } else {
+                          _selectShortcut(_settings.floatingShortcuts.first);
+                        }
+                      },
+                      onLongPress: _expandShortcuts,
+                      longPressEnabled: _settings.floatingShortcutLongPressEnabled,
+                      onSelect: _selectShortcut,
+                    ),
+                ],
               ),
-            if (showShortcut)
-              Positioned(
-                right: 16,
-                bottom: shortcutBottom,
-                child: FloatingQuickShortcut(
-                  shortcuts: _settings.floatingShortcuts,
-                  expanded: _shortcutsExpanded,
-                  useLiquidGlass: _settings.useLiquidGlass,
-                  onTap: () {
-                    if (_settings.floatingShortcutTapAction == 'menu') {
-                      _expandShortcuts();
-                    } else {
-                      _selectShortcut(_settings.floatingShortcuts.first);
-                    }
-                  },
-                  onLongPress: _expandShortcuts,
-                  longPressEnabled: _settings.floatingShortcutLongPressEnabled,
-                  onSelect: _selectShortcut,
-                ),
-              ),
+            ),
           ],
         );
       },
