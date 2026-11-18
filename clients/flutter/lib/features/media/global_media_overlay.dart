@@ -90,7 +90,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay> {
     final size = overlay.size;
     const popupWidth = 184.0;
     const popupHeight = 44.0;
-    final left = 14.0.clamp(0.0, math.max(0.0, size.width - popupWidth));
+    final left = 14.0.clamp(0.0, math.max(0.0, size.width - popupWidth)).toDouble();
     final miniPlayerOffset = _shouldShowMiniPlayer() ? _miniPlayerHeight : 0.0;
     final top = (buttonPosition.dy - popupHeight - 8 - miniPlayerOffset)
         .clamp(8.0, math.max(8.0, size.height - popupHeight - 8))
