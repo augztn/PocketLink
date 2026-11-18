@@ -274,9 +274,30 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
 
   String _displayVolumeName(StorageVolume volume) {
     final rawName = volume.name.trim();
-    final looksLikeUsbId = RegExp(
-      r'^(?:usb|otg)[-_][a-f0-9]{8,}
+    final prefix = rawName.toLowerCase();
+    final hasUsbPrefix = prefix.startsWith('usb-') ||
+        prefix.startsWith('usb_') ||
+        prefix.startsWith('otg-') ||
+        prefix.startsWith('otg_');
+    final suffix = hasUsbPrefix ? rawName.substring(4) : rawName;
+    final looksLikeUsbId = hasUsbPrefix &&
+        RegExp(r'^[a-f0-9]{8,}').hasMatch(suffix);
+    if (!looksLikeUsbId) {
+      return rawName.isEmpty ? 'External drive' : rawName;
+    }
 
+    final available = _volumes.where((item) => item.available).toList();
+    final index = available.indexWhere((item) => item.id == volume.id);
+    return available.length > 1 && index >= 0
+        ? 'USB Drive ' + (index + 1).toString()
+        : 'USB Drive';
+  }
+
+  String _formatLatency(Duration? latency) {
+    if (latency == null || latency.inMicroseconds <= 0) return '—';
+    if (latency.inMicroseconds < 1000) return '<1 ms';
+    return (latency.inMicroseconds / 1000).round().toString() + ' ms';
+  }
   String _relativeTime(DateTime date) {
     final difference = DateTime.now().difference(date);
     if (difference.isNegative || difference.inMinutes < 1) return 'Just now';
