@@ -85,7 +85,7 @@ void main() {
     await settings.setMusicButtonShortcuts(shortcuts);
     expect(settings.musicButtonShortcuts, shortcuts);
     final preferences = await SharedPreferences.getInstance();
-    expect(preferences.getString('settings_floating_shortcuts'),
+    expect(preferences.getString('settings_music_button_shortcuts'),
         '["music","files","photos","upload"]');
 
     await expectLater(
@@ -103,7 +103,7 @@ void main() {
 
     await settings.resetMusicButtonShortcuts();
     expect(settings.musicButtonShortcuts, AppSettings.musicButtonShortcutDefaults);
-    expect(preferences.getString('settings_floating_shortcuts'), isNull);
+    expect(preferences.getString('settings_music_button_shortcuts'), isNull);
   });
 
   test('stats for nerds setting persists, can be disabled and resets enabled', () async {
