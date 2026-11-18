@@ -193,6 +193,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       trailing: const Icon(Icons.chevron_right_rounded),
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute<void>(
+          settings: RouteSettings(name: '/pocketlink-settings/${title.toLowerCase().replaceAll(' ', '-')}'),
           builder: (_) => title == 'About PocketLink'
               ? const AboutScreen()
               : SettingsScreen(
@@ -287,6 +288,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   trailing: const Icon(Icons.chevron_right_rounded),
                                   onTap: () => Navigator.of(context).push(
                                     MaterialPageRoute<void>(
+                                      settings: const RouteSettings(name: '/pocketlink-settings/shortcuts'),
                                       builder: (_) => const FloatingShortcutCustomizationScreen(),
                                     ),
                                   ),
@@ -339,6 +341,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   trailing: const Icon(Icons.chevron_right_rounded),
                                   onTap: () => Navigator.of(context).push(
                                     MaterialPageRoute<void>(
+                                      settings: const RouteSettings(name: '/pocketlink-settings/navigation'),
                                       builder: (_) => const NavigationCustomizationScreen(),
                                     ),
                                   ),
@@ -353,6 +356,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   trailing: const Icon(Icons.chevron_right_rounded),
                                   onTap: () => Navigator.of(context).push(
                                     MaterialPageRoute<void>(
+                                      settings: const RouteSettings(name: '/pocketlink-settings/now-playing'),
                                       builder: (_) => const NowPlayingSettingsScreen(),
                                     ),
                                   ),
