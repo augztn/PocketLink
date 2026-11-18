@@ -1645,17 +1645,6 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
       ),
     );
   }
-},
-      caseSensitive: false,
-    ).hasMatch(rawName);
-    if (!looksLikeUsbId) return rawName.isEmpty ? 'External drive' : rawName;
-
-    final available = _volumes.where((item) => item.available).toList();
-    final index = available.indexWhere((item) => item.id == volume.id);
-    return available.length > 1 && index >= 0
-        ? 'USB Drive ${index + 1}'
-        : 'USB Drive';
-  }
 
   String _formatLatency(Duration? latency) {
     if (latency == null || latency.inMicroseconds <= 0) return '—';
