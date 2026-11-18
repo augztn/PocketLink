@@ -72,8 +72,8 @@ class FloatingNavigationDock extends StatelessWidget {
                           left: constraints.maxWidth *
                               selectedPosition /
                               ids.length,
-                          top: 5,
-                          bottom: 5,
+                          top: 2,
+                          bottom: 2,
                           width: constraints.maxWidth / ids.length,
                           child: DecoratedBox(
                             decoration: BoxDecoration(
@@ -111,7 +111,9 @@ class FloatingNavigationDock extends StatelessWidget {
                       ),
                     ],
                   );
-                },
+                    },
+                  ),
+                ),
               ),
             ),
           ),
