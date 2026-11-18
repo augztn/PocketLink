@@ -3,7 +3,8 @@ import 'dart:math' as math;
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/widgets/liquid_glass_pill.dart';
-import 'floating_quick_shortcut.dart';
+import '../../core/navigation/pocketlink_navigation.dart';
+import 'music_shortcut_menu.dart';
 
 class FloatingNavigationDock extends StatelessWidget {
   const FloatingNavigationDock({
@@ -106,6 +107,7 @@ class FloatingNavigationDock extends StatelessWidget {
         addTabGroup();
         segments.add(
           SizedBox(
+            key: PocketLinkNavigation.musicButtonKey,
             width: 64,
             height: 64,
             child: Stack(
@@ -117,15 +119,10 @@ class FloatingNavigationDock extends StatelessWidget {
                     bottom: musicShortcutsBottomOffset,
                     child: SizedBox(
                       width: 220,
-                      child: FloatingQuickShortcut(
+                      child: MusicShortcutMenu(
                         shortcuts: musicShortcuts,
                         expanded: true,
-                        useLiquidGlass: false,
-                        onTap: () {},
-                        onLongPress: onMusicShortcutLongPress ?? () {},
-                        longPressEnabled: false,
                         onSelect: onMusicShortcutSelected ?? (_) {},
-                        showButton: false,
                       ),
                     ),
                   ),
