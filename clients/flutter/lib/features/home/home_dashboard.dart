@@ -11,6 +11,7 @@ import '../../core/widgets/liquid_glass_pill.dart';
 import '../settings/settings_screen.dart';
 import 'explore_search_screens.dart';
 import '../media/now_playing_screen.dart';
+import '../media/persistent_audio_player.dart';
 import '../../core/network/server_api.dart';
 import '../library/photo_gallery_screen.dart';
 import '../transfers/transfer_manager_screen.dart';
