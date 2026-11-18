@@ -347,6 +347,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 leftSwipeAction: AppSettings.instance.navigationMusicSwipeLeftAction,
                 rightSwipeAction: AppSettings.instance.navigationMusicSwipeRightAction,
                 onMusicLongPress: () => _openTab(1),
+                currentTrackTitle: player.isMusic && player.isActive ? player.currentItem?.title : null,
                 canChangeTracks: player.isActive && player.isMusic && player.queue.length > 1,
                 onNextTrack: player.skipToNext,
                 onPreviousTrack: player.skipToPrevious,
