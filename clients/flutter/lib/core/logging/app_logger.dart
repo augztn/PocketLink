@@ -12,19 +12,42 @@ class AppLogger {
   static Directory? _directory;
   static Future<void> _writeQueue = Future<void>.value();
   static File? _logFile;
+  static DateTime? _sessionStartedAt;
+  static int _eventSequence = 0;
+  static String? _sessionId;
+  static bool _initialized = false;
+
+  static String nextEventId([String prefix = 'evt']) =>
+      '$prefix-${++_eventSequence}';
 
   static Future<void> initialize() async {
+    if (_initialized) return;
+    _sessionStartedAt = DateTime.now().toUtc();
+    _sessionId = 'session-$pid-${_sessionStartedAt!.microsecondsSinceEpoch}';
     try {
       _directory = await getApplicationSupportDirectory();
       await _directory!.create(recursive: true);
-      _logFile = File('${_directory!.path}/homeserver.log');
+      _logFile = File('${_directory!.path}/pocketlink.log');
+      final legacyLog = File('${_directory!.path}/homeserver.log');
+      final legacyBackup = File('${_directory!.path}/homeserver.log.1');
+      if (!await _logFile!.exists() && await legacyLog.exists()) {
+        await legacyLog.rename(_logFile!.path);
+      }
+      final backup = File('${_logFile!.path}.1');
+      if (!await backup.exists() && await legacyBackup.exists()) {
+        await legacyBackup.rename(backup.path);
+      }
       await _rotateIfNeeded();
+      _initialized = true;
       await info('Application started', fields: {
         'platform': Platform.operatingSystem,
         'debug': kDebugMode,
+        'session': _sessionId!,
+        'pid': pid,
+        'processors': Platform.numberOfProcessors,
       });
     } catch (error) {
-      debugPrint('PocketLink logger initialization failed: $error');
+      debugPrint('PocketLink logger initialization failed: ${_redact(error.toString())}');
     }
   }
 
@@ -50,12 +73,15 @@ class AppLogger {
   }) async {
     final file = _logFile;
     if (file == null) {
-      debugPrint('[$level] $message');
+      debugPrint('[$level] ${_redact(message)}');
       return;
     }
-    final safeFields = fields.map((key, value) => MapEntry(
+    final safeFields = <String, Object?>{
+      ...fields,
+      'session': _sessionId ?? 'uninitialized',
+    }.map((key, value) => MapEntry(
       key,
-      RegExp(r'password|passwd|authorization|token|secret|api[_-]?key', caseSensitive: false).hasMatch(key)
+      RegExp(r'password|passwd|authorization|token|secret|api[_-]?key|username|user|login|cookie|host|hostname|address|server', caseSensitive: false).hasMatch(key)
           ? '[REDACTED]'
           : _redact(value.toString()),
     ));
@@ -73,17 +99,57 @@ class AppLogger {
         await _rotateIfNeeded();
         await file.writeAsString(line.toString(), mode: FileMode.append, flush: true);
       } catch (writeError) {
-        debugPrint('PocketLink log write failed: $writeError');
+        debugPrint('PocketLink log write failed: ${_redact(writeError.toString())}');
       }
     });
   }
 
-  static String _redact(String value) => value
-      .replaceAll(
-        RegExp(r'(password|passwd|authorization|token|secret|api[_-]?key)(\s*[:=]\s*)[^,;\s]+', caseSensitive: false),
-        r'$1$2[REDACTED]',
-      )
-      .replaceAll(RegExp(r'Basic\s+[A-Za-z0-9+/=]+', caseSensitive: false), 'Basic [REDACTED]');
+  @visibleForTesting
+  static String sanitizeDiagnosticContent(String value) => _redact(value);
+
+  static String _redact(String value) {
+    final withSchemesRedacted = value
+        .replaceAll(
+          RegExp(r'Basic\s+[A-Za-z0-9+/=]+', caseSensitive: false),
+          'Basic [REDACTED]',
+        )
+        .replaceAll(
+          RegExp(r'Bearer\s+[A-Za-z0-9._~+/-]+=*', caseSensitive: false),
+          'Bearer [REDACTED]',
+        );
+
+    final withCredentialsRedacted = withSchemesRedacted.replaceAllMapped(
+      RegExp(
+        r'''((?:password|passwd|authorization|token|secret|api[_-]?key|username|user|login|cookie|set-cookie)\s*["']?\s*[:=]\s*)(?:"[^"]*"|'[^']*'|[^,;\s}]+)''',
+        caseSensitive: false,
+      ),
+      (match) {
+        final original = match.group(0)!;
+        final valueStart = match.group(1)!.length;
+        final credential = original.substring(valueStart);
+        final replacement = credential.startsWith('"')
+            ? '"[REDACTED]"'
+            : credential.startsWith("'")
+                ? "'[REDACTED]'"
+                : '[REDACTED]';
+        return '${match.group(1)}$replacement';
+      },
+    );
+
+    return withCredentialsRedacted
+        .replaceAll(
+          RegExp(
+            r'(?<![\d.])(?:25[0-5]|2[0-4]\d|1?\d?\d)(?:\.(?:25[0-5]|2[0-4]\d|1?\d?\d)){3}(?![\d.])',
+          ),
+          '[REDACTED_HOST]',
+        )
+        .replaceAll(
+          RegExp(
+            r'(?<![0-9A-Fa-f:])(?=[0-9A-Fa-f:]*[A-Fa-f]|[0-9A-Fa-f:]*::)(?:[0-9A-Fa-f]{0,4}:){2,7}[0-9A-Fa-f]{0,4}(?![0-9A-Fa-f:])',
+          ),
+          '[REDACTED_HOST]',
+        );
+  }
 
   static Future<void> _rotateIfNeeded() async {
     final file = _logFile;
@@ -101,7 +167,7 @@ class AppLogger {
     }
   }
 
-  static Future<String> readLogs() async {
+  static Future<String> readLogs({bool currentSessionOnly = false}) async {
     await _writeQueue;
     final file = _logFile;
     if (file == null || !await file.exists()) return 'No diagnostic logs yet.';
@@ -109,12 +175,54 @@ class AppLogger {
     final parts = <String>[];
     if (await backup.exists()) parts.add(await backup.readAsString());
     parts.add(await file.readAsString());
-    return parts.join('\n');
+    final logs = parts.join('\n');
+    return currentSessionOnly
+        ? filterSessionLogs(logs, _sessionId ?? 'uninitialized')
+        : logs;
+  }
+
+  @visibleForTesting
+  static String filterSessionLogs(String logs, String sessionId) {
+    final result = <String>[];
+    var includeEvent = false;
+    for (final line in logs.split('\n')) {
+      if (RegExp(r'^\d{4}-\d{2}-\d{2}T').hasMatch(line)) {
+        includeEvent = line.contains('session: $sessionId');
+      }
+      if (includeEvent) result.add(line);
+    }
+    return result.join('\n').trimRight();
+  }
+
+  static Future<String> _diagnosticHeader() async {
+    final now = DateTime.now().toUtc();
+    final sessionStartedAt = _sessionStartedAt ?? now;
+    final uptime = now.difference(sessionStartedAt);
+    final lines = <String>[
+      'PocketLink diagnostic report',
+      'Captured: ${now.toIso8601String()}',
+      'Session: ${_sessionId ?? 'uninitialized'}',
+      'Session started: ${sessionStartedAt.toIso8601String()}',
+      'Session uptime: ${uptime.inSeconds}s',
+      'Platform: ${Platform.operatingSystem}',
+      'OS version: ${Platform.operatingSystemVersion}',
+      'Dart: ${Platform.version.split(' ').first}',
+      'CPU cores: ${Platform.numberOfProcessors}',
+    ];
+    try {
+      lines.add('Process RSS: ${(ProcessInfo.currentRss / (1024 * 1024)).toStringAsFixed(1)} MB');
+      lines.add('Peak process RSS: ${(ProcessInfo.maxRss / (1024 * 1024)).toStringAsFixed(1)} MB');
+    } catch (_) {
+      lines.add('Process memory: unavailable');
+    }
+    return '${lines.join('\n')}\n\n';
   }
 
   static Future<File> createDiagnosticFile() async {
     final directory = _directory ?? await getApplicationSupportDirectory();
-    final content = await readLogs();
+    final content = sanitizeDiagnosticContent(
+      '${await _diagnosticHeader()}${await readLogs(currentSessionOnly: true)}',
+    );
     final file = File('${directory.path}/pocketlink-diagnostics-${DateTime.now().toUtc().millisecondsSinceEpoch}.txt');
     await file.writeAsString(content, flush: true);
     return file;

@@ -1,99 +1,82 @@
-# HomeServer
+# PocketLink
 
-A free, open-source server management client built with Flutter and a FastAPI backend.
+PocketLink is a Flutter client and native Android server for private file access, USB/SSD storage browsing, and direct media streaming.
 
-HomeServer is designed to make self-hosted servers approachable: enter a server address, connect, and manage supported capabilities through a graphical interface.
+Install the Android app, grant the requested storage permissions, and optionally connect a USB/SSD folder through Android's Storage Access Framework. The native Android foreground service hosts the API; no Termux, Python, or manually started shell service is required.
 
 ## Project status
 
-**Early development.** The Flutter client supports authenticated file management and HTTP byte-range media streaming against the existing FastAPI backend.
+The Android native server and Flutter client are under active development. The client supports authenticated internal-storage and SAF-backed external-storage browsing, file operations, uploads/downloads, media metadata/thumbnails, and direct HTTP byte-range streaming.
 
-## Planned platforms
+## Secure remote access
 
-- Android
-- Linux (portable AppImage)
-- Windows
-- iOS (where supported by Flutter and platform dependencies)
+The native server uses HTTP on port 8000. To protect credentials and file contents, PocketLink accepts this cleartext connection only from:
+- localhost / loopback; or
+- a Tailscale peer address (Tailscale IPv4 100.64.0.0/10 or Tailscale IPv6 fd7a:115c:a1e0::/48).
 
-## Media streaming
+This relies on Tailscale's encrypted WireGuard tunnel. Ordinary LAN and public-network HTTP peers are rejected. For access through another network, place a TLS-terminating reverse proxy in front of the service and ensure the proxy-to-app connection is local. Do not expose port 8000 directly to the public internet. Keep Tailscale ACLs restricted to trusted devices.
 
-The client includes separate Music and Videos libraries. It streams supported audio and
-video files directly from the server with HTTP Basic Authentication and byte-range
-requests, so seeking does not require downloading the entire file first.
+All API routes except `/health` require HTTP Basic authentication; `/health` is also restricted by the peer policy. The username is `admin`; the password is configured by the app and verified server-side using a salted PBKDF2 verifier. Credentials are not stored as plaintext by the native server.
 
-The Music library recursively scans `/sdcard/Music`. The Videos library recursively
-scans `/sdcard/Movies` and `/sdcard/Videos`. Missing folders are skipped; inaccessible
-subfolders are reported as skipped. Use the refresh action to scan again after adding files.
+## Media quality
 
-Supported extensions include MP3, M4A, AAC, WAV, FLAC, OGG, MP4, MKV, WebM, MOV and AVI.
-Actual playback depends on the codecs available in the media file and the target device.
+Original audio and video files are streamed directly from their source. The server supports HTTP byte ranges for seeking and sends `Cache-Control: no-transform`. The original stream is not transcoded, recompressed, resized, or bitrate-adjusted. Thumbnail generation is a separate preview-only operation and does not alter the original media.
 
-Linux desktop builds use libmpv. Install the runtime dependency on Ubuntu/Debian with:
+## Storage
 
-```sh
-sudo apt install libmpv-dev mpv
-```
+- Internal storage is accessed through Android's storage permission model.
+- USB/SSD volumes are granted through Android's Storage Access Framework.
+- External storage volume identifiers are app-managed; clients should discover them through `GET /api/storage/volumes`.
+- File paths are relative to the selected storage root. Hidden names and path traversal segments are rejected.
+- Upload and download sizes are not capped by an application-level PocketLink limit. Available storage, Android providers, and device resources still apply.
 
-Use HTTPS when connecting over an untrusted network. A private VPN such as Tailscale
-is recommended for remote access.
+## API overview
 
-## File manager libraries
+See [docs/API_CONTRACT.md](docs/API_CONTRACT.md) for the native API routes, request shapes, response behavior, authentication, and streaming semantics.
 
-The Flutter home screen provides category shortcuts for Images, Audio, Videos and
-Documents, alongside the general file browser. Images are discovered recursively in
-`/sdcard/Pictures`, `/sdcard/DCIM` and `/sdcard/Download`. Documents are discovered
-in `/sdcard/Documents` and `/sdcard/Download`. Both libraries support search and
-refresh; images can be previewed and documents can be downloaded. Scans are limited
-to 2,000 directories and 20 folder levels.
+## Platforms
 
-Supported image formats: JPG, JPEG, PNG, WebP, GIF and BMP.
-Supported document formats: PDF, DOC/DOCX, ODT, RTF, TXT, Markdown, CSV,
-XLS/XLSX, ODS, PPT/PPTX and ODP.
-
-## Linux AppImage
-
-GitHub Actions builds a portable x86_64 AppImage for Linux. Open the latest successful
-[Flutter CI workflow](https://github.com/augztn/syslab/actions/workflows/flutter.yml),
-download the `HomeServer-Linux-x86_64-AppImage` artifact, then run:
-
-```sh
-chmod +x HomeServer-x86_64.AppImage
-./HomeServer-x86_64.AppImage
-```
-
-The AppImage is currently built for x86_64 Linux desktops. ARM64 Linux packaging is not included yet.
+- Android: native server + Flutter client.
+- Linux: Flutter client / AppImage workflow.
+- Other Flutter targets depend on platform support for the selected media and secure-storage plugins.
 
 ## Development
 
-Install the Flutter stable SDK, then run:
+Install Flutter stable and the Android SDK, then:
 
 ```sh
 cd clients/flutter
 flutter pub get
-flutter run
-```
-
-Run tests:
-
-```sh
+flutter analyze
 flutter test
+flutter build apk --release
 ```
 
-## Architecture
+The Android SAF bridge is a local Flutter plugin at `clients/flutter/packages/pocketlink_saf`. Its Kotlin unit tests are in that module's `src/test` source set.
 
-- `clients/flutter`: cross-platform Flutter application.
-- `server`: existing FastAPI backend (to be brought into this repository without replacing the deployed copy).
-- `docs`: API contract, security model, and deployment documentation.
+## Repository layout
 
-The client communicates with the server over HTTP(S). Remote deployments should use HTTPS. Administrative actions must be explicitly authorized and capability-gated by the backend; HomeServer will not expose an unrestricted root shell.
+- `clients/flutter/lib`: Flutter UI, state, networking, media, and transfer features.
+- `clients/flutter/packages/pocketlink_saf`: native Android storage bridge, foreground server, and API implementation.
+- `.github/workflows`: analysis, tests, and platform build workflows.
+- `docs`: API and deployment documentation.
 
 ## Security principles
 
 - Never disable TLS certificate validation.
-- Keep credentials in platform secure storage, not plain preferences.
-- Restrict file operations to configured storage roots on the server.
-- Authenticate and authorize every administrative API operation.
-- Treat unsupported server capabilities as unavailable rather than guessing.
+- Use Tailscale for the native HTTP listener or a trusted TLS reverse proxy.
+- Keep credentials in platform secure storage.
+- Restrict file operations to configured storage roots.
+- Treat unavailable Android storage providers as unavailable; do not silently substitute another volume.
+- Preserve original media bytes and HTTP Range behavior.
+
+## Credits & attribution
+
+PocketLink is created and maintained by [augztn](https://github.com/augztn).
+
+If you use PocketLink, redistribute it, or build on its code, a mention of PocketLink and a link to [the original repository](https://github.com/augztn/PocketLink) are always appreciated. Thank you for helping the project reach more people. ❤️
+
+This is a friendly request, not an additional condition of the MIT License. The license's existing copyright and license-notice requirements still apply.
 
 ## License
 

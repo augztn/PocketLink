@@ -2,7 +2,38 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:homeserver_client/core/network/server_api.dart';
+import 'package:pocketlink_client/core/network/server_api.dart';
+
+class _NetworkHandoffAdapter implements HttpClientAdapter {
+  int requests = 0;
+  bool retryUsedFreshConnection = false;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    requests++;
+    if (requests == 1) {
+      throw DioException(
+        requestOptions: options,
+        type: DioExceptionType.connectionTimeout,
+        message: 'Simulated network handoff',
+      );
+    }
+    retryUsedFreshConnection =
+        options.headers['connection'] == 'close';
+    return ResponseBody.fromString(
+      '{"path":"","items":[]}',
+      200,
+      headers: {Headers.contentTypeHeader: ['application/json']},
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
 
 class _SequenceAdapter implements HttpClientAdapter {
   _SequenceAdapter(this.statuses, {this.delay = Duration.zero});
@@ -31,12 +62,66 @@ class _SequenceAdapter implements HttpClientAdapter {
 
 void main() {
   group('ServerApi', () {
+    test('parses host telemetry without inventing unavailable readings', () {
+      final telemetry = HostSystemTelemetry.fromJson({
+        'sampled_at_ms': 1794940000000,
+        'device': {
+          'manufacturer': 'Samsung',
+          'model': 'Galaxy',
+          'android_version': '16',
+        },
+        'cpu': {
+          'model': 'Snapdragon',
+          'cores': 8,
+          'usage_percent': null,
+          'usage_status': 'sampling',
+        },
+        'memory': {
+          'total_bytes': 8000,
+          'used_bytes': 5000,
+          'available_bytes': 3000,
+          'usage_percent': 62.5,
+        },
+        'storage': {
+          'total_bytes': 10000,
+          'used_bytes': 4000,
+          'available_bytes': 6000,
+          'usage_percent': 40,
+        },
+        'battery': {'percent': 87, 'status': 'charging'},
+      });
+
+      expect(telemetry.deviceModel, 'Galaxy');
+      expect(telemetry.cpuCores, 8);
+      expect(telemetry.cpuUsagePercent, isNull);
+      expect(telemetry.cpuUsageStatus, 'sampling');
+      expect(telemetry.memoryUsagePercent, 62.5);
+      expect(telemetry.storageAvailableBytes, 6000);
+      expect(telemetry.batteryPercent, 87);
+      expect(telemetry.isCharging, isTrue);
+    });
     test('retries transient GET failures and then succeeds', () async {
       final adapter = _SequenceAdapter([503, 200]);
       final api = ServerApi(baseUrl: 'http://127.0.0.1:8000', username: 'admin', password: 'secret', httpClientAdapter: adapter);
       final listing = await api.authenticate();
       expect(listing.items, isEmpty);
       expect(adapter.requests, 2);
+    });
+
+    test('retries a connection timeout on a fresh socket after network handoff', () async {
+      final adapter = _NetworkHandoffAdapter();
+      final api = ServerApi(
+        baseUrl: 'http://100.114.216.8:8000',
+        username: 'admin',
+        password: 'secret',
+        httpClientAdapter: adapter,
+      );
+
+      final listing = await api.authenticate();
+
+      expect(listing.items, isEmpty);
+      expect(adapter.requests, 2);
+      expect(adapter.retryUsedFreshConnection, isTrue);
     });
 
     test('deduplicates identical in-flight directory requests and caches briefly', () async {
@@ -129,17 +214,39 @@ void main() {
       expect(listing.items.single.size, 1024);
     });
 
-    test('parses separate external storage volume status', () {
+    test('parses external storage capacity when the host exposes it', () {
       final volume = StorageVolume.fromJson({
         'id': 'usb1',
         'name': 'USB Storage 1',
         'available': true,
         'writable': true,
+        'total_bytes': 32000,
+        'used_bytes': 20000,
+        'available_bytes': 12000,
+        'usage_percent': 62.5,
       });
 
       expect(volume.id, 'usb1');
       expect(volume.available, isTrue);
       expect(volume.writable, isTrue);
+      expect(volume.totalBytes, 32000);
+      expect(volume.usedBytes, 20000);
+      expect(volume.availableBytes, 12000);
+      expect(volume.usagePercent, 62.5);
+    });
+
+    test('keeps external storage capacity unavailable when not supplied', () {
+      final volume = StorageVolume.fromJson({
+        'id': 'usb1',
+        'name': 'USB Storage 1',
+        'available': true,
+        'writable': false,
+      });
+
+      expect(volume.totalBytes, isNull);
+      expect(volume.usedBytes, isNull);
+      expect(volume.availableBytes, isNull);
+      expect(volume.usagePercent, isNull);
     });
 
     test('parses the existing backend file listing format', () {

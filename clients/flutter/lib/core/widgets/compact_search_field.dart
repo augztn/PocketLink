@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Shared compact search control used by file and media library screens.
 class CompactSearchField extends StatelessWidget {

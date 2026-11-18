@@ -1,19 +1,20 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import 'features/home/browser_state_store.dart';
 
 import 'core/settings/app_settings.dart';
+import 'core/logging/diagnostic_observer.dart';
 import 'features/connection/connection_screen.dart';
 
-class HomeServerApp extends StatefulWidget {
-  const HomeServerApp({super.key});
+class PocketLinkApp extends StatefulWidget {
+  const PocketLinkApp({super.key});
 
   @override
-  State<HomeServerApp> createState() => _HomeServerAppState();
+  State<PocketLinkApp> createState() => _PocketLinkAppState();
 }
 
-class _HomeServerAppState extends State<HomeServerApp> {
+class _PocketLinkAppState extends State<PocketLinkApp> {
   final _settings = AppSettings.instance;
 
   @override
@@ -64,13 +65,16 @@ class _HomeServerAppState extends State<HomeServerApp> {
         ChangeNotifierProvider<AppSettings>.value(value: _settings),
       ],
       child: MaterialApp(
-      title: 'HomeServer',
+      title: 'PocketLink',
       debugShowCheckedModeBanner: false,
+      navigatorObservers: [DiagnosticNavigatorObserver.instance],
       themeMode: mode,
       theme: _theme(brightness: Brightness.light),
       darkTheme: _theme(brightness: Brightness.dark, amoled: _settings.amoled),
       home: const ConnectionScreen(),
-      builder: (context, child) => child ?? const SizedBox.shrink(),
+      builder: (context, child) => MaterialUiCompatibilityBridge(
+        child: child ?? const SizedBox.shrink(),
+      ),
       ),
     );
   }

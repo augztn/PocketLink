@@ -86,25 +86,198 @@ class VideoMetadata {
   String get resolution => width > 0 && height > 0 ? '${width}×${height}' : '';
 }
 
+
+class HostSystemTelemetry {
+  const HostSystemTelemetry({
+    required this.sampledAtMs,
+    required this.manufacturer,
+    required this.deviceModel,
+    required this.androidVersion,
+    required this.cpuModel,
+    required this.cpuCores,
+    required this.cpuUsagePercent,
+    required this.cpuUsageStatus,
+    required this.memoryTotalBytes,
+    required this.memoryUsedBytes,
+    required this.memoryAvailableBytes,
+    required this.memoryUsagePercent,
+    required this.storageTotalBytes,
+    required this.storageUsedBytes,
+    required this.storageAvailableBytes,
+    required this.storageUsagePercent,
+    required this.batteryPercent,
+    required this.batteryStatus,
+  });
+
+  final int? sampledAtMs;
+  final String? manufacturer;
+  final String? deviceModel;
+  final String? androidVersion;
+  final String? cpuModel;
+  final int? cpuCores;
+  final double? cpuUsagePercent;
+  final String cpuUsageStatus;
+  final int? memoryTotalBytes;
+  final int? memoryUsedBytes;
+  final int? memoryAvailableBytes;
+  final double? memoryUsagePercent;
+  final int? storageTotalBytes;
+  final int? storageUsedBytes;
+  final int? storageAvailableBytes;
+  final double? storageUsagePercent;
+  final int? batteryPercent;
+  final String batteryStatus;
+
+  bool get isCharging => batteryStatus == 'charging';
+
+  factory HostSystemTelemetry.fromJson(Map<String, dynamic> json) {
+    Map<String, dynamic> section(String key) {
+      final value = json[key];
+      return value is Map<String, dynamic> ? value : const {};
+    }
+
+    int? integer(Object? value) =>
+        value is num ? value.toInt() : int.tryParse(value?.toString() ?? '');
+    double? decimal(Object? value) =>
+        value is num ? value.toDouble() : double.tryParse(value?.toString() ?? '');
+    String? string(Object? value) {
+      final text = value?.toString().trim();
+      return text == null || text.isEmpty ? null : text;
+    }
+
+    final device = section('device');
+    final cpu = section('cpu');
+    final memory = section('memory');
+    final storage = section('storage');
+    final battery = section('battery');
+
+    return HostSystemTelemetry(
+      sampledAtMs: integer(json['sampled_at_ms']),
+      manufacturer: string(device['manufacturer']),
+      deviceModel: string(device['model']),
+      androidVersion: string(device['android_version']),
+      cpuModel: string(cpu['model']),
+      cpuCores: integer(cpu['cores']),
+      cpuUsagePercent: decimal(cpu['usage_percent']),
+      cpuUsageStatus: string(cpu['usage_status']) ?? 'unavailable',
+      memoryTotalBytes: integer(memory['total_bytes']),
+      memoryUsedBytes: integer(memory['used_bytes']),
+      memoryAvailableBytes: integer(memory['available_bytes']),
+      memoryUsagePercent: decimal(memory['usage_percent']),
+      storageTotalBytes: integer(storage['total_bytes']),
+      storageUsedBytes: integer(storage['used_bytes']),
+      storageAvailableBytes: integer(storage['available_bytes']),
+      storageUsagePercent: decimal(storage['usage_percent']),
+      batteryPercent: integer(battery['percent']),
+      batteryStatus: string(battery['status']) ?? 'unknown',
+    );
+  }
+}
+
 class StorageVolume {
   const StorageVolume({
     required this.id,
     required this.name,
     required this.available,
     required this.writable,
+    this.totalBytes,
+    this.usedBytes,
+    this.availableBytes,
+    this.usagePercent,
   });
 
   final String id;
   final String name;
   final bool available;
   final bool writable;
+  final int? totalBytes;
+  final int? usedBytes;
+  final int? availableBytes;
+  final double? usagePercent;
 
   factory StorageVolume.fromJson(Map<String, dynamic> json) => StorageVolume(
         id: json['id'] as String,
         name: json['name'] as String,
         available: json['available'] as bool? ?? false,
         writable: json['writable'] as bool? ?? false,
+        totalBytes: (json['total_bytes'] as num?)?.toInt(),
+        usedBytes: (json['used_bytes'] as num?)?.toInt(),
+        availableBytes: (json['available_bytes'] as num?)?.toInt(),
+        usagePercent: (json['usage_percent'] as num?)?.toDouble(),
       );
+}
+
+class IndexedFile {
+  const IndexedFile({
+    required this.volume, required this.path, required this.name,
+    required this.type, required this.size, required this.modified,
+    required this.mime, this.category,
+  });
+  final String volume;
+  final String path;
+  final String name;
+  final String type;
+  final int size;
+  final String modified;
+  final String mime;
+  final String? category;
+  bool get isDirectory => type == 'directory';
+
+  factory IndexedFile.fromJson(Map<String, dynamic> json) => IndexedFile(
+    volume: json['volume'] as String? ?? 'internal',
+    path: json['path'] as String? ?? '',
+    name: json['name'] as String? ?? '',
+    type: json['type'] as String? ?? 'file',
+    size: (json['size'] as num?)?.toInt() ?? 0,
+    modified: json['modified']?.toString() ?? '',
+    mime: json['mime']?.toString() ?? 'application/octet-stream',
+    category: json['category']?.toString(),
+  );
+
+  FileEntry toFileEntry() => FileEntry(
+    name: name, type: type, size: size, modified: modified,
+  );
+}
+
+class MediaIndexStatus {
+  const MediaIndexStatus({
+    required this.state, required this.scanned, required this.skipped,
+    required this.lastCompletedAt, required this.fileCount,
+    required this.mediaCount, this.lastError,
+    this.lastScanStartedAt = 0, this.elapsedMs = 0, this.currentSource,
+  });
+  final String state;
+  final int scanned;
+  final int skipped;
+  final int lastCompletedAt;
+  final int fileCount;
+  final int mediaCount;
+  final String? lastError;
+  final int lastScanStartedAt;
+  final int elapsedMs;
+  final String? currentSource;
+  bool get isScanning => state == 'scanning';
+  bool get isUsable => state == 'complete' || state == 'partial';
+
+  factory MediaIndexStatus.fromJson(Map<String, dynamic> json) =>
+      MediaIndexStatus(
+        state: json['state']?.toString() ?? 'idle',
+        scanned: (json['scanned'] as num?)?.toInt() ?? 0,
+        skipped: (json['skipped'] as num?)?.toInt() ?? 0,
+        lastCompletedAt: (json['last_completed_at'] as num?)?.toInt() ?? 0,
+        fileCount: (json['file_count'] as num?)?.toInt() ?? 0,
+        mediaCount: (json['media_count'] as num?)?.toInt() ?? 0,
+        lastError: json['last_error']?.toString(),
+        lastScanStartedAt: (json['last_scan_started_at'] as num?)?.toInt() ?? 0,
+        elapsedMs: (json['elapsed_ms'] as num?)?.toInt() ?? 0,
+        currentSource: json['current_source']?.toString(),
+      );
+}
+
+class IndexedMediaPage {
+  const IndexedMediaPage({required this.items, required this.status});
+  final List<IndexedFile> items;
+  final MediaIndexStatus status;
 }
 
 class _RequestGate {
@@ -161,7 +334,7 @@ class ServerApi {
         _dio = Dio(
           BaseOptions(
             baseUrl: _normalizeBaseUrl(baseUrl),
-            connectTimeout: const Duration(seconds: 15),
+            connectTimeout: const Duration(seconds: 10),
             receiveTimeout: const Duration(seconds: 30),
             sendTimeout: const Duration(seconds: 30),
             headers: {
@@ -174,39 +347,65 @@ class ServerApi {
     if (httpClientAdapter != null) _dio.httpClientAdapter = httpClientAdapter;
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
+        final queueStopwatch = Stopwatch()..start();
         try {
           await _requestGate.acquire(options.cancelToken);
-          options.extra['homeserver.requestSlot'] = true;
+          options.extra['pocketlink.requestSlot'] = true;
         } on DioException catch (error) {
           handler.reject(error);
           return;
         }
-        AppLogger.info('API request', fields: {
+        final requestId = AppLogger.nextEventId('http');
+        options.extra['pocketlink.requestId'] = requestId;
+        options.extra['pocketlink.queueWaitMs'] = queueStopwatch.elapsedMilliseconds;
+        options.extra['pocketlink.queryKey'] = _diagnosticQueryKey(options);
+        options.extra['pocketlink.requestStopwatch'] = Stopwatch()..start();
+        AppLogger.info('API request started', fields: {
+          'requestId': requestId,
           'method': options.method,
           'path': options.uri.path,
+          'queryKey': options.extra['pocketlink.queryKey'],
+          'queueWaitMs': options.extra['pocketlink.queueWaitMs'],
+          'retry': options.extra['pocketlink.retryCount'] ?? 0,
+          'concurrencyLimit': 4,
         });
         handler.next(options);
       },
       onResponse: (response, handler) {
         _releaseRequestSlot(response.requestOptions);
-        AppLogger.info('API response', fields: {
-          'method': response.requestOptions.method,
-          'path': response.requestOptions.uri.path,
+        final options = response.requestOptions;
+        final stopwatch = options.extra['pocketlink.requestStopwatch'] as Stopwatch?;
+        AppLogger.info('API request completed', fields: {
+          'requestId': options.extra['pocketlink.requestId'] ?? 'unknown',
+          'method': options.method,
+          'path': options.uri.path,
           'status': response.statusCode,
+          'durationMs': stopwatch?.elapsedMilliseconds,
+          'queueWaitMs': options.extra['pocketlink.queueWaitMs'],
+          'queryKey': options.extra['pocketlink.queryKey'],
+          'retry': options.extra['pocketlink.retryCount'] ?? 0,
         });
         handler.next(response);
       },
       onError: (error, handler) async {
+        final failedOptions = error.requestOptions;
+        final stopwatch = failedOptions.extra['pocketlink.requestStopwatch'] as Stopwatch?;
         AppLogger.warning('API request failed', fields: {
-          'method': error.requestOptions.method,
-          'path': error.requestOptions.uri.path,
+          'requestId': failedOptions.extra['pocketlink.requestId'] ?? 'unknown',
+          'method': failedOptions.method,
+          'path': failedOptions.uri.path,
           'type': error.type.name,
           'status': error.response?.statusCode,
+          'durationMs': stopwatch?.elapsedMilliseconds,
+          'queueWaitMs': failedOptions.extra['pocketlink.queueWaitMs'],
+          'queryKey': failedOptions.extra['pocketlink.queryKey'],
+          'retry': failedOptions.extra['pocketlink.retryCount'] ?? 0,
+          'cancelled': failedOptions.cancelToken?.isCancelled ?? false,
         });
 
         final options = error.requestOptions;
         _releaseRequestSlot(options);
-        final attempts = options.extra['homeserver.retryCount'] as int? ?? 0;
+        final attempts = options.extra['pocketlink.retryCount'] as int? ?? 0;
         final cancelled = options.cancelToken?.isCancelled ?? false;
         final status = error.response?.statusCode;
         final transientStatus = status == 408 || status == 425 || status == 429 ||
@@ -216,7 +415,18 @@ class ServerApi {
             error.type == DioExceptionType.receiveTimeout;
         if (options.method.toUpperCase() == 'GET' &&
             attempts < 3 && !cancelled && (transientNetwork || transientStatus)) {
-          options.extra['homeserver.retryCount'] = attempts + 1;
+          options.extra['pocketlink.retryCount'] = attempts + 1;
+          // A network handoff can leave an idle pooled socket bound to the old
+          // Wi-Fi/mobile route. Force the retry onto a fresh TCP connection.
+          options.headers['connection'] = 'close';
+          AppLogger.warning('API retry scheduled', fields: {
+            'requestId': options.extra['pocketlink.requestId'] ?? 'unknown',
+            'method': options.method,
+            'path': options.uri.path,
+            'nextAttempt': attempts + 1,
+            'delaySeconds': 1 << attempts,
+            'freshConnection': true,
+          });
           await Future<void>.delayed(Duration(seconds: 1 << attempts));
           if (options.cancelToken?.isCancelled ?? false) {
             handler.next(error);
@@ -248,13 +458,48 @@ class ServerApi {
   static const _maxCachedDirectories = 512;
   final Map<String, _CacheEntry<DirectoryListing>> _directoryCache = {};
   final Map<String, Future<DirectoryListing>> _directoryRequests = {};
+  static final Map<String, Future<Object?>> _sharedReadRequests = {};
   _CacheEntry<List<StorageVolume>>? _volumesCache;
   Future<List<StorageVolume>>? _volumesRequest;
   int _cacheGeneration = 0;
 
+  String _diagnosticQueryKey(RequestOptions options) {
+    final entries = options.queryParameters.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+    final encoded = jsonEncode(entries.map((entry) => [
+      entry.key,
+      entry.value,
+    ]).toList(growable: false));
+    var hash = 0x811c9dc5;
+    for (final unit in encoded.codeUnits) {
+      hash ^= unit;
+      hash = (hash * 0x01000193) & 0xffffffff;
+    }
+    return hash.toRadixString(16).padLeft(8, '0');
+  }
+
+  Future<T> _sharedRead<T>(
+    String resourceKey,
+    Future<T> Function() load,
+  ) {
+    final authorization = _dio.options.headers['Authorization']?.toString() ?? '';
+    final key = '${_dio.options.baseUrl}:$authorization:$resourceKey';
+    final existing = _sharedReadRequests[key];
+    if (existing != null) return existing.then((value) => value as T);
+
+    late final Future<T> request;
+    request = load().whenComplete(() {
+      if (identical(_sharedReadRequests[key], request)) {
+        _sharedReadRequests.remove(key);
+      }
+    });
+    _sharedReadRequests[key] = request;
+    return request;
+  }
+
   void _releaseRequestSlot(RequestOptions options) {
-    if (options.extra['homeserver.requestSlot'] == true) {
-      options.extra['homeserver.requestSlot'] = false;
+    if (options.extra['pocketlink.requestSlot'] == true) {
+      options.extra['pocketlink.requestSlot'] = false;
       _requestGate.release();
     }
   }
@@ -395,18 +640,29 @@ class ServerApi {
     if (_thumbnailCache.length > 160) _thumbnailCache.remove(_thumbnailCache.keys.first);
     return future;
   }
-  Future<DirectoryListing> authenticate() async => listDirectory('');
+  Future<DirectoryListing> authenticate({CancelToken? cancelToken}) =>
+      listDirectory('', cancelToken: cancelToken);
 
-  Future<DirectoryListing> listDirectory(String path) => _cachedGet(
+  Future<DirectoryListing> listDirectory(
+    String path, {CancelToken? cancelToken}
+  ) => _cachedGet(
         'files:$path',
         _directoryCache,
         _directoryRequests,
-        () async {
-          final response = await _dio.get<Map<String, dynamic>>(
-            '/api/files/',
-            queryParameters: {'path': path},
-          );
-          return DirectoryListing.fromJson(response.data ?? const {});
+        () {
+          Future<DirectoryListing> load() async {
+            final response = await _dio.get<Map<String, dynamic>>(
+              '/api/files/',
+              queryParameters: {'path': path},
+              cancelToken: cancelToken,
+            );
+            return DirectoryListing.fromJson(response.data ?? const {});
+          }
+
+          // A cancellable caller owns its request; only non-cancellable reads are shared.
+          return cancelToken == null
+              ? _sharedRead('files:$path', load)
+              : load();
         },
       );
 
@@ -558,26 +814,74 @@ class ServerApi {
 
     final generation = _cacheGeneration;
     late final Future<List<StorageVolume>> request;
-    request = () async {
+    request = _sharedRead<List<StorageVolume>>('storage:volumes', () async {
       final response =
           await _dio.get<Map<String, dynamic>>('/api/storage/volumes');
-      final volumes = (response.data?['items'] as List<dynamic>? ?? const [])
+      return (response.data?['items'] as List<dynamic>? ?? const [])
           .map((item) => StorageVolume.fromJson(item as Map<String, dynamic>))
           .toList(growable: false);
+    }).then<List<StorageVolume>>((volumes) async {
       if (generation != _cacheGeneration) {
         if (identical(_volumesRequest, request)) _volumesRequest = null;
-        return listStorageVolumes();
+        return await listStorageVolumes();
       }
       _volumesCache = _CacheEntry(
         volumes,
         DateTime.now().add(_directoryCacheTtl),
       );
       return volumes;
-    }().whenComplete(() {
+    }).whenComplete(() {
       if (identical(_volumesRequest, request)) _volumesRequest = null;
     });
     _volumesRequest = request;
     return request;
+  }
+
+  Future<HostSystemTelemetry> systemTelemetry() async {
+    final response = await _dio.get<Map<String, dynamic>>('/api/system/telemetry');
+    return HostSystemTelemetry.fromJson(response.data ?? const {});
+  }
+
+  Future<MediaIndexStatus> mediaIndexStatus() async {
+    final response = await _dio.get<Map<String, dynamic>>('/api/index/status');
+    return MediaIndexStatus.fromJson(response.data ?? const {});
+  }
+
+  Future<MediaIndexStatus> startMediaIndexScan() async {
+    final response = await _dio.post<Map<String, dynamic>>('/api/index/scan');
+    return MediaIndexStatus.fromJson(response.data ?? const {});
+  }
+
+  Future<IndexedMediaPage> indexedMedia(
+    String category, {String query = '', int limit = 500, int offset = 0}
+  ) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/index/media',
+      queryParameters: {'category': category, 'q': query, 'limit': limit, 'offset': offset},
+    );
+    final data = response.data ?? const <String, dynamic>{};
+    return IndexedMediaPage(
+      items: (data['items'] as List<dynamic>? ?? const [])
+          .map((item) => IndexedFile.fromJson(item as Map<String, dynamic>))
+          .toList(growable: false),
+      status: MediaIndexStatus.fromJson(data['status'] as Map<String, dynamic>? ?? const {}),
+    );
+  }
+
+  Future<IndexedMediaPage> searchIndexedFiles(
+    String query, {int limit = 100, int offset = 0}
+  ) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/index/files',
+      queryParameters: {'q': query, 'limit': limit, 'offset': offset},
+    );
+    final data = response.data ?? const <String, dynamic>{};
+    return IndexedMediaPage(
+      items: (data['items'] as List<dynamic>? ?? const [])
+          .map((item) => IndexedFile.fromJson(item as Map<String, dynamic>))
+          .toList(growable: false),
+      status: MediaIndexStatus.fromJson(data['status'] as Map<String, dynamic>? ?? const {}),
+    );
   }
 
   Future<DirectoryListing> listStorageDirectory(
@@ -587,13 +891,13 @@ class ServerApi {
         'storage:$volume:$path',
         _directoryCache,
         _directoryRequests,
-        () async {
+        () => _sharedRead('storage:$volume:$path', () async {
           final response = await _dio.get<Map<String, dynamic>>(
             '/api/storage/list',
             queryParameters: {'volume': volume, 'path': path},
           );
           return DirectoryListing.fromJson(response.data ?? const {});
-        },
+        }),
       );
 
   Future<void> uploadStorageFile(

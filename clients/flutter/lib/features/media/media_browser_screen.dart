@@ -1,9 +1,9 @@
 import 'dart:typed_data';
-import '../../core/widgets/home_server_app_bar.dart';
+import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/compact_search_field.dart';
 
 import 'package:dio/dio.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/network/server_api.dart';
@@ -61,6 +61,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   late final BrowserStateStore _browserState;
   final ScrollController _contentScrollController = ScrollController();
   double _pendingScrollOffset = 0;
+  bool _openingMedia = false;
 
   bool get _isMusic => widget.type == MediaLibraryType.music;
   String get _title => _isMusic ? 'Music' : 'Videos';
@@ -131,7 +132,100 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         .contains(extension);
   }
 
+  Future<({List<_MediaFile> items, MediaIndexStatus status})>
+      _readIndexedMedia() async {
+    final category = _isMusic ? 'music' : 'video';
+    final found = <_MediaFile>[];
+    var offset = 0;
+    late MediaIndexStatus status;
+    do {
+      final page = await widget.api.indexedMedia(
+        category,
+        query: _searchQuery,
+        limit: 500,
+        offset: offset,
+      );
+      status = page.status;
+      if (!mounted) break;
+      found.addAll(page.items.map((item) => _MediaFile(
+        entry: item.toFileEntry(),
+        path: item.path,
+        volume: item.volume == 'internal' ? null : item.volume,
+      )));
+      offset += page.items.length;
+      if (page.items.length < 500) break;
+    } while (true);
+    found.sort((a, b) =>
+        a.entry.name.toLowerCase().compareTo(b.entry.name.toLowerCase()));
+    return (items: found, status: status);
+  }
+
   Future<void> _scan({bool refresh = false}) async {
+    if (!mounted) return;
+    if (refresh) {
+      widget.api.invalidateDirectoryCache();
+      try {
+        await widget.api.startMediaIndexScan();
+        if (!mounted) return;
+      } on DioException {
+        await _scanLegacy(refresh: refresh);
+        return;
+      }
+    }
+    if (!mounted) return;
+    widget.api.clearMediaCache();
+    setState(() {
+      _loading = true;
+      _error = null;
+      _media = const [];
+      _scannedDirectories = 0;
+      _skippedDirectories = 0;
+    });
+
+    try {
+      var result = await _readIndexedMedia();
+      var found = result.items;
+      var status = result.status;
+      if (mounted) setState(() => _media = List.unmodifiable(found));
+
+      // Keep the existing index visible while scanning. Poll only lightweight
+      // status; reload media once after the scan finishes.
+      final wasScanning = status.isScanning;
+      while (mounted && status.isScanning) {
+        await Future<void>.delayed(const Duration(seconds: 2));
+        if (!mounted) return;
+        status = await widget.api.mediaIndexStatus();
+      }
+      if (!mounted) return;
+      if (wasScanning && status.state != 'failed') {
+        result = await _readIndexedMedia();
+        found = result.items;
+        status = result.status;
+      }
+
+      if ((status.state == 'failed' || status.state == 'partial') && found.isEmpty) {
+        await _scanLegacy();
+        return;
+      }
+      if (mounted) {
+        setState(() {
+          _media = List.unmodifiable(found);
+          _loading = false;
+          _error = status.state == 'partial' && found.isEmpty
+              ? status.lastError
+              : null;
+        });
+        WidgetsBinding.instance.addPostFrameCallback((_) => _restoreScrollOffset());
+      }
+    } on DioException {
+      await _scanLegacy(refresh: refresh);
+    } catch (_) {
+      await _scanLegacy(refresh: refresh);
+    }
+  }
+
+  Future<void> _scanLegacy({bool refresh = false}) async {
+    if (!mounted) return;
     if (refresh) widget.api.invalidateDirectoryCache();
     widget.api.clearMediaCache();
     setState(() {
@@ -168,7 +262,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       );
 
       var cursor = 0;
-      while (cursor < pending.length && visited.length < _maxDirectories) {
+      while (mounted && cursor < pending.length && visited.length < _maxDirectories) {
         final current = pending[cursor++];
         final visitKey = '${current.volume ?? 'internal'}:${current.path}';
         if (!visited.add(visitKey)) continue;
@@ -181,6 +275,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                   current.volume!,
                   current.path,
                 );
+          if (!mounted) return;
           _scannedDirectories++;
         } on DioException catch (error) {
           if (error.response?.statusCode == 404) continue;
@@ -244,6 +339,8 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   }
 
   Future<void> _openMedia(_MediaFile media, List<_MediaFile> queueItems) async {
+    if (_openingMedia) return;
+    _openingMedia = true;
     final queue = queueItems
         .map((item) => MediaQueueItem(
               title: item.entry.name,
@@ -255,9 +352,10 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     final index = queueItems.indexWhere(
       (item) => item.path == media.path && item.volume == media.volume,
     );
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => _isMusic
+    try {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => _isMusic
             ? NowPlayingScreen(
                 api: widget.api,
                 queue: queue,
@@ -272,8 +370,11 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                 queue: queue,
                 initialIndex: index < 0 ? 0 : index,
               ),
-      ),
-    );
+        ),
+      );
+    } finally {
+      _openingMedia = false;
+    }
   }
 
   String _formatBytes(int bytes) {
@@ -740,18 +841,18 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         if (!didPop && _libraryView == 'folders' && !_atFolderRoot) _goUpFolder();
       },
       child: Scaffold(
-      appBar: HomeServerAppBar(
+      appBar: PocketLinkAppBar(
         title: Text(_title),
         onHome: widget.onHome,
         actions: [
-          HomeServerAppBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded, onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen()))),
+          PocketLinkAppBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded, onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen()))),
           if (!_isMusic)
-            HomeServerAppBarAction(
+            PocketLinkAppBarAction(
               label: _layoutMode == 'grid' ? 'List view' : 'Grid view',
               icon: _layoutMode == 'grid' ? Icons.view_list_rounded : Icons.grid_view_rounded,
               onPressed: () { setState(() { _layoutMode = _layoutMode == 'grid' ? 'list' : 'grid'; }); _saveState(); },
             ),
-          HomeServerAppBarAction(label: 'Scan again', icon: Icons.refresh, onPressed: _loading ? null : () => _scan(refresh: true)),
+          PocketLinkAppBarAction(label: 'Scan again', icon: Icons.refresh, onPressed: _loading ? null : () => _scan(refresh: true)),
         ],
       ),
       body: Column(
@@ -972,7 +1073,7 @@ class _VideoTag extends StatelessWidget {
   @override
   Widget build(BuildContext context) => DecoratedBox(
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.68),
+          color: Colors.black.withValues(alpha: 0.68),
           borderRadius: BorderRadius.circular(6),
         ),
         child: Padding(

@@ -1,6 +1,6 @@
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart';
-import '../../core/widgets/home_server_app_bar.dart';
+import 'package:material_ui/material_ui.dart';
+import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/compact_search_field.dart';
 
 import '../../core/network/server_api.dart';
@@ -143,7 +143,7 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
       final bytes = document.volume == null
           ? await widget.api.downloadFile(document.path)
           : await widget.api.downloadStorageFile(document.volume!, document.path);
-      final saved = await FilePicker.platform.saveFile(
+      final saved = await FilePicker.saveFile(
         dialogTitle: 'Save document',
         fileName: document.entry.name,
         bytes: bytes,
@@ -181,10 +181,10 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
     ).toList(growable: false);
 
     return Scaffold(
-      appBar: HomeServerAppBar(
+      appBar: PocketLinkAppBar(
         title: const Text('Documents', style: TextStyle(fontWeight: FontWeight.w800)),
         actions: [
-          HomeServerAppBarAction(label: 'Scan again', icon: Icons.refresh_rounded, onPressed: _loading ? null : () => _scan(refresh: true)),
+          PocketLinkAppBarAction(label: 'Scan again', icon: Icons.refresh_rounded, onPressed: _loading ? null : () => _scan(refresh: true)),
         ],
       ),
       body: Column(

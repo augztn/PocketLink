@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../../core/network/server_api.dart';
 import 'photo_favorites_store.dart';
 import '../transfers/transfer_manager_screen.dart';
-import '../../core/widgets/home_server_app_bar.dart';
+import '../../core/widgets/pocketlink_app_bar.dart';
 
 class _Photo {
   const _Photo(this.file, this.path, this.volume);
@@ -89,7 +89,77 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
   @override
   void dispose() { search.dispose(); super.dispose(); }
 
+  Future<List<_Photo>> _readIndexedPhotos() async {
+    final found = <_Photo>[];
+    var offset = 0;
+    while (true) {
+      final page = await widget.api.indexedMedia(
+        'photo', limit: 500, offset: offset,
+      );
+      if (!mounted) break;
+      found.addAll(page.items.map((item) => _Photo(
+        item.toFileEntry(),
+        item.path,
+        item.volume == 'internal' ? null : item.volume,
+      )));
+      if (page.items.length < 500) break;
+      offset += page.items.length;
+    }
+    found.sort((a, b) => b.date.compareTo(a.date));
+    return found;
+  }
+
   Future<void> scan({bool refresh = false}) async {
+    if (refresh) {
+      widget.api.invalidateDirectoryCache();
+      try {
+        await widget.api.startMediaIndexScan();
+      } catch (_) {
+        if (!mounted) return;
+        await _scanLegacy(refresh: refresh);
+        return;
+      }
+    }
+    if (!mounted) return;
+    setState(() { loading = true; error = null; photos = []; selected.clear(); });
+    try {
+      volumes = await widget.api.listStorageVolumes();
+      if (!mounted) return;
+      var found = await _readIndexedPhotos();
+      if (!mounted) return;
+      var status = await widget.api.mediaIndexStatus();
+      if (!mounted) return;
+      if (mounted) setState(() => photos = List.unmodifiable(found));
+      final wasScanning = status.isScanning;
+      while (mounted && status.isScanning) {
+        await Future<void>.delayed(const Duration(seconds: 2));
+        if (!mounted) return;
+        status = await widget.api.mediaIndexStatus();
+      }
+      if (!mounted) return;
+      if (wasScanning && status.state != 'failed') {
+        found = await _readIndexedPhotos();
+      }
+      if ((status.state == 'failed' || status.state == 'partial') && found.isEmpty) {
+        await _scanLegacy();
+        return;
+      }
+      if (mounted) {
+        setState(() {
+          photos = List.unmodifiable(found);
+          loading = false;
+          error = status.state == 'partial' && found.isEmpty
+              ? status.lastError
+              : null;
+        });
+      }
+    } catch (_) {
+      await _scanLegacy(refresh: refresh);
+    }
+  }
+
+  Future<void> _scanLegacy({bool refresh = false}) async {
+    if (!mounted) return;
     if (refresh) widget.api.invalidateDirectoryCache();
     setState(() { loading = true; error = null; photos = []; selected.clear(); });
     final found = <_Photo>[];
@@ -106,7 +176,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
         pending.add((path: root, volume: null, depth: 0));
       }
       var cursor = 0;
-      while (cursor < pending.length && visited.length < 3000) {
+      while (mounted && cursor < pending.length && visited.length < 3000) {
         final current = pending[cursor++];
         final key = '${current.volume ?? 'internal'}:${current.path}';
         if (!visited.add(key)) continue;
@@ -114,6 +184,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
           final listing = current.volume == null
               ? await widget.api.listDirectory(current.path)
               : await widget.api.listStorageDirectory(current.volume!, current.path);
+          if (!mounted) return;
           for (final item in listing.items) {
             final path = current.path.isEmpty ? item.name : '${current.path}/${item.name}';
             if (item.isDirectory) {
@@ -174,10 +245,18 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     )));
   }
 
-  Widget grid(List<_Photo> items) => GridView.builder(
-    padding: EdgeInsets.fromLTRB(2, 2, 2, 104 + MediaQuery.paddingOf(context).bottom),
+  Widget grid(List<_Photo> items, {bool shrinkWrap = false}) => LayoutBuilder(
+    builder: (context, constraints) {
+      final width = constraints.maxWidth;
+      if (!width.isFinite || width <= 0) return const SizedBox.shrink();
+      return GridView.builder(
+    shrinkWrap: shrinkWrap,
+    physics: shrinkWrap ? const NeverScrollableScrollPhysics() : null,
+    padding: EdgeInsets.fromLTRB(
+      2, 2, 2, shrinkWrap ? 0 : 104 + MediaQuery.paddingOf(context).bottom,
+    ),
     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-      crossAxisCount: gridColumns, crossAxisSpacing: 2, mainAxisSpacing: 2),
+      crossAxisCount: gridColumns.clamp(2, 5), crossAxisSpacing: 2, mainAxisSpacing: 2),
     itemCount: items.length,
     itemBuilder: (_,i) {
       final p = items[i]; final isSelected = selected.contains(p.id);
@@ -194,6 +273,8 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
         ]),
       );
     },
+      );
+    },
   );
 
   Widget photosTab(List<_Photo> items) {
@@ -208,7 +289,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
             Expanded(child: Text(entry.key,style:Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight:FontWeight.w700))),
             Text('${entry.value.length}'),
           ])),
-        grid(entry.value),
+        grid(entry.value, shrinkWrap: true),
       ],
       const SizedBox(height:24),
     ]);
@@ -298,7 +379,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     final count=selected.length;
     final ok=await showDialog<bool>(context:context,builder:(context)=>AlertDialog(
       title:Text('Delete $count selected photos?'),
-      content:const Text('This permanently deletes the selected files from HomeServer storage.'),
+      content:const Text('This permanently deletes the selected files from PocketLink storage.'),
       actions:[
         TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text('Cancel')),
         FilledButton(onPressed:()=>Navigator.pop(context,true),child:const Text('Delete')),
@@ -464,7 +545,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     final items = visible;
     final selecting = selected.isNotEmpty;
     return Scaffold(
-      appBar: HomeServerAppBar(
+      appBar: PocketLinkAppBar(
         title: Text(selecting ? '${selected.length} selected' : 'Photos'),
         leading: selecting
             ? IconButton(
@@ -473,19 +554,19 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
               )
             : null,
         actions: [
-          HomeServerAppBarAction(
+          PocketLinkAppBarAction(
             label: 'Transfers', icon: Icons.swap_vert_rounded,
             onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
               builder: (_) => const TransferManagerScreen(),
             )),
           ),
           if (!selecting && widget.showSearch)
-            HomeServerAppBarAction(
+            PocketLinkAppBarAction(
               label: searchOpen ? 'Close search' : 'Search',
               icon: searchOpen ? Icons.close : Icons.search,
               onPressed: () => setState(() => searchOpen = !searchOpen),
             ),
-          HomeServerAppBarAction(
+          PocketLinkAppBarAction(
             label: 'Scan again', icon: Icons.refresh_rounded,
             onPressed: loading ? null : () => scan(refresh: true),
           ),
@@ -608,7 +689,7 @@ class _PhotoAlbum extends StatelessWidget {
   final String title;final List<_Photo> photos;final ServerApi api;final ValueChanged<int> onOpen;
   @override
   Widget build(BuildContext context)=>Scaffold(
-    appBar:HomeServerAppBar(title:Text(title)),
+    appBar:PocketLinkAppBar(title:Text(title)),
     body:GridView.builder(
       padding:const EdgeInsets.all(2),
       gridDelegate:const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount:3,crossAxisSpacing:2,mainAxisSpacing:2),
@@ -639,7 +720,7 @@ class _PhotoViewerState extends State<_PhotoViewer>{
     final p=widget.photos[index];
     return Scaffold(
       backgroundColor:Colors.black,
-      appBar:controls?HomeServerAppBar(
+      appBar:controls?PocketLinkAppBar(
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         title:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
@@ -647,7 +728,7 @@ class _PhotoViewerState extends State<_PhotoViewer>{
           Text('${index+1} / ${widget.photos.length}',style:const TextStyle(fontSize:11,color:Colors.white70)),
         ]),
         actions:[
-          HomeServerAppBarAction(
+          PocketLinkAppBarAction(
             label: widget.favorite(p) ? 'Remove favorite' : 'Add favorite',
             icon: widget.favorite(p) ? Icons.favorite : Icons.favorite_border,
             onPressed: () => setState(() => widget.onFavorite(p)),

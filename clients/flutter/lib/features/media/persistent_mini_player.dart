@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'media_player_screen.dart';
 import 'persistent_audio_player.dart';
@@ -62,9 +62,9 @@ class PersistentMiniPlayer extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              'HomeServer • Now playing',
+                              'PocketLink • Now playing',
                               style: TextStyle(
-                                color: Colors.white.withOpacity(0.6),
+                                color: Colors.white.withValues(alpha: 0.6),
                                 fontSize: 11,
                               ),
                             ),

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:homeserver_client/core/network/server_api.dart';
+import 'package:pocketlink_client/core/network/server_api.dart';
 
 void main() {
   group('ServerApi media streaming', () {
@@ -27,6 +27,62 @@ void main() {
         api.mediaHeaders['Authorization'],
         'Basic YWRtaW46c2VjcmV0',
       );
+    });
+
+    test('parses indexed media paths and internal storage identifiers', () {
+      final item = IndexedFile.fromJson({
+        'volume': 'internal',
+        'path': 'Music/Track 1.mp3',
+        'name': 'Track 1.mp3',
+        'type': 'file',
+        'size': 1024,
+        'modified': '2026-11-16T10:00:00.000Z',
+        'mime': 'audio/mpeg',
+        'category': 'music',
+      });
+
+      expect(item.volume, 'internal');
+      expect(item.path, 'Music/Track 1.mp3');
+      expect(item.toFileEntry().name, 'Track 1.mp3');
+      expect(item.category, 'music');
+    });
+
+    test('parses index scan status without requiring optional error fields', () {
+      final status = MediaIndexStatus.fromJson({
+        'state': 'scanning',
+        'scanned': 120,
+        'skipped': 0,
+        'last_completed_at': 0,
+        'file_count': 80,
+        'media_count': 20,
+      });
+
+      expect(status.isScanning, isTrue);
+      expect(status.fileCount, 80);
+      expect(status.lastError, isNull);
+      expect(status.lastScanStartedAt, 0);
+      expect(status.elapsedMs, 0);
+      expect(status.currentSource, isNull);
+    });
+
+    test('parses remote host scan progress details', () {
+      final status = MediaIndexStatus.fromJson({
+        'state': 'scanning',
+        'scanned': 420,
+        'skipped': 2,
+        'last_completed_at': 0,
+        'last_scan_started_at': 1794900000000,
+        'elapsed_ms': 12500,
+        'current_source': 'internal',
+        'file_count': 900,
+        'media_count': 240,
+      });
+
+      expect(status.isScanning, isTrue);
+      expect(status.scanned, 420);
+      expect(status.elapsedMs, 12500);
+      expect(status.currentSource, 'internal');
+      expect(status.lastScanStartedAt, 1794900000000);
     });
   });
 }

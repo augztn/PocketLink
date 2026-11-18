@@ -1,6 +1,6 @@
-# HomeServer Android SSD Bridge
+# PocketLink Android SSD Bridge
 
-A native Android companion for the HomeServer server phone. It uses Android Storage Access Framework (SAF), not raw mount paths or root access.
+A native Android companion for the PocketLink server phone. It uses Android Storage Access Framework (SAF), not raw mount paths or root access.
 
 ## Current scope
 - Requests persistent SAF tree access independently for USB Storage 1 and USB Storage 2.
@@ -12,9 +12,9 @@ A native Android companion for the HomeServer server phone. It uses Android Stor
 The bridge is intentionally loopback-only. Do not bind it to 0.0.0.0; only the FastAPI server on the same Android device should connect.
 
 ## Install
-Build artifact: GitHub Actions workflow **Android SSD companion** → artifact **HomeServer-SSD-Bridge-Android**.
+Build artifact: GitHub Actions workflow **Android SSD companion** → artifact **PocketLink-SSD-Bridge-Android**.
 
-Install the APK on the Android phone that physically hosts the SSDs. Open **HomeServer SSD Bridge**, select each USB partition separately using the Android folder picker, then start the local bridge. Keep the notification visible while HomeServer is running.
+Install the APK on the Android phone that physically hosts the SSDs. Open **PocketLink SSD Bridge**, select each USB partition separately using the Android folder picker, then start the local bridge. Keep the notification visible while PocketLink is running.
 
 Android/One UI must expose each partition through the system document picker. SAF support depends on the document provider and filesystem; verify both volumes before relying on write operations.
 
@@ -33,4 +33,4 @@ All endpoints except GET /health require `Authorization: Bearer <bridge-token>`.
 Use usb2 for the second partition. Paths are relative to the selected SAF tree and cannot traverse above it.
 
 ## Integration status
-This companion provides the Android SAF side only. The HomeServer FastAPI proxy and Flutter storage selector must be wired to this local API before SSDs appear in the remote client. Existing internal-storage routes and Tailscale networking remain unchanged.
+This companion provides the Android SAF side only. The PocketLink FastAPI proxy and Flutter storage selector must be wired to this local API before SSDs appear in the remote client. Existing internal-storage routes and Tailscale networking remain unchanged.

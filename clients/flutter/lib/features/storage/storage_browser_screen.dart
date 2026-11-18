@@ -1,13 +1,14 @@
 import 'dart:io';
-import '../../core/widgets/home_server_app_bar.dart';
+import '../../core/widgets/pocketlink_app_bar.dart';
 
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../core/network/server_api.dart';
+import '../../core/logging/app_logger.dart';
 import '../../core/settings/app_settings.dart';
 import '../media/now_playing_screen.dart';
 import '../media/persistent_audio_player.dart';
@@ -79,9 +80,9 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
       if (_volume != null) await _loadDirectory(widget.initialPath);
     } on DioException catch (error) {
       if (mounted) setState(() => _error = switch (error.response?.statusCode) {
-        401 => 'HomeServer rejected the saved login (401). Go back to the connection screen and enter the current server admin password. The SAF bridge token is separate.',
-        403 => 'HomeServer denied access to external storage (403). Check the server account permissions.',
-        404 => 'SSD support is not enabled on the HomeServer backend yet.',
+        401 => 'PocketLink rejected the saved login (401). Go back to the connection screen and enter the current server admin password. The SAF bridge token is separate.',
+        403 => 'PocketLink denied access to external storage (403). Check the server account permissions.',
+        404 => 'SSD support is not enabled on the PocketLink backend yet.',
         _ => error.message ?? 'Could not detect external storage.',
       });
     } catch (_) {
@@ -105,7 +106,7 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
     } on DioException catch (error) {
       if (!mounted) return;
       setState(() => _error = switch (error.response?.statusCode) {
-        401 => 'HomeServer rejected the saved login (401). Go back to the connection screen and enter the current server admin password. The SAF bridge token is separate.',
+        401 => 'PocketLink rejected the saved login (401). Go back to the connection screen and enter the current server admin password. The SAF bridge token is separate.',
         403 => 'Android denied access to this SSD.',
         404 => 'Storage folder not found or permission not granted.',
         _ => error.message ?? 'Could not read this folder.',
@@ -149,14 +150,9 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
     final volume = _volume;
     if (volume == null) return;
     try {
-      final picked = await FilePicker.platform.pickFiles(withData: true);
-      if (picked == null || picked.files.isEmpty) return;
-      final file = picked.files.single;
-      final bytes = file.bytes;
-      if (bytes == null) {
-        _message('Could not read the selected file.');
-        return;
-      }
+      final file = await FilePicker.pickFile();
+      if (file == null) return;
+      final bytes = await file.readAsBytes();
       final completed = await TransferManager.instance.run(
         name: file.name,
         direction: 'Upload',
@@ -203,7 +199,11 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
   Future<void> _openAudio(FileEntry item) async {
     final volume = _volume;
     if (volume == null) return;
-    await Navigator.of(context).push(
+    await AppLogger.info('Audio open requested', fields: {
+      'source': 'external',
+      'extension': item.name.contains('.') ? item.name.split('.').last.toLowerCase() : 'unknown',
+    });
+    await Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute<void>(
         builder: (_) => NowPlayingScreen(
           api: widget.api,
@@ -235,7 +235,7 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
       if (!mounted) return;
 
       final temp = await getTemporaryDirectory();
-      final openDirectory = Directory('${temp.path}/homeserver-open');
+      final openDirectory = Directory('${temp.path}/pocketlink-open');
       await openDirectory.create(recursive: true);
       final localFile = File('${openDirectory.path}/${item.name}');
       await localFile.writeAsBytes(bytes, flush: true);
@@ -269,7 +269,7 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
           onReceiveProgress: progress,
         );
         if (token.isCancelled) return;
-        final savedPath = await FilePicker.platform.saveFile(
+        final savedPath = await FilePicker.saveFile(
           dialogTitle: 'Save ${item.name}',
           fileName: item.name,
           initialDirectory: AppSettings.instance.downloadDirectory,
@@ -375,13 +375,13 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
         if (!didPop && _path.isNotEmpty) _goUp();
       },
       child: Scaffold(
-        appBar: HomeServerAppBar(
+        appBar: PocketLinkAppBar(
           title: const Text('External storage', style: TextStyle(fontWeight: FontWeight.w800)),
           actions: [
-            HomeServerAppBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded, onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen()))),
-            HomeServerAppBarAction(label: 'Upload', icon: Icons.cloud_upload_outlined, onPressed: _volume == null ? null : _upload),
-            HomeServerAppBarAction(label: 'New folder', icon: Icons.create_new_folder_outlined, onPressed: _volume == null ? null : _createFolder),
-            HomeServerAppBarAction(label: 'Refresh', icon: Icons.refresh_rounded, onPressed: _loading ? null : _refreshVolumes),
+            PocketLinkAppBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded, onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen()))),
+            PocketLinkAppBarAction(label: 'Upload', icon: Icons.cloud_upload_outlined, onPressed: _volume == null ? null : _upload),
+            PocketLinkAppBarAction(label: 'New folder', icon: Icons.create_new_folder_outlined, onPressed: _volume == null ? null : _createFolder),
+            PocketLinkAppBarAction(label: 'Refresh', icon: Icons.refresh_rounded, onPressed: _loading ? null : _refreshVolumes),
           ],
         ),
         body: Column(children: [

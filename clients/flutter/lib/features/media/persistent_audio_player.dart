@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 
 import '../../core/network/server_api.dart';
+import '../../core/storage/home_activity_store.dart';
 
 class MediaQueueItem {
   const MediaQueueItem({required this.title, required this.path, this.volume, this.localPath, this.size});
@@ -27,6 +29,10 @@ class PersistentAudioPlayer extends ChangeNotifier {
     }
     _playlistSubscription = player.stream.playlist.listen((playlist) {
       _currentIndex = playlist.index.clamp(0, _queue.isEmpty ? 0 : _queue.length - 1).toInt();
+      final current = currentItem;
+      if (current != null && current.localPath == null && _active && _music && _api != null) {
+        unawaited(HomeActivityStore.instance.recordTrack(serverUrl: _api!.baseUrl, title: current.title, path: current.path, volume: current.volume));
+      }
       notifyListeners();
       unawaited(_syncMediaSession());
     });
@@ -38,19 +44,24 @@ class PersistentAudioPlayer extends ChangeNotifier {
       notifyListeners();
       unawaited(_syncMediaSession());
     });
-    _positionSubscription = player.stream.position.listen((_) => unawaited(_syncMediaSession()));
-    _durationSubscription = player.stream.duration.listen((_) => unawaited(_syncMediaSession()));
+    // Do not publish every decoder position/duration tick over the platform
+    // channel. Android's media session extrapolates position from playback
+    // state; syncing on track and play-state changes is sufficient.
   }
 
   static final PersistentAudioPlayer instance = PersistentAudioPlayer._();
-  static const MethodChannel _mediaChannel = MethodChannel('homeserver/media');
+  static const MethodChannel _mediaChannel = MethodChannel('pocketlink/media');
 
   late final Player player;
+  VideoController? _videoController;
+
+  /// Reuse one video output for the lifetime of the app-scoped Player.
+  /// media_kit_video releases its controller when the Player is disposed.
+  VideoController get videoController =>
+      _videoController ??= VideoController(player);
   StreamSubscription<Playlist>? _playlistSubscription;
   StreamSubscription<bool>? _playingSubscription;
   StreamSubscription<bool>? _completedSubscription;
-  StreamSubscription<Duration>? _positionSubscription;
-  StreamSubscription<Duration>? _durationSubscription;
   bool _nativeSessionStarted = false;
   Timer? _sleepTimer;
 
@@ -112,6 +123,10 @@ class PersistentAudioPlayer extends ChangeNotifier {
       extras: {'title': item.title},
     )).toList(growable: false);
     await player.open(Playlist(tracks, index: _currentIndex));
+    final current = currentItem;
+    if (current != null && current.localPath == null && _music) {
+      unawaited(HomeActivityStore.instance.recordTrack(serverUrl: api.baseUrl, title: current.title, path: current.path, volume: current.volume));
+    }
     await _syncMediaSession(start: true);
   }
 
@@ -159,6 +174,10 @@ class PersistentAudioPlayer extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> skipToNext() async {
+    await player.next();
+  }
+
   Future<void> dismiss() async {
     cancelSleepTimer();
     await player.stop();
@@ -187,23 +206,23 @@ class PersistentAudioPlayer extends ChangeNotifier {
     final args = Map<Object?, Object?>.from(call.arguments as Map);
     final action = args['action']?.toString();
     switch (action) {
-      case 'dev.homeserver.media.PLAY':
+      case 'io.github.augztn.pocketlink.media.PLAY':
         await player.play();
         break;
-      case 'dev.homeserver.media.PAUSE':
+      case 'io.github.augztn.pocketlink.media.PAUSE':
         await player.pause();
         break;
-      case 'dev.homeserver.media.NEXT':
+      case 'io.github.augztn.pocketlink.media.NEXT':
         await player.next();
         break;
-      case 'dev.homeserver.media.PREVIOUS':
+      case 'io.github.augztn.pocketlink.media.PREVIOUS':
         await player.previous();
         break;
-      case 'dev.homeserver.media.SEEK':
+      case 'io.github.augztn.pocketlink.media.SEEK':
         final position = args['position'];
         if (position is num) await player.seek(Duration(milliseconds: position.toInt()));
         break;
-      case 'dev.homeserver.media.STOP':
+      case 'io.github.augztn.pocketlink.media.STOP':
         await dismiss();
         break;
     }
@@ -216,7 +235,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
     if (track == null) return;
     final args = <String, Object>{
       'title': track.title.replaceAll(RegExp(r'\.[^.]+$'), ''),
-      'artist': 'HomeServer music library',
+      'artist': 'PocketLink music library',
       'playing': player.state.playing,
       'positionMs': player.state.position.inMilliseconds,
       'durationMs': player.state.duration.inMilliseconds,
@@ -240,8 +259,6 @@ class PersistentAudioPlayer extends ChangeNotifier {
     unawaited(_playlistSubscription?.cancel());
     unawaited(_playingSubscription?.cancel());
     unawaited(_completedSubscription?.cancel());
-    unawaited(_positionSubscription?.cancel());
-    unawaited(_durationSubscription?.cancel());
     _mediaChannel.setMethodCallHandler(null);
     unawaited(player.dispose());
     super.dispose();

@@ -1,13 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
-import '../../core/widgets/home_server_app_bar.dart';
+import '../../core/widgets/pocketlink_app_bar.dart';
 
 import 'package:cross_file/cross_file.dart';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:open_filex/open_filex.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -42,7 +42,8 @@ class _SearchScreenState extends State<SearchScreen> {
   static const _video = {'mp4','m4v','mov','mkv','webm','avi','wmv','mpeg','mpg','3gp','ts','m2ts','mts','flv','ogv'};
   static const _photo = {'jpg','jpeg','png','webp','gif','bmp','heic','heif','avif'};
   static const _docs = {'pdf','doc','docx','xls','xlsx','ppt','pptx','txt','rtf','odt','ods','csv','md'};
-  static const _historyKey = 'homeserver_recent_searches';
+  static const _historyKey = 'pocketlink_recent_searches';
+  static const _legacyHistoryKey = 'homeserver_recent_searches';
   static const _secure = FlutterSecureStorage();
 
   final _controller = TextEditingController();
@@ -84,7 +85,11 @@ class _SearchScreenState extends State<SearchScreen> {
 
   Future<void> _loadHistory() async {
     try {
-      final raw = await _secure.read(key: _historyKey);
+      var raw = await _secure.read(key: _historyKey);
+      if (raw == null) {
+        raw = await _secure.read(key: _legacyHistoryKey);
+        if (raw != null) await _secure.write(key: _historyKey, value: raw);
+      }
       if (!mounted || raw == null) return;
       final value = jsonDecode(raw);
       if (value is List) setState(() => _history = value.whereType<String>().take(8).toList());
@@ -161,6 +166,70 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Future<void> _scan({bool refresh = false, bool continueExisting = false}) async {
+    if (_quick == 'offline' || _quick != null || _controller.text.trim().isEmpty) {
+      await _scanLegacy(refresh: refresh, continueExisting: continueExisting);
+      return;
+    }
+    if (_loading) return;
+    final query = _controller.text.trim();
+    final generation = ++_scanGeneration;
+    setState(() { _loading = true; _error = null; if (refresh) _results.clear(); });
+    try {
+      if (refresh) await widget.api.startMediaIndexScan();
+      if (_volumes.isEmpty) await _loadVolumes();
+      Future<MediaIndexStatus> loadAllPages() async {
+        final found = <_Result>[];
+        var offset = 0;
+        late MediaIndexStatus status;
+        while (true) {
+          final page = await widget.api.searchIndexedFiles(query, limit: 500, offset: offset);
+          status = page.status;
+          found.addAll(page.items.map((item) {
+            final volume = item.volume == 'internal' ? null : item.volume;
+            final matches = _volumes.where((v) => v.id == volume);
+            final volumeName = volume == null
+                ? 'Internal storage'
+                : matches.isEmpty ? 'USB / OTG' : matches.first.name;
+            return _Result(item.toFileEntry(), item.path, volumeName, volume);
+          }));
+          offset += page.items.length;
+          if (page.items.length < 500) break;
+        }
+        if (generation == _scanGeneration && mounted) {
+          setState(() { _results..clear()..addAll(found); });
+        }
+        return status;
+      }
+
+      var status = await loadAllPages();
+      while (mounted && generation == _scanGeneration && status.isScanning) {
+        await Future<void>.delayed(const Duration(seconds: 2));
+        if (!mounted || generation != _scanGeneration) return;
+        status = await loadAllPages();
+      }
+      if ((status.state == 'failed' || status.state == 'partial') && _results.isEmpty) {
+        if (mounted) setState(() => _loading = false);
+        await _scanLegacy(refresh: true);
+        return;
+      }
+      if (mounted && generation == _scanGeneration) {
+        setState(() { _scanned = status.isUsable; _loading = false; });
+        if (query.isNotEmpty) _saveHistory(query);
+      }
+    } on DioException {
+      if (generation == _scanGeneration) {
+        if (mounted) setState(() => _loading = false);
+        await _scanLegacy(refresh: true);
+      }
+    } catch (_) {
+      if (generation == _scanGeneration) {
+        if (mounted) setState(() => _loading = false);
+        await _scanLegacy(refresh: true);
+      }
+    }
+  }
+
+  Future<void> _scanLegacy({bool refresh = false, bool continueExisting = false}) async {
     if (_quick == 'offline') { await _loadOfflineResults(); return; }
     final query = _controller.text.trim();
     if (query.isEmpty && _quick == null) return;
@@ -354,7 +423,7 @@ class _SearchScreenState extends State<SearchScreen> {
     final audio = _audio.contains(e), video = _video.contains(e);
     if (r.localPath != null && _photo.contains(e)) {
       await Navigator.push(context, MaterialPageRoute<void>(builder: (_) => Scaffold(
-        appBar: HomeServerAppBar(title: Text(r.file.name)),
+        appBar: PocketLinkAppBar(title: Text(r.file.name)),
         body: Center(child: InteractiveViewer(child: Image.file(File(r.localPath!), fit: BoxFit.contain))))));
     } else if (audio || video) {
       final queue = r.localPath != null
@@ -369,7 +438,7 @@ class _SearchScreenState extends State<SearchScreen> {
             isVideo: true, queue: queue, initialIndex: index < 0 ? 0 : index)));
     } else if (_photo.contains(e)) {
       await Navigator.push(context, MaterialPageRoute<void>(builder: (_) => Scaffold(
-        appBar: HomeServerAppBar(title: Text(r.file.name)),
+        appBar: PocketLinkAppBar(title: Text(r.file.name)),
         body: Center(child: InteractiveViewer(child: Image.network(
           widget.api.mediaStreamUrl(r.path, volume: r.volume), headers: widget.api.mediaHeaders,
           fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Icon(Icons.broken_image_outlined, size: 56)))))));
@@ -434,14 +503,22 @@ class _SearchScreenState extends State<SearchScreen> {
   Future<void> _download(_Result r) async {
     try {
       final bytes = await _bytes(r);
-      final saved = await FilePicker.platform.saveFile(dialogTitle: 'Save ${r.file.name}', fileName: r.file.name, bytes: bytes);
+      final saved = await FilePicker.saveFile(dialogTitle: 'Save ${r.file.name}', fileName: r.file.name, bytes: bytes);
       if (saved != null && mounted) _message('Saved ${r.file.name}');
     } catch (_) { _message('Could not download this file.'); }
   }
 
   Future<void> _share(_Result r) async {
-    try { await Share.shareXFiles([XFile.fromData(await _bytes(r), name: r.file.name)], text: r.file.name); }
-    catch (_) { _message('Could not prepare this file for sharing.'); }
+    try {
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile.fromData(await _bytes(r), name: r.file.name)],
+          text: r.file.name,
+        ),
+      );
+    } catch (_) {
+      _message('Could not prepare this file for sharing.');
+    }
   }
 
   Future<void> _rename(_Result r) async {
@@ -616,7 +693,7 @@ class _SearchScreenState extends State<SearchScreen> {
       for (final v in _volumes) DropdownMenuItem(value: v.id, child: Text(v.name, overflow: TextOverflow.ellipsis)),
     ];
     return Scaffold(
-      appBar: HomeServerAppBar(
+      appBar: PocketLinkAppBar(
         title: const Text('Search'),
         onHome: widget.onHome,
         leading: widget.onHome == null ? null : IconButton(
@@ -653,7 +730,7 @@ class _SearchScreenState extends State<SearchScreen> {
           Text('Search in', style: theme.textTheme.labelLarge),
           const SizedBox(width: 10),
           Expanded(child: DropdownButtonFormField<String?>(
-            value: _scope, isDense: true, items: scopes, onChanged: _chooseScope,
+            initialValue: _scope, isDense: true, items: scopes, onChanged: _chooseScope,
             decoration: InputDecoration(contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
               filled: true, fillColor: theme.colorScheme.surfaceContainerLow,
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)),

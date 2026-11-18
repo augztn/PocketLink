@@ -1,0 +1,19 @@
+name: pocketlink_saf
+description: Native Android storage bridge and PocketLink host service using the Storage Access Framework.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ">=3.12.0 <4.0.0"
+  flutter: ">=3.44.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: io.github.augztn.pocketlink.ssdbridge
+        pluginClass: PocketLinkSafPlugin

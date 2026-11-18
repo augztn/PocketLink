@@ -4,13 +4,15 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/network/offline_file_cache.dart';
-import '../../core/widgets/home_server_app_bar.dart';
+import '../../core/logging/app_logger.dart';
+import '../../core/settings/app_settings.dart';
+import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
 import '../storage/storage_browser_screen.dart';
@@ -47,6 +49,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   bool _cached = false;
   Set<String> _favorites = <String>{};
   double? _dragPosition;
+  double _dismissDragDistance = 0;
+  double _trackSwipeDistance = 0;
+
 
   MediaQueueItem get _track =>
       _persistent.currentItem ??
@@ -58,6 +63,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   String get _favoriteId => '${_track.volume ?? 'internal'}:${_track.path}';
 
   String get _favoriteStorageKey =>
+      'pocketlink.music.favorites.${Uri.encodeComponent(widget.api.baseUrl)}';
+
+  String get _legacyFavoriteStorageKey =>
       'homeserver.music.favorites.${Uri.encodeComponent(widget.api.baseUrl)}';
 
   bool get _isFavorite => _favorites.contains(_favoriteId);
@@ -91,15 +99,34 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     _persistent = PersistentAudioPlayer.instance;
     _player = _persistent.player;
     _persistent.setFullScreen(true);
+    unawaited(AppLogger.info('Now Playing screen initialized', fields: {
+      'queueLength': widget.queue.length,
+      'initialIndex': widget.initialIndex,
+      'resumeExisting': widget.resumeExisting,
+    }));
     _playlistSubscription = _player.stream.playlist.listen((_) => _onTrackChanged());
     unawaited(_initialize());
-    if (!widget.resumeExisting) {
-      unawaited(_persistent.openQueue(
+    if (!widget.resumeExisting) unawaited(_openQueue());
+  }
+
+  Future<void> _openQueue() async {
+    try {
+      await _persistent.openQueue(
         api: widget.api,
         queue: widget.queue,
         initialIndex: widget.initialIndex,
         isMusic: true,
-      ));
+      );
+      await AppLogger.info('Now Playing queue opened', fields: {
+        'queueLength': widget.queue.length,
+      });
+    } catch (error, stackTrace) {
+      await AppLogger.error(
+        'Now Playing queue failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      if (mounted) _message('Could not start playback. Check diagnostics for details.');
     }
   }
 
@@ -113,7 +140,13 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
 
   Future<void> _loadFavorites() async {
     try {
-      final raw = await _secureStorage.read(key: _favoriteStorageKey);
+      var raw = await _secureStorage.read(key: _favoriteStorageKey);
+      if (raw == null) {
+        raw = await _secureStorage.read(key: _legacyFavoriteStorageKey);
+        if (raw != null) {
+          await _secureStorage.write(key: _favoriteStorageKey, value: raw);
+        }
+      }
       if (raw == null || raw.isEmpty) return;
       final decoded = jsonDecode(raw);
       if (decoded is List) {
@@ -169,15 +202,26 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
       return;
     }
 
-    // HomeServer currently exposes raw files, not embedded-artwork metadata.
+    // PocketLink currently exposes raw files, not embedded-artwork metadata.
     // Use an existing folder cover file when present; otherwise show the
     // compact artwork fallback rather than a blank full-height region.
-    for (final name in const [
-      'cover.jpg', 'cover.jpeg', 'cover.png', 'cover.webp',
-      'folder.jpg', 'folder.png', 'album.jpg', 'album.png', 'front.jpg',
-    ]) {
-      final path = '$_folder/$name';
-      try {
+    try {
+      final listing = _track.volume == null
+          ? await widget.api.listDirectory(_folder)
+          : await widget.api.listStorageDirectory(_track.volume!, _folder);
+      const candidates = {
+        'cover.jpg', 'cover.jpeg', 'cover.png', 'cover.webp',
+        'folder.jpg', 'folder.png', 'album.jpg', 'album.png', 'front.jpg',
+      };
+      FileEntry? cover;
+      for (final item in listing.items) {
+        if (!item.isDirectory && candidates.contains(item.name.toLowerCase())) {
+          cover = item;
+          break;
+        }
+      }
+      if (cover != null) {
+        final path = '$_folder/${cover.name}';
         final bytes = _track.volume == null
             ? await widget.api.downloadFile(path)
             : await widget.api.downloadStorageFile(_track.volume!, path);
@@ -186,9 +230,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
           setState(() { _artwork = bytes; _artworkKey = key; });
           return;
         }
-      } catch (_) {
-        // Try the next conventional folder-cover filename.
       }
+    } catch (_) {
+      // Artwork is optional; playback must not depend on it.
     }
     if (mounted && request == _artworkRequest) {
       setState(() { _artwork = null; _artworkKey = key; });
@@ -249,7 +293,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   Future<void> _downloadTrack() async {
     try {
       final bytes = await _fileBytes();
-      final saved = await FilePicker.platform.saveFile(
+      final saved = await FilePicker.saveFile(
         dialogTitle: 'Save original audio file',
         fileName: _track.path.split('/').last,
         bytes: bytes,
@@ -263,9 +307,12 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   Future<void> _shareTrack() async {
     try {
       final bytes = await _fileBytes();
-      await Share.shareXFiles([
-        XFile.fromData(bytes, name: _track.path.split('/').last),
-      ], text: _fileName);
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile.fromData(bytes, name: _track.path.split('/').last)],
+          text: _fileName,
+        ),
+      );
     } catch (_) {
       _message('Could not share this track.');
     }
@@ -457,6 +504,129 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     );
   }
 
+  void _showStatsForNerds() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF1C1C1E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              const Row(
+                children: [
+                  Icon(Icons.query_stats_rounded, color: Color(0xFFD8C9FF)),
+                  SizedBox(width: 10),
+                  Text(
+                    'Stats for nerds',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              StreamBuilder<Track>(
+                stream: _player.stream.track,
+                initialData: _player.state.track,
+                builder: (context, trackSnapshot) {
+                  final audioTrack =
+                      (trackSnapshot.data ?? _player.state.track).audio;
+                  return StreamBuilder<double?>(
+                    stream: _player.stream.audioBitrate,
+                    initialData: _player.state.audioBitrate,
+                    builder: (context, bitrateSnapshot) =>
+                        StreamBuilder<AudioParams>(
+                      stream: _player.stream.audioParams,
+                      initialData: _player.state.audioParams,
+                      builder: (context, paramsSnapshot) {
+                        final trackBitrate = audioTrack.bitrate;
+                        final streamBitrate = bitrateSnapshot.data ??
+                            _player.state.audioBitrate;
+                        final bitrate = _formatBitrate(
+                          trackBitrate != null && trackBitrate > 0
+                              ? trackBitrate.toDouble()
+                              : streamBitrate,
+                        );
+                        final sourceSampleRate = audioTrack.samplerate;
+                        final outputSampleRate = paramsSnapshot.data?.sampleRate ??
+                            _player.state.audioParams.sampleRate;
+                        final sampleRate = sourceSampleRate != null &&
+                                sourceSampleRate > 0
+                            ? _formatSampleRate(sourceSampleRate)
+                            : outputSampleRate != null && outputSampleRate > 0
+                                ? '${_formatSampleRate(outputSampleRate)} (output)'
+                                : 'Not available';
+                        final rawCodec = audioTrack.codec?.trim();
+                        final codec = rawCodec == null || rawCodec.isEmpty
+                            ? 'Not available'
+                            : rawCodec.toUpperCase();
+
+                        return Column(
+                          children: [
+                            _InfoLine('Codec', codec),
+                            const Divider(height: 18, color: Colors.white12),
+                            _InfoLine('Bitrate', bitrate),
+                            const Divider(height: 18, color: Colors.white12),
+                            _InfoLine('Sample rate', sampleRate),
+                          ],
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 14),
+              const Text(
+                'Values are reported by the media source. Some files and streams do not provide every detail.',
+                style: TextStyle(color: Colors.white38, fontSize: 11, height: 1.4),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _formatBitrate(double? bitsPerSecond) {
+    if (bitsPerSecond == null ||
+        !bitsPerSecond.isFinite ||
+        bitsPerSecond <= 0) {
+      return 'Not available';
+    }
+    if (bitsPerSecond >= 1000000) {
+      return '${(bitsPerSecond / 1000000).toStringAsFixed(2)} Mbps';
+    }
+    final kilobitsPerSecond = bitsPerSecond / 1000;
+    final precision =
+        kilobitsPerSecond == kilobitsPerSecond.roundToDouble() ? 0 : 1;
+    return '${kilobitsPerSecond.toStringAsFixed(precision)} kbps';
+  }
+
+  String _formatSampleRate(int sampleRate) {
+    final kilohertz = sampleRate / 1000;
+    final precision = kilohertz == kilohertz.roundToDouble() ? 0 : 1;
+    return '${kilohertz.toStringAsFixed(precision)} kHz';
+  }
+
   void _message(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -522,16 +692,39 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
               children: [
                 IconButton(
                   tooltip: 'Home',
-                  onPressed: () => HomeServerAppBar.goToDashboard(context),
+                  onPressed: () => PocketLinkAppBar.goToDashboard(context),
                   icon: const Icon(Icons.home_rounded, color: Colors.white70, size: 21),
                   visualDensity: VisualDensity.compact,
                 ),
                 PopupMenuButton<String>(
                   tooltip: 'More actions',
                   icon: const Icon(Icons.more_vert_rounded, color: Colors.white70, size: 21),
-                  onSelected: (_) => _showOptions(),
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(value: 'track_options', child: Text('Track options')),
+                  onSelected: (value) {
+                    switch (value) {
+                      case 'stats':
+                        _showStatsForNerds();
+                        break;
+                      case 'track_options':
+                        _showOptions();
+                        break;
+                    }
+                  },
+                  itemBuilder: (_) => [
+                    if (AppSettings.instance.showStatsForNerds)
+                      const PopupMenuItem(
+                        value: 'stats',
+                        child: Row(
+                          children: [
+                            Icon(Icons.query_stats_rounded, size: 19),
+                            SizedBox(width: 10),
+                            Text('Stats for nerds'),
+                          ],
+                        ),
+                      ),
+                    const PopupMenuItem(
+                      value: 'track_options',
+                      child: Text('Track options'),
+                    ),
                   ],
                 ),
               ],
@@ -760,9 +953,31 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Column(
-          children: [
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onVerticalDragStart: AppSettings.instance.enableNowPlayingGestures ? (_) => _dismissDragDistance = 0 : null,
+        onVerticalDragUpdate: AppSettings.instance.enableNowPlayingGestures ? (details) => _dismissDragDistance += details.primaryDelta ?? 0 : null,
+        onHorizontalDragStart: AppSettings.instance.enableNowPlayingGestures ? (_) => _trackSwipeDistance = 0 : null,
+        onHorizontalDragUpdate: AppSettings.instance.enableNowPlayingGestures ? (details) => _trackSwipeDistance += details.primaryDelta ?? 0 : null,
+        onVerticalDragEnd: AppSettings.instance.enableNowPlayingGestures ? (details) {
+          if (_dismissDragDistance > 100 || (details.primaryVelocity ?? 0) > 500) {
+            Navigator.maybePop(context);
+          }
+          _dismissDragDistance = 0;
+        } : null,
+        onHorizontalDragEnd: AppSettings.instance.enableNowPlayingGestures ? (details) {
+          final distance = _trackSwipeDistance;
+          final velocity = details.primaryVelocity ?? 0;
+          if (distance < -80 || velocity < -500) {
+            unawaited(_player.next());
+          } else if (distance > 80 || velocity > 500) {
+            unawaited(_player.previous());
+          }
+          _trackSwipeDistance = 0;
+        } : null,
+        child: SafeArea(
+          child: Column(
+            children: [
             _header(),
             Expanded(
               child: Center(
@@ -836,12 +1051,18 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  _timeline(),
-                  const SizedBox(height: 16),
-                  _transport(),
-                  const SizedBox(height: 12),
-                  _volume(),
+                  ... [
+                    const SizedBox(height: 16),
+                    _timeline(),
+                  ],
+                  ... [
+                    const SizedBox(height: 16),
+                    _transport(),
+                  ],
+                  ... [
+                    const SizedBox(height: 12),
+                    _volume(),
+                  ],
                 ],
               ),
             ),
@@ -853,7 +1074,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
               style: TextStyle(color: Colors.white38, fontSize: 11),
             ),
             const SizedBox(height: 8),
-          ],
+            ],
+          ),
         ),
       ),
     );

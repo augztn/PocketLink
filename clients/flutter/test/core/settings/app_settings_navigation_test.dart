@@ -1,0 +1,152 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:pocketlink_client/core/settings/app_settings.dart';
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
+  test('navigation layout persists reordered destinations and visibility', () async {
+    final settings = AppSettings.instance;
+    const order = ['home', 'files', 'browse', 'explore'];
+    const visible = {'home', 'files', 'browse'};
+
+    await settings.setNavigationLayout(order: order, visibleItems: visible);
+
+    expect(settings.navigationOrder, order);
+    expect(settings.visibleNavigationItems, visible);
+    expect(settings.navigationLayoutIsDefault, isFalse);
+    final preferences = await SharedPreferences.getInstance();
+    expect(preferences.getString('settings_navigation_order'),
+        '["home","files","browse","explore"]');
+    expect(preferences.getString('settings_navigation_visibility'),
+        '["home","files","browse"]');
+  });
+
+  test('navigation layout rejects invalid visibility but allows Home anywhere', () async {
+    final settings = AppSettings.instance;
+
+    await expectLater(
+      settings.setNavigationLayout(
+        order: AppSettings.navigationDefaults,
+        visibleItems: const {'home'},
+      ),
+      throwsArgumentError,
+    );
+    await settings.setNavigationLayout(
+      order: const ['explore', 'home', 'files', 'browse'],
+      visibleItems: const {'home', 'explore'},
+    );
+    expect(settings.navigationOrder,
+        const ['explore', 'home', 'files', 'browse']);
+  });
+
+  test('reset restores default order and all destinations', () async {
+    final settings = AppSettings.instance;
+    await settings.setNavigationLayout(
+      order: const ['home', 'files', 'browse', 'explore'],
+      visibleItems: const {'home', 'files'},
+    );
+
+    await settings.resetNavigationLayout();
+
+    expect(settings.navigationOrder, AppSettings.navigationDefaults);
+    expect(settings.visibleNavigationItems, AppSettings.navigationDefaults.toSet());
+    expect(settings.navigationLayoutIsDefault, isTrue);
+    final preferences = await SharedPreferences.getInstance();
+    expect(preferences.getString('settings_navigation_order'), isNull);
+    expect(preferences.getString('settings_navigation_visibility'), isNull);
+  });
+  test('Home section order persists and rejects incomplete layouts', () async {
+    final settings = AppSettings.instance;
+    const order = ['recent', 'search', 'continue', 'quick', 'transfers'];
+
+    await settings.setHomeSectionOrder(order);
+
+    expect(settings.homeSectionOrder, order);
+    final preferences = await SharedPreferences.getInstance();
+    expect(preferences.getString('settings_home_section_order'),
+        '["recent","search","continue","quick","transfers"]');
+
+    await expectLater(
+      settings.setHomeSectionOrder(const ['search', 'quick']),
+      throwsArgumentError,
+    );
+  });
+
+  test('floating shortcuts persist, validate and reset', () async {
+    final settings = AppSettings.instance;
+    const shortcuts = ['music', 'files', 'photos', 'upload'];
+
+    expect(settings.floatingShortcutEnabled, isFalse);
+    expect(settings.floatingShortcutTapAction, 'menu');
+    expect(settings.floatingShortcutLongPressEnabled, isTrue);
+
+    await settings.setFloatingShortcutEnabled(true);
+    await settings.setFloatingShortcutTapAction('menu');
+    await settings.setFloatingShortcutLongPressEnabled(false);
+    await settings.setFloatingShortcuts(shortcuts);
+
+    expect(settings.floatingShortcutEnabled, isTrue);
+    expect(settings.floatingShortcutTapAction, 'menu');
+    expect(settings.floatingShortcutLongPressEnabled, isFalse);
+    expect(settings.floatingShortcuts, shortcuts);
+    final preferences = await SharedPreferences.getInstance();
+    expect(preferences.getBool('settings_floating_shortcut_enabled'), isTrue);
+    expect(preferences.getString('settings_floating_shortcut_tap_action'), 'menu');
+    expect(preferences.getBool('settings_floating_shortcut_long_press'), isFalse);
+    expect(preferences.getString('settings_floating_shortcuts'),
+        '["music","files","photos","upload"]');
+
+    await expectLater(
+      settings.setFloatingShortcuts(const ['music', 'music']),
+      throwsArgumentError,
+    );
+    await expectLater(
+      settings.setFloatingShortcuts(const ['unknown']),
+      throwsArgumentError,
+    );
+    await expectLater(
+      settings.setFloatingShortcutTapAction('invalid'),
+      throwsArgumentError,
+    );
+    await expectLater(
+      settings.setFloatingShortcuts(const []),
+      throwsArgumentError,
+    );
+
+    await settings.resetFloatingShortcuts();
+    expect(settings.floatingShortcutEnabled, isTrue);
+    expect(settings.floatingShortcutTapAction, 'menu');
+    expect(settings.floatingShortcutLongPressEnabled, isFalse);
+    expect(settings.floatingShortcuts, AppSettings.floatingShortcutDefaults);
+    expect(preferences.getBool('settings_floating_shortcut_enabled'), isTrue);
+    expect(preferences.getString('settings_floating_shortcuts'), isNull);
+  });
+
+  test('stats for nerds setting persists, can be disabled and resets enabled', () async {
+    final settings = AppSettings.instance;
+    await settings.setNowPlayingOptions(statsForNerds: true);
+    expect(settings.showStatsForNerds, isTrue);
+
+    await settings.setNowPlayingOptions(statsForNerds: false);
+    expect(settings.showStatsForNerds, isFalse);
+
+    final preferences = await SharedPreferences.getInstance();
+    expect(
+      preferences.getBool('settings_now_playing_stats_for_nerds'),
+      isFalse,
+    );
+
+    await settings.resetNowPlayingOptions();
+    expect(settings.showStatsForNerds, isTrue);
+    expect(
+      preferences.getBool('settings_now_playing_stats_for_nerds'),
+      isNull,
+    );
+  });
+}

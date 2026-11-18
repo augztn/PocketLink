@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:homeserver_client/features/library/photo_favorites_store.dart';
+import 'package:pocketlink_client/features/library/photo_favorites_store.dart';
 
 void main() {
   late Directory directory;

@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
-import '../../core/widgets/home_server_app_bar.dart';
+import 'package:material_ui/material_ui.dart';
+import '../../core/widgets/pocketlink_app_bar.dart';
 
 import 'transfer_manager.dart';
 
@@ -33,10 +33,10 @@ class TransferManagerScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final manager = TransferManager.instance;
     return Scaffold(
-      appBar: HomeServerAppBar(
+      appBar: PocketLinkAppBar(
         title: const Text('Transfers'),
         actions: [
-          HomeServerAppBarAction(label: 'Clear history', icon: Icons.delete_sweep_outlined, onPressed: manager.clearFinished),
+          PocketLinkAppBarAction(label: 'Clear history', icon: Icons.delete_sweep_outlined, onPressed: manager.clearFinished),
         ],
       ),
       body: AnimatedBuilder(

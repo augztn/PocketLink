@@ -11,11 +11,14 @@ class TransferHistoryStore {
 
   static Future<TransferHistoryStore> inApplicationSupportDirectory() async {
     final support = await getApplicationSupportDirectory();
-    final directory = Directory('${support.path}/homeserver');
+    final directory = Directory('${support.path}/pocketlink');
     await directory.create(recursive: true);
-    return TransferHistoryStore(
-      file: File('${directory.path}/transfer-history.json'),
-    );
+    final file = File('${directory.path}/transfer-history.json');
+    final legacy = File('${support.path}/homeserver/transfer-history.json');
+    if (!await file.exists() && await legacy.exists()) {
+      await legacy.copy(file.path);
+    }
+    return TransferHistoryStore(file: file);
   }
 
   Future<List<Map<String, dynamic>>> load() async {

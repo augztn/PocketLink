@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:homeserver_client/features/transfers/transfer_history_store.dart';
-import 'package:homeserver_client/features/transfers/transfer_manager.dart';
+import 'package:pocketlink_client/features/transfers/transfer_history_store.dart';
+import 'package:pocketlink_client/features/transfers/transfer_manager.dart';
 
 void main() {
   late Directory directory;
@@ -11,7 +11,7 @@ void main() {
   late TransferManager manager;
 
   setUp(() async {
-    directory = await Directory.systemTemp.createTemp('homeserver-transfers-');
+    directory = await Directory.systemTemp.createTemp('pocketlink-transfers-');
     store = TransferHistoryStore(file: File('${directory.path}/history.json'));
     manager = TransferManager.forTesting(store);
   });
@@ -138,6 +138,20 @@ void main() {
     expect(restored.tasks.first.name, 'file-0');
     expect(restored.tasks.last.name, 'file-99');
     restored.dispose();
+  });
+
+  test('keeps completed transfer history bounded in memory', () async {
+    for (var index = 0; index < 105; index++) {
+      await manager.run(
+        name: 'file-$index.bin',
+        direction: 'Download',
+        location: 'Internal storage',
+        operation: (token, progress) async {},
+      );
+    }
+
+    expect(manager.tasks, hasLength(100));
+    expect(await store.load(), hasLength(100));
   });
 
   test('marks interrupted transfers as failed on restore', () async {

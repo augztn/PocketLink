@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
-import '../../core/widgets/home_server_app_bar.dart';
+import '../../core/widgets/pocketlink_app_bar.dart';
 
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
@@ -41,7 +41,6 @@ class MediaPlayerScreen extends StatefulWidget {
 class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
   late final PersistentAudioPlayer _persistent;
   late final Player _player;
-  late final VideoController _videoController;
   String? _openError;
   int _currentIndex = 0;
   bool _shuffle = false;
@@ -68,7 +67,6 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
     super.initState();
     _persistent = PersistentAudioPlayer.instance;
     _player = _persistent.player;
-    _videoController = VideoController(_player);
     _currentIndex = widget.resumeExisting
         ? _persistent.currentIndex
         : widget.initialIndex.clamp(0, _queue.length - 1).toInt();
@@ -209,15 +207,13 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
 
   Future<void> _pickExternalSubtitle() async {
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final file = await FilePicker.pickFile(
         type: FileType.custom,
         allowedExtensions: const ['srt', 'ass', 'ssa', 'vtt'],
-        withData: true,
       );
-      if (result == null || result.files.isEmpty) return;
-      final file = result.files.single;
-      final bytes = file.bytes;
-      if (bytes == null || bytes.isEmpty) {
+      if (file == null) return;
+      final bytes = await file.readAsBytes();
+      if (bytes.isEmpty) {
         throw StateError('Could not read the selected subtitle file.');
       }
       final data = utf8.decode(bytes, allowMalformed: true);
@@ -534,7 +530,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Video(controller: _videoController, controls: NoVideoControls),
+          Video(controller: _persistent.videoController, controls: NoVideoControls),
           Positioned.fill(
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
@@ -556,10 +552,10 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      Colors.black.withOpacity(0.68),
+                      Colors.black.withValues(alpha: 0.68),
                       Colors.transparent,
                       Colors.transparent,
-                      Colors.black.withOpacity(0.78),
+                      Colors.black.withValues(alpha: 0.78),
                     ],
                     stops: const [0, 0.28, 0.58, 1],
                   ),
@@ -850,7 +846,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF8064D8).withOpacity(0.28),
+              color: const Color(0xFF8064D8).withValues(alpha: 0.28),
               blurRadius: 42,
               spreadRadius: 2,
               offset: const Offset(0, 18),
@@ -879,7 +875,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                 height: 190,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white.withOpacity(0.10), width: 1.5),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.10), width: 1.5),
                 ),
               ),
             ),
@@ -891,7 +887,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                 height: 230,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white.withOpacity(0.10), width: 1.5),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.10), width: 1.5),
                 ),
               ),
             ),
@@ -901,8 +897,8 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
               height: 174,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.black.withOpacity(0.18),
-                border: Border.all(color: Colors.white.withOpacity(0.18), width: 1),
+                color: Colors.black.withValues(alpha: 0.18),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.18), width: 1),
               ),
               child: Stack(
                 alignment: Alignment.center,
@@ -913,7 +909,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                       height: size,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white.withOpacity(0.13)),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.13)),
                       ),
                     ),
                   Container(
@@ -935,7 +931,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
               child: Text(
                 'HOMESERVER • AUDIO',
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.72),
+                  color: Colors.white.withValues(alpha: 0.72),
                   fontSize: 10,
                   letterSpacing: 2.2,
                   fontWeight: FontWeight.w700,
@@ -1005,7 +1001,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                     thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
                     overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
                     activeTrackColor: const Color(0xFFD8C9FF),
-                    inactiveTrackColor: Colors.white.withOpacity(0.16),
+                    inactiveTrackColor: Colors.white.withValues(alpha: 0.16),
                     thumbColor: const Color(0xFFF4F0FF),
                   ),
                   child: Slider(
@@ -1039,9 +1035,9 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.07),
+        color: Colors.white.withValues(alpha: 0.07),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       child: Row(
         children: [
@@ -1078,7 +1074,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
       backgroundColor: const Color(0xFF0B0A12),
       appBar: widget.isVideo && _isVideoFullscreen
           ? null
-          : HomeServerAppBar(
+          : PocketLinkAppBar(
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -1123,7 +1119,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    widget.isVideo ? 'Streaming from your HomeServer' : 'Your personal music library',
+                    widget.isVideo ? 'Streaming from your PocketLink' : 'Your personal music library',
                     textAlign: TextAlign.center,
                     style: const TextStyle(color: Colors.white60, fontSize: 14),
                   ),

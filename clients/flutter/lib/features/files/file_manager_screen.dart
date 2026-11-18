@@ -1,15 +1,19 @@
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
-import '../../core/widgets/home_server_app_bar.dart';
-import '../../core/widgets/compact_search_field.dart';
+import '../../core/widgets/pocketlink_app_bar.dart';
 
 import '../../core/network/server_api.dart';
+import '../../core/logging/app_logger.dart';
+import '../../core/storage/home_activity_store.dart';
 import '../home/browser_state_store.dart';
 import '../../core/settings/app_settings.dart';
 import '../transfers/transfer_manager.dart';
 import '../transfers/transfer_manager_screen.dart';
+import '../search/search_screen.dart';
+import '../media/now_playing_screen.dart';
+import '../media/persistent_audio_player.dart';
 
 class FileManagerScreen extends StatefulWidget {
   const FileManagerScreen({
@@ -18,12 +22,14 @@ class FileManagerScreen extends StatefulWidget {
     this.initialVolume,
     this.externalDriveRequest = 0,
     this.locationRequest = 0,
+    this.uploadRequest = 0,
     this.requestedVolume,
     this.requestedPath = '',
     this.initialCategory = 'All',
     this.showSearch = true,
     this.isActive = false,
     this.onBackAtRoot,
+    this.onCanNavigateBackChanged,
     super.key,
   });
 
@@ -32,12 +38,14 @@ class FileManagerScreen extends StatefulWidget {
   final String? initialVolume;
   final int externalDriveRequest;
   final int locationRequest;
+  final int uploadRequest;
   final String? requestedVolume;
   final String requestedPath;
   final String initialCategory;
   final bool showSearch;
   final bool isActive;
   final VoidCallback? onBackAtRoot;
+  final ValueChanged<bool>? onCanNavigateBackChanged;
 
   @override
   State<FileManagerScreen> createState() => _FileManagerScreenState();
@@ -48,8 +56,6 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   DirectoryListing? _listing;
   bool _loading = true;
   String? _error;
-  final TextEditingController _searchController = TextEditingController();
-  final FocusNode _searchFocusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
   late final String _stateKey;
   late final BrowserStateStore _browserState;
@@ -58,8 +64,8 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   int _loadGeneration = 0;
   List<StorageVolume> _volumes = const [];
   String? _selectedVolume;
+  bool _openingAudio = false;
 
-  String _searchQuery = '';
   late String _category = widget.initialCategory;
   bool _gridView = false;
 
@@ -89,6 +95,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     if (_categoryExtensions['Videos']!.contains(extension)) {
       return Icons.video_file_outlined;
     }
+    if (_audioExtensions.contains(extension)) return Icons.audio_file_rounded;
     if (_categoryExtensions['Music']!.contains(extension)) {
       return Icons.audio_file_outlined;
     }
@@ -101,6 +108,11 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   @override
   void didUpdateWidget(covariant FileManagerScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.uploadRequest != widget.uploadRequest && widget.uploadRequest > 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _uploadFile();
+      });
+    }
     if (oldWidget.initialCategory != widget.initialCategory) {
       _category = widget.initialCategory;
     }
@@ -122,6 +134,9 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     _browserState = Provider.of<BrowserStateStore>(context, listen: false);
     final saved = _browserState.fileState(_stateKey);
     _path = widget.locationRequest > 0 ? widget.requestedPath : (widget.initialPath.isNotEmpty ? widget.initialPath : saved.path);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.onCanNavigateBackChanged?.call(_path.isNotEmpty);
+    });
     _category = widget.initialCategory != 'All' ? widget.initialCategory : saved.category;
     _sortBy = saved.sortBy;
     _gridView = saved.gridView;
@@ -129,6 +144,11 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     _selectedVolume = widget.locationRequest > 0 ? widget.requestedVolume : widget.initialVolume ?? saved.selectedVolume;
     _scrollController.addListener(_saveScrollOffset);
     _loadVolumesAndDirectory(selectFirstExternal: widget.locationRequest == 0 && widget.externalDriveRequest > 0);
+    if (widget.uploadRequest > 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _uploadFile();
+      });
+    }
   }
 
   void _restoreScrollOffset() {
@@ -174,8 +194,6 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
         _selectedVolume = volume;
         _path = widget.requestedPath;
         _listing = null;
-        _searchController.clear();
-        _searchQuery = '';
         _pendingScrollOffset = 0;
         if (_scrollController.hasClients) _scrollController.jumpTo(0);
       });
@@ -233,7 +251,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   Future<void> _selectPartition(String? volumeId) async {
     setState(() {
       _selectedVolume = volumeId; _path = ''; _listing = null;
-      _searchController.clear(); _searchQuery = ''; _pendingScrollOffset = 0;
+      _pendingScrollOffset = 0;
       if (_scrollController.hasClients) _scrollController.jumpTo(0);
     });
     _saveState(path: '');
@@ -255,7 +273,13 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
           ? await widget.api.listDirectory(target)
           : await widget.api.listStorageDirectory(_selectedVolume!, target);
       if (!mounted || generation != _loadGeneration) return;
+      final previousPath = _path;
+      final previousVolume = _selectedVolume;
       setState(() { _path = result.path == '.' ? '' : result.path; _listing = result; _saveState(path: _path); });
+      widget.onCanNavigateBackChanged?.call(_path.isNotEmpty);
+      if (_path.isNotEmpty && (_path != previousPath || _selectedVolume != previousVolume)) {
+        HomeActivityStore.instance.recordFolder(serverUrl: widget.api.baseUrl, path: _path, volume: _selectedVolume);
+      }
     } on DioException catch (error) {
       if (!mounted || generation != _loadGeneration) return;
       setState(() => _error = _messageFor(error));
@@ -315,29 +339,17 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     return result.trim();
   }
 
-  void _focusSearch() {
-    if (!widget.showSearch) return;
-    _searchFocusNode.requestFocus();
+  void _openSearch() {
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => SearchScreen(api: widget.api),
+    ));
   }
 
   Future<void> _uploadFile() async {
     try {
-      final selection = await FilePicker.platform.pickFiles(
-        allowMultiple: false,
-        withData: true,
-      );
-      if (selection == null || selection.files.isEmpty) return;
-      final file = selection.files.single;
-      final bytes = file.bytes;
-      if (bytes == null) {
-        _showError('Could not read the selected file on this device.');
-        return;
-      }
-      if (bytes.length > 100 * 1024 * 1024) {
-        _showError('File exceeds the server 100 MB upload limit.');
-        return;
-      }
-
+      final file = await FilePicker.pickFile();
+      if (file == null) return;
+      final bytes = await file.readAsBytes();
       final volume = _selectedVolume;
       final completed = await TransferManager.instance.run(
         name: file.name, direction: 'Upload',
@@ -368,7 +380,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
           ? await widget.api.downloadFile(_itemPath(item.name), cancelToken: token, onReceiveProgress: progress)
           : await widget.api.downloadStorageFile(_selectedVolume!, _itemPath(item.name), cancelToken: token, onReceiveProgress: progress);
         if (token.isCancelled) return;
-        final savedPath = await FilePicker.platform.saveFile(
+        final savedPath = await FilePicker.saveFile(
           dialogTitle: 'Save ${item.name}',
           fileName: item.name,
           initialDirectory: AppSettings.instance.downloadDirectory,
@@ -389,6 +401,45 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     ));
   }
 
+  static const _audioExtensions = {
+    'mp3', 'm4a', 'aac', 'wav', 'flac', 'ogg', 'opus', 'wma', 'aiff', 'alac',
+  };
+
+  bool _isAudio(FileEntry item) => _audioExtensions.contains(_extension(item));
+
+  Future<void> _openAudio(FileEntry item) async {
+    if (_openingAudio) return;
+    _openingAudio = true;
+    final path = _itemPath(item.name);
+    final volume = _selectedVolume;
+    await AppLogger.info('Audio open requested', fields: {
+      'source': volume == null ? 'internal' : 'external',
+      'extension': _extension(item),
+    });
+    try {
+      await Navigator.of(context, rootNavigator: true).push(
+        MaterialPageRoute<void>(
+          builder: (_) => NowPlayingScreen(
+            api: widget.api,
+            queue: [
+              MediaQueueItem(
+                title: item.name,
+                path: path,
+                volume: volume,
+                size: item.size,
+              ),
+            ],
+          ),
+        ),
+      );
+    } catch (error, stackTrace) {
+      await AppLogger.error('Could not open Now Playing screen', error: error, stackTrace: stackTrace);
+      _showError('Could not open the music player. Check diagnostics for details.');
+    } finally {
+      _openingAudio = false;
+    }
+  }
+
   bool _isImage(FileEntry item) {
     final extension = item.name.toLowerCase().split('.').last;
     return const {'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'}.contains(extension);
@@ -402,6 +453,12 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     try {
       final bytes = _selectedVolume == null ? await widget.api.downloadFile(_itemPath(item.name)) : await widget.api.downloadStorageFile(_selectedVolume!, _itemPath(item.name));
       if (!mounted) return;
+      HomeActivityStore.instance.recordFile(
+        serverUrl: widget.api.baseUrl,
+        title: item.name,
+        path: _itemPath(item.name),
+        volume: _selectedVolume,
+      );
       await showDialog<void>(
         context: context,
         builder: (context) => Dialog(
@@ -517,8 +574,6 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     _saveState();
     _scrollController.removeListener(_saveScrollOffset);
     _scrollController.dispose();
-    _searchController.dispose();
-    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -527,11 +582,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final allItems = _listing?.items ?? const <FileEntry>[];
-    final query = _searchQuery.trim().toLowerCase();
-    final items = allItems.where((item) {
-      if (!_matchesCategory(item)) return false;
-      return query.isEmpty || item.name.toLowerCase().contains(query);
-    }).toList();
+    final items = allItems.where(_matchesCategory).toList();
     items.sort((a, b) {
       if (a.isDirectory != b.isDirectory) return a.isDirectory ? -1 : 1;
       if (_sortBy == 'largest') return b.size.compareTo(a.size);
@@ -570,6 +621,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
               style: TextStyle(color: colors.onSurfaceVariant)),
           onTap: item.isDirectory
               ? () => _load(_itemPath(item.name))
+              : _isAudio(item) ? () => _openAudio(item)
               : _isImage(item) ? () => _previewImage(item) : null,
           trailing: PopupMenuButton<String>(
             tooltip: 'More actions',
@@ -600,21 +652,21 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
         }
       },
       child: Scaffold(
-        appBar: HomeServerAppBar(
+        appBar: PocketLinkAppBar(
           title: const Text('Files', style: TextStyle(fontWeight: FontWeight.w800)),
           onHome: () => _load(''),
           actionsBeforeHome: widget.showSearch ? [
             IconButton(
               tooltip: 'Search files',
-              onPressed: _focusSearch,
+              onPressed: _openSearch,
               icon: const Icon(Icons.search_rounded),
             ),
           ] : const [],
           actions: [
-            HomeServerAppBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded, onPressed: _openTransfers),
-            HomeServerAppBarAction(label: 'Upload file', icon: Icons.cloud_upload_outlined, onPressed: _uploadFile),
-            HomeServerAppBarAction(label: 'New folder', icon: Icons.create_new_folder_outlined, onPressed: _createFolder),
-            HomeServerAppBarAction(label: 'Refresh', icon: Icons.refresh_rounded, onPressed: _loading ? null : _refreshDirectory),
+            PocketLinkAppBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded, onPressed: _openTransfers),
+            PocketLinkAppBarAction(label: 'Upload file', icon: Icons.cloud_upload_outlined, onPressed: _uploadFile),
+            PocketLinkAppBarAction(label: 'New folder', icon: Icons.create_new_folder_outlined, onPressed: _createFolder),
+            PocketLinkAppBarAction(label: 'Refresh', icon: Icons.refresh_rounded, onPressed: _loading ? null : _refreshDirectory),
           ],
         ),
         body: Column(
@@ -700,18 +752,6 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                 ),
               ),
             ),
-            if (widget.showSearch) ...[
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-                child: CompactSearchField(
-                  controller: _searchController,
-                  focusNode: _searchFocusNode,
-                  hintText: 'Search files and folders',
-                  onChanged: (value) => setState(() => _searchQuery = value),
-                ),
-              ),
-              const SizedBox(height: 8),
-            ],
             if (_path.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
@@ -847,6 +887,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                                         return InkWell(
                                           borderRadius: BorderRadius.circular(20),
                                           onTap: item.isDirectory ? () => _load(_itemPath(item.name))
+                                              : _isAudio(item) ? () => _openAudio(item)
                                               : _isImage(item) ? () => _previewImage(item) : null,
                                           child: Container(
                                             padding: const EdgeInsets.all(14),

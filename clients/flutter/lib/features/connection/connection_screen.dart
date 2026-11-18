@@ -1,10 +1,10 @@
 import 'dart:async';
-import '../../core/widgets/home_server_app_bar.dart';
+import '../../core/widgets/pocketlink_app_bar.dart';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../core/network/server_api.dart';
@@ -186,6 +186,8 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
   }
 
   Future<void> _connect() async {
+    // Ignore repeated taps while an authentication or navigation attempt is active.
+    if (_isConnecting) return;
     final host = _addressController.text.trim();
     final port = int.tryParse(_portController.text.trim());
     final username = _usernameController.text.trim();
@@ -209,13 +211,20 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
 
     final address = '$host:$port';
     late final ServerApi api;
+    final authenticationCancelToken = CancelToken();
     try {
       api = ServerApi(
         baseUrl: address,
         username: username,
         password: password,
       );
-      await api.authenticate().timeout(const Duration(seconds: 15));
+      await api.authenticate(cancelToken: authenticationCancelToken).timeout(
+        const Duration(seconds: 55),
+        onTimeout: () {
+          authenticationCancelToken.cancel('Authentication deadline exceeded.');
+          throw TimeoutException('Server authentication timed out.');
+        },
+      );
       await AppLogger.info('Server authentication succeeded', fields: {'host': host, 'port': port});
     } on DioException catch (error) {
       await AppLogger.warning('Server authentication failed', fields: {'host': host, 'port': port, 'type': error.type.name, 'status': error.response?.statusCode});
@@ -311,7 +320,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
           settings: const RouteSettings(
-            name: HomeServerAppBar.dashboardRouteName,
+            name: PocketLinkAppBar.dashboardRouteName,
           ),
           builder: (_) => HomeScreen(
             api: api,
@@ -367,11 +376,11 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: HomeServerAppBar(
+      appBar: PocketLinkAppBar(
         title: const Text('PocketLink'),
         showHome: false,
         actions: [
-          HomeServerAppBarAction(
+          PocketLinkAppBarAction(
             label: 'Diagnostics & logs',
             icon: Icons.bug_report_outlined,
             onPressed: () => Navigator.of(context).push(
@@ -543,16 +552,73 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                   ),
                 ],
                 const SizedBox(height: 14),
-                OutlinedButton.icon(
-                  onPressed: _isConnecting
-                      ? null
-                      : () => Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => const LocalStorageSetupScreen(),
+                Card(
+                  clipBehavior: Clip.antiAlias,
+                  margin: EdgeInsets.zero,
+                  color: colors.surfaceContainerLow,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    side: BorderSide(
+                      color: colors.outlineVariant.withValues(alpha: 0.45),
+                    ),
+                  ),
+                  child: InkWell(
+                    onTap: _isConnecting
+                        ? null
+                        : () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const LocalStorageSetupScreen(),
+                              ),
+                            ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: colors.primaryContainer,
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            child: Icon(
+                              Icons.phone_android_rounded,
+                              color: colors.onPrimaryContainer,
+                              size: 25,
                             ),
                           ),
-                  icon: const Icon(Icons.dns_outlined),
-                  label: const Text('Host PocketLink on this phone'),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Host PocketLink on this device',
+                                  style: theme.textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Turn this phone into your server and configure storage access.',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: colors.onSurfaceVariant,
+                                    height: 1.35,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 16,
+                            color: colors.onSurfaceVariant,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 18),
                 Text(
