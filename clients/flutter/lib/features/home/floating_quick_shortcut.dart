@@ -11,6 +11,7 @@ class FloatingQuickShortcut extends StatefulWidget {
     required this.onLongPress,
     required this.longPressEnabled,
     required this.onSelect,
+    this.showButton = true,
     super.key,
   });
 
@@ -21,6 +22,7 @@ class FloatingQuickShortcut extends StatefulWidget {
   final VoidCallback onLongPress;
   final bool longPressEnabled;
   final ValueChanged<String> onSelect;
+  final bool showButton;
 
   static const _details = <String, ({String label, IconData icon})>{
     'explore': (label: 'Explore', icon: Icons.explore_rounded),
@@ -160,7 +162,7 @@ class _FloatingQuickShortcutState extends State<FloatingQuickShortcut>
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         menu,
-        button,
+        if (widget.showButton) button,
       ],
     );
   }
