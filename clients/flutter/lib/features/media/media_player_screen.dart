@@ -622,7 +622,8 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
   void _updateVerticalVideoGesture(DragUpdateDetails details) {
     final startY = _gestureStartY;
     if (startY == null || _gestureMode == null) return;
-    final height = MediaQuery.sizeOf(context).height;
+    final viewport = MediaQuery.sizeOf(context);
+    final height = _isVideoFullscreen ? viewport.height : viewport.width * 9 / 16;
     final delta = details.localPosition.dy - startY;
     if (_gestureMode == 'brightness' && _gestureStartBrightness != null) {
       final value = (_gestureStartBrightness! - delta / height).clamp(0.01, 1.0).toDouble();
