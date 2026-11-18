@@ -372,7 +372,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               if (!_hostSetupOpen && AppSettings.instance.floatingShortcutEnabled)
-                Positioned(
+                AnimatedPositioned(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeInOutCubic,
                   right: 16,
                   bottom: shortcutBottom,
                   child: FloatingQuickShortcut(
