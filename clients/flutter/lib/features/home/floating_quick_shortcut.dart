@@ -11,6 +11,7 @@ class FloatingQuickShortcut extends StatefulWidget {
     required this.onLongPress,
     required this.longPressEnabled,
     required this.onSelect,
+    this.showButton = true,
     super.key,
   });
 
@@ -21,6 +22,7 @@ class FloatingQuickShortcut extends StatefulWidget {
   final VoidCallback onLongPress;
   final bool longPressEnabled;
   final ValueChanged<String> onSelect;
+  final bool showButton;
 
   static const _details = <String, ({String label, IconData icon})>{
     'explore': (label: 'Explore', icon: Icons.explore_rounded),
@@ -31,6 +33,8 @@ class FloatingQuickShortcut extends StatefulWidget {
     'documents': (label: 'Documents', icon: Icons.description_rounded),
     'favorites': (label: 'Favorites', icon: Icons.favorite_rounded),
     'upload': (label: 'Upload', icon: Icons.cloud_upload_rounded),
+    'search': (label: 'Search', icon: Icons.search_rounded),
+    'drives': (label: 'Drives', icon: Icons.usb_rounded),
   };
 
   @override
@@ -155,6 +159,7 @@ class _FloatingQuickShortcutState extends State<FloatingQuickShortcut>
             child: menuContent,
           );
 
+    if (!widget.showButton) return menu;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
