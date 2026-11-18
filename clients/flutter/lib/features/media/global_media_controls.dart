@@ -16,6 +16,7 @@ class GlobalMediaControlsController extends ChangeNotifier {
   bool _miniPlayerDismissed = false;
   bool _nowPlayingRouteOpen = false;
 
+  bool get isAttached => _onShortcut != null;
   bool get expanded => _expanded;
   bool get miniPlayerDismissed => _miniPlayerDismissed;
   bool get nowPlayingRouteOpen => _nowPlayingRouteOpen;
@@ -93,13 +94,15 @@ class GlobalMediaControlsOverlay extends StatelessWidget {
           animation: controller,
           builder: (context, ___) {
             final settings = AppSettings.instance;
-            final showMiniPlayer = settings.showMiniPlayer &&
+            final showMiniPlayer = controller.isAttached &&
+                settings.showMiniPlayer &&
                 player.isMusic &&
                 player.isActive &&
                 player.currentItem != null &&
                 !controller.miniPlayerDismissed &&
                 !controller.nowPlayingRouteOpen;
-            final bottom = MediaQuery.paddingOf(context).bottom + 90.0;
+            final media = MediaQuery.of(context);
+            final bottom = media.padding.bottom + media.viewInsets.bottom + 90.0;
             return PopScope(
               canPop: !controller.expanded,
               onPopInvokedWithResult: (didPop, result) {
@@ -130,7 +133,7 @@ class GlobalMediaControlsOverlay extends StatelessWidget {
                         onDismiss: controller.dismissMiniPlayer,
                       ),
                     ),
-                  if (settings.floatingShortcutEnabled)
+                  if (controller.isAttached && settings.floatingShortcutEnabled)
                     AnimatedPositioned(
                       duration: const Duration(milliseconds: 220),
                       curve: Curves.easeInOutCubic,
