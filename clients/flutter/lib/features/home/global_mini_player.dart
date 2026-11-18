@@ -10,8 +10,15 @@ import '../media/persistent_mini_player.dart';
 import 'app_wide_controls.dart';
 
 /// Displays the active music session above every eligible app route.
-class GlobalMiniPlayer extends StatelessWidget {
+class GlobalMiniPlayer extends StatefulWidget {
   const GlobalMiniPlayer({super.key});
+
+  @override
+  State<GlobalMiniPlayer> createState() => _GlobalMiniPlayerState();
+}
+
+class _GlobalMiniPlayerState extends State<GlobalMiniPlayer> {
+  String? _lastLoggedState;
 
   @override
   Widget build(BuildContext context) {
@@ -45,10 +52,13 @@ class GlobalMiniPlayer extends StatelessWidget {
           'openAction=${controls.openNowPlaying != null}',
           'visible=$visible',
         ].join('|');
-        unawaited(AppLogger.info(
-          'Global mini-player state',
-          fields: {'state': signature},
-        ));
+        if (_lastLoggedState != signature) {
+          _lastLoggedState = signature;
+          unawaited(AppLogger.info(
+            'Global mini-player state',
+            fields: {'state': signature},
+          ));
+        }
 
         if (!visible) return const SizedBox.shrink();
 
