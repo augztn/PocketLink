@@ -2,7 +2,6 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../core/navigation/pocketlink_navigation.dart';
 import '../../core/settings/app_settings.dart';
-import '../../core/network/server_api.dart';
 import 'now_playing_screen.dart';
 import 'persistent_audio_player.dart';
 
@@ -73,7 +72,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay> {
       animation: Listenable.merge(<Listenable>[player, settings]),
       builder: (context, _) => ValueListenableBuilder<List<Route<dynamic>>>(
         valueListenable: observer.routeStack,
-        builder: (context, routes, __) {
+        builder: (context, _, __) {
           final visible = _shouldShowMiniPlayer() &&
               !observer.isNowPlayingVisible &&
               !observer.isModalRouteOnTop;
