@@ -140,18 +140,18 @@ class AppSettings extends ChangeNotifier {
       _musicButtonSwipeLeftAction = _validMusicSwipeAction(preferences.getString(_musicButtonSwipeLeftActionKey), 'next');
       _musicButtonSwipeRightAction = _validMusicSwipeAction(preferences.getString(_musicButtonSwipeRightActionKey), 'previous');
       _musicButtonLongPressEnabled = preferences.getBool(_musicButtonLongPressEnabledKey) ?? true;
-      final rawFloatingShortcuts = preferences.getString(_musicButtonShortcutsKey);
-      if (rawFloatingShortcuts != null) {
-        final decoded = jsonDecode(rawFloatingShortcuts);
+      final rawMusicButtonShortcuts = preferences.getString(_musicButtonShortcutsKey);
+      if (rawMusicButtonShortcuts != null) {
+        final decoded = jsonDecode(rawMusicButtonShortcuts);
         if (decoded is List) {
           final values = decoded.whereType<String>().toList();
           const legacyDefaults = ['explore', 'music', 'files', 'videos', 'photos', 'documents'];
           if (values.length == legacyDefaults.length && values.toSet().containsAll(legacyDefaults)) {
-            _floatingShortcuts = List.of(musicButtonShortcutDefaults);
+            _musicButtonShortcuts = List.of(musicButtonShortcutDefaults);
           } else if (values.isNotEmpty && values.length == decoded.length &&
               values.toSet().length == values.length &&
               values.every(musicButtonShortcutDestinations.contains)) {
-            _floatingShortcuts = values;
+            _musicButtonShortcuts = values;
           }
         }
       }
@@ -269,30 +269,30 @@ class AppSettings extends ChangeNotifier {
   Future<void> setMusicButtonShortcuts(List<String> shortcuts) async {
     if (shortcuts.isEmpty ||
         shortcuts.toSet().length != shortcuts.length ||
-        !shortcuts.every(floatingShortcutDestinations.contains)) {
-      throw ArgumentError('Invalid floating shortcuts');
+        !shortcuts.every(musicButtonShortcutDestinations.contains)) {
+      throw ArgumentError('Invalid Music button shortcuts');
     }
-    _floatingShortcuts = List.of(shortcuts);
+    _musicButtonShortcuts = List.of(shortcuts);
     notifyListeners();
-    final snapshot = List<String>.of(_floatingShortcuts);
-    final write = _floatingShortcutsWrite.catchError((_) {}).then((_) async {
+    final snapshot = List<String>.of(_musicButtonShortcuts);
+    final write = _musicButtonShortcutsWrite.catchError((_) {}).then((_) async {
       final preferences = await SharedPreferences.getInstance();
-      await preferences.setString(_floatingShortcutsKey, jsonEncode(snapshot));
+      await preferences.setString(_musicButtonShortcutsKey, jsonEncode(snapshot));
     });
-    _floatingShortcutsWrite = write;
+    _musicButtonShortcutsWrite = write;
     await write;
   }
 
   Future<void> resetMusicButtonShortcuts() async {
-    _floatingShortcuts = List.of(floatingShortcutDefaults);
+    _musicButtonShortcuts = List.of(musicButtonShortcutDefaults);
     notifyListeners();
-    final write = _floatingShortcutsWrite.catchError((_) {}).then((_) async {
+    final write = _musicButtonShortcutsWrite.catchError((_) {}).then((_) async {
       final preferences = await SharedPreferences.getInstance();
       await Future.wait([
-        preferences.remove(_floatingShortcutsKey),
+        preferences.remove(_musicButtonShortcutsKey),
       ]);
     });
-    _floatingShortcutsWrite = write;
+    _musicButtonShortcutsWrite = write;
     await write;
   }
 
