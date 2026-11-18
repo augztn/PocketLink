@@ -83,7 +83,8 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay> {
     final left = (buttonPosition.dx + button.size.width / 2 - popupWidth / 2)
         .clamp(12.0, math.max(12.0, size.width - popupWidth - 12.0))
         .toDouble();
-    final top = (buttonPosition.dy - popupHeight - 10)
+    final miniPlayerOffset = _shouldShowMiniPlayer() ? _miniPlayerHeight : 0.0;
+    final top = (buttonPosition.dy - popupHeight - 10 - miniPlayerOffset)
         .clamp(12.0, math.max(12.0, size.height - popupHeight - 12.0))
         .toDouble();
     if (mounted) setState(() => _trackPopupOffset = Offset(left, top));
