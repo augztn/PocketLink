@@ -74,7 +74,6 @@ class _AppWideControlsState extends State<AppWideControls> {
     _controller.registerShortcutExpander(_expandShortcuts);
     _lastPlaying = _player.isPlaying;
     _player.addListener(_playerChanged);
-    _settings.addListener(_settingsChanged);
   }
 
   void _playerChanged() {
@@ -85,17 +84,10 @@ class _AppWideControlsState extends State<AppWideControls> {
     _lastPlaying = playing;
   }
 
-  void _settingsChanged() {
-    if (!_settings.floatingShortcutEnabled && _shortcutsExpanded && mounted) {
-      setState(() => _shortcutsExpanded = false);
-    }
-  }
-
   @override
   void dispose() {
     _controller.unregisterShortcutExpander(_expandShortcuts);
     _player.removeListener(_playerChanged);
-    _settings.removeListener(_settingsChanged);
     super.dispose();
   }
 
@@ -130,8 +122,8 @@ class _AppWideControlsState extends State<AppWideControls> {
             _player.showMiniPlayer &&
             !_miniPlayerDismissed &&
             _controller.openNowPlaying != null;
-        final showShortcut = (_settings.floatingShortcutEnabled || _shortcutsExpanded) &&
-            _controller.selectShortcut != null;
+        // Shortcuts are opened exclusively by long-pressing the Music dock button.
+        final showShortcut = _shortcutsExpanded && _controller.selectShortcut != null;
         final dashboardVisible = observer.dashboardVisible.value;
 
         if (!showMiniPlayer && !showShortcut) {
@@ -179,7 +171,7 @@ class _AppWideControlsState extends State<AppWideControls> {
                     FloatingQuickShortcut(
                       shortcuts: _settings.floatingShortcuts,
                       expanded: _shortcutsExpanded,
-                      showButton: _settings.floatingShortcutEnabled,
+                      showButton: false,
                       onTap: () {
                         if (_settings.floatingShortcutTapAction == 'menu') {
                           _expandShortcuts();
