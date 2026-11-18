@@ -202,6 +202,7 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() => _nowPlayingRouteOpen = true);
       try {
         await Navigator.of(context).push<void>(MaterialPageRoute<void>(
+          settings: const RouteSettings(name: '/pocketlink-now-playing'),
           builder: (_) => player.isMusic
               ? NowPlayingScreen(
                   api: api,
