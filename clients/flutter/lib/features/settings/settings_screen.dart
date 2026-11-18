@@ -9,7 +9,6 @@ import 'package:share_plus/share_plus.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/settings/app_settings.dart';
 import 'navigation_customization_screen.dart';
-import 'floating_shortcut_customization_screen.dart';
 import 'now_playing_settings_screen.dart';
 import 'video_player_settings_screen.dart';
 import '../about/about_screen.dart';
@@ -272,25 +271,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   subtitle: const Text('Translucent frosted blur on floating navigation and action pills'),
                                   value: _settings.useLiquidGlass,
                                   onChanged: _settings.setUseLiquidGlass,
-                                ),
-                                SwitchListTile(
-                                  secondary: const Icon(Icons.bolt_rounded),
-                                  title: const Text('Floating Quick-Shortcut Button'),
-                                  subtitle: const Text('Off by default · Show a customizable quick-access button above the navigation bar'),
-                                  value: _settings.floatingShortcutEnabled,
-                                  onChanged: _settings.setFloatingShortcutEnabled,
-                                ),
-                                const Divider(height: 1),
-                                ListTile(
-                                  leading: const Icon(Icons.tune_rounded),
-                                  title: const Text('Customize Floating Shortcuts'),
-                                  subtitle: Text('${_settings.floatingShortcuts.length} pinned destinations · tap action and press behavior'),
-                                  trailing: const Icon(Icons.chevron_right_rounded),
-                                  onTap: () => Navigator.of(context).push(
-                                    MaterialPageRoute<void>(
-                                      builder: (_) => const FloatingShortcutCustomizationScreen(),
-                                    ),
-                                  ),
                                 ),
                                 SwitchListTile(
                                   secondary: const Icon(Icons.dashboard_customize_outlined),
