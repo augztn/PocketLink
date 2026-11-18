@@ -18,6 +18,7 @@ class FloatingNavigationDock extends StatelessWidget {
     this.preview = false,
     this.musicShortcuts = const <String>[],
     this.musicShortcutsExpanded = false,
+    this.musicShortcutsBottomOffset = 64,
     this.onMusicShortcutLongPress,
     this.onMusicShortcutSelected,
     this.onBrowseSwipeLeft,
@@ -36,6 +37,7 @@ class FloatingNavigationDock extends StatelessWidget {
   final bool preview;
   final List<String> musicShortcuts;
   final bool musicShortcutsExpanded;
+  final double musicShortcutsBottomOffset;
   final VoidCallback? onMusicShortcutLongPress;
   final ValueChanged<String>? onMusicShortcutSelected;
   final VoidCallback? onBrowseSwipeLeft;
@@ -112,7 +114,7 @@ class FloatingNavigationDock extends StatelessWidget {
                 if (musicShortcutsExpanded && musicShortcuts.isNotEmpty)
                   Positioned(
                     right: 0,
-                    bottom: 64,
+                    bottom: musicShortcutsBottomOffset,
                     child: SizedBox(
                       width: 220,
                       child: FloatingQuickShortcut(
