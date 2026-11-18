@@ -17,6 +17,7 @@ class AppSettings extends ChangeNotifier {
   static const _liquidGlassKey = 'settings_use_liquid_glass';
   static const _navigationOrderKey = 'settings_navigation_order';
   static const _navigationVisibilityKey = 'settings_navigation_visibility';
+  static const _navigationMusicSwipeKey = 'settings_navigation_music_swipe';
   static const _homeSearchKey = 'settings_home_search';
   static const _homeTransfersKey = 'settings_home_transfers';
   static const _homeSectionOrderKey = 'settings_home_section_order';
@@ -50,6 +51,7 @@ class AppSettings extends ChangeNotifier {
   List<String> _navigationOrder = List.of(navigationDefaults);
   Set<String> _visibleNavigationItems = Set.of(navigationDefaults);
   Future<void> _navigationWrite = Future<void>.value();
+  bool _navigationMusicSwipeEnabled = false;
   bool _floatingShortcutEnabled = false;
   String _floatingShortcutTapAction = 'menu';
   bool _floatingShortcutLongPressEnabled = true;
@@ -71,6 +73,7 @@ class AppSettings extends ChangeNotifier {
   bool get useLiquidGlass => _useLiquidGlass;
   List<String> get navigationOrder => List.unmodifiable(_navigationOrder);
   Set<String> get visibleNavigationItems => Set.unmodifiable(_visibleNavigationItems);
+  bool get navigationMusicSwipeEnabled => _navigationMusicSwipeEnabled;
   bool get navigationLayoutIsDefault => _navigationOrder.join(',') == navigationDefaults.join(',') && _visibleNavigationItems.length == navigationDefaults.length;
   bool get floatingShortcutEnabled => _floatingShortcutEnabled;
   String get floatingShortcutTapAction => _floatingShortcutTapAction;
@@ -86,6 +89,7 @@ class AppSettings extends ChangeNotifier {
       final preferences = await SharedPreferences.getInstance();
       _useLiquidGlass = preferences.getBool(_liquidGlassKey) ?? false;
       _showMiniPlayer = preferences.getBool(_nowPlayingMiniPlayerKey) ?? false;
+      _navigationMusicSwipeEnabled = preferences.getBool(_navigationMusicSwipeKey) ?? false;
       _enableNowPlayingGestures = preferences.getBool(_nowPlayingGesturesKey) ?? true;
       _showStatsForNerds = preferences.getBool(_nowPlayingStatsForNerdsKey) ?? true;
       _floatingShortcutEnabled = preferences.getBool(_floatingShortcutEnabledKey) ?? false;
@@ -198,6 +202,13 @@ class AppSettings extends ChangeNotifier {
     });
     _navigationWrite = write;
     await write;
+  }
+
+  Future<void> setNavigationMusicSwipeEnabled(bool enabled) async {
+    _navigationMusicSwipeEnabled = enabled;
+    notifyListeners();
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_navigationMusicSwipeKey, enabled);
   }
 
   Future<void> resetNavigationLayout() async {
