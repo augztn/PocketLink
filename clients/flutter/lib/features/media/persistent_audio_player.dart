@@ -71,6 +71,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
   bool _active = false;
   bool _music = false;
   bool _fullScreen = false;
+  final Set<Object> _fullScreenOwners = <Object>{};
 
   List<MediaQueueItem> get queue => _queue;
   ServerApi? get api => _api;
@@ -116,7 +117,6 @@ class PersistentAudioPlayer extends ChangeNotifier {
     _currentIndex = initialIndex.clamp(0, _queue.length - 1).toInt();
     _music = isMusic;
     _active = true;
-    _fullScreen = true;
     notifyListeners();
 
     final tracks = _queue.map((item) => Media(
@@ -154,16 +154,24 @@ class PersistentAudioPlayer extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setFullScreen(bool value) {
-    _fullScreen = value;
-    notifyListeners();
+  void attachFullScreen(Object owner) {
+    if (_fullScreenOwners.add(owner)) {
+      _fullScreen = true;
+      notifyListeners();
+    }
+  }
+
+  void detachFullScreen(Object owner) {
+    if (_fullScreenOwners.remove(owner)) {
+      _fullScreen = _fullScreenOwners.isNotEmpty;
+      notifyListeners();
+    }
   }
 
   Future<void> closePlayerScreen({required bool isVideo}) async {
     // Release the full-screen UI state before awaiting media operations. A new
     // player screen may open while a video pause is still completing.
-    _fullScreen = false;
-    notifyListeners();
+    // Full-screen visibility is released by the owning route token.
 
     // Keep the queue and position so HomeScreen can reopen the current session.
     // Pause video when its surface closes; audio continues in the background.
@@ -202,6 +210,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
     _nativeSessionStarted = false;
     _active = false;
     _music = false;
+    _fullScreenOwners.clear();
     _fullScreen = false;
     _queue = const [];
     _currentIndex = 0;
