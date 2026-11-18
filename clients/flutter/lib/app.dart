@@ -5,6 +5,8 @@ import 'features/home/browser_state_store.dart';
 
 import 'core/settings/app_settings.dart';
 import 'core/logging/diagnostic_observer.dart';
+import 'core/navigation/pocketlink_navigation.dart';
+import 'features/media/global_media_overlay.dart';
 import 'features/connection/connection_screen.dart';
 
 class PocketLinkApp extends StatefulWidget {
@@ -67,13 +69,19 @@ class _PocketLinkAppState extends State<PocketLinkApp> {
       child: MaterialApp(
       title: 'PocketLink',
       debugShowCheckedModeBanner: false,
-      navigatorObservers: [DiagnosticNavigatorObserver.instance],
+      navigatorKey: PocketLinkNavigation.navigatorKey,
+      navigatorObservers: [
+        DiagnosticNavigatorObserver.instance,
+        PocketLinkNavigation.observer,
+      ],
       themeMode: mode,
       theme: _theme(brightness: Brightness.light),
       darkTheme: _theme(brightness: Brightness.dark, amoled: _settings.amoled),
       home: const ConnectionScreen(),
       builder: (context, child) => MaterialUiCompatibilityBridge(
-        child: child ?? const SizedBox.shrink(),
+        child: GlobalMediaOverlay(
+          child: child ?? const SizedBox.shrink(),
+        ),
       ),
       ),
     );
