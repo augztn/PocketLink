@@ -344,13 +344,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     ),
                                   ),
                                 ),
-                              ]),
-                  if (widget.category == 'Media & Storage')
-                            _section('Media & Storage', [
+                                const Divider(height: 1),
                                 ListTile(
-                                  leading: const Icon(Icons.graphic_eq_rounded),
-                                  title: const Text('Now Playing customization'),
-                                  subtitle: const Text('Mini-player, artwork, controls and swipe gestures'),
+                                  leading: const Icon(Icons.music_note_rounded),
+                                  title: const Text('Music / Now Playing Button'),
+                                  subtitle: const Text('Tap, swipe tracks, hold for shortcuts and customize destinations'),
                                   trailing: const Icon(Icons.chevron_right_rounded),
                                   onTap: () => Navigator.of(context).push(
                                     MaterialPageRoute<void>(
@@ -358,7 +356,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     ),
                                   ),
                                 ),
-                                const Divider(height: 1),
+                              ]),
+                  if (widget.category == 'Media & Storage')
+                            _section('Media & Storage', [
                                 ListTile(
                                   leading: const Icon(Icons.movie_creation_outlined),
                                   title: const Text('Video player customization'),
