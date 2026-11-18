@@ -101,6 +101,9 @@ class PersistentAudioPlayer extends ChangeNotifier {
   MediaQueueItem? get currentItem =>
       _queue.isEmpty ? null : _queue[_currentIndex.clamp(0, _queue.length - 1).toInt()];
 
+  /// Legacy widget compatibility; the app-level overlay owns the live bar.
+  bool get showMiniPlayer => false;
+
   Future<void> openQueue({
     required ServerApi api,
     required List<MediaQueueItem> queue,
