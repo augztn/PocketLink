@@ -39,6 +39,7 @@ class NowPlayingScreen extends StatefulWidget {
 
 class _NowPlayingScreenState extends State<NowPlayingScreen> {
   static const _secureStorage = FlutterSecureStorage();
+  final Object _fullScreenOwner = Object();
 
   late final PersistentAudioPlayer _persistent;
   late final Player _player;
@@ -98,7 +99,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     super.initState();
     _persistent = PersistentAudioPlayer.instance;
     _player = _persistent.player;
-    _persistent.setFullScreen(true);
+    _persistent.attachFullScreen(_fullScreenOwner);
     unawaited(AppLogger.info('Now Playing screen initialized', fields: {
       'queueLength': widget.queue.length,
       'initialIndex': widget.initialIndex,
@@ -1084,6 +1085,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   @override
   void dispose() {
     unawaited(_playlistSubscription?.cancel());
+    _persistent.detachFullScreen(_fullScreenOwner);
     unawaited(_persistent.closePlayerScreen(isVideo: false));
     super.dispose();
   }
