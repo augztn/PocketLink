@@ -41,7 +41,7 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
   final bool showHome;
   final List<Widget> actionsBeforeHome;
 
-  static const dashboardRouteName = '/pocketlink-dashboard';
+  static const dashboardRouteName = PocketLinkRouteNames.dashboard;
 
   static void goToDashboard(BuildContext context) {
     final scopedHome = PocketLinkNavigationScope.maybeOnHome(context);
