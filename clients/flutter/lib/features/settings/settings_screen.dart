@@ -253,7 +253,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _categoryTile(
                     icon: Icons.dock_outlined,
                     title: 'Navigation & shortcuts',
-                    subtitle: 'Dock layout, Music gestures and floating shortcuts',
+                    subtitle: 'Dock layout, Music button gestures and quick shortcuts',
                   ),
                   _categoryTile(
                     icon: Icons.perm_media_outlined,
@@ -363,18 +363,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ),
                               ]),
                   if (widget.category == 'Navigation & shortcuts')
-                    _section('Floating shortcuts', [
-                                SwitchListTile(
-                                  secondary: const Icon(Icons.bolt_rounded),
-                                  title: const Text('Floating Quick-Shortcut Button'),
-                                  subtitle: const Text('Off by default · Show a customizable quick-access button above the navigation bar'),
-                                  value: _settings.floatingShortcutEnabled,
-                                  onChanged: _settings.setFloatingShortcutEnabled,
-                                ),
+                    _section('Music button shortcuts', [
                                 ListTile(
                                   leading: const Icon(Icons.tune_rounded),
-                                  title: const Text('Customize Floating Shortcuts'),
-                                  subtitle: Text('${_settings.floatingShortcuts.length} pinned destinations · tap action and press behavior'),
+                                  title: const Text('Customize Music button shortcuts'),
+                                  subtitle: Text('${_settings.floatingShortcuts.length} destinations · shown when you long-press Music'),
                                   trailing: const Icon(Icons.chevron_right_rounded),
                                   onTap: () => Navigator.of(context).push(
                                     MaterialPageRoute<void>(
