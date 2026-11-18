@@ -232,7 +232,7 @@ class _MusicDockButtonState extends State<_MusicDockButton> {
 
   void _onDragUpdate(DragUpdateDetails details) {
     setState(() {
-      _dragDistance = (_dragDistance + details.delta.dx).clamp(-64.0, 64.0);
+      _dragDistance = (_dragDistance + details.delta.dx).clamp(-64.0, 64.0).toDouble();
     });
   }
 
