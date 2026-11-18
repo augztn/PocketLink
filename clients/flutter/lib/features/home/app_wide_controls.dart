@@ -180,8 +180,8 @@ class _AppWideControlsState extends State<AppWideControls> {
                   child: FloatingQuickShortcut(
                     shortcuts: _settings.floatingShortcuts,
                     expanded: true,
-                    showButton: false,
-                    onTap: _expandShortcuts,
+                    showButton: true,
+                    onTap: () => setState(() => _shortcutsExpanded = false),
                     onLongPress: _expandShortcuts,
                     longPressEnabled: false,
                     onSelect: _selectShortcut,
