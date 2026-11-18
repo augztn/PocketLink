@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../core/settings/app_settings.dart';
 import 'navigation_dock.dart';
+import 'global_playback_overlay.dart';
 import 'floating_quick_shortcut.dart';
 import 'explore_search_screens.dart';
 import 'home_dashboard.dart';
@@ -52,9 +53,17 @@ class _HomeScreenState extends State<HomeScreen> {
     _lastPlayerPlaying = PersistentAudioPlayer.instance.isPlaying;
     PersistentAudioPlayer.instance.addListener(_playerStateChanged);
     AppSettings.instance.addListener(_navigationSettingsChanged);
+    GlobalPlaybackOverlay.instance.setBuilder(_buildGlobalOverlay);
+  }
+
+  @override
+  void setState(VoidCallback fn) {
+    super.setState(fn);
+    GlobalPlaybackOverlay.instance.refresh();
   }
 
   void _playerStateChanged() {
+    GlobalPlaybackOverlay.instance.refresh();
     final isPlaying = PersistentAudioPlayer.instance.isPlaying;
     if (isPlaying && !_lastPlayerPlaying && _miniPlayerDismissed && mounted) {
       setState(() => _miniPlayerDismissed = false);
@@ -81,6 +90,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _navigationSettingsChanged() {
+    GlobalPlaybackOverlay.instance.refresh();
     final settings = AppSettings.instance;
     if (!settings.floatingShortcutEnabled && _quickShortcutsExpanded) {
       _quickShortcutsExpanded = false;
@@ -111,6 +121,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     AppSettings.instance.removeListener(_navigationSettingsChanged);
     PersistentAudioPlayer.instance.removeListener(_playerStateChanged);
+    GlobalPlaybackOverlay.instance.clearBuilder(_buildGlobalOverlay);
     super.dispose();
   }
 
@@ -250,19 +261,69 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildGlobalOverlay(BuildContext overlayContext) {
     final player = PersistentAudioPlayer.instance;
-    final showMiniPlayer = AppSettings.instance.showMiniPlayer &&
+    final settings = AppSettings.instance;
+    final showMiniPlayer = settings.showMiniPlayer &&
         player.isMusic &&
         player.isActive &&
         player.currentItem != null &&
         !_miniPlayerDismissed &&
         !_nowPlayingRouteOpen;
-    final bottomSafeArea = MediaQuery.paddingOf(context).bottom;
-    // Keep the floating shortcut above the mini-player instead of letting
-    // both controls occupy the same bottom-right area.
-    final shortcutBottom = 90 + bottomSafeArea + (showMiniPlayer ? 66 : 0);
+    final safeBottom = MediaQuery.paddingOf(overlayContext).bottom;
+    final keyboardOpen = MediaQuery.viewInsetsOf(overlayContext).bottom > 0;
+    if (_hostSetupOpen || keyboardOpen) return const SizedBox.shrink();
+
+    return Stack(
+      children: [
+        if (settings.floatingShortcutEnabled && _quickShortcutsExpanded)
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => setState(() => _quickShortcutsExpanded = false),
+              child: const SizedBox.expand(),
+            ),
+          ),
+        if (showMiniPlayer)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 76 + safeBottom,
+            child: _MiniPlayerBar(
+              player: player,
+              onOpen: () => _openNowPlaying(player),
+              onDismiss: _dismissMiniPlayer,
+            ),
+          ),
+        if (settings.floatingShortcutEnabled)
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeInOutCubic,
+            right: 16,
+            bottom: 90 + safeBottom + (showMiniPlayer ? 66 : 0),
+            child: FloatingQuickShortcut(
+              shortcuts: settings.floatingShortcuts,
+              expanded: _quickShortcutsExpanded,
+              useLiquidGlass: settings.useLiquidGlass,
+              onTap: () {
+                if (settings.floatingShortcutTapAction == 'menu') {
+                  _expandFloatingShortcuts();
+                } else {
+                  _openFloatingShortcut(settings.floatingShortcuts.first);
+                }
+              },
+              onLongPress: _expandFloatingShortcuts,
+              longPressEnabled: settings.floatingShortcutLongPressEnabled,
+              onSelect: _openFloatingShortcut,
+            ),
+          ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final player = PersistentAudioPlayer.instance;
     final pages = [
       HomeDashboard(
         api: widget.api,
@@ -363,54 +424,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
                 child: IndexedStack(index: _hostSetupOpen ? 3 : _selectedIndex, children: pages),
               ),
-              if (!_hostSetupOpen && AppSettings.instance.floatingShortcutEnabled && _quickShortcutsExpanded)
-                Positioned.fill(
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => setState(() => _quickShortcutsExpanded = false),
-                    child: const SizedBox.expand(),
-                  ),
-                ),
-              if (!_hostSetupOpen && AppSettings.instance.floatingShortcutEnabled)
-                AnimatedPositioned(
-                  duration: const Duration(milliseconds: 220),
-                  curve: Curves.easeInOutCubic,
-                  right: 16,
-                  bottom: shortcutBottom,
-                  child: FloatingQuickShortcut(
-                    shortcuts: AppSettings.instance.floatingShortcuts,
-                    expanded: _quickShortcutsExpanded,
-                    useLiquidGlass: AppSettings.instance.useLiquidGlass,
-                    onTap: () {
-                      final settings = AppSettings.instance;
-                      if (settings.floatingShortcutTapAction == 'menu') {
-                        _expandFloatingShortcuts();
-                      } else {
-                        _openFloatingShortcut(settings.floatingShortcuts.first);
-                      }
-                    },
-                    onLongPress: _expandFloatingShortcuts,
-                    longPressEnabled: AppSettings.instance.floatingShortcutLongPressEnabled,
-                    onSelect: _openFloatingShortcut,
-                  ),
-                ),
+
             ],
           ),
           bottomNavigationBar: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              AnimatedSize(
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeInOutCubic,
-                alignment: Alignment.bottomCenter,
-                child: showMiniPlayer
-                    ? _MiniPlayerBar(
-                        player: player,
-                        onOpen: () => _openNowPlaying(player),
-                        onDismiss: _dismissMiniPlayer,
-                      )
-                    : const SizedBox(width: double.infinity, height: 0),
-              ),
                 FloatingNavigationDock(
                 order: AppSettings.instance.navigationOrder,
                 visibleItems: AppSettings.instance.visibleNavigationItems,
