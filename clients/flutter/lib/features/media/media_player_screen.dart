@@ -39,6 +39,7 @@ class MediaPlayerScreen extends StatefulWidget {
 }
 
 class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
+  final Object _fullScreenOwner = Object();
   late final PersistentAudioPlayer _persistent;
   late final Player _player;
   String? _openError;
@@ -70,7 +71,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
     _currentIndex = widget.resumeExisting
         ? _persistent.currentIndex
         : widget.initialIndex.clamp(0, _queue.length - 1).toInt();
-    _persistent.setFullScreen(true);
+    _persistent.attachFullScreen(_fullScreenOwner);
     _playlistSubscription = _player.stream.playlist.listen((playlist) {
       if (mounted && _queue.isNotEmpty) {
         final index = playlist.index.clamp(0, _queue.length - 1).toInt();
@@ -472,6 +473,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
     unawaited(_playingSubscription?.cancel());
     unawaited(_tracksSubscription?.cancel());
     unawaited(_trackSubscription?.cancel());
+    _persistent.detachFullScreen(_fullScreenOwner);
     unawaited(_persistent.closePlayerScreen(isVideo: widget.isVideo));
     super.dispose();
   }
