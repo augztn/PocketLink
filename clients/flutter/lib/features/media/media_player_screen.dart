@@ -680,63 +680,70 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
             maxScale: 4,
             scaleEnabled: AppSettings.instance.videoPinchZoomEnabled,
             panEnabled: AppSettings.instance.videoPinchZoomEnabled,
-            child: Video(
-            controller: _persistent.videoController,
-            controls: NoVideoControls,
-            fit: switch (AppSettings.instance.videoFitMode) {
-              'cover' => BoxFit.cover,
-              'fill' => BoxFit.fill,
-              _ => BoxFit.contain,
-            },
-            subtitleViewConfiguration: SubtitleViewConfiguration(
-              style: TextStyle(
-                fontSize: AppSettings.instance.videoSubtitleFontSize,
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                backgroundColor: AppSettings.instance.videoSubtitleBackground
-                    ? const Color(0xAA000000)
-                    : Colors.transparent,
+            child: SizedBox.expand(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Video(
+                    controller: _persistent.videoController,
+                    controls: NoVideoControls,
+                    fit: switch (AppSettings.instance.videoFitMode) {
+                      'cover' => BoxFit.cover,
+                      'fill' => BoxFit.fill,
+                      _ => BoxFit.contain,
+                    },
+                    subtitleViewConfiguration: SubtitleViewConfiguration(
+                      style: TextStyle(
+                        fontSize: AppSettings.instance.videoSubtitleFontSize,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        backgroundColor: AppSettings.instance.videoSubtitleBackground
+                            ? const Color(0xAA000000)
+                            : Colors.transparent,
+                      ),
+                      textAlign: TextAlign.center,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                    ),
+                  ),
+                  Positioned.fill(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {
+                        if (AppSettings.instance.videoTapToTogglePlayback) {
+                          unawaited(_player.playOrPause());
+                        }
+                        _revealVideoControls();
+                      },
+                      onDoubleTapDown: AppSettings.instance.videoGesturesEnabled
+                          ? (details) {
+                              final width = MediaQuery.sizeOf(context).width;
+                              final seconds = AppSettings.instance.videoSeekSeconds;
+                              _seekRelative(Duration(
+                                seconds: details.localPosition.dx < width / 2 ? -seconds : seconds,
+                              ));
+                            }
+                          : null,
+                      onVerticalDragStart: AppSettings.instance.videoGesturesEnabled
+                          ? _beginVerticalVideoGesture
+                          : null,
+                      onVerticalDragUpdate: AppSettings.instance.videoGesturesEnabled
+                          ? _updateVerticalVideoGesture
+                          : null,
+                      onVerticalDragEnd: (_) => _endVerticalVideoGesture(),
+                      onHorizontalDragEnd: AppSettings.instance.videoGesturesEnabled
+                          ? (details) {
+                              final velocity = details.primaryVelocity ?? 0;
+                              if (velocity.abs() < 250) return;
+                              final seconds = AppSettings.instance.videoSeekSeconds *
+                                  (velocity.abs() / 1000).clamp(1, 4).round();
+                              _seekRelative(Duration(seconds: velocity > 0 ? seconds : -seconds));
+                            }
+                          : null,
+                      child: const SizedBox.expand(),
+                    ),
+                  ),
+                ],
               ),
-              textAlign: TextAlign.center,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            ),
-          ),
-          ),
-          Positioned.fill(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () {
-                if (AppSettings.instance.videoTapToTogglePlayback) {
-                  unawaited(_player.playOrPause());
-                }
-                _revealVideoControls();
-              },
-              onDoubleTapDown: AppSettings.instance.videoGesturesEnabled
-                  ? (details) {
-                      final width = MediaQuery.sizeOf(context).width;
-                      final seconds = AppSettings.instance.videoSeekSeconds;
-                      _seekRelative(Duration(
-                        seconds: details.localPosition.dx < width / 2 ? -seconds : seconds,
-                      ));
-                    }
-                  : null,
-              onVerticalDragStart: AppSettings.instance.videoGesturesEnabled
-                  ? _beginVerticalVideoGesture
-                  : null,
-              onVerticalDragUpdate: AppSettings.instance.videoGesturesEnabled
-                  ? _updateVerticalVideoGesture
-                  : null,
-              onVerticalDragEnd: (_) => _endVerticalVideoGesture(),
-              onHorizontalDragEnd: AppSettings.instance.videoGesturesEnabled
-                  ? (details) {
-                      final velocity = details.primaryVelocity ?? 0;
-                      if (velocity.abs() < 250) return;
-                      final seconds = AppSettings.instance.videoSeekSeconds *
-                          (velocity.abs() / 1000).clamp(1, 4).round();
-                      _seekRelative(Duration(seconds: velocity > 0 ? seconds : -seconds));
-                    }
-                  : null,
-              child: const SizedBox.expand(),
             ),
           ),
           if (_gestureMode != null && _gestureValue != null)
