@@ -80,9 +80,11 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay> {
     const popupWidth = 248.0;
     const popupHeight = 56.0;
     final left = (buttonPosition.dx + button.size.width / 2 - popupWidth / 2)
-        .clamp(12.0, math.max(12.0, size.width - popupWidth - 12.0));
+        .clamp(12.0, math.max(12.0, size.width - popupWidth - 12.0))
+        .toDouble();
     final top = (buttonPosition.dy - popupHeight - 10)
-        .clamp(12.0, math.max(12.0, size.height - popupHeight - 12.0));
+        .clamp(12.0, math.max(12.0, size.height - popupHeight - 12.0))
+        .toDouble();
     if (mounted) setState(() => _trackPopupOffset = Offset(left, top));
   }
 
