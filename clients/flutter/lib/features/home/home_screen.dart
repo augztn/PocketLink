@@ -281,7 +281,15 @@ class _HomeScreenState extends State<HomeScreen> {
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: () => setState(() => _quickShortcutsExpanded = false),
-              child: const SizedBox.expand(),
+              child: AnimatedContainer(
+                duration: MediaQuery.disableAnimationsOf(overlayContext)
+                    ? Duration.zero
+                    : const Duration(milliseconds: 160),
+                color: Colors.black.withValues(
+                  alpha: _quickShortcutsExpanded ? 0.14 : 0,
+                ),
+                child: const SizedBox.expand(),
+              ),
             ),
           ),
         if (showMiniPlayer)
@@ -297,8 +305,10 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         if (settings.floatingShortcutEnabled)
           AnimatedPositioned(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeInOutCubic,
+            duration: MediaQuery.disableAnimationsOf(overlayContext)
+                ? Duration.zero
+                : const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
             right: 16,
             bottom: 90 + safeBottom + (showMiniPlayer ? 66 : 0),
             child: FloatingQuickShortcut(
