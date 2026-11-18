@@ -452,7 +452,7 @@ class _MusicDockButtonState extends State<_MusicDockButton>
           ),
           ),
           ),
-          if (_visibleTrackTitle != null
+          if (_visibleTrackTitle != null)
             Positioned(
               bottom: 70,
               left: -76,
