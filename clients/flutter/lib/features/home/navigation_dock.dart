@@ -14,6 +14,8 @@ class FloatingNavigationDock extends StatelessWidget {
     this.isPlaying = false,
     this.hasMedia = false,
     this.isVideo = false,
+    this.onNextTrack,
+    this.onPreviousTrack,
     this.preview = false,
     super.key,
   });
@@ -26,6 +28,8 @@ class FloatingNavigationDock extends StatelessWidget {
   final bool isPlaying;
   final bool hasMedia;
   final bool isVideo;
+  final VoidCallback? onNextTrack;
+  final VoidCallback? onPreviousTrack;
   final bool preview;
 
   static const _labels = <String, String>{
@@ -90,31 +94,15 @@ class FloatingNavigationDock extends StatelessWidget {
       if (id == 'browse') {
         addTabGroup();
         segments.add(
-          SizedBox(
-            width: 64,
-            height: 64,
-            child: LiquidGlassPill(
-              radius: BorderRadius.circular(32),
-              child: Material(
-                color: Colors.transparent,
-                shape: const CircleBorder(),
-                child: InkWell(
-                  customBorder: const CircleBorder(),
-                  onTap: onBrowsePressed,
-                  child: Center(
-                    child: isPlaying
-                        ? const _AnimatedEqualizer()
-                        : Icon(
-                            hasMedia && isVideo
-                                ? Icons.play_circle_fill_rounded
-                                : Icons.music_note_rounded,
-                            color: colors.primary,
-                            size: 25,
-                          ),
-                  ),
-                ),
-              ),
-            ),
+          _MusicDockButton(
+            isPlaying: isPlaying,
+            hasMedia: hasMedia,
+            isVideo: isVideo,
+            canChangeTracks: hasMedia && !isVideo,
+            onTap: onBrowsePressed,
+            onNext: onNextTrack,
+            onPrevious: onPreviousTrack,
+            activeColor: colors.primary,
           ),
         );
       } else {
@@ -205,6 +193,115 @@ class _DockTab extends StatelessWidget {
                       color: selected ? activeColor : colors.onSurfaceVariant,
                     )),
                 ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MusicDockButton extends StatefulWidget {
+  const _MusicDockButton({
+    required this.isPlaying,
+    required this.hasMedia,
+    required this.isVideo,
+    required this.canChangeTracks,
+    required this.onTap,
+    required this.activeColor,
+    this.onNext,
+    this.onPrevious,
+  });
+
+  final bool isPlaying;
+  final bool hasMedia;
+  final bool isVideo;
+  final bool canChangeTracks;
+  final VoidCallback onTap;
+  final VoidCallback? onNext;
+  final VoidCallback? onPrevious;
+  final Color activeColor;
+
+  @override
+  State<_MusicDockButton> createState() => _MusicDockButtonState();
+}
+
+class _MusicDockButtonState extends State<_MusicDockButton> {
+  double _dragDistance = 0;
+
+  void _onDragUpdate(DragUpdateDetails details) {
+    setState(() {
+      _dragDistance = (_dragDistance + details.delta.dx).clamp(-64.0, 64.0);
+    });
+  }
+
+  void _onDragEnd(DragEndDetails details) {
+    final velocity = details.primaryVelocity ?? 0;
+    final distance = _dragDistance;
+    final didSwipe = distance.abs() >= 48 || velocity.abs() >= 450;
+    if (didSwipe) {
+      // Right = next; left = previous. A distance threshold avoids accidental
+      // track changes from small navigation-dock movements.
+      final direction = distance.abs() >= 48 ? distance : velocity;
+      if (direction > 0) {
+        widget.onNext?.call();
+      } else {
+        widget.onPrevious?.call();
+      }
+    }
+    setState(() => _dragDistance = 0);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final semanticsActions = widget.canChangeTracks
+        ? <CustomSemanticsAction, VoidCallback>{
+            CustomSemanticsAction(label: 'Next track'): () => widget.onNext?.call(),
+            CustomSemanticsAction(label: 'Previous track'): () => widget.onPrevious?.call(),
+          }
+        : null;
+
+    return SizedBox(
+      width: 64,
+      height: 64,
+      child: Semantics(
+        button: true,
+        label: widget.hasMedia && widget.isVideo ? 'Video player' : 'Music',
+        customSemanticsActions: semanticsActions,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onHorizontalDragUpdate:
+              widget.canChangeTracks ? _onDragUpdate : null,
+          onHorizontalDragEnd:
+              widget.canChangeTracks ? _onDragEnd : null,
+          onHorizontalDragCancel: () {
+            if (_dragDistance != 0) setState(() => _dragDistance = 0);
+          },
+          child: AnimatedScale(
+            scale: _dragDistance == 0 ? 1 : 0.94,
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOutBack,
+            child: LiquidGlassPill(
+              radius: BorderRadius.circular(32),
+              child: Material(
+                color: Colors.transparent,
+                shape: const CircleBorder(),
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: widget.onTap,
+                  child: Center(
+                    child: widget.isPlaying
+                        ? const _AnimatedEqualizer()
+                        : Icon(
+                            widget.hasMedia && widget.isVideo
+                                ? Icons.play_circle_fill_rounded
+                                : Icons.music_note_rounded,
+                            color: widget.activeColor,
+                            size: 25,
+                          ),
+                  ),
+                ),
               ),
             ),
           ),
