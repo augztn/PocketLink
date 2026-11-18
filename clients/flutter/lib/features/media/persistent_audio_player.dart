@@ -158,11 +158,14 @@ class PersistentAudioPlayer extends ChangeNotifier {
   }
 
   Future<void> closePlayerScreen({required bool isVideo}) async {
+    // Release the full-screen UI state before awaiting media operations. A new
+    // player screen may open while a video pause is still completing.
+    _fullScreen = false;
+    notifyListeners();
+
     // Keep the queue and position so HomeScreen can reopen the current session.
     // Pause video when its surface closes; audio continues in the background.
     if (isVideo && player.state.playing) await player.pause();
-    _fullScreen = false;
-    notifyListeners();
   }
 
   Future<void> togglePlayback() async {
