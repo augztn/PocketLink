@@ -1,7 +1,9 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/settings/app_settings.dart';
 import '../../core/logging/diagnostic_observer.dart';
+import 'floating_quick_shortcut.dart';
 
 /// HomeScreen supplies navigation while this widget owns only the shortcut
 /// surface. Mini-player visibility and lifecycle live in GlobalMiniPlayer.
