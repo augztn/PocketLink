@@ -150,7 +150,7 @@ class _AppWideControlsState extends State<AppWideControls> {
               ),
             Positioned(
               left: 14,
-              right: showShortcut ? 174 : 16,
+              right: showShortcut ? 190 : 16,
               bottom: controlsBottom,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
@@ -177,9 +177,9 @@ class _AppWideControlsState extends State<AppWideControls> {
                 child: CompositedTransformFollower(
                   link: _controller.musicButtonLink,
                   showWhenUnlinked: false,
-                  targetAnchor: Alignment.centerRight,
+                  targetAnchor: Alignment.topRight,
                   followerAnchor: Alignment.bottomRight,
-                  offset: const Offset(0, 28),
+                  offset: const Offset(0, -8),
                   child: FloatingQuickShortcut(
                     shortcuts: _settings.floatingShortcuts,
                     expanded: true,
