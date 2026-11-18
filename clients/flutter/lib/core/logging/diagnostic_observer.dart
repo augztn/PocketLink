@@ -14,12 +14,22 @@ class DiagnosticNavigatorObserver extends NavigatorObserver {
   final ValueNotifier<bool> controlsVisible = ValueNotifier(false);
   final ValueNotifier<bool> dashboardVisible = ValueNotifier(false);
 
+  static bool _isControlsSuppressed(Route<dynamic>? route) {
+    final name = route?.settings.name;
+    return name == '/pocketlink-now-playing' ||
+        (name?.startsWith('/pocketlink-settings') ?? false);
+  }
+
   void _updateControlVisibility() {
     final dashboardRoute = PocketLinkAppBar.dashboardRouteName;
     final hasDashboard = _routes.any((route) => route.settings.name == dashboardRoute);
     final currentRoute = _routes.isEmpty ? null : _routes.last;
-    controlsVisible.value = hasDashboard && currentRoute is PageRoute;
-    dashboardVisible.value = hasDashboard && currentRoute?.settings.name == dashboardRoute;
+    final canShowControls = hasDashboard &&
+        currentRoute is PageRoute &&
+        !_isControlsSuppressed(currentRoute);
+    controlsVisible.value = canShowControls;
+    dashboardVisible.value =
+        canShowControls && currentRoute?.settings.name == dashboardRoute;
   }
 
   String _routeLabel(Route<dynamic>? route) =>
