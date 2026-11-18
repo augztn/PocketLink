@@ -355,7 +355,7 @@ class AppSettings extends ChangeNotifier {
   }
 
   Future<void> resetNowPlayingOptions() async {
-    _showMiniPlayer = true;
+    _showMiniPlayer = false;
     _enableNowPlayingGestures = true;
     _showStatsForNerds = true;
     notifyListeners();
