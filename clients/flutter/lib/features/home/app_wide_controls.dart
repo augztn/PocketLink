@@ -131,7 +131,8 @@ class _AppWideControlsState extends State<AppWideControls> {
 
         final miniPlayerHeight = showMiniPlayer ? 66.0 : 0.0;
         final miniPlayerBottom = dashboardVisible ? 82.0 + safeBottom : 8.0 + safeBottom;
-        final shortcutBottom = 90.0 + safeBottom + miniPlayerHeight;
+        final shortcutBottom = 90.0 + safeBottom +
+            (showMiniPlayer && dashboardVisible ? miniPlayerHeight : 0.0);
 
         return Stack(
           fit: StackFit.expand,
