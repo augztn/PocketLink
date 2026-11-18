@@ -355,6 +355,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     try {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
+          settings: const RouteSettings(name: '/pocketlink-now-playing'),
           builder: (_) => _isMusic
             ? NowPlayingScreen(
                 api: widget.api,
