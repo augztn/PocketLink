@@ -14,7 +14,6 @@ class AppSettings extends ChangeNotifier {
   static const _quickActionsKey = 'settings_home_quick_actions';
   static const _libraryKey = 'settings_home_library';
   static const _recentKey = 'settings_home_recent';
-  static const _liquidGlassKey = 'settings_use_liquid_glass';
   static const _navigationOrderKey = 'settings_navigation_order';
   static const _navigationVisibilityKey = 'settings_navigation_visibility';
   static const _navigationMusicSwipeKey = 'settings_navigation_music_swipe';
@@ -48,7 +47,6 @@ class AppSettings extends ChangeNotifier {
   bool _showGlobalSearch = true;
   bool _showActiveTransfers = true;
   List<String> _homeSectionOrder = List.of(homeSectionDefaults);
-  bool _useLiquidGlass = false;
   bool _loaded = false;
   List<String> _navigationOrder = List.of(navigationDefaults);
   Set<String> _visibleNavigationItems = Set.of(navigationDefaults);
@@ -74,7 +72,6 @@ class AppSettings extends ChangeNotifier {
   bool get showGlobalSearch => _showGlobalSearch;
   bool get showActiveTransfers => _showActiveTransfers;
   List<String> get homeSectionOrder => List.unmodifiable(_homeSectionOrder);
-  bool get useLiquidGlass => _useLiquidGlass;
   List<String> get navigationOrder => List.unmodifiable(_navigationOrder);
   Set<String> get visibleNavigationItems => Set.unmodifiable(_visibleNavigationItems);
   bool get navigationMusicSwipeEnabled => _navigationMusicSwipeEnabled;
@@ -93,7 +90,6 @@ class AppSettings extends ChangeNotifier {
     if (_loaded) return;
     try {
       final preferences = await SharedPreferences.getInstance();
-      _useLiquidGlass = preferences.getBool(_liquidGlassKey) ?? false;
       _showMiniPlayer = preferences.getBool(_nowPlayingMiniPlayerKey) ?? false;
       _navigationMusicSwipeEnabled = preferences.getBool(_navigationMusicSwipeKey) ?? true;
        final leftAction = preferences.getString(_navigationMusicSwipeLeftKey);
@@ -367,12 +363,6 @@ class AppSettings extends ChangeNotifier {
     ]);
   }
 
-  Future<void> setUseLiquidGlass(bool value) async {
-    _useLiquidGlass = value;
-    notifyListeners();
-    final preferences = await SharedPreferences.getInstance();
-    await preferences.setBool(_liquidGlassKey, value);
-  }
 
   Future<void> setHomeSectionOrder(List<String> order) async {
     if (order.length != homeSectionDefaults.length ||
