@@ -183,13 +183,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required String title,
     required String subtitle,
   }) => Card(
-    margin: const EdgeInsets.only(bottom: 10),
+    margin: const EdgeInsets.only(bottom: 12),
     clipBehavior: Clip.antiAlias,
     child: ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-      leading: Icon(icon, size: 26),
+      minVerticalPadding: 14,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+      leading: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.primaryContainer,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: SizedBox(
+          width: 48,
+          height: 48,
+          child: Icon(icon, color: Theme.of(context).colorScheme.onPrimaryContainer, size: 24),
+        ),
+      ),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-      subtitle: Text(subtitle),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis),
+      ),
       trailing: const Icon(Icons.chevron_right_rounded),
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute<void>(
@@ -215,6 +229,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
           padding: EdgeInsets.fromLTRB(16, 8, 16, 32 + MediaQuery.paddingOf(context).bottom),
           children: widget.category == null
               ? [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(4, 12, 4, 18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Make PocketLink yours', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+                        const SizedBox(height: 4),
+                        Text('Choose a category to customize your experience.', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                      ],
+                    ),
+                  ),
                   _categoryTile(
                     icon: Icons.palette_outlined,
                     title: 'Appearance',
@@ -238,7 +263,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ]
               : [
                 if (widget.category == 'Appearance')
-                              _section('Appearance', [
+                              _section('Theme & effects', [
+[
                                 ListTile(
                                   leading: const Icon(Icons.palette_outlined),
                                   title: const Text('Theme mode'),
@@ -265,8 +291,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     },
                                   ),
                                 ),
-                                const Divider(height: 1),
-                                SwitchListTile(
+SwitchListTile(
                                   secondary: const Icon(Icons.blur_on_rounded),
                                   title: const Text('Liquid Glass UI'),
                                   subtitle: const Text('Translucent frosted blur on floating navigation and action pills'),
@@ -280,8 +305,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   value: _settings.floatingShortcutEnabled,
                                   onChanged: _settings.setFloatingShortcutEnabled,
                                 ),
-                                const Divider(height: 1),
-                                ListTile(
+ListTile(
                                   leading: const Icon(Icons.tune_rounded),
                                   title: const Text('Customize Floating Shortcuts'),
                                   subtitle: Text('${_settings.floatingShortcuts.length} pinned destinations · tap action and press behavior'),
@@ -293,7 +317,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     ),
                                   ),
                                 ),
-                                SwitchListTile(
+                              ]),
+                  _section('Home screen', [
+SwitchListTile(
                                   secondary: const Icon(Icons.dashboard_customize_outlined),
                                   title: const Text('Quick actions'),
                                   value: _settings.showQuickActions,
@@ -325,16 +351,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   value: _settings.showActiveTransfers,
                                   onChanged: (value) => _settings.setHomeSections(activeTransfers: value),
                                 ),
-                                const Divider(height: 1),
-                                ListTile(
+ListTile(
                                   leading: const Icon(Icons.reorder_rounded),
                                   title: const Text('Reorder Home sections'),
                                   subtitle: const Text('Choose the order of dashboard sections'),
                                   trailing: const Icon(Icons.chevron_right_rounded),
                                   onTap: _customizeDashboardOrder,
                                 ),
-                                const Divider(height: 1),
-                                ListTile(
+                              ]),
+                  _section('Navigation', [
+ListTile(
                                   leading: const Icon(Icons.tune_rounded),
                                   title: const Text('Customize Navigation Bar'),
                                   subtitle: const Text('Reorder or show and hide dock destinations'),
