@@ -52,6 +52,7 @@ class DiagnosticNavigatorObserver extends NavigatorObserver {
   @override
   void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
     _routes.remove(route);
+    _updateControlVisibility();
     AppLogger.info('Navigation route removed', fields: {
       'route': _routeLabel(route),
       'stackDepth': _routes.length,
