@@ -99,7 +99,9 @@ class PersistentAudioPlayer extends ChangeNotifier {
       _queue.isEmpty ? null : _queue[_currentIndex.clamp(0, _queue.length - 1).toInt()];
 
   /// The app-wide mini player is available for active background music only.
-  bool get showMiniPlayer => _active && _music && !_fullScreen && currentItem != null;
+  /// Full-screen visibility is owned by the navigator observer so a stale
+  /// screen flag cannot permanently hide the mini player after navigation.
+  bool get showMiniPlayer => _active && _music && currentItem != null;
 
 
   Future<void> openQueue({
