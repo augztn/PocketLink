@@ -55,64 +55,66 @@ class FloatingNavigationDock extends StatelessWidget {
             radius: BorderRadius.circular(32),
             child: SizedBox(
               height: 64,
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final selectedPosition = ids.indexWhere(
-                    (id) => _indices[id] == selectedIndex,
-                  );
-                  final reduceMotion = MediaQuery.disableAnimationsOf(context);
-                  return Stack(
-                    children: [
-                      if (selectedPosition >= 0)
-                        AnimatedPositioned(
-                          duration: reduceMotion
-                              ? Duration.zero
-                              : const Duration(milliseconds: 240),
-                          curve: Curves.easeOutCubic,
-                          left: constraints.maxWidth *
-                              selectedPosition /
-                              ids.length,
-                          top: 2,
-                          bottom: 2,
-                          width: constraints.maxWidth / ids.length,
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              color: colors.primary.withValues(alpha: 0.14),
-                              borderRadius: BorderRadius.circular(25),
-                              border: Border.all(
-                                color: colors.primary.withValues(alpha: 0.10),
+              child: Padding(
+                padding: const EdgeInsets.all(5),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final selectedPosition = ids.indexWhere(
+                      (id) => _indices[id] == selectedIndex,
+                    );
+                    final reduceMotion =
+                        MediaQuery.disableAnimationsOf(context);
+                    return Stack(
+                      children: [
+                        if (selectedPosition >= 0)
+                          AnimatedPositioned(
+                            duration: reduceMotion
+                                ? Duration.zero
+                                : const Duration(milliseconds: 240),
+                            curve: Curves.easeOutCubic,
+                            left: constraints.maxWidth *
+                                selectedPosition /
+                                ids.length,
+                            top: 2,
+                            bottom: 2,
+                            width: constraints.maxWidth / ids.length,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: colors.primary.withValues(alpha: 0.14),
+                                borderRadius: BorderRadius.circular(22),
+                                border: Border.all(
+                                  color: colors.primary.withValues(alpha: 0.10),
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      Row(
-                        children: [
-                          for (final id in ids)
-                            Expanded(
-                              child: _DockTab(
-                                index: _indices[id]!,
-                                selectedIndex: selectedIndex,
-                                icon: switch (id) {
-                                  'home' => Icons.home_outlined,
-                                  'explore' => Icons.explore_outlined,
-                                  _ => Icons.folder_outlined,
-                                },
-                                activeIcon: switch (id) {
-                                  'home' => Icons.home_rounded,
-                                  'explore' => Icons.explore_rounded,
-                                  _ => Icons.folder_rounded,
-                                },
-                                label: _labels[id]!,
-                                onTap: onSelect,
-                                activeColor: colors.primary,
+                        Row(
+                          children: [
+                            for (final id in ids)
+                              Expanded(
+                                child: _DockTab(
+                                  index: _indices[id]!,
+                                  selectedIndex: selectedIndex,
+                                  icon: switch (id) {
+                                    'home' => Icons.home_outlined,
+                                    'explore' => Icons.explore_outlined,
+                                    _ => Icons.folder_outlined,
+                                  },
+                                  activeIcon: switch (id) {
+                                    'home' => Icons.home_rounded,
+                                    'explore' => Icons.explore_rounded,
+                                    _ => Icons.folder_rounded,
+                                  },
+                                  label: _labels[id]!,
+                                  onTap: onSelect,
+                                  activeColor: colors.primary,
+                                ),
                               ),
-                            ),
-                        ],
-                      ),
-                    ],
-                  );
-                    },
-                  ),
+                          ],
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
             ),
