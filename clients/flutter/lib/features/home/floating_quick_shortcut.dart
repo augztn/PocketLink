@@ -110,7 +110,7 @@ class _FloatingQuickShortcutState extends State<FloatingQuickShortcut>
                 clipBehavior: Clip.antiAlias,
                 child: InkWell(
                   customBorder: const CircleBorder(),
-                  onTap: widget.onTap,
+                  onTap: widget.expanded ? widget.onCollapse : widget.onTap,
                   onLongPress: widget.longPressEnabled ? widget.onLongPress : null,
                   child: SizedBox(
                     width: 56,
@@ -211,19 +211,22 @@ class _MainButtonIcon extends StatelessWidget {
   final IconData primary;
 
   @override
-  Widget build(BuildContext context) => AnimatedSwitcher(
-    duration: const Duration(milliseconds: 180),
-    reverseDuration: const Duration(milliseconds: 140),
-    transitionBuilder: (child, animation) => RotationTransition(
-      turns: Tween<double>(begin: -0.12, end: 0).animate(animation),
-      child: ScaleTransition(scale: animation, child: child),
-    ),
-    child: Icon(
-      expanded ? Icons.close_rounded : primary,
-      key: ValueKey(expanded ? 'close' : primary),
-      size: 25,
-    ),
-  );
+  Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    return AnimatedSwitcher(
+      duration: reduceMotion ? Duration.zero : const Duration(milliseconds: 180),
+      reverseDuration: reduceMotion ? Duration.zero : const Duration(milliseconds: 140),
+      transitionBuilder: (child, animation) => RotationTransition(
+        turns: Tween<double>(begin: -0.12, end: 0).animate(animation),
+        child: ScaleTransition(scale: animation, child: child),
+      ),
+      child: Icon(
+        expanded ? Icons.close_rounded : primary,
+        key: ValueKey(expanded ? 'close' : primary),
+        size: 25,
+      ),
+    );
+  }
 }
 
 class _ShortcutChip extends StatelessWidget {
