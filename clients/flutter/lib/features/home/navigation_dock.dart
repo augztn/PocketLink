@@ -17,6 +17,7 @@ class FloatingNavigationDock extends StatelessWidget {
     this.onNextTrack,
     this.onPreviousTrack,
     this.enableMusicSwipe = false,
+    this.canChangeTracks = false,
     this.preview = false,
     super.key,
   });
@@ -32,6 +33,7 @@ class FloatingNavigationDock extends StatelessWidget {
   final VoidCallback? onNextTrack;
   final VoidCallback? onPreviousTrack;
   final bool enableMusicSwipe;
+  final bool canChangeTracks;
   final bool preview;
 
   static const _labels = <String, String>{
@@ -100,7 +102,7 @@ class FloatingNavigationDock extends StatelessWidget {
             isPlaying: isPlaying,
             hasMedia: hasMedia,
             isVideo: isVideo,
-            canChangeTracks: enableMusicSwipe && hasMedia && !isVideo,
+            canChangeTracks: enableMusicSwipe && canChangeTracks && !isVideo,
             onTap: onBrowsePressed,
             onNext: onNextTrack,
             onPrevious: onPreviousTrack,
@@ -229,8 +231,43 @@ class _MusicDockButton extends StatefulWidget {
   State<_MusicDockButton> createState() => _MusicDockButtonState();
 }
 
-class _MusicDockButtonState extends State<_MusicDockButton> {
+class _MusicDockButtonState extends State<_MusicDockButton>
+    with SingleTickerProviderStateMixin {
   double _dragDistance = 0;
+  late final AnimationController _swipeHintController = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.canChangeTracks) _playSwipeHint();
+  }
+
+  @override
+  void didUpdateWidget(covariant _MusicDockButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!oldWidget.canChangeTracks && widget.canChangeTracks) {
+      _playSwipeHint();
+    } else if (!widget.canChangeTracks) {
+      _swipeHintController.stop();
+      _swipeHintController.value = 0;
+      _dragDistance = 0;
+    }
+  }
+
+  void _playSwipeHint() {
+    _swipeHintController
+      ..stop()
+      ..repeat(count: 3);
+  }
+
+  @override
+  void dispose() {
+    _swipeHintController.dispose();
+    super.dispose();
+  }
 
   void _onDragUpdate(DragUpdateDetails details) {
     setState(() {
@@ -281,9 +318,9 @@ class _MusicDockButtonState extends State<_MusicDockButton> {
             if (_dragDistance != 0) setState(() => _dragDistance = 0);
           },
           child: AnimatedScale(
-            scale: _dragDistance == 0 ? 1 : 0.94,
+            scale: _dragDistance == 0 ? 1 : 0.96,
             duration: const Duration(milliseconds: 160),
-            curve: Curves.easeOutBack,
+            curve: Curves.easeOutCubic,
             child: LiquidGlassPill(
               radius: BorderRadius.circular(32),
               child: Material(
@@ -292,16 +329,74 @@ class _MusicDockButtonState extends State<_MusicDockButton> {
                 child: InkWell(
                   customBorder: const CircleBorder(),
                   onTap: widget.onTap,
-                  child: Center(
-                    child: widget.isPlaying
-                        ? const _AnimatedEqualizer()
-                        : Icon(
-                            widget.hasMedia && widget.isVideo
-                                ? Icons.play_circle_fill_rounded
-                                : Icons.music_note_rounded,
-                            color: widget.activeColor,
-                            size: 25,
+                  child: AnimatedBuilder(
+                    animation: _swipeHintController,
+                    builder: (context, _) {
+                      final hintPhase = _swipeHintController.value * math.pi * 2;
+                      final hintOpacity = _dragDistance != 0
+                          ? 1.0
+                          : (math.sin(hintPhase).abs() * 0.9).clamp(0.0, 0.9);
+                      final iconShift = _dragDistance != 0
+                          ? (_dragDistance * 0.18).clamp(-8.0, 8.0)
+                          : math.sin(hintPhase) * 3.0;
+                      return Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Center(
+                            child: Transform.translate(
+                              offset: Offset(iconShift, 0),
+                              child: widget.isPlaying
+                                  ? const _AnimatedEqualizer()
+                                  : Icon(
+                                      widget.hasMedia && widget.isVideo
+                                          ? Icons.play_circle_fill_rounded
+                                          : Icons.music_note_rounded,
+                                      color: widget.activeColor,
+                                      size: 25,
+                                    ),
+                            ),
                           ),
+                          if (widget.canChangeTracks) ...[
+                            Positioned(
+                              left: 3,
+                              top: 0,
+                              bottom: 0,
+                              child: Center(
+                                child: Opacity(
+                                  opacity: hintOpacity,
+                                  child: Transform.translate(
+                                    offset: Offset(-2 - hintOpacity * 2, 0),
+                                    child: Icon(
+                                      Icons.chevron_left_rounded,
+                                      color: widget.activeColor,
+                                      size: 17,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              right: 3,
+                              top: 0,
+                              bottom: 0,
+                              child: Center(
+                                child: Opacity(
+                                  opacity: hintOpacity,
+                                  child: Transform.translate(
+                                    offset: Offset(2 + hintOpacity * 2, 0),
+                                    child: Icon(
+                                      Icons.chevron_right_rounded,
+                                      color: widget.activeColor,
+                                      size: 17,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      );
+                    },
                   ),
                 ),
               ),
