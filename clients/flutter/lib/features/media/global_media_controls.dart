@@ -34,6 +34,8 @@ class GlobalMediaControlsController extends ChangeNotifier {
     _onOpenNowPlaying = null;
     _onShortcut = null;
     _expanded = false;
+    _miniPlayerDismissed = false;
+    _nowPlayingRouteOpen = false;
     notifyListeners();
   }
 
