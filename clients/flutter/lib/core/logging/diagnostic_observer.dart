@@ -25,8 +25,9 @@ class DiagnosticNavigatorObserver extends NavigatorObserver {
     // HomeScreen attaches the controls only after a successful connection.
     // Treat an empty observer stack as visible rather than hiding every control
     // if the Navigator's initial route was installed before observer callbacks.
-    final canShowControls = currentRoute == null ||
-        (currentRoute is PageRoute && !_isControlsSuppressed(currentRoute));
+    // Suppress only screens that explicitly replace the global controls.
+    // Unknown route types must not accidentally hide playback controls.
+    final canShowControls = !_isControlsSuppressed(currentRoute);
     controlsVisible.value = canShowControls;
     dashboardVisible.value = canShowControls &&
         currentRoute?.settings.name == PocketLinkAppBar.dashboardRouteName;
