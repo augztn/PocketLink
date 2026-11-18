@@ -802,11 +802,19 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
               height: 40,
               child: Row(children: [
                 Expanded(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        for (final category in const ['All', 'Images', 'Videos', 'Music', 'Documents'])
+                  child: ShaderMask(
+                    blendMode: BlendMode.dstIn,
+                    shaderCallback: (bounds) => const LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      colors: [Colors.black, Colors.black, Colors.transparent],
+                      stops: [0, 0.88, 1],
+                    ).createShader(bounds),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          for (final category in const ['All', 'Images', 'Videos', 'Music', 'Documents'])
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 4),
                             child: ChoiceChip(
@@ -816,7 +824,8 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                               showCheckmark: false,
                             ),
                           ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
