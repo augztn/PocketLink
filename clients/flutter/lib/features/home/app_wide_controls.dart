@@ -174,9 +174,9 @@ class _AppWideControlsState extends State<AppWideControls> {
                 child: CompositedTransformFollower(
                   link: _controller.musicButtonLink,
                   showWhenUnlinked: false,
-                  targetAnchor: Alignment.topCenter,
+                  targetAnchor: Alignment.center,
                   followerAnchor: Alignment.bottomCenter,
-                  offset: const Offset(0, -8),
+                  offset: const Offset(0, 28),
                   child: FloatingQuickShortcut(
                     shortcuts: _settings.floatingShortcuts,
                     expanded: true,
