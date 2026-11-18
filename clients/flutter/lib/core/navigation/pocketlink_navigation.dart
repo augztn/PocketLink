@@ -76,5 +76,6 @@ class PocketLinkNavigationObserver extends NavigatorObserver {
 
 abstract final class PocketLinkNavigation {
   static final navigatorKey = GlobalKey<NavigatorState>();
+  static final musicButtonKey = GlobalKey();
   static final observer = PocketLinkNavigationObserver();
 }
