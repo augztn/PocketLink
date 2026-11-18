@@ -98,7 +98,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     super.initState();
     _persistent = PersistentAudioPlayer.instance;
     _player = _persistent.player;
-    _persistent.setFullScreen(true);
     unawaited(AppLogger.info('Now Playing screen initialized', fields: {
       'queueLength': widget.queue.length,
       'initialIndex': widget.initialIndex,
@@ -1084,7 +1083,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   @override
   void dispose() {
     unawaited(_playlistSubscription?.cancel());
-    unawaited(_persistent.closePlayerScreen(isVideo: false));
     super.dispose();
   }
 }
