@@ -17,6 +17,7 @@ import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
 import '../files/documents_browser_screen.dart';
 import '../storage/local_storage_setup_screen.dart';
+import '../search/search_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({required this.api, this.serverName, this.onReturnToConnection, super.key});
@@ -40,6 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _fileLocationRequest = 0;
   int _uploadRequest = 0;
   bool _quickShortcutsExpanded = false;
+  bool _musicShortcutsExpanded = false;
   bool _filesCanNavigateBack = false;
   bool _openingNowPlaying = false;
   String? _requestedVolume;
@@ -56,6 +58,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _hostSetupInitialized = true;
       _hostSetupOpen = true;
       _quickShortcutsExpanded = false;
+      _musicShortcutsExpanded = false;
     });
   }
 
@@ -141,8 +144,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
 
   void _openFloatingShortcut(String id) {
-    if (_quickShortcutsExpanded) {
-      setState(() => _quickShortcutsExpanded = false);
+    if (_quickShortcutsExpanded || _musicShortcutsExpanded) {
+      setState(() {
+        _quickShortcutsExpanded = false;
+        _musicShortcutsExpanded = false;
+      });
     }
     switch (id) {
       case 'explore':
@@ -191,12 +197,45 @@ class _HomeScreenState extends State<HomeScreen> {
           _uploadRequest++;
         });
         break;
+      case 'search':
+        Navigator.of(context).push(MaterialPageRoute<void>(
+          builder: (_) => SearchScreen(
+            api: widget.api,
+            onHome: () => Navigator.of(context).maybePop(),
+          ),
+        ));
+        break;
+      case 'drives':
+        _openExternalStorage();
+        break;
     }
   }
 
   void _expandFloatingShortcuts() {
     HapticFeedback.lightImpact();
     setState(() => _quickShortcutsExpanded = true);
+  }
+
+  void _expandMusicShortcuts() {
+    if (!AppSettings.instance.musicButtonLongPressEnabled) return;
+    HapticFeedback.lightImpact();
+    setState(() => _musicShortcutsExpanded = true);
+  }
+
+  void _handleMusicButtonSwipe({required bool left}) {
+    final settings = AppSettings.instance;
+    if (!settings.musicButtonSwipeEnabled) return;
+    final action = left
+        ? settings.musicButtonSwipeLeftAction
+        : settings.musicButtonSwipeRightAction;
+    switch (action) {
+      case 'next':
+        PersistentAudioPlayer.instance.skipToNext();
+        break;
+      case 'previous':
+        PersistentAudioPlayer.instance.skipToPrevious();
+        break;
+    }
   }
 
   Future<void> _openNowPlaying(PersistentAudioPlayer player) async {
@@ -294,13 +333,16 @@ class _HomeScreenState extends State<HomeScreen> {
     ];
 
     return PopScope(
-      canPop: !_hostSetupOpen && _selectedIndex == 0 && !_quickShortcutsExpanded,
+      canPop: !_hostSetupOpen && _selectedIndex == 0 && !_quickShortcutsExpanded && !_musicShortcutsExpanded,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
         if (_hostSetupOpen) {
           _closeHostSetup();
-        } else if (_quickShortcutsExpanded) {
-          setState(() => _quickShortcutsExpanded = false);
+        } else if (_quickShortcutsExpanded || _musicShortcutsExpanded) {
+          setState(() {
+            _quickShortcutsExpanded = false;
+            _musicShortcutsExpanded = false;
+          });
         } else if (_selectedIndex == 2 && _filesCanNavigateBack) {
           // FileManagerScreen handles folder-level back navigation.
         } else if (_selectedIndex != 0) {
@@ -341,11 +383,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
                 child: IndexedStack(index: _hostSetupOpen ? 3 : _selectedIndex, children: pages),
               ),
-              if (!_hostSetupOpen && AppSettings.instance.floatingShortcutEnabled && _quickShortcutsExpanded)
+              if (!_hostSetupOpen && (_quickShortcutsExpanded || _musicShortcutsExpanded))
                 Positioned.fill(
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onTap: () => setState(() => _quickShortcutsExpanded = false),
+                    onTap: () => setState(() {
+                      _quickShortcutsExpanded = false;
+                      _musicShortcutsExpanded = false;
+                    }),
                     child: const SizedBox.expand(),
                   ),
                 ),
@@ -385,6 +430,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 hasMedia: player.isActive && player.currentItem != null,
                 isVideo: player.isActive && !player.isMusic,
                 onSelect: _openTab,
+                musicShortcuts: AppSettings.instance.floatingShortcuts,
+                musicShortcutsExpanded: _musicShortcutsExpanded,
+                onMusicShortcutLongPress: _expandMusicShortcuts,
+                onMusicShortcutSelected: _openFloatingShortcut,
+                onBrowseSwipeLeft: () => _handleMusicButtonSwipe(left: true),
+                onBrowseSwipeRight: () => _handleMusicButtonSwipe(left: false),
                 onBrowsePressed: () {
                   _closeHostSetup();
                   _openNowPlaying(player);
