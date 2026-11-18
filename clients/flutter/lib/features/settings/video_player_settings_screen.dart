@@ -22,7 +22,7 @@ class VideoPlayerSettingsScreen extends StatelessWidget {
           const Divider(height: 1),
           _choice<double>(icon: Icons.speed_rounded, title: 'Default playback speed', value: settings.videoDefaultSpeed, options: _speeds, label: (v) => '${v}×', onChanged: (v) => settings.setVideoPlayerOptions(defaultSpeed: v)),
           const Divider(height: 1),
-          SwitchListTile(secondary: const Icon(Icons.gesture_rounded), title: const Text('Player gestures'), subtitle: const Text('Double-tap seeking and swipe volume control'), value: settings.videoGesturesEnabled, onChanged: (v) => settings.setVideoPlayerOptions(gesturesEnabled: v)),
+          SwitchListTile(secondary: const Icon(Icons.gesture_rounded), title: const Text('Player gestures'), subtitle: const Text('Double-tap seeking, left-side brightness and right-side volume control'), value: settings.videoGesturesEnabled, onChanged: (v) => settings.setVideoPlayerOptions(gesturesEnabled: v)),
           const Divider(height: 1),
           SwitchListTile(secondary: const Icon(Icons.touch_app_rounded), title: const Text('Tap to play or pause'), subtitle: const Text('Single tap on the video toggles playback'), value: settings.videoTapToTogglePlayback, onChanged: (v) => settings.setVideoPlayerOptions(tapToTogglePlayback: v)),
           const Divider(height: 1),
