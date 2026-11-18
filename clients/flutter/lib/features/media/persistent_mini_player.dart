@@ -1,116 +1,88 @@
 import 'package:material_ui/material_ui.dart';
 
-import 'media_player_screen.dart';
 import 'persistent_audio_player.dart';
 
 class PersistentMiniPlayer extends StatelessWidget {
-  const PersistentMiniPlayer({super.key});
+  const PersistentMiniPlayer({
+    required this.player,
+    required this.onOpen,
+    required this.onDismiss,
+    super.key,
+  });
+
+  final PersistentAudioPlayer player;
+  final VoidCallback onOpen;
+  final VoidCallback onDismiss;
 
   @override
   Widget build(BuildContext context) {
-    final playback = PersistentAudioPlayer.instance;
-    return AnimatedBuilder(
-      animation: playback,
-      builder: (context, _) {
-        final track = playback.currentItem;
-        final api = playback.api;
-        if (!playback.showMiniPlayer || track == null || api == null) {
-          return const SizedBox.shrink();
-        }
+    final item = player.currentItem;
+    if (item == null) return const SizedBox.shrink();
 
-        return Material(
-          color: const Color(0xFF211A35),
-          elevation: 12,
-          child: SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(0, 4, 0, 0),
+      child: Material(
+        color: Theme.of(context).colorScheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(16),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onVerticalDragEnd: (details) {
+            final velocity = details.primaryVelocity ?? 0;
+            if (!player.isPlaying && velocity > 300) onDismiss();
+          },
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: onOpen,
+            child: SizedBox(
+              height: 58,
               child: Row(
                 children: [
-                  const Icon(Icons.album_rounded, color: Color(0xFFD8C9FF), size: 34),
+                  const SizedBox(width: 14),
+                  Icon(Icons.music_note_rounded, color: Theme.of(context).colorScheme.primary),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(8),
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => MediaPlayerScreen(
-                            api: api,
-                            title: track.title,
-                            path: track.path,
-                            volume: track.volume,
-                            isVideo: false,
-                            queue: playback.queue,
-                            initialIndex: playback.currentIndex,
-                            resumeExisting: true,
-                          ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
                         ),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              track.title.replaceAll(RegExp(r'\\.[^.]+$'), ''),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            Text(
-                              'PocketLink • Now playing',
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.6),
-                                fontSize: 11,
-                              ),
-                            ),
-                          ],
+                        const Text(
+                          'NOW PLAYING',
+                          style: TextStyle(fontSize: 9, letterSpacing: 1.1),
                         ),
-                      ),
+                      ],
                     ),
                   ),
-                  IconButton(
-                    tooltip: 'Previous track',
-                    onPressed: playback.queue.length > 1
-                        ? playback.player.previous
-                        : null,
-                    color: Colors.white70,
-                    icon: const Icon(Icons.skip_previous_rounded),
-                  ),
-                  IconButton(
-                    tooltip: playback.isPlaying ? 'Pause' : 'Play',
-                    onPressed: playback.togglePlayback,
-                    color: const Color(0xFFD8C9FF),
-                    icon: Icon(
-                      playback.isPlaying
-                          ? Icons.pause_rounded
-                          : Icons.play_arrow_rounded,
+                  StreamBuilder<bool>(
+                    stream: player.player.stream.playing,
+                    initialData: player.player.state.playing,
+                    builder: (context, snapshot) => IconButton(
+                      tooltip: (snapshot.data ?? false) ? 'Pause' : 'Play',
+                      onPressed: player.togglePlayback,
+                      icon: Icon(
+                        (snapshot.data ?? false)
+                            ? Icons.pause_rounded
+                            : Icons.play_arrow_rounded,
+                      ),
                     ),
                   ),
                   IconButton(
                     tooltip: 'Next track',
-                    onPressed: playback.queue.length > 1
-                        ? playback.player.next
-                        : null,
-                    color: Colors.white70,
+                    onPressed: player.skipToNext,
                     icon: const Icon(Icons.skip_next_rounded),
                   ),
-                  IconButton(
-                    tooltip: 'Close player',
-                    onPressed: playback.dismiss,
-                    color: Colors.white54,
-                    icon: const Icon(Icons.close_rounded, size: 20),
-                  ),
+                  const SizedBox(width: 4),
                 ],
               ),
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
