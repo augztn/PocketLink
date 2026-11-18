@@ -968,6 +968,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                     final queueItem = MediaQueueItem(title: recent.title, path: recent.path, volume: recent.volume);
                     await player.openQueue(api: widget.api, queue: [queueItem], initialIndex: 0, isMusic: true);
                     Navigator.of(context).push(MaterialPageRoute<void>(
+                      settings: const RouteSettings(name: '/pocketlink-now-playing'),
                       builder: (_) => NowPlayingScreen(
                         api: widget.api,
                         queue: player.queue,
@@ -2336,6 +2337,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                     final queueItem = MediaQueueItem(title: recent.title, path: recent.path, volume: recent.volume);
                     await player.openQueue(api: widget.api, queue: [queueItem], initialIndex: 0, isMusic: true);
                     Navigator.of(context).push(MaterialPageRoute<void>(
+                      settings: const RouteSettings(name: '/pocketlink-now-playing'),
                       builder: (_) => NowPlayingScreen(
                         api: widget.api,
                         queue: player.queue,
