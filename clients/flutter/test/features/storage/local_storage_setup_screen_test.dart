@@ -111,7 +111,21 @@ void main() {
     expect(find.text('Host PocketLink on this device'), findsOneWidget);
     expect(find.text('Host status'), findsOneWidget);
     expect(find.text('Android storage bridge'), findsOneWidget);
+    final overviewScrollable = find.descendant(
+      of: find.byKey(const PageStorageKey<String>('host-overview')),
+      matching: find.byType(Scrollable),
+    );
+    await tester.scrollUntilVisible(
+      find.text('Manage storage'),
+      280,
+      scrollable: overviewScrollable,
+    );
     expect(find.text('Manage storage'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Security settings'),
+      280,
+      scrollable: overviewScrollable,
+    );
     expect(find.text('Security settings'), findsOneWidget);
     expect(find.byTooltip('Refresh host status'), findsOneWidget);
     expect(find.text('Layout'), findsNothing);
