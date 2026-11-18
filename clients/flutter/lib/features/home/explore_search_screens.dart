@@ -7,6 +7,7 @@ import '../files/documents_browser_screen.dart';
 import '../library/photo_gallery_screen.dart';
 import '../media/media_browser_screen.dart';
 import '../search/search_screen.dart';
+import '../transfers/transfer_manager_screen.dart';
 
 enum ExploreCategory { files, drives, photos, music, videos }
 
@@ -179,6 +180,21 @@ class _ExploreGrid extends StatelessWidget {
           onPressed: onHome,
           icon: const Icon(Icons.arrow_back_rounded),
         ),
+        actions: [
+          PocketLinkAppBarAction(
+            label: 'Search',
+            icon: Icons.search_rounded,
+            onPressed: () => onOpen(SearchScreen(
+              api: api,
+              onHome: () => Navigator.of(context).maybePop(),
+            )),
+          ),
+          PocketLinkAppBarAction(
+            label: 'Transfers',
+            icon: Icons.swap_vert_rounded,
+            onPressed: () => onOpen(const TransferManagerScreen()),
+          ),
+        ],
       ),
       body: GridView.count(
         padding: EdgeInsets.fromLTRB(16, 12, 16, 112 + MediaQuery.paddingOf(context).bottom),
