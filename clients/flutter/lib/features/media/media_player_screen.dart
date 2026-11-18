@@ -1068,6 +1068,29 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
     );
   }
 
+  Widget _videoPlayerBody() {
+    return ColoredBox(
+      color: Colors.black,
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _videoSurface(),
+            if (_openError != null)
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  'Playback failed: $_openError',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Color(0xFFFF8A8A)),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentTrack = _queue[_currentIndex.clamp(0, _queue.length - 1).toInt()];
@@ -1075,20 +1098,20 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
     final folder = currentTrack.path.split('/').take(currentTrack.path.split('/').length - 1).join('/');
     return Scaffold(
       backgroundColor: const Color(0xFF0B0A12),
-      appBar: widget.isVideo && _isVideoFullscreen
+      appBar: widget.isVideo
           ? null
           : PocketLinkAppBar(
-        backgroundColor: Colors.transparent,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
-        title: Text(
-          widget.isVideo ? 'NOW PLAYING' : 'HOMESERVER MUSIC',
-          style: const TextStyle(fontSize: 11, letterSpacing: 2.0, fontWeight: FontWeight.w700),
-        ),
-      ),
-      body: widget.isVideo && _isVideoFullscreen
-          ? _videoSurface()
+              backgroundColor: Colors.transparent,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              centerTitle: true,
+              title: const Text(
+                'HOMESERVER MUSIC',
+                style: TextStyle(fontSize: 11, letterSpacing: 2.0, fontWeight: FontWeight.w700),
+              ),
+            ),
+      body: widget.isVideo
+          ? (_isVideoFullscreen ? _videoSurface() : _videoPlayerBody())
           : Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -1105,13 +1128,10 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(24, 12, 24, 28),
                 children: [
-                  if (widget.isVideo)
-                    _videoSurface()
-                  else
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: _artwork(),
-                    ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: _artwork(),
+                  ),
                   const SizedBox(height: 30),
                   Text(
                     title,
@@ -1121,10 +1141,10 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                     style: const TextStyle(color: Colors.white, fontSize: 23, height: 1.2, fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    widget.isVideo ? 'Streaming from your PocketLink' : 'Your personal music library',
+                  const Text(
+                    'Your personal music library',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.white60, fontSize: 14),
+                    style: TextStyle(color: Colors.white60, fontSize: 14),
                   ),
                   if (_openError != null)
                     Padding(
