@@ -100,8 +100,8 @@ class PersistentAudioPlayer extends ChangeNotifier {
       _queue.isEmpty ? null : _queue[_currentIndex.clamp(0, _queue.length - 1).toInt()];
 
   /// The app-wide mini player is available for active background music only.
-  /// Full-screen visibility is owned by the navigator observer so a stale
-  /// screen flag cannot permanently hide the mini player after navigation.
+  /// The global overlay combines this playback eligibility with route-owned
+  /// full-screen state before rendering the mini-player.
   bool get showMiniPlayer => _active && _music && currentItem != null;
 
 
@@ -169,9 +169,8 @@ class PersistentAudioPlayer extends ChangeNotifier {
   }
 
   Future<void> closePlayerScreen({required bool isVideo}) async {
-    // Release the full-screen UI state before awaiting media operations. A new
-    // player screen may open while a video pause is still completing.
-    // Full-screen visibility is released by the owning route token.
+    // Full-screen visibility is released by the owning route token, not by
+    // this asynchronous video-pause operation.
 
     // Keep the queue and position so HomeScreen can reopen the current session.
     // Pause video when its surface closes; audio continues in the background.
