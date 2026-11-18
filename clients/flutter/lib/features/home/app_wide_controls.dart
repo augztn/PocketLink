@@ -28,7 +28,7 @@ class AppWideControlsController extends ChangeNotifier {
   }
 
   void unregisterShortcutExpander(VoidCallback callback) {
-    if (identical(_expandShortcuts, callback)) _expandShortcuts = null;
+    if (_expandShortcuts == callback) _expandShortcuts = null;
   }
 
   void openShortcuts() => _expandShortcuts?.call();
