@@ -109,19 +109,19 @@ class _FloatingQuickShortcutState extends State<FloatingQuickShortcut>
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 176),
         child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          for (var index = 0; index < widget.shortcuts.length; index++) ...[
-            if (index > 0) const SizedBox(height: 8),
-            _buildAnimatedChip(
-              widget.shortcuts[widget.shortcuts.length - index - 1],
-              index,
-              widget.shortcuts.length,
-              reduceMotion,
-            ),
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            for (var index = 0; index < widget.shortcuts.length; index++) ...[
+              if (index > 0) const SizedBox(height: 8),
+              _buildAnimatedChip(
+                widget.shortcuts[widget.shortcuts.length - index - 1],
+                index,
+                widget.shortcuts.length,
+                reduceMotion,
+              ),
+            ],
           ],
-        ],
         ),
       ),
     );
