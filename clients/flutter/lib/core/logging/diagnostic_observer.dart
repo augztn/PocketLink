@@ -20,6 +20,13 @@ class DiagnosticNavigatorObserver extends NavigatorObserver {
         (name?.startsWith('/pocketlink-settings') ?? false);
   }
 
+  /// Reconciles app-wide controls with the route that is actually visible.
+  /// Callers that await a pushed route can use this as a final safety net if
+  /// navigation occurs in a nested Navigator not observed by this singleton.
+  void refreshForRoute(Route<dynamic>? currentRoute) {
+    _updateControlVisibility(currentRoute);
+  }
+
   void _updateControlVisibility(Route<dynamic>? currentRoute) {
     // Use the route supplied by Navigator callbacks as the source of truth.
     // The tracked list is retained for diagnostics only; relying on its last
