@@ -11,6 +11,7 @@ import '../../core/settings/app_settings.dart';
 import 'navigation_customization_screen.dart';
 import 'floating_shortcut_customization_screen.dart';
 import 'now_playing_settings_screen.dart';
+import 'video_player_settings_screen.dart';
 import '../about/about_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -354,6 +355,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   onTap: () => Navigator.of(context).push(
                                     MaterialPageRoute<void>(
                                       builder: (_) => const NowPlayingSettingsScreen(),
+                                    ),
+                                  ),
+                                ),
+                                const Divider(height: 1),
+                                ListTile(
+                                  leading: const Icon(Icons.movie_creation_outlined),
+                                  title: const Text('Video player customization'),
+                                  subtitle: const Text('Gestures, seek shortcuts, controls, scaling and subtitles'),
+                                  trailing: const Icon(Icons.chevron_right_rounded),
+                                  onTap: () => Navigator.of(context).push(
+                                    MaterialPageRoute<void>(
+                                      builder: (_) => const VideoPlayerSettingsScreen(),
                                     ),
                                   ),
                                 ),
