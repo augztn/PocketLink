@@ -51,6 +51,12 @@ class _PocketLinkAppState extends State<PocketLinkApp> {
       ) : scheme,
       scaffoldBackgroundColor: amoled ? Colors.black : null,
       useMaterial3: true,
+      splashFactory: InkSparkle.splashFactory,
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: _PocketLinkPageTransitionsBuilder(),
+        },
+      ),
       inputDecorationTheme: const InputDecorationTheme(
         border: OutlineInputBorder(),
       ),
@@ -83,6 +89,36 @@ class _PocketLinkAppState extends State<PocketLinkApp> {
         ],
       ),
       ),
+    );
+  }
+}
+
+/// A restrained spring-like route entrance. It animates only the incoming page;
+/// the outgoing page and app-wide playback controls keep their own state.
+class _PocketLinkPageTransitionsBuilder extends PageTransitionsBuilder {
+  const _PocketLinkPageTransitionsBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    if (MediaQuery.of(context).disableAnimations) return child;
+
+    final scale = Tween<double>(begin: 0.96, end: 1).animate(
+      CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutBack,
+        reverseCurve: Curves.easeInCubic,
+      ),
+    );
+
+    return FadeTransition(
+      opacity: animation,
+      child: ScaleTransition(scale: scale, child: child),
     );
   }
 }
