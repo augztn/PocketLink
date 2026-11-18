@@ -10,6 +10,8 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
 import '../../core/network/server_api.dart';
+import '../../core/settings/app_settings.dart';
+import '../settings/video_player_settings_screen.dart';
 import 'persistent_audio_player.dart';
 
 class MediaPlayerScreen extends StatefulWidget {
@@ -57,6 +59,8 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
   Uint8List? _coverBytes;
   String? _coverForTrack;
   int _artworkRequestId = 0;
+  double? _gestureStartVolume;
+  double? _gestureStartY;
 
   List<MediaQueueItem> get _queue => widget.queue.isEmpty
       ? [MediaQueueItem(title: widget.title, path: widget.path, volume: widget.volume)]
@@ -70,6 +74,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
     _currentIndex = widget.resumeExisting
         ? _persistent.currentIndex
         : widget.initialIndex.clamp(0, _queue.length - 1).toInt();
+    if (widget.isVideo) _playbackRate = AppSettings.instance.videoDefaultSpeed;
     _persistent.setFullScreen(true);
     _playlistSubscription = _player.stream.playlist.listen((playlist) {
       if (mounted && _queue.isNotEmpty) {
@@ -108,6 +113,12 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
         initialIndex: _currentIndex,
         isMusic: !widget.isVideo,
       );
+      if (widget.isVideo) {
+        await _player.setRate(_playbackRate);
+        if (AppSettings.instance.videoAutoFullscreen && mounted) {
+          await _toggleVideoFullscreen();
+        }
+      }
     } catch (error) {
       if (mounted) setState(() => _openError = error.toString());
     }
@@ -131,6 +142,9 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
 
   Future<void> _setPlaybackRate(double value) async {
     await _player.setRate(value);
+    if (widget.isVideo) {
+      await AppSettings.instance.setVideoPlayerOptions(defaultSpeed: value);
+    }
     if (mounted) setState(() => _playbackRate = value);
   }
 
@@ -230,6 +244,44 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
         );
       }
     }
+  }
+
+
+  Future<void> _pickExternalAudio() async {
+    try {
+      final file = await FilePicker.pickFile(
+        type: FileType.custom,
+        allowedExtensions: const ['aac', 'ac3', 'flac', 'm4a', 'mka', 'mp3', 'ogg', 'opus', 'wav'],
+      );
+      if (file == null) return;
+      final path = file.path;
+      if (path == null || path.isEmpty) {
+        throw StateError('The selected audio file has no readable local path.');
+      }
+      await _player.setAudioTrack(
+        AudioTrack.uri(Uri.file(path).toString(), title: file.name),
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Loaded audio: ${file.name}')),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not load external audio: $error')),
+        );
+      }
+    }
+  }
+
+  Future<void> _openVideoSettings() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(builder: (_) => const VideoPlayerSettingsScreen()),
+    );
+    if (!mounted) return;
+    setState(() {});
+    _revealVideoControls();
   }
 
   Future<void> _showSubtitleTracks() async {
@@ -479,7 +531,9 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
   void _scheduleVideoControlsHide() {
     _videoControlsTimer?.cancel();
     if (!_player.state.playing || !_showVideoControls || !widget.isVideo) return;
-    _videoControlsTimer = Timer(const Duration(seconds: 4), () {
+    final timeout = AppSettings.instance.videoControlsTimeoutSeconds;
+    if (timeout <= 0) return;
+    _videoControlsTimer = Timer(Duration(seconds: timeout), () {
       if (mounted && _player.state.playing) {
         setState(() => _showVideoControls = false);
       }
@@ -510,10 +564,12 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
       _showVideoControls = true;
     });
     if (next) {
-      await SystemChrome.setPreferredOrientations(const [
-        DeviceOrientation.landscapeLeft,
-        DeviceOrientation.landscapeRight,
-      ]);
+      final orientation = AppSettings.instance.videoFullscreenOrientation;
+      await SystemChrome.setPreferredOrientations(switch (orientation) {
+        'portrait' => const [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown],
+        'auto' => const <DeviceOrientation>[],
+        _ => const [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight],
+      });
       await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     } else {
       await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -530,16 +586,66 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Video(controller: _persistent.videoController, controls: NoVideoControls),
+          Video(
+            controller: _persistent.videoController,
+            controls: NoVideoControls,
+            fit: switch (AppSettings.instance.videoFitMode) {
+              'cover' => BoxFit.cover,
+              'fill' => BoxFit.fill,
+              _ => BoxFit.contain,
+            },
+            subtitleViewConfiguration: SubtitleViewConfiguration(
+              style: TextStyle(
+                fontSize: AppSettings.instance.videoSubtitleFontSize,
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                backgroundColor: AppSettings.instance.videoSubtitleBackground
+                    ? const Color(0xAA000000)
+                    : Colors.transparent,
+              ),
+              textAlign: TextAlign.center,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            ),
+          ),
           Positioned.fill(
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onTap: _revealVideoControls,
-              onDoubleTapDown: (details) {
-                final width = MediaQuery.sizeOf(context).width;
-                _seekRelative(details.localPosition.dx < width / 2
-                    ? const Duration(seconds: -10)
-                    : const Duration(seconds: 10));
+              onTap: () {
+                if (AppSettings.instance.videoTapToTogglePlayback) {
+                  unawaited(_player.playOrPause());
+                }
+                _revealVideoControls();
+              },
+              onDoubleTapDown: AppSettings.instance.videoGesturesEnabled
+                  ? (details) {
+                      final width = MediaQuery.sizeOf(context).width;
+                      final seconds = AppSettings.instance.videoSeekSeconds;
+                      _seekRelative(Duration(
+                        seconds: details.localPosition.dx < width / 2 ? -seconds : seconds,
+                      ));
+                    }
+                  : null,
+              onVerticalDragStart: AppSettings.instance.videoGesturesEnabled
+                  ? (details) {
+                      final width = MediaQuery.sizeOf(context).width;
+                      if (details.localPosition.dx >= width * 0.55) {
+                        _gestureStartVolume = _player.state.volume;
+                        _gestureStartY = details.localPosition.dy;
+                      }
+                    }
+                  : null,
+              onVerticalDragUpdate: AppSettings.instance.videoGesturesEnabled
+                  ? (details) {
+                      if (_gestureStartVolume == null || _gestureStartY == null) return;
+                      final height = MediaQuery.sizeOf(context).height;
+                      final delta = details.localPosition.dy - _gestureStartY!;
+                      final next = (_gestureStartVolume! - (delta / height * 100)).clamp(0, 100).toDouble();
+                      unawaited(_player.setVolume(next));
+                    }
+                  : null,
+              onVerticalDragEnd: (_) {
+                _gestureStartVolume = null;
+                _gestureStartY = null;
               },
               child: const SizedBox.expand(),
             ),
@@ -595,8 +701,12 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                           onSelected: (value) {
                             if (value == 'audio') {
                               unawaited(_showAudioTracks());
-                            } else {
+                            } else if (value == 'subtitles') {
                               unawaited(_showSubtitleTracks());
+                            } else if (value == 'externalAudio') {
+                              unawaited(_pickExternalAudio());
+                            } else {
+                              unawaited(_openVideoSettings());
                             }
                           },
                           itemBuilder: (_) => const [
@@ -614,6 +724,22 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                                 Icon(Icons.closed_caption_rounded, color: Colors.white70),
                                 SizedBox(width: 12),
                                 Text('Subtitles', style: TextStyle(color: Colors.white)),
+                              ]),
+                            ),
+                            PopupMenuItem(
+                              value: 'externalAudio',
+                              child: Row(children: [
+                                Icon(Icons.audiotrack_rounded, color: Colors.white70),
+                                SizedBox(width: 12),
+                                Text('Load external audio', style: TextStyle(color: Colors.white)),
+                              ]),
+                            ),
+                            PopupMenuItem(
+                              value: 'settings',
+                              child: Row(children: [
+                                Icon(Icons.video_settings_rounded, color: Colors.white70),
+                                SizedBox(width: 12),
+                                Text('Video player settings', style: TextStyle(color: Colors.white)),
                               ]),
                             ),
                           ],
