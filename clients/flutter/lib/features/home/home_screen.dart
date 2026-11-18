@@ -1,5 +1,4 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter/services.dart';
 
 import '../../core/settings/app_settings.dart';
 import 'navigation_dock.dart';
@@ -104,6 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     AppSettings.instance.removeListener(_navigationSettingsChanged);
     PersistentAudioPlayer.instance.removeListener(_playerStateChanged);
+    GlobalMediaControlsController.instance.detach();
     super.dispose();
   }
 
