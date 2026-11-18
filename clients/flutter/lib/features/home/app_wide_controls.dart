@@ -126,11 +126,8 @@ class _AppWideControlsState extends State<AppWideControls> {
         }
 
         final safeBottom = MediaQuery.paddingOf(context).bottom;
-        final item = _player.currentItem;
         final showMiniPlayer = _settings.showMiniPlayer &&
-            _player.isMusic &&
-            _player.isActive &&
-            item != null &&
+            _player.showMiniPlayer &&
             !_miniPlayerDismissed &&
             _controller.openNowPlaying != null;
         final showShortcut = (_settings.floatingShortcutEnabled || _shortcutsExpanded) &&
