@@ -117,7 +117,6 @@ class _AppWideControlsState extends State<AppWideControls> {
         final showMiniPlayer = _settings.showMiniPlayer &&
             _player.isMusic &&
             _player.isActive &&
-            !_player.isFullScreen &&
             item != null &&
             !_miniPlayerDismissed &&
             _controller.openNowPlaying != null;
