@@ -6,6 +6,7 @@ import 'features/home/browser_state_store.dart';
 import 'core/settings/app_settings.dart';
 import 'core/logging/diagnostic_observer.dart';
 import 'features/connection/connection_screen.dart';
+import 'features/home/global_playback_overlay.dart';
 
 class PocketLinkApp extends StatefulWidget {
   const PocketLinkApp({super.key});
@@ -73,7 +74,17 @@ class _PocketLinkAppState extends State<PocketLinkApp> {
       darkTheme: _theme(brightness: Brightness.dark, amoled: _settings.amoled),
       home: const ConnectionScreen(),
       builder: (context, child) => MaterialUiCompatibilityBridge(
-        child: child ?? const SizedBox.shrink(),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            child ?? const SizedBox.shrink(),
+            AnimatedBuilder(
+              animation: GlobalPlaybackOverlay.instance,
+              builder: (context, _) =>
+                  GlobalPlaybackOverlay.instance.build(context),
+            ),
+          ],
+        ),
       ),
       ),
     );
