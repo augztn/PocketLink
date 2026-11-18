@@ -6,6 +6,7 @@ import 'features/home/browser_state_store.dart';
 import 'core/settings/app_settings.dart';
 import 'core/logging/diagnostic_observer.dart';
 import 'features/connection/connection_screen.dart';
+import 'features/media/global_media_controls.dart';
 
 class PocketLinkApp extends StatefulWidget {
   const PocketLinkApp({super.key});
@@ -72,8 +73,10 @@ class _PocketLinkAppState extends State<PocketLinkApp> {
       theme: _theme(brightness: Brightness.light),
       darkTheme: _theme(brightness: Brightness.dark, amoled: _settings.amoled),
       home: const ConnectionScreen(),
-      builder: (context, child) => MaterialUiCompatibilityBridge(
-        child: child ?? const SizedBox.shrink(),
+      builder: (context, child) => GlobalMediaControlsOverlay(
+        child: MaterialUiCompatibilityBridge(
+          child: child ?? const SizedBox.shrink(),
+        ),
       ),
       ),
     );
