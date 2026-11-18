@@ -60,7 +60,11 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
   String? _coverForTrack;
   int _artworkRequestId = 0;
   double? _gestureStartVolume;
+  double? _gestureStartBrightness;
   double? _gestureStartY;
+  String? _gestureMode;
+  double? _gestureValue;
+  static const MethodChannel _videoControlChannel = MethodChannel('pocketlink/media');
 
   List<MediaQueueItem> get _queue => widget.queue.isEmpty
       ? [MediaQueueItem(title: widget.title, path: widget.path, volume: widget.volume)]
@@ -516,6 +520,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
   void dispose() {
     _sleepTimer?.cancel();
     _videoControlsTimer?.cancel();
+    if (widget.isVideo) unawaited(_restoreVideoBrightness());
     if (_isVideoFullscreen) {
       unawaited(SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge));
       unawaited(SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]));
@@ -550,7 +555,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
     final target = _player.state.position + offset;
     final clamped = target < Duration.zero
         ? Duration.zero
-        : target > duration
+        : duration > Duration.zero && target > duration
             ? duration
             : target;
     await _player.seek(clamped);
@@ -578,6 +583,82 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
       ]);
     }
     _scheduleVideoControlsHide();
+  }
+
+
+  Future<void> _beginVerticalVideoGesture(DragStartDetails details) async {
+    final width = MediaQuery.sizeOf(context).width;
+    if (details.localPosition.dx < width * 0.45) {
+      try {
+        final brightness = await _videoControlChannel.invokeMethod<double>('getVideoBrightness') ?? 0.5;
+        if (!mounted) return;
+        setState(() {
+          _gestureStartBrightness = brightness;
+          _gestureStartVolume = null;
+          _gestureStartY = details.localPosition.dy;
+          _gestureMode = 'brightness';
+          _gestureValue = brightness;
+        });
+      } on PlatformException {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Brightness gesture is unavailable on this device.')),
+          );
+        }
+      } on MissingPluginException {
+        // Non-Android builds do not register the PocketLink native channel.
+      }
+    } else if (details.localPosition.dx > width * 0.55) {
+      setState(() {
+        _gestureStartVolume = _player.state.volume;
+        _gestureStartBrightness = null;
+        _gestureStartY = details.localPosition.dy;
+        _gestureMode = 'volume';
+        _gestureValue = _player.state.volume;
+      });
+    }
+  }
+
+  void _updateVerticalVideoGesture(DragUpdateDetails details) {
+    final startY = _gestureStartY;
+    if (startY == null || _gestureMode == null) return;
+    final height = MediaQuery.sizeOf(context).height;
+    final delta = details.localPosition.dy - startY;
+    if (_gestureMode == 'brightness' && _gestureStartBrightness != null) {
+      final value = (_gestureStartBrightness! - delta / height).clamp(0.01, 1.0).toDouble();
+      _gestureValue = value;
+      unawaited(_videoControlChannel.invokeMethod<void>(
+        'setVideoBrightness',
+        {'brightness': value},
+      ));
+    } else if (_gestureMode == 'volume' && _gestureStartVolume != null) {
+      final value = (_gestureStartVolume! - delta / height * 100).clamp(0, 100).toDouble();
+      _gestureValue = value;
+      unawaited(_player.setVolume(value));
+    }
+    if (mounted) setState(() {});
+  }
+
+  void _endVerticalVideoGesture() {
+    if (!mounted) return;
+    setState(() {
+      _gestureStartVolume = null;
+      _gestureStartBrightness = null;
+      _gestureStartY = null;
+      _gestureMode = null;
+      _gestureValue = null;
+    });
+    _revealVideoControls();
+  }
+
+  Future<void> _restoreVideoBrightness() async {
+    try {
+      await _videoControlChannel.invokeMethod<void>('restoreVideoBrightness');
+    } on PlatformException {
+      // The player can still close if Android has already detached the activity.
+    } on MissingPluginException {
+      // Non-Android builds have no scoped window-brightness override.
+    }
   }
 
   Widget _videoSurface() {
@@ -626,30 +707,62 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                     }
                   : null,
               onVerticalDragStart: AppSettings.instance.videoGesturesEnabled
-                  ? (details) {
-                      final width = MediaQuery.sizeOf(context).width;
-                      if (details.localPosition.dx >= width * 0.55) {
-                        _gestureStartVolume = _player.state.volume;
-                        _gestureStartY = details.localPosition.dy;
-                      }
-                    }
+                  ? _beginVerticalVideoGesture
                   : null,
               onVerticalDragUpdate: AppSettings.instance.videoGesturesEnabled
-                  ? (details) {
-                      if (_gestureStartVolume == null || _gestureStartY == null) return;
-                      final height = MediaQuery.sizeOf(context).height;
-                      final delta = details.localPosition.dy - _gestureStartY!;
-                      final next = (_gestureStartVolume! - (delta / height * 100)).clamp(0, 100).toDouble();
-                      unawaited(_player.setVolume(next));
-                    }
+                  ? _updateVerticalVideoGesture
                   : null,
-              onVerticalDragEnd: (_) {
-                _gestureStartVolume = null;
-                _gestureStartY = null;
-              },
+              onVerticalDragEnd: (_) => _endVerticalVideoGesture(),
               child: const SizedBox.expand(),
             ),
           ),
+          if (_gestureMode != null && _gestureValue != null)
+            Positioned(
+              left: 0,
+              right: 0,
+              top: 0,
+              bottom: 0,
+              child: IgnorePointer(
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.72),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _gestureMode == 'brightness'
+                              ? Icons.brightness_6_rounded
+                              : Icons.volume_up_rounded,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(width: 12),
+                        SizedBox(
+                          width: 112,
+                          child: LinearProgressIndicator(
+                            value: _gestureMode == 'brightness'
+                                ? _gestureValue!.clamp(0, 1)
+                                : _gestureValue!.clamp(0, 100) / 100,
+                            backgroundColor: Colors.white24,
+                            color: const Color(0xFFD8C9FF),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          _gestureMode == 'brightness'
+                              ? '${(_gestureValue! * 100).round()}%'
+                              : '${_gestureValue!.round()}%',
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
           if (_showVideoControls)
             Positioned.fill(
               child: DecoratedBox(
@@ -798,7 +911,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                             ),
                             IconButton(
                               tooltip: 'Back 10 seconds',
-                              onPressed: () => _seekRelative(const Duration(seconds: -10)),
+                              onPressed: () => _seekRelative(Duration(seconds: -AppSettings.instance.videoSeekSeconds)),
                               icon: const Icon(Icons.replay_10_rounded, color: Colors.white, size: 38),
                             ),
                             const SizedBox(width: 10),
@@ -819,7 +932,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                             const SizedBox(width: 10),
                             IconButton(
                               tooltip: 'Forward 10 seconds',
-                              onPressed: () => _seekRelative(const Duration(seconds: 10)),
+                              onPressed: () => _seekRelative(Duration(seconds: AppSettings.instance.videoSeekSeconds)),
                               icon: const Icon(Icons.forward_10_rounded, color: Colors.white, size: 38),
                             ),
                             IconButton(
