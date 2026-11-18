@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
 
 import '../../core/network/server_api.dart';
+import '../../core/navigation/pocketlink_navigation.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/storage/home_activity_store.dart';
 import '../home/browser_state_store.dart';
@@ -417,8 +418,11 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
       'extension': _extension(item),
     });
     try {
-      await Navigator.of(context, rootNavigator: true).push(
+      await Navigator.of(context, rootNavigator: true).push<void>(
         MaterialPageRoute<void>(
+          settings: const RouteSettings(
+            name: PocketLinkRouteNames.nowPlaying,
+          ),
           builder: (_) => NowPlayingScreen(
             api: widget.api,
             queue: [
