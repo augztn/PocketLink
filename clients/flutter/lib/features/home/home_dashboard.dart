@@ -797,7 +797,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                     style: theme.textTheme.labelMedium?.copyWith(color: statusColor, fontWeight: FontWeight.w700),
                   ),
                 ),
-                LiquidGlassPill(
+                SolidPill(
                   radius: BorderRadius.circular(13),
                   child: IconButton(
                     visualDensity: VisualDensity.compact,
@@ -1576,7 +1576,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
           ],
         ),
         actions: [
-          LiquidGlassPill(
+          SolidPill(
             radius: BorderRadius.circular(14),
             child: IconButton(
               tooltip: 'Transfers',
