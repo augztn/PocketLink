@@ -261,6 +261,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _openNowPlaying(PersistentAudioPlayer player) async {
     if (_openingNowPlaying) return;
+    if (_musicShortcutsExpanded || _quickShortcutsExpanded) {
+      setState(() {
+        _musicShortcutsExpanded = false;
+        _quickShortcutsExpanded = false;
+      });
+    }
     final item = player.currentItem;
     final api = player.api;
     if (player.isActive && item != null && api != null) {
