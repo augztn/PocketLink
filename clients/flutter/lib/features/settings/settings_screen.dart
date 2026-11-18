@@ -264,7 +264,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               : [
                 if (widget.category == 'Appearance')
                               _section('Theme & effects', [
-[
                                 ListTile(
                                   leading: const Icon(Icons.palette_outlined),
                                   title: const Text('Theme mode'),
