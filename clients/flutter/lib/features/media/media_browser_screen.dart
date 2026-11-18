@@ -178,7 +178,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       }
     }
     if (!mounted) return;
-    widget.api.clearMediaCache();
+    if (refresh) widget.api.clearMediaCache();
     setState(() {
       // Keep the last indexed list on screen while this visit refreshes it.
       _loading = _media.isEmpty;
@@ -238,7 +238,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   Future<void> _scanLegacy({bool refresh = false}) async {
     if (!mounted) return;
     if (refresh) widget.api.invalidateDirectoryCache();
-    widget.api.clearMediaCache();
+    if (refresh) widget.api.clearMediaCache();
     setState(() {
       _loading = _media.isEmpty;
       _error = null;
