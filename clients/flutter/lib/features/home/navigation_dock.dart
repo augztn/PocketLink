@@ -55,29 +55,63 @@ class FloatingNavigationDock extends StatelessWidget {
             radius: BorderRadius.circular(32),
             child: SizedBox(
               height: 64,
-              child: Row(
-                children: [
-                  for (final id in ids)
-                    Expanded(
-                      child: _DockTab(
-                        index: _indices[id]!,
-                        selectedIndex: selectedIndex,
-                        icon: switch (id) {
-                          'home' => Icons.home_outlined,
-                          'explore' => Icons.explore_outlined,
-                          _ => Icons.folder_outlined,
-                        },
-                        activeIcon: switch (id) {
-                          'home' => Icons.home_rounded,
-                          'explore' => Icons.explore_rounded,
-                          _ => Icons.folder_rounded,
-                        },
-                        label: _labels[id]!,
-                        onTap: onSelect,
-                        activeColor: colors.primary,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final selectedPosition = ids.indexWhere(
+                    (id) => _indices[id] == selectedIndex,
+                  );
+                  final reduceMotion = MediaQuery.disableAnimationsOf(context);
+                  return Stack(
+                    children: [
+                      if (selectedPosition >= 0)
+                        AnimatedPositioned(
+                          duration: reduceMotion
+                              ? Duration.zero
+                              : const Duration(milliseconds: 240),
+                          curve: Curves.easeOutCubic,
+                          left: constraints.maxWidth *
+                              selectedPosition /
+                              ids.length,
+                          top: 5,
+                          bottom: 5,
+                          width: constraints.maxWidth / ids.length,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: colors.primary.withValues(alpha: 0.14),
+                              borderRadius: BorderRadius.circular(25),
+                              border: Border.all(
+                                color: colors.primary.withValues(alpha: 0.10),
+                              ),
+                            ),
+                          ),
+                        ),
+                      Row(
+                        children: [
+                          for (final id in ids)
+                            Expanded(
+                              child: _DockTab(
+                                index: _indices[id]!,
+                                selectedIndex: selectedIndex,
+                                icon: switch (id) {
+                                  'home' => Icons.home_outlined,
+                                  'explore' => Icons.explore_outlined,
+                                  _ => Icons.folder_outlined,
+                                },
+                                activeIcon: switch (id) {
+                                  'home' => Icons.home_rounded,
+                                  'explore' => Icons.explore_rounded,
+                                  _ => Icons.folder_rounded,
+                                },
+                                label: _labels[id]!,
+                                onTap: onSelect,
+                                activeColor: colors.primary,
+                              ),
+                            ),
+                        ],
                       ),
-                    ),
-                ],
+                    ],
+                  );
+                },
               ),
             ),
           ),
@@ -182,19 +216,9 @@ class _DockTab extends StatelessWidget {
           onTap: () => onTap(index),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 5),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOutCubic,
-              decoration: BoxDecoration(
-                color: selected ? activeColor.withValues(alpha: 0.14) : Colors.transparent,
-                borderRadius: BorderRadius.circular(25),
-                border: selected
-                    ? Border.all(color: activeColor.withValues(alpha: 0.10))
-                    : null,
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
                   Icon(selected ? activeIcon : icon, size: 21,
                     color: selected ? activeColor : colors.onSurfaceVariant),
                   const SizedBox(height: 3),
@@ -205,7 +229,6 @@ class _DockTab extends StatelessWidget {
                       color: selected ? activeColor : colors.onSurfaceVariant,
                     )),
                 ],
-              ),
             ),
           ),
         ),
