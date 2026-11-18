@@ -896,7 +896,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                           initialValue: _playbackRate,
                           color: const Color(0xFF24202E),
                           onSelected: _setPlaybackRate,
-                          itemBuilder: (_) => [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0]
+                          itemBuilder: (_) => [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 3.0, 4.0]
                               .map((rate) => PopupMenuItem(
                                     value: rate,
                                     child: Text(
