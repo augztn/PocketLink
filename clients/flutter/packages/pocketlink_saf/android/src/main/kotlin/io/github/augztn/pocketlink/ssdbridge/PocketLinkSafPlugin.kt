@@ -27,6 +27,7 @@ class PocketLinkSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
     private var activity: Activity? = null
     private var binding: ActivityPluginBinding? = null
     private var pendingVolumeId: String? = null
+    private var originalVideoBrightness: Float? = null
     private val prefs by lazy { context.getSharedPreferences("ssd-bridge", Context.MODE_PRIVATE) }
     private var storageManager: StorageManager? = null
     private val volumeCallback by lazy {
