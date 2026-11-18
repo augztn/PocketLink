@@ -29,6 +29,8 @@ class _FloatingShortcutCustomizationScreenState
     'documents': (label: 'Documents', description: 'Browse PDFs and documents', icon: Icons.description_rounded),
     'favorites': (label: 'Favorites', description: 'Open favourite photos', icon: Icons.favorite_rounded),
     'upload': (label: 'Upload', description: 'Choose a file to upload', icon: Icons.cloud_upload_rounded),
+    'search': (label: 'Search', description: 'Search across your server files', icon: Icons.search_rounded),
+    'drives': (label: 'Drives', description: 'Open internal and external storage', icon: Icons.usb_rounded),
   };
 
   void _toggle(String id, bool enabled) {
@@ -58,13 +60,13 @@ class _FloatingShortcutCustomizationScreenState
       await _settings.setFloatingShortcutLongPressEnabled(_longPressEnabled);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Floating shortcuts saved')),
+        const SnackBar(content: Text('Shortcut destinations saved')),
       );
       Navigator.of(context).pop();
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not save floating shortcuts')),
+          const SnackBar(content: Text('Could not save shortcut destinations')),
         );
       }
     } finally {
@@ -101,7 +103,7 @@ class _FloatingShortcutCustomizationScreenState
     final colors = theme.colorScheme;
     return Scaffold(
       appBar: PocketLinkAppBar(
-        title: const Text('Customize Floating Shortcuts'),
+        title: const Text('Customize Shortcut Destinations'),
         actionsBeforeHome: [
           IconButton(
             tooltip: 'Save shortcuts',
@@ -118,7 +120,7 @@ class _FloatingShortcutCustomizationScreenState
           Text('Pinned destinations', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
           const SizedBox(height: 5),
           Text(
-            'Choose which destinations appear when the button expands. The first shortcut is used only in Open primary mode.',
+            'Choose and reorder the destinations shown when you hold the Music button. The optional floating shortcut button uses this same destination list.',
             style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
           ),
           const SizedBox(height: 12),
@@ -147,7 +149,7 @@ class _FloatingShortcutCustomizationScreenState
             },
           ),
           const Divider(height: 24),
-          Text('Button behavior', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+          Text('Optional floating button behavior', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
           const SizedBox(height: 8),
           Text('Choose what a single tap does.', style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
           const SizedBox(height: 8),
@@ -183,7 +185,7 @@ class _FloatingShortcutCustomizationScreenState
           OutlinedButton.icon(
             onPressed: _reset,
             icon: const Icon(Icons.restart_alt_rounded),
-            label: const Text('Reset FAB customization'),
+            label: const Text('Reset shortcut destinations'),
           ),
           const SizedBox(height: 8),
           FilledButton(
