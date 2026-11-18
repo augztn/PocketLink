@@ -418,7 +418,7 @@ class ServerApi {
           options.extra['pocketlink.retryCount'] = attempts + 1;
           // A network handoff can leave an idle pooled socket bound to the old
           // Wi-Fi/mobile route. Force the retry onto a fresh TCP connection.
-          options.headers[Headers.connectionHeader] = 'close';
+          options.headers['connection'] = 'close';
           AppLogger.warning('API retry scheduled', fields: {
             'requestId': options.extra['pocketlink.requestId'] ?? 'unknown',
             'method': options.method,
