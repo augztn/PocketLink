@@ -98,8 +98,8 @@ class PersistentAudioPlayer extends ChangeNotifier {
   MediaQueueItem? get currentItem =>
       _queue.isEmpty ? null : _queue[_currentIndex.clamp(0, _queue.length - 1).toInt()];
 
-  /// Legacy mini-player widget is intentionally kept hidden; Home uses a FAB.
-  bool get showMiniPlayer => false;
+  /// The app-wide mini player is available for active background music only.
+  bool get showMiniPlayer => _active && _music && !_fullScreen && currentItem != null;
 
 
   Future<void> openQueue({
