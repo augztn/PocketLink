@@ -29,7 +29,7 @@ class DiagnosticNavigatorObserver extends NavigatorObserver {
         (currentRoute is PageRoute && !_isControlsSuppressed(currentRoute));
     controlsVisible.value = canShowControls;
     dashboardVisible.value = canShowControls &&
-        currentRoute.settings.name == PocketLinkAppBar.dashboardRouteName;
+        currentRoute?.settings.name == PocketLinkAppBar.dashboardRouteName;
   }
 
   String _routeLabel(Route<dynamic>? route) {
