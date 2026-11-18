@@ -192,12 +192,6 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       var result = await _readIndexedMedia();
       var found = result.items;
       var status = result.status;
-      if (mounted && found.isNotEmpty) {
-        final snapshot = List<_MediaFile>.unmodifiable(found);
-        _sessionMediaCache[_cacheKey] = snapshot;
-        setState(() => _media = snapshot);
-      }
-
       // Keep the existing index visible while scanning. Poll only lightweight
       // status; reload media once after the scan finishes.
       final wasScanning = status.isScanning;
@@ -217,9 +211,20 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         await _scanLegacy();
         return;
       }
+      if (status.state == 'failed' && _media.isNotEmpty) {
+        if (mounted) {
+          setState(() {
+            _loading = false;
+            _error = status.lastError ?? 'Media index refresh failed.';
+          });
+        }
+        return;
+      }
       if (mounted) {
         final snapshot = List<_MediaFile>.unmodifiable(found);
-        _sessionMediaCache[_cacheKey] = snapshot;
+        if (status.state != 'failed') {
+          _sessionMediaCache[_cacheKey] = snapshot;
+        }
         setState(() {
           _media = snapshot;
           _loading = false;
