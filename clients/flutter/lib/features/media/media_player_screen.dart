@@ -80,7 +80,6 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
         ? _persistent.currentIndex
         : widget.initialIndex.clamp(0, _queue.length - 1).toInt();
     if (widget.isVideo) _playbackRate = AppSettings.instance.videoDefaultSpeed;
-    _persistent.setFullScreen(true);
     _playlistSubscription = _player.stream.playlist.listen((playlist) {
       if (mounted && _queue.isNotEmpty) {
         final index = playlist.index.clamp(0, _queue.length - 1).toInt();
