@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 import 'quick_actions_store.dart';
 import 'network_route_classifier.dart';
 import '../../core/settings/app_settings.dart';
+import '../../core/navigation/pocketlink_navigation.dart';
 import '../../core/storage/home_activity_store.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
 import '../settings/settings_screen.dart';
@@ -894,7 +895,6 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
   }
 
   Widget _buildContinueStrip(BuildContext context, ThemeData theme, ColorScheme colors) {
-    final player = PersistentAudioPlayer.instance;
     final items = HomeActivityStore.instance.itemsForServer(widget.api.baseUrl).take(8).toList();
     if (items.isEmpty) {
       return Container(
@@ -930,16 +930,23 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                 borderRadius: BorderRadius.circular(18),
                 onTap: () async {
                   if (isTrack) {
-                    final queueItem = MediaQueueItem(title: recent.title, path: recent.path, volume: recent.volume);
-                    await player.openQueue(api: widget.api, queue: [queueItem], initialIndex: 0, isMusic: true);
-                    Navigator.of(context).push(MaterialPageRoute<void>(
-                      builder: (_) => NowPlayingScreen(
-                        api: widget.api,
-                        queue: player.queue,
-                        initialIndex: player.currentIndex,
-                        resumeExisting: true,
+                    final queueItem = MediaQueueItem(
+                      title: recent.title,
+                      path: recent.path,
+                      volume: recent.volume,
+                    );
+                    await Navigator.of(context, rootNavigator: true).push<void>(
+                      MaterialPageRoute<void>(
+                        settings: const RouteSettings(
+                          name: PocketLinkRouteNames.nowPlaying,
+                        ),
+                        builder: (_) => NowPlayingScreen(
+                          api: widget.api,
+                          queue: [queueItem],
+                          initialIndex: 0,
+                        ),
                       ),
-                    ));
+                    );
                   } else {
                     final path = isFolder ? recent.path : recent.parentPath;
                     widget.onOpenFileLocation(recent.volume, path);
