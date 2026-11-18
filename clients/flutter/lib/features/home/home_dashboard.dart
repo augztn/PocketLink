@@ -929,7 +929,6 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
   }
 
   Widget _buildContinueStrip(BuildContext context, ThemeData theme, ColorScheme colors) {
-    final player = PersistentAudioPlayer.instance;
     final items = HomeActivityStore.instance.itemsForServer(widget.api.baseUrl).take(8).toList();
     if (items.isEmpty) {
       return Container(
@@ -966,14 +965,12 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                 onTap: () async {
                   if (isTrack) {
                     final queueItem = MediaQueueItem(title: recent.title, path: recent.path, volume: recent.volume);
-                    await player.openQueue(api: widget.api, queue: [queueItem], initialIndex: 0, isMusic: true);
                     Navigator.of(context).push(MaterialPageRoute<void>(
                       settings: const RouteSettings(name: '/pocketlink-now-playing'),
                       builder: (_) => NowPlayingScreen(
                         api: widget.api,
-                        queue: player.queue,
-                        initialIndex: player.currentIndex,
-                        resumeExisting: true,
+                        queue: [queueItem],
+                        initialIndex: 0,
                       ),
                     ));
                   } else {
@@ -2298,7 +2295,6 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
   }
 
   Widget _buildContinueStrip(BuildContext context, ThemeData theme, ColorScheme colors) {
-    final player = PersistentAudioPlayer.instance;
     final items = HomeActivityStore.instance.itemsForServer(widget.api.baseUrl).take(8).toList();
     if (items.isEmpty) {
       return Container(
@@ -2335,14 +2331,12 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                 onTap: () async {
                   if (isTrack) {
                     final queueItem = MediaQueueItem(title: recent.title, path: recent.path, volume: recent.volume);
-                    await player.openQueue(api: widget.api, queue: [queueItem], initialIndex: 0, isMusic: true);
                     Navigator.of(context).push(MaterialPageRoute<void>(
                       settings: const RouteSettings(name: '/pocketlink-now-playing'),
                       builder: (_) => NowPlayingScreen(
                         api: widget.api,
-                        queue: player.queue,
-                        initialIndex: player.currentIndex,
-                        resumeExisting: true,
+                        queue: [queueItem],
+                        initialIndex: 0,
                       ),
                     ));
                   } else {
