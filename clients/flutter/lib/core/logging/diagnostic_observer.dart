@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:material_ui/material_ui.dart';
 
 import 'app_logger.dart';
+import '../widgets/pocketlink_app_bar.dart';
 
 /// Records navigation and app lifecycle without logging user content or paths.
 class DiagnosticNavigatorObserver extends NavigatorObserver {
@@ -10,6 +11,16 @@ class DiagnosticNavigatorObserver extends NavigatorObserver {
 
   static final instance = DiagnosticNavigatorObserver._();
   final List<Route<dynamic>> _routes = [];
+  final ValueNotifier<bool> controlsVisible = ValueNotifier(false);
+  final ValueNotifier<bool> dashboardVisible = ValueNotifier(false);
+
+  void _updateControlVisibility() {
+    final dashboardRoute = PocketLinkAppBar.dashboardRouteName;
+    final hasDashboard = _routes.any((route) => route.settings.name == dashboardRoute);
+    final currentRoute = _routes.isEmpty ? null : _routes.last;
+    controlsVisible.value = hasDashboard && currentRoute is PageRoute;
+    dashboardVisible.value = hasDashboard && currentRoute?.settings.name == dashboardRoute;
+  }
 
   String _routeLabel(Route<dynamic>? route) =>
       route == null ? 'none' : route.runtimeType.toString();
@@ -17,6 +28,7 @@ class DiagnosticNavigatorObserver extends NavigatorObserver {
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
     _routes.add(route);
+    _updateControlVisibility();
     AppLogger.info('Navigation route pushed', fields: {
       'route': _routeLabel(route),
       'previousRoute': _routeLabel(previousRoute),
@@ -28,6 +40,7 @@ class DiagnosticNavigatorObserver extends NavigatorObserver {
   @override
   void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
     _routes.remove(route);
+    _updateControlVisibility();
     AppLogger.info('Navigation route popped', fields: {
       'route': _routeLabel(route),
       'revealedRoute': _routeLabel(previousRoute),
@@ -54,6 +67,7 @@ class DiagnosticNavigatorObserver extends NavigatorObserver {
     } else if (newRoute != null) {
       _routes.add(newRoute);
     }
+    _updateControlVisibility();
     AppLogger.info('Navigation route replaced', fields: {
       'oldRoute': _routeLabel(oldRoute),
       'newRoute': _routeLabel(newRoute),
