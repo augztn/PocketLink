@@ -12,6 +12,7 @@ class DiagnosticNavigatorObserver extends NavigatorObserver {
   static final instance = DiagnosticNavigatorObserver._();
   final List<Route<dynamic>> _routes = [];
   final ValueNotifier<bool> controlsVisible = ValueNotifier(true);
+  final ValueNotifier<bool> settingsVisible = ValueNotifier(false);
   final ValueNotifier<bool> dashboardVisible = ValueNotifier(false);
 
   static bool _isControlsSuppressed(Route<dynamic>? route) {
@@ -31,7 +32,10 @@ class DiagnosticNavigatorObserver extends NavigatorObserver {
     // Use the route supplied by Navigator callbacks as the source of truth.
     // The tracked list is retained for diagnostics only; relying on its last
     // entry can leave global controls hidden after a route is popped/replaced.
+    final name = currentRoute?.settings.name;
+    final isSettingsRoute = name?.startsWith('/pocketlink-settings') ?? false;
     final canShowControls = !_isControlsSuppressed(currentRoute);
+    settingsVisible.value = isSettingsRoute;
     controlsVisible.value = canShowControls;
     dashboardVisible.value = canShowControls &&
         currentRoute?.settings.name == PocketLinkAppBar.dashboardRouteName;
