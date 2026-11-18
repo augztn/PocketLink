@@ -85,7 +85,7 @@ class AppSettings extends ChangeNotifier {
     try {
       final preferences = await SharedPreferences.getInstance();
       _useLiquidGlass = preferences.getBool(_liquidGlassKey) ?? false;
-      _showMiniPlayer = preferences.getBool(_nowPlayingMiniPlayerKey) ?? true;
+      _showMiniPlayer = preferences.getBool(_nowPlayingMiniPlayerKey) ?? false;
       _enableNowPlayingGestures = preferences.getBool(_nowPlayingGesturesKey) ?? true;
       _showStatsForNerds = preferences.getBool(_nowPlayingStatsForNerdsKey) ?? true;
       _floatingShortcutEnabled = preferences.getBool(_floatingShortcutEnabledKey) ?? false;
