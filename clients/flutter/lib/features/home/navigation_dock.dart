@@ -69,7 +69,7 @@ class FloatingNavigationDock extends StatelessWidget {
       final ids = List<String>.of(tabGroup);
       segments.add(
         Expanded(
-          child: LiquidGlassPill(
+          child: SolidPill(
             radius: BorderRadius.circular(32),
             child: SizedBox(
               height: 64,
@@ -368,7 +368,7 @@ class _MusicDockButtonState extends State<_MusicDockButton>
             scale: _dragDistance == 0 ? 1 : 0.96,
             duration: const Duration(milliseconds: 160),
             curve: Curves.easeOutCubic,
-            child: LiquidGlassPill(
+            child: SolidPill(
               radius: BorderRadius.circular(32),
               child: Material(
                 color: Colors.transparent,
