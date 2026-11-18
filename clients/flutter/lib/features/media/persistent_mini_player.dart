@@ -34,7 +34,7 @@ class PersistentMiniPlayer extends StatelessWidget {
         final swipedUp = verticalDragDistance < -24 || velocity < -250;
         if (!player.isPlaying && swipedUp) onDismiss();
       },
-      child: LiquidGlassPill(
+      child: SolidPill(
         radius: radius,
         child: Material(
           color: Colors.transparent,
