@@ -444,7 +444,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         children: [
                                           const Icon(Icons.graphic_eq_rounded),
                                           const SizedBox(width: 16),
-                                          const Expanded(
+                                          Expanded(
                                             child: Column(
                                               crossAxisAlignment: CrossAxisAlignment.start,
                                               mainAxisSize: MainAxisSize.min,
