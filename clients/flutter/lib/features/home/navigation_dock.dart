@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/semantics.dart';
@@ -22,6 +23,7 @@ class FloatingNavigationDock extends StatelessWidget {
     this.leftSwipeAction = 'forward',
     this.rightSwipeAction = 'backward',
     this.onMusicLongPress,
+    this.currentTrackTitle,
     this.preview = false,
     super.key,
   });
@@ -41,6 +43,7 @@ class FloatingNavigationDock extends StatelessWidget {
   final String leftSwipeAction;
   final String rightSwipeAction;
   final VoidCallback? onMusicLongPress;
+  final String? currentTrackTitle;
   final bool preview;
 
   static const _labels = <String, String>{
@@ -113,6 +116,7 @@ class FloatingNavigationDock extends StatelessWidget {
             leftSwipeAction: leftSwipeAction,
             rightSwipeAction: rightSwipeAction,
             onLongPress: onMusicLongPress,
+            currentTrackTitle: currentTrackTitle,
             onTap: onBrowsePressed,
             onNext: onNextTrack,
             onPrevious: onPreviousTrack,
@@ -226,6 +230,7 @@ class _MusicDockButton extends StatefulWidget {
     required this.rightSwipeAction,
     required this.onTap,
     this.onLongPress,
+    this.currentTrackTitle,
     required this.activeColor,
     this.onNext,
     this.onPrevious,
@@ -238,6 +243,7 @@ class _MusicDockButton extends StatefulWidget {
   final String leftSwipeAction;
   final String rightSwipeAction;
   final VoidCallback? onLongPress;
+  final String? currentTrackTitle;
   final VoidCallback onTap;
   final VoidCallback? onNext;
   final VoidCallback? onPrevious;
@@ -250,6 +256,8 @@ class _MusicDockButton extends StatefulWidget {
 class _MusicDockButtonState extends State<_MusicDockButton>
     with SingleTickerProviderStateMixin {
   double _dragDistance = 0;
+  Timer? _trackPopupTimer;
+  String? _visibleTrackTitle;
   late final AnimationController _swipeHintController = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 900),
@@ -259,11 +267,24 @@ class _MusicDockButtonState extends State<_MusicDockButton>
   void initState() {
     super.initState();
     if (widget.canChangeTracks) _playSwipeHint();
+    _showTrackPopup(widget.currentTrackTitle);
+  }
+
+  void _showTrackPopup(String? title) {
+    if (title == null || title.trim().isEmpty || title == _visibleTrackTitle) return;
+    _trackPopupTimer?.cancel();
+    setState(() => _visibleTrackTitle = title.trim());
+    _trackPopupTimer = Timer(const Duration(milliseconds: 2400), () {
+      if (mounted) setState(() => _visibleTrackTitle = null);
+    });
   }
 
   @override
   void didUpdateWidget(covariant _MusicDockButton oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.currentTrackTitle != oldWidget.currentTrackTitle) {
+      _showTrackPopup(widget.currentTrackTitle);
+    }
     if (!oldWidget.canChangeTracks && widget.canChangeTracks) {
       _playSwipeHint();
     } else if (!widget.canChangeTracks) {
@@ -281,6 +302,7 @@ class _MusicDockButtonState extends State<_MusicDockButton>
 
   @override
   void dispose() {
+    _trackPopupTimer?.cancel();
     _swipeHintController.dispose();
     super.dispose();
   }
@@ -323,7 +345,11 @@ class _MusicDockButtonState extends State<_MusicDockButton>
     return SizedBox(
       width: 64,
       height: 64,
-      child: Semantics(
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          Semantics(
         button: true,
         label: widget.hasMedia && widget.isVideo ? 'Video player' : 'Music',
         customSemanticsActions: {
@@ -425,6 +451,64 @@ class _MusicDockButtonState extends State<_MusicDockButton>
               ),
             ),
           ),
+          ),
+          if (_visibleTrackTitle != null)
+            Positioned(
+              bottom: 70,
+              left: -76,
+              width: 216,
+              child: IgnorePointer(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 240),
+                  reverseDuration: const Duration(milliseconds: 180),
+                  transitionBuilder: (child, animation) => FadeTransition(
+                    opacity: animation,
+                    child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0, 0.22),
+                        end: Offset.zero,
+                      ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+                      child: child,
+                    ),
+                  ),
+                  child: _TrackChangePopup(
+                    key: ValueKey(_visibleTrackTitle),
+                    title: _visibleTrackTitle!,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TrackChangePopup extends StatelessWidget {
+  const _TrackChangePopup({required this.title, super.key});
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+        decoration: BoxDecoration(
+          color: colors.surfaceContainerHighest.withValues(alpha: 0.97),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.45)),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 16, offset: const Offset(0, 5))],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.music_note_rounded, size: 16, color: colors.primary),
+            const SizedBox(width: 8),
+            Expanded(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700))),
+          ],
         ),
       ),
     );
