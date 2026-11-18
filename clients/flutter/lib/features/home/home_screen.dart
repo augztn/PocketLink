@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/settings/app_settings.dart';
+import '../../core/navigation/pocketlink_navigation.dart';
 import 'navigation_dock.dart';
 import 'floating_quick_shortcut.dart';
 import 'explore_search_screens.dart';
