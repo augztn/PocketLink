@@ -7,6 +7,7 @@ import 'core/settings/app_settings.dart';
 import 'core/logging/diagnostic_observer.dart';
 import 'features/connection/connection_screen.dart';
 import 'features/home/app_wide_controls.dart';
+import 'features/home/global_mini_player.dart';
 
 class PocketLinkApp extends StatefulWidget {
   const PocketLinkApp({super.key});
@@ -86,6 +87,7 @@ class _PocketLinkAppState extends State<PocketLinkApp> {
             child: child ?? const SizedBox.shrink(),
           ),
           const AppWideControls(),
+          const GlobalMiniPlayer(),
         ],
       ),
       ),
