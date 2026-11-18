@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/settings/app_settings.dart';
+import '../../core/logging/diagnostic_observer.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
 import 'navigation_dock.dart';
 import 'app_wide_controls.dart';
@@ -222,6 +223,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
         ));
       } finally {
+        // Reconcile from the HomeScreen route after the pushed player has
+        // fully returned. This also covers nested Navigator configurations
+        // where the root observer may not receive the matching pop callback.
+        DiagnosticNavigatorObserver.instance.refreshForRoute(
+          ModalRoute.of(context),
+        );
         if (mounted) setState(() => _nowPlayingRouteOpen = false);
       }
     } else {
