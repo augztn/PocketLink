@@ -58,6 +58,50 @@ class PocketLinkSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
+            "getVideoBrightness" -> {
+                val current = activity
+                if (current == null) {
+                    result.error("ACTIVITY_UNAVAILABLE", "Video brightness is unavailable.", null)
+                    return
+                }
+                val windowBrightness = current.window.attributes.screenBrightness
+                val brightness = if (windowBrightness >= 0f) {
+                    windowBrightness
+                } else {
+                    Settings.System.getInt(
+                        context.contentResolver,
+                        Settings.System.SCREEN_BRIGHTNESS,
+                        128
+                    ) / 255f
+                }
+                result.success(brightness.coerceIn(0.01f, 1f).toDouble())
+            }
+            "setVideoBrightness" -> {
+                val current = activity
+                val value = call.argument<Number>("brightness")?.toFloat()
+                if (current == null || value == null || !value.isFinite()) {
+                    result.error("INVALID_BRIGHTNESS", "A valid video brightness value is required.", null)
+                    return
+                }
+                if (originalVideoBrightness == null) {
+                    originalVideoBrightness = current.window.attributes.screenBrightness
+                }
+                val attributes = current.window.attributes
+                attributes.screenBrightness = value.coerceIn(0.01f, 1f)
+                current.window.attributes = attributes
+                result.success(true)
+            }
+            "restoreVideoBrightness" -> {
+                val current = activity
+                val original = originalVideoBrightness
+                if (current != null && original != null) {
+                    val attributes = current.window.attributes
+                    attributes.screenBrightness = original
+                    current.window.attributes = attributes
+                }
+                originalVideoBrightness = null
+                result.success(true)
+            }
             "mediaStart", "mediaUpdate" -> {
                 val intent = Intent(context, MediaPlaybackService::class.java).apply {
                     action = MediaPlaybackService.ACTION_UPDATE
