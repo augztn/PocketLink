@@ -20,8 +20,8 @@ class AppSettings extends ChangeNotifier {
   static const _homeSearchKey = 'settings_home_search';
   static const _homeTransfersKey = 'settings_home_transfers';
   static const _homeSectionOrderKey = 'settings_home_section_order';
-  // Keep the existing preference key so saved shortcut choices survive the cleanup.
-  static const _musicButtonShortcutsKey = 'settings_floating_shortcuts';
+  static const _musicButtonShortcutsKey = 'settings_music_button_shortcuts';
+  static const _legacyFloatingShortcutsKey = 'settings_floating_shortcuts';
   static const _musicButtonSwipeEnabledKey = 'settings_music_button_swipe_enabled';
   static const _musicButtonSwipeLeftActionKey = 'settings_music_button_swipe_left_action';
   static const _musicButtonSwipeRightActionKey = 'settings_music_button_swipe_right_action';
@@ -140,7 +140,8 @@ class AppSettings extends ChangeNotifier {
       _musicButtonSwipeLeftAction = _validMusicSwipeAction(preferences.getString(_musicButtonSwipeLeftActionKey), 'next');
       _musicButtonSwipeRightAction = _validMusicSwipeAction(preferences.getString(_musicButtonSwipeRightActionKey), 'previous');
       _musicButtonLongPressEnabled = preferences.getBool(_musicButtonLongPressEnabledKey) ?? true;
-      final rawMusicButtonShortcuts = preferences.getString(_musicButtonShortcutsKey);
+      final rawMusicButtonShortcuts = preferences.getString(_musicButtonShortcutsKey) ??
+          preferences.getString(_legacyFloatingShortcutsKey);
       if (rawMusicButtonShortcuts != null) {
         final decoded = jsonDecode(rawMusicButtonShortcuts);
         if (decoded is List) {
@@ -154,6 +155,18 @@ class AppSettings extends ChangeNotifier {
             _musicButtonShortcuts = values;
           }
         }
+      }
+      if (preferences.containsKey(_legacyFloatingShortcutsKey)) {
+        await Future.wait([
+          preferences.setString(
+            _musicButtonShortcutsKey,
+            jsonEncode(_musicButtonShortcuts),
+          ),
+          preferences.remove(_legacyFloatingShortcutsKey),
+          preferences.remove('settings_floating_shortcut_enabled'),
+          preferences.remove('settings_floating_shortcut_tap_action'),
+          preferences.remove('settings_floating_shortcut_long_press'),
+        ]);
       }
       _showGlobalSearch = preferences.getBool(_homeSearchKey) ?? true;
       _showActiveTransfers = preferences.getBool(_homeTransfersKey) ?? true;
@@ -290,6 +303,7 @@ class AppSettings extends ChangeNotifier {
       final preferences = await SharedPreferences.getInstance();
       await Future.wait([
         preferences.remove(_musicButtonShortcutsKey),
+        preferences.remove(_legacyFloatingShortcutsKey),
       ]);
     });
     _musicButtonShortcutsWrite = write;
