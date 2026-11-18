@@ -8,6 +8,7 @@ class FloatingQuickShortcut extends StatefulWidget {
     required this.expanded,
     required this.useLiquidGlass,
     required this.onTap,
+    required this.onCollapse,
     required this.onLongPress,
     required this.longPressEnabled,
     required this.onSelect,
@@ -18,6 +19,7 @@ class FloatingQuickShortcut extends StatefulWidget {
   final bool expanded;
   final bool useLiquidGlass;
   final VoidCallback onTap;
+  final VoidCallback onCollapse;
   final VoidCallback onLongPress;
   final bool longPressEnabled;
   final ValueChanged<String> onSelect;
@@ -89,7 +91,7 @@ class _FloatingQuickShortcutState extends State<FloatingQuickShortcut>
                     shape: const CircleBorder(),
                     child: InkWell(
                       customBorder: const CircleBorder(),
-                      onTap: widget.onTap,
+                      onTap: widget.expanded ? widget.onCollapse : widget.onTap,
                       onLongPress: widget.longPressEnabled ? widget.onLongPress : null,
                       child: _MainButtonIcon(
                         expanded: widget.expanded,
