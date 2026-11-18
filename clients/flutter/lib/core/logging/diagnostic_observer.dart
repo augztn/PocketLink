@@ -21,19 +21,21 @@ class DiagnosticNavigatorObserver extends NavigatorObserver {
   }
 
   void _updateControlVisibility() {
-    final dashboardRoute = PocketLinkAppBar.dashboardRouteName;
-    final hasDashboard = _routes.any((route) => route.settings.name == dashboardRoute);
     final currentRoute = _routes.isEmpty ? null : _routes.last;
-    final canShowControls = hasDashboard &&
-        currentRoute is PageRoute &&
-        !_isControlsSuppressed(currentRoute);
+    final canShowControls =
+        currentRoute is PageRoute && !_isControlsSuppressed(currentRoute);
     controlsVisible.value = canShowControls;
-    dashboardVisible.value =
-        canShowControls && currentRoute.settings.name == dashboardRoute;
+    dashboardVisible.value = canShowControls &&
+        currentRoute.settings.name == PocketLinkAppBar.dashboardRouteName;
   }
 
-  String _routeLabel(Route<dynamic>? route) =>
-      route == null ? 'none' : route.runtimeType.toString();
+  String _routeLabel(Route<dynamic>? route) {
+    if (route == null) return 'none';
+    final name = route.settings.name;
+    return name == null
+        ? route.runtimeType.toString()
+        : '${route.runtimeType}($name)';
+  }
 
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
