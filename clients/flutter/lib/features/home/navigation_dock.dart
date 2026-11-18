@@ -16,6 +16,7 @@ class FloatingNavigationDock extends StatelessWidget {
     this.isVideo = false,
     this.onNextTrack,
     this.onPreviousTrack,
+    this.enableMusicSwipe = false,
     this.preview = false,
     super.key,
   });
@@ -30,6 +31,7 @@ class FloatingNavigationDock extends StatelessWidget {
   final bool isVideo;
   final VoidCallback? onNextTrack;
   final VoidCallback? onPreviousTrack;
+  final bool enableMusicSwipe;
   final bool preview;
 
   static const _labels = <String, String>{
@@ -98,7 +100,7 @@ class FloatingNavigationDock extends StatelessWidget {
             isPlaying: isPlaying,
             hasMedia: hasMedia,
             isVideo: isVideo,
-            canChangeTracks: hasMedia && !isVideo,
+            canChangeTracks: enableMusicSwipe && hasMedia && !isVideo,
             onTap: onBrowsePressed,
             onNext: onNextTrack,
             onPrevious: onPreviousTrack,
