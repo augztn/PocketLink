@@ -44,7 +44,7 @@ class HomeDashboard extends StatefulWidget {
 }
 
 class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserver {
-  bool _checking = true;
+  bool _checking = false;
   bool? _serverOnline;
   Duration? _latency;
   DateTime? _lastCheckedAt;
