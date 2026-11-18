@@ -69,7 +69,8 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay> {
     if (!mounted || _trackPopup == null) return;
     final buttonContext = PocketLinkNavigation.musicButtonKey.currentContext;
     final button = buttonContext?.findRenderObject();
-    final overlay = context.findRenderObject();
+    final overlay = PocketLinkNavigation.mediaOverlayKey.currentContext
+        ?.findRenderObject();
     if (button is! RenderBox || overlay is! RenderBox ||
         !button.attached || !overlay.attached) {
       return;
@@ -171,6 +172,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay> {
           }
 
           return Stack(
+            key: PocketLinkNavigation.mediaOverlayKey,
             fit: StackFit.expand,
             children: [
               Positioned.fill(child: navigatorContent),
