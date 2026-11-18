@@ -19,6 +19,9 @@ class FloatingNavigationDock extends StatelessWidget {
     this.onPreviousTrack,
     this.enableMusicSwipe = false,
     this.canChangeTracks = false,
+    this.leftSwipeAction = 'forward',
+    this.rightSwipeAction = 'backward',
+    this.onMusicLongPress,
     this.preview = false,
     super.key,
   });
@@ -35,6 +38,9 @@ class FloatingNavigationDock extends StatelessWidget {
   final VoidCallback? onPreviousTrack;
   final bool enableMusicSwipe;
   final bool canChangeTracks;
+  final String leftSwipeAction;
+  final String rightSwipeAction;
+  final VoidCallback? onMusicLongPress;
   final bool preview;
 
   static const _labels = <String, String>{
@@ -104,6 +110,9 @@ class FloatingNavigationDock extends StatelessWidget {
             hasMedia: hasMedia,
             isVideo: isVideo,
             canChangeTracks: enableMusicSwipe && canChangeTracks && !isVideo,
+            leftSwipeAction: leftSwipeAction,
+            rightSwipeAction: rightSwipeAction,
+            onLongPress: onMusicLongPress,
             onTap: onBrowsePressed,
             onNext: onNextTrack,
             onPrevious: onPreviousTrack,
@@ -213,7 +222,10 @@ class _MusicDockButton extends StatefulWidget {
     required this.hasMedia,
     required this.isVideo,
     required this.canChangeTracks,
+    required this.leftSwipeAction,
+    required this.rightSwipeAction,
     required this.onTap,
+    this.onLongPress,
     required this.activeColor,
     this.onNext,
     this.onPrevious,
@@ -223,6 +235,9 @@ class _MusicDockButton extends StatefulWidget {
   final bool hasMedia;
   final bool isVideo;
   final bool canChangeTracks;
+  final String leftSwipeAction;
+  final String rightSwipeAction;
+  final VoidCallback? onLongPress;
   final VoidCallback onTap;
   final VoidCallback? onNext;
   final VoidCallback? onPrevious;
@@ -281,10 +296,13 @@ class _MusicDockButtonState extends State<_MusicDockButton>
     final distance = _dragDistance;
     final didSwipe = distance.abs() >= 48 || velocity.abs() >= 450;
     if (didSwipe) {
-      // Right = next; left = previous. A distance threshold avoids accidental
-      // track changes from small navigation-dock movements.
+      // Left defaults to forward/next; right defaults to backward/previous.
+      // Users can independently reverse either direction in Navigation settings.
       final direction = distance.abs() >= 48 ? distance : velocity;
-      if (direction > 0) {
+      final action = direction < 0
+          ? widget.leftSwipeAction
+          : widget.rightSwipeAction;
+      if (action == 'forward') {
         widget.onNext?.call();
       } else {
         widget.onPrevious?.call();
@@ -308,7 +326,10 @@ class _MusicDockButtonState extends State<_MusicDockButton>
       child: Semantics(
         button: true,
         label: widget.hasMedia && widget.isVideo ? 'Video player' : 'Music',
-        customSemanticsActions: semanticsActions,
+        customSemanticsActions: {
+          ...?semanticsActions,
+          CustomSemanticsAction(label: 'Open Explore'): () => widget.onLongPress?.call(),
+        },
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onHorizontalDragUpdate:
@@ -330,6 +351,7 @@ class _MusicDockButtonState extends State<_MusicDockButton>
                 child: InkWell(
                   customBorder: const CircleBorder(),
                   onTap: widget.onTap,
+                  onLongPress: widget.onLongPress,
                   child: AnimatedBuilder(
                     animation: _swipeHintController,
                     builder: (context, _) {
