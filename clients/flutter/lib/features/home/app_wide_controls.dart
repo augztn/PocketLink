@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/logging/diagnostic_observer.dart';
+import '../../core/logging/app_logger.dart';
 import '../../core/settings/app_settings.dart';
 import '../media/persistent_audio_player.dart';
 import '../media/persistent_mini_player.dart';
@@ -68,6 +71,7 @@ class _AppWideControlsState extends State<AppWideControls> {
   bool _shortcutsExpanded = false;
   bool _miniPlayerDismissed = false;
   late bool _lastPlaying;
+  String? _lastVisibilitySignature;
 
   @override
   void initState() {
@@ -119,10 +123,36 @@ class _AppWideControlsState extends State<AppWideControls> {
         }
 
         final safeBottom = MediaQuery.paddingOf(context).bottom;
-        final showMiniPlayer = _settings.showMiniPlayer &&
-            _player.showMiniPlayer &&
+        final settingEnabled = _settings.showMiniPlayer;
+        final playerEligible = _player.showMiniPlayer;
+        final attached = _controller.isAttached;
+        final routeVisible = observer.controlsVisible.value;
+        final openActionAvailable = _controller.openNowPlaying != null;
+        final showMiniPlayer = settingEnabled &&
+            playerEligible &&
             !_miniPlayerDismissed &&
-            _controller.openNowPlaying != null;
+            openActionAvailable;
+
+        // Log only when a visibility input changes; never log track metadata or paths.
+        final visibilitySignature = [
+          'setting=$settingEnabled',
+          'playerEligible=$playerEligible',
+          'active=${_player.isActive}',
+          'music=${_player.isMusic}',
+          'hasItem=${_player.currentItem != null}',
+          'playing=${_player.isPlaying}',
+          'attached=$attached',
+          'routeVisible=$routeVisible',
+          'dashboard=${observer.dashboardVisible.value}',
+          'openAction=$openActionAvailable',
+          'dismissed=$_miniPlayerDismissed',
+          'shown=$showMiniPlayer',
+        ].join('|');
+        if (_lastVisibilitySignature != visibilitySignature) {
+          _lastVisibilitySignature = visibilitySignature;
+          unawaited(AppLogger.info('Global mini-player visibility changed',
+              fields: {'state': visibilitySignature}));
+        }
         // Shortcuts are opened exclusively by long-pressing the Music dock button.
         final showShortcut = _shortcutsExpanded && _controller.selectShortcut != null;
         final dashboardVisible = observer.dashboardVisible.value;
