@@ -106,7 +106,9 @@ class _FloatingQuickShortcutState extends State<FloatingQuickShortcut>
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
     final menuContent = Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: Column(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 176),
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
@@ -120,6 +122,7 @@ class _FloatingQuickShortcutState extends State<FloatingQuickShortcut>
             ),
           ],
         ],
+        ),
       ),
     );
     // Avoid a zero-sized animated render subtree in reduced-motion mode.
