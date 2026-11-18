@@ -269,12 +269,67 @@ class _MusicDockButtonState extends State<_MusicDockButton>
     if (widget.canChangeTracks) _playSwipeHint();
   }
 
+  OverlayEntry? _trackPopupEntry;
+
   void _showTrackPopup(String? title) {
     if (title == null || title.trim().isEmpty || title == _visibleTrackTitle) return;
     _trackPopupTimer?.cancel();
-    setState(() => _visibleTrackTitle = title.trim());
+    _visibleTrackTitle = title.trim();
+
+    final renderObject = context.findRenderObject();
+    final overlay = Overlay.maybeOf(context, rootOverlay: true);
+    if (renderObject is RenderBox && renderObject.hasSize && overlay != null) {
+      final origin = renderObject.localToGlobal(Offset.zero);
+      final screen = MediaQuery.sizeOf(context);
+      final safeTop = MediaQuery.paddingOf(context).top;
+      const popupHeight = 40.0;
+      const horizontalMargin = 12.0;
+      final popupWidth = math.min(216.0, screen.width - horizontalMargin * 2);
+      final left = (origin.dx + renderObject.size.width / 2 - popupWidth / 2)
+          .clamp(horizontalMargin, screen.width - popupWidth - horizontalMargin)
+          .toDouble();
+      final top = (origin.dy - popupHeight - 10)
+          .clamp(safeTop + 8, screen.height - popupHeight - 8)
+          .toDouble();
+
+      _trackPopupEntry?.remove();
+      _trackPopupEntry = OverlayEntry(
+        builder: (overlayContext) => Positioned(
+          left: left,
+          top: top,
+          width: popupWidth,
+          child: IgnorePointer(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 240),
+              reverseDuration: const Duration(milliseconds: 180),
+              transitionBuilder: (child, animation) => FadeTransition(
+                opacity: animation,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0, 0.22),
+                    end: Offset.zero,
+                  ).animate(CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                  )),
+                  child: child,
+                ),
+              ),
+              child: _TrackChangePopup(
+                key: ValueKey(_visibleTrackTitle),
+                title: _visibleTrackTitle!,
+              ),
+            ),
+          ),
+        ),
+      );
+      overlay.insert(_trackPopupEntry!);
+    }
+
     _trackPopupTimer = Timer(const Duration(milliseconds: 2400), () {
-      if (mounted) setState(() => _visibleTrackTitle = null);
+      _trackPopupEntry?.remove();
+      _trackPopupEntry = null;
+      _visibleTrackTitle = null;
     });
   }
 
@@ -302,6 +357,8 @@ class _MusicDockButtonState extends State<_MusicDockButton>
   @override
   void dispose() {
     _trackPopupTimer?.cancel();
+    _trackPopupEntry?.remove();
+    _trackPopupEntry = null;
     _swipeHintController.dispose();
     super.dispose();
   }
@@ -452,32 +509,6 @@ class _MusicDockButtonState extends State<_MusicDockButton>
           ),
           ),
           ),
-          if (_visibleTrackTitle != null)
-            Positioned(
-              bottom: 70,
-              left: -76,
-              width: 216,
-              child: IgnorePointer(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 240),
-                  reverseDuration: const Duration(milliseconds: 180),
-                  transitionBuilder: (child, animation) => FadeTransition(
-                    opacity: animation,
-                    child: SlideTransition(
-                      position: Tween<Offset>(
-                        begin: const Offset(0, 0.22),
-                        end: Offset.zero,
-                      ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
-                      child: child,
-                    ),
-                  ),
-                  child: _TrackChangePopup(
-                    key: ValueKey(_visibleTrackTitle),
-                    title: _visibleTrackTitle!,
-                  ),
-                ),
-              ),
-            ),
         ],
       ),
     );
