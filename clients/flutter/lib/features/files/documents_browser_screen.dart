@@ -2,6 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:material_ui/material_ui.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/compact_search_field.dart';
+import '../../core/widgets/pocketlink_file_icon.dart';
 
 import '../../core/network/server_api.dart';
 
@@ -243,22 +244,18 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
                         itemBuilder: (context, index) {
                           final document = items[index];
                           final extension = document.entry.name.split('.').last.toUpperCase();
-                          return Container(
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF1C1C1E),
-                              borderRadius: BorderRadius.circular(18),
-                              border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                           final colors = Theme.of(context).colorScheme;
+                           return Container(
+                             decoration: BoxDecoration(
+                               color: colors.surfaceContainerLow,
+                               borderRadius: BorderRadius.circular(18),
+                               border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.62)),
                             ),
                             child: ListTile(
-                              leading: Container(
-                                width: 44,
-                                height: 44,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF161618),
-                                  borderRadius: BorderRadius.circular(13),
-                                ),
-                                child: const Icon(Icons.description_outlined),
-                              ),
+                              leading: PocketLinkFileIcon(
+                                 name: document.entry.name,
+                                 size: 44,
+                               ),
                               title: Text(document.entry.name,
                                 maxLines: 1, overflow: TextOverflow.ellipsis),
                               subtitle: Text(

@@ -3,6 +3,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
+import '../../core/widgets/pocketlink_file_icon.dart';
 
 import '../../core/network/server_api.dart';
 import '../../core/navigation/pocketlink_navigation.dart';
@@ -87,47 +88,18 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     return _categoryExtensions[_category]?.contains(_extension(item)) ?? false;
   }
 
-  IconData _iconFor(FileEntry item) {
-    if (item.isDirectory) return Icons.folder_rounded;
-    final extension = _extension(item);
-    if (_categoryExtensions['Images']!.contains(extension)) {
-      return Icons.image_outlined;
-    }
-    if (_categoryExtensions['Videos']!.contains(extension)) {
-      return Icons.video_file_outlined;
-    }
-    if (_audioExtensions.contains(extension)) return Icons.audio_file_rounded;
-    if (_categoryExtensions['Music']!.contains(extension)) {
-      return Icons.audio_file_outlined;
-    }
-    if (_categoryExtensions['Documents']!.contains(extension)) {
-      return Icons.description_outlined;
-    }
-    return Icons.insert_drive_file_outlined;
-  }
+  PocketLinkFileVisual _fileVisual(FileEntry item, ColorScheme colors) =>
+      PocketLinkFileVisuals.resolve(
+        name: item.name,
+        isDirectory: item.isDirectory,
+        colors: colors,
+      );
 
-  Color _iconColorFor(FileEntry item, ColorScheme colors) {
-    if (item.isDirectory) return colors.primary;
-    final extension = _extension(item);
-    if (_categoryExtensions['Images']!.contains(extension)) {
-      return const Color(0xFFF4B544);
-    }
-    if (_categoryExtensions['Videos']!.contains(extension)) {
-      return const Color(0xFF2BBEAE);
-    }
-    if (_audioExtensions.contains(extension) ||
-        _categoryExtensions['Music']!.contains(extension)) {
-      return const Color(0xFF9A83F5);
-    }
-    if (extension == 'pdf') return const Color(0xFFF16B6B);
-    if (_categoryExtensions['Documents']!.contains(extension)) {
-      return const Color(0xFF64A5F5);
-    }
-    if (const {'zip', '7z', 'rar', 'tar', 'gz', 'bz2'}.contains(extension)) {
-      return const Color(0xFFF09A48);
-    }
-    return colors.secondary;
-  }
+  IconData _iconFor(FileEntry item) =>
+      _fileVisual(item, Theme.of(context).colorScheme).icon;
+
+  Color _iconColorFor(FileEntry item, ColorScheme colors) =>
+      _fileVisual(item, colors).color;
 
   @override
   void didUpdateWidget(covariant FileManagerScreen oldWidget) {

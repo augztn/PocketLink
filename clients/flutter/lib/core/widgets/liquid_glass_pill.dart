@@ -32,9 +32,9 @@ class LiquidGlassPill extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Color(0xEE252A36),
-                  Color(0xE6191C25),
-                  Color(0xF414161E),
+                  Color(0xCC252A36),
+                  Color(0xB3191C25),
+                  Color(0xC914161E),
                 ],
                 stops: [0, 0.48, 1],
               )
@@ -42,9 +42,9 @@ class LiquidGlassPill extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Color(0xF8FFFFFF),
-                  Color(0xEEF2F5FF),
-                  Color(0xF3EAF0FF),
+                  Color(0xDFFFFFFF),
+                  Color(0xCCEAF0FF),
+                  Color(0xD4E6EBF8),
                 ],
                 stops: [0, 0.52, 1],
               );
@@ -52,14 +52,14 @@ class LiquidGlassPill extends StatelessWidget {
         final border = useGlass
             ? Border(
                 top: BorderSide(
-                  color: Colors.white.withValues(alpha: isDark ? 0.28 : 0.92),
-                  width: isDark ? 1.0 : 1.2,
+                  color: Colors.white.withValues(alpha: isDark ? 0.30 : 0.78),
+                  width: isDark ? 1.0 : 1.15,
                 ),
                 left: BorderSide(
-                  color: Colors.white.withValues(alpha: isDark ? 0.13 : 0.72),
+                  color: Colors.white.withValues(alpha: isDark ? 0.14 : 0.54),
                 ),
                 right: BorderSide(
-                  color: Colors.white.withValues(alpha: isDark ? 0.12 : 0.72),
+                  color: Colors.white.withValues(alpha: isDark ? 0.12 : 0.48),
                 ),
                 bottom: BorderSide(
                   color: (isDark ? Colors.white : const Color(0xFF4760FA))
@@ -73,18 +73,14 @@ class LiquidGlassPill extends StatelessWidget {
 
         final surface = Container(
           decoration: BoxDecoration(
-            color: useGlass
-                ? null
-                : (isDark
-                    ? const Color(0xFF161618)
-                    : colors.surface),
+            color: useGlass ? null : colors.surfaceContainerLow,
             gradient: useGlass ? gradient : null,
             borderRadius: radius,
             border: border,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.36 : 0.12),
-                blurRadius: useGlass ? 26 : 18,
+                color: Colors.black.withValues(alpha: isDark ? 0.34 : 0.10),
+                blurRadius: useGlass ? 30 : 18,
                 offset: const Offset(0, 8),
                 spreadRadius: -3,
               ),
@@ -92,7 +88,7 @@ class LiquidGlassPill extends StatelessWidget {
                 BoxShadow(
                   color: (isDark ? Colors.black : const Color(0xFF283C8E))
                       .withValues(alpha: isDark ? 0.18 : 0.08),
-                  blurRadius: 8,
+                  blurRadius: 10,
                   offset: const Offset(0, 2),
                 ),
             ],
@@ -105,8 +101,8 @@ class LiquidGlassPill extends StatelessWidget {
                     end: Alignment.bottomCenter,
                     stops: const [0, 0.42, 1],
                     colors: [
-                      Colors.white.withValues(alpha: isDark ? 0.10 : 0.62),
-                      Colors.white.withValues(alpha: isDark ? 0.025 : 0.10),
+                      Colors.white.withValues(alpha: isDark ? 0.14 : 0.46),
+                      Colors.white.withValues(alpha: isDark ? 0.035 : 0.12),
                       Colors.transparent,
                     ],
                   )
@@ -126,7 +122,7 @@ class LiquidGlassPill extends StatelessWidget {
           child: ClipRRect(
             borderRadius: radius,
             child: BackdropFilter(
-              filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+              filter: ui.ImageFilter.blur(sigmaX: 28, sigmaY: 28),
               child: surface,
             ),
           ),
