@@ -1021,7 +1021,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             child: Transform.translate(
               offset: Offset(0, _dismissDragDistance),
               child: Transform.scale(
-                scale: (1 - (_dismissDragDistance / 1000).clamp(0.0, 0.10)).toDouble()
+                scale: (1 - (_dismissDragDistance / 1000).clamp(0.0, 0.10)).toDouble(),
                 alignment: Alignment.topCenter,
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(

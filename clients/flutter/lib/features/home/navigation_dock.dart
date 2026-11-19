@@ -137,7 +137,7 @@ class FloatingNavigationDock extends StatelessWidget {
                     hasMedia: hasMedia,
                     isVideo: isVideo,
                     expanded: musicShortcutsExpanded,
-                    onTap: expanded
+                    onTap: musicShortcutsExpanded
                         ? (onMusicShortcutDismissed ?? () {})
                         : onBrowsePressed,
                     onLongPress: onMusicShortcutLongPress,
