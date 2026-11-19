@@ -70,10 +70,12 @@ class FloatingNavigationDock extends StatelessWidget {
         Expanded(
           child: LiquidGlassPill(
             radius: BorderRadius.circular(32),
-            child: SizedBox(
-              height: 64,
-              child: Row(
-                children: [
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+              child: SizedBox(
+                height: 54,
+                child: Row(
+                  children: [
                   for (final id in ids)
                     Expanded(
                       child: _DockTab(
@@ -91,10 +93,10 @@ class FloatingNavigationDock extends StatelessWidget {
                         },
                         label: _labels[id]!,
                         onTap: onSelect,
-                        activeColor: colors.primary,
                       ),
                     ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -406,8 +408,6 @@ class _DockTab extends StatelessWidget {
   final IconData activeIcon;
   final String label;
   final ValueChanged<int> onTap;
-  final Color activeColor;
-
   @override
   Widget build(BuildContext context) {
     final selected = selectedIndex == index;
@@ -423,21 +423,38 @@ class _DockTab extends StatelessWidget {
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 220),
             curve: Curves.easeOutCubic,
-            margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
+            margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
             decoration: BoxDecoration(
-              color: selected
+              gradient: selected
                   ? (Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white.withValues(alpha: 0.16)
-                      : Color.alphaBlend(
-                          const Color(0x1A536DFE),
-                          Colors.white.withValues(alpha: 0.90),
+                      ? LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.white.withValues(alpha: 0.14),
+                            Colors.white.withValues(alpha: 0.07),
+                          ],
+                        )
+                      : LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Color.alphaBlend(
+                              const Color(0x1A536DFE),
+                              Colors.white.withValues(alpha: 0.90),
+                            ),
+                            Color.alphaBlend(
+                              const Color(0x1A536DFE),
+                              Colors.white.withValues(alpha: 0.90),
+                            ),
+                          ],
                         ))
-                  : Colors.transparent,
+                  : null,
               borderRadius: BorderRadius.circular(25),
               border: selected
                   ? Border.all(
                       color: Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white.withValues(alpha: 0.28)
+                          ? Colors.white.withValues(alpha: 0.22)
                           : const Color(0xFF536DFE)
                               .withValues(alpha: 0.25),
                     )
