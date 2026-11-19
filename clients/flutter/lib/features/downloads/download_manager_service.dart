@@ -44,9 +44,21 @@ class DownloadManagerService extends ChangeNotifier {
       .where((task) => task.status == DownloadStatus.downloading)
       .fold(0, (sum, task) => sum + task.speedBytesPerSecond);
 
-  Future<void> initialize() {
-    if (_initialized) return Future<void>.value();
-    return _initialization ??= _initialize();
+  Future<void> initialize() async {
+    if (_initialized) return;
+    final pending = _initialization;
+    if (pending != null) {
+      await pending;
+      return;
+    }
+    final initialization = _initialize();
+    _initialization = initialization;
+    try {
+      await initialization;
+    } catch (_) {
+      _initialization = null;
+      rethrow;
+    }
   }
 
   Future<void> _initialize() async {
@@ -74,11 +86,19 @@ class DownloadManagerService extends ChangeNotifier {
         await preferences.remove(_tasksKey);
       }
     }
+    try {
+      _isWifi = (await Connectivity().checkConnectivity())
+          .contains(ConnectivityResult.wifi);
+    } catch (_) {
+      _isWifi = false;
+    }
+    try {
+      _connectivitySubscription =
+          Connectivity().onConnectivityChanged.listen(_handleConnectivity);
+    } catch (_) {
+      // A missing connectivity plugin must not prevent manual downloads.
+    }
     _initialized = true;
-    _isWifi = (await Connectivity().checkConnectivity())
-        .contains(ConnectivityResult.wifi);
-    _connectivitySubscription =
-        Connectivity().onConnectivityChanged.listen(_handleConnectivity);
     AppSettings.instance.addListener(_handleSettingsChanged);
     notifyListeners();
     _pumpQueue();
@@ -302,7 +322,9 @@ class DownloadManagerService extends ChangeNotifier {
         : name.substring(0, name.length - extension.length);
     var candidate = p.join(directory, name);
     var suffix = 1;
-    while (await File(candidate).exists()) {
+    while (await File(candidate).exists() ||
+        await File('$candidate.part').exists() ||
+        _tasks.any((task) => task.destinationPath == candidate)) {
       candidate = p.join(directory, '$stem ($suffix)$extension');
       suffix++;
     }
