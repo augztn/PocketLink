@@ -917,7 +917,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                 duration: const Duration(milliseconds: 140), curve: Curves.easeOutCubic,
                 height: _dragPosition == null ? 6 : 11,
                 decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.22), borderRadius: BorderRadius.circular(99)),
-                clipBehavior: Clip.antiAlias,
                 child: Align(alignment: Alignment.centerLeft, child: FractionallySizedBox(
                   widthFactor: progress,
                   child: const DecoratedBox(decoration: BoxDecoration(color: Colors.white,
@@ -1046,7 +1045,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                 final shouldDismiss = _dismissDragDistance > 100 ||
                     (details.primaryVelocity ?? 0) > 500;
                 if (shouldDismiss) {
-                  Navigator.maybePop(context);
+                  setState(() => _dismissDragDistance = 0);
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) Navigator.maybePop(context);
+                  });
                 } else if (mounted) {
                   setState(() => _dismissDragDistance = 0);
                 }
