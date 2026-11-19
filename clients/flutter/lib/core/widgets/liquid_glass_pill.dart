@@ -79,11 +79,10 @@ class LiquidGlassSurface extends StatelessWidget {
                 width: 1,
               );
 
-        final decoration = BoxDecoration(
-          color: useGlass ? null : colors.surfaceContainerLow,
-          gradient: useGlass ? glassFill : null,
+        // Keep the shadow outside the clip so the rounded glass edge stays clean.
+        // The same radius is used by the shadow, clip, fill and border.
+        final shadow = BoxDecoration(
           borderRadius: radius,
-          border: border,
           boxShadow: [
             BoxShadow(
               color: isDark
@@ -99,69 +98,74 @@ class LiquidGlassSurface extends StatelessWidget {
           ],
         );
 
-        final surface = DecoratedBox(
-          decoration: decoration,
-          child: Stack(
-            fit: StackFit.passthrough,
-            children: [
-              child,
-              if (useGlass)
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.center,
-                          colors: [
-                            Colors.white.withValues(
-                              alpha: isDark ? 0.075 : 0.95,
-                            ),
-                            Colors.transparent,
-                          ],
-                          stops: const [0, 1],
+        final decoration = BoxDecoration(
+          color: useGlass ? null : colors.surfaceContainerLow,
+          gradient: useGlass ? glassFill : null,
+          borderRadius: radius,
+          border: border,
+        );
+
+        final surface = ClipRRect(
+          borderRadius: radius,
+          child: DecoratedBox(
+            decoration: decoration,
+            child: Stack(
+              fit: StackFit.passthrough,
+              children: [
+                child,
+                if (useGlass)
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.center,
+                            colors: [
+                              Colors.white.withValues(
+                                alpha: isDark ? 0.075 : 0.95,
+                              ),
+                              Colors.transparent,
+                            ],
+                            stops: const [0, 1],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              if (useGlass && !isDark)
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.bottomCenter,
-                          end: Alignment.center,
-                          colors: [
-                            Colors.white.withValues(alpha: 0.45),
-                            Colors.transparent,
-                          ],
-                          stops: const [0, 1],
+                if (useGlass && !isDark)
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.center,
+                            colors: [
+                              Colors.white.withValues(alpha: 0.45),
+                              Colors.transparent,
+                            ],
+                            stops: const [0, 1],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         );
 
-        if (!useGlass) {
-          return ClipRRect(
-            borderRadius: radius,
-            child: surface,
-          );
-        }
-
-        return RepaintBoundary(
-          child: ClipRRect(
-            borderRadius: radius,
-            child: BackdropFilter(
-              filter: ui.ImageFilter.blur(sigmaX: 28, sigmaY: 28),
-              child: surface,
-            ),
-          ),
+        return DecoratedBox(
+          decoration: shadow,
+          child: useGlass
+              ? RepaintBoundary(
+                  child: BackdropFilter(
+                    filter: ui.ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+                    child: surface,
+                  ),
+                )
+              : surface,
         );
       },
     );
