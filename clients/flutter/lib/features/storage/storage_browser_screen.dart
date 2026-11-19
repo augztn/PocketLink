@@ -12,7 +12,7 @@ import '../../core/navigation/pocketlink_navigation.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/settings/app_settings.dart';
 import '../media/persistent_audio_player.dart';
-import '../media/global_media_overlay.dart';
+import '../media/now_playing_overlay_controller.dart';
 import '../transfers/transfer_manager.dart';
 import '../transfers/transfer_manager_screen.dart';
 
@@ -217,7 +217,7 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
       initialIndex: 0,
       isMusic: true,
     );
-    GlobalMediaOverlay.openNowPlaying();
+    NowPlayingOverlayController.open();
   }
 
   Future<void> _openFile(FileEntry item) async {
