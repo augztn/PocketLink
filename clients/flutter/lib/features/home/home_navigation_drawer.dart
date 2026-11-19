@@ -142,7 +142,7 @@ class PocketLinkHomeDrawer extends StatelessWidget {
             ),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
                 children: [
                   _sectionLabel(context, 'QUICK LIBRARIES'),
                   const SizedBox(height: 9),
@@ -234,59 +234,54 @@ class PocketLinkHomeDrawer extends StatelessWidget {
                       subtitle: const Text('Return to server connection'),
                       onTap: () => _closeThen(context, onSwitchServer!),
                     ),
-                ],
-              ),
-            ),
-            AnimatedBuilder(
-              animation: AppSettings.instance,
-              builder: (context, _) {
-                final settings = AppSettings.instance;
-                final isDark = settings.themeMode == ThemeMode.dark;
-                return Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      top: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.06),
-                        width: 1,
-                      ),
-                    ),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 12),
+                    child: Divider(height: 1),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'APPEARANCE',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: colors.onSurfaceVariant,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                      const SizedBox(height: 9),
-                      Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.18),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.09)),
-                        ),
-                        child: Row(
+                  AnimatedBuilder(
+                    animation: AppSettings.instance,
+                    builder: (context, _) {
+                      final settings = AppSettings.instance;
+                      final isDark = settings.themeMode == ThemeMode.dark;
+                      return Padding(
+                        padding: const EdgeInsets.fromLTRB(0, 16, 0, 24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _ThemeSegment(label: 'Light', selected: settings.themeMode == ThemeMode.light,
-                              onTap: () => settings.setThemeMode(ThemeMode.light)),
-                            _ThemeSegment(label: 'Dark', selected: isDark && !settings.amoled,
-                              onTap: () => settings.setThemeMode(ThemeMode.dark)),
-                            _ThemeSegment(label: 'AMOLED', selected: settings.amoled,
-                              onTap: () => settings.setAmoled(true)),
+                            Text(
+                              'APPEARANCE',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: colors.onSurfaceVariant,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                            const SizedBox(height: 9),
+                            Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.18),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: Colors.white.withValues(alpha: 0.09)),
+                              ),
+                              child: Row(
+                                children: [
+                                  _ThemeSegment(label: 'Light', selected: settings.themeMode == ThemeMode.light,
+                                    onTap: () => settings.setThemeMode(ThemeMode.light)),
+                                  _ThemeSegment(label: 'Dark', selected: isDark && !settings.amoled,
+                                    onTap: () => settings.setThemeMode(ThemeMode.dark)),
+                                  _ThemeSegment(label: 'AMOLED', selected: settings.amoled,
+                                    onTap: () => settings.setAmoled(true)),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
-                      ),
-                    ],
+                      );
+                    },
                   ),
-                );
-              },
+                ],
+              ),
             ),
           ],
         ),
