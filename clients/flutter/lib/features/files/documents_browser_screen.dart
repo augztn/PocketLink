@@ -1,5 +1,4 @@
 import 'dart:ui' as ui;
-import 'package:file_picker/file_picker.dart';
 import 'package:material_ui/material_ui.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/compact_search_field.dart';
