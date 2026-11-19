@@ -1469,7 +1469,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                       style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurfaceVariant, fontFamily: 'monospace')),
                   ])),
                 ])),
-              )),
+              ))),
               SmokedGlassPopoverMenu<String>(
                 tooltip: 'More music actions',
                 items: [
