@@ -340,17 +340,17 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
   }
 
   InputDecoration _inputDecoration({required String hint, required IconData icon, Widget? suffixIcon}) {
-    const background = Color(0xFF161618);
+    final colors = Theme.of(context).colorScheme;
     final border = OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
-      borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+      borderSide: BorderSide(color: colors.outlineVariant.withValues(alpha: 0.68)),
     );
     return InputDecoration(
       hintText: hint,
-      prefixIcon: Icon(icon, color: Colors.white60),
+      prefixIcon: Icon(icon, color: colors.onSurfaceVariant),
       suffixIcon: suffixIcon,
       filled: true,
-      fillColor: background,
+      fillColor: colors.surfaceContainerLow,
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
       border: border,
       enabledBorder: border,
@@ -434,7 +434,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                           decoration: BoxDecoration(
                             color: colors.surfaceContainerHighest,
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                            border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.62)),
                           ),
                           child: Text(_networkLabel(profile['address']!),
                             style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant)),

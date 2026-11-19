@@ -364,27 +364,29 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
   }
 
   Future<void> _showServerSwitcherSheet() async {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) => SafeArea(
         child: Container(
           padding: const EdgeInsets.fromLTRB(18, 12, 18, 22),
-          decoration: const BoxDecoration(
-            color: Color(0xFF161618),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-            border: Border(top: BorderSide(color: Color(0x22FFFFFF))),
+          decoration: BoxDecoration(
+            color: colors.surfaceContainerLow,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border(top: BorderSide(color: colors.outlineVariant)),
           ),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Center(child: Container(width: 36, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(4)))),
+            Center(child: Container(width: 36, height: 4, decoration: BoxDecoration(color: colors.outline, borderRadius: BorderRadius.circular(4)))),
             const SizedBox(height: 18),
-            const Text('Server switcher & Native host', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800)),
+            Text('Server switcher & Native host', style: theme.textTheme.titleLarge?.copyWith(color: colors.onSurface, fontWeight: FontWeight.w800)),
             const SizedBox(height: 8),
             ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.swap_horiz_rounded, color: Colors.white70),
-              title: const Text('Switch server', style: TextStyle(color: Colors.white)),
-              subtitle: const Text('Choose or manage saved servers', style: TextStyle(color: Colors.white60)),
+              leading: Icon(Icons.swap_horiz_rounded, color: colors.onSurfaceVariant),
+              title: Text('Switch server', style: theme.textTheme.titleMedium?.copyWith(color: colors.onSurface)),
+              subtitle: Text('Choose or manage saved servers', style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
               onTap: widget.onReturnToConnection == null ? null : () {
                 Navigator.pop(sheetContext);
                 widget.onReturnToConnection!.call();
@@ -393,9 +395,9 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
             const Divider(color: Color(0x22FFFFFF)),
             ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.dns_outlined, color: Colors.white70),
-              title: const Text('Host PocketLink on this phone', style: TextStyle(color: Colors.white)),
-              subtitle: const Text('Set up this device as a PocketLink server', style: TextStyle(color: Colors.white60)),
+              leading: Icon(Icons.dns_outlined, color: colors.onSurfaceVariant),
+              title: Text('Host PocketLink on this phone', style: theme.textTheme.titleMedium?.copyWith(color: colors.onSurface)),
+              subtitle: Text('Set up this device as a PocketLink server', style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
               onTap: () {
                 Navigator.pop(sheetContext);
                 widget.onOpenHostSetup();
@@ -464,8 +466,9 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
 
   Widget _buildHostDeviceMetrics(ThemeData theme) {
     final telemetry = _hostTelemetry;
-    final muted = Colors.white.withValues(alpha: 0.58);
-    final foreground = Colors.white;
+    final colors = theme.colorScheme;
+    final muted = colors.onSurfaceVariant;
+    final foreground = colors.onSurface;
 
     String percentLabel(double? value) =>
         value == null ? '—' : '${value.clamp(0, 100).toStringAsFixed(0)}%';
@@ -485,9 +488,9 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.035),
+            color: colors.surfaceContainer,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.055)),
+            border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.62)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -510,7 +513,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                   child: LinearProgressIndicator(
                     value: (progress / 100).clamp(0.0, 1.0),
                     minHeight: 4,
-                    backgroundColor: Colors.white.withValues(alpha: 0.10),
+                    backgroundColor: colors.surfaceContainerHighest,
                     color: icon == Icons.battery_charging_full_rounded
                         ? const Color(0xFF4ADE80)
                         : const Color(0xFF60A5FA),
@@ -560,15 +563,15 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E2025),
+        color: theme.colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
+        border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.62)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            const Icon(Icons.memory_rounded, size: 18, color: Colors.white70),
+            Icon(Icons.memory_rounded, size: 18, color: muted),
             const SizedBox(width: 8),
             Expanded(child: Text('HOST DEVICE HEALTH',
               style: theme.textTheme.labelMedium?.copyWith(
@@ -720,7 +723,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
         Icon(icon, size: 15, color: muted),
         const SizedBox(width: 8),
         Expanded(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.labelMedium?.copyWith(color: Colors.white70))),
+          style: theme.textTheme.labelMedium?.copyWith(color: muted))),
         if (trailing != null)
           Text(trailing, style: theme.textTheme.labelSmall?.copyWith(color: muted)),
       ]),
@@ -734,10 +737,14 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
     final displayName = (widget.serverName ?? '').trim().isNotEmpty ? widget.serverName!.trim() : host;
     final route = _networkRouteLabel(base);
     final online = _serverOnline == true;
-    final statusColor = _checking ? Colors.amber : online ? const Color(0xFF4ADE80) : const Color(0xFFF59E0B);
-    final cardColor = const Color(0xFF1E2025);
-    final foreground = Colors.white;
-    final muted = Colors.white.withValues(alpha: 0.62);
+    final statusColor = _checking
+        ? (theme.brightness == Brightness.dark ? const Color(0xFFFBBF24) : const Color(0xFFB45309))
+        : online
+            ? (theme.brightness == Brightness.dark ? const Color(0xFF4ADE80) : const Color(0xFF059669))
+            : (theme.brightness == Brightness.dark ? const Color(0xFFF59E0B) : const Color(0xFFB45309));
+    final cardColor = colors.surfaceContainerLow;
+    final foreground = colors.onSurface;
+    final muted = colors.onSurfaceVariant;
     final mountedVolumes = _volumes.where((volume) => volume.available).toList(growable: false);
     return AnimatedBuilder(
       animation: transfers,
@@ -749,7 +756,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
             color: cardColor,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: online ? Colors.white.withValues(alpha: 0.075) : statusColor.withValues(alpha: 0.42),
+              color: online ? colors.outlineVariant.withValues(alpha: 0.62) : statusColor.withValues(alpha: 0.42),
             ),
           ),
           child: Column(
@@ -763,7 +770,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                   child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     const Padding(
                       padding: EdgeInsets.only(top: 2),
-                      child: Icon(Icons.dns_rounded, color: Colors.white70, size: 19),
+                      child: Icon(Icons.dns_rounded, color: colors.onSurfaceVariant, size: 19),
                     ),
                     const SizedBox(width: 9),
                     Expanded(
@@ -776,7 +783,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                     const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.075), borderRadius: BorderRadius.circular(20)),
+                      decoration: BoxDecoration(color: colors.surfaceContainerHighest, borderRadius: BorderRadius.circular(20)),
                       child: Text(route, style: theme.textTheme.labelSmall?.copyWith(color: foreground, fontWeight: FontWeight.w700)),
                     ),
                     const SizedBox(width: 2),
@@ -819,7 +826,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                 const SizedBox(height: 8),
                 Row(children: [
                   Expanded(child: Text('Server is unreachable. Check the network or server service.',
-                    style: theme.textTheme.bodySmall?.copyWith(color: Colors.white70))),
+                    style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant))),
                   TextButton(onPressed: () => _refreshStatus(forceRefresh: true), child: const Text('Reconnect')),
                   TextButton(onPressed: widget.onReturnToConnection, child: const Text('Switch')),
                 ]),
@@ -987,7 +994,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
 
   Widget _buildGlobalSearchEntry(ThemeData theme, ColorScheme colors) {
     return Material(
-      color: const Color(0xFF1E2025),
+      color: colors.surfaceContainerLow,
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
@@ -1048,7 +1055,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                     Text(active[index].progress == null
                         ? 'In progress'
                         : '${(active[index].progress! * 100).round()}%',
-                      style: theme.textTheme.labelSmall?.copyWith(color: Colors.white70)),
+                      style: theme.textTheme.labelSmall?.copyWith(color: muted)),
                   ]),
                   const SizedBox(height: 7),
                   LinearProgressIndicator(value: active[index].progress, minHeight: 4),
@@ -1056,7 +1063,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                   Text(active[index].total > 0
                       ? '${_formatBytes(active[index].transferred)} of ${_formatBytes(active[index].total)}'
                       : 'Transfer in progress',
-                    style: theme.textTheme.labelSmall?.copyWith(color: Colors.white60)),
+                    style: theme.textTheme.labelSmall?.copyWith(color: muted)),
                 ],
               ]),
             ),
@@ -1131,9 +1138,9 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E2025),
+        color: colors.surfaceContainerLow,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
+        border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.62)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
@@ -1153,7 +1160,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
           scanning
               ? 'Scanning $sourceLabel · ${elapsed}s elapsed'
               : 'Refresh the host device media and file index remotely.',
-          style: theme.textTheme.bodySmall?.copyWith(color: Colors.white60),
+          style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
         ),
         if (_mediaScanError != null) ...[
           const SizedBox(height: 7),
