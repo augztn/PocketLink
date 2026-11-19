@@ -314,6 +314,7 @@ class _HomeScreenState extends State<HomeScreen> {
         api: widget.api,
         serverName: widget.serverName,
         onOpenExplore: _openExplore,
+        onOpenLibrary: _openLibrary,
         onOpenFiles: () => _openTab(2),
         onOpenExternalStorage: _openExternalStorage,
         onOpenHostSetup: _openHostSetup,
