@@ -902,6 +902,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
               ),
               const SizedBox(width: 16),
               AnimatedRotation(turns: _musicMenuOpen ? 0.5 : 0, duration: const Duration(milliseconds: 200), child: const Icon(Icons.keyboard_arrow_down_rounded)),
+              const SizedBox(width: 12),
             ]),
           ),
           actionsBeforeHome: [
