@@ -269,6 +269,16 @@ class _ScrubberPainter extends CustomPainter {
         ..strokeWidth = 2.5
         ..strokeCap = StrokeCap.round;
       canvas.drawLine(Offset(left, centerY), Offset(right, centerY), remaining);
+      if (bufferedProgress > progress) {
+        canvas.drawLine(
+          Offset(right * progress, centerY),
+          Offset(right * bufferedProgress, centerY),
+          Paint()
+            ..color = buffered
+            ..strokeWidth = 4
+            ..strokeCap = StrokeCap.round,
+        );
+      }
       if (progress > 0) {
         final path = Path();
         final end = right * progress;
@@ -333,7 +343,11 @@ class _ScrubberPainter extends CustomPainter {
             const Radius.circular(2),
           ),
           Paint()
-            ..color = barProgress <= progress ? active : inactive,
+            ..color = barProgress <= progress
+                ? active
+                : barProgress <= bufferedProgress
+                    ? buffered
+                    : inactive,
         );
       }
     } else if (progress > 0) {
