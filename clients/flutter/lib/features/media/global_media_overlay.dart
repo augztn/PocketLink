@@ -10,13 +10,10 @@ import '../../core/settings/app_settings.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
 import 'now_playing_screen.dart';
 import 'persistent_audio_player.dart';
+import 'now_playing_overlay_controller.dart';
 
 class GlobalMediaOverlay extends StatefulWidget {
   const GlobalMediaOverlay({required this.child, super.key});
-
-  static VoidCallback? _openNowPlayingHandler;
-
-  static void openNowPlaying() => _openNowPlayingHandler?.call();
 
   final Widget child;
 
@@ -56,7 +53,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
       duration: const Duration(milliseconds: 380),
       reverseDuration: const Duration(milliseconds: 320),
     );
-    GlobalMediaOverlay._openNowPlayingHandler = _openNowPlaying;
+    NowPlayingOverlayController.register(_openNowPlaying);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) WidgetsBinding.instance.addObserver(this);
     });
@@ -68,7 +65,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     _player.removeListener(_onPlayerChanged);
     _trackPopupTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
-    GlobalMediaOverlay._openNowPlayingHandler = null;
+    NowPlayingOverlayController.unregister();
     _nowPlayingEntry?.remove();
     _nowPlayingEntry = null;
     _nowPlayingController.stop();
