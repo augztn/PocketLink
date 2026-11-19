@@ -487,7 +487,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                 const SizedBox(height: 18),
                 Row(
                   children: [
-                    Expanded(child: Text('Grid density', style: theme.textTheme.bodyMedium?.copyWith(color: colors.onSurfaceVariant)),
+                    Expanded(child: Text('Grid density', style: theme.textTheme.bodyMedium?.copyWith(color: colors.onSurfaceVariant))),
                     Text('$gridColumns columns', style: theme.textTheme.labelLarge?.copyWith(color: colors.onSurface)),
                   ],
                 ),
@@ -511,7 +511,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                     fillColor: colors.surfaceContainer,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+                      borderSide: BorderSide(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.68)),
                     ),
                   ),
                   dropdownColor: colors.surfaceContainerHigh,
@@ -594,7 +594,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                     icon: const Icon(Icons.clear),
                   ),
                   filled: true,
-                  fillColor: const Color(0xFF1C1C1E),
+                  fillColor: Theme.of(context).colorScheme.surfaceContainerLow,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(18),
                     borderSide: BorderSide.none,
@@ -614,7 +614,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.surfaceContainerLow,
                         borderRadius: BorderRadius.circular(22),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.62)),
                       ),
                       child: Row(
                         children: [
@@ -630,9 +630,9 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                     width: 42,
                     height: 42,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1C1C1E),
+                      color: Theme.of(context).colorScheme.surfaceContainerLow,
                       borderRadius: BorderRadius.circular(21),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.62)),
                     ),
                     child: IconButton(
                       tooltip: 'Photo filters and layout',

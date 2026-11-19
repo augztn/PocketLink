@@ -692,7 +692,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                       child: LinearProgressIndicator(
                         value: (volume.usagePercent!.clamp(0, 100)) / 100,
                         minHeight: 4,
-                        backgroundColor: Colors.white.withValues(alpha: 0.10),
+                        backgroundColor: colors.surfaceContainerHighest,
                         color: const Color(0xFF60A5FA),
                       ),
                     ),
@@ -787,7 +787,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                       child: Text(route, style: theme.textTheme.labelSmall?.copyWith(color: foreground, fontWeight: FontWeight.w700)),
                     ),
                     const SizedBox(width: 2),
-                    const Icon(Icons.expand_more_rounded, color: Colors.white54, size: 19),
+                    Icon(Icons.expand_more_rounded, color: colors.onSurfaceVariant, size: 19),
                   ]),
                 ),
               ),
@@ -811,7 +811,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                     visualDensity: VisualDensity.compact,
                     tooltip: 'Quick upload',
                     onPressed: online ? _quickUpload : null,
-                    icon: const Icon(Icons.arrow_upward_rounded, color: Colors.white, size: 18),
+                    icon: Icon(Icons.arrow_upward_rounded, color: colors.onSurface, size: 18),
                   ),
                 ),
               ]),
@@ -871,7 +871,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                     const Spacer(),
                     Text('${mountedVolumes.length + 1} mounted', style: theme.textTheme.labelSmall?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
                     const SizedBox(width: 3),
-                    const Icon(Icons.chevron_right_rounded, color: Colors.white70, size: 17),
+                    Icon(Icons.chevron_right_rounded, color: colors.onSurfaceVariant, size: 17),
                   ]),
                   const SizedBox(height: 7),
                   ClipRRect(
@@ -1007,8 +1007,8 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
             Icon(Icons.search_rounded, color: colors.primary),
             const SizedBox(width: 12),
             Expanded(child: Text('Search files, folders and media',
-              style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white70))),
-            const Icon(Icons.arrow_forward_rounded, color: Colors.white54, size: 18),
+              style: theme.textTheme.bodyMedium?.copyWith(color: colors.onSurfaceVariant))),
+            Icon(Icons.arrow_forward_rounded, color: colors.onSurfaceVariant, size: 18),
           ]),
         ),
       ),
@@ -1026,7 +1026,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
             .toList(growable: false);
         if (active.isEmpty) return const SizedBox.shrink();
         return Material(
-          color: const Color(0xFF1E2025),
+          color: colors.surfaceContainerLow,
           borderRadius: BorderRadius.circular(18),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
@@ -1147,11 +1147,13 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
           Icon(Icons.manage_search_rounded, color: colors.primary, size: 20),
           const SizedBox(width: 9),
           Expanded(child: Text('Host media library', style: theme.textTheme.titleSmall?.copyWith(
-            color: Colors.white, fontWeight: FontWeight.w800,
+            color: colors.onSurface, fontWeight: FontWeight.w800,
           ))),
           Text(scanning ? 'Scanning' : _mediaScanError != null ? 'Unavailable' : status == null ? 'Checking' : status.state == 'failed' ? 'Failed' : status.state == 'partial' ? 'Partial' : status.state == 'complete' ? 'Up to date' : 'Ready',
             style: theme.textTheme.labelSmall?.copyWith(
-              color: scanning || _mediaScanError != null ? const Color(0xFFFBBF24) : Colors.white70,
+              color: scanning || _mediaScanError != null
+                  ? (theme.brightness == Brightness.dark ? const Color(0xFFFBBF24) : const Color(0xFFB45309))
+                  : colors.onSurfaceVariant,
               fontWeight: FontWeight.w700,
             )),
         ]),
@@ -1171,7 +1173,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
           Text(
             '${status.mediaCount} media · ${status.fileCount} files · '
             '${status.scanned} checked · ${status.skipped} skipped',
-            style: theme.textTheme.labelSmall?.copyWith(color: Colors.white70),
+            style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
           ),
           if (status.lastError != null && status.lastError!.isNotEmpty) ...[
             const SizedBox(height: 5),
@@ -1472,7 +1474,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
 
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: theme.scaffoldBackgroundColor,
       drawer: Drawer(
         child: SafeArea(
           child: ListView(
@@ -1580,7 +1582,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
       ),
       appBar: AppBar(
         // Let Scaffold's drawer provide the standard Material hamburger button.
-        backgroundColor: Colors.black,
+        backgroundColor: theme.scaffoldBackgroundColor,
         surfaceTintColor: Colors.transparent,
         titleSpacing: 20,
         title: Column(

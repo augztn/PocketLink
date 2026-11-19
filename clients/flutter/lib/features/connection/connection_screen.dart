@@ -445,7 +445,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                         if (_connectingProfileId == profile['id'])
                           const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                         else
-                          const Icon(Icons.chevron_right_rounded, color: Colors.white54),
+                          Icon(Icons.chevron_right_rounded, color: colors.onSurfaceVariant),
                         PopupMenuButton<String>(
                           onSelected: (value) {
                             if (value == 'edit') _editProfile(profile);

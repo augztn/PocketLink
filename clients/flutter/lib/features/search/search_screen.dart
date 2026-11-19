@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import '../../core/widgets/pocketlink_app_bar.dart';
+import '../../core/widgets/pocketlink_file_icon.dart';
 
 import 'package:cross_file/cross_file.dart';
 import 'package:dio/dio.dart';
@@ -392,15 +393,6 @@ class _SearchScreenState extends State<SearchScreen> {
     return '${date.day}/${date.month}/${date.year}';
   }
 
-  IconData _icon(_Result r) {
-    final e = _ext(r.file.name);
-    if (_audio.contains(e)) return Icons.audio_file_rounded;
-    if (_video.contains(e)) return Icons.video_file_rounded;
-    if (_photo.contains(e)) return Icons.image_rounded;
-    if (_docs.contains(e)) return Icons.description_rounded;
-    return Icons.insert_drive_file_outlined;
-  }
-
   TextSpan _highlight(String name, String query, TextStyle? style) {
     final i = name.toLowerCase().indexOf(query.toLowerCase());
     if (query.isEmpty || i < 0) return TextSpan(text: name, style: style);
@@ -614,9 +606,11 @@ class _SearchScreenState extends State<SearchScreen> {
         final breadcrumb = '${r.volumeName}  ›  ${r.path.replaceAll('/', '  ›  ')}';
         return ListTile(
           contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
-          leading: Container(width: 44, height: 44, decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(14)),
-            child: Icon(_icon(r), color: theme.colorScheme.primary)),
+          leading: PocketLinkFileIcon(
+            name: r.file.name,
+            isDirectory: r.file.isDirectory,
+            size: 44,
+          ),
           title: RichText(maxLines: 1, overflow: TextOverflow.ellipsis,
             text: _highlight(r.file.name, q, theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700))),
           subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
