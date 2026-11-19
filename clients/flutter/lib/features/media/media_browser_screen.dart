@@ -199,6 +199,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       _media = const [];
       _scannedDirectories = 0;
       _skippedDirectories = 0;
+      _scanLocation = '';
     });
 
     try {
