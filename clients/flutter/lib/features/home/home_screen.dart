@@ -267,7 +267,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     initialIndex: player.currentIndex,
                     resumeExisting: true,
                   ),
-            transitionsBuilder: (_, animation, __, child) {
+            transitionsBuilder: (context, animation, __, child) {
+              if (MediaQuery.of(context).disableAnimations) return child;
               final curved = CurvedAnimation(
                 parent: animation,
                 curve: Curves.easeOutCubic,
