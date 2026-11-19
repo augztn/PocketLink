@@ -385,7 +385,6 @@ class _HomeScreenState extends State<HomeScreen> {
             routeLabel: networkRouteLabel(serverHost),
             onOpenLibrary: _openMusicShortcut,
             onOpenFiles: () => _openTab(2),
-            onOpenDrives: _openExternalStorage,
             onConnectDrive: _openHostSetup,
             onOpenTransfers: () => Navigator.of(context).push<void>(
               MaterialPageRoute<void>(
