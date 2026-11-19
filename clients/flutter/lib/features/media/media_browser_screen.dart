@@ -90,7 +90,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     _currentFolderPath = saved.folderPath;
     _pendingScrollOffset = saved.scrollOffset;
     _contentScrollController.addListener(_saveScrollOffset);
-    if (_isMusic) _loadFavorites();
+    _loadFavorites();
     _scan();
   }
 
@@ -555,77 +555,76 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     final two = (int value) => value.toString().padLeft(2, '0');
     return hours > 0 ? '${hours}:${two(minutes)}:${two(seconds)}' : '${minutes}:${two(seconds)}';
   }
+  Widget _videoDurationBadge(_MediaFile media) {
+    return FutureBuilder<VideoMetadata?>(
+      future: widget.api.videoMetadata(media.path, volume: media.volume),
+      builder: (context, snapshot) {
+        final duration = snapshot.data?.durationMs ?? 0;
+        if (duration <= 0) return const SizedBox.shrink();
+        return _VideoTag(label: _formatDuration(duration));
+      },
+    );
+  }
+
   Widget _buildVideoGrid(List<_MediaFile> items) {
     return GridView.builder(
       controller: _contentScrollController,
       padding: EdgeInsets.fromLTRB(12, 8, 12, 104 + MediaQuery.paddingOf(context).bottom),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 14,
-        childAspectRatio: 0.92,
+        crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 14,
+        childAspectRatio: 0.88,
       ),
       itemCount: items.length,
       itemBuilder: (context, index) {
         final media = items[index];
         final extension = media.entry.name.split('.').last.toUpperCase();
-        return Card(
-          clipBehavior: Clip.antiAlias,
+        final favorite = _favoriteKeys.contains(_favoriteKey(media));
+        final colors = Theme.of(context).colorScheme;
+        return Material(
+          color: colors.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(16),
           child: InkWell(
+            borderRadius: BorderRadius.circular(16),
             onTap: () => _openMedia(media, items),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      _buildVideoArtwork(media, fit: BoxFit.cover),
-                      Positioned(
-                        left: 8,
-                        top: 8,
-                        child: _VideoTag(label: extension),
-                      ),
-                      Positioned(
-                        right: 8,
-                        bottom: 8,
-                        child: _VideoTag(label: _formatBytes(media.entry.size)),
-                      ),
-                      Positioned(
-                        right: 8,
-                        top: 8,
-                        child: Icon(
-                          Icons.play_circle_fill_rounded,
-                          color: Colors.white.withValues(alpha: 0.92),
-                          size: 30,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 9, 10, 10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        media.entry.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
-                      const SizedBox(height: 3),
-                      _videoMetadataLabel(media),
-                      Text(
-                        _sourceLabel(media),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.48)),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                Expanded(child: Stack(fit: StackFit.expand, children: [
+                  _buildVideoArtwork(media, fit: BoxFit.cover),
+                  Positioned(left: 8, top: 8, child: _VideoTag(label: extension)),
+                  Positioned(right: 8, bottom: 8, child: _videoDurationBadge(media)),
+                  Center(child: ClipOval(child: BackdropFilter(
+                    filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                    child: Container(width: 44, height: 44,
+                      decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.42), shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.35))),
+                      child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 28),
+                    ),
+                  ))),
+                  Positioned(right: 4, top: 4, child: IconButton(
+                    visualDensity: VisualDensity.compact,
+                    tooltip: favorite ? 'Remove favourite' : 'Add favourite',
+                    onPressed: () => _toggleFavorite(media),
+                    icon: Icon(favorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                      color: favorite ? const Color(0xFFFF6B8A) : Colors.white),
+                  )),
+                ])),
+                Padding(padding: const EdgeInsets.fromLTRB(10, 8, 10, 9), child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(media.entry.name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 3),
+                    Row(children: [
+                      Expanded(child: _videoMetadataLabel(media)),
+                      Text(_formatBytes(media.entry.size), style: Theme.of(context).textTheme.bodySmall),
+                    ]),
+                  ],
+                )),
+              ]),
             ),
           ),
         );
@@ -849,12 +848,19 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
           media.path.toLowerCase().contains(query);
       final matchesVolume = _selectedVolume == null ||
           (_selectedVolume == 'internal' ? media.volume == null : media.volume == _selectedVolume);
-      return matchesQuery && matchesVolume;
+      final matchesFavorite = _libraryView != 'favorites' || _favoriteKeys.contains(_favoriteKey(media));
+      return matchesQuery && matchesVolume && matchesFavorite;
     }).toList(growable: false);
     final visibleMedia = _sortMedia(filtered);
     final isFolderView = _libraryView == 'folders';
     final selectedVolumes = _volumes.where((volume) => volume.id == _selectedVolume).toList();
     final sourceLabel = _selectedVolume == 'internal' ? 'Internal storage' : selectedVolumes.isEmpty ? 'All Storage' : selectedVolumes.first.name;
+
+    final favoritesCount = _media.where((m) => _favoriteKeys.contains(_favoriteKey(m))).length;
+    final folderCount = _foldersAtCurrentLevel(_media).length;
+    final headerTitle = _libraryView == 'folders' ? 'Folders' : _libraryView == 'favorites' ? 'Favorites' : 'Videos';
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final titleColor = dark ? Colors.white : const Color(0xFF0F172A);
 
     return PopScope(
       canPop: _libraryView != 'folders' || _atFolderRoot,
@@ -862,138 +868,54 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         if (!didPop && _libraryView == 'folders' && !_atFolderRoot) _goUpFolder();
       },
       child: Scaffold(
-      appBar: PocketLinkAppBar(
-        title: Text(_title),
-        onHome: widget.onHome,
-        actions: [
-          PocketLinkAppBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded, onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen()))),
-          if (!_isMusic)
-            PocketLinkAppBarAction(
-              label: _layoutMode == 'grid' ? 'List view' : 'Grid view',
-              icon: _layoutMode == 'grid' ? Icons.view_list_rounded : Icons.grid_view_rounded,
-              onPressed: () { setState(() { _layoutMode = _layoutMode == 'grid' ? 'list' : 'grid'; }); _saveState(); },
-            ),
-          PocketLinkAppBarAction(label: 'Scan again', icon: Icons.refresh, onPressed: _loading ? null : () => _scan(refresh: true)),
-        ],
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 22,
-                  child: Icon(_isMusic
-                      ? Icons.library_music_rounded
-                      : Icons.video_library_rounded),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _countLabel(_media.length, _isMusic ? 'track' : 'video', _isMusic ? 'tracks' : 'videos'),
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      Text(
-                        _loading
-                            ? 'Scanning storage…'
-                            : '$_scannedDirectories folders scanned'
-                                '${_skippedDirectories > 0 ? ' · $_skippedDirectories skipped' : ''}',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+        extendBodyBehindAppBar: true,
+        appBar: PocketLinkAppBar(
+          feathered: true,
+          showHome: false,
+          title: PopupMenuButton<String>(
+            tooltip: 'Choose video view',
+            offset: const Offset(0, 48),
+            onSelected: (value) {
+              setState(() { _libraryView = value; if (value != 'folders') _currentFolderPath = ''; });
+              _saveState(folderPath: _currentFolderPath);
+              if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0);
+            },
+            itemBuilder: (_) => [
+              PopupMenuItem(value: 'all', child: Row(children: [
+                const Expanded(child: Text('All Videos')), Text('${_media.length}', style: const TextStyle(fontFamily: 'monospace', color: Color(0xFFA1A7B3))),
+                if (_libraryView == 'all') const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.check_rounded, size: 18)),
+              ])),
+              PopupMenuItem(value: 'folders', child: Row(children: [
+                const Expanded(child: Text('Folders')), Text('$folderCount', style: const TextStyle(fontFamily: 'monospace', color: Color(0xFFA1A7B3))),
+                if (_libraryView == 'folders') const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.check_rounded, size: 18)),
+              ])),
+              PopupMenuItem(value: 'favorites', child: Row(children: [
+                const Expanded(child: Text('Favorites')), Text('$favoritesCount', style: const TextStyle(fontFamily: 'monospace', color: Color(0xFFA1A7B3))),
+                if (_libraryView == 'favorites') const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.check_rounded, size: 18)),
+              ])),
+            ],
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Text(headerTitle, style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800, color: titleColor)),
+              const Icon(Icons.keyboard_arrow_down_rounded),
+            ]),
           ),
-          if (widget.showSearch)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-              child: CompactSearchField(
-                controller: _searchController,
-                hintText: _isMusic ? 'Search songs or folders' : 'Search videos or folders',
-                onChanged: (value) => setState(() => _searchQuery = value),
-              ),
-            ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  Container(
-                    height: 36,
-                    padding: const EdgeInsets.all(3),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainerLow,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.62)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _viewPill(
-                          label: _isMusic ? 'Songs' : 'All videos',
-                          selected: _libraryView == 'all',
-                          onTap: () { setState(() => _libraryView = 'all'); _saveState(); },
-                        ),
-                        _viewPill(
-                          label: 'Folders',
-                          selected: isFolderView,
-                          onTap: () { setState(() => _libraryView = 'folders'); _saveState(); },
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  _menuPill(
-                    label: sourceLabel,
-                    items: [
-                      const PopupMenuItem(value: 'all', child: Text('All storage')),
-                      const PopupMenuItem(value: 'internal', child: Text('Internal storage')),
-                      ..._volumes.where((volume) => volume.available).map((volume) => PopupMenuItem(
-                        value: volume.id,
-                        enabled: volume.available,
-                        child: Text(
-                          '${volume.name}${volume.available ? '' : ' · unavailable'}',
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      )),
-                    ],
-                    onSelected: (value) {
-                      final volume = value == 'all' ? null : value;
-                      final rootPath = _isMusic && volume == 'internal' ? 'Music' : '';
-                      setState(() {
-                        _selectedVolume = volume;
-                        _currentFolderPath = rootPath;
-                      });
-                      _pendingScrollOffset = 0;
-                      _saveState(folderPath: rootPath, clearVolume: volume == null);
-                      if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0);
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  _menuPill(
-                    label: switch (_sortBy) {
-                      'newest' => 'Newest',
-                      'largest' => 'Largest',
-                      _ => 'Name',
-                    },
-                    items: const [
-                      PopupMenuItem(value: 'name', child: Text('Name')),
-                      PopupMenuItem(value: 'newest', child: Text('Newest')),
-                      PopupMenuItem(value: 'largest', child: Text('Largest')),
-                    ],
-                    onSelected: (value) { setState(() => _sortBy = value); _saveState(); },
-                  ),
-                ],
-              ),
-            ),
-          ),
+          actionsBeforeHome: [
+            GlassCircleButton(tooltip: 'Search videos', onPressed: () => setState(() => _searchExpanded = !_searchExpanded), child: const Icon(Icons.search_rounded)),
+            GlassCircleButton(tooltip: 'Filter and sort', onPressed: _showMusicFilters, child: const Icon(Icons.tune_rounded)),
+          ],
+          actions: [
+            PocketLinkAppBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded,
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen()))),
+            PocketLinkAppBarAction(label: 'Scan again', icon: Icons.refresh_rounded, onPressed: _loading ? null : () => _scan(refresh: true)),
+          ],
+        ),
+        body: Column(children: [
+          SizedBox(height: MediaQuery.paddingOf(context).top + kToolbarHeight + 4),
+          if (_searchExpanded && widget.showSearch)
+            Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: CompactSearchField(controller: _searchController,
+                hintText: 'Search videos or folders',
+                onChanged: (value) => setState(() => _searchQuery = value))),
           if (_loading) const LinearProgressIndicator(minHeight: 2),
           if (_error != null)
             Padding(
@@ -1080,7 +1002,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   Future<void> _loadFavorites() async {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
-    setState(() => _favoriteKeys = prefs.getStringList('pocketlink.music.favorites.$_stateKey')?.toSet() ?? <String>{});
+    setState(() => _favoriteKeys = prefs.getStringList('pocketlink.media.favorites.$_stateKey.${widget.type.name}')?.toSet() ?? <String>{});
   }
 
   Future<void> _toggleFavorite(_MediaFile media) async {

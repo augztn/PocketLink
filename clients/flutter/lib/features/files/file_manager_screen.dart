@@ -598,11 +598,11 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     Widget fileIcon(FileEntry item, {double size = 24}) {
       final color = _iconColorFor(item, colors);
       return Container(
-        width: 48,
-        height: 48,
+        width: 42,
+        height: 42,
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Icon(_iconFor(item), color: color, size: size),
       );
@@ -613,9 +613,11 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
         margin: EdgeInsets.zero,
         elevation: 0,
         color: colors.surfaceContainerLow,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14), side: BorderSide(color: colors.outlineVariant.withValues(alpha: 0.22))),
+        child: SizedBox(height: 60, child: ListTile(
+          dense: true,
+          visualDensity: VisualDensity.compact,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
           leading: fileIcon(item),
           title: Text(item.name, maxLines: 1, overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontWeight: FontWeight.w600)),
@@ -639,7 +641,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
               const PopupMenuItem(value: 'delete', child: Text('Delete')),
             ],
           ),
-        ),
+        )),
       );
     }
 
@@ -657,14 +659,42 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
         extendBodyBehindAppBar: true,
         appBar: PocketLinkAppBar(
           feathered: true,
-          title: const Text('Files', style: TextStyle(fontWeight: FontWeight.w800)),
-          onHome: () => _load(''),
-          actionsBeforeHome: widget.showSearch ? [
-            GlassCircleButton(tooltip: 'Search files', onPressed: _openSearch, child: const Icon(Icons.search_rounded)),
-          ] : const [],
+          showHome: false,
+          title: PopupMenuButton<String>(
+            tooltip: 'Choose storage location',
+            offset: const Offset(0, 48),
+            onSelected: (value) {
+              if (value == 'internal') { _selectPartition(null); return; }
+              if (value == 'downloads') { _selectPartition(null).then((_) => _load('Downloads')); return; }
+              _selectPartition(value);
+            },
+            itemBuilder: (_) => [
+              PopupMenuItem(value: 'internal', child: Row(children: [
+                const Icon(Icons.phone_android_rounded, size: 19), const SizedBox(width: 10),
+                const Expanded(child: Text('Internal storage')),
+                if (_selectedVolume == null) const Icon(Icons.check_rounded, size: 18),
+              ])),
+              for (final volume in _volumes) PopupMenuItem(value: volume.id, child: Row(children: [
+                const Icon(Icons.usb_rounded, size: 19), const SizedBox(width: 10),
+                Expanded(child: Text(volume.name, maxLines: 1, overflow: TextOverflow.ellipsis)),
+                if (_selectedVolume == volume.id) const Icon(Icons.check_rounded, size: 18),
+              ])),
+              const PopupMenuDivider(),
+              const PopupMenuItem(value: 'downloads', child: Text('Downloads')),
+            ],
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Flexible(child: Text(_path.isEmpty ? 'Files' : _path.split('/').last,
+                maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w800))),
+              const Icon(Icons.keyboard_arrow_down_rounded, size: 24),
+            ]),
+          ),
+          actionsBeforeHome: [
+            if (widget.showSearch) GlassCircleButton(tooltip: 'Search files', onPressed: _openSearch, child: const Icon(Icons.search_rounded)),
+            GlassCircleButton(tooltip: 'Upload file', onPressed: _uploadFile, child: const Icon(Icons.upload_rounded)),
+          ],
           actions: [
             PocketLinkAppBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded, onPressed: _openTransfers),
-            PocketLinkAppBarAction(label: 'Upload file', icon: Icons.cloud_upload_outlined, onPressed: _uploadFile),
             PocketLinkAppBarAction(label: 'New folder', icon: Icons.create_new_folder_outlined, onPressed: _createFolder),
             PocketLinkAppBarAction(label: 'Refresh', icon: Icons.refresh_rounded, onPressed: _loading ? null : _refreshDirectory),
           ],
@@ -672,87 +702,6 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
         body: Column(
           children: [
             SizedBox(height: MediaQuery.paddingOf(context).top + kToolbarHeight),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-              child: Material(
-                color: colors.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(18),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 34,
-                        height: 34,
-                        decoration: BoxDecoration(
-                          color: colors.primary.withValues(alpha: 0.14),
-                          borderRadius: BorderRadius.circular(11),
-                        ),
-                        child: Icon(Icons.folder_copy_rounded, color: colors.primary, size: 20),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(10),
-                          onTap: () => showModalBottomSheet<void>(
-                            context: context, backgroundColor: colors.surfaceContainerLow, showDragHandle: true,
-                            builder: (sheetContext) => SafeArea(child: Column(mainAxisSize: MainAxisSize.min, children: [
-                              ListTile(leading: const Icon(Icons.phone_android_rounded), title: const Text('Internal storage'),
-                                trailing: _selectedVolume == null ? const Icon(Icons.check_rounded) : null,
-                                onTap: () { Navigator.pop(sheetContext); _selectPartition(null); }),
-                              for (final volume in _volumes) ListTile(leading: const Icon(Icons.usb_rounded),
-                                title: Text(volume.name, maxLines: 1, overflow: TextOverflow.ellipsis), subtitle: Text(volume.id),
-                                trailing: _selectedVolume == volume.id ? const Icon(Icons.check_rounded) : null,
-                                onTap: () { Navigator.pop(sheetContext); _selectPartition(volume.id); }),
-                              if (_volumes.isEmpty) const Padding(padding: EdgeInsets.all(16), child: Text('No mounted external drives')),
-                            ])),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 2),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Flexible(
-                                      child: Text(
-                                        _path.isEmpty ? (_selectedVolume == null ? 'Internal storage' : _volumeName(_selectedVolume!)) : _path.split('/').last,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-                                      ),
-                                    ),
-                                    const Icon(Icons.keyboard_arrow_down_rounded, size: 21),
-                                  ],
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  '$folderCount ${folderCount == 1 ? 'folder' : 'folders'} • $fileCount ${fileCount == 1 ? 'file' : 'files'}',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Material(
-                        color: colors.secondaryContainer,
-                        shape: const CircleBorder(),
-                        child: IconButton(
-                          tooltip: 'Go to parent folder',
-                          visualDensity: VisualDensity.compact,
-                          onPressed: _path.isEmpty ? null : _goUp,
-                          icon: Icon(Icons.arrow_upward_rounded, color: colors.onSecondaryContainer, size: 19),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
             if (_path.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
@@ -847,7 +796,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                   onPressed: () { setState(() => _gridView = !_gridView); _saveState(); },
                   icon: Icon(_gridView ? Icons.view_list_rounded : Icons.grid_view_rounded),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 12),
               ]),
             ),
             if (_loading) const LinearProgressIndicator(minHeight: 2),

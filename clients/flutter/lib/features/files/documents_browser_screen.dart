@@ -5,6 +5,7 @@ import '../../core/widgets/compact_search_field.dart';
 import '../../core/widgets/pocketlink_file_icon.dart';
 
 import '../../core/network/server_api.dart';
+import 'file_manager_screen.dart';
 
 String canonicalDocumentPath(String path) {
   final normalized = path.replaceAll(String.fromCharCode(92), '/');
@@ -43,7 +44,7 @@ class DocumentsBrowserScreen extends StatefulWidget {
 
 class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
   static const _extensions = {
-    'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'txt', 'md', 'csv',
+    'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'md', 'csv', 'zip', '7z', 'rar', 'tar', 'gz',
   };
   static const _maxDirectories = 1800;
   static const _maxDepth = 18;
