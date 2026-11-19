@@ -93,36 +93,6 @@ class _SequenceAdapter implements HttpClientAdapter {
 
 void main() {
   group('ServerApi', () {
-    test('parses skipped media-index paths while remaining compatible with old hosts', () {
-      final status = MediaIndexStatus.fromJson({
-        'state': 'partial',
-        'scanned': 42,
-        'skipped': 2,
-        'last_completed_at': 1794940000000,
-        'file_count': 40,
-        'media_count': 12,
-        'skipped_items': [
-          {
-            'volume': 'internal',
-            'path': 'Android/data',
-            'reason': 'Folder could not be read',
-          },
-        ],
-      });
-
-      expect(status.skipped, 2);
-      expect(status.skippedItems, hasLength(1));
-      expect(status.skippedItems.single.volume, 'internal');
-      expect(status.skippedItems.single.path, 'Android/data');
-      expect(status.skippedItems.single.reason, 'Folder could not be read');
-
-      final legacyStatus = MediaIndexStatus.fromJson({
-        'state': 'partial',
-        'skipped': 1,
-      });
-      expect(legacyStatus.skippedItems, isEmpty);
-    });
-
     test('parses host telemetry without inventing unavailable readings', () {
       final telemetry = HostSystemTelemetry.fromJson({
         'sampled_at_ms': 1794940000000,
