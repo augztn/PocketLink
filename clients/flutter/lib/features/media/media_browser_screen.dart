@@ -679,7 +679,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 Expanded(child: Stack(fit: StackFit.expand, children: [
                   _buildVideoArtwork(media, fit: BoxFit.cover),
-                  Positioned(left: 8, top: 8, child: _VideoTag(label: extension)),
+                  Positioned(left: 8, bottom: 8, child: _VideoTag(label: extension)),
                   Positioned(right: 8, bottom: 8, child: _videoDurationBadge(media)),
                   Center(child: ClipOval(child: BackdropFilter(
                     filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
