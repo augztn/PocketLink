@@ -17,6 +17,7 @@ import 'media_player_screen.dart';
 import 'persistent_audio_player.dart';
 import 'now_playing_overlay_controller.dart';
 import '../transfers/transfer_manager_screen.dart';
+import '../downloads/download_manager_service.dart';
 import '../home/browser_state_store.dart';
 
 enum MediaLibraryType { music, video }
@@ -688,6 +689,40 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                       child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 28),
                     ),
                   ))),
+                  Positioned(left: 8, top: 8, child: SmokedGlassPopoverMenu<String>(
+                    tooltip: 'Video actions',
+                    items: const [
+                      SmokedGlassPopoverMenuItem(value: 'download', label: 'Download', icon: Icons.download_rounded),
+                    ],
+                    onSelected: (action) async {
+                      if (action != 'download') return;
+                      try {
+                        await DownloadManagerService.instance.enqueueServerFile(
+                          api: widget.api,
+                          name: media.entry.name,
+                          sourcePath: media.path,
+                          volume: media.volume,
+                          size: media.entry.size,
+                        );
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Added to Downloads: ${media.entry.name}')),
+                          );
+                        }
+                      } catch (_) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Could not add this video to Downloads.')),
+                          );
+                        }
+                      }
+                    },
+                    child: const GlassCircleButton(
+                      tooltip: 'Video actions',
+                      onPressed: null,
+                      child: Icon(Icons.more_vert_rounded, size: 18),
+                    ),
+                  )),
                   Positioned(right: 4, top: 4, child: IconButton(
                     visualDensity: VisualDensity.compact,
                     tooltip: favorite ? 'Remove favourite' : 'Add favourite',
@@ -752,7 +787,45 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                 _videoMetadataLabel(media),
               ],
             ),
-            trailing: const Icon(Icons.play_circle_outline_rounded),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SmokedGlassPopoverMenu<String>(
+                  tooltip: 'Video actions',
+                  items: const [
+                    SmokedGlassPopoverMenuItem(value: 'download', label: 'Download', icon: Icons.download_rounded),
+                  ],
+                  onSelected: (action) async {
+                    if (action != 'download') return;
+                    try {
+                      await DownloadManagerService.instance.enqueueServerFile(
+                        api: widget.api,
+                        name: media.entry.name,
+                        sourcePath: media.path,
+                        volume: media.volume,
+                        size: media.entry.size,
+                      );
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Added to Downloads: ${media.entry.name}')),
+                        );
+                      }
+                    } catch (_) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Could not add this video to Downloads.')),
+                        );
+                      }
+                    }
+                  },
+                  child: const Padding(
+                    padding: EdgeInsets.all(8),
+                    child: Icon(Icons.more_vert_rounded),
+                  ),
+                ),
+                const Icon(Icons.play_circle_outline_rounded),
+              ],
+            ),
             onTap: () => _openMedia(media, items),
           ),
         );
@@ -1276,12 +1349,35 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
               items: [
                 const SmokedGlassPopoverMenuItem(value: 'next', label: 'Play next', icon: Icons.skip_next_rounded),
                 const SmokedGlassPopoverMenuItem(value: 'queue', label: 'Add to queue', icon: Icons.queue_music_rounded),
+                const SmokedGlassPopoverMenuItem(value: 'download', label: 'Download', icon: Icons.download_rounded, dividerBefore: true),
                 SmokedGlassPopoverMenuItem(value: 'favorite', label: favorite ? 'Remove favourite' : 'Add to favourites', icon: favorite ? Icons.favorite_rounded : Icons.favorite_border_rounded),
               ],
               onSelected: (action) async {
                 if (action == 'favorite') await _toggleFavorite(media);
                 if (action == 'next') await _queueTrack(media, playNext: true);
                 if (action == 'queue') await _queueTrack(media, playNext: false);
+                if (action == 'download') {
+                  try {
+                    await DownloadManagerService.instance.enqueueServerFile(
+                      api: widget.api,
+                      name: media.entry.name,
+                      sourcePath: media.path,
+                      volume: media.volume,
+                      size: media.entry.size,
+                    );
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Added to Downloads: ${media.entry.name}')),
+                      );
+                    }
+                  } catch (_) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Could not add this track to Downloads.')),
+                      );
+                    }
+                  }
+                }
               },
               child: Padding(
                 padding: const EdgeInsets.all(8),
