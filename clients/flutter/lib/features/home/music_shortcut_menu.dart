@@ -137,7 +137,7 @@ class _MusicShortcutMenuState extends State<MusicShortcutMenu>
         curve: Curves.easeOutCubic,
         reverseCurve: Curves.easeInCubic,
       ),
-      axisAlignment: 1,
+      alignment: Alignment.bottomCenter,
       child: menu,
     );
   }
