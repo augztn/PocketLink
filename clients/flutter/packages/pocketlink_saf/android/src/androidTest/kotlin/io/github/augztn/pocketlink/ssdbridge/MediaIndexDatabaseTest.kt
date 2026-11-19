@@ -25,6 +25,8 @@ class MediaIndexDatabaseTest {
             database.upsertMedia(entries, "scan-a")
 
             assertEquals(3, database.counts()["files"])
+            assertEquals(1, database.counts()["directories"])
+            assertEquals(2, database.counts()["regular_files"])
             assertEquals(2, database.counts()["media"])
             assertEquals("song.mp3", database.queryMedia("music", "", 20, 0).single().name)
             assertEquals("photo.jpg", database.queryMedia("photo", "", 20, 0).single().name)
