@@ -58,6 +58,7 @@ class _NowPlayingScrubberState extends State<NowPlayingScrubber>
     value: 0,
   );
   double? _dragProgress;
+  bool _reduceMotion = false;
 
   bool get _hasDuration => widget.duration > Duration.zero;
   double get _progress => _hasDuration
@@ -76,6 +77,12 @@ class _NowPlayingScrubberState extends State<NowPlayingScrubber>
   @override
   void initState() {
     super.initState();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _reduceMotion = MediaQuery.of(context).disableAnimations;
     _syncAnimations();
   }
 
@@ -86,13 +93,14 @@ class _NowPlayingScrubberState extends State<NowPlayingScrubber>
   }
 
   void _syncAnimations() {
-    if (_showShimmer) {
+    if (_showShimmer && !_reduceMotion) {
       if (!_shimmer.isAnimating) _shimmer.repeat();
     } else {
       _shimmer.stop();
-      _shimmer.value = 0;
+      _shimmer.value = _showShimmer ? 0.5 : 0;
     }
-    if (widget.style == NowPlayingScrubberStyle.wavy &&
+    if (!_reduceMotion &&
+        widget.style == NowPlayingScrubberStyle.wavy &&
         widget.isPlaying &&
         !widget.isBuffering) {
       if (!_wave.isAnimating) _wave.repeat();
@@ -457,7 +465,19 @@ class _BufferingBadgeState extends State<BufferingBadge>
     duration: const Duration(milliseconds: 900),
     lowerBound: 0.45,
     upperBound: 1,
-  )..repeat(reverse: true);
+  );
+  bool _reduceMotion = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _reduceMotion = MediaQuery.of(context).disableAnimations;
+    if (_reduceMotion) {
+      _pulse.stop();
+    } else if (!_pulse.isAnimating) {
+      _pulse.repeat(reverse: true);
+    }
+  }
 
   @override
   void dispose() {
@@ -467,7 +487,9 @@ class _BufferingBadgeState extends State<BufferingBadge>
 
   @override
   Widget build(BuildContext context) => FadeTransition(
-        opacity: _pulse,
+        opacity: _reduceMotion
+            ? const AlwaysStoppedAnimation<double>(1)
+            : _pulse,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
           decoration: BoxDecoration(
