@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pocketlink_client/core/settings/app_settings.dart';
 import 'package:pocketlink_client/features/media/now_playing_scrubber.dart';
@@ -37,4 +38,41 @@ void main() {
       throwsArgumentError,
     );
   });
+  testWidgets('unknown duration shows safe placeholder timestamps',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: NowPlayingScrubber(
+            style: NowPlayingScrubberStyle.appleCapsule,
+            position: Duration.zero,
+            duration: Duration.zero,
+            bufferedPosition: Duration.zero,
+            isPlaying: false,
+            isBuffering: true,
+            onSeek: (_) {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('0:00'), findsOneWidget);
+    expect(find.text('--:--'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 1300));
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('all scrubber styles render', (tester) async {
+    for (final style in NowPlayingScrubberStyle.values) {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: NowPlayingScrubberPreview(style: style),
+          ),
+        ),
+      );
+      expect(find.byType(CustomPaint), findsOneWidget);
+    }
+  });
+
 }
