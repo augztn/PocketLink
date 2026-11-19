@@ -4,6 +4,7 @@ import 'photo_favorites_store.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/smoked_glass_popover_menu.dart';
+import '../downloads/download_manager_service.dart';
 import '../transfers/transfer_manager_screen.dart';
 
 class _Photo {
@@ -769,6 +770,32 @@ class _PhotoViewerState extends State<_PhotoViewer>{
             label: widget.favorite(p) ? 'Remove favorite' : 'Add favorite',
             icon: widget.favorite(p) ? Icons.favorite : Icons.favorite_border,
             onPressed: () => setState(() => widget.onFavorite(p)),
+          ),
+          PocketLinkAppBarAction(
+            label: 'Download photo',
+            icon: Icons.download_rounded,
+            onPressed: () async {
+              try {
+                await DownloadManagerService.instance.enqueueServerFile(
+                  api: widget.api,
+                  name: p.file.name,
+                  sourcePath: p.path,
+                  volume: p.volume,
+                  size: p.file.size,
+                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Added to Downloads: ${p.file.name}')),
+                  );
+                }
+              } catch (_) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Could not add this photo to Downloads.')),
+                  );
+                }
+              }
+            },
           ),
         ],
       ):null,
