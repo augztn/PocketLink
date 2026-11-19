@@ -234,13 +234,13 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay> {
                   ignoring: !visible,
                   child: AnimatedSlide(
                     offset: visible ? Offset.zero : const Offset(0, 0.34),
-                    duration: reduceMotion
+                    duration: reduceMotion || drawerOpen
                         ? Duration.zero
                         : const Duration(milliseconds: 280),
                     curve: Curves.easeOutCubic,
                     child: AnimatedOpacity(
                       opacity: visible ? 1 : 0,
-                      duration: reduceMotion
+                      duration: reduceMotion || drawerOpen
                           ? Duration.zero
                           : const Duration(milliseconds: 220),
                       curve: Curves.easeOut,
@@ -258,10 +258,10 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay> {
                 top: _trackPopupOffset?.dy ?? 0,
                 child: IgnorePointer(
                   child: AnimatedSwitcher(
-                    duration: reduceMotion
+                    duration: reduceMotion || drawerOpen
                         ? Duration.zero
                         : const Duration(milliseconds: 260),
-                    reverseDuration: reduceMotion
+                    reverseDuration: reduceMotion || drawerOpen
                         ? Duration.zero
                         : const Duration(milliseconds: 180),
                     switchInCurve: Curves.easeOutBack,

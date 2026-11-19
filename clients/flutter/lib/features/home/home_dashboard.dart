@@ -9,7 +9,6 @@ import '../../core/settings/app_settings.dart';
 import '../../core/navigation/pocketlink_navigation.dart';
 import '../../core/storage/home_activity_store.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
-import '../settings/settings_screen.dart';
 import 'explore_search_screens.dart';
 import '../media/now_playing_screen.dart';
 import '../media/persistent_audio_player.dart';
@@ -1287,7 +1286,6 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final availableVolumes = _volumes.where((volume) => volume.available).length;
     final appSettings = AppSettings.instance;
 
 
