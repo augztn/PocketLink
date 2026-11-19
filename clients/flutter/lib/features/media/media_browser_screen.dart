@@ -56,6 +56,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   String? _error;
   int _scannedDirectories = 0;
   int _skippedDirectories = 0;
+  String _scanLocation = '';
   List<StorageVolume> _volumes = const [];
   String? _selectedVolume;
   String _searchQuery = '';
@@ -207,8 +208,9 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       if (mounted) {
         setState(() {
           _media = List.unmodifiable(found);
-          _scannedDirectories = status.scanned;
+          _scannedDirectories = status.scannedDirectories;
           _skippedDirectories = status.skipped;
+          _scanLocation = _indexLocation(status);
         });
       }
 
@@ -219,6 +221,13 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         await Future<void>.delayed(const Duration(seconds: 2));
         if (!mounted) return;
         status = await widget.api.mediaIndexStatus();
+        if (mounted) {
+          setState(() {
+            _scannedDirectories = status.scannedDirectories;
+            _skippedDirectories = status.skipped;
+            _scanLocation = status.isScanning ? _indexLocation(status) : '';
+          });
+        }
       }
       if (!mounted) return;
       if (wasScanning && status.state != 'failed') {
@@ -234,8 +243,9 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       if (mounted) {
         setState(() {
           _media = List.unmodifiable(found);
-          _scannedDirectories = status.scanned;
+          _scannedDirectories = status.scannedDirectories;
           _skippedDirectories = status.skipped;
+          _scanLocation = '';
           _loading = false;
           _error = status.state == 'partial' && found.isEmpty
               ? status.lastError
@@ -250,6 +260,14 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     }
   }
 
+  String _indexLocation(MediaIndexStatus status) {
+    final source = status.currentSource;
+    if (source == null || source.isEmpty) return '';
+    final label = source == 'internal' ? 'Internal' : source.toUpperCase();
+    final path = status.currentPath;
+    return path == null || path.isEmpty ? label : '$label/$path';
+  }
+
   Future<void> _scanLegacy({bool refresh = false}) async {
     if (!mounted) return;
     if (refresh) widget.api.invalidateDirectoryCache();
@@ -260,6 +278,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       _media = const [];
       _scannedDirectories = 0;
       _skippedDirectories = 0;
+      _scanLocation = '';
     });
 
     final found = <_MediaFile>[];
