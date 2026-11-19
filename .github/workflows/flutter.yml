@@ -21,6 +21,7 @@ permissions:
 # Keep regression checks active for overlay/back-navigation changes on this branch.
 # Verify Flutter analysis, widget tests and platform builds after the latest UI changes.
 # Include the final status-bar feather mask and route-popover regression test.
+# Re-run static analysis after removing the superseded photo overlay import.
 # Let active validation finish; do not cancel it when a newer commit is pushed.
 concurrency:
   group: flutter-ci-${{ github.ref }}
