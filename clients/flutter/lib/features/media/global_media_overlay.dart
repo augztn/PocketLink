@@ -14,6 +14,7 @@ import 'persistent_audio_player.dart';
 class GlobalMediaOverlay extends StatefulWidget {
   const GlobalMediaOverlay({required this.child, super.key});
 
+
   final Widget child;
 
   @override
@@ -56,7 +57,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
       duration: const Duration(milliseconds: 380),
       reverseDuration: const Duration(milliseconds: 320),
     );
-    _openNowPlayingHandler = _openNowPlaying;
+    GlobalMediaOverlay._openNowPlayingHandler = _openNowPlaying;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) WidgetsBinding.instance.addObserver(this);
     });
@@ -68,7 +69,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     _player.removeListener(_onPlayerChanged);
     _trackPopupTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
-    _openNowPlayingHandler = null;
+    GlobalMediaOverlay._openNowPlayingHandler = null;
     _nowPlayingEntry?.remove();
     _nowPlayingEntry = null;
     _nowPlayingController.stop();
