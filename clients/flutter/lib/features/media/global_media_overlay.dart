@@ -273,7 +273,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
               !drawerOpen &&
               !observer.isNowPlayingVisible &&
               !observer.isModalRouteOnTop &&
-              _nowPlayingController.value <= 0.01;
+              _nowPlayingController.value <= 0.0;
           final onDashboard = observer.isDashboardVisible;
           final reserveBottomContent = !onDashboard &&
               !drawerOpen &&
@@ -285,6 +285,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
           final showTrackPopup = _trackPopup != null &&
               _trackPopupOffset != null &&
               onDashboard &&
+              !_shouldShowMiniPlayer() &&
               !drawerOpen &&
               !_nowPlayingOpen &&
               !observer.isNowPlayingVisible &&
