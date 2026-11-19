@@ -196,7 +196,6 @@ class PocketLinkHomeDrawer extends StatelessWidget {
                   _sectionLabel(context, 'STORAGE & HOST'),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.folder_open_rounded),
                     minTileHeight: 54,
                     leading: _drawerIcon(Icons.folder_open_rounded),
                     title: const Text('Files'),
@@ -205,7 +204,7 @@ class PocketLinkHomeDrawer extends StatelessWidget {
                   ),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.add_to_drive_rounded),
+                    leading: _drawerIcon(Icons.add_to_drive_rounded),
                     minTileHeight: 54,
                     leading: _drawerIcon(Icons.add_to_drive_rounded),
                     title: const Text('Connect a drive'),
@@ -216,7 +215,6 @@ class PocketLinkHomeDrawer extends StatelessWidget {
                   _sectionLabel(context, 'TOOLS'),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.swap_vert_rounded),
                     minTileHeight: 54,
                     leading: _drawerIcon(Icons.swap_vert_rounded),
                     title: const Text('Transfers'),
@@ -224,7 +222,6 @@ class PocketLinkHomeDrawer extends StatelessWidget {
                   ),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.settings_rounded),
                     minTileHeight: 48,
                     leading: _drawerIcon(Icons.settings_rounded),
                     title: const Text('Settings'),
@@ -233,7 +230,7 @@ class PocketLinkHomeDrawer extends StatelessWidget {
                   if (onSwitchServer != null)
                     ListTile(
                       contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.switch_account_rounded),
+                      leading: _drawerIcon(Icons.switch_account_rounded),
                       title: const Text('Switch server'),
                       subtitle: const Text('Return to server connection'),
                       onTap: () => _closeThen(context, onSwitchServer!),
