@@ -237,7 +237,6 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay> {
                     ),
                   ),
                 ),
-              ),
               Positioned(
                 left: _trackPopupOffset?.dx ?? 0,
                 top: _trackPopupOffset?.dy ?? 0,
