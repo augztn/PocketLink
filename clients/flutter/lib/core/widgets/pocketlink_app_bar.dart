@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../navigation/pocketlink_navigation.dart';
 import 'feathered_glass_header.dart';
+import 'smoked_glass_popover_menu.dart';
 
 class PocketLinkAppBarAction {
   const PocketLinkAppBarAction({
@@ -101,24 +102,25 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
           GlassCircleButton(tooltip: 'Home', onPressed: () => _goHome(context), child: const Icon(Icons.home_rounded))
         else
           IconButton(tooltip: 'Home', onPressed: () => _goHome(context), icon: const Icon(Icons.home_rounded)),
-      PopupMenuButton<PocketLinkAppBarAction>(
+      SmokedGlassPopoverMenu<PocketLinkAppBarAction>(
         tooltip: 'More actions',
-        icon: feathered ? null : const Icon(Icons.more_vert_rounded),
-        child: feathered ? const GlassCircleButton(tooltip: 'More actions', onPressed: null, child: Icon(Icons.more_vert_rounded)) : null,
+        items: actions.map((action) => SmokedGlassPopoverMenuItem<PocketLinkAppBarAction>(
+          value: action,
+          label: action.label,
+          icon: action.icon,
+          enabled: action.enabled && action.onPressed != null,
+        )).toList(growable: false),
         onSelected: (action) => action.onPressed?.call(),
-        itemBuilder: (context) => actions.map((action) =>
-          PopupMenuItem<PocketLinkAppBarAction>(
-            value: action,
-            enabled: action.enabled && action.onPressed != null,
-            child: Row(
-              children: [
-                Icon(action.icon, size: 20),
-                const SizedBox(width: 12),
-                Text(action.label),
-              ],
-            ),
-          ),
-        ).toList(growable: false),
+        child: feathered
+            ? const GlassCircleButton(
+                tooltip: 'More actions',
+                onPressed: null,
+                child: Icon(Icons.more_vert_rounded),
+              )
+            : const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: Icon(Icons.more_vert_rounded),
+              ),
       ),
       ],
     );
