@@ -33,7 +33,7 @@ void main() {
   });
 
   test('unsupported scrubber styles are rejected', () async {
-    expect(
+    await expectLater(
       settings.setNowPlayingScrubberStyle('unsupported'),
       throwsArgumentError,
     );
