@@ -419,31 +419,6 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     await _persistFavorites();
   }
 
-  Widget _photoTabPill(String label, int value) {
-    final selectedTab = tab == value;
-    final colors = Theme.of(context).colorScheme;
-    return Expanded(
-      child: Material(
-        color: selectedTab ? colors.surfaceContainerHighest : Colors.transparent,
-        borderRadius: BorderRadius.circular(18),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(18),
-          onTap: () => setState(() => tab = value),
-          child: SizedBox(
-            height: 34,
-            child: Center(
-              child: Text(label, style: TextStyle(
-                color: selectedTab ? colors.onSurface : colors.onSurfaceVariant,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              )),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Future<void> _showFilters() async {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
