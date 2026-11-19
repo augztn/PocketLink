@@ -228,76 +228,94 @@ class _SettingsScreenState extends State<SettingsScreen> {
     String? badge,
   }) {
     final colors = Theme.of(context).colorScheme;
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      color: colors.surfaceContainerLow,
-      elevation: 0,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(
-          color: colors.outlineVariant.withValues(alpha: 0.56),
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        final progress = MediaQuery.of(context).disableAnimations ? 1.0 : value;
+        return Opacity(
+          opacity: progress,
+          child: Transform.translate(
+            offset: Offset(0, 10 * (1 - progress)),
+            child: Transform.scale(
+              scale: 0.985 + (0.015 * progress),
+              child: child,
+            ),
+          ),
+        );
+      },
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 10),
+        color: colors.surfaceContainerLow,
+        elevation: 0,
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(
+            color: colors.outlineVariant.withValues(alpha: 0.56),
+          ),
         ),
-      ),
-      child: InkWell(
-        onTap: () => _openCategory(id),
-        borderRadius: BorderRadius.circular(20),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
-          child: Row(
-            children: [
-              Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: tint.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(15),
+        child: InkWell(
+          onTap: () => _openCategory(id),
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
+            child: Row(
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: tint.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: Icon(icon, color: tint, size: 23),
                 ),
-                child: Icon(icon, color: tint, size: 23),
-              ),
-              const SizedBox(width: 13),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                const SizedBox(width: 13),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        subtitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: colors.onSurfaceVariant,
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (badge != null) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: tint.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      badge,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: tint,
                             fontWeight: FontWeight.w800,
                           ),
                     ),
-                    const SizedBox(height: 3),
-                    Text(
-                      subtitle,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: colors.onSurfaceVariant,
-                          ),
-                    ),
-                  ],
-                ),
-              ),
-              if (badge != null) ...[
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: tint.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Text(
-                    badge,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: tint,
-                          fontWeight: FontWeight.w800,
-                        ),
-                  ),
-                ),
+                ],
+                const SizedBox(width: 4),
+                Icon(Icons.chevron_right_rounded, color: colors.onSurfaceVariant),
               ],
-              const SizedBox(width: 4),
-              Icon(Icons.chevron_right_rounded, color: colors.onSurfaceVariant),
-            ],
+            ),
           ),
         ),
       ),
