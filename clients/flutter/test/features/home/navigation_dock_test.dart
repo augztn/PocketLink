@@ -17,7 +17,6 @@ void main() {
           onSelect: (_) {},
           onBrowsePressed: () => opens++,
           musicShortcutsExpanded: true,
-          musicShortcuts: const ['photos', 'music', 'videos'],
           onMusicShortcutDismissed: () => dismisses++,
         ),
       ),
