@@ -243,6 +243,7 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
               ]),
             );
           }).toList(),
+          onSelected: (value) => setState(() => _filter = value),
           child: Row(children: [
             Expanded(
               child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
