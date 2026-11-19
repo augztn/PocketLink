@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:material_ui/material_ui.dart';
@@ -13,6 +15,7 @@ import '../../core/network/offline_file_cache.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
+import '../../core/widgets/liquid_glass_pill.dart';
 import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
 import '../storage/storage_browser_screen.dart';
@@ -38,6 +41,14 @@ class NowPlayingScreen extends StatefulWidget {
 }
 
 class _NowPlayingScreenState extends State<NowPlayingScreen> {
+  static const _artworkPalettes = <List<Color>>[
+    [Color(0xFF7C3AED), Color(0xFFDB2777), Color(0xFF140B20)],
+    [Color(0xFF0E7490), Color(0xFF2563EB), Color(0xFF07151F)],
+    [Color(0xFFB45309), Color(0xFFBE185D), Color(0xFF1C100C)],
+    [Color(0xFF4338CA), Color(0xFF0F766E), Color(0xFF0B1020)],
+    [Color(0xFFBE185D), Color(0xFF4F46E5), Color(0xFF160B1E)],
+  ];
+
   static const _secureStorage = FlutterSecureStorage();
 
   late final PersistentAudioPlayer _persistent;
@@ -91,6 +102,63 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     final dot = name.lastIndexOf('.');
     if (dot < 0 || dot == name.length - 1) return 'AUDIO';
     return name.substring(dot + 1).toUpperCase();
+  }
+
+  List<Color> get _trackPalette {
+    final index = _track.path.hashCode.abs() % _artworkPalettes.length;
+    return _artworkPalettes[index];
+  }
+
+  Widget _ambientBackground() {
+    final palette = _trackPalette;
+    final hasArtwork = _artwork != null && _artworkKey == _trackKey;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 680),
+      curve: Curves.easeInOut,
+      decoration: BoxDecoration(
+        gradient: RadialGradient(
+          center: const Alignment(-0.3, -0.72),
+          radius: 1.4,
+          colors: [
+            palette[0].withValues(alpha: 0.40),
+            palette[1].withValues(alpha: 0.25),
+            palette[2].withValues(alpha: 0.72),
+            Colors.black.withValues(alpha: 0.88),
+          ],
+          stops: const [0, 0.38, 0.72, 1],
+        ),
+      ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (hasArtwork)
+            ImageFiltered(
+              imageFilter: ui.ImageFilter.blur(sigmaX: 42, sigmaY: 42),
+              child: Opacity(
+                opacity: 0.34,
+                child: Image.memory(
+                  _artwork!,
+                  fit: BoxFit.cover,
+                  gaplessPlayback: true,
+                ),
+              ),
+            ),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withValues(alpha: 0.12),
+                  Colors.black.withValues(alpha: 0.46),
+                  Colors.black.withValues(alpha: 0.78),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -736,24 +804,92 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
 
   Widget _artworkCard() {
     final hasArtwork = _artwork != null && _artworkKey == _trackKey;
-    return Container(
-      width: 230,
-      height: 230,
-      decoration: BoxDecoration(
-        color: const Color(0xFF161618),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: hasArtwork
-          ? Image.memory(_artwork!, fit: BoxFit.cover, gaplessPlayback: true)
-          : const Center(
-              child: Icon(
-                Icons.music_note_rounded,
-                size: 76,
-                color: Colors.white70,
+    final palette = _trackPalette;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = (constraints.maxWidth - 40).clamp(0.0, 380.0);
+        final height = (constraints.maxHeight - 18).clamp(0.0, 380.0);
+        final dimension = math.min(width, height).clamp(210.0, 360.0);
+        return Container(
+          width: dimension,
+          height: dimension,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(26),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+            boxShadow: [
+              BoxShadow(
+                color: palette[0].withValues(alpha: 0.28),
+                blurRadius: 38,
+                spreadRadius: 2,
+                offset: const Offset(0, 16),
+              ),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.34),
+                blurRadius: 24,
+                offset: const Offset(0, 12),
+              ),
+            ],
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 360),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            transitionBuilder: (child, animation) => FadeTransition(
+              opacity: animation,
+              child: ScaleTransition(
+                scale: Tween<double>(begin: 0.96, end: 1).animate(animation),
+                child: child,
               ),
             ),
+            child: hasArtwork
+                ? Stack(
+                    key: ValueKey(_artworkKey),
+                    fit: StackFit.expand,
+                    children: [
+                      Image.memory(
+                        _artwork!,
+                        fit: BoxFit.cover,
+                        gaplessPlayback: true,
+                      ),
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: RadialGradient(
+                            center: const Alignment(-0.55, -0.7),
+                            radius: 1.1,
+                            colors: [
+                              Colors.white.withValues(alpha: 0.18),
+                              Colors.transparent,
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                : DecoratedBox(
+                    key: const ValueKey('music-artwork-fallback'),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          palette[0].withValues(alpha: 0.92),
+                          palette[1].withValues(alpha: 0.78),
+                          palette[2],
+                        ],
+                      ),
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.music_note_rounded,
+                        size: 92,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+          ),
+        );
+      },
     );
   }
 
@@ -764,20 +900,23 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     Color foreground = Colors.white,
   }) {
     return SizedBox(
-      width: 38,
-      height: 38,
-      child: IconButton(
-        tooltip: tooltip,
-        onPressed: onTap,
-        padding: EdgeInsets.zero,
-        iconSize: 19,
-        style: IconButton.styleFrom(
-          fixedSize: const Size(38, 38),
-          shape: const CircleBorder(),
-          backgroundColor: Colors.white.withValues(alpha: 0.12),
-          foregroundColor: foreground,
+      width: 40,
+      height: 40,
+      child: LiquidGlassPill(
+        radius: BorderRadius.circular(20),
+        child: IconButton(
+          tooltip: tooltip,
+          onPressed: onTap,
+          padding: EdgeInsets.zero,
+          iconSize: 19,
+          style: IconButton.styleFrom(
+            fixedSize: const Size(40, 40),
+            shape: const CircleBorder(),
+            backgroundColor: Colors.transparent,
+            foregroundColor: foreground,
+          ),
+          icon: Icon(icon),
         ),
-        icon: Icon(icon),
       ),
     );
   }
@@ -951,19 +1090,52 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
-      body: GestureDetector(
+      backgroundColor: Colors.transparent,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Positioned.fill(
+            child: BackdropFilter(
+              filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+              child: ColoredBox(
+                color: Colors.black.withValues(alpha: 0.72),
+              ),
+            ),
+          ),
+          Positioned.fill(child: _ambientBackground()),
+          Positioned.fill(
+            child: Transform.translate(
+              offset: Offset(0, _dismissDragDistance),
+              child: Transform.scale(
+                scale: 1 - (_dismissDragDistance / 1800).clamp(0.0, 0.075),
+                alignment: Alignment.topCenter,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(
+                    (_dismissDragDistance * 0.08).clamp(0.0, 24.0),
+                  ),
+                  child: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onVerticalDragStart: AppSettings.instance.enableNowPlayingGestures ? (_) => _dismissDragDistance = 0 : null,
-        onVerticalDragUpdate: AppSettings.instance.enableNowPlayingGestures ? (details) => _dismissDragDistance += details.primaryDelta ?? 0 : null,
+        onVerticalDragUpdate: AppSettings.instance.enableNowPlayingGestures
+            ? (details) => setState(() {
+                  _dismissDragDistance = (_dismissDragDistance +
+                          (details.primaryDelta ?? 0))
+                      .clamp(0.0, 320.0);
+                })
+            : null,
         onHorizontalDragStart: AppSettings.instance.enableNowPlayingGestures ? (_) => _trackSwipeDistance = 0 : null,
         onHorizontalDragUpdate: AppSettings.instance.enableNowPlayingGestures ? (details) => _trackSwipeDistance += details.primaryDelta ?? 0 : null,
-        onVerticalDragEnd: AppSettings.instance.enableNowPlayingGestures ? (details) {
-          if (_dismissDragDistance > 100 || (details.primaryVelocity ?? 0) > 500) {
-            Navigator.maybePop(context);
-          }
-          _dismissDragDistance = 0;
-        } : null,
+        onVerticalDragEnd: AppSettings.instance.enableNowPlayingGestures
+            ? (details) {
+                final shouldDismiss = _dismissDragDistance > 100 ||
+                    (details.primaryVelocity ?? 0) > 500;
+                if (shouldDismiss) {
+                  Navigator.maybePop(context);
+                } else if (mounted) {
+                  setState(() => _dismissDragDistance = 0);
+                }
+              }
+            : null,
         onHorizontalDragEnd: AppSettings.instance.enableNowPlayingGestures ? (details) {
           final distance = _trackSwipeDistance;
           final velocity = details.primaryVelocity ?? 0;
@@ -1076,6 +1248,12 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             ],
           ),
         ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
