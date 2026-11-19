@@ -218,7 +218,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
               16,
               132 + MediaQuery.paddingOf(context).bottom,
             ),
-            itemCount: tasks.length + 1,
+            itemCount: tasks.isEmpty ? 2 : tasks.length + 1,
             itemBuilder: (context, index) {
               if (index == 0) {
                 return Padding(
@@ -234,6 +234,35 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                         shape: const StadiumBorder(),
                       ),
                     ),
+                  ),
+                );
+              }
+              if (tasks.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.only(top: 56),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.download_for_offline_outlined,
+                        size: 48,
+                        color: colors.onSurfaceVariant.withValues(alpha: 0.65),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'No downloads yet',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        'Paste an HTTP or HTTPS link to add your first download.',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                   ),
                 );
               }
@@ -363,7 +392,7 @@ class _DownloadTaskCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(99),
               child: LinearProgressIndicator(
                 minHeight: 5,
-                value: task.progress,
+                value: task.progress ?? (downloading ? null : 0),
                 backgroundColor: colors.onSurface.withValues(alpha: 0.10),
                 color: failed ? colors.error : colors.primary,
               ),
