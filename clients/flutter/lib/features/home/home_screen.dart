@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:material_ui/material_ui.dart';
@@ -24,6 +25,8 @@ import '../storage/local_storage_setup_screen.dart';
 import '../search/search_screen.dart';
 import '../settings/settings_screen.dart';
 import '../transfers/transfer_manager_screen.dart';
+import '../downloads/download_manager_service.dart';
+import '../downloads/downloads_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({required this.api, this.serverName, this.onReturnToConnection, super.key});
@@ -60,6 +63,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    unawaited(DownloadManagerService.instance.initialize());
+    DownloadManagerService.instance.bindServerApi(widget.api);
     PocketLinkNavigation.drawerOpen.value = false;
     PocketLinkNavigation.quickShortcutsOpen.value = false;
     AppSettings.instance.addListener(_navigationSettingsChanged);
@@ -200,6 +205,7 @@ class _HomeScreenState extends State<HomeScreen> {
       'photos' => PhotoGalleryScreen(api: widget.api, onBackHandlerChanged: _onLibraryBackHandlerChanged),
       'favorites' => PhotoGalleryScreen(api: widget.api, initialTab: 2, onBackHandlerChanged: _onLibraryBackHandlerChanged),
       'documents' => DocumentsBrowserScreen(api: widget.api),
+      'downloads' => DownloadsScreen(api: widget.api),
       _ => null,
     };
     if (page == null) return;
@@ -449,6 +455,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 builder: (_) => const TransferManagerScreen(),
               ),
             ),
+            onOpenDownloads: () => _openLibrary('downloads'),
             onOpenSettings: () => Navigator.of(context).push<void>(
               MaterialPageRoute<void>(
                 builder: (_) => SettingsScreen(
