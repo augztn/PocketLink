@@ -522,9 +522,19 @@ internal class MediaIndexScanner(
         private const val RESCAN_INTERVAL_MS = 10 * 60 * 1000L
         private const val MAX_DEPTH = 64
         private const val MAX_REPORTED_SKIPPED_ITEMS = 100
-        private val AUDIO = setOf("mp3","m4a","aac","wav","flac","ogg","opus","wma","aiff","alac")
-        private val VIDEO = setOf("mp4","m4v","mov","mkv","webm","avi","wmv","mpeg","mpg","3gp","ts","m2ts","mts","flv","f4v","3g2","m2v","ogv","vob","rmvb")
-        private val PHOTO = setOf("jpg","jpeg","png","webp","gif","bmp","heic","heif","avif")
+        private val AUDIO = setOf(
+            "mp3","m4a","aac","wav","flac","ogg","opus","wma","aiff","alac",
+            "amr","ape","wv","dsf","dff","mid","midi","mka"
+        )
+        private val VIDEO = setOf(
+            "mp4","m4v","mov","mkv","webm","avi","wmv","mpeg","mpg","3gp",
+            "ts","m2ts","mts","flv","f4v","3g2","m2v","ogv","vob","rmvb",
+            "h264","h265","hevc"
+        )
+        private val PHOTO = setOf(
+            "jpg","jpeg","png","webp","gif","bmp","heic","heif","avif",
+            "tif","tiff","jxl","dng","cr2","nef","arw","orf","rw2"
+        )
 
         private fun categoryFor(name: String): String? = when (name.substringAfterLast('.', "").lowercase()) {
             in AUDIO -> "music"
