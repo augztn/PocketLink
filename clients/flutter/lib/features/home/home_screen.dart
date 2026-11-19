@@ -256,7 +256,7 @@ class _HomeScreenState extends State<HomeScreen> {
       try {
         await Navigator.of(context, rootNavigator: true).push<void>(
           PageRouteBuilder<void>(
-            opaque: !player.isMusic,
+            opaque: true,
             barrierColor: Colors.transparent,
             settings: const RouteSettings(
               name: PocketLinkRouteNames.nowPlaying,
