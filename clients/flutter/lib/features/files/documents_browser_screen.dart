@@ -5,6 +5,7 @@ import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/compact_search_field.dart';
 import '../../core/widgets/pocketlink_file_icon.dart';
 import '../../core/widgets/smoked_glass_popover_menu.dart';
+import '../downloads/download_manager_service.dart';
 
 import '../../core/network/server_api.dart';
 import 'file_manager_screen.dart';
@@ -148,23 +149,22 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
 
   Future<void> _download(_DocumentFile document) async {
     try {
-      final bytes = document.volume == null
-          ? await widget.api.downloadFile(document.path)
-          : await widget.api.downloadStorageFile(document.volume!, document.path);
-      final saved = await FilePicker.saveFile(
-        dialogTitle: 'Save document',
-        fileName: document.entry.name,
-        bytes: bytes,
+      await DownloadManagerService.instance.enqueueServerFile(
+        api: widget.api,
+        name: document.entry.name,
+        sourcePath: document.path,
+        volume: document.volume,
+        size: document.entry.size,
       );
-      if (saved != null && mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Document saved.')),
+          SnackBar(content: Text('Added to Downloads: ${document.entry.name}')),
         );
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not download this document.')),
+          const SnackBar(content: Text('Could not add this document to Downloads.')),
         );
       }
     }
