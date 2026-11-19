@@ -31,6 +31,7 @@ class DownloadManagerService extends ChangeNotifier {
   ServerApi? _serverApi;
   Future<void> _writeQueue = Future<void>.value();
   bool _initialized = false;
+  Future<void>? _initialization;
   bool _isWifi = false;
   int _activeWorkers = 0;
 
@@ -43,8 +44,12 @@ class DownloadManagerService extends ChangeNotifier {
       .where((task) => task.status == DownloadStatus.downloading)
       .fold(0, (sum, task) => sum + task.speedBytesPerSecond);
 
-  Future<void> initialize() async {
-    if (_initialized) return;
+  Future<void> initialize() {
+    if (_initialized) return Future<void>.value();
+    return _initialization ??= _initialize();
+  }
+
+  Future<void> _initialize() async {
     final preferences = await SharedPreferences.getInstance();
     final raw = preferences.getString(_tasksKey);
     if (raw != null) {
