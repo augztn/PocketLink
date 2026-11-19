@@ -2,7 +2,6 @@ import 'dart:ui' as ui;
 import 'package:material_ui/material_ui.dart';
 import '../../core/network/server_api.dart';
 import 'photo_favorites_store.dart';
-import '../transfers/transfer_manager_screen.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/smoked_glass_popover_menu.dart';
