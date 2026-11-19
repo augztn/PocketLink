@@ -77,7 +77,76 @@ class PocketLinkNavigationObserver extends NavigatorObserver {
 abstract final class PocketLinkNavigation {
   static final navigatorKey = GlobalKey<NavigatorState>();
   static final musicButtonKey = GlobalKey();
+  static final miniPlayerKey = GlobalKey();
   static final mediaOverlayKey = GlobalKey();
   static final drawerOpen = ValueNotifier<bool>(false);
   static final observer = PocketLinkNavigationObserver();
+
+  /// Captures the visible source surface for the Now Playing container transform.
+  static Rect? resolveMediaOriginRect({required bool preferMiniPlayer}) {
+    final keys = preferMiniPlayer
+        ? <GlobalKey>[miniPlayerKey, musicButtonKey]
+        : <GlobalKey>[musicButtonKey, miniPlayerKey];
+    for (final key in keys) {
+      final renderObject = key.currentContext?.findRenderObject();
+      if (renderObject is! RenderBox || !renderObject.hasSize) continue;
+      final rect = renderObject.localToGlobal(Offset.zero) & renderObject.size;
+      if (rect.width > 0 && rect.height > 0) return rect;
+    }
+    return null;
+  }
+
+  /// Expands a full-screen media route from the mini-player or Music dock pill.
+  static Widget mediaContainerTransformTransition({
+    required BuildContext context,
+    required Animation<double> animation,
+    required Widget child,
+    required Rect? originRect,
+  }) {
+    final media = MediaQuery.of(context);
+    if (media.disableAnimations) return child;
+    final size = media.size;
+    final destination = Offset.zero & size;
+    final origin = originRect ?? Rect.fromLTWH(
+      size.width - 72,
+      size.height - media.padding.bottom - 76,
+      56,
+      56,
+    );
+
+    return AnimatedBuilder(
+      animation: animation,
+      child: child,
+      builder: (context, animatedChild) {
+        final progress = animation.status == AnimationStatus.reverse
+            ? Curves.easeInCubic.transform(animation.value)
+            : Curves.easeOutCubic.transform(animation.value);
+        final rect = Rect.lerp(origin, destination, progress)!;
+        final radius = 22 * (1 - progress);
+        return Align(
+          alignment: Alignment.topLeft,
+          widthFactor: 1,
+          heightFactor: 1,
+          child: Transform.translate(
+            offset: rect.topLeft,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(radius),
+              child: SizedBox(
+                width: rect.width,
+                height: rect.height,
+                child: FittedBox(
+                  fit: BoxFit.fill,
+                  child: SizedBox(
+                    width: size.width,
+                    height: size.height,
+                    child: animatedChild,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 }

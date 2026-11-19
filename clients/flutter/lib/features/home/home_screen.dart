@@ -246,6 +246,10 @@ class _HomeScreenState extends State<HomeScreen> {
     final item = player.currentItem;
     final api = player.api;
     if (player.isActive && item != null && api != null) {
+      final originRect = PocketLinkNavigation.resolveMediaOriginRect(
+        preferMiniPlayer: AppSettings.instance.showMiniPlayer &&
+            player.shouldShowMiniPlayer,
+      );
       _openingNowPlaying = true;
       try {
         await Navigator.of(context, rootNavigator: true).push<void>(
@@ -274,27 +278,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     initialIndex: player.currentIndex,
                     resumeExisting: true,
                   ),
-            transitionsBuilder: (context, animation, __, child) {
-              if (MediaQuery.of(context).disableAnimations) return child;
-              final curved = CurvedAnimation(
-                parent: animation,
-                curve: Curves.easeOutCubic,
-                reverseCurve: Curves.easeInCubic,
-              );
-              return FadeTransition(
-                opacity: curved,
-                child: SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(0, 0.075),
-                    end: Offset.zero,
-                  ).animate(curved),
-                  child: ScaleTransition(
-                    scale: Tween<double>(begin: 0.965, end: 1).animate(curved),
-                    child: child,
-                  ),
-                ),
-              );
-            },
+            transitionsBuilder: (context, animation, __, child) =>
+                PocketLinkNavigation.mediaContainerTransformTransition(
+              context: context,
+              animation: animation,
+              child: child,
+              originRect: originRect,
+            ),
           ),
         );
       } finally {

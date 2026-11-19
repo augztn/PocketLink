@@ -122,6 +122,9 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay> {
       return;
     }
 
+    final originRect = PocketLinkNavigation.resolveMediaOriginRect(
+      preferMiniPlayer: true,
+    );
     _openingNowPlaying = true;
     try {
       await navigator.push<void>(
@@ -139,27 +142,13 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay> {
             initialIndex: player.currentIndex,
             resumeExisting: true,
           ),
-          transitionsBuilder: (context, animation, __, child) {
-            if (MediaQuery.of(context).disableAnimations) return child;
-            final curved = CurvedAnimation(
-              parent: animation,
-              curve: Curves.easeOutCubic,
-              reverseCurve: Curves.easeInCubic,
-            );
-            return FadeTransition(
-              opacity: curved,
-              child: SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0, 0.075),
-                  end: Offset.zero,
-                ).animate(curved),
-                child: ScaleTransition(
-                  scale: Tween<double>(begin: 0.965, end: 1).animate(curved),
-                  child: child,
-                ),
-              ),
-            );
-          },
+          transitionsBuilder: (context, animation, __, child) =>
+              PocketLinkNavigation.mediaContainerTransformTransition(
+            context: context,
+            animation: animation,
+            child: child,
+            originRect: originRect,
+          ),
         ),
       );
     } finally {
@@ -245,6 +234,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay> {
                           : const Duration(milliseconds: 220),
                       curve: Curves.easeOut,
                       child: _GlobalMiniPlayerBar(
+                        key: PocketLinkNavigation.miniPlayerKey,
                         player: player,
                         onOpen: _openNowPlaying,
                         onDismiss: player.dismissMiniPlayer,
@@ -392,6 +382,7 @@ class _AnimatedTrackDirection extends StatelessWidget {
 
 class _GlobalMiniPlayerBar extends StatelessWidget {
   const _GlobalMiniPlayerBar({
+    super.key,
     required this.player,
     required this.onOpen,
     required this.onDismiss,
