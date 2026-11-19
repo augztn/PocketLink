@@ -39,42 +39,41 @@ class LiquidGlassSurface extends StatelessWidget {
                 ],
                 stops: const [0, 0.52, 1],
               )
-            : const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+            : LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
                 colors: [
-                  Color(0xF5FFFFFF),
-                  Color(0xEEF2F5FF),
-                  Color(0xF3EAF0FF),
+                  Colors.white.withValues(alpha: 0.82),
+                  Colors.white.withValues(alpha: 0.62),
+                  const Color(0xFFEEF2FF).withValues(alpha: 0.74),
                 ],
+                stops: const [0, 0.52, 1],
               );
 
         final border = useGlass
-            ? Border(
-                top: BorderSide(
-                  color: Colors.white.withValues(
-                    alpha: isDark ? 0.50 : 0.96,
-                  ),
-                  width: 1.2,
-                ),
-                left: BorderSide(
-                  color: Colors.white.withValues(
-                    alpha: isDark ? 0.14 : 0.68,
-                  ),
-                  width: isDark ? 1.2 : 0.8,
-                ),
-                right: BorderSide(
-                  color: Colors.white.withValues(
-                    alpha: isDark ? 0.14 : 0.52,
-                  ),
-                  width: 0.8,
-                ),
-                bottom: BorderSide(
-                  color: (isDark ? Colors.white : const Color(0xFF4760FA))
-                      .withValues(alpha: isDark ? 0.22 : 0.22),
-                  width: 0.8,
-                ),
-              )
+            ? isDark
+                ? Border(
+                    top: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.50),
+                      width: 1.2,
+                    ),
+                    left: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.14),
+                      width: 1.2,
+                    ),
+                    right: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.14),
+                      width: 0.8,
+                    ),
+                    bottom: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.22),
+                      width: 0.8,
+                    ),
+                  )
+                : Border.all(
+                    color: const Color(0xFF94A3B8).withValues(alpha: 0.28),
+                    width: 1,
+                  )
             : Border.all(
                 color: colors.outlineVariant.withValues(alpha: 0.62),
                 width: 1,
@@ -89,13 +88,13 @@ class LiquidGlassSurface extends StatelessWidget {
             BoxShadow(
               color: isDark
                   ? Colors.black.withValues(alpha: useGlass ? 0.45 : 0.10)
-                  : const Color(0xFF283C8E)
-                      .withValues(alpha: useGlass ? 0.15 : 0.07),
-              blurRadius: useGlass ? (isDark ? 18 : 16) : 10,
-              offset: useGlass && isDark
+                  : const Color(0xFF0F172A)
+                      .withValues(alpha: useGlass ? 0.08 : 0.07),
+              blurRadius: useGlass ? (isDark ? 18 : 20) : 10,
+              offset: useGlass
                   ? const Offset(0, 8)
                   : const Offset(0, 6),
-              spreadRadius: useGlass && isDark ? 0 : -5,
+              spreadRadius: useGlass ? 0 : -5,
             ),
           ],
         );
@@ -116,7 +115,7 @@ class LiquidGlassSurface extends StatelessWidget {
                           end: Alignment.center,
                           colors: [
                             Colors.white.withValues(
-                              alpha: isDark ? 0.075 : 0.48,
+                              alpha: isDark ? 0.075 : 0.95,
                             ),
                             Colors.transparent,
                           ],
@@ -135,7 +134,7 @@ class LiquidGlassSurface extends StatelessWidget {
                           begin: Alignment.bottomCenter,
                           end: Alignment.center,
                           colors: [
-                            const Color(0xFF4760FA).withValues(alpha: 0.055),
+                            Colors.white.withValues(alpha: 0.45),
                             Colors.transparent,
                           ],
                           stops: const [0, 1],
