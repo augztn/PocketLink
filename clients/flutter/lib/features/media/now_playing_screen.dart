@@ -978,35 +978,78 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   );
 
   Widget _transport() => StreamBuilder<bool>(
-    stream: _player.stream.playing,
-    initialData: _player.state.playing,
-    builder: (context, snapshot) {
-      final playing = snapshot.data ?? false;
-      final hasMultiple = _persistent.queue.length > 1;
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          IconButton(
-            tooltip: 'Previous track',
-            onPressed: hasMultiple ? _player.previous : null,
-            icon: const Icon(Icons.skip_previous_rounded, color: Colors.white, size: 36),
-          ),
-          IconButton(
-            tooltip: playing ? 'Pause' : 'Play',
-            onPressed: _player.playOrPause,
-            iconSize: 46,
-            color: Colors.white,
-            icon: Icon(playing ? Icons.pause_rounded : Icons.play_arrow_rounded),
-          ),
-          IconButton(
-            tooltip: 'Next track',
-            onPressed: hasMultiple ? _player.next : null,
-            icon: const Icon(Icons.skip_next_rounded, color: Colors.white, size: 36),
-          ),
-        ],
+        stream: _player.stream.playing,
+        initialData: _player.state.playing,
+        builder: (context, snapshot) {
+          final playing = snapshot.data ?? false;
+          final hasMultiple = _persistent.queue.length > 1;
+          final colors = Theme.of(context).colorScheme;
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              SizedBox(
+                width: 52,
+                height: 52,
+                child: LiquidGlassPill(
+                  radius: BorderRadius.circular(26),
+                  child: IconButton(
+                    tooltip: 'Previous track',
+                    onPressed: hasMultiple ? _player.previous : null,
+                    color: Colors.white,
+                    iconSize: 27,
+                    icon: const Icon(Icons.skip_previous_rounded),
+                  ),
+                ),
+              ),
+              Container(
+                width: 68,
+                height: 68,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      colors.primary,
+                      colors.tertiary,
+                    ],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: colors.primary.withValues(alpha: 0.38),
+                      blurRadius: 24,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: IconButton(
+                  tooltip: playing ? 'Pause' : 'Play',
+                  onPressed: _player.playOrPause,
+                  iconSize: 36,
+                  color: Colors.white,
+                  icon: Icon(
+                    playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 52,
+                height: 52,
+                child: LiquidGlassPill(
+                  radius: BorderRadius.circular(26),
+                  child: IconButton(
+                    tooltip: 'Next track',
+                    onPressed: hasMultiple ? _player.next : null,
+                    color: Colors.white,
+                    iconSize: 27,
+                    icon: const Icon(Icons.skip_next_rounded),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       );
-    },
-  );
 
   Widget _volume() => StreamBuilder<double>(
     stream: _player.stream.volume,
