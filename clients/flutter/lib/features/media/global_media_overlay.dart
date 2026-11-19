@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/navigation/pocketlink_navigation.dart';
+import '../../core/network/server_api.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
 import 'now_playing_screen.dart';
@@ -27,6 +28,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   bool _openingNowPlaying = false;
   bool _nowPlayingOpen = false;
   bool _isNowPlayingDragging = false;
+  bool _closingNowPlaying = false;
   Rect? _nowPlayingOriginRect;
   OverlayEntry? _nowPlayingEntry;
   late final AnimationController _nowPlayingController;
@@ -156,7 +158,11 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
         player: player,
         api: api,
         onDismiss: _closeNowPlaying,
-        onDragStart: () => _isNowPlayingDragging = true,
+        isDragging: _isNowPlayingDragging,
+        onDragStart: () {
+          _isNowPlayingDragging = true;
+          _nowPlayingEntry?.markNeedsBuild();
+        },
         onDragUpdate: _updateNowPlayingDrag,
         onDragEnd: _endNowPlayingDrag,
       ),
@@ -170,8 +176,10 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   }
 
   Future<void> _closeNowPlaying() async {
-    if (!_nowPlayingOpen) return;
+    if (!_nowPlayingOpen || _closingNowPlaying) return;
+    _closingNowPlaying = true;
     _isNowPlayingDragging = false;
+    _nowPlayingEntry?.markNeedsBuild();
     await _nowPlayingController.reverse();
     _nowPlayingEntry?.remove();
     _nowPlayingEntry = null;
@@ -181,6 +189,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
         _nowPlayingOriginRect = null;
       });
     }
+    _closingNowPlaying = false;
   }
 
   void _updateNowPlayingDrag(double delta) {
@@ -194,6 +203,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
 
   void _endNowPlayingDrag(double velocity) {
     _isNowPlayingDragging = false;
+    _nowPlayingEntry?.markNeedsBuild();
     if (_nowPlayingController.value < 0.85 || velocity > 280) {
       unawaited(_closeNowPlaying());
     } else {
@@ -342,6 +352,7 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
   const _NowPlayingMorphOverlay({
     required this.animation,
     required this.originRect,
+    required this.isDragging,
     required this.player,
     required this.api,
     required this.onDismiss,
@@ -352,6 +363,7 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
 
   final Animation<double> animation;
   final Rect? originRect;
+  final bool isDragging;
   final PersistentAudioPlayer player;
   final ServerApi api;
   final VoidCallback onDismiss;
@@ -373,7 +385,7 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
         final rect = Rect.lerp(origin, destination, t)!;
         final radius = BorderRadius.lerp(
           BorderRadius.circular(22),
-          BorderRadius.circular(t > 0 && animation.status == AnimationStatus.forward ? 0 : 32),
+          BorderRadius.circular(isDragging ? 32 : 0),
           t,
         )!;
         final miniOpacity = (1.0 - t * 2.5).clamp(0.0, 1.0).toDouble();
