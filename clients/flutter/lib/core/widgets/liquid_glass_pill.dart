@@ -4,12 +4,11 @@ import 'package:material_ui/material_ui.dart';
 
 import '../settings/app_settings.dart';
 
-/// Shared liquid-glass surface for floating navigation and compact actions.
-///
-/// Blur is applied behind the clipped surface; layered gradients and a fine
-/// specular rim preserve contrast without making the content underneath noisy.
-class LiquidGlassPill extends StatelessWidget {
-  const LiquidGlassPill({
+/// Reusable translucent glass surface shared by the dock, mini-player and
+/// compact floating actions. Backdrop blur is only enabled when Liquid Glass
+/// is enabled in Appearance settings.
+class LiquidGlassSurface extends StatelessWidget {
+  const LiquidGlassSurface({
     required this.child,
     required this.radius,
     super.key,
@@ -28,86 +27,69 @@ class LiquidGlassPill extends StatelessWidget {
         final colors = Theme.of(context).colorScheme;
 
         final gradient = isDark
-            ? const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+            ? LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
                 colors: [
-                  Color(0xCC252A36),
-                  Color(0xB3191C25),
-                  Color(0xC914161E),
+                  Colors.white.withValues(alpha: 0.14),
+                  Colors.white.withValues(alpha: 0.05),
                 ],
-                stops: [0, 0.48, 1],
               )
             : const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
                 colors: [
-                  Color(0xDFFFFFFF),
-                  Color(0xCCEAF0FF),
-                  Color(0xD4E6EBF8),
+                  Color(0xB8FFFFFF),
+                  Color(0x85EEF2FF),
                 ],
-                stops: [0, 0.52, 1],
               );
 
-        final border = useGlass
-            ? Border(
-                top: BorderSide(
-                  color: Colors.white.withValues(alpha: isDark ? 0.30 : 0.78),
-                  width: isDark ? 1.0 : 1.15,
+        final decoration = BoxDecoration(
+          color: useGlass ? null : colors.surfaceContainerLow,
+          gradient: useGlass ? gradient : null,
+          borderRadius: radius,
+          border: useGlass
+              ? Border(
+                  top: BorderSide(
+                    color: Colors.white.withValues(
+                      alpha: isDark ? 0.28 : 0.82,
+                    ),
+                    width: 1.1,
+                  ),
+                  left: BorderSide(
+                    color: Colors.white.withValues(
+                      alpha: isDark ? 0.13 : 0.58,
+                    ),
+                    width: 0.8,
+                  ),
+                  right: BorderSide(
+                    color: Colors.white.withValues(
+                      alpha: isDark ? 0.11 : 0.48,
+                    ),
+                    width: 0.8,
+                  ),
+                  bottom: BorderSide(
+                    color: (isDark ? Colors.white : const Color(0xFF536DFE))
+                        .withValues(alpha: isDark ? 0.07 : 0.16),
+                    width: 0.8,
+                  ),
+                )
+              : Border.all(
+                  color: colors.outlineVariant.withValues(alpha: 0.62),
+                  width: 1,
                 ),
-                left: BorderSide(
-                  color: Colors.white.withValues(alpha: isDark ? 0.14 : 0.54),
-                ),
-                right: BorderSide(
-                  color: Colors.white.withValues(alpha: isDark ? 0.12 : 0.48),
-                ),
-                bottom: BorderSide(
-                  color: (isDark ? Colors.white : const Color(0xFF4760FA))
-                      .withValues(alpha: isDark ? 0.10 : 0.15),
-                ),
-              )
-            : Border.all(
-                color: colors.outlineVariant.withValues(alpha: 0.62),
-                width: 1,
-              );
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.07),
+              blurRadius: useGlass ? 12 : 10,
+              offset: const Offset(0, 4),
+              spreadRadius: -4,
+            ),
+          ],
+        );
 
-        final surface = Container(
-          decoration: BoxDecoration(
-            color: useGlass ? null : colors.surfaceContainerLow,
-            gradient: useGlass ? gradient : null,
-            borderRadius: radius,
-            border: border,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.34 : 0.10),
-                blurRadius: useGlass ? 30 : 18,
-                offset: const Offset(0, 8),
-                spreadRadius: -3,
-              ),
-              if (useGlass)
-                BoxShadow(
-                  color: (isDark ? Colors.black : const Color(0xFF283C8E))
-                      .withValues(alpha: isDark ? 0.18 : 0.08),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
-                ),
-            ],
-          ),
-          foregroundDecoration: BoxDecoration(
-            borderRadius: radius,
-            gradient: useGlass
-                ? LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    stops: const [0, 0.42, 1],
-                    colors: [
-                      Colors.white.withValues(alpha: isDark ? 0.14 : 0.46),
-                      Colors.white.withValues(alpha: isDark ? 0.035 : 0.12),
-                      Colors.transparent,
-                    ],
-                  )
-                : null,
-          ),
+        final surface = DecoratedBox(
+          decoration: decoration,
           child: child,
         );
 
@@ -122,7 +104,7 @@ class LiquidGlassPill extends StatelessWidget {
           child: ClipRRect(
             borderRadius: radius,
             child: BackdropFilter(
-              filter: ui.ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+              filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
               child: surface,
             ),
           ),
@@ -130,4 +112,22 @@ class LiquidGlassPill extends StatelessWidget {
       },
     );
   }
+}
+
+/// Backwards-compatible name retained for existing call sites.
+class LiquidGlassPill extends StatelessWidget {
+  const LiquidGlassPill({
+    required this.child,
+    required this.radius,
+    super.key,
+  });
+
+  final Widget child;
+  final BorderRadius radius;
+
+  @override
+  Widget build(BuildContext context) => LiquidGlassSurface(
+        radius: radius,
+        child: child,
+      );
 }

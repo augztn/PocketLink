@@ -433,6 +433,28 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
                 child: IndexedStack(index: _hostSetupOpen ? 3 : _selectedIndex, children: pages),
               ),
+              if (!_hostSetupOpen && AppSettings.instance.useLiquidGlass)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  height: 196 + MediaQuery.paddingOf(context).bottom,
+                  child: IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                          colors: [
+                            Colors.black.withValues(alpha: 0.72),
+                            Colors.black.withValues(alpha: 0.0),
+                          ],
+                          stops: const [0, 1],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               if (!_hostSetupOpen && _musicShortcutsExpanded)
                 Positioned.fill(
                   child: GestureDetector(
@@ -441,34 +463,33 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: const SizedBox.expand(),
                   ),
                 ),
-            ],
-          ),
-          bottomNavigationBar: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (AppSettings.instance.showMiniPlayer && player.shouldShowMiniPlayer)
-                const SizedBox(height: 62),
-                FloatingNavigationDock(
-                order: AppSettings.instance.navigationOrder,
-                visibleItems: AppSettings.instance.visibleNavigationItems,
-                selectedIndex: _selectedIndex,
-                isPlaying: player.isMusic && player.isPlaying,
-                hasMedia: player.isActive && player.currentItem != null,
-                isVideo: player.isActive && !player.isMusic,
-                onSelect: _openTab,
-                musicShortcuts: AppSettings.instance.musicButtonShortcuts,
-                musicShortcutsExpanded: _musicShortcutsExpanded,
-                musicShortcutsBottomOffset: 64.0 +
-                    (AppSettings.instance.showMiniPlayer && player.shouldShowMiniPlayer ? 62.0 : 0.0),
-                onMusicShortcutLongPress: _expandMusicShortcuts,
-                onMusicShortcutSelected: _openMusicShortcut,
-                onBrowseSwipeLeft: () => _handleMusicButtonSwipe(left: true),
-                onBrowseSwipeRight: () => _handleMusicButtonSwipe(left: false),
-                onBrowsePressed: () {
-                  _closeHostSetup();
-                  _openNowPlaying(player);
-                },
-              ),
+              if (!_hostSetupOpen)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: FloatingNavigationDock(
+                    order: AppSettings.instance.navigationOrder,
+                    visibleItems: AppSettings.instance.visibleNavigationItems,
+                    selectedIndex: _selectedIndex,
+                    isPlaying: player.isMusic && player.isPlaying,
+                    hasMedia: player.isActive && player.currentItem != null,
+                    isVideo: player.isActive && !player.isMusic,
+                    onSelect: _openTab,
+                    musicShortcuts: AppSettings.instance.musicButtonShortcuts,
+                    musicShortcutsExpanded: _musicShortcutsExpanded,
+                    musicShortcutsBottomOffset: 64.0 +
+                        (AppSettings.instance.showMiniPlayer && player.shouldShowMiniPlayer ? 62.0 : 0.0),
+                    onMusicShortcutLongPress: _expandMusicShortcuts,
+                    onMusicShortcutSelected: _openMusicShortcut,
+                    onBrowseSwipeLeft: () => _handleMusicButtonSwipe(left: true),
+                    onBrowseSwipeRight: () => _handleMusicButtonSwipe(left: false),
+                    onBrowsePressed: () {
+                      _closeHostSetup();
+                      _openNowPlaying(player);
+                    },
+                  ),
+                ),
             ],
           ),
         ),

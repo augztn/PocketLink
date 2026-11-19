@@ -441,10 +441,10 @@ class _DockTab extends StatelessWidget {
               duration: const Duration(milliseconds: 220),
               curve: Curves.easeOutCubic,
               decoration: BoxDecoration(
-                color: selected ? activeColor.withValues(alpha: 0.14) : Colors.transparent,
+                color: selected ? activeColor.withValues(alpha: 0.075) : Colors.transparent,
                 borderRadius: BorderRadius.circular(25),
                 border: selected
-                    ? Border.all(color: activeColor.withValues(alpha: 0.10))
+                    ? Border.all(color: activeColor.withValues(alpha: 0.07))
                     : null,
               ),
               child: Column(
