@@ -97,10 +97,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
         .trim();
     final artist = _folderName.trim();
     final suffixStart = name.lastIndexOf(' - ');
-    if (suffixStart >= 0 &&
-        artist.isNotEmpty &&
-        name.substring(suffixStart + 3).trim().toLowerCase() ==
-            artist.toLowerCase()) {
+    if (suffixStart >= 0 && _folder.isNotEmpty && artist.isNotEmpty) {
       return name.substring(0, suffixStart).trim();
     }
     return name;
