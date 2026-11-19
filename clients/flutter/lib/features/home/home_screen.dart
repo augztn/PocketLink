@@ -12,7 +12,6 @@ import 'network_route_classifier.dart';
 import 'explore_search_screens.dart';
 import 'home_dashboard.dart';
 import '../media/media_player_screen.dart';
-import '../media/now_playing_screen.dart';
 import '../media/global_media_overlay.dart';
 import '../media/media_browser_screen.dart';
 import '../library/photo_gallery_screen.dart';
@@ -266,23 +265,16 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             transitionDuration: const Duration(milliseconds: 420),
             reverseTransitionDuration: const Duration(milliseconds: 320),
-            pageBuilder: (_, __, ___) => player.isMusic
-                ? NowPlayingScreen(
-                    api: api,
-                    queue: player.queue,
-                    initialIndex: player.currentIndex,
-                    resumeExisting: true,
-                  )
-                : MediaPlayerScreen(
-                    api: api,
-                    title: item.title,
-                    path: item.path,
-                    volume: item.volume,
-                    isVideo: true,
-                    queue: player.queue,
-                    initialIndex: player.currentIndex,
-                    resumeExisting: true,
-                  ),
+            pageBuilder: (_, __, ___) => MediaPlayerScreen(
+              api: api,
+              title: item.title,
+              path: item.path,
+              volume: item.volume,
+              isVideo: true,
+              queue: player.queue,
+              initialIndex: player.currentIndex,
+              resumeExisting: true,
+            ),
             transitionsBuilder: (context, animation, __, child) =>
                 PocketLinkNavigation.mediaContainerTransformTransition(
               context: context,
