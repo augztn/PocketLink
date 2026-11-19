@@ -64,6 +64,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _openHostSetup() {
     setState(() {
+      _libraryOpen = false;
       _hostSetupInitialized = true;
       _hostSetupOpen = true;
       _musicShortcutsExpanded = false;
@@ -122,6 +123,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _openFileLocation(String? volume, String path) {
     setState(() {
+      _libraryOpen = false;
       _hostSetupOpen = false;
       _musicShortcutsExpanded = false;
       _initializedTabs.add(2);
@@ -134,6 +136,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _openExternalStorage() {
     setState(() {
+      _libraryOpen = false;
       _hostSetupOpen = false;
       _musicShortcutsExpanded = false;
       _initializedTabs.add(2);
@@ -148,6 +151,7 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     setState(() {
+      _libraryOpen = false;
       _hostSetupOpen = false;
       _musicShortcutsExpanded = false;
       _initializedTabs.add(1);
@@ -201,6 +205,7 @@ class _HomeScreenState extends State<HomeScreen> {
         break;
       case 'upload':
         setState(() {
+          _libraryOpen = false;
           _initializedTabs.add(2);
           _selectedIndex = 2;
           _uploadRequest++;
