@@ -880,7 +880,8 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                 Text(
                   '${visibleMedia.length} videos • ${_selectedVolume == null ? 'All storage' : _volumeName(_selectedVolume)}'
                   '${_scannedDirectories > 0 ? ' • $_scannedDirectories scanned' : ''}'
-                  '${_skippedDirectories > 0 ? ' · $_skippedDirectories skipped' : ''}',
+                  '${_skippedDirectories > 0 ? ' · $_skippedDirectories skipped' : ''}'
+                  '${_loading && _scanLocation.isNotEmpty ? ' · $_scanLocation' : ''}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontSize: 10, fontFamily: 'monospace', color: Color(0xFFA1A7B3)),
