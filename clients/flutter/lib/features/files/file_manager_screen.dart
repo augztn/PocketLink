@@ -15,7 +15,7 @@ import '../../core/settings/app_settings.dart';
 import '../transfers/transfer_manager.dart';
 import '../transfers/transfer_manager_screen.dart';
 import '../media/persistent_audio_player.dart';
-import '../media/global_media_overlay.dart';
+import '../media/now_playing_overlay_controller.dart';
 
 class FileManagerScreen extends StatefulWidget {
   const FileManagerScreen({
@@ -463,7 +463,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
         initialIndex: 0,
         isMusic: true,
       );
-      GlobalMediaOverlay.openNowPlaying();
+      NowPlayingOverlayController.open();
     } catch (error, stackTrace) {
       await AppLogger.error('Could not open Now Playing screen', error: error, stackTrace: stackTrace);
       _showError('Could not open the music player. Check diagnostics for details.');
