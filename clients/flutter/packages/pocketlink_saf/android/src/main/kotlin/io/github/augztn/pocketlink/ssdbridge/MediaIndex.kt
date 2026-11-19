@@ -315,6 +315,9 @@ internal class MediaIndexScanner(
             } catch (error: Exception) {
                 state = "failed"
                 lastError = error.message ?: "Index scan failed"
+                lastCompletedAt = System.currentTimeMillis()
+                currentSource = null
+                currentPath = null
             } finally {
                 val scanAgain = synchronized(this) {
                     running.set(false)
