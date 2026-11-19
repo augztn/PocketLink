@@ -266,6 +266,10 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
               !observer.isNowPlayingVisible &&
               !observer.isModalRouteOnTop;
           final onDashboard = observer.isDashboardVisible;
+          final reserveMiniPlayerSpace = _shouldShowMiniPlayer() &&
+              !drawerOpen &&
+              !observer.isNowPlayingVisible &&
+              !observer.isModalRouteOnTop;
           final showTrackPopup = _trackPopup != null &&
               _trackPopupOffset != null &&
               onDashboard &&
@@ -278,7 +282,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
           final bottomInset = media.padding.bottom;
 
           final Widget navigatorContent;
-          if (visible && !onDashboard) {
+          if (reserveMiniPlayerSpace && !onDashboard) {
             final reservedHeight = _miniPlayerHeight + bottomInset;
             navigatorContent = MediaQuery(
               data: media.copyWith(
