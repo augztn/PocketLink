@@ -1,10 +1,11 @@
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'package:pocketlink_client/features/home/navigation_dock.dart';
 
 void main() {
-  testWidgets('Music button supports tap, hold and horizontal swipe callbacks', (tester) async {
+  testWidgets('Music button supports tap, hold and horizontal swipe callbacks',
+      (tester) async {
     var taps = 0;
     var holds = 0;
     var next = 0;
@@ -33,14 +34,27 @@ void main() {
     await tester.tap(musicButton);
     expect(taps, 1);
 
-    await tester.longPress(musicButton);
+    await tester.longPress(find.byKey(const ValueKey('music-dock-button')));
     expect(holds, 1);
 
-    await tester.fling(musicButton, const Offset(-100, 0), 900);
+    final button = find.byIcon(Icons.music_note_rounded);
+    final nextGesture = await tester.startGesture(tester.getCenter(button));
+    await nextGesture.moveBy(const Offset(-54, 0));
+    await tester.pump();
+    expect(find.byIcon(Icons.skip_next_rounded), findsOneWidget);
+    await nextGesture.up();
     await tester.pumpAndSettle();
     expect(next, 1);
 
-    await tester.fling(musicButton, const Offset(100, 0), 900);
+    final resetButton = find.byType(FloatingNavigationDock);
+    expect(resetButton, findsOneWidget);
+    final previousGesture = await tester.startGesture(
+      tester.getCenter(find.byKey(PocketLinkNavigation.musicButtonKey)),
+    );
+    await previousGesture.moveBy(const Offset(54, 0));
+    await tester.pump();
+    expect(find.byIcon(Icons.skip_previous_rounded), findsOneWidget);
+    await previousGesture.up();
     await tester.pumpAndSettle();
     expect(previous, 1);
   });
