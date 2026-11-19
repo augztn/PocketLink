@@ -72,7 +72,7 @@ class FloatingNavigationDock extends StatelessWidget {
           child: LiquidGlassPill(
             radius: BorderRadius.circular(32),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+              padding: const EdgeInsets.all(5),
               child: SizedBox(
                 height: 54,
                 child: Row(

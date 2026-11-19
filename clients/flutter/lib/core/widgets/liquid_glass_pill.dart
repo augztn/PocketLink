@@ -28,129 +28,41 @@ class LiquidGlassSurface extends StatelessWidget {
         final isDark = Theme.of(context).brightness == Brightness.dark;
         final colors = Theme.of(context).colorScheme;
 
-        final glassFill = isDark
-            ? LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.white.withValues(alpha: 0.16),
-                  Colors.white.withValues(alpha: 0.07),
-                  Colors.white.withValues(alpha: 0.11),
-                ],
-                stops: const [0, 0.52, 1],
+        final decoration = useGlass
+            ? BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: isDark
+                      ? [
+                          Colors.white.withValues(alpha: 0.14),
+                          Colors.white.withValues(alpha: 0.08),
+                        ]
+                      : [
+                          Colors.white.withValues(alpha: 0.85),
+                          Colors.white.withValues(alpha: 0.72),
+                        ],
+                ),
+                borderRadius: radius,
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.22)
+                      : const Color(0xFF94A3B8).withValues(alpha: 0.30),
+                  width: 1,
+                ),
               )
-            : LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.white.withValues(alpha: 0.82),
-                  Colors.white.withValues(alpha: 0.62),
-                  const Color(0xFFEEF2FF).withValues(alpha: 0.74),
-                ],
-                stops: const [0, 0.52, 1],
+            : BoxDecoration(
+                color: colors.surfaceContainerLow,
+                borderRadius: radius,
+                border: Border.all(
+                  color: colors.outlineVariant.withValues(alpha: 0.62),
+                  width: 1,
+                ),
               );
-
-        final border = useGlass
-            ? isDark
-                ? Border(
-                    top: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.50),
-                      width: 1.2,
-                    ),
-                    left: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.14),
-                      width: 1.2,
-                    ),
-                    right: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.14),
-                      width: 0.8,
-                    ),
-                    bottom: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.22),
-                      width: 0.8,
-                    ),
-                  )
-                : Border.all(
-                    color: const Color(0xFF94A3B8).withValues(alpha: 0.28),
-                    width: 1,
-                  )
-            : Border.all(
-                color: colors.outlineVariant.withValues(alpha: 0.62),
-                width: 1,
-              );
-
-        // Keep the shadow outside the clip so the rounded glass edge stays clean.
-        // The same radius is used by the shadow, clip, fill and border.
-        final shadow = BoxDecoration(
-          borderRadius: radius,
-          boxShadow: [
-            BoxShadow(
-              color: isDark
-                  ? Colors.black.withValues(alpha: useGlass ? 0.45 : 0.10)
-                  : const Color(0xFF0F172A)
-                      .withValues(alpha: useGlass ? 0.08 : 0.07),
-              blurRadius: useGlass ? (isDark ? 18 : 20) : 10,
-              offset: useGlass
-                  ? const Offset(0, 8)
-                  : const Offset(0, 6),
-              spreadRadius: useGlass ? 0 : -5,
-            ),
-          ],
-        );
-
-        final decoration = BoxDecoration(
-          color: useGlass ? null : colors.surfaceContainerLow,
-          gradient: useGlass ? glassFill : null,
-          borderRadius: radius,
-          border: border,
-        );
 
         final surface = DecoratedBox(
           decoration: decoration,
-          child: Stack(
-            fit: StackFit.passthrough,
-            children: [
-              child,
-              if (useGlass)
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.center,
-                          colors: [
-                            Colors.white.withValues(
-                              alpha: isDark ? 0.075 : 0.95,
-                            ),
-                            Colors.transparent,
-                          ],
-                          stops: const [0, 1],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              if (useGlass && !isDark)
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.bottomCenter,
-                          end: Alignment.center,
-                          colors: [
-                            Colors.white.withValues(alpha: 0.45),
-                            Colors.transparent,
-                          ],
-                          stops: const [0, 1],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
+          child: child,
         );
 
         final contentTheme = Theme.of(context).copyWith(
@@ -170,18 +82,16 @@ class LiquidGlassSurface extends StatelessWidget {
         );
         final clippedSurface = ClipRRect(
           borderRadius: radius,
+          clipBehavior: Clip.antiAlias,
           child: useGlass
               ? BackdropFilter(
-                  filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                  filter: ui.ImageFilter.blur(sigmaX: 22, sigmaY: 22),
                   child: themedSurface,
                 )
               : themedSurface,
         );
 
-        return DecoratedBox(
-          decoration: shadow,
-          child: clippedSurface,
-        );
+        return RepaintBoundary(child: clippedSurface);
       },
     );
   }
