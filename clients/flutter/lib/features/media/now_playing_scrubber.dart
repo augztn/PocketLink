@@ -286,7 +286,7 @@ class _ScrubberPainter extends CustomPainter {
         final end = right * progress;
         for (double x = 0; x <= end; x += 2) {
           final y = centerY +
-              math.sin((x / 26 * math.pi * 2) + wavePhase * math.pi * 2) *
+              math.sin((x / 26 * math.pi * 2) - wavePhase * math.pi * 2) *
                   waveAmplitude;
           if (x == 0) {
             path.moveTo(x, y);
@@ -309,7 +309,11 @@ class _ScrubberPainter extends CustomPainter {
         final x = right * progress;
         canvas.drawRRect(
           RRect.fromRectAndRadius(
-            Rect.fromCenter(center: Offset(x, centerY), width: 4, height: 16),
+            Rect.fromCenter(
+              center: Offset(x, centerY),
+              width: dragging ? 5.5 : 4,
+              height: dragging ? 18 : 16,
+            ),
             const Radius.circular(3),
           ),
           Paint()..color = active,
