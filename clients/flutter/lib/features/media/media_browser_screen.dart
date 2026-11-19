@@ -328,6 +328,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
           _currentFolderPath = '';
           _pendingScrollOffset = 0;
           _saveState(folderPath: '', clearVolume: true);
+          _syncBackHandler();
         }
         for (final volume in _volumes) {
           pending.add((path: '', depth: 0, volume: volume.id));
