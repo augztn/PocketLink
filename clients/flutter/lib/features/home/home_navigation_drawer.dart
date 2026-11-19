@@ -206,7 +206,6 @@ class PocketLinkHomeDrawer extends StatelessWidget {
                     contentPadding: EdgeInsets.zero,
                     leading: _drawerIcon(Icons.add_to_drive_rounded),
                     minTileHeight: 54,
-                    leading: _drawerIcon(Icons.add_to_drive_rounded),
                     title: const Text('Connect a drive'),
                     subtitle: const Text('USB, SSD and OTG setup'),
                     onTap: () => _closeThen(context, onConnectDrive),
