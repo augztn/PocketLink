@@ -62,8 +62,15 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay> {
     }
 
     final queueLength = _player.queue.length;
-    final movedForward = currentIndex > previousIndex ||
-        (previousIndex == queueLength - 1 && currentIndex == 0);
+    final requestedDirection = _player.takePendingTrackDirection();
+    final wrappedBackward = queueLength > 1 &&
+        previousIndex == 0 &&
+        currentIndex == queueLength - 1;
+    final movedForward = requestedDirection != null
+        ? requestedDirection > 0
+        : !wrappedBackward &&
+            (currentIndex > previousIndex ||
+                (previousIndex == queueLength - 1 && currentIndex == 0));
     _trackPopupTimer?.cancel();
     setState(() {
       _trackDirection = movedForward ? 1 : -1;
