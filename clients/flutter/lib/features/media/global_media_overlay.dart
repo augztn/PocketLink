@@ -174,17 +174,24 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay> {
     final observer = PocketLinkNavigation.observer;
 
     return AnimatedBuilder(
-      animation: Listenable.merge(<Listenable>[player, settings]),
+      animation: Listenable.merge(<Listenable>[
+        player,
+        settings,
+        PocketLinkNavigation.drawerOpen,
+      ]),
       builder: (context, _) => ValueListenableBuilder<List<Route<dynamic>>>(
         valueListenable: observer.routeStack,
         builder: (context, _, __) {
+          final drawerOpen = PocketLinkNavigation.drawerOpen.value;
           final visible = _shouldShowMiniPlayer() &&
+              !drawerOpen &&
               !observer.isNowPlayingVisible &&
               !observer.isModalRouteOnTop;
           final onDashboard = observer.isDashboardVisible;
           final showTrackPopup = _trackPopup != null &&
               _trackPopupOffset != null &&
               onDashboard &&
+              !drawerOpen &&
               !observer.isNowPlayingVisible &&
               !observer.isModalRouteOnTop;
           final media = MediaQuery.of(context);

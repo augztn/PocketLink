@@ -114,7 +114,7 @@ class _PocketLinkAppState extends State<PocketLinkApp> {
       colorScheme: effectiveScheme,
       scaffoldBackgroundColor: isDark
           ? Colors.black
-          : const Color(0xFFF3F5FB),
+          : const Color(0xFFF8FAFC),
       textTheme: baseTextTheme,
       useMaterial3: true,
       pageTransitionsTheme: const PageTransitionsTheme(

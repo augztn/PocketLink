@@ -28,6 +28,7 @@ class HomeDashboard extends StatefulWidget {
     required this.onOpenExternalStorage,
     required this.onOpenHostSetup,
     required this.onOpenFileLocation,
+    required this.onOpenDrawer,
     this.onReturnToConnection,
   });
 
@@ -38,6 +39,7 @@ class HomeDashboard extends StatefulWidget {
   final VoidCallback onOpenExternalStorage;
   final VoidCallback onOpenHostSetup;
   final void Function(String? volume, String path) onOpenFileLocation;
+  final VoidCallback onOpenDrawer;
   final VoidCallback? onReturnToConnection;
 
   @override
@@ -1475,113 +1477,13 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      drawer: Drawer(
-        child: SafeArea(
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: colors.primaryContainer,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Icon(Icons.cloud_rounded, color: colors.onPrimaryContainer),
-                    ),
-                    const SizedBox(height: 14),
-                    Text('PocketLink', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 3),
-                    Text('Storage & locations', style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
-                  ],
-                ),
-              ),
-              const Divider(height: 1),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 18, 16, 8),
-                child: Text('STORAGE', style: theme.textTheme.labelSmall?.copyWith(
-                  color: colors.primary, fontWeight: FontWeight.w800, letterSpacing: 1.1,
-                )),
-              ),
-              ListTile(
-                leading: const Icon(Icons.phone_android_rounded),
-                title: const Text('Internal storage'),
-                subtitle: const Text('Browse server folders'),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () {
-                  Navigator.pop(context);
-                  widget.onOpenExplore(ExploreCategory.files);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.usb_rounded),
-                title: const Text('USB & external drives'),
-                subtitle: Text(_checking ? 'Checking connected drives…' : '$availableVolumes of ${_volumes.length} available'),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () {
-                  Navigator.pop(context);
-                  widget.onOpenExplore(ExploreCategory.drives);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.add_to_drive_rounded),
-                title: const Text('Connect a drive'),
-                subtitle: const Text('Set up USB / SSD / OTG access'),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () {
-                  Navigator.pop(context);
-                  widget.onOpenHostSetup();
-                },
-              ),
-              const Divider(height: 24),
-              ListTile(
-                leading: const Icon(Icons.switch_account_rounded),
-                title: const Text('Connection / Switch server'),
-                subtitle: const Text('Return to the server login screen'),
-                onTap: () {
-                  Navigator.pop(context);
-                  widget.onReturnToConnection?.call();
-                },
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 16, 8),
-                child: Text('TOOLS', style: theme.textTheme.labelSmall?.copyWith(
-                  color: colors.primary, fontWeight: FontWeight.w800, letterSpacing: 1.1,
-                )),
-              ),
-              ListTile(
-                leading: const Icon(Icons.swap_vert_rounded),
-                title: const Text('Transfers'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.of(context).push(MaterialPageRoute<void>(
-                    builder: (_) => const TransferManagerScreen(),
-                  ));
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.settings_outlined),
-                title: const Text('Settings'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.of(context).push(MaterialPageRoute<void>(
-                    builder: (_) => SettingsScreen(
-                      onOpenSavedServers: widget.onReturnToConnection,
-                    ),
-                  ));
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
       appBar: AppBar(
-        // Let Scaffold's drawer provide the standard Material hamburger button.
+        automaticallyImplyLeading: false,
+        leading: IconButton(
+          tooltip: 'Open navigation menu',
+          onPressed: widget.onOpenDrawer,
+          icon: const Icon(Icons.menu_rounded),
+        ),
         backgroundColor: theme.scaffoldBackgroundColor,
         surfaceTintColor: Colors.transparent,
         titleSpacing: 20,

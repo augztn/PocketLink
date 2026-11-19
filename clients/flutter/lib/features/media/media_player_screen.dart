@@ -683,7 +683,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
           InteractiveViewer(
             transformationController: _videoTransformController,
             minScale: 1,
-            maxScale: 4,
+            maxScale: 3,
             scaleEnabled: AppSettings.instance.videoPinchZoomEnabled,
             panEnabled: AppSettings.instance.videoPinchZoomEnabled,
             child: SizedBox.expand(

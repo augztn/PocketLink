@@ -78,5 +78,6 @@ abstract final class PocketLinkNavigation {
   static final navigatorKey = GlobalKey<NavigatorState>();
   static final musicButtonKey = GlobalKey();
   static final mediaOverlayKey = GlobalKey();
+  static final drawerOpen = ValueNotifier<bool>(false);
   static final observer = PocketLinkNavigationObserver();
 }

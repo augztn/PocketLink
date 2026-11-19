@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/navigation/pocketlink_navigation.dart';
 import 'navigation_dock.dart';
+import 'home_navigation_drawer.dart';
+import 'network_route_classifier.dart';
 import 'explore_search_screens.dart';
 import 'home_dashboard.dart';
 import '../media/media_player_screen.dart';
@@ -17,6 +19,8 @@ import '../files/file_manager_screen.dart';
 import '../files/documents_browser_screen.dart';
 import '../storage/local_storage_setup_screen.dart';
 import '../search/search_screen.dart';
+import '../settings/settings_screen.dart';
+import '../transfers/transfer_manager_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({required this.api, this.serverName, this.onReturnToConnection, super.key});
@@ -30,6 +34,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final GlobalKey<ScaffoldState> _rootScaffoldKey = GlobalKey<ScaffoldState>();
   int _selectedIndex = 0;
   bool _hostSetupOpen = false;
   bool _hostSetupInitialized = false;
@@ -48,6 +53,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    PocketLinkNavigation.drawerOpen.value = false;
     AppSettings.instance.addListener(_navigationSettingsChanged);
   }
 
@@ -97,6 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     AppSettings.instance.removeListener(_navigationSettingsChanged);
+    PocketLinkNavigation.drawerOpen.value = false;
     super.dispose();
   }
 
@@ -301,6 +308,13 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final player = PersistentAudioPlayer.instance;
+    final parsedServerHost = Uri.tryParse(widget.api.baseUrl)?.host;
+    final serverHost = parsedServerHost == null || parsedServerHost.isEmpty
+        ? widget.api.baseUrl
+        : parsedServerHost;
+    final drawerServerName = widget.serverName?.trim().isNotEmpty == true
+        ? widget.serverName!.trim()
+        : serverHost;
     final pages = [
       HomeDashboard(
         api: widget.api,
@@ -311,6 +325,7 @@ class _HomeScreenState extends State<HomeScreen> {
         onOpenHostSetup: _openHostSetup,
         onOpenFileLocation: _openFileLocation,
         onReturnToConnection: widget.onReturnToConnection,
+        onOpenDrawer: () => _rootScaffoldKey.currentState?.openDrawer(),
       ),
       if (_initializedTabs.contains(1))
         ExploreScreen(
@@ -374,6 +389,31 @@ class _HomeScreenState extends State<HomeScreen> {
         builder: (context, __) => AnimatedBuilder(
         animation: player,
         builder: (context, _) => Scaffold(
+          key: _rootScaffoldKey,
+          drawer: PocketLinkHomeDrawer(
+            serverName: drawerServerName,
+            routeLabel: networkRouteLabel(serverHost),
+            onOpenLibrary: _openMusicShortcut,
+            onOpenFiles: () => _openTab(2),
+            onOpenDrives: _openExternalStorage,
+            onConnectDrive: _openHostSetup,
+            onOpenTransfers: () => Navigator.of(context).push<void>(
+              MaterialPageRoute<void>(
+                builder: (_) => const TransferManagerScreen(),
+              ),
+            ),
+            onOpenSettings: () => Navigator.of(context).push<void>(
+              MaterialPageRoute<void>(
+                builder: (_) => SettingsScreen(
+                  onOpenSavedServers: widget.onReturnToConnection,
+                ),
+              ),
+            ),
+            onSwitchServer: widget.onReturnToConnection,
+          ),
+          onDrawerChanged: (opened) {
+            PocketLinkNavigation.drawerOpen.value = opened;
+          },
           extendBody: !_hostSetupOpen,
           body: Stack(
             fit: StackFit.expand,
