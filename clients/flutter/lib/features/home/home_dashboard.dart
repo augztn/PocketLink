@@ -11,8 +11,8 @@ import '../../core/storage/home_activity_store.dart';
 import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
 import 'explore_search_screens.dart';
-import '../media/now_playing_screen.dart';
 import '../media/persistent_audio_player.dart';
+import '../media/global_media_overlay.dart';
 import '../../core/network/server_api.dart';
 import '../library/photo_gallery_screen.dart';
 import '../transfers/transfer_manager_screen.dart';
@@ -1050,19 +1050,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                       initialIndex: 0,
                       isMusic: true,
                     );
-                    await Navigator.of(context, rootNavigator: true).push<void>(
-                      MaterialPageRoute<void>(
-                        settings: const RouteSettings(
-                          name: PocketLinkRouteNames.nowPlaying,
-                        ),
-                        builder: (_) => NowPlayingScreen(
-                          api: widget.api,
-                          queue: player.queue,
-                          initialIndex: player.currentIndex,
-                          resumeExisting: true,
-                        ),
-                      ),
-                    );
+                    GlobalMediaOverlay.openNowPlaying();
                   } else {
                     final path = isFolder ? recent.path : recent.parentPath;
                     widget.onOpenFileLocation(recent.volume, path);
