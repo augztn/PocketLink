@@ -105,7 +105,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   }
 
   List<Color> get _trackPalette {
-    final index = _track.path.hashCode.abs() % _artworkPalettes.length;
+    final index = (_track.path.hashCode & 0x7fffffff) % _artworkPalettes.length;
     return _artworkPalettes[index];
   }
 
