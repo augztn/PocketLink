@@ -815,18 +815,10 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
               height: 40,
               child: Row(children: [
                 Expanded(
-                  child: ClipRect(
-                    child: ShaderMask(
-                      blendMode: BlendMode.dstIn,
-                      shaderCallback: (bounds) => const LinearGradient(
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                        colors: [Colors.white, Colors.white, Colors.transparent],
-                        stops: [0, 0.86, 1],
-                      ).createShader(bounds),
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.only(right: 12),
+                    child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             for (final category in const ['All', 'Images', 'Videos', 'Music', 'Documents'])
@@ -841,8 +833,6 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                               ),
                             const SizedBox(width: 18),
                           ],
-                        ),
-                      ),
                     ),
                   ),
                 ),
