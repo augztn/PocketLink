@@ -16,6 +16,7 @@ import '../../core/logging/app_logger.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
+import '../../core/widgets/smoked_glass_popover_menu.dart';
 import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
 import '../storage/storage_browser_screen.dart';
@@ -753,11 +754,15 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
         const SizedBox(width: 12),
         SizedBox(width: 40, height: 40, child: LiquidGlassPill(
           radius: BorderRadius.circular(20),
-          child: PopupMenuButton<String>(
+          child: SmokedGlassPopoverMenu<String>(
             tooltip: 'Quick destinations',
-            padding: EdgeInsets.zero,
-            offset: const Offset(0, 48),
-            icon: const Icon(Icons.grid_view_rounded, color: Colors.white, size: 19),
+            items: [
+              const SmokedGlassPopoverMenuItem(value: 'home', label: 'Home', icon: Icons.home_outlined),
+              const SmokedGlassPopoverMenuItem(value: 'queue', label: 'Queue', icon: Icons.queue_music_rounded),
+              if (AppSettings.instance.showStatsForNerds)
+                const SmokedGlassPopoverMenuItem(value: 'stats', label: 'Stats for nerds', icon: Icons.query_stats_rounded),
+              const SmokedGlassPopoverMenuItem(value: 'track_options', label: 'Track options', icon: Icons.more_horiz_rounded),
+            ],
             onSelected: (value) {
               switch (value) {
                 case 'home': PocketLinkAppBar.goToDashboard(context); break;
@@ -766,13 +771,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                 case 'queue': _showQueue(); break;
               }
             },
-            itemBuilder: (_) => [
-              const PopupMenuItem(value: 'home', child: Row(children: [Icon(Icons.home_outlined, size: 19), SizedBox(width: 10), Text('Home')])),
-              const PopupMenuItem(value: 'queue', child: Row(children: [Icon(Icons.queue_music_rounded, size: 19), SizedBox(width: 10), Text('Queue')])),
-              if (AppSettings.instance.showStatsForNerds)
-                const PopupMenuItem(value: 'stats', child: Row(children: [Icon(Icons.query_stats_rounded, size: 19), SizedBox(width: 10), Text('Stats for nerds')])),
-              const PopupMenuItem(value: 'track_options', child: Row(children: [Icon(Icons.more_horiz_rounded, size: 19), SizedBox(width: 10), Text('Track options')])),
-            ],
+            child: const SizedBox(
+              width: 40,
+              height: 40,
+              child: Icon(Icons.grid_view_rounded, color: Colors.white, size: 19),
+            ),
           ),
         )),
       ]),
