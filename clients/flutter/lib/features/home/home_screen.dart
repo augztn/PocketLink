@@ -470,12 +470,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           end: Alignment.bottomCenter,
                           colors: [
                             Colors.transparent,
-                            Theme.of(context).colorScheme.background
-                                .withValues(alpha: 0.55),
-                            Theme.of(context).colorScheme.background
-                                .withValues(alpha: 0.88),
-                            Theme.of(context).colorScheme.background
-                                .withValues(alpha: 0.96),
+                            Colors.black.withValues(alpha: 0.18),
+                            Colors.black.withValues(alpha: 0.34),
+                            Colors.black.withValues(alpha: 0.48),
                           ],
                           stops: const [0, 0.44, 0.76, 1],
                         ),
