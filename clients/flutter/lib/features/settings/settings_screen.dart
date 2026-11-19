@@ -12,6 +12,7 @@ import 'navigation_customization_screen.dart';
 import 'now_playing_settings_screen.dart';
 import 'video_player_settings_screen.dart';
 import '../about/about_screen.dart';
+import '../downloads/download_manager_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({this.onOpenSavedServers, this.category, super.key});
@@ -494,6 +495,69 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ]),
                 if (widget.category == 'Media & Storage')
                   _section('Media Library & Storage', [
+                    FutureBuilder<String>(
+                      future: DownloadManagerService.instance.defaultDirectory(),
+                      builder: (context, snapshot) => ListTile(
+                        leading: const Icon(Icons.folder_open_rounded),
+                        title: const Text('Download location'),
+                        subtitle: Text(
+                          _settings.downloadDirectory ??
+                              snapshot.data ??
+                              'Loading system Downloads folder…',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        trailing: TextButton(
+                          onPressed: _chooseDownloadDirectory,
+                          child: const Text('Change'),
+                        ),
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+                      child: Text(
+                        'Downloads',
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.speed_rounded),
+                      title: const Text('Concurrent downloads'),
+                      subtitle: const Text('Maximum number of simultaneous HTTP downloads'),
+                      trailing: SegmentedButton<int>(
+                        showSelectedIcon: false,
+                        segments: const [
+                          ButtonSegment(value: 1, label: Text('1')),
+                          ButtonSegment(value: 2, label: Text('2')),
+                          ButtonSegment(value: 3, label: Text('3')),
+                          ButtonSegment(value: 5, label: Text('5')),
+                        ],
+                        selected: {_settings.downloadConcurrency},
+                        onSelectionChanged: (values) => _settings.setDownloadOptions(
+                          concurrency: values.first,
+                        ),
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    SwitchListTile(
+                      secondary: const Icon(Icons.wifi_rounded),
+                      title: const Text('Wi-Fi only'),
+                      subtitle: const Text('Hold downloads while connected to mobile data'),
+                      value: _settings.downloadWifiOnly,
+                      onChanged: (value) => _settings.setDownloadOptions(wifiOnly: value),
+                    ),
+                    const Divider(height: 1),
+                    SwitchListTile(
+                      secondary: const Icon(Icons.restart_alt_rounded),
+                      title: const Text('Auto-resume on launch'),
+                      subtitle: const Text('Resume unfinished downloads when PocketLink opens'),
+                      value: _settings.downloadAutoResume,
+                      onChanged: (value) => _settings.setDownloadOptions(autoResume: value),
+                    ),
+                    const Divider(height: 1),
                     ListTile(
                       leading: const Icon(Icons.folder_open_rounded),
                       title: const Text('Download directory'),
