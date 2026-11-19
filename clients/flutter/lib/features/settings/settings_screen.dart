@@ -565,14 +565,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     ListTile(
-                      leading: const Icon(Icons.folder_open_rounded),
-                      title: const Text('Download directory'),
-                      subtitle: Text(_settings.downloadDirectory ?? 'Use the system default'),
-                      trailing: const Icon(Icons.chevron_right_rounded),
-                      onTap: _chooseDownloadDirectory,
-                    ),
-                    const Divider(height: 1),
-                    ListTile(
                       leading: const Icon(Icons.cleaning_services_rounded),
                       title: const Text('Clear cache'),
                       subtitle: const Text('Remove temporary files and cached images'),
