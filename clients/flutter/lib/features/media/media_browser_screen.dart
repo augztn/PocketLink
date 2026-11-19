@@ -449,7 +449,15 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         .replaceAll('_', ' ')
         .trim();
     final artist = _trackArtist(media).trim();
-    final suffix = RegExp(r'\s+-\s+(.+)
+    final suffixStart = name.lastIndexOf(' - ');
+    if (suffixStart >= 0 &&
+        artist.isNotEmpty &&
+        name.substring(suffixStart + 3).trim().toLowerCase() ==
+            artist.toLowerCase()) {
+      return name.substring(0, suffixStart).trim();
+    }
+    return name;
+  }
 
   String _countLabel(int count, String singular, String plural) =>
       '$count ${count == 1 ? singular : plural}';
