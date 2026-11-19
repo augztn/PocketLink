@@ -5,6 +5,7 @@ import 'photo_favorites_store.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/smoked_glass_popover_menu.dart';
+import '../transfers/transfer_manager_screen.dart';
 
 class _Photo {
   const _Photo(this.file, this.path, this.volume);
