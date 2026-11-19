@@ -18,12 +18,22 @@ class GlobalMediaOverlay extends StatefulWidget {
   State<GlobalMediaOverlay> createState() => _GlobalMediaOverlayState();
 }
 
-class _GlobalMediaOverlayState extends State<GlobalMediaOverlay> {
+class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   static const double _miniPlayerHeight = 62;
   static const double _homeDockHeight = 82;
   static const Duration _trackPopupDuration = Duration(milliseconds: 2300);
 
   bool _openingNowPlaying = false;
+  bool _nowPlayingOpen = false;
+  bool _isNowPlayingDragging = false;
+  Rect? _nowPlayingOriginRect;
+  OverlayEntry? _nowPlayingEntry;
+  late final AnimationController _nowPlayingController;
+
+  static VoidCallback? _openNowPlayingHandler;
+
+  static void openNowPlaying() => _openNowPlayingHandler?.call();
   MediaQueueItem? _lastTrack;
   int _lastTrackIndex = 0;
   MediaQueueItem? _trackPopup;
@@ -38,6 +48,13 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay> {
     super.initState();
     _lastTrack = _player.currentItem;
     _lastTrackIndex = _player.currentIndex;
+    _nowPlayingController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 380),
+      reverseDuration: const Duration(milliseconds: 320),
+    );
+    _openNowPlayingHandler = _openNowPlaying;
+    WidgetsBinding.instance.addObserver(this);
     _player.addListener(_onPlayerChanged);
   }
 
@@ -45,6 +62,11 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay> {
   void dispose() {
     _player.removeListener(_onPlayerChanged);
     _trackPopupTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    _openNowPlayingHandler = null;
+    _nowPlayingEntry?.remove();
+    _nowPlayingEntry = null;
+    _nowPlayingController.dispose();
     super.dispose();
   }
 
@@ -112,48 +134,82 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay> {
   }
 
   Future<void> _openNowPlaying() async {
-    if (_openingNowPlaying) return;
+    if (_openingNowPlaying || _nowPlayingOpen) return;
     final player = _player;
     final item = player.currentItem;
     final api = player.api;
-    final navigator = PocketLinkNavigation.navigatorKey.currentState;
+    final overlay = PocketLinkNavigation.navigatorKey.currentState?.overlay;
     if (!player.isMusic || !player.isActive || item == null || api == null ||
-        navigator == null) {
+        overlay == null) {
       return;
     }
 
-    final originRect = PocketLinkNavigation.resolveMediaOriginRect(
+    _openingNowPlaying = true;
+    _nowPlayingOriginRect = PocketLinkNavigation.resolveMediaOriginRect(
       preferMiniPlayer: _shouldShowMiniPlayer(),
     );
-    _openingNowPlaying = true;
+    setState(() => _nowPlayingOpen = true);
+    _nowPlayingEntry = OverlayEntry(
+      builder: (context) => _NowPlayingMorphOverlay(
+        animation: _nowPlayingController,
+        originRect: _nowPlayingOriginRect,
+        player: player,
+        api: api,
+        onDismiss: _closeNowPlaying,
+        onDragStart: () => _isNowPlayingDragging = true,
+        onDragUpdate: _updateNowPlayingDrag,
+        onDragEnd: _endNowPlayingDrag,
+      ),
+    );
+    overlay.insert(_nowPlayingEntry!);
     try {
-      await navigator.push<void>(
-        PageRouteBuilder<void>(
-          opaque: true,
-          barrierColor: Colors.transparent,
-          settings: const RouteSettings(
-            name: PocketLinkRouteNames.nowPlaying,
-          ),
-          transitionDuration: const Duration(milliseconds: 420),
-          reverseTransitionDuration: const Duration(milliseconds: 320),
-          pageBuilder: (_, __, ___) => NowPlayingScreen(
-            api: api,
-            queue: player.queue,
-            initialIndex: player.currentIndex,
-            resumeExisting: true,
-          ),
-          transitionsBuilder: (context, animation, __, child) =>
-              PocketLinkNavigation.mediaContainerTransformTransition(
-            context: context,
-            animation: animation,
-            child: child,
-            originRect: originRect,
-          ),
-        ),
-      );
+      await _nowPlayingController.forward(from: 0);
     } finally {
       _openingNowPlaying = false;
     }
+  }
+
+  Future<void> _closeNowPlaying() async {
+    if (!_nowPlayingOpen) return;
+    _isNowPlayingDragging = false;
+    await _nowPlayingController.reverse();
+    _nowPlayingEntry?.remove();
+    _nowPlayingEntry = null;
+    if (mounted) {
+      setState(() {
+        _nowPlayingOpen = false;
+        _nowPlayingOriginRect = null;
+      });
+    }
+  }
+
+  void _updateNowPlayingDrag(double delta) {
+    if (!_nowPlayingOpen) return;
+    final height = MediaQuery.sizeOf(context).height;
+    _nowPlayingController.value =
+        (_nowPlayingController.value - delta / (height * 0.65))
+            .clamp(0.0, 1.0)
+            .toDouble();
+  }
+
+  void _endNowPlayingDrag(double velocity) {
+    _isNowPlayingDragging = false;
+    if (_nowPlayingController.value < 0.85 || velocity > 280) {
+      unawaited(_closeNowPlaying());
+    } else {
+      unawaited(_nowPlayingController.animateTo(
+        1,
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutQuart,
+      ));
+    }
+  }
+
+  @override
+  Future<bool> didPopRoute() async {
+    if (!_nowPlayingOpen) return false;
+    await _closeNowPlaying();
+    return true;
   }
 
   @override
@@ -167,13 +223,16 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay> {
         player,
         settings,
         PocketLinkNavigation.drawerOpen,
+        _nowPlayingController,
       ]),
       builder: (context, _) => ValueListenableBuilder<List<Route<dynamic>>>(
         valueListenable: observer.routeStack,
         builder: (context, _, __) {
           final drawerOpen = PocketLinkNavigation.drawerOpen.value;
           final visible = _shouldShowMiniPlayer() &&
+              !_nowPlayingOpen &&
               !drawerOpen &&
+              !_nowPlayingOpen &&
               !observer.isNowPlayingVisible &&
               !observer.isModalRouteOnTop;
           final onDashboard = observer.isDashboardVisible;
@@ -215,25 +274,23 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay> {
             fit: StackFit.expand,
             children: [
               Positioned.fill(child: navigatorContent),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: bottomInset + (onDashboard ? _homeDockHeight : 0),
-                child: IgnorePointer(
-                  ignoring: !visible,
+              if (visible)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: bottomInset + (onDashboard ? _homeDockHeight : 0),
                   child: AnimatedSlide(
-                    offset: visible ? Offset.zero : const Offset(0, 0.34),
+                    offset: Offset.zero,
                     duration: reduceMotion || drawerOpen
                         ? Duration.zero
                         : const Duration(milliseconds: 280),
                     curve: Curves.easeOutCubic,
                     child: _GlobalMiniPlayerBar(
-                        visible: visible,
-                        reduceMotion: reduceMotion,
-                        player: player,
-                        onOpen: _openNowPlaying,
-                        onDismiss: player.dismissMiniPlayer,
-                      ),
+                      visible: true,
+                      reduceMotion: reduceMotion,
+                      player: player,
+                      onOpen: _openNowPlaying,
+                      onDismiss: player.dismissMiniPlayer,
                     ),
                   ),
                 ),
