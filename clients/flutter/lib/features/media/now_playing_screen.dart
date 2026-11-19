@@ -1282,12 +1282,18 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             ),
           ),
           if (hasArtwork)
-            ImageFiltered(
-              imageFilter: ui.ImageFilter.blur(sigmaX: 36, sigmaY: 36),
-              child: Image.memory(
-                _artwork!,
-                fit: BoxFit.cover,
-                gaplessPlayback: true,
+            Image.memory(
+              _artwork!,
+              fit: BoxFit.cover,
+              gaplessPlayback: true,
+            ),
+          if (hasArtwork)
+            Positioned.fill(
+              child: ClipRect(
+                child: BackdropFilter(
+                  filter: ui.ImageFilter.blur(sigmaX: 36, sigmaY: 36),
+                  child: const ColoredBox(color: Colors.transparent),
+                ),
               ),
             ),
           DecoratedBox(
