@@ -21,7 +21,6 @@ class DownloadManagerService extends ChangeNotifier {
   static const _tasksKey = 'downloads_tasks_v1';
   final Dio _dio = Dio(BaseOptions(
     connectTimeout: const Duration(seconds: 15),
-    receiveTimeout: const Duration(minutes: 0),
     sendTimeout: const Duration(seconds: 30),
     followRedirects: true,
     maxRedirects: 8,
@@ -56,7 +55,8 @@ class DownloadManagerService extends ChangeNotifier {
             final task = DownloadTask.fromJson(
               Map<String, dynamic>.from(item),
             );
-            if (task.status == DownloadStatus.downloading) {
+            if (task.status == DownloadStatus.downloading ||
+                task.status == DownloadStatus.queued) {
               task.status = AppSettings.instance.downloadAutoResume
                   ? DownloadStatus.queued
                   : DownloadStatus.paused;
@@ -84,7 +84,21 @@ class DownloadManagerService extends ChangeNotifier {
     _pumpQueue();
   }
 
-  void _handleSettingsChanged() => _pumpQueue();
+  void _handleSettingsChanged() {
+    if (AppSettings.instance.downloadWifiOnly && !_isWifi) {
+      for (final task in _tasks) {
+        if (task.status == DownloadStatus.downloading) {
+          task.status = DownloadStatus.queued;
+          task.speedBytesPerSecond = 0;
+          _tokens[task.id]?.cancel('wifi-required');
+        }
+      }
+      _persist();
+      notifyListeners();
+      return;
+    }
+    _pumpQueue();
+  }
 
   void _handleConnectivity(List<ConnectivityResult> results) {
     _isWifi = results.contains(ConnectivityResult.wifi);
@@ -148,12 +162,23 @@ class DownloadManagerService extends ChangeNotifier {
           ),
         );
         response = fallback;
-        await fallback.data?.stream.drain<void>();
+        final stream = fallback.data?.stream;
+        if (stream != null) {
+          final subscription = stream.listen((_) {});
+          await subscription.cancel();
+        }
       } on DioException {
         if (response == null) rethrow;
       }
     }
 
+    if ((response.statusCode ?? 500) >= 400) {
+      throw DioException(
+        requestOptions: response.requestOptions,
+        response: response,
+        type: DioExceptionType.badResponse,
+      );
+    }
     final headers = response.headers;
     final contentRange = headers.value('content-range');
     final rangeTotal = contentRange == null
@@ -316,6 +341,11 @@ class DownloadManagerService extends ChangeNotifier {
       await file.parent.create(recursive: true);
       var offset = await file.exists() ? await file.length() : 0;
       task.downloadedBytes = offset;
+      if (task.totalBytes != null && offset >= task.totalBytes!) {
+        task.status = DownloadStatus.completed;
+        task.speedBytesPerSecond = 0;
+        return;
+      }
 
       final response = task.isServerFile
           ? await _serverApi!.openDownloadStream(
@@ -420,7 +450,11 @@ class DownloadManagerService extends ChangeNotifier {
 
   Future<void> pause(String id) async {
     final task = _find(id);
-    if (task == null || task.status != DownloadStatus.downloading) return;
+    if (task == null ||
+        (task.status != DownloadStatus.downloading &&
+            task.status != DownloadStatus.queued)) {
+      return;
+    }
     task.status = DownloadStatus.paused;
     task.speedBytesPerSecond = 0;
     _tokens[id]?.cancel('paused');
