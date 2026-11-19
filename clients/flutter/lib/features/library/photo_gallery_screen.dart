@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'package:material_ui/material_ui.dart';
 import '../../core/network/server_api.dart';
 import 'photo_favorites_store.dart';
@@ -48,6 +49,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
   int tab = 0;
   int dateMode = 0;
   int gridColumns = 3;
+  bool _viewMenuOpen = false;
 
   @override
   void initState() { super.initState(); tab = widget.initialTab.clamp(0, 2).toInt(); _initialize(); }
@@ -550,141 +552,218 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
   Widget build(BuildContext context) {
     final items = visible;
     final selecting = selected.isNotEmpty;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final foreground = isDark ? Colors.white : const Color(0xFF0F172A);
+    final title = selecting ? '${selected.length} selected' : const ['Photos', 'Albums', 'Favorites'][tab];
+    final albumCount = groupByAlbum(photos).length;
+    final favoriteCount = photos.where((p) => favorites.contains(p.id)).length;
+    final counts = [photos.length, albumCount, favoriteCount];
+    final headerTop = MediaQuery.paddingOf(context).top;
+    final contentTop = headerTop + 76;
+
+    Widget viewRow(int index) {
+      final active = tab == index;
+      return InkWell(
+        onTap: () => setState(() { tab = index; _viewMenuOpen = false; selected.clear(); }),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(children: [
+            Expanded(child: Text(
+              const ['Photos', 'Albums', 'Favorites'][index],
+              style: TextStyle(color: active ? foreground : const Color(0xFFA1A7B3),
+                fontWeight: active ? FontWeight.w700 : FontWeight.w500, fontSize: 15),
+            )),
+            Text('${counts[index]}', style: const TextStyle(
+              color: Color(0xFFA1A7B3), fontSize: 12,
+              fontFamily: 'monospace', fontFeatures: [ui.FontFeature.tabularFigures()],
+            )),
+            if (active) ...[
+              const SizedBox(width: 10),
+              Icon(Icons.check_rounded, color: foreground, size: 19),
+            ],
+          ]),
+        ),
+      );
+    }
+
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: PocketLinkAppBar(
-        feathered: true,
-        title: Text(selecting ? '${selected.length} selected' : 'Photos'),
-        leading: selecting
-            ? IconButton(
-                onPressed: () => setState(selected.clear),
-                icon: const Icon(Icons.close),
-              )
-            : null,
-        actionsBeforeHome: [
-          if (!selecting && widget.showSearch)
-            GlassCircleButton(tooltip: searchOpen ? 'Close search' : 'Search photos', onPressed: () => setState(() => searchOpen = !searchOpen), child: Icon(searchOpen ? Icons.close : Icons.search_rounded)),
-        ],
-        actions: [
-          PocketLinkAppBarAction(
-            label: 'Transfers', icon: Icons.swap_vert_rounded,
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
-              builder: (_) => const TransferManagerScreen(),
-            )),
-          ),
-          PocketLinkAppBarAction(
-            label: 'Scan again', icon: Icons.refresh_rounded,
-            onPressed: loading ? null : () => scan(refresh: true),
-          ),
-        ],
-      ),
-      body: Column(
+      body: Stack(
+        fit: StackFit.expand,
         children: [
-          SizedBox(height: MediaQuery.paddingOf(context).top + kToolbarHeight),
-          if (widget.showSearch && searchOpen)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-              child: TextField(
-                controller: search,
-                autofocus: true,
-                onChanged: (_) => setState(() {}),
-                decoration: InputDecoration(
-                  hintText: 'Search photos, folders or dates',
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: IconButton(
-                    onPressed: () { search.clear(); setState(() {}); },
-                    icon: const Icon(Icons.clear),
+          Column(children: [
+            SizedBox(height: contentTop),
+            if (widget.showSearch && searchOpen)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                child: TextField(
+                  controller: search,
+                  autofocus: true,
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(
+                    hintText: 'Search photos, folders or dates',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: IconButton(
+                      onPressed: () { search.clear(); setState(() {}); },
+                      icon: const Icon(Icons.clear),
+                    ),
+                    filled: true,
+                    fillColor: theme.colorScheme.surfaceContainerLow,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
                   ),
-                  filled: true,
-                  fillColor: Theme.of(context).colorScheme.surfaceContainerLow,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(18),
-                    borderSide: BorderSide.none,
+                ),
+              ),
+            if (loading) const LinearProgressIndicator(minHeight: 2),
+            if (error != null)
+              Padding(padding: const EdgeInsets.all(12),
+                child: Text(error!, style: TextStyle(color: theme.colorScheme.error))),
+            Expanded(
+              child: error != null
+                  ? Center(child: FilledButton(onPressed: scan, child: const Text('Retry scan')))
+                  : loading && photos.isEmpty
+                      ? const Center(child: Text('Scanning photos…'))
+                      : AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 220),
+                          switchInCurve: Curves.easeOutCubic,
+                          switchOutCurve: Curves.easeOutCubic,
+                          transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
+                          child: KeyedSubtree(
+                            key: ValueKey<int>(tab),
+                            child: tab == 1
+                                ? albumsTab(items)
+                                : items.isEmpty
+                                    ? empty(tab == 2 ? 'No favourite photos yet.' : 'No photos found in internal or connected USB storage.')
+                                    : photosTab(items),
+                          ),
+                        ),
+            ),
+          ]),
+          Positioned(
+            top: 0, left: 0, right: 0, height: headerTop + 88,
+            child: const IgnorePointer(child: FeatheredGlassHeaderBackground()),
+          ),
+          Positioned(
+            top: headerTop + 8, left: 16, right: 16, height: 52,
+            child: Row(children: [
+              if (selecting)
+                GlassCircleButton(tooltip: 'Clear selection', onPressed: () => setState(selected.clear),
+                  child: const Icon(Icons.close_rounded))
+              else
+                Expanded(child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () => setState(() => _viewMenuOpen = !_viewMenuOpen),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        Text(title, style: TextStyle(
+                          color: foreground, fontSize: 28, fontWeight: FontWeight.w800,
+                          letterSpacing: -0.7,
+                        )),
+                        const SizedBox(width: 2),
+                        AnimatedRotation(
+                          turns: _viewMenuOpen ? 0.5 : 0,
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeOutCubic,
+                          child: Icon(Icons.keyboard_arrow_down_rounded, color: foreground, size: 27),
+                        ),
+                      ]),
+                    ),
+                  ),
+                )),
+              if (selecting)
+                Text('${selected.length} selected', style: TextStyle(color: foreground, fontWeight: FontWeight.w700))
+              else ...[
+                if (widget.showSearch)
+                  GlassCircleButton(tooltip: searchOpen ? 'Close search' : 'Search photos',
+                    onPressed: () => setState(() => searchOpen = !searchOpen),
+                    child: Icon(searchOpen ? Icons.close_rounded : Icons.search_rounded)),
+                const SizedBox(width: 8),
+                GlassCircleButton(tooltip: 'Photo filters and layout', onPressed: _showFilters,
+                  child: const Icon(Icons.tune_rounded)),
+              ],
+              const SizedBox(width: 8),
+              GlassCircleButton(tooltip: 'Transfers', onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen())),
+                child: const Icon(Icons.swap_vert_rounded)),
+              const SizedBox(width: 8),
+              PopupMenuButton<String>(
+                tooltip: 'More photo actions',
+                onSelected: (value) {
+                  if (value == 'scan') scan(refresh: true);
+                  if (value == 'select') setState(() {
+                    if (selected.isEmpty) selected.addAll(items.map((p) => p.id));
+                    else selected.clear();
+                  });
+                },
+                itemBuilder: (_) => [
+                  const PopupMenuItem(value: 'select', child: Text('Select all / clear')),
+                  PopupMenuItem(value: 'scan', enabled: !loading, child: const Text('Scan again')),
+                ],
+                child: GlassCircleButton(tooltip: 'More actions', onPressed: null,
+                  child: const Icon(Icons.more_horiz_rounded)),
+              ),
+            ]),
+          ),
+          if (_viewMenuOpen) ...[
+            Positioned.fill(
+              top: headerTop + 64,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => setState(() => _viewMenuOpen = false),
+                child: const ColoredBox(color: Colors.transparent),
+              ),
+            ),
+            Positioned(
+              top: headerTop + 64, left: 16, width: 220,
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.92, end: 1),
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOutCubic,
+                builder: (context, scale, child) => Opacity(
+                  opacity: ((scale - 0.92) / 0.08).clamp(0, 1),
+                  child: Transform.scale(alignment: Alignment.topLeft, scale: scale, child: child),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: BackdropFilter(
+                    filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xE51A1C22) : const Color(0xEEF8FAFC),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: isDark
+                          ? Colors.white.withValues(alpha: 0.16)
+                          : const Color(0xFF94A3B8).withValues(alpha: 0.32)),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        child: Column(mainAxisSize: MainAxisSize.min, children: [
+                          for (var i = 0; i < 3; i++) viewRow(i),
+                        ]),
+                      ),
+                    ),
                   ),
                 ),
               ),
             ),
-          if (!selecting)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      height: 42,
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surfaceContainerLow,
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.62)),
-                      ),
-                      child: Row(
-                        children: [
-                          _photoTabPill('Photos', 0),
-                          _photoTabPill('Albums', 1),
-                          _photoTabPill('Favorites', 2),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainerLow,
-                      borderRadius: BorderRadius.circular(21),
-                      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.62)),
-                    ),
-                    child: IconButton(
-                      tooltip: 'Photo filters and layout',
-                      onPressed: _showFilters,
-                      icon: const Icon(Icons.tune_rounded, size: 20),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          if (loading) const LinearProgressIndicator(minHeight: 2),
-          if (error != null)
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Text(error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
-            ),
-          Expanded(
-            child: error != null
-                ? Center(child: FilledButton(onPressed: scan, child: const Text('Retry scan')))
-                : loading && photos.isEmpty
-                    ? const Center(child: Text('Scanning photos…'))
-                    : tab == 1
-                        ? albumsTab(items)
-                        : items.isEmpty
-                            ? empty(tab == 2 ? 'No favourite photos yet.' : 'No photos found in internal or connected USB storage.')
-                            : photosTab(items),
-          ),
+          ],
         ],
       ),
       bottomNavigationBar: selecting
-          ? SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(10),
-                child: Row(
-                  children: [
-                    Expanded(child: OutlinedButton.icon(
-                      onPressed: favoriteSelected,
-                      icon: const Icon(Icons.favorite_border),
-                      label: const Text('Favourite'),
-                    )),
-                    const SizedBox(width: 8),
-                    Expanded(child: FilledButton.icon(
-                      onPressed: deleteSelected,
-                      icon: const Icon(Icons.delete_outline),
-                      label: const Text('Delete'),
-                    )),
-                  ],
-                ),
-              ),
-            )
+          ? SafeArea(child: Padding(
+              padding: const EdgeInsets.all(10),
+              child: Row(children: [
+                Expanded(child: OutlinedButton.icon(onPressed: favoriteSelected,
+                  icon: const Icon(Icons.favorite_border), label: const Text('Favourite'))),
+                const SizedBox(width: 8),
+                Expanded(child: FilledButton.icon(onPressed: deleteSelected,
+                  icon: const Icon(Icons.delete_outline), label: const Text('Delete'))),
+              ]),
+            ))
           : null,
     );
   }
