@@ -7,7 +7,6 @@ import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/pocketlink_file_icon.dart';
 
 import '../../core/network/server_api.dart';
-import '../../core/navigation/pocketlink_navigation.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/storage/home_activity_store.dart';
 import '../home/browser_state_store.dart';
