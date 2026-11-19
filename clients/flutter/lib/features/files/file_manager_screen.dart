@@ -14,7 +14,6 @@ import '../home/browser_state_store.dart';
 import '../../core/settings/app_settings.dart';
 import '../transfers/transfer_manager.dart';
 import '../transfers/transfer_manager_screen.dart';
-import '../search/search_screen.dart';
 import '../media/now_playing_screen.dart';
 import '../media/persistent_audio_player.dart';
 
@@ -339,10 +338,44 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     return result.trim();
   }
 
-  void _openSearch() {
-    Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => SearchScreen(api: widget.api),
-    ));
+
+  Future<void> _showRecentLocations() async {
+    await HomeActivityStore.instance.load();
+    if (!mounted) return;
+    final recent = HomeActivityStore.instance.itemsForServer(widget.api.baseUrl);
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Container(
+          decoration: BoxDecoration(
+            color: Theme.of(sheetContext).colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: recent.isEmpty
+            ? const Padding(padding: EdgeInsets.all(28), child: Center(child: Text('No recent files or folders yet')))
+            : ListView.separated(
+                shrinkWrap: true,
+                itemCount: recent.length,
+                separatorBuilder: (_, __) => const Divider(height: 1, indent: 56),
+                itemBuilder: (context, index) {
+                  final item = recent[index];
+                  return ListTile(
+                    leading: Icon(item.isFolder ? Icons.folder_rounded : Icons.history_rounded),
+                    title: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    subtitle: Text(item.path.isEmpty ? 'Storage root' : item.path, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    onTap: () {
+                      Navigator.pop(sheetContext);
+                      final parent = item.isFolder ? item.path : item.parentPath;
+                      _selectPartition(item.volume).then((_) => _load(parent));
+                    },
+                  );
+                },
+              ),
+        ),
+      ),
+    );
   }
 
   Future<void> _uploadFile() async {
@@ -673,6 +706,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
             onCanceled: () => setState(() => _storageMenuOpen = false),
             onSelected: (value) {
               setState(() => _storageMenuOpen = false);
+              if (value == 'recent') { _showRecentLocations(); return; }
               if (value == 'internal') { _selectPartition(null); return; }
               if (value == 'downloads') { _selectPartition(null).then((_) => _load('Downloads')); return; }
               _selectPartition(value);
@@ -690,6 +724,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
               ])),
               const PopupMenuDivider(),
               const PopupMenuItem(value: 'downloads', child: Text('Downloads')),
+              const PopupMenuItem(value: 'recent', child: Text('Recent')),
             ],
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -809,6 +844,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                                   showCheckmark: false,
                                 ),
                               ),
+                            const SizedBox(width: 18),
                           ],
                         ),
                       ),
