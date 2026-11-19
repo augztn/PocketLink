@@ -237,7 +237,7 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('Documents', style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800, color: titleColor)),
-              Text('${filtered.length} documents', style: const TextStyle(fontSize: 10, fontFamily: 'monospace', color: Color(0xFFA1A7B3))),
+              Text('${filtered.length} ${filtered.length == 1 ? 'document' : 'documents'}', style: const TextStyle(fontSize: 10, fontFamily: 'monospace', color: Color(0xFFA1A7B3))),
             ]),
             AnimatedRotation(turns: _filterMenuOpen ? 0.5 : 0, duration: const Duration(milliseconds: 200), child: const Icon(Icons.keyboard_arrow_down_rounded)),
           ]),
