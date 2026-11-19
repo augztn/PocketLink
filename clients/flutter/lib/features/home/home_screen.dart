@@ -15,6 +15,7 @@ import '../media/now_playing_screen.dart';
 import '../media/media_browser_screen.dart';
 import '../library/photo_gallery_screen.dart';
 import '../media/persistent_audio_player.dart';
+import '../media/persistent_mini_player.dart';
 
 import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
@@ -252,7 +253,7 @@ class _HomeScreenState extends State<HomeScreen> {
         preferMiniPlayer: AppSettings.instance.showMiniPlayer &&
             player.shouldShowMiniPlayer,
       );
-      _openingNowPlaying = true;
+      setState(() => _openingNowPlaying = true);
       try {
         await Navigator.of(context, rootNavigator: true).push<void>(
           PageRouteBuilder<void>(
@@ -290,7 +291,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         );
       } finally {
-        _openingNowPlaying = false;
+        if (mounted) setState(() => _openingNowPlaying = false);
       }
     } else {
       _openExplore(ExploreCategory.music);
@@ -496,6 +497,18 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: const ColoredBox(color: Colors.black),
                       ),
                     ),
+                  ),
+                ),
+              if (!_hostSetupOpen &&
+                  !_openingNowPlaying &&
+                  AppSettings.instance.showMiniPlayer &&
+                  player.shouldShowMiniPlayer)
+                Positioned(
+                  left: 14,
+                  right: 14,
+                  bottom: 88 + MediaQuery.paddingOf(context).bottom,
+                  child: PersistentMiniPlayer(
+                    onOpenNowPlaying: () => _openNowPlaying(player),
                   ),
                 ),
               if (!_hostSetupOpen)
