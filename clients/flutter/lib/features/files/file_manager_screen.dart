@@ -31,6 +31,7 @@ class FileManagerScreen extends StatefulWidget {
     this.isActive = false,
     this.onBackAtRoot,
     this.onCanNavigateBackChanged,
+    this.onBackHandlerChanged,
     super.key,
   });
 
@@ -47,6 +48,7 @@ class FileManagerScreen extends StatefulWidget {
   final bool isActive;
   final VoidCallback? onBackAtRoot;
   final ValueChanged<bool>? onCanNavigateBackChanged;
+  final ValueChanged<VoidCallback?>? onBackHandlerChanged;
 
   @override
   State<FileManagerScreen> createState() => _FileManagerScreenState();
@@ -600,8 +602,21 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     return '${size.toStringAsFixed(1)} ${units[index]}';
   }
 
+  void _syncBackHandler() {
+    widget.onBackHandlerChanged?.call(_searchExpanded
+        ? () => _setSearchExpanded(false)
+        : null);
+  }
+
+  void _setSearchExpanded(bool expanded) {
+    if (_searchExpanded == expanded) return;
+    setState(() => _searchExpanded = expanded);
+    _syncBackHandler();
+  }
+
   @override
   void dispose() {
+    widget.onBackHandlerChanged?.call(null);
     _saveState();
     _scrollController.removeListener(_saveScrollOffset);
     _scrollController.dispose();
@@ -684,9 +699,10 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     }
 
     return PopScope(
-      canPop: !widget.isActive && _path.isEmpty,
+      canPop: (_searchExpanded && widget.onBackHandlerChanged != null) ||
+          (!_searchExpanded && !widget.isActive && _path.isEmpty),
       onPopInvokedWithResult: (didPop, result) {
-        if (didPop) return;
+        if (didPop || (_searchExpanded && widget.onBackHandlerChanged != null)) return;
         if (_path.isNotEmpty) {
           _goUp();
         } else if (widget.isActive) {
@@ -754,7 +770,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
             ]),
           ),
           actions: [
-            if (widget.showSearch) PocketLinkAppBarAction(label: _searchExpanded ? 'Close search' : 'Search files', icon: _searchExpanded ? Icons.close_rounded : Icons.search_rounded, onPressed: () => setState(() => _searchExpanded = !_searchExpanded)),
+            if (widget.showSearch) PocketLinkAppBarAction(label: _searchExpanded ? 'Close search' : 'Search files', icon: _searchExpanded ? Icons.close_rounded : Icons.search_rounded, onPressed: () => _setSearchExpanded(!_searchExpanded)),
             PocketLinkAppBarAction(label: 'Upload file', icon: Icons.upload_rounded, onPressed: _uploadFile),
             PocketLinkAppBarAction(label: 'New folder', icon: Icons.create_new_folder_outlined, onPressed: _createFolder),
             PocketLinkAppBarAction(label: 'Sort by name', icon: Icons.sort_by_alpha_rounded,
