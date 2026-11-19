@@ -9,6 +9,7 @@ import '../../core/settings/app_settings.dart';
 import '../../core/storage/home_activity_store.dart';
 import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
+import '../../core/widgets/smoked_glass_popover_menu.dart';
 import 'explore_search_screens.dart';
 import '../media/persistent_audio_player.dart';
 import '../media/now_playing_overlay_controller.dart';
@@ -1582,15 +1583,19 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          trailing: PopupMenuButton<String>(
+                          trailing: SmokedGlassPopoverMenu<String>(
                             tooltip: 'File actions',
-                            onSelected: (action) => _handleRecentAction(_recentFiles[index], action),
-                            itemBuilder: (_) => const [
-                              PopupMenuItem(value: 'download', child: Text('Download')),
-                              PopupMenuItem(value: 'share', child: Text('Share')),
-                              PopupMenuItem(value: 'rename', child: Text('Rename')),
-                              PopupMenuItem(value: 'delete', child: Text('Delete')),
+                            items: const [
+                              SmokedGlassPopoverMenuItem(value: 'download', label: 'Download', icon: Icons.download_rounded),
+                              SmokedGlassPopoverMenuItem(value: 'share', label: 'Share', icon: Icons.ios_share_rounded),
+                              SmokedGlassPopoverMenuItem(value: 'rename', label: 'Rename', icon: Icons.drive_file_rename_outline_rounded),
+                              SmokedGlassPopoverMenuItem(value: 'delete', label: 'Delete', icon: Icons.delete_outline_rounded, destructive: true, dividerBefore: true),
                             ],
+                            onSelected: (action) => _handleRecentAction(_recentFiles[index], action),
+                            child: const Padding(
+                              padding: EdgeInsets.all(8),
+                              child: Icon(Icons.more_vert_rounded),
+                            ),
                           ),
                           onTap: () {
                             final recent = _recentFiles[index];
