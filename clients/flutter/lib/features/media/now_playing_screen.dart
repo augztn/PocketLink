@@ -1017,7 +1017,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return ColoredBox(
+    return Material(
       color: const Color(0xFF0A0B0E),
       child: Stack(
             fit: StackFit.expand,
