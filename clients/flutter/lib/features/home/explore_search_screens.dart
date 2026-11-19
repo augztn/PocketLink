@@ -248,15 +248,11 @@ class _ExploreGridState extends State<_ExploreGrid>
 
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: PocketLinkAppBar(
+      appBar: const PocketLinkAppBar(
         feathered: true,
-        title: const Text('Explore'),
-        onHome: onHome,
-        leading: onHome == null ? null : IconButton(
-          tooltip: 'Back to Dashboard',
-          onPressed: onHome,
-          icon: const Icon(Icons.arrow_back_rounded),
-        ),
+        showHome: false,
+        automaticallyImplyLeading: false,
+        title: Text('Explore'),
       ),
       body: GridView.count(
         padding: EdgeInsets.fromLTRB(16, MediaQuery.paddingOf(context).top + kToolbarHeight + 12, 16, 112 + MediaQuery.paddingOf(context).bottom),
