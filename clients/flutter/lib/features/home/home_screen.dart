@@ -242,7 +242,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _openNowPlaying(PersistentAudioPlayer player) async {
-    if (player.isMusic && player.isActive && player.currentItem != null) {
+    if (player.isMusic &&
+        player.isActive &&
+        player.currentItem != null &&
+        player.api != null) {
       GlobalMediaOverlay.openNowPlaying();
       return;
     }
