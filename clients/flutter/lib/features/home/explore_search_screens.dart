@@ -206,6 +206,7 @@ class _ExploreGridState extends State<_ExploreGrid>
       required String subtitle,
       required IconData icon,
       required Color tint,
+      String? badge,
       required VoidCallback onTap,
     }) {
       return _staggeredCard(index, Material(
@@ -223,14 +224,35 @@ class _ExploreGridState extends State<_ExploreGrid>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: tint.withValues(alpha: 0.16),
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  child: Icon(icon, color: tint, size: 25),
+                Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: tint.withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: Icon(icon, color: tint, size: 25),
+                    ),
+                    const Spacer(),
+                    if (badge != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: tint.withValues(alpha: 0.16),
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                        child: Text(
+                          badge,
+                          style: TextStyle(
+                            color: tint,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 const Spacer(),
                 Text(title, style: theme.textTheme.titleMedium?.copyWith(
@@ -320,6 +342,9 @@ class _ExploreGridState extends State<_ExploreGrid>
                         ? '${manager.queuedCount} queued'
                         : 'Manage downloads',
                 icon: Icons.download_rounded,
+                badge: manager.activeCount > 0
+                    ? '${manager.activeCount} active'
+                    : null,
                 tint: const Color(0xFF3FAD8A),
                 onTap: () => _openLibrary(
                   'downloads',
