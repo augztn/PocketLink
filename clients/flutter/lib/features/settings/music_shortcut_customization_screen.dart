@@ -28,7 +28,6 @@ class _MusicShortcutCustomizationScreenState
     'favorites': (label: 'Favorites', description: 'Open favourite photos', icon: Icons.favorite_rounded),
     'upload': (label: 'Upload', description: 'Choose a file to upload', icon: Icons.cloud_upload_rounded),
     'search': (label: 'Search', description: 'Search across your server files', icon: Icons.search_rounded),
-    'drives': (label: 'Drives', description: 'Open internal and external storage', icon: Icons.usb_rounded),
   };
 
   void _toggle(String id, bool enabled) {
