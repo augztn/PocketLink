@@ -259,18 +259,31 @@ class MediaIndexStatus {
     required this.lastCompletedAt, required this.fileCount,
     required this.mediaCount, this.lastError,
     this.lastScanStartedAt = 0, this.elapsedMs = 0, this.currentSource,
+    this.currentPath, this.scannedDirectories = 0, this.unchangedCount = 0,
+    this.indexedCount = 0, this.directoryCount = 0, this.regularFileCount = 0,
+    this.photoCount = 0, this.videoCount = 0, this.musicCount = 0,
     this.skippedItems = const [],
   });
   final String state;
   final int scanned;
   final int skipped;
   final int lastCompletedAt;
+  /// Total indexed entries, including directories (kept for API compatibility).
   final int fileCount;
   final int mediaCount;
   final String? lastError;
   final int lastScanStartedAt;
   final int elapsedMs;
   final String? currentSource;
+  final String? currentPath;
+  final int scannedDirectories;
+  final int unchangedCount;
+  final int indexedCount;
+  final int directoryCount;
+  final int regularFileCount;
+  final int photoCount;
+  final int videoCount;
+  final int musicCount;
   final List<SkippedMediaIndexItem> skippedItems;
   bool get isScanning => state == 'scanning';
   bool get isUsable => state == 'complete' || state == 'partial';
@@ -287,6 +300,15 @@ class MediaIndexStatus {
         lastScanStartedAt: (json['last_scan_started_at'] as num?)?.toInt() ?? 0,
         elapsedMs: (json['elapsed_ms'] as num?)?.toInt() ?? 0,
         currentSource: json['current_source']?.toString(),
+        currentPath: json['current_path']?.toString(),
+        scannedDirectories: (json['scanned_directories'] as num?)?.toInt() ?? 0,
+        unchangedCount: (json['unchanged_count'] as num?)?.toInt() ?? 0,
+        indexedCount: (json['indexed_count'] as num?)?.toInt() ?? 0,
+        directoryCount: (json['directory_count'] as num?)?.toInt() ?? 0,
+        regularFileCount: (json['regular_file_count'] as num?)?.toInt() ?? 0,
+        photoCount: (json['photo_count'] as num?)?.toInt() ?? 0,
+        videoCount: (json['video_count'] as num?)?.toInt() ?? 0,
+        musicCount: (json['music_count'] as num?)?.toInt() ?? 0,
         skippedItems: (json['skipped_items'] as List<dynamic>? ?? const [])
             .whereType<Map<String, dynamic>>()
             .map(SkippedMediaIndexItem.fromJson)
