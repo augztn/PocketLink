@@ -1426,7 +1426,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
             child: const IgnorePointer(child: FeatheredGlassHeaderBackground())),
           Positioned(top: top + 8, left: 16, right: 16, height: 56,
             child: Row(children: [
-              Expanded(child: SmokedGlassPopoverMenu<String>(
+              Expanded(child: Align(alignment: Alignment.centerLeft, child: SmokedGlassPopoverMenu<String>(
                 tooltip: 'Choose music view',
                 onOpenChanged: (open) => setState(() => _musicMenuOpen = open),
                 items: [
