@@ -220,6 +220,7 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
       appBar: PocketLinkAppBar(
         feathered: true,
         showHome: false,
+        automaticallyImplyLeading: false,
         title: PopupMenuButton<String>(
           tooltip: 'Filter document types',
           offset: const Offset(0, 48),
