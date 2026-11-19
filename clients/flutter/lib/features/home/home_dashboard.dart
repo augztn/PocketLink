@@ -750,10 +750,21 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
         return Container(
           padding: const EdgeInsets.all(15),
           decoration: BoxDecoration(
-            color: cardColor,
+            color: theme.brightness == Brightness.dark ? null : cardColor,
+            gradient: theme.brightness == Brightness.dark
+                ? const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Color(0xFF1B1D24), Color(0xFF131419)],
+                  )
+                : null,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: online ? colors.outlineVariant.withValues(alpha: 0.62) : statusColor.withValues(alpha: 0.42),
+              color: online
+                  ? theme.brightness == Brightness.dark
+                      ? Colors.white.withValues(alpha: 0.07)
+                      : colors.outlineVariant.withValues(alpha: 0.62)
+                  : statusColor.withValues(alpha: 0.42),
             ),
           ),
           child: Column(
