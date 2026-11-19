@@ -235,11 +235,14 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
               if (_filter == entry.key) const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.check_rounded, size: 18)),
             ]),
           )).toList(),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Documents', style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800, color: titleColor)),
-              Text('${filtered.length} ${filtered.length == 1 ? 'document' : 'documents'}', style: const TextStyle(fontSize: 10, fontFamily: 'monospace', color: Color(0xFFA1A7B3))),
-            ]),
+          child: Row(children: [
+            Expanded(
+              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Documents', style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800, color: titleColor)),
+                Text('${filtered.length} ${filtered.length == 1 ? 'document' : 'documents'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10, fontFamily: 'monospace', color: Color(0xFFA1A7B3))),
+              ]),
+            ),
+            const SizedBox(width: 12),
             AnimatedRotation(turns: _filterMenuOpen ? 0.5 : 0, duration: const Duration(milliseconds: 200), child: const Icon(Icons.keyboard_arrow_down_rounded)),
           ]),
         ),
