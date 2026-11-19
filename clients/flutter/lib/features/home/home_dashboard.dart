@@ -937,9 +937,11 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text('${status.skipped} skipped ${status.skipped == 1 ? 'item' : 'items'}'),
-        content: SizedBox(
-          width: 440,
-          child: items.isEmpty
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 360),
+          child: SizedBox(
+            width: 440,
+            child: items.isEmpty
               ? const Text('The host reported skipped items but did not return their locations. Run Scan host again after checking storage permissions.')
               : Column(
                   mainAxisSize: MainAxisSize.min,
@@ -969,6 +971,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                     ],
                   ],
                 ),
+          ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Close')),
