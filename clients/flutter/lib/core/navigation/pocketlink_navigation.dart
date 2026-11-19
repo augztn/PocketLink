@@ -80,6 +80,7 @@ abstract final class PocketLinkNavigation {
   static final miniPlayerKey = GlobalKey();
   static final mediaOverlayKey = GlobalKey();
   static final drawerOpen = ValueNotifier<bool>(false);
+  static final quickShortcutsOpen = ValueNotifier<bool>(false);
   static final observer = PocketLinkNavigationObserver();
 
   /// Captures the visible source surface for the Now Playing container transform.
