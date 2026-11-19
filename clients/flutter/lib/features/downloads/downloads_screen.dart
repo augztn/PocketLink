@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
@@ -162,7 +163,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.labelSmall?.copyWith(
                             color: colors.onSurfaceVariant,
-                            fontFeatures: const [FontFeature.tabularFigures()],
+                            fontFeatures: const [ui.FontFeature.tabularFigures()],
                           ),
                         ),
                       ],
