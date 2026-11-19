@@ -418,7 +418,17 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
       data: media,
       child: AnimatedBuilder(
       animation: animation,
-      builder: (context, _) {
+      child: NowPlayingScreen(
+        api: api,
+        queue: player.queue,
+        initialIndex: player.currentIndex,
+        resumeExisting: true,
+        onDismiss: onDismiss,
+        onDismissDragStart: onDragStart,
+        onDismissDragUpdate: onDragUpdate,
+        onDismissDragEnd: onDragEnd,
+      ),
+      builder: (context, animatedChild) {
         final t = animation.value.clamp(0.0, 1.0).toDouble();
         final rect = Rect.lerp(origin, destination, t)!;
         final radius = BorderRadius.lerp(
@@ -455,16 +465,7 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
                       ignoring: fullOpacity < 1,
                       child: Opacity(
                         opacity: fullOpacity,
-                        child: NowPlayingScreen(
-                          api: api,
-                          queue: player.queue,
-                          initialIndex: player.currentIndex,
-                          resumeExisting: true,
-                          onDismiss: onDismiss,
-                          onDismissDragStart: onDragStart,
-                          onDismissDragUpdate: onDragUpdate,
-                          onDismissDragEnd: onDragEnd,
-                        ),
+                        child: animatedChild,
                       ),
                     ),
                   ),
