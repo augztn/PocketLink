@@ -77,6 +77,21 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   bool _openingMedia = false;
   bool _musicMenuOpen = false;
   bool _searchExpanded = false;
+
+  void _syncBackHandler() {
+    final handler = _searchExpanded
+        ? () => _setSearchExpanded(false)
+        : _libraryView == 'folders' && !_atFolderRoot
+            ? _goUpFolder
+            : null;
+    widget.onBackHandlerChanged?.call(handler);
+  }
+
+  void _setSearchExpanded(bool expanded) {
+    if (_searchExpanded == expanded) return;
+    setState(() => _searchExpanded = expanded);
+    _syncBackHandler();
+  }
   Set<String> _favoriteKeys = <String>{};
   final Map<String, Future<Uint8List?>> _musicArtworkCache = {};
   final Map<String, Future<VideoMetadata?>> _videoMetadataCache = {};
@@ -133,6 +148,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     setState(() => _currentFolderPath = parent);
     _saveState(folderPath: parent);
     if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0);
+    _syncBackHandler();
   }
 
   String _volumeName(String? id) {
@@ -838,6 +854,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
 
   @override
   void dispose() {
+    widget.onBackHandlerChanged?.call(null);
     _saveState();
     _searchController.dispose();
     _contentScrollController.removeListener(_saveScrollOffset);
@@ -866,9 +883,15 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     final titleColor = dark ? Colors.white : const Color(0xFF0F172A);
 
     return PopScope(
-      canPop: _libraryView != 'folders' || _atFolderRoot,
+      canPop: widget.onBackHandlerChanged != null ||
+          (!_searchExpanded && (_libraryView != 'folders' || _atFolderRoot)),
       onPopInvokedWithResult: (didPop, result) {
-        if (!didPop && _libraryView == 'folders' && !_atFolderRoot) _goUpFolder();
+        if (didPop || widget.onBackHandlerChanged != null) return;
+        if (_searchExpanded) {
+          _setSearchExpanded(false);
+        } else if (_libraryView == 'folders' && !_atFolderRoot) {
+          _goUpFolder();
+        }
       },
       child: Scaffold(
         extendBodyBehindAppBar: true,
@@ -912,6 +935,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                 _libraryView = value;
                 if (value != 'folders') _currentFolderPath = '';
               });
+              _syncBackHandler();
               _saveState(folderPath: _currentFolderPath);
               if (_contentScrollController.hasClients) {
                 _contentScrollController.jumpTo(0);
@@ -940,7 +964,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
             ]),
           ),
           actions: [
-            if (widget.showSearch) PocketLinkAppBarAction(label: 'Search videos', icon: Icons.search_rounded, onPressed: () => setState(() => _searchExpanded = !_searchExpanded)),
+            if (widget.showSearch) PocketLinkAppBarAction(label: _searchExpanded ? 'Close search' : 'Search videos', icon: _searchExpanded ? Icons.close_rounded : Icons.search_rounded, onPressed: () => _setSearchExpanded(!_searchExpanded)),
             PocketLinkAppBarAction(label: 'Filter & sort', icon: Icons.tune_rounded, onPressed: _showMusicFilters),
             PocketLinkAppBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded,
               onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen())), dividerBefore: true),
@@ -1282,26 +1306,17 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final foreground = dark ? Colors.white : const Color(0xFF0F172A);
 
-    Widget menuRow(String label, int count, String value) {
-      final active = _libraryView == value;
-      return InkWell(
-        onTap: () {
-          setState(() { _libraryView = value; _musicMenuOpen = false; _currentFolderPath = value == 'folders' && _selectedVolume == 'internal' ? 'Music' : ''; });
-          _pendingScrollOffset = 0;
-          _saveState(folderPath: _currentFolderPath);
-          if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0);
-        },
-        child: Padding(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12), child: Row(children: [
-          Expanded(child: Text(label, style: TextStyle(color: active ? foreground : const Color(0xFFA1A7B3), fontWeight: active ? FontWeight.w800 : FontWeight.w500))),
-          Text('$count', style: const TextStyle(color: Color(0xFFA1A7B3), fontSize: 11, fontFamily: 'monospace', fontFeatures: [ui.FontFeature.tabularFigures()])),
-          if (active) ...[const SizedBox(width: 10), Icon(Icons.check_rounded, size: 18, color: foreground)],
-        ])),
-      );
-    }
-
     return PopScope(
-      canPop: _libraryView != 'folders' || _atFolderRoot,
-      onPopInvokedWithResult: (didPop, result) { if (!didPop && _libraryView == 'folders' && !_atFolderRoot) _goUpFolder(); },
+      canPop: widget.onBackHandlerChanged != null ||
+          (!_searchExpanded && (_libraryView != 'folders' || _atFolderRoot)),
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop || widget.onBackHandlerChanged != null) return;
+        if (_searchExpanded) {
+          _setSearchExpanded(false);
+        } else if (_libraryView == 'folders' && !_atFolderRoot) {
+          _goUpFolder();
+        }
+      },
       child: AnimatedBuilder(
         animation: PersistentAudioPlayer.instance,
         builder: (context, _) => Scaffold(
@@ -1403,9 +1418,36 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
             child: const IgnorePointer(child: FeatheredGlassHeaderBackground())),
           Positioned(top: top + 8, left: 16, right: 16, height: 56,
             child: Row(children: [
-              Expanded(child: Align(alignment: Alignment.centerLeft, child: InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: () => setState(() => _musicMenuOpen = !_musicMenuOpen),
+              Expanded(child: SmokedGlassPopoverMenu<String>(
+                tooltip: 'Choose music view',
+                onOpenChanged: (open) => setState(() => _musicMenuOpen = open),
+                items: [
+                  SmokedGlassPopoverMenuItem(value: 'all', label: 'Songs', icon: Icons.music_note_rounded,
+                    trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Text('${_media.length}', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
+                      if (_libraryView == 'all') const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.check_rounded, size: 18)),
+                    ])),
+                  SmokedGlassPopoverMenuItem(value: 'folders', label: 'Folders', icon: Icons.folder_rounded,
+                    trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Text('$folderCount', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
+                      if (_libraryView == 'folders') const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.check_rounded, size: 18)),
+                    ])),
+                  SmokedGlassPopoverMenuItem(value: 'favorites', label: 'Favorites', icon: Icons.favorite_rounded,
+                    trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Text('$favoriteCount', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
+                      if (_libraryView == 'favorites') const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.check_rounded, size: 18)),
+                    ])),
+                ],
+                onSelected: (value) {
+                  setState(() {
+                    _libraryView = value;
+                    _currentFolderPath = value == 'folders' && _selectedVolume == 'internal' ? 'Music' : '';
+                  });
+                  _syncBackHandler();
+                  _pendingScrollOffset = 0;
+                  _saveState(folderPath: _currentFolderPath);
+                  if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0);
+                },
                 child: Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: Row(mainAxisSize: MainAxisSize.min, children: [
                   Flexible(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
                     Row(mainAxisSize: MainAxisSize.min, children: [
@@ -1419,7 +1461,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                       style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurfaceVariant, fontFamily: 'monospace')),
                   ])),
                 ])),
-              ))),
+              )),
               SmokedGlassPopoverMenu<String>(
                 tooltip: 'More music actions',
                 items: [
@@ -1430,7 +1472,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                   SmokedGlassPopoverMenuItem(value: 'transfers', label: 'Transfers', icon: Icons.swap_vert_rounded, dividerBefore: true),
                 ],
                 onSelected: (value) {
-                  if (value == 'search') setState(() => _searchExpanded = !_searchExpanded);
+                  if (value == 'search') _setSearchExpanded(!_searchExpanded);
                   if (value == 'filter') _showMusicFilters();
                   if (value == 'shuffle' && visible.isNotEmpty) {
                     final shuffled = List<_MediaFile>.of(visible)..shuffle(math.Random());
@@ -1449,33 +1491,6 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
               ),
             ]),
           ),
-          if (_musicMenuOpen) ...[
-            Positioned.fill(top: top + 66, child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => setState(() => _musicMenuOpen = false),
-              child: const ColoredBox(color: Colors.transparent),
-            )),
-            Positioned(top: top + 64, left: 16, width: 220,
-              child: TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0.92, end: 1), duration: const Duration(milliseconds: 200), curve: Curves.easeOutCubic,
-                builder: (context, scale, child) => Opacity(opacity: ((scale - 0.92) / 0.08).clamp(0, 1), child: Transform.scale(alignment: Alignment.topLeft, scale: scale, child: child)),
-                child: ClipRRect(borderRadius: BorderRadius.circular(20), child: BackdropFilter(
-                  filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-                  child: Container(
-                    decoration: BoxDecoration(color: dark ? const Color(0xE51A1C22) : const Color(0xEEF8FAFC),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.white.withValues(alpha: dark ? 0.16 : 0.55))),
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: Column(mainAxisSize: MainAxisSize.min, children: [
-                      menuRow('Songs', _media.length, 'all'),
-                      menuRow('Folders', folderCount, 'folders'),
-                      menuRow('Favorites', favoriteCount, 'favorites'),
-                    ]),
-                  ),
-                )),
-              ),
-            ),
-          ],
         ]),
       ),
       ),
@@ -1519,6 +1534,7 @@ class MediaBrowserScreen extends StatefulWidget {
     required this.type,
     this.showSearch = true,
     this.onHome,
+    this.onBackHandlerChanged,
     super.key,
   });
 
@@ -1526,6 +1542,7 @@ class MediaBrowserScreen extends StatefulWidget {
   final MediaLibraryType type;
   final bool showSearch;
   final VoidCallback? onHome;
+  final ValueChanged<VoidCallback?>? onBackHandlerChanged;
 
   @override
   State<MediaBrowserScreen> createState() => _MediaBrowserScreenState();
