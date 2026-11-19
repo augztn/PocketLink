@@ -225,13 +225,16 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                   padding: const EdgeInsets.only(bottom: 14),
                   child: SizedBox(
                     height: 44,
-                    child: FilledButton.tonalIcon(
-                      onPressed: _newDownload,
-                      icon: const Icon(Icons.add_link_rounded),
-                      label: const Text('Add URL'),
-                      style: FilledButton.styleFrom(
-                        alignment: Alignment.center,
-                        shape: const StadiumBorder(),
+                    child: SmokedGlassSurface(
+                      radius: BorderRadius.circular(99),
+                      child: TextButton.icon(
+                        onPressed: _newDownload,
+                        icon: const Icon(Icons.add_link_rounded),
+                        label: const Text('Add URL'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          shape: const StadiumBorder(),
+                        ),
                       ),
                     ),
                   ),
@@ -305,6 +308,32 @@ class _DownloadTaskCard extends StatelessWidget {
   final VoidCallback onOpen;
   final VoidCallback onDelete;
 
+  Widget _glassActionButton({
+    required String tooltip,
+    required IconData icon,
+    required VoidCallback onPressed,
+  }) {
+    return SizedBox.square(
+      dimension: 36,
+      child: SmokedGlassSurface(
+        radius: BorderRadius.circular(18),
+        child: IconButton(
+          tooltip: tooltip,
+          onPressed: onPressed,
+          padding: EdgeInsets.zero,
+          iconSize: 18,
+          constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+          style: IconButton.styleFrom(
+            foregroundColor: Colors.white,
+            shape: const CircleBorder(),
+            backgroundColor: Colors.white.withValues(alpha: 0.035),
+          ),
+          icon: Icon(icon),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
@@ -370,29 +399,27 @@ class _DownloadTaskCard extends StatelessWidget {
                   ),
                 ),
                 if (downloading || task.status == DownloadStatus.queued)
-                  IconButton(
+                  _glassActionButton(
                     tooltip: 'Pause',
+                    icon: Icons.pause_rounded,
                     onPressed: onPause,
-                    icon: const Icon(Icons.pause_circle_outline_rounded),
                   )
                 else if (!completed)
-                  IconButton(
+                  _glassActionButton(
                     tooltip: failed ? 'Retry' : 'Resume',
+                    icon: failed ? Icons.refresh_rounded : Icons.play_arrow_rounded,
                     onPressed: onResume,
-                    icon: Icon(failed
-                        ? Icons.refresh_rounded
-                        : Icons.play_circle_outline_rounded),
                   )
                 else
-                  IconButton(
+                  _glassActionButton(
                     tooltip: 'Open file',
+                    icon: Icons.open_in_new_rounded,
                     onPressed: onOpen,
-                    icon: const Icon(Icons.open_in_new_rounded),
                   ),
-                IconButton(
+                _glassActionButton(
                   tooltip: 'Delete',
+                  icon: Icons.delete_outline_rounded,
                   onPressed: onDelete,
-                  icon: const Icon(Icons.delete_outline_rounded),
                 ),
               ],
             ),
