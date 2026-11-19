@@ -1,8 +1,6 @@
 import 'dart:ffi' show Abi;
 import 'dart:io' show Platform;
 
-import 'package:flutter/foundation.dart' show LicenseEntryWithLineBreaks, LicenseRegistry;
-import 'package:flutter/services.dart' show rootBundle;
 import 'package:material_ui/material_ui.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -17,8 +15,6 @@ class AboutScreen extends StatefulWidget {
 }
 
 class _AboutScreenState extends State<AboutScreen> {
-  static bool _fontLicensesRegistered = false;
-
   static const _sourceUrl = 'https://github.com/augztn/PocketLink';
   static const _developerUrl = 'https://github.com/augztn';
 
@@ -43,7 +39,6 @@ class _AboutScreenState extends State<AboutScreen> {
   }
 
   void _openLicenses(BuildContext context, PackageInfo info) {
-    _registerBundledFontLicenses();
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => LicensePage(
@@ -53,26 +48,6 @@ class _AboutScreenState extends State<AboutScreen> {
         ),
       ),
     );
-  }
-
-  void _registerBundledFontLicenses() {
-    if (_fontLicensesRegistered) return;
-    _fontLicensesRegistered = true;
-
-    LicenseRegistry.addLicense(() async* {
-      yield LicenseEntryWithLineBreaks(
-        ['Plus Jakarta Sans'],
-        await rootBundle.loadString(
-          'assets/fonts/PLUS_JAKARTA_SANS_OFL.txt',
-        ),
-      );
-      yield LicenseEntryWithLineBreaks(
-        ['JetBrains Mono'],
-        await rootBundle.loadString(
-          'assets/fonts/JETBRAINS_MONO_OFL.txt',
-        ),
-      );
-    });
   }
 
   static String _displayVersion(PackageInfo info) {

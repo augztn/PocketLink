@@ -108,11 +108,10 @@ class _PocketLinkAppState extends State<PocketLinkApp> {
     final baseTextTheme = ThemeData(
       brightness: brightness,
       useMaterial3: true,
-    ).textTheme.apply(fontFamily: 'PlusJakartaSans');
+    ).textTheme;
 
     return ThemeData(
       colorScheme: effectiveScheme,
-      fontFamily: 'PlusJakartaSans',
       scaffoldBackgroundColor: isDark
           ? Colors.black
           : const Color(0xFFF3F5FB),

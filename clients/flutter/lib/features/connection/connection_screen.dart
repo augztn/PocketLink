@@ -493,7 +493,6 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                   children: [
                     Expanded(flex: 7, child: TextField(
                       controller: _addressController,
-                      style: const TextStyle(fontFamily: 'JetBrainsMono'),
                       keyboardType: TextInputType.url,
                       autocorrect: false,
                       decoration: _inputDecoration(hint: 'Server address', icon: Icons.language),
@@ -501,7 +500,6 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                     const SizedBox(width: 10),
                     Expanded(flex: 3, child: TextField(
                       controller: _portController,
-                      style: const TextStyle(fontFamily: 'JetBrainsMono'),
                       keyboardType: TextInputType.number,
                       decoration: _inputDecoration(hint: 'Port', icon: Icons.settings_ethernet),
                     )),
