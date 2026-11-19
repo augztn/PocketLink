@@ -191,7 +191,6 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   Future<void> _closeNowPlaying() async {
     if (!_nowPlayingOpen || _closingNowPlaying) return;
     _closingNowPlaying = true;
-    _isNowPlayingDragging = false;
     _nowPlayingEntry?.markNeedsBuild();
     try {
       await _nowPlayingController.animateBack(
@@ -207,6 +206,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     if (mounted) {
       setState(() {
         _nowPlayingOpen = false;
+        _isNowPlayingDragging = false;
         _nowPlayingOriginRect = null;
       });
     }
@@ -223,11 +223,11 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   }
 
   void _endNowPlayingDrag(double velocity) {
-    _isNowPlayingDragging = false;
-    _nowPlayingEntry?.markNeedsBuild();
     if (_nowPlayingController.value < 0.85 || velocity > 280) {
       unawaited(_closeNowPlaying());
     } else {
+      _isNowPlayingDragging = false;
+      _nowPlayingEntry?.markNeedsBuild();
       unawaited(_nowPlayingController.animateTo(
         1,
         duration: const Duration(milliseconds: 180),
