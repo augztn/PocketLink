@@ -22,25 +22,33 @@ class MediaIndexScannerTest {
         }
         val music = File(root, "Music").apply { mkdirs() }
         val documents = File(root, "Documents").apply { mkdirs() }
+        val photos = File(root, "Photos").apply { mkdirs() }
+        val videos = File(root, "Videos").apply { mkdirs() }
         File(music, "track.mp3").writeBytes(byteArrayOf(1, 2, 3))
         File(documents, "report.pdf").writeBytes(byteArrayOf(4, 5, 6))
+        File(photos, "cover.heic").writeBytes(byteArrayOf(7, 8, 9))
+        File(videos, "clip.hevc").writeBytes(byteArrayOf(10, 11, 12))
 
         val scanner = MediaIndexScanner(context, { root }, { emptyList() })
         try {
             scanner.requestScan(force = true)
             val first = awaitFinished(scanner)
             assertEquals("complete", first.getString("state"))
-            assertEquals(4, first.getInt("file_count"))
-            assertEquals(2, first.getInt("directory_count"))
-            assertEquals(2, first.getInt("regular_file_count"))
+            assertEquals(8, first.getInt("file_count"))
+            assertEquals(4, first.getInt("directory_count"))
+            assertEquals(4, first.getInt("regular_file_count"))
             assertEquals(1, first.getInt("music_count"))
-            assertEquals(3, first.getInt("scanned_directories"))
+            assertEquals(1, first.getInt("video_count"))
+            assertEquals(1, first.getInt("photo_count"))
+            assertEquals(5, first.getInt("scanned_directories"))
+            assertEquals("audio/mpeg", scanner.media("music", "", 10, 0).single().mime)
+            assertEquals("application/pdf", scanner.files("report.pdf", 10, 0).single().mime)
 
             SystemClock.sleep(5)
             scanner.requestScan(force = true)
             val second = awaitFinished(scanner, first.getLong("last_scan_started_at"))
             assertEquals("complete", second.getString("state"))
-            assertEquals(4, second.getInt("unchanged_count"))
+            assertEquals(8, second.getInt("unchanged_count"))
             assertEquals(0, second.getInt("indexed_count"))
 
             assertTrue(File(music, "track.mp3").delete())
@@ -49,7 +57,7 @@ class MediaIndexScannerTest {
             val third = awaitFinished(scanner, second.getLong("last_scan_started_at"))
             assertEquals("complete", third.getString("state"))
             assertEquals(0, third.getInt("music_count"))
-            assertEquals(3, third.getInt("file_count"))
+            assertEquals(7, third.getInt("file_count"))
         } finally {
             scanner.close()
             root.deleteRecursively()
