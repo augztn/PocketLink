@@ -411,7 +411,6 @@ class _DockTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selected = selectedIndex == index;
-    final colors = Theme.of(context).colorScheme;
     return Semantics(
       button: true,
       selected: selected,
