@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../navigation/pocketlink_navigation.dart';
+import 'feathered_glass_header.dart';
 
 class PocketLinkAppBarAction {
   const PocketLinkAppBarAction({
@@ -29,6 +30,7 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.elevation,
     this.showHome = true,
     this.actionsBeforeHome = const [],
+    this.feathered = false,
     super.key,
   });
 
@@ -42,6 +44,7 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
   final double? elevation;
   final bool showHome;
   final List<Widget> actionsBeforeHome;
+  final bool feathered;
 
   static const dashboardRouteName = PocketLinkRouteNames.dashboard;
 
@@ -76,7 +79,8 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
       title: title,
       leading: leading,
       centerTitle: centerTitle,
-      backgroundColor: backgroundColor ?? theme.scaffoldBackgroundColor,
+      backgroundColor: feathered ? Colors.transparent : (backgroundColor ?? theme.scaffoldBackgroundColor),
+      flexibleSpace: feathered ? const FeatheredGlassHeaderBackground() : null,
       foregroundColor: foregroundColor,
       elevation: elevation ?? 0,
       scrolledUnderElevation: 0,
@@ -90,14 +94,14 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
       actions: [
       ...actionsBeforeHome,
       if (showHome)
-        IconButton(
-          tooltip: 'Home',
-          onPressed: () => _goHome(context),
-          icon: const Icon(Icons.home_rounded),
-        ),
+        if (feathered)
+          GlassCircleButton(tooltip: 'Home', onPressed: () => _goHome(context), child: const Icon(Icons.home_rounded))
+        else
+          IconButton(tooltip: 'Home', onPressed: () => _goHome(context), icon: const Icon(Icons.home_rounded)),
       PopupMenuButton<PocketLinkAppBarAction>(
         tooltip: 'More actions',
-        icon: const Icon(Icons.more_vert_rounded),
+        icon: feathered ? null : const Icon(Icons.more_vert_rounded),
+        child: feathered ? const GlassCircleButton(tooltip: 'More actions', onPressed: null, child: Icon(Icons.more_vert_rounded)) : null,
         onSelected: (action) => action.onPressed?.call(),
         itemBuilder: (context) => actions.map((action) =>
           PopupMenuItem<PocketLinkAppBarAction>(

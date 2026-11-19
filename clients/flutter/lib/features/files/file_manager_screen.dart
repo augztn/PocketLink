@@ -3,6 +3,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
+import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/pocketlink_file_icon.dart';
 
 import '../../core/network/server_api.dart';
@@ -653,15 +654,13 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
         }
       },
       child: Scaffold(
+        extendBodyBehindAppBar: true,
         appBar: PocketLinkAppBar(
+          feathered: true,
           title: const Text('Files', style: TextStyle(fontWeight: FontWeight.w800)),
           onHome: () => _load(''),
           actionsBeforeHome: widget.showSearch ? [
-            IconButton(
-              tooltip: 'Search files',
-              onPressed: _openSearch,
-              icon: const Icon(Icons.search_rounded),
-            ),
+            GlassCircleButton(tooltip: 'Search files', onPressed: _openSearch, child: const Icon(Icons.search_rounded)),
           ] : const [],
           actions: [
             PocketLinkAppBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded, onPressed: _openTransfers),
@@ -672,6 +671,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
         ),
         body: Column(
           children: [
+            SizedBox(height: MediaQuery.paddingOf(context).top + kToolbarHeight),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
               child: Material(

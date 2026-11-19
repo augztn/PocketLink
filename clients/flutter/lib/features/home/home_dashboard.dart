@@ -10,6 +10,7 @@ import '../../core/settings/app_settings.dart';
 import '../../core/navigation/pocketlink_navigation.dart';
 import '../../core/storage/home_activity_store.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
+import '../../core/widgets/feathered_glass_header.dart';
 import 'explore_search_screens.dart';
 import '../media/now_playing_screen.dart';
 import '../media/persistent_audio_player.dart';
@@ -1628,37 +1629,15 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        leading: IconButton(
-          tooltip: 'Open navigation menu',
-          onPressed: widget.onOpenDrawer,
-          icon: const Icon(Icons.menu_rounded),
-        ),
+        leading: GlassCircleButton(tooltip: 'Open navigation menu', onPressed: widget.onOpenDrawer, child: const Icon(Icons.menu_rounded)),
         backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
-        flexibleSpace: ClipRect(
-          child: BackdropFilter(
-            filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: theme.brightness == Brightness.dark
-                    ? Colors.black.withValues(alpha: 0.72)
-                    : theme.scaffoldBackgroundColor.withValues(alpha: 0.88),
-                border: Border(
-                  bottom: BorderSide(
-                    color: theme.brightness == Brightness.dark
-                        ? Colors.white.withValues(alpha: 0.06)
-                        : colors.outlineVariant.withValues(alpha: 0.55),
-                    width: 1,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
+        flexibleSpace: const FeatheredGlassHeaderBackground(),
         titleSpacing: 20,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1674,9 +1653,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
           ],
         ),
         actions: [
-          LiquidGlassPill(
-            radius: BorderRadius.circular(14),
-            child: AnimatedBuilder(
+          AnimatedBuilder(
               animation: TransferManager.instance,
               builder: (context, _) {
                 final activeCount = TransferManager.instance.tasks
@@ -1685,14 +1662,10 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                 return Stack(
                   clipBehavior: Clip.none,
                   children: [
-                    IconButton(
-                      tooltip: activeCount > 0
-                          ? 'Transfers · $activeCount active'
-                          : 'Transfers',
-                      onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                        builder: (_) => const TransferManagerScreen(),
-                      )),
-                      icon: const Icon(Icons.swap_vert_rounded),
+                    GlassCircleButton(
+                      tooltip: activeCount > 0 ? 'Transfers · $activeCount active' : 'Transfers',
+                      onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen())),
+                      child: const Icon(Icons.swap_vert_rounded),
                     ),
                     if (activeCount > 0)
                       Positioned(
@@ -1721,12 +1694,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                 );
               },
             ),
-          ),
-          IconButton(
-            tooltip: 'Refresh server status',
-            onPressed: _checking ? null : () => _refreshStatus(forceRefresh: true),
-            icon: const Icon(Icons.refresh_rounded),
-          ),
+          GlassCircleButton(tooltip: 'Refresh server status', onPressed: _checking ? null : () => _refreshStatus(forceRefresh: true), child: const Icon(Icons.refresh_rounded)),
           const SizedBox(width: 6),
         ],
       ),
@@ -1734,7 +1702,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
         onRefresh: () => _refreshStatus(forceRefresh: true),
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: EdgeInsets.fromLTRB(18, 18, 18, 104 + MediaQuery.paddingOf(context).bottom),
+          padding: EdgeInsets.fromLTRB(18, MediaQuery.paddingOf(context).top + kToolbarHeight + 12, 18, 104 + MediaQuery.paddingOf(context).bottom),
           children: [
             _buildServerTelemetry(context, theme, colors),
             const SizedBox(height: 12),

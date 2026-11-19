@@ -3,6 +3,7 @@ import '../../core/network/server_api.dart';
 import 'photo_favorites_store.dart';
 import '../transfers/transfer_manager_screen.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
+import '../../core/widgets/feathered_glass_header.dart';
 
 class _Photo {
   const _Photo(this.file, this.path, this.volume);
@@ -550,7 +551,9 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     final items = visible;
     final selecting = selected.isNotEmpty;
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: PocketLinkAppBar(
+        feathered: true,
         title: Text(selecting ? '${selected.length} selected' : 'Photos'),
         leading: selecting
             ? IconButton(
@@ -558,6 +561,10 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                 icon: const Icon(Icons.close),
               )
             : null,
+        actionsBeforeHome: [
+          if (!selecting && widget.showSearch)
+            GlassCircleButton(tooltip: searchOpen ? 'Close search' : 'Search photos', onPressed: () => setState(() => searchOpen = !searchOpen), child: Icon(searchOpen ? Icons.close : Icons.search_rounded)),
+        ],
         actions: [
           PocketLinkAppBarAction(
             label: 'Transfers', icon: Icons.swap_vert_rounded,
@@ -565,12 +572,6 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
               builder: (_) => const TransferManagerScreen(),
             )),
           ),
-          if (!selecting && widget.showSearch)
-            PocketLinkAppBarAction(
-              label: searchOpen ? 'Close search' : 'Search',
-              icon: searchOpen ? Icons.close : Icons.search,
-              onPressed: () => setState(() => searchOpen = !searchOpen),
-            ),
           PocketLinkAppBarAction(
             label: 'Scan again', icon: Icons.refresh_rounded,
             onPressed: loading ? null : () => scan(refresh: true),
@@ -579,6 +580,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
       ),
       body: Column(
         children: [
+          SizedBox(height: MediaQuery.paddingOf(context).top + kToolbarHeight),
           if (widget.showSearch && searchOpen)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),

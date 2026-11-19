@@ -239,7 +239,9 @@ class _ExploreGridState extends State<_ExploreGrid>
     }
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: PocketLinkAppBar(
+        feathered: true,
         title: const Text('Explore'),
         onHome: onHome,
         leading: onHome == null ? null : IconButton(
@@ -249,7 +251,7 @@ class _ExploreGridState extends State<_ExploreGrid>
         ),
       ),
       body: GridView.count(
-        padding: EdgeInsets.fromLTRB(16, 12, 16, 112 + MediaQuery.paddingOf(context).bottom),
+        padding: EdgeInsets.fromLTRB(16, MediaQuery.paddingOf(context).top + kToolbarHeight + 12, 16, 112 + MediaQuery.paddingOf(context).bottom),
         crossAxisCount: 2,
         crossAxisSpacing: 14,
         mainAxisSpacing: 14,
