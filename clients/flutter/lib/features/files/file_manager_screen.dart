@@ -71,6 +71,9 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
 
   late String _category = widget.initialCategory;
   bool _gridView = false;
+  bool _searchExpanded = false;
+  bool _storageMenuOpen = false;
+  final TextEditingController _searchController = TextEditingController();
 
   static const Map<String, Set<String>> _categoryExtensions = {
     'Images': {'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'heic', 'heif', 'avif'},
@@ -574,6 +577,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     _saveState();
     _scrollController.removeListener(_saveScrollOffset);
     _scrollController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -584,7 +588,9 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     final allItems = _listing?.items ?? const <FileEntry>[];
     final fileCount = allItems.where((item) => !item.isDirectory).length;
     final folderCount = allItems.where((item) => item.isDirectory).length;
-    final items = allItems.where(_matchesCategory).toList();
+    final query = _searchController.text.trim().toLowerCase();
+    final items = allItems.where((item) => _matchesCategory(item) &&
+      (query.isEmpty || item.name.toLowerCase().contains(query))).toList();
     items.sort((a, b) {
       if (a.isDirectory != b.isDirectory) return a.isDirectory ? -1 : 1;
       if (_sortBy == 'largest') return b.size.compareTo(a.size);
@@ -663,7 +669,10 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
           title: PopupMenuButton<String>(
             tooltip: 'Choose storage location',
             offset: const Offset(0, 48),
+            onOpened: () => setState(() => _storageMenuOpen = true),
+            onCanceled: () => setState(() => _storageMenuOpen = false),
             onSelected: (value) {
+              setState(() => _storageMenuOpen = false);
               if (value == 'internal') { _selectPartition(null); return; }
               if (value == 'downloads') { _selectPartition(null).then((_) => _load('Downloads')); return; }
               _selectPartition(value);
@@ -683,15 +692,25 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
               const PopupMenuItem(value: 'downloads', child: Text('Downloads')),
             ],
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Flexible(child: Text(_path.isEmpty ? 'Files' : _path.split('/').last,
-                maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w800))),
-              const Icon(Icons.keyboard_arrow_down_rounded, size: 24),
+              Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(_path.isEmpty ? 'Files' : _path.split('/').last,
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w800)),
+                Text('$folderCount folders • $fileCount files', style: const TextStyle(fontSize: 10, fontFamily: 'monospace', color: Color(0xFFA1A7B3))),
+              ]),
+              AnimatedRotation(turns: _storageMenuOpen ? 0.5 : 0, duration: const Duration(milliseconds: 200),
+                child: const Icon(Icons.keyboard_arrow_down_rounded, size: 24)),
             ]),
           ),
           actionsBeforeHome: [
-            if (widget.showSearch) GlassCircleButton(tooltip: 'Search files', onPressed: _openSearch, child: const Icon(Icons.search_rounded)),
+            if (widget.showSearch) GlassCircleButton(tooltip: 'Search files', onPressed: () => setState(() => _searchExpanded = !_searchExpanded), child: Icon(_searchExpanded ? Icons.close_rounded : Icons.search_rounded)),
             GlassCircleButton(tooltip: 'Upload file', onPressed: _uploadFile, child: const Icon(Icons.upload_rounded)),
+            PopupMenuButton<String>(
+              tooltip: 'Sort files',
+              onSelected: (value) { setState(() => _sortBy = value); _saveState(); },
+              itemBuilder: (_) => const [PopupMenuItem(value: 'name', child: Text('Name')), PopupMenuItem(value: 'newest', child: Text('Newest')), PopupMenuItem(value: 'largest', child: Text('Largest'))],
+              child: const GlassCircleButton(tooltip: 'Sort files', onPressed: null, child: Icon(Icons.tune_rounded)),
+            ),
           ],
           actions: [
             PocketLinkAppBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded, onPressed: _openTransfers),
@@ -702,6 +721,21 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
         body: Column(
           children: [
             SizedBox(height: MediaQuery.paddingOf(context).top + kToolbarHeight),
+            if (_searchExpanded)
+              Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                child: TextField(
+                  controller: _searchController,
+                  autofocus: true,
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(
+                    hintText: 'Search this folder',
+                    prefixIcon: const Icon(Icons.search_rounded),
+                    suffixIcon: IconButton(onPressed: () { _searchController.clear(); setState(() {}); }, icon: const Icon(Icons.close_rounded)),
+                    filled: true, fillColor: colors.surfaceContainerLow,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                  ),
+                ),
+              ),
             if (_path.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
