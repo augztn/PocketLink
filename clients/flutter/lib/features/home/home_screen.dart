@@ -424,8 +424,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           onDrawerChanged: (opened) {
             PocketLinkNavigation.drawerOpen.value = opened;
-            if (opened) {
-              _musicShortcutsExpanded = false;
+            if (opened && _musicShortcutsExpanded) {
+              setState(() => _musicShortcutsExpanded = false);
               PocketLinkNavigation.quickShortcutsOpen.value = false;
             }
           },
@@ -529,7 +529,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     musicShortcutsExpanded: _musicShortcutsExpanded,
                     onMusicShortcutDismissed: () {
                       if (_musicShortcutsExpanded) {
-                        setState(() => _musicShortcutsExpanded = false);
+                        setState(() {
+                          _musicShortcutsExpanded = false;
+                          PocketLinkNavigation.quickShortcutsOpen.value = false;
+                        });
                       }
                     },
                     onMusicShortcutLongPress: _expandMusicShortcuts,
