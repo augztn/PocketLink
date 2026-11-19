@@ -596,6 +596,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   void _showStatsForNerds() {
     showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       backgroundColor: const Color(0xFF1C1C1E),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
