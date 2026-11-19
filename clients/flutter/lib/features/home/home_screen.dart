@@ -301,6 +301,10 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final player = PersistentAudioPlayer.instance;
+    final miniPlayerVisible = !_hostSetupOpen &&
+        !_openingNowPlaying &&
+        AppSettings.instance.showMiniPlayer &&
+        player.shouldShowMiniPlayer;
     final parsedServerHost = Uri.tryParse(widget.api.baseUrl)?.host;
     final serverHost = parsedServerHost == null || parsedServerHost.isEmpty
         ? widget.api.baseUrl
@@ -446,7 +450,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       sigmaY: blurSigma,
                     ),
                     enabled: blurSigma > 0.1,
-                    child: child,
+                    child: child!,
                   ),
                   child: IndexedStack(
                     index: _hostSetupOpen ? 3 : _selectedIndex,
@@ -499,16 +503,27 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
-              if (!_hostSetupOpen &&
-                  !_openingNowPlaying &&
-                  AppSettings.instance.showMiniPlayer &&
-                  player.shouldShowMiniPlayer)
+              if (!_hostSetupOpen)
                 Positioned(
                   left: 14,
                   right: 14,
                   bottom: 88 + MediaQuery.paddingOf(context).bottom,
-                  child: PersistentMiniPlayer(
-                    onOpenNowPlaying: () => _openNowPlaying(player),
+                  child: IgnorePointer(
+                    ignoring: !miniPlayerVisible,
+                    child: AnimatedSlide(
+                      offset: miniPlayerVisible
+                          ? Offset.zero
+                          : const Offset(0, 0.35),
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeOutCubic,
+                      child: AnimatedOpacity(
+                        opacity: miniPlayerVisible ? 1 : 0,
+                        duration: const Duration(milliseconds: 180),
+                        child: PersistentMiniPlayer(
+                          onOpenNowPlaying: () => _openNowPlaying(player),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               if (!_hostSetupOpen)
