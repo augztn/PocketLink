@@ -154,7 +154,8 @@ class DownloadManagerService extends ChangeNotifier {
         await Directory(publicDownloads).create(recursive: true);
         return publicDownloads;
       } catch (_) {
-        // Fall back to the app-scoped documents directory on scoped-storage devices.
+        final appDocuments = await getApplicationDocumentsDirectory();
+        return p.join(appDocuments.path, 'Downloads', 'PocketLink');
       }
     }
     Directory? downloads;
