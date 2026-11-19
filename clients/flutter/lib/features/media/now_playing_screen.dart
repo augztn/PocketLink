@@ -739,7 +739,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
         SizedBox(width: 40, height: 40, child: LiquidGlassPill(
           radius: BorderRadius.circular(20),
           child: PopupMenuButton<String>(
-            tooltip: 'Quick destinations', padding: EdgeInsets.zero,
+            tooltip: 'Quick destinations',
+            padding: EdgeInsets.zero,
+            offset: const Offset(0, 48),
             icon: const Icon(Icons.grid_view_rounded, color: Colors.white, size: 19),
             onSelected: (value) {
               switch (value) {
