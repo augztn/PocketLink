@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter/scheduler.dart' show TickerCanceled;
 
 import '../../core/navigation/pocketlink_navigation.dart';
 import '../../core/network/server_api.dart';
