@@ -50,6 +50,8 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _musicShortcutsExpanded = false;
   bool _filesCanNavigateBack = false;
   bool _openingNowPlaying = false;
+  bool _libraryOpen = false;
+  Widget? _libraryPage;
   String? _requestedVolume;
   String _requestedPath = '';
 
@@ -111,6 +113,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openTab(int index) => setState(() {
+    _libraryOpen = false;
     _hostSetupOpen = false;
     _musicShortcutsExpanded = false;
     _initializedTabs.add(index);
@@ -141,9 +144,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _openExplore(ExploreCategory category, {String? fileCategory}) {
     if (fileCategory == 'Documents') {
-      Navigator.of(context).push(MaterialPageRoute<void>(
-        builder: (_) => DocumentsBrowserScreen(api: widget.api),
-      ));
+      _openLibrary('documents');
       return;
     }
     setState(() {
@@ -157,6 +158,29 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
 
+  void _openLibrary(String id) {
+    final page = switch (id) {
+      'music' => MediaBrowserScreen(api: widget.api, type: MediaLibraryType.music, onHome: _closeLibrary),
+      'videos' => MediaBrowserScreen(api: widget.api, type: MediaLibraryType.video, onHome: _closeLibrary),
+      'photos' => PhotoGalleryScreen(api: widget.api),
+      'favorites' => PhotoGalleryScreen(api: widget.api, initialTab: 2),
+      'documents' => DocumentsBrowserScreen(api: widget.api),
+      _ => null,
+    };
+    if (page == null) return;
+    setState(() {
+      _hostSetupOpen = false;
+      _musicShortcutsExpanded = false;
+      _libraryPage = page;
+      _libraryOpen = true;
+    });
+  }
+
+  void _closeLibrary() {
+    if (!_libraryOpen) return;
+    setState(() => _libraryOpen = false);
+  }
+
   void _openMusicShortcut(String id) {
     if (_musicShortcutsExpanded) {
       setState(() => _musicShortcutsExpanded = false);
@@ -169,37 +193,11 @@ class _HomeScreenState extends State<HomeScreen> {
         _openTab(2);
         break;
       case 'music':
-        Navigator.of(context).push(MaterialPageRoute<void>(
-          builder: (_) => MediaBrowserScreen(
-            api: widget.api,
-            type: MediaLibraryType.music,
-            onHome: () => Navigator.of(context).maybePop(),
-          ),
-        ));
-        break;
       case 'videos':
-        Navigator.of(context).push(MaterialPageRoute<void>(
-          builder: (_) => MediaBrowserScreen(
-            api: widget.api,
-            type: MediaLibraryType.video,
-            onHome: () => Navigator.of(context).maybePop(),
-          ),
-        ));
-        break;
       case 'photos':
-        Navigator.of(context).push(MaterialPageRoute<void>(
-          builder: (_) => PhotoGalleryScreen(api: widget.api),
-        ));
-        break;
       case 'documents':
-        Navigator.of(context).push(MaterialPageRoute<void>(
-          builder: (_) => DocumentsBrowserScreen(api: widget.api),
-        ));
-        break;
       case 'favorites':
-        Navigator.of(context).push(MaterialPageRoute<void>(
-          builder: (_) => PhotoGalleryScreen(api: widget.api, initialTab: 2),
-        ));
+        _openLibrary(id);
         break;
       case 'upload':
         setState(() {
@@ -359,10 +357,12 @@ class _HomeScreenState extends State<HomeScreen> {
     ];
 
     return PopScope(
-      canPop: !_hostSetupOpen && _selectedIndex == 0 && !_musicShortcutsExpanded,
+      canPop: !_libraryOpen && !_hostSetupOpen && _selectedIndex == 0 && !_musicShortcutsExpanded,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
-        if (_hostSetupOpen) {
+        if (_libraryOpen) {
+          _closeLibrary();
+        } else if (_hostSetupOpen) {
           _closeHostSetup();
         } else if (_musicShortcutsExpanded) {
           setState(() {
@@ -446,9 +446,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     enabled: blurSigma > 0.1,
                     child: child!,
                   ),
-                  child: IndexedStack(
-                    index: _hostSetupOpen ? 3 : _selectedIndex,
-                    children: pages,
+                  child: PocketLinkNavigationScope(
+                    onHome: _closeLibrary,
+                    child: IndexedStack(
+                      index: _hostSetupOpen ? 3 : (_libraryOpen ? pages.length : _selectedIndex),
+                      children: [...pages, _libraryPage ?? const SizedBox.shrink()],
+                    ),
                   ),
                 ),
               ),
