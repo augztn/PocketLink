@@ -10,6 +10,7 @@ class SmokedGlassPopoverMenuItem<T> {
     this.destructive = false,
     this.enabled = true,
     this.dividerBefore = false,
+    this.trailing,
   });
 
   final T value;
@@ -18,6 +19,7 @@ class SmokedGlassPopoverMenuItem<T> {
   final bool destructive;
   final bool enabled;
   final bool dividerBefore;
+  final Widget? trailing;
 }
 
 /// Root-navigator popover with a measured anchor and reversible glass bloom.
@@ -28,6 +30,7 @@ class SmokedGlassPopoverMenu<T> extends StatelessWidget {
     required this.child,
     this.tooltip,
     this.gap = 8,
+    this.onOpenChanged,
     super.key,
   });
 
@@ -36,19 +39,26 @@ class SmokedGlassPopoverMenu<T> extends StatelessWidget {
   final Widget child;
   final String? tooltip;
   final double gap;
+  final ValueChanged<bool>? onOpenChanged;
 
   Future<void> _open(BuildContext context) async {
     final renderObject = context.findRenderObject();
     if (renderObject is! RenderBox || !renderObject.hasSize) return;
 
     final anchor = renderObject.localToGlobal(Offset.zero) & renderObject.size;
-    final result = await Navigator.of(context, rootNavigator: true).push<T>(
-      _SmokedGlassPopoverRoute<T>(
-        anchor: anchor,
-        gap: gap,
-        items: items,
-      ),
-    );
+    onOpenChanged?.call(true);
+    T? result;
+    try {
+      result = await Navigator.of(context, rootNavigator: true).push<T>(
+        _SmokedGlassPopoverRoute<T>(
+          anchor: anchor,
+          gap: gap,
+          items: items,
+        ),
+      );
+    } finally {
+      onOpenChanged?.call(false);
+    }
     if (result != null) onSelected(result);
   }
 
@@ -231,6 +241,10 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
                                                       ),
                                                 ),
                                               ),
+                                              if (item.trailing != null) ...[
+                                                const SizedBox(width: 10),
+                                                item.trailing!,
+                                              ],
                                             ],
                                           ),
                                         ),
