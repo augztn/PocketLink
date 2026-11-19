@@ -238,25 +238,30 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                 );
               }
               if (tasks.isEmpty) {
+                final hasAnyTasks = _manager.tasks.isNotEmpty;
                 return Padding(
                   padding: const EdgeInsets.only(top: 56),
                   child: Column(
                     children: [
                       Icon(
-                        Icons.download_for_offline_outlined,
+                        hasAnyTasks
+                            ? Icons.filter_alt_off_rounded
+                            : Icons.download_for_offline_outlined,
                         size: 48,
                         color: colors.onSurfaceVariant.withValues(alpha: 0.65),
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'No downloads yet',
+                        hasAnyTasks ? 'No matching downloads' : 'No downloads yet',
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                       const SizedBox(height: 5),
                       Text(
-                        'Paste an HTTP or HTTPS link to add your first download.',
+                        hasAnyTasks
+                            ? 'Try another download filter.'
+                            : 'Paste an HTTP or HTTPS link to add your first download.',
                         textAlign: TextAlign.center,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: colors.onSurfaceVariant,
