@@ -58,7 +58,6 @@ class FloatingNavigationDock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     final activeItems = order.where(visibleItems.contains).toList(growable: false);
     final segments = <Widget>[];
     var tabGroup = <String>[];
@@ -399,7 +398,6 @@ class _DockTab extends StatelessWidget {
     required this.activeIcon,
     required this.label,
     required this.onTap,
-    required this.activeColor,
   });
 
   final int index;
