@@ -34,7 +34,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   bool _closingNowPlaying = false;
   Rect? _nowPlayingOriginRect;
   Route<dynamic>? _nowPlayingOriginRoute;
-  OverlayEntry? _nowPlayingEntry;
+  Route<void>? _nowPlayingRoute;
   late final AnimationController _nowPlayingController;
   MediaQueueItem? _lastTrack;
   int _lastTrackIndex = 0;
@@ -143,9 +143,10 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     final player = _player;
     final item = player.currentItem;
     final api = player.api;
-    final overlay = PocketLinkNavigation.navigatorKey.currentState?.overlay;
+    final navigator = PocketLinkNavigation.navigatorKey.currentState;
+    final overlay = navigator?.overlay;
     if (!player.isMusic || !player.isActive || item == null || api == null ||
-        overlay == null) {
+        navigator == null || overlay == null) {
       return;
     }
 
@@ -158,10 +159,19 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     _nowPlayingOriginRect = globalOrigin != null && overlayBox is RenderBox
         ? globalOrigin.shift(-overlayBox.localToGlobal(Offset.zero))
         : globalOrigin;
-    _nowPlayingOriginRoute = PocketLinkNavigation.observer.currentPageRoute;
-    setState(() => _nowPlayingOpen = true);
-    _nowPlayingEntry = OverlayEntry(
-      builder: (context) => _NowPlayingMorphOverlay(
+    setState(() {
+      _nowPlayingOpen = true;
+      _isNowPlayingDragging = false;
+    });
+
+    final route = PageRouteBuilder<void>(
+      opaque: false,
+      barrierColor: Colors.transparent,
+      maintainState: true,
+      settings: const RouteSettings(name: PocketLinkRouteNames.nowPlaying),
+      transitionDuration: Duration.zero,
+      reverseTransitionDuration: Duration.zero,
+      pageBuilder: (_, __, ___) => _NowPlayingMorphOverlay(
         animation: _nowPlayingController,
         media: media,
         originRect: _nowPlayingOriginRect,
@@ -171,13 +181,25 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
         isDragging: _isNowPlayingDragging,
         onDragStart: () {
           _isNowPlayingDragging = true;
-          _nowPlayingEntry?.markNeedsBuild();
         },
         onDragUpdate: _updateNowPlayingDrag,
         onDragEnd: _endNowPlayingDrag,
       ),
     );
-    overlay.insert(_nowPlayingEntry!);
+    _nowPlayingRoute = route;
+    unawaited(navigator.push<void>(route).then((_) {
+      if (!mounted || !identical(_nowPlayingRoute, route)) return;
+      _nowPlayingRoute = null;
+      _closingNowPlaying = false;
+      _openingNowPlaying = false;
+      setState(() {
+        _nowPlayingOpen = false;
+        _isNowPlayingDragging = false;
+        _nowPlayingOriginRect = null;
+      });
+      _nowPlayingController.value = 0;
+    }));
+
     try {
       await _nowPlayingController.animateTo(
         1,
@@ -194,7 +216,6 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   Future<void> _closeNowPlaying() async {
     if (!_nowPlayingOpen || _closingNowPlaying) return;
     _closingNowPlaying = true;
-    _nowPlayingEntry?.markNeedsBuild();
     try {
       await _nowPlayingController.animateBack(
         0,
@@ -202,19 +223,17 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
         curve: Curves.easeOutQuart,
       );
     } on TickerCanceled {
-      // The overlay is already being removed.
+      // The route is already being removed.
     }
-    _nowPlayingEntry?.remove();
-    _nowPlayingEntry = null;
-    if (mounted) {
-      setState(() {
-        _nowPlayingOpen = false;
-        _isNowPlayingDragging = false;
-        _nowPlayingOriginRect = null;
-        _nowPlayingOriginRoute = null;
-      });
+
+    final navigator = PocketLinkNavigation.navigatorKey.currentState;
+    final route = _nowPlayingRoute;
+    if (navigator != null && route != null &&
+        PocketLinkNavigation.observer.currentPageRoute == route) {
+      navigator.pop();
+    } else if (route != null) {
+      navigator?.removeRoute(route);
     }
-    _closingNowPlaying = false;
   }
 
   void _updateNowPlayingDrag(double delta) {
@@ -231,7 +250,6 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
       unawaited(_closeNowPlaying());
     } else {
       _isNowPlayingDragging = false;
-      _nowPlayingEntry?.markNeedsBuild();
       unawaited(_nowPlayingController.animateTo(
         1,
         duration: const Duration(milliseconds: 180),
@@ -244,7 +262,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   Future<bool> didPopRoute() async {
     if (!_nowPlayingOpen ||
         PocketLinkNavigation.observer.isModalRouteOnTop ||
-        PocketLinkNavigation.observer.currentPageRoute != _nowPlayingOriginRoute) {
+        !PocketLinkNavigation.observer.isNowPlayingVisible) {
       return false;
     }
     await _closeNowPlaying();
@@ -262,6 +280,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
         player,
         settings,
         PocketLinkNavigation.drawerOpen,
+        PocketLinkNavigation.quickShortcutsOpen,
         _nowPlayingController,
       ]),
       builder: (context, _) => ValueListenableBuilder<List<Route<dynamic>>>(
@@ -271,6 +290,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
           final visible = _shouldShowMiniPlayer() &&
               !_nowPlayingOpen &&
               !drawerOpen &&
+              !PocketLinkNavigation.quickShortcutsOpen.value &&
               !observer.isNowPlayingVisible &&
               !observer.isModalRouteOnTop &&
               _nowPlayingController.value <= 0.0;
