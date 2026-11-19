@@ -14,8 +14,8 @@ import 'package:provider/provider.dart';
 import '../../core/network/server_api.dart';
 import '../../core/navigation/pocketlink_navigation.dart';
 import 'media_player_screen.dart';
-import 'now_playing_screen.dart';
 import 'persistent_audio_player.dart';
+import 'global_media_overlay.dart';
 import '../transfers/transfer_manager_screen.dart';
 import '../home/browser_state_store.dart';
 
@@ -399,28 +399,29 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       (item) => item.path == media.path && item.volume == media.volume,
     );
     try {
-      await Navigator.of(context, rootNavigator: true).push<void>(
-        MaterialPageRoute<void>(
-          settings: _isMusic
-              ? const RouteSettings(name: PocketLinkRouteNames.nowPlaying)
-              : null,
-          builder: (_) => _isMusic
-            ? NowPlayingScreen(
-                api: widget.api,
-                queue: queue,
-                initialIndex: index < 0 ? 0 : index,
-              )
-            : MediaPlayerScreen(
-                api: widget.api,
-                title: media.entry.name,
-                path: media.path,
-                volume: media.volume,
-                isVideo: true,
-                queue: queue,
-                initialIndex: index < 0 ? 0 : index,
-              ),
-        ),
-      );
+      if (_isMusic) {
+        await PersistentAudioPlayer.instance.openQueue(
+          api: widget.api,
+          queue: queue,
+          initialIndex: index < 0 ? 0 : index,
+          isMusic: true,
+        );
+        GlobalMediaOverlay.openNowPlaying();
+      } else {
+        await Navigator.of(context, rootNavigator: true).push<void>(
+          MaterialPageRoute<void>(
+            builder: (_) => MediaPlayerScreen(
+              api: widget.api,
+              title: media.entry.name,
+              path: media.path,
+              volume: media.volume,
+              isVideo: true,
+              queue: queue,
+              initialIndex: index < 0 ? 0 : index,
+            ),
+          ),
+        );
+      }
     } finally {
       _openingMedia = false;
     }
