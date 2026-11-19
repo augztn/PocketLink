@@ -815,9 +815,10 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
               height: 40,
               child: Row(children: [
                 Expanded(
-                  child: SingleChildScrollView(
+                  child: ClipRect(
+                    child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.only(right: 12),
+                    padding: const EdgeInsets.only(right: 20),
                     child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -831,8 +832,9 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                                   showCheckmark: false,
                                 ),
                               ),
-                            const SizedBox(width: 18),
+                            const SizedBox(width: 20),
                           ],
+                    ),
                     ),
                   ),
                 ),
