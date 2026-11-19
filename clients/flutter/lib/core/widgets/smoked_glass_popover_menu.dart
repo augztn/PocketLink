@@ -55,7 +55,7 @@ class SmokedGlassPopoverMenu<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
-      builder: (anchorContext, constraints) {
+      builder: (anchorContext, _) {
         final trigger = GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: () => _open(anchorContext),
@@ -108,6 +108,11 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
       media.size.height - media.padding.bottom - 54,
     );
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final curved = CurvedAnimation(
+      parent: animation,
+      curve: Curves.easeOutCubic,
+      reverseCurve: Curves.easeInCubic,
+    );
     final foreground = isDark ? Colors.white : const Color(0xFF172033);
     final iconColor = isDark ? const Color(0xFFA1A7B3) : const Color(0xFF64748B);
 
@@ -118,13 +123,23 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
           Positioned(
             top: top,
             right: right,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minWidth: 210,
-                maxWidth: mathMin(280, media.size.width - right - 8),
-                maxHeight: media.size.height - top - media.padding.bottom - 8,
-              ),
-              child: ClipRRect(
+            child: FadeTransition(
+              opacity: curved,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, -0.04),
+                  end: Offset.zero,
+                ).animate(curved),
+                child: ScaleTransition(
+                  alignment: Alignment.topRight,
+                  scale: Tween<double>(begin: 0.84, end: 1).animate(curved),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minWidth: 210,
+                      maxWidth: mathMin(280, media.size.width - right - 8),
+                      maxHeight: media.size.height - top - media.padding.bottom - 8,
+                    ),
+                    child: ClipRRect(
                 borderRadius: BorderRadius.circular(22),
                 child: BackdropFilter(
                   filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
@@ -245,6 +260,10 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
                   ),
                 ),
               ),
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
         ],
@@ -258,27 +277,7 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
     Animation<double> animation,
     Animation<double> secondaryAnimation,
     Widget child,
-  ) {
-    final curved = CurvedAnimation(
-      parent: animation,
-      curve: Curves.easeOutCubic,
-      reverseCurve: Curves.easeInCubic,
-    );
-    return FadeTransition(
-      opacity: curved,
-      child: SlideTransition(
-        position: Tween<Offset>(
-          begin: const Offset(0, -0.04),
-          end: Offset.zero,
-        ).animate(curved),
-        child: ScaleTransition(
-          alignment: Alignment.topRight,
-          scale: Tween<double>(begin: 0.84, end: 1).animate(curved),
-          child: child,
-        ),
-      ),
-    );
-  }
+  ) => child;
 }
 
 double mathMin(double a, double b) => a < b ? a : b;
