@@ -18,6 +18,7 @@ class ExploreScreen extends StatefulWidget {
     this.fileCategory = 'All',
     this.onBackAtRoot,
     this.onOpenFiles,
+    this.onOpenLibrary,
     super.key,
   });
 
@@ -27,6 +28,7 @@ class ExploreScreen extends StatefulWidget {
   final String fileCategory;
   final VoidCallback? onBackAtRoot;
   final VoidCallback? onOpenFiles;
+  final ValueChanged<String>? onOpenLibrary;
 
   @override
   State<ExploreScreen> createState() => _ExploreScreenState();
@@ -71,6 +73,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
               onHome: widget.onBackAtRoot,
               onOpen: _open,
               onOpenFiles: widget.onOpenFiles,
+              onOpenLibrary: widget.onOpenLibrary,
             ),
           ),
         ],
@@ -106,12 +109,14 @@ class _ExploreGrid extends StatefulWidget {
     required this.onHome,
     required this.onOpen,
     required this.onOpenFiles,
+    required this.onOpenLibrary,
   });
 
   final ServerApi api;
   final VoidCallback? onHome;
   final ValueChanged<Widget> onOpen;
   final VoidCallback? onOpenFiles;
+  final ValueChanged<String>? onOpenLibrary;
 
   @override
   State<_ExploreGrid> createState() => _ExploreGridState();
@@ -255,13 +260,13 @@ class _ExploreGridState extends State<_ExploreGrid>
             index: 0,
             title: 'Photos', subtitle: 'Your picture collection',
             icon: Icons.photo_library_rounded, tint: const Color(0xFFE5A044),
-            onTap: () => onOpen(PhotoGalleryScreen(api: api)),
+            onTap: () => onOpenLibrary?.call('photos') ?? onOpen(PhotoGalleryScreen(api: api)),
           ),
           card(
             index: 1,
             title: 'Music', subtitle: 'Albums and playlists',
             icon: Icons.headphones_rounded, tint: const Color(0xFF8D72E8),
-            onTap: () => onOpen(MediaBrowserScreen(
+            onTap: () => onOpenLibrary?.call('music') ?? onOpen(MediaBrowserScreen(
               api: api,
               type: MediaLibraryType.music,
               onHome: () => Navigator.of(context).maybePop(),
@@ -271,7 +276,7 @@ class _ExploreGridState extends State<_ExploreGrid>
             index: 2,
             title: 'Videos', subtitle: 'Movies and clips',
             icon: Icons.play_circle_fill_rounded, tint: const Color(0xFF279D91),
-            onTap: () => onOpen(MediaBrowserScreen(
+            onTap: () => onOpenLibrary?.call('videos') ?? onOpen(MediaBrowserScreen(
               api: api,
               type: MediaLibraryType.video,
               onHome: () => Navigator.of(context).maybePop(),
@@ -281,7 +286,7 @@ class _ExploreGridState extends State<_ExploreGrid>
             index: 3,
             title: 'Documents', subtitle: 'PDF, Office and text',
             icon: Icons.description_rounded, tint: const Color(0xFF4C8ED9),
-            onTap: () => onOpen(DocumentsBrowserScreen(api: api)),
+            onTap: () => onOpenLibrary?.call('documents') ?? onOpen(DocumentsBrowserScreen(api: api)),
           ),
           card(
             index: 4,
