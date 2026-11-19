@@ -12,6 +12,7 @@ import '../../core/storage/home_activity_store.dart';
 import '../home/browser_state_store.dart';
 import '../../core/settings/app_settings.dart';
 import '../transfers/transfer_manager.dart';
+import '../downloads/download_manager_service.dart';
 import '../transfers/transfer_manager_screen.dart';
 import '../media/persistent_audio_player.dart';
 import '../media/now_playing_overlay_controller.dart';
@@ -405,28 +406,18 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   }
 
   Future<void> _downloadFile(FileEntry item) async {
-    final completed = await TransferManager.instance.run(
-      name: item.name,
-      direction: 'Download',
-      location: _path.isEmpty ? 'Internal storage' : _path,
-      operation: (token, progress) async {
-        final bytes = _selectedVolume == null
-          ? await widget.api.downloadFile(_itemPath(item.name), cancelToken: token, onReceiveProgress: progress)
-          : await widget.api.downloadStorageFile(_selectedVolume!, _itemPath(item.name), cancelToken: token, onReceiveProgress: progress);
-        if (token.isCancelled) return;
-        final savedPath = await FilePicker.saveFile(
-          dialogTitle: 'Save ${item.name}',
-          fileName: item.name,
-          initialDirectory: AppSettings.instance.downloadDirectory,
-          bytes: bytes,
-        );
-        if (savedPath == null) token.cancel('Save cancelled by user');
-      },
-    );
-    if (!mounted) return;
-    _showError(completed
-        ? 'Download complete: ${item.name}'
-        : 'Download did not complete. Check Transfers for details.');
+    try {
+      await DownloadManagerService.instance.enqueueServerFile(
+        api: widget.api,
+        name: item.name,
+        sourcePath: _itemPath(item.name),
+        volume: _selectedVolume,
+        size: item.size,
+      );
+      if (mounted) _showError('Added to Downloads: ${item.name}');
+    } catch (_) {
+      if (mounted) _showError('Could not add ${item.name} to Downloads.');
+    }
   }
 
   void _openTransfers() {
