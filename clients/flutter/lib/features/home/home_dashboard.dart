@@ -1594,7 +1594,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                             onSelected: (action) => _handleRecentAction(_recentFiles[index], action),
                             child: const Padding(
                               padding: EdgeInsets.all(8),
-                              child: Icon(Icons.more_vert_rounded),
+                              child: Icon(Icons.more_vert_rounded, size: 18),
                             ),
                           ),
                           onTap: () {
