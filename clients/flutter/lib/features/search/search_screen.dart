@@ -18,8 +18,8 @@ import '../../core/network/offline_file_cache.dart';
 import 'dart:io';
 import '../files/file_manager_screen.dart';
 import '../media/media_player_screen.dart';
-import '../media/now_playing_screen.dart';
 import '../media/persistent_audio_player.dart';
+import '../media/global_media_overlay.dart';
 import '../storage/storage_browser_screen.dart';
 
 class SearchScreen extends StatefulWidget {
@@ -424,18 +424,29 @@ class _SearchScreenState extends State<SearchScreen> {
         : _visible.where((v) => audio ? _audio.contains(_ext(v.file.name)) : _video.contains(_ext(v.file.name)))
           .map((v) => MediaQueueItem(title: v.file.name, path: v.path, volume: v.volume, localPath: v.localPath, size: v.file.size)).toList(growable: false);
       final index = queue.indexWhere((v) => v.path == r.path && v.volume == r.volume);
-      await Navigator.of(context, rootNavigator: true).push<void>(
-        MaterialPageRoute<void>(
-          settings: audio
-              ? const RouteSettings(name: PocketLinkRouteNames.nowPlaying)
-              : null,
-          builder: (_) => audio
-        ? NowPlayingScreen(api: widget.api, queue: queue, initialIndex: index < 0 ? 0 : index)
-        : MediaPlayerScreen(
-            api: widget.api, title: r.file.name, path: r.path, volume: r.volume,
-            isVideo: true, queue: queue, initialIndex: index < 0 ? 0 : index),
-        ),
-      );
+      if (audio) {
+        await PersistentAudioPlayer.instance.openQueue(
+          api: widget.api,
+          queue: queue,
+          initialIndex: index < 0 ? 0 : index,
+          isMusic: true,
+        );
+        GlobalMediaOverlay.openNowPlaying();
+      } else {
+        await Navigator.of(context, rootNavigator: true).push<void>(
+          MaterialPageRoute<void>(
+            builder: (_) => MediaPlayerScreen(
+              api: widget.api,
+              title: r.file.name,
+              path: r.path,
+              volume: r.volume,
+              isVideo: true,
+              queue: queue,
+              initialIndex: index < 0 ? 0 : index,
+            ),
+          ),
+        );
+      }
     } else if (_photo.contains(e)) {
       await Navigator.push(context, MaterialPageRoute<void>(builder: (_) => Scaffold(
         appBar: PocketLinkAppBar(title: Text(r.file.name)),
