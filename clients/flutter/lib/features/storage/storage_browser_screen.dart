@@ -394,9 +394,9 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
-                color: const Color(0xFF1C1C1E),
+                color: Theme.of(context).colorScheme.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.62)),
               ),
               child: Row(
                 children: [
@@ -404,10 +404,10 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
                     width: 42,
                     height: 42,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF161618),
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(13),
                     ),
-                    child: const Icon(Icons.usb_rounded, size: 23, color: Colors.white70),
+                    child: Icon(Icons.usb_rounded, size: 23, color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                   const SizedBox(width: 12),
                   Expanded(

@@ -767,52 +767,59 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     required String label,
     required bool selected,
     required VoidCallback onTap,
-  }) => Material(
-    color: selected ? const Color(0xFF343438) : Colors.transparent,
-    borderRadius: BorderRadius.circular(18),
-    child: InkWell(
+  }) {
+    final colors = Theme.of(context).colorScheme;
+    return Material(
+      color: selected ? colors.surfaceContainerHighest : Colors.transparent,
       borderRadius: BorderRadius.circular(18),
-      onTap: onTap,
-      child: SizedBox(
-        height: 30,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Center(
-            child: Text(label, style: TextStyle(
-              color: selected ? Colors.white : Colors.white60,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            )),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: SizedBox(
+          height: 30,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Center(
+              child: Text(label, style: TextStyle(
+                color: selected ? colors.onSurface : colors.onSurfaceVariant,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              )),
+            ),
           ),
         ),
       ),
-    ),
-  );
+    );
+  }
 
   Widget _menuPill({
     required String label,
     required List<PopupMenuEntry<String>> items,
     required ValueChanged<String> onSelected,
-  }) => PopupMenuButton<String>(
-    onSelected: onSelected,
-    itemBuilder: (_) => items,
-    child: Container(
-      height: 36,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1C1C1E),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+  }) {
+    final colors = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    return PopupMenuButton<String>(
+      onSelected: onSelected,
+      itemBuilder: (_) => items,
+      child: Container(
+        height: 36,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: colors.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.62)),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Text(label, style: textTheme.labelMedium?.copyWith(
+            color: colors.onSurface, fontWeight: FontWeight.w600,
+          )),
+          const SizedBox(width: 4),
+          Icon(Icons.keyboard_arrow_down_rounded, size: 17, color: colors.onSurfaceVariant),
+        ]),
       ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Text(label, style: const TextStyle(
-          color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600,
-        )),
-        const SizedBox(width: 4),
-        const Icon(Icons.keyboard_arrow_down_rounded, size: 17, color: Colors.white70),
-      ]),
-    ),
-  );
+    );
+  }
 
   @override
   void dispose() {
@@ -912,9 +919,9 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                     height: 36,
                     padding: const EdgeInsets.all(3),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1C1C1E),
+                      color: Theme.of(context).colorScheme.surfaceContainerLow,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.62)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,

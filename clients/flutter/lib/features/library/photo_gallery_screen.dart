@@ -418,9 +418,10 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
 
   Widget _photoTabPill(String label, int value) {
     final selectedTab = tab == value;
+    final colors = Theme.of(context).colorScheme;
     return Expanded(
       child: Material(
-        color: selectedTab ? const Color(0xFF343438) : Colors.transparent,
+        color: selectedTab ? colors.surfaceContainerHighest : Colors.transparent,
         borderRadius: BorderRadius.circular(18),
         child: InkWell(
           borderRadius: BorderRadius.circular(18),
@@ -429,7 +430,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
             height: 34,
             child: Center(
               child: Text(label, style: TextStyle(
-                color: selectedTab ? Colors.white : Colors.white60,
+                color: selectedTab ? colors.onSurface : colors.onSurfaceVariant,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
               )),
@@ -441,9 +442,11 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
   }
 
   Future<void> _showFilters() async {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
     await showModalBottomSheet<void>(
       context: context,
-      backgroundColor: const Color(0xFF1C1C1E),
+      backgroundColor: colors.surfaceContainerLow,
       isScrollControlled: true,
       builder: (sheetContext) => StatefulBuilder(
         builder: (context, setSheetState) => SafeArea(
@@ -453,11 +456,11 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Photo view', style: TextStyle(
-                  color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700,
+                Text('Photo view', style: theme.textTheme.titleLarge?.copyWith(
+                  color: colors.onSurface, fontWeight: FontWeight.w800,
                 )),
                 const SizedBox(height: 16),
-                const Text('Grouping', style: TextStyle(color: Colors.white70)),
+                Text('Grouping', style: theme.textTheme.titleSmall?.copyWith(color: colors.onSurfaceVariant)),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
@@ -470,11 +473,13 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                           setState(() => dateMode = option.$1);
                           setSheetState(() {});
                         },
-                        backgroundColor: const Color(0xFF161618),
-                        selectedColor: const Color(0xFF343438),
-                        side: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+                        backgroundColor: colors.surfaceContainer,
+                        selectedColor: colors.primaryContainer,
+                        side: BorderSide(color: colors.outlineVariant.withValues(alpha: 0.68)),
                         labelStyle: TextStyle(
-                          color: dateMode == option.$1 ? Colors.white : Colors.white70,
+                          color: dateMode == option.$1
+                              ? colors.onPrimaryContainer
+                              : colors.onSurfaceVariant,
                         ),
                       ),
                   ],
@@ -482,8 +487,8 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                 const SizedBox(height: 18),
                 Row(
                   children: [
-                    const Expanded(child: Text('Grid density', style: TextStyle(color: Colors.white70))),
-                    Text('$gridColumns columns', style: const TextStyle(color: Colors.white)),
+                    Expanded(child: Text('Grid density', style: theme.textTheme.bodyMedium?.copyWith(color: colors.onSurfaceVariant)),
+                    Text('$gridColumns columns', style: theme.textTheme.labelLarge?.copyWith(color: colors.onSurface)),
                   ],
                 ),
                 Slider(
@@ -497,19 +502,19 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                   },
                 ),
                 const SizedBox(height: 12),
-                const Text('Storage source', style: TextStyle(color: Colors.white70)),
+                Text('Storage source', style: theme.textTheme.bodyMedium?.copyWith(color: colors.onSurfaceVariant)),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
                   initialValue: source ?? 'all',
                   decoration: InputDecoration(
                     filled: true,
-                    fillColor: const Color(0xFF161618),
+                    fillColor: colors.surfaceContainer,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
                       borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
                     ),
                   ),
-                  dropdownColor: const Color(0xFF1C1C1E),
+                  dropdownColor: colors.surfaceContainerHigh,
                   items: [
                     const DropdownMenuItem(value: 'all', child: Text('All storage')),
                     const DropdownMenuItem(value: 'internal', child: Text('Internal storage')),
@@ -607,7 +612,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                       height: 42,
                       padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1C1C1E),
+                        color: Theme.of(context).colorScheme.surfaceContainerLow,
                         borderRadius: BorderRadius.circular(22),
                         border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
                       ),
