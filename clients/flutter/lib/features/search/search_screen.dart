@@ -19,7 +19,7 @@ import 'dart:io';
 import '../files/file_manager_screen.dart';
 import '../media/media_player_screen.dart';
 import '../media/persistent_audio_player.dart';
-import '../media/global_media_overlay.dart';
+import '../media/now_playing_overlay_controller.dart';
 import '../storage/storage_browser_screen.dart';
 
 class SearchScreen extends StatefulWidget {
@@ -431,7 +431,7 @@ class _SearchScreenState extends State<SearchScreen> {
           initialIndex: index < 0 ? 0 : index,
           isMusic: true,
         );
-        GlobalMediaOverlay.openNowPlaying();
+        NowPlayingOverlayController.open();
       } else {
         await Navigator.of(context, rootNavigator: true).push<void>(
           MaterialPageRoute<void>(
