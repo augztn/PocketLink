@@ -115,10 +115,13 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
         )).toList(growable: false),
         onSelected: (action) => action.onPressed?.call(),
         child: feathered
-            ? const GlassCircleButton(
-                tooltip: 'More actions',
-                onPressed: null,
-                child: Icon(Icons.more_vert_rounded),
+            ? SizedBox.square(
+                dimension: 38,
+                child: const GlassCircleButton(
+                  tooltip: 'More actions',
+                  onPressed: null,
+                  child: Icon(Icons.more_vert_rounded, size: 18),
+                ),
               )
             : const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 12),

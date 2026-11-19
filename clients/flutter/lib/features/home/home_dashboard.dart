@@ -1624,7 +1624,14 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        leading: GlassCircleButton(tooltip: 'Open navigation menu', onPressed: widget.onOpenDrawer, child: const Icon(Icons.menu_rounded)),
+        leading: SizedBox.square(
+          dimension: 38,
+          child: GlassCircleButton(
+            tooltip: 'Open navigation menu',
+            onPressed: widget.onOpenDrawer,
+            child: const Icon(Icons.menu_rounded, size: 18),
+          ),
+        ),
         backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         elevation: 0,

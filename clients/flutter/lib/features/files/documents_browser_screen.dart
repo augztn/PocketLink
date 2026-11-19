@@ -220,7 +220,6 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
       appBar: PocketLinkAppBar(
         feathered: true,
         showHome: false,
-        automaticallyImplyLeading: false,
         title: SmokedGlassPopoverMenu<String>(
           tooltip: 'Filter document types',
           onOpenChanged: (open) => setState(() => _filterMenuOpen = open),
