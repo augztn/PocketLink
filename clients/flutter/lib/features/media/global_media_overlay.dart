@@ -148,6 +148,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     }
 
     _openingNowPlaying = true;
+    final media = MediaQuery.of(context);
     final globalOrigin = PocketLinkNavigation.resolveMediaOriginRect(
       preferMiniPlayer: _shouldShowMiniPlayer(),
     );
@@ -159,6 +160,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     _nowPlayingEntry = OverlayEntry(
       builder: (context) => _NowPlayingMorphOverlay(
         animation: _nowPlayingController,
+        media: media,
         originRect: _nowPlayingOriginRect,
         player: player,
         api: api,
@@ -373,6 +375,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
 class _NowPlayingMorphOverlay extends StatelessWidget {
   const _NowPlayingMorphOverlay({
     required this.animation,
+    required this.media,
     required this.originRect,
     required this.isDragging,
     required this.player,
@@ -384,6 +387,7 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
   });
 
   final Animation<double> animation;
+  final MediaQueryData media;
   final Rect? originRect;
   final bool isDragging;
   final PersistentAudioPlayer player;
@@ -395,12 +399,14 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.sizeOf(context);
+    final size = media.size;
     final destination = Offset.zero & size;
     final origin = originRect ??
         Rect.fromLTWH(size.width - 292, size.height - 142, 278, 62);
 
-    return AnimatedBuilder(
+    return MediaQuery(
+      data: media,
+      child: AnimatedBuilder(
       animation: animation,
       builder: (context, _) {
         final t = animation.value.clamp(0.0, 1.0).toDouble();
@@ -469,6 +475,7 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
           ),
         );
       },
+      ),
     );
   }
 }
