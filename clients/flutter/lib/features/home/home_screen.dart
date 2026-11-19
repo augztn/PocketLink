@@ -242,11 +242,15 @@ class _HomeScreenState extends State<HomeScreen> {
       _openingNowPlaying = true;
       try {
         await Navigator.of(context, rootNavigator: true).push<void>(
-          MaterialPageRoute<void>(
+          PageRouteBuilder<void>(
+            opaque: !player.isMusic,
+            barrierColor: Colors.transparent,
             settings: const RouteSettings(
               name: PocketLinkRouteNames.nowPlaying,
             ),
-            builder: (_) => player.isMusic
+            transitionDuration: const Duration(milliseconds: 420),
+            reverseTransitionDuration: const Duration(milliseconds: 320),
+            pageBuilder: (_, __, ___) => player.isMusic
                 ? NowPlayingScreen(
                     api: api,
                     queue: player.queue,
@@ -263,6 +267,26 @@ class _HomeScreenState extends State<HomeScreen> {
                     initialIndex: player.currentIndex,
                     resumeExisting: true,
                   ),
+            transitionsBuilder: (_, animation, __, child) {
+              final curved = CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeOutCubic,
+                reverseCurve: Curves.easeInCubic,
+              );
+              return FadeTransition(
+                opacity: curved,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0, 0.075),
+                    end: Offset.zero,
+                  ).animate(curved),
+                  child: ScaleTransition(
+                    scale: Tween<double>(begin: 0.965, end: 1).animate(curved),
+                    child: child,
+                  ),
+                ),
+              );
+            },
           ),
         );
       } finally {
