@@ -161,15 +161,33 @@ internal class MediaIndexDatabase(context: Context) :
     }
 
     fun queryMedia(category: String, query: String, limit: Int, offset: Int): List<IndexedFile> {
-        val rows = mutableListOf<IndexedFile>()
-        val where = if (query.isBlank()) "category=?" else "category=? AND (name LIKE ? ESCAPE '\\' OR path LIKE ? ESCAPE '\\')"
-        val args = if (query.isBlank()) arrayOf(category) else {
-            val escaped = "%" + query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
-            arrayOf(category, escaped, escaped)
+        val extensions = when (category) {
+            "music" -> AUDIO
+            "video" -> VIDEO
+            else -> return emptyList()
         }
+        val allowedMime = if (category == "music") AUDIO_MIME else VIDEO_MIME
+        val extensionClause = extensions.joinToString(" OR ") { "LOWER(name) LIKE ?" }
+        val where = mutableListOf(
+            "category=?",
+            "($extensionClause)",
+            "(LOWER(mime) IN (\${allowedMime.joinToString(",") { "?" }}) OR LOWER(mime)=?)"
+        )
+        val args = mutableListOf(category)
+        extensions.sorted().forEach { args += "%.$it" }
+        allowedMime.sorted().forEach { args += it }
+        args += "application/octet-stream"
+        if (query.isNotBlank()) {
+            val escaped = "%" + query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+            where += "(name LIKE ? ESCAPE '\\' OR path LIKE ? ESCAPE '\\')"
+            args += escaped
+            args += escaped
+        }
+        val rows = mutableListOf<IndexedFile>()
         readableDatabase.query(
             "media", arrayOf("volume","path","name","category","size","modified","mime"),
-            where, args, null, null, "name COLLATE NOCASE ASC", "$offset,$limit"
+            where.joinToString(" AND "), args.toTypedArray(), null, null,
+            "name COLLATE NOCASE ASC", "$offset,$limit"
         ).use { cursor ->
             while (cursor.moveToNext()) rows += IndexedFile(
                 cursor.getString(0), cursor.getString(1), cursor.getString(2), "file",
@@ -373,7 +391,7 @@ internal class MediaIndexScanner(
         fun add(path: String, name: String, directory: Boolean, size: Long, modified: Long, mime: String) {
             val safeSize = size.coerceAtLeast(0L)
             val safeModified = modified.coerceAtLeast(0L)
-            val category = if (directory) null else categoryFor(name)
+            val category = if (directory) null else categoryFor(name, mime)
             val previousFile = fileSnapshot[path]
             val previousMedia = mediaSnapshot[path]
             // Some SAF providers always report modified=0. In that case use
@@ -536,25 +554,32 @@ internal class MediaIndexScanner(
         private const val RESCAN_INTERVAL_MS = 10 * 60 * 1000L
         private const val MAX_DEPTH = 64
         private const val MAX_REPORTED_SKIPPED_ITEMS = 100
-        private val AUDIO = setOf(
-            "mp3","m4a","aac","wav","flac","ogg","opus","wma","aiff","alac",
-            "amr","ape","wv","dsf","dff","mid","midi","mka"
+        private val AUDIO = setOf("mp3", "flac", "m4a", "wav", "ogg", "aac", "opus", "wma")
+        private val VIDEO = setOf("mp4", "mkv", "webm", "mov", "avi", "m4v", "3gp", "ts")
+        private val AUDIO_MIME = setOf(
+            "audio/mpeg", "audio/flac", "audio/x-flac", "audio/mp4", "audio/x-m4a",
+            "audio/wav", "audio/x-wav", "audio/ogg", "audio/aac", "audio/opus",
+            "audio/x-ms-wma"
         )
-        private val VIDEO = setOf(
-            "mp4","m4v","mov","mkv","webm","avi","wmv","mpeg","mpg","3gp",
-            "ts","m2ts","mts","flv","f4v","3g2","m2v","ogv","vob","rmvb",
-            "h264","h265","hevc"
+        private val VIDEO_MIME = setOf(
+            "video/mp4", "video/x-m4v", "video/x-matroska", "video/webm",
+            "video/quicktime", "video/x-msvideo", "video/3gpp", "video/mp2t"
         )
         private val PHOTO = setOf(
             "jpg","jpeg","png","webp","gif","bmp","heic","heif","avif",
             "tif","tiff","jxl","dng","cr2","nef","arw","orf","rw2"
         )
 
-        private fun categoryFor(name: String): String? = when (name.substringAfterLast('.', "").lowercase()) {
-            in AUDIO -> "music"
-            in VIDEO -> "video"
-            in PHOTO -> "photo"
-            else -> null
+        private fun categoryFor(name: String, mime: String): String? {
+            val extension = name.substringAfterLast('.', "").lowercase()
+            val normalizedMime = mime.substringBefore(';').trim().lowercase()
+            val genericMime = normalizedMime.isEmpty() || normalizedMime == "application/octet-stream"
+            return when {
+                extension in AUDIO && (genericMime || normalizedMime in AUDIO_MIME) -> "music"
+                extension in VIDEO && (genericMime || normalizedMime in VIDEO_MIME) -> "video"
+                extension in PHOTO -> "photo"
+                else -> null
+            }
         }
 
         private val MIME_TYPES = mapOf(
@@ -584,7 +609,7 @@ internal class MediaIndexScanner(
                 "txt" to "text/plain", "md" to "text/markdown", "csv" to "text/csv",
                 "html" to "text/html", "htm" to "text/html", "css" to "text/css",
                 "xml" to "application/xml", "json" to "application/json",
-                "js" to "text/javascript", "ts" to "text/typescript",
+                "js" to "text/javascript",
                 "py" to "text/x-python", "dart" to "text/x-dart", "kt" to "text/x-kotlin",
                 "java" to "text/x-java-source", "sh" to "text/x-shellscript",
                 "zip" to "application/zip", "7z" to "application/x-7z-compressed",
