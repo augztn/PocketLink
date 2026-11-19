@@ -453,12 +453,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     enabled: blurSigma > 0.1,
                     child: child!,
                   ),
-                  child: PocketLinkNavigationScope(
-                    onHome: _closeLibrary,
-                    child: IndexedStack(
-                      index: _hostSetupOpen ? 3 : (_libraryOpen ? pages.length : _selectedIndex),
-                      children: [...pages, _libraryPage ?? const SizedBox.shrink()],
-                    ),
+                  child: IndexedStack(
+                    index: _hostSetupOpen ? 3 : (_libraryOpen ? pages.length : _selectedIndex),
+                    children: [...pages, _libraryPage ?? const SizedBox.shrink()],
                   ),
                 ),
               ),
