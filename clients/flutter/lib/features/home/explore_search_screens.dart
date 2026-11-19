@@ -8,7 +8,7 @@ import '../library/photo_gallery_screen.dart';
 import '../media/media_browser_screen.dart';
 import '../search/search_screen.dart';
 
-enum ExploreCategory { files, drives, photos, music, videos }
+enum ExploreCategory { files, photos, music, videos }
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({
@@ -18,7 +18,6 @@ class ExploreScreen extends StatefulWidget {
     this.fileCategory = 'All',
     this.onBackAtRoot,
     this.onOpenFiles,
-    this.onOpenExternalStorage,
     super.key,
   });
 
@@ -28,7 +27,6 @@ class ExploreScreen extends StatefulWidget {
   final String fileCategory;
   final VoidCallback? onBackAtRoot;
   final VoidCallback? onOpenFiles;
-  final VoidCallback? onOpenExternalStorage;
 
   @override
   State<ExploreScreen> createState() => _ExploreScreenState();
@@ -73,7 +71,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
               onHome: widget.onBackAtRoot,
               onOpen: _open,
               onOpenFiles: widget.onOpenFiles,
-              onOpenExternalStorage: widget.onOpenExternalStorage,
             ),
           ),
         ],
@@ -109,7 +106,6 @@ class _ExploreGrid extends StatefulWidget {
     required this.onHome,
     required this.onOpen,
     required this.onOpenFiles,
-    required this.onOpenExternalStorage,
   });
 
   final ServerApi api;
@@ -300,12 +296,6 @@ class _ExploreGridState extends State<_ExploreGrid>
             title: 'Search', subtitle: 'Find files across storage',
             icon: Icons.search_rounded, tint: const Color(0xFF6C9DCE),
             onTap: () => onOpen(SearchScreen(api: api, onHome: () => Navigator.of(context).maybePop())),
-          ),
-          card(
-            index: 6,
-            title: 'Drives', subtitle: 'Internal & external SSDs',
-            icon: Icons.usb_rounded, tint: const Color(0xFF28B8C8),
-            onTap: onOpenExternalStorage ?? onOpenFiles ?? () => onOpen(FileManagerScreen(api: api)),
           ),
         ],
       ),
