@@ -72,6 +72,8 @@ class PersistentAudioPlayer extends ChangeNotifier {
   bool _active = false;
   bool _music = false;
   bool _miniPlayerDismissed = false;
+  int? _pendingTrackDirection;
+  DateTime? _pendingTrackDirectionAt;
 
   List<MediaQueueItem> get queue => _queue;
   ServerApi? get api => _api;
@@ -175,11 +177,32 @@ class PersistentAudioPlayer extends ChangeNotifier {
     notifyListeners();
   }
 
+  void _recordTrackChangeDirection(int direction) {
+    _pendingTrackDirection = direction;
+    _pendingTrackDirectionAt = DateTime.now();
+  }
+
+  /// Returns the direction of a recent explicit skip request, if any.
+  /// Used by the UI's track-change animation; it does not affect playback.
+  int? takePendingTrackDirection() {
+    final direction = _pendingTrackDirection;
+    final requestedAt = _pendingTrackDirectionAt;
+    _pendingTrackDirection = null;
+    _pendingTrackDirectionAt = null;
+    if (requestedAt == null ||
+        DateTime.now().difference(requestedAt) > const Duration(seconds: 2)) {
+      return null;
+    }
+    return direction;
+  }
+
   Future<void> skipToNext() async {
+    _recordTrackChangeDirection(1);
     await player.next();
   }
 
   Future<void> skipToPrevious() async {
+    _recordTrackChangeDirection(-1);
     await player.previous();
   }
 
@@ -218,10 +241,10 @@ class PersistentAudioPlayer extends ChangeNotifier {
         await player.pause();
         break;
       case 'io.github.augztn.pocketlink.media.NEXT':
-        await player.next();
+        await skipToNext();
         break;
       case 'io.github.augztn.pocketlink.media.PREVIOUS':
-        await player.previous();
+        await skipToPrevious();
         break;
       case 'io.github.augztn.pocketlink.media.SEEK':
         final position = args['position'];
