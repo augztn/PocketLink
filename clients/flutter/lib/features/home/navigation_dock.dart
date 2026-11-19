@@ -117,7 +117,7 @@ class FloatingNavigationDock extends StatelessWidget {
             child: Stack(
               clipBehavior: Clip.none,
               children: [
-                if (musicShortcutsExpanded && musicShortcuts.isNotEmpty)
+                if (musicShortcuts.isNotEmpty)
                   Positioned(
                     left: -(MediaQuery.sizeOf(context).width - 28 - 64),
                     bottom: musicShortcutsBottomOffset,
@@ -125,7 +125,7 @@ class FloatingNavigationDock extends StatelessWidget {
                       width: MediaQuery.sizeOf(context).width - 28,
                       child: MusicShortcutMenu(
                         shortcuts: musicShortcuts,
-                        expanded: true,
+                        expanded: musicShortcutsExpanded,
                         onSelect: onMusicShortcutSelected ?? (_) {},
                       ),
                     ),
@@ -272,7 +272,9 @@ class _MusicDockButtonState extends State<_MusicDockButton> {
     final colors = Theme.of(context).colorScheme;
     final reduceMotion = MediaQuery.of(context).disableAnimations;
     final direction = _dragDirection;
-    final iconKey = direction < 0
+    final iconKey = widget.expanded
+        ? 'shortcuts'
+        : direction < 0
             ? 'next'
             : direction > 0
                 ? 'previous'
@@ -345,6 +347,12 @@ class _MusicDockButtonState extends State<_MusicDockButton> {
                         );
                       },
                       child: switch (iconKey) {
+                        'shortcuts' => Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            key: const ValueKey('shortcuts'),
+                            color: colors.primary,
+                            size: 29,
+                          ),
                         'next' => Icon(
                             Icons.skip_next_rounded,
                             key: const ValueKey('next'),

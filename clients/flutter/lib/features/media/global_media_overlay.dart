@@ -123,13 +123,13 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay> {
     }
 
     final originRect = PocketLinkNavigation.resolveMediaOriginRect(
-      preferMiniPlayer: true,
+      preferMiniPlayer: _shouldShowMiniPlayer(),
     );
     _openingNowPlaying = true;
     try {
       await navigator.push<void>(
         PageRouteBuilder<void>(
-          opaque: false,
+          opaque: true,
           barrierColor: Colors.transparent,
           settings: const RouteSettings(
             name: PocketLinkRouteNames.nowPlaying,
@@ -234,7 +234,6 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay> {
                           : const Duration(milliseconds: 220),
                       curve: Curves.easeOut,
                       child: _GlobalMiniPlayerBar(
-                        key: PocketLinkNavigation.miniPlayerKey,
                         player: player,
                         onOpen: _openNowPlaying,
                         onDismiss: player.dismissMiniPlayer,
@@ -404,7 +403,8 @@ class _GlobalMiniPlayerBar extends StatelessWidget {
         // Same horizontal footprint as the Home / Explore / Files capsule.
         padding: const EdgeInsets.fromLTRB(14, 4, 88, 0),
         child: LiquidGlassPill(
-          radius: BorderRadius.circular(18),
+          key: PocketLinkNavigation.miniPlayerKey,
+          radius: BorderRadius.circular(22),
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onVerticalDragEnd: (details) {
@@ -412,7 +412,7 @@ class _GlobalMiniPlayerBar extends StatelessWidget {
               if (!player.isPlaying && velocity > 300) onDismiss();
             },
             child: InkWell(
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(22),
               onTap: onOpen,
               child: SizedBox(
                 height: 58,

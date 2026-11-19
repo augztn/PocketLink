@@ -122,7 +122,10 @@ abstract final class PocketLinkNavigation {
             ? Curves.easeInCubic.transform(animation.value)
             : Curves.easeOutCubic.transform(animation.value);
         final rect = Rect.lerp(origin, destination, progress)!;
-        final radius = 22 * (1 - progress);
+        final sourceRadius = (origin.width - origin.height).abs() < 2
+            ? origin.shortestSide / 2
+            : 22.0;
+        final radius = sourceRadius * (1 - progress);
         return Align(
           alignment: Alignment.topLeft,
           widthFactor: 1,

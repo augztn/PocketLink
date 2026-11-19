@@ -61,6 +61,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   Set<String> _favorites = <String>{};
   double? _dragPosition;
   double _dismissDragDistance = 0;
+  bool _isDismissDragging = false;
   double _trackSwipeDistance = 0;
 
 
@@ -1012,24 +1013,32 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0A0B0E),
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          const Positioned.fill(child: ColoredBox(color: Color(0xFF0A0B0E))),
-          Positioned.fill(child: _ambientBackground()),
-          Positioned.fill(
-            child: Transform.translate(
-              offset: Offset(0, _dismissDragDistance),
-              child: Transform.scale(
-                scale: (1 - (_dismissDragDistance / 1000).clamp(0.0, 0.10)).toDouble(),
-                alignment: Alignment.topCenter,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(
-                    (_dismissDragDistance * 0.10).clamp(0.0, 32.0).toDouble()
-                  ),
-                  child: GestureDetector(
+      body: AnimatedContainer(
+        duration: _isDismissDragging
+            ? Duration.zero
+            : const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
+        transform: Matrix4.translationValues(0, _dismissDragDistance, 0),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(
+            (_dismissDragDistance * 0.10).clamp(0.0, 32.0).toDouble(),
+          ),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              const Positioned.fill(
+                child: ColoredBox(color: Color(0xFF0A0B0E)),
+              ),
+              Positioned.fill(child: _ambientBackground()),
+              Positioned.fill(
+                child: GestureDetector(
         behavior: HitTestBehavior.translucent,
-        onVerticalDragStart: AppSettings.instance.enableNowPlayingGestures ? (_) => _dismissDragDistance = 0 : null,
+        onVerticalDragStart: AppSettings.instance.enableNowPlayingGestures
+            ? (_) => setState(() {
+                  _isDismissDragging = true;
+                  _dismissDragDistance = 0;
+                })
+            : null,
         onVerticalDragUpdate: AppSettings.instance.enableNowPlayingGestures
             ? (details) => setState(() {
                   _dismissDragDistance = (_dismissDragDistance +
@@ -1042,15 +1051,16 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
         onHorizontalDragUpdate: AppSettings.instance.enableNowPlayingGestures ? (details) => _trackSwipeDistance += details.primaryDelta ?? 0 : null,
         onVerticalDragEnd: AppSettings.instance.enableNowPlayingGestures
             ? (details) {
-                final shouldDismiss = _dismissDragDistance > 100 ||
-                    (details.primaryVelocity ?? 0) > 500;
-                if (shouldDismiss) {
-                  setState(() => _dismissDragDistance = 0);
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (mounted) Navigator.maybePop(context);
+                final shouldDismiss = _dismissDragDistance > 80 ||
+                    (details.primaryVelocity ?? 0) > 350;
+                if (mounted) {
+                  setState(() {
+                    _isDismissDragging = false;
+                    _dismissDragDistance = 0;
                   });
-                } else if (mounted) {
-                  setState(() => _dismissDragDistance = 0);
+                }
+                if (shouldDismiss && mounted) {
+                  Navigator.maybePop(context);
                 }
               }
             : null,
@@ -1163,14 +1173,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             ),
             const SizedBox(height: 8),
             ],
-          ),
-        ),
-                  ),
                 ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

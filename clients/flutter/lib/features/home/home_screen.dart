@@ -440,7 +440,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   duration: reduceMotion
                       ? Duration.zero
-                      : const Duration(milliseconds: 220),
+                      : Duration(milliseconds: _musicShortcutsExpanded ? 360 : 220),
                   curve: Curves.easeOutCubic,
                   builder: (context, blurSigma, child) => ImageFiltered(
                     imageFilter: ui.ImageFilter.blur(
@@ -464,7 +464,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       opacity: _musicShortcutsExpanded ? 0.36 : 0,
                       duration: reduceMotion
                           ? Duration.zero
-                          : const Duration(milliseconds: 180),
+                          : Duration(milliseconds: _musicShortcutsExpanded ? 360 : 220),
                       curve: Curves.easeOutCubic,
                       child: GestureDetector(
                         behavior: HitTestBehavior.opaque,
