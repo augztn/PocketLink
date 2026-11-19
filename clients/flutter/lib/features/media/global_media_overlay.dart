@@ -169,7 +169,13 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     );
     overlay.insert(_nowPlayingEntry!);
     try {
-      await _nowPlayingController.forward(from: 0);
+      await _nowPlayingController.animateTo(
+        1,
+        duration: const Duration(milliseconds: 380),
+        curve: Curves.easeOutQuart,
+      );
+    } on TickerCanceled {
+      // A close gesture can interrupt the opening animation.
     } finally {
       _openingNowPlaying = false;
     }
@@ -180,7 +186,15 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     _closingNowPlaying = true;
     _isNowPlayingDragging = false;
     _nowPlayingEntry?.markNeedsBuild();
-    await _nowPlayingController.reverse();
+    try {
+      await _nowPlayingController.animateBack(
+        0,
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutQuart,
+      );
+    } on TickerCanceled {
+      // The overlay is already being removed.
+    }
     _nowPlayingEntry?.remove();
     _nowPlayingEntry = null;
     if (mounted) {
@@ -242,7 +256,6 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
           final visible = _shouldShowMiniPlayer() &&
               !_nowPlayingOpen &&
               !drawerOpen &&
-              !_nowPlayingOpen &&
               !observer.isNowPlayingVisible &&
               !observer.isModalRouteOnTop;
           final onDashboard = observer.isDashboardVisible;
@@ -250,6 +263,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
               _trackPopupOffset != null &&
               onDashboard &&
               !drawerOpen &&
+              !_nowPlayingOpen &&
               !observer.isNowPlayingVisible &&
               !observer.isModalRouteOnTop;
           final media = MediaQuery.of(context);
@@ -395,7 +409,7 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             Positioned.fill(
-              child: IgnorePointer(
+              child: AbsorbPointer(
                 child: ColoredBox(
                   color: Colors.black.withValues(alpha: 0.55 * t),
                 ),
