@@ -15,7 +15,6 @@ import '../media/now_playing_screen.dart';
 import '../media/media_browser_screen.dart';
 import '../library/photo_gallery_screen.dart';
 import '../media/persistent_audio_player.dart';
-import '../media/persistent_mini_player.dart';
 
 import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
@@ -253,7 +252,7 @@ class _HomeScreenState extends State<HomeScreen> {
         preferMiniPlayer: AppSettings.instance.showMiniPlayer &&
             player.shouldShowMiniPlayer,
       );
-      setState(() => _openingNowPlaying = true);
+      _openingNowPlaying = true;
       try {
         await Navigator.of(context, rootNavigator: true).push<void>(
           PageRouteBuilder<void>(
@@ -291,7 +290,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         );
       } finally {
-        if (mounted) setState(() => _openingNowPlaying = false);
+        _openingNowPlaying = false;
       }
     } else {
       _openExplore(ExploreCategory.music);
@@ -301,10 +300,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final player = PersistentAudioPlayer.instance;
-    final miniPlayerVisible = !_hostSetupOpen &&
-        !_openingNowPlaying &&
-        AppSettings.instance.showMiniPlayer &&
-        player.shouldShowMiniPlayer;
     final parsedServerHost = Uri.tryParse(widget.api.baseUrl)?.host;
     final serverHost = parsedServerHost == null || parsedServerHost.isEmpty
         ? widget.api.baseUrl
@@ -499,29 +494,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           () => _musicShortcutsExpanded = false,
                         ),
                         child: const ColoredBox(color: Colors.black),
-                      ),
-                    ),
-                  ),
-                ),
-              if (!_hostSetupOpen)
-                Positioned(
-                  left: 14,
-                  right: 14,
-                  bottom: 88 + MediaQuery.paddingOf(context).bottom,
-                  child: IgnorePointer(
-                    ignoring: !miniPlayerVisible,
-                    child: AnimatedSlide(
-                      offset: miniPlayerVisible
-                          ? Offset.zero
-                          : const Offset(0, 0.35),
-                      duration: const Duration(milliseconds: 220),
-                      curve: Curves.easeOutCubic,
-                      child: AnimatedOpacity(
-                        opacity: miniPlayerVisible ? 1 : 0,
-                        duration: const Duration(milliseconds: 180),
-                        child: PersistentMiniPlayer(
-                          onOpenNowPlaying: () => _openNowPlaying(player),
-                        ),
                       ),
                     ),
                   ),
