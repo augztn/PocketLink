@@ -554,9 +554,7 @@ internal class MediaIndexScanner(
             else -> null
         }
 
-        private fun mimeForName(name: String): String {
-            val extension = name.substringAfterLast('.', "").lowercase()
-            val known = mapOf(
+        private val MIME_TYPES = mapOf(
                 "mp3" to "audio/mpeg", "m4a" to "audio/mp4", "aac" to "audio/aac",
                 "flac" to "audio/flac", "ogg" to "audio/ogg", "opus" to "audio/ogg",
                 "wav" to "audio/wav", "wma" to "audio/x-ms-wma", "aiff" to "audio/aiff",
@@ -590,7 +588,10 @@ internal class MediaIndexScanner(
                 "gz" to "application/gzip", "apk" to "application/vnd.android.package-archive",
                 "epub" to "application/epub+zip"
             )
-            return known[extension]
+
+        private fun mimeForName(name: String): String {
+            val extension = name.substringAfterLast('.', "").lowercase()
+            return MIME_TYPES[extension]
                 ?: android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
                 ?: "application/octet-stream"
         }
