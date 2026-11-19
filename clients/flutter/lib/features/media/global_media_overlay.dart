@@ -814,7 +814,6 @@ class _GlobalMiniPlayerBar extends StatelessWidget {
           ),
           ),
           ),
-          ),
         ),
       ),
     );
