@@ -30,7 +30,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
 
   bool _openingNowPlaying = false;
   bool _nowPlayingOpen = false;
-  bool _isNowPlayingDragging = false;
+  final ValueNotifier<bool> _isNowPlayingDragging = ValueNotifier<bool>(false);
   bool _closingNowPlaying = false;
   Rect? _nowPlayingOriginRect;
   Route<void>? _nowPlayingRoute;
@@ -69,6 +69,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     NowPlayingOverlayController.unregister();
     _nowPlayingRoute = null;
     _nowPlayingController.stop();
+    _isNowPlayingDragging.dispose();
     _nowPlayingController.dispose();
     super.dispose();
   }
@@ -159,7 +160,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
         : globalOrigin;
     setState(() {
       _nowPlayingOpen = true;
-      _isNowPlayingDragging = false;
+      _isNowPlayingDragging.value = false;
     });
 
     final route = PageRouteBuilder<void>(
@@ -169,19 +170,20 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
       settings: const RouteSettings(name: PocketLinkRouteNames.nowPlaying),
       transitionDuration: Duration.zero,
       reverseTransitionDuration: Duration.zero,
-      pageBuilder: (_, __, ___) => _NowPlayingMorphOverlay(
-        animation: _nowPlayingController,
-        media: media,
-        originRect: _nowPlayingOriginRect,
-        player: player,
-        api: api,
-        onDismiss: _closeNowPlaying,
-        isDragging: _isNowPlayingDragging,
-        onDragStart: () {
-          _isNowPlayingDragging = true;
-        },
-        onDragUpdate: _updateNowPlayingDrag,
-        onDragEnd: _endNowPlayingDrag,
+      pageBuilder: (_, __, ___) => ValueListenableBuilder<bool>(
+        valueListenable: _isNowPlayingDragging,
+        builder: (context, isDragging, _) => _NowPlayingMorphOverlay(
+          animation: _nowPlayingController,
+          media: media,
+          originRect: _nowPlayingOriginRect,
+          player: player,
+          api: api,
+          onDismiss: _closeNowPlaying,
+          isDragging: isDragging,
+          onDragStart: () => _isNowPlayingDragging.value = true,
+          onDragUpdate: _updateNowPlayingDrag,
+          onDragEnd: _endNowPlayingDrag,
+        ),
       ),
     );
     _nowPlayingRoute = route;
