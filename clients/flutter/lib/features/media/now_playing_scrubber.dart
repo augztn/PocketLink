@@ -253,7 +253,11 @@ class _ScrubberPainter extends CustomPainter {
     final centerY = size.height / 2;
     final left = 0.0;
     final right = size.width;
-    final trackHeight = style == NowPlayingScrubberStyle.classic ? 3.0 : 6.0;
+    final trackHeight = style == NowPlayingScrubberStyle.classic
+        ? 3.0
+        : style == NowPlayingScrubberStyle.appleCapsule && dragging
+            ? 11.0
+            : 6.0;
     final track = RRect.fromRectAndRadius(
       Rect.fromLTWH(left, centerY - trackHeight / 2, right, trackHeight),
       Radius.circular(trackHeight),
