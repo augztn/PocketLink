@@ -23,6 +23,7 @@ import '../storage/storage_browser_screen.dart';
 import 'now_playing_scrubber.dart';
 import 'persistent_audio_player.dart';
 import 'track_options_sheet.dart';
+import '../downloads/download_manager_service.dart';
 
 class NowPlayingScreen extends StatefulWidget {
   const NowPlayingScreen({
@@ -51,14 +52,6 @@ class NowPlayingScreen extends StatefulWidget {
 }
 
 class _NowPlayingScreenState extends State<NowPlayingScreen> {
-  static const _artworkPalettes = <List<Color>>[
-    [Color(0xFF7C3AED), Color(0xFFDB2777), Color(0xFF140B20)],
-    [Color(0xFF0E7490), Color(0xFF2563EB), Color(0xFF07151F)],
-    [Color(0xFFB45309), Color(0xFFBE185D), Color(0xFF1C100C)],
-    [Color(0xFF4338CA), Color(0xFF0F766E), Color(0xFF0B1020)],
-    [Color(0xFFBE185D), Color(0xFF4F46E5), Color(0xFF160B1E)],
-  ];
-
   static const _secureStorage = FlutterSecureStorage();
 
   late final PersistentAudioPlayer _persistent;
@@ -66,6 +59,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   StreamSubscription<Playlist>? _playlistSubscription;
   Uint8List? _artwork;
   String? _artworkKey;
+  List<Color>? _artworkPalette;
   int _artworkRequest = 0;
   bool _cached = false;
   Set<String> _favorites = <String>{};
@@ -124,9 +118,89 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     return name.substring(dot + 1).toUpperCase();
   }
 
-  List<Color> get _trackPalette {
-    final index = (_track.path.hashCode & 0x7fffffff) % _artworkPalettes.length;
-    return _artworkPalettes[index];
+  List<Color> get _trackPalette =>
+      _artworkPalette ?? _fallbackPalette();
+
+  List<Color> _fallbackPalette() {
+    var hash = 2166136261;
+    for (final unit in utf8.encode('${_track.title}|${_folderName}|${_track.path}')) {
+      hash = ((hash ^ unit) * 16777619) & 0xFFFFFFFF;
+    }
+    final hue = (hash % 360).toDouble();
+    final first = HSLColor.fromAHSL(1, hue, 0.72, 0.54).toColor();
+    final second = HSLColor.fromAHSL(1, (hue + 76) % 360, 0.68, 0.48).toColor();
+    final dark = HSLColor.fromAHSL(1, hue, 0.42, 0.10).toColor();
+    return [first, second, dark];
+  }
+
+  Future<List<Color>?> _extractArtworkPalette(Uint8List bytes) async {
+    ui.Codec? codec;
+    ui.Image? image;
+    try {
+      codec = await ui.instantiateImageCodec(
+        bytes,
+        targetWidth: 48,
+        targetHeight: 48,
+      );
+      final frame = await codec.getNextFrame();
+      image = frame.image;
+      final data = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+      if (data == null) return null;
+
+      final candidates = <({Color color, double saturation, double hue})>[];
+      for (var y = 1; y < image.height; y += 3) {
+        for (var x = 1; x < image.width; x += 3) {
+          final offset = (y * image.width + x) * 4;
+          final alpha = data.getUint8(offset + 3);
+          if (alpha < 180) continue;
+          final color = Color.fromARGB(
+            alpha,
+            data.getUint8(offset),
+            data.getUint8(offset + 1),
+            data.getUint8(offset + 2),
+          );
+          final hsl = HSLColor.fromColor(color);
+          if (hsl.lightness < 0.12 || hsl.lightness > 0.88) continue;
+          candidates.add((
+            color: color,
+            saturation: hsl.saturation,
+            hue: hsl.hue,
+          ));
+        }
+      }
+      if (candidates.isEmpty) return null;
+      candidates.sort((a, b) => b.saturation.compareTo(a.saturation));
+      final primary = candidates.first;
+      final secondary = candidates.firstWhere(
+        (item) {
+          final distance = (item.hue - primary.hue).abs();
+          return item.saturation > 0.25 &&
+              math.min(distance, 360 - distance) > 32;
+        },
+        orElse: () => (
+          color: HSLColor.fromAHSL(
+            1,
+            (primary.hue + 76) % 360,
+            0.68,
+            0.48,
+          ).toColor(),
+          saturation: 0.68,
+          hue: (primary.hue + 76) % 360,
+        ),
+      );
+      final primaryColor = primary.color;
+      final secondaryColor = secondary.color;
+      final darkColor = HSLColor.fromColor(primaryColor)
+          .withLightness(0.10)
+          .withSaturation(0.48)
+          .toColor();
+      return [primaryColor, secondaryColor, darkColor];
+    } catch (_) {
+      return null;
+    } finally {
+      image?.dispose();
+      codec?.dispose();
+    }
   }
 
   Widget _ambientBackground() {
@@ -273,6 +347,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     setState(() {
       _artwork = null;
       _artworkKey = null;
+      _artworkPalette = null;
     });
     await Future.wait([
       _refreshCacheStatus(),
@@ -284,7 +359,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     final request = ++_artworkRequest;
     final key = _trackKey;
     if (_track.localPath != null || _folder.isEmpty) {
-      if (mounted) setState(() { _artwork = null; _artworkKey = key; });
+      if (mounted) setState(() {
+        _artwork = null;
+        _artworkKey = key;
+        _artworkPalette = null;
+      });
       return;
     }
 
@@ -313,7 +392,13 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             : await widget.api.downloadStorageFile(_track.volume!, path);
         if (!mounted || request != _artworkRequest) return;
         if (bytes.isNotEmpty) {
-          setState(() { _artwork = bytes; _artworkKey = key; });
+          final palette = await _extractArtworkPalette(bytes);
+          if (!mounted || request != _artworkRequest) return;
+          setState(() {
+            _artwork = bytes;
+            _artworkKey = key;
+            _artworkPalette = palette;
+          });
           return;
         }
       }
@@ -321,7 +406,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
       // Artwork is optional; playback must not depend on it.
     }
     if (mounted && request == _artworkRequest) {
-      setState(() { _artwork = null; _artworkKey = key; });
+      setState(() {
+        _artwork = null;
+        _artworkKey = key;
+        _artworkPalette = null;
+      });
     }
   }
 
@@ -377,16 +466,21 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   }
 
   Future<void> _downloadTrack() async {
+    if (_track.localPath != null) {
+      _message('This track is already stored on this device.');
+      return;
+    }
     try {
-      final bytes = await _fileBytes();
-      final saved = await FilePicker.saveFile(
-        dialogTitle: 'Save original audio file',
-        fileName: _track.path.split('/').last,
-        bytes: bytes,
+      await DownloadManagerService.instance.enqueueServerFile(
+        api: widget.api,
+        name: _track.path.split('/').last,
+        sourcePath: _track.path,
+        volume: _track.volume,
+        size: _track.size,
       );
-      if (saved != null) _message('Original file saved.');
+      _message('Added to Downloads.');
     } catch (_) {
-      _message('Could not download this track.');
+      _message('Could not add this track to Downloads.');
     }
   }
 
