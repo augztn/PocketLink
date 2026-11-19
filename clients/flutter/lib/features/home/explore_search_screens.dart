@@ -103,7 +103,7 @@ class _ExploreNavigatorObserver extends NavigatorObserver {
   void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) => onChanged();
 }
 
-class _ExploreGrid extends StatelessWidget {
+class _ExploreGrid extends StatefulWidget {
   const _ExploreGrid({
     required this.api,
     required this.onHome,
@@ -119,18 +119,67 @@ class _ExploreGrid extends StatelessWidget {
   final VoidCallback? onOpenExternalStorage;
 
   @override
+  State<_ExploreGrid> createState() => _ExploreGridState();
+}
+
+class _ExploreGridState extends State<_ExploreGrid>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _entryController;
+
+  @override
+  void initState() {
+    super.initState();
+    _entryController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 720),
+    )..forward();
+  }
+
+  @override
+  void dispose() {
+    _entryController.dispose();
+    super.dispose();
+  }
+
+  Widget _staggeredCard(int index, Widget child) {
+    final start = (index * 0.07).clamp(0.0, 0.5);
+    final animation = CurvedAnimation(
+      parent: _entryController,
+      curve: Interval(start, 1, curve: Curves.easeOutCubic),
+    );
+    return AnimatedBuilder(
+      animation: animation,
+      child: child,
+      builder: (context, child) {
+        final progress = animation.value;
+        return Opacity(
+          opacity: progress,
+          child: Transform.translate(
+            offset: Offset(0, 16 * (1 - progress)),
+            child: Transform.scale(
+              scale: 0.97 + (0.03 * progress),
+              child: child,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
 
     Widget card({
+      required int index,
       required String title,
       required String subtitle,
       required IconData icon,
       required Color tint,
       required VoidCallback onTap,
     }) {
-      return Material(
+      return _staggeredCard(index, Material(
         color: colors.surfaceContainerLow,
         borderRadius: BorderRadius.circular(22),
         clipBehavior: Clip.antiAlias,
@@ -167,7 +216,7 @@ class _ExploreGrid extends StatelessWidget {
             ),
           ),
         ),
-      );
+      ));
     }
 
     return Scaffold(
@@ -188,11 +237,13 @@ class _ExploreGrid extends StatelessWidget {
         childAspectRatio: 1.15,
         children: [
           card(
+            index: 0,
             title: 'Photos', subtitle: 'Your picture collection',
             icon: Icons.photo_library_rounded, tint: const Color(0xFFE5A044),
             onTap: () => onOpen(PhotoGalleryScreen(api: api)),
           ),
           card(
+            index: 1,
             title: 'Music', subtitle: 'Albums and playlists',
             icon: Icons.headphones_rounded, tint: const Color(0xFF8D72E8),
             onTap: () => onOpen(MediaBrowserScreen(
@@ -202,6 +253,7 @@ class _ExploreGrid extends StatelessWidget {
             )),
           ),
           card(
+            index: 2,
             title: 'Videos', subtitle: 'Movies and clips',
             icon: Icons.play_circle_fill_rounded, tint: const Color(0xFF279D91),
             onTap: () => onOpen(MediaBrowserScreen(
@@ -211,21 +263,25 @@ class _ExploreGrid extends StatelessWidget {
             )),
           ),
           card(
+            index: 3,
             title: 'Documents', subtitle: 'PDF, Office and text',
             icon: Icons.description_rounded, tint: const Color(0xFF4C8ED9),
             onTap: () => onOpen(DocumentsBrowserScreen(api: api)),
           ),
           card(
+            index: 4,
             title: 'Files', subtitle: 'Browse server folders',
             icon: Icons.folder_rounded, tint: const Color(0xFF7186C8),
             onTap: onOpenFiles ?? () => onOpen(FileManagerScreen(api: api)),
           ),
           card(
+            index: 5,
             title: 'Search', subtitle: 'Find files across storage',
             icon: Icons.search_rounded, tint: const Color(0xFF6C9DCE),
             onTap: () => onOpen(SearchScreen(api: api, onHome: () => Navigator.of(context).maybePop())),
           ),
           card(
+            index: 6,
             title: 'Drives', subtitle: 'Internal & external SSDs',
             icon: Icons.usb_rounded, tint: const Color(0xFF28B8C8),
             onTap: onOpenExternalStorage ?? onOpenFiles ?? () => onOpen(FileManagerScreen(api: api)),
