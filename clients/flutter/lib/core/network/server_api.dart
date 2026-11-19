@@ -240,12 +240,26 @@ class IndexedFile {
   );
 }
 
+class SkippedMediaIndexItem {
+  const SkippedMediaIndexItem({required this.volume, required this.path, required this.reason});
+  final String volume;
+  final String path;
+  final String reason;
+
+  factory SkippedMediaIndexItem.fromJson(Map<String, dynamic> json) => SkippedMediaIndexItem(
+    volume: json['volume']?.toString() ?? 'internal',
+    path: json['path']?.toString() ?? '',
+    reason: json['reason']?.toString() ?? 'Could not index this location',
+  );
+}
+
 class MediaIndexStatus {
   const MediaIndexStatus({
     required this.state, required this.scanned, required this.skipped,
     required this.lastCompletedAt, required this.fileCount,
     required this.mediaCount, this.lastError,
     this.lastScanStartedAt = 0, this.elapsedMs = 0, this.currentSource,
+    this.skippedItems = const [],
   });
   final String state;
   final int scanned;
@@ -257,6 +271,7 @@ class MediaIndexStatus {
   final int lastScanStartedAt;
   final int elapsedMs;
   final String? currentSource;
+  final List<SkippedMediaIndexItem> skippedItems;
   bool get isScanning => state == 'scanning';
   bool get isUsable => state == 'complete' || state == 'partial';
 
@@ -272,6 +287,10 @@ class MediaIndexStatus {
         lastScanStartedAt: (json['last_scan_started_at'] as num?)?.toInt() ?? 0,
         elapsedMs: (json['elapsed_ms'] as num?)?.toInt() ?? 0,
         currentSource: json['current_source']?.toString(),
+        skippedItems: (json['skipped_items'] as List<dynamic>? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(SkippedMediaIndexItem.fromJson)
+            .toList(growable: false),
       );
 }
 
