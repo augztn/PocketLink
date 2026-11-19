@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
@@ -183,8 +182,8 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
               PocketLinkAppBarAction(
                 label: 'Pause all',
                 icon: Icons.pause_rounded,
-                enabled: _manager.activeCount > 0,
-                onPressed: _manager.activeCount > 0 ? _manager.pauseAll : null,
+                enabled: _manager.activeCount > 0 || _manager.queuedCount > 0,
+                onPressed: _manager.activeCount > 0 || _manager.queuedCount > 0 ? _manager.pauseAll : null,
               ),
               PocketLinkAppBarAction(
                 label: 'Resume all',
@@ -250,13 +249,6 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
               );
             },
           ),
-          floatingActionButton: tasks.isEmpty
-              ? null
-              : FloatingActionButton.small(
-                  onPressed: _newDownload,
-                  tooltip: 'New URL download',
-                  child: const Icon(Icons.add_rounded),
-                ),
         );
       },
     );
@@ -338,7 +330,7 @@ class _DownloadTaskCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (downloading)
+                if (downloading || task.status == DownloadStatus.queued)
                   IconButton(
                     tooltip: 'Pause',
                     onPressed: onPause,
