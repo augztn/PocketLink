@@ -1017,9 +1017,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: const Color(0xFF0A0B0E),
-      child: Stack(
+    return Scaffold(
+      backgroundColor: const Color(0xFF0A0B0E),
+      body: Stack(
             fit: StackFit.expand,
             children: [
               const Positioned.fill(
@@ -1158,7 +1158,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     ),
   ],
 ),
-);
+    );
   }
 
   @override
