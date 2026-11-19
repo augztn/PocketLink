@@ -125,6 +125,7 @@ class _ExploreGrid extends StatefulWidget {
 class _ExploreGridState extends State<_ExploreGrid>
     with SingleTickerProviderStateMixin {
   late final AnimationController _entryController;
+  bool _motionPreferenceApplied = false;
 
   ServerApi get api => widget.api;
   VoidCallback? get onHome => widget.onHome;
@@ -138,7 +139,19 @@ class _ExploreGridState extends State<_ExploreGrid>
     _entryController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 720),
-    )..forward();
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_motionPreferenceApplied) return;
+    _motionPreferenceApplied = true;
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _entryController.value = 1;
+    } else {
+      _entryController.forward();
+    }
   }
 
   @override

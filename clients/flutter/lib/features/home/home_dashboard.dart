@@ -1166,7 +1166,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
         ),
         if (_mediaScanError != null) ...[
           const SizedBox(height: 7),
-          Text(_mediaScanError!, style: theme.textTheme.bodySmall?.copyWith(color: const Color(0xFFFBBF24))),
+          Text(_mediaScanError!, style: theme.textTheme.bodySmall?.copyWith(color: colors.error)),
         ],
         if (status != null) ...[
           const SizedBox(height: 7),
