@@ -343,10 +343,18 @@ class DownloadManagerService extends ChangeNotifier {
     RandomAccessFile? output;
     try {
       final file = File(task.destinationPath);
+      final partialFile = File('${task.destinationPath}.part');
       await file.parent.create(recursive: true);
-      var offset = await file.exists() ? await file.length() : 0;
+      var offset = await partialFile.exists() ? await partialFile.length() : 0;
+      if (task.totalBytes != null && offset > task.totalBytes!) {
+        await partialFile.delete();
+        offset = 0;
+      }
       task.downloadedBytes = offset;
-      if (task.totalBytes != null && offset >= task.totalBytes!) {
+      if (task.totalBytes != null && offset == task.totalBytes!) {
+        if (await partialFile.exists()) {
+          await partialFile.rename(task.destinationPath);
+        }
         task.status = DownloadStatus.completed;
         task.speedBytesPerSecond = 0;
         return;
@@ -393,7 +401,7 @@ class DownloadManagerService extends ChangeNotifier {
               ? task.totalBytes
               : responseLength + (isPartial ? offset : 0));
 
-      output = await file.open(
+      output = await partialFile.open(
         mode: isPartial && offset > 0 ? FileMode.append : FileMode.write,
       );
       var lastSampleBytes = offset;
@@ -422,7 +430,10 @@ class DownloadManagerService extends ChangeNotifier {
         }
       }
       await output.flush();
+      await output.close();
+      output = null;
       if (task.status == DownloadStatus.downloading && !token.isCancelled) {
+        await partialFile.rename(task.destinationPath);
         task.status = DownloadStatus.completed;
         task.speedBytesPerSecond = 0;
         task.totalBytes ??= task.downloadedBytes;
@@ -512,6 +523,10 @@ class DownloadManagerService extends ChangeNotifier {
     if (task == null) return;
     _tokens[id]?.cancel('removed');
     _tasks.remove(task);
+    try {
+      final partial = File('${task.destinationPath}.part');
+      if (await partial.exists()) await partial.delete();
+    } catch (_) {}
     if (deleteFile) {
       try {
         await File(task.destinationPath).delete();
