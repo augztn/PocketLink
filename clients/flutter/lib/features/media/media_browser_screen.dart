@@ -15,7 +15,7 @@ import '../../core/network/server_api.dart';
 import '../../core/navigation/pocketlink_navigation.dart';
 import 'media_player_screen.dart';
 import 'persistent_audio_player.dart';
-import 'global_media_overlay.dart';
+import 'now_playing_overlay_controller.dart';
 import '../transfers/transfer_manager_screen.dart';
 import '../home/browser_state_store.dart';
 
@@ -406,7 +406,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
           initialIndex: index < 0 ? 0 : index,
           isMusic: true,
         );
-        GlobalMediaOverlay.openNowPlaying();
+        NowPlayingOverlayController.open();
       } else {
         await Navigator.of(context, rootNavigator: true).push<void>(
           MaterialPageRoute<void>(
