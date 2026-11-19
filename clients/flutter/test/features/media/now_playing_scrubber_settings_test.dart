@@ -31,9 +31,9 @@ void main() {
     );
   });
 
-  test('unsupported scrubber styles are rejected', () {
+  test('unsupported scrubber styles are rejected', () async {
     expect(
-      () => settings.setNowPlayingScrubberStyle('unsupported'),
+      settings.setNowPlayingScrubberStyle('unsupported'),
       throwsArgumentError,
     );
   });
