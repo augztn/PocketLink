@@ -5,6 +5,7 @@ import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/compact_search_field.dart';
 import '../../core/widgets/pocketlink_file_icon.dart';
+import '../../core/widgets/smoked_glass_popover_menu.dart';
 
 import '../../core/network/server_api.dart';
 import 'file_manager_screen.dart';
@@ -221,20 +222,27 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
         feathered: true,
         showHome: false,
         automaticallyImplyLeading: false,
-        title: PopupMenuButton<String>(
+        title: SmokedGlassPopoverMenu<String>(
           tooltip: 'Filter document types',
-          offset: const Offset(0, 48),
-          onOpened: () => setState(() => _filterMenuOpen = true),
-          onCanceled: () => setState(() => _filterMenuOpen = false),
-          onSelected: (value) => setState(() { _filter = value; _filterMenuOpen = false; }),
-          itemBuilder: (_) => filterLabels.entries.map((entry) => PopupMenuItem(
-            value: entry.key,
-            child: Row(children: [
-              Expanded(child: Text(entry.value)),
-              Text('${counts[entry.key]}', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
-              if (_filter == entry.key) const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.check_rounded, size: 18)),
-            ]),
-          )).toList(),
+          onOpenChanged: (open) => setState(() => _filterMenuOpen = open),
+          items: filterLabels.entries.map((entry) {
+            final icon = switch (entry.key) {
+              'pdf' => Icons.picture_as_pdf_rounded,
+              'office' => Icons.article_rounded,
+              'text' => Icons.text_snippet_rounded,
+              'archives' => Icons.archive_rounded,
+              _ => Icons.description_rounded,
+            };
+            return SmokedGlassPopoverMenuItem(
+              value: entry.key,
+              label: entry.value,
+              icon: icon,
+              trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                Text('${counts[entry.key]}', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
+                if (_filter == entry.key) const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.check_rounded, size: 18)),
+              ]),
+            );
+          }).toList(),
           child: Row(children: [
             Expanded(
               child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -248,10 +256,14 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
         ),
         actionsBeforeHome: [
           GlassCircleButton(tooltip: 'Search documents', onPressed: () => setState(() => _searchExpanded = !_searchExpanded), child: const Icon(Icons.search_rounded)),
-          PopupMenuButton<String>(
+          SmokedGlassPopoverMenu<String>(
             tooltip: 'Sort documents',
+            items: const [
+              SmokedGlassPopoverMenuItem(value: 'name', label: 'Name', icon: Icons.sort_by_alpha_rounded),
+              SmokedGlassPopoverMenuItem(value: 'newest', label: 'Newest', icon: Icons.schedule_rounded),
+              SmokedGlassPopoverMenuItem(value: 'largest', label: 'Largest', icon: Icons.storage_rounded),
+            ],
             onSelected: (value) => setState(() => _sortBy = value),
-            itemBuilder: (_) => const [PopupMenuItem(value: 'name', child: Text('Name')), PopupMenuItem(value: 'newest', child: Text('Newest')), PopupMenuItem(value: 'largest', child: Text('Largest'))],
             child: const GlassCircleButton(tooltip: 'Sort documents', onPressed: null, child: Icon(Icons.tune_rounded)),
           ),
         ],
