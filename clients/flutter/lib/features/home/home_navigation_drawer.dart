@@ -152,7 +152,7 @@ class PocketLinkHomeDrawer extends StatelessWidget {
                     physics: const NeverScrollableScrollPhysics(),
                     mainAxisSpacing: 9,
                     crossAxisSpacing: 9,
-                    childAspectRatio: 2.2,
+                    childAspectRatio: 1.65,
                     children: [
                       _DrawerLibraryTile(
                         label: 'Music',
@@ -335,27 +335,39 @@ class _DrawerLibraryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final colors = Theme.of(context).colorScheme;
     return Material(
-      color: colors.surfaceContainerLow,
-      borderRadius: BorderRadius.circular(15),
+      color: Colors.white.withValues(alpha: isDark ? 0.045 : 0.48),
+      borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(15),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 11),
-          child: Row(
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: tint, size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: tint.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(11),
                 ),
+                child: Icon(icon, color: tint, size: 19),
               ),
+              const SizedBox(height: 7),
+              Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontWeight: FontWeight.w800)),
+              Text('Open library', style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: colors.onSurfaceVariant,
+              )),
             ],
           ),
         ),
