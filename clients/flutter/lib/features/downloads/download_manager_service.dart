@@ -378,6 +378,16 @@ class DownloadManagerService extends ChangeNotifier {
       final file = File(task.destinationPath);
       final partialFile = File('${task.destinationPath}.part');
       await file.parent.create(recursive: true);
+      if (await file.exists()) {
+        final completedLength = await file.length();
+        if (task.totalBytes == null || completedLength == task.totalBytes) {
+          task.downloadedBytes = completedLength;
+          task.totalBytes ??= completedLength;
+          task.status = DownloadStatus.completed;
+          task.speedBytesPerSecond = 0;
+          return;
+        }
+      }
       var offset = await partialFile.exists() ? await partialFile.length() : 0;
       if (task.totalBytes != null && offset > task.totalBytes!) {
         await partialFile.delete();
