@@ -122,7 +122,7 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
     );
     final top = (anchor.bottom + gap).clamp(minTop, maxTop).toDouble();
     final availableWidth = mathMax(0, media.size.width - right - 8);
-    final menuMaxWidth = mathMin(280, availableWidth);
+    final menuMaxWidth = mathMin(256, availableWidth);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final curved = CurvedAnimation(
       parent: animation,
@@ -151,9 +151,9 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
                   scale: Tween<double>(begin: 0.84, end: 1).animate(curved),
                   child: ConstrainedBox(
                     constraints: BoxConstraints(
-                      minWidth: mathMin(210, menuMaxWidth),
+                      minWidth: mathMin(224, menuMaxWidth),
                       maxWidth: menuMaxWidth,
-                      maxHeight: media.size.height - top - media.padding.bottom - 8,
+                      maxHeight: media.size.height * 0.55,
                     ),
                     child: ClipRRect(
                 borderRadius: BorderRadius.circular(22),
@@ -164,7 +164,7 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
                       DecoratedBox(
                         decoration: BoxDecoration(
                           color: isDark
-                              ? const Color(0xFF1C1E24).withValues(alpha: 0.76)
+                              ? const Color(0xFF1C1E24).withValues(alpha: 0.72)
                               : Colors.white.withValues(alpha: 0.86),
                           borderRadius: BorderRadius.circular(22),
                           border: Border.all(
@@ -183,7 +183,9 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
                         child: Material(
                           color: Colors.transparent,
                           child: SingleChildScrollView(
-                            padding: const EdgeInsets.symmetric(vertical: 6),
+                            primary: false,
+                            physics: const BouncingScrollPhysics(),
+                            padding: const EdgeInsets.symmetric(vertical: 8),
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
