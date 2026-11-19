@@ -91,7 +91,19 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   String get _fileName {
     final pathName = _track.path.split('/').last;
     final raw = _track.title.trim().isNotEmpty ? _track.title : pathName;
-    final name = raw.replaceAll(RegExp(r'\.[^.]+
+    final dot = raw.lastIndexOf('.');
+    final name = (dot > 0 ? raw.substring(0, dot) : raw)
+        .replaceAll('_', ' ')
+        .trim();
+    final artist = _folderName.trim();
+    final suffixStart = name.lastIndexOf(' - ');
+    if (suffixStart >= 0 &&
+        artist.isNotEmpty &&
+        name.substring(suffixStart + 3).trim().toLowerCase() ==
+            artist.toLowerCase()) {
+      return name.substring(0, suffixStart).trim();
+    }
+    return name;
   }
 
   String get _folder {
