@@ -19,9 +19,9 @@ import '../../core/widgets/liquid_glass_pill.dart';
 import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
 import '../storage/storage_browser_screen.dart';
+import 'now_playing_scrubber.dart';
 import 'persistent_audio_player.dart';
 import 'track_options_sheet.dart';
-import 'now_playing_scrubber.dart';
 
 class NowPlayingScreen extends StatefulWidget {
   const NowPlayingScreen({
