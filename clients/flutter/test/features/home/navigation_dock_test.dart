@@ -47,7 +47,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(next, 1);
 
-        final previousGesture = await tester.startGesture(
+    final previousGesture = await tester.startGesture(
       tester.getCenter(find.byKey(PocketLinkNavigation.musicButtonKey)),
     );
     await previousGesture.moveBy(const Offset(54, 0));
