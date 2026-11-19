@@ -807,9 +807,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     final palette = _trackPalette;
     return LayoutBuilder(
       builder: (context, constraints) {
-        final width = (constraints.maxWidth - 40).clamp(0.0, 380.0);
-        final height = (constraints.maxHeight - 18).clamp(0.0, 380.0);
-        final dimension = math.min(width, height).clamp(210.0, 360.0);
+        final width = (constraints.maxWidth - 40).clamp(0.0, 380.0).toDouble();
+        final height = (constraints.maxHeight - 18).clamp(0.0, 380.0).toDouble();
+        final dimension = math.min(width, height).clamp(0.0, 360.0).toDouble();
         return Container(
           width: dimension,
           height: dimension,
@@ -1107,11 +1107,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             child: Transform.translate(
               offset: Offset(0, _dismissDragDistance),
               child: Transform.scale(
-                scale: 1 - (_dismissDragDistance / 1800).clamp(0.0, 0.075),
+                scale: (1 - (_dismissDragDistance / 1800).clamp(0.0, 0.075)).toDouble(),
                 alignment: Alignment.topCenter,
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(
-                    (_dismissDragDistance * 0.08).clamp(0.0, 24.0),
+                    (_dismissDragDistance * 0.08).clamp(0.0, 24.0).toDouble(),
                   ),
                   child: GestureDetector(
         behavior: HitTestBehavior.translucent,
@@ -1120,7 +1120,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             ? (details) => setState(() {
                   _dismissDragDistance = (_dismissDragDistance +
                           (details.primaryDelta ?? 0))
-                      .clamp(0.0, 320.0);
+                      .clamp(0.0, 320.0)
+                      .toDouble();
                 })
             : null,
         onHorizontalDragStart: AppSettings.instance.enableNowPlayingGestures ? (_) => _trackSwipeDistance = 0 : null,
