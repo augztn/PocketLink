@@ -97,6 +97,68 @@ class LiquidGlassSurface extends StatelessWidget {
   }
 }
 
+
+/// Always-on smoked glass treatment for the persistent mini-player.
+///
+/// Unlike the optional decorative glass surfaces, this keeps its backdrop blur
+/// and translucent smoked tint active so page content remains visible beneath it.
+class SmokedGlassSurface extends StatelessWidget {
+  const SmokedGlassSurface({
+    required this.child,
+    required this.radius,
+    super.key,
+  });
+
+  final Widget child;
+  final BorderRadius radius;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: radius,
+      clipBehavior: Clip.antiAlias,
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+        child: Stack(
+          fit: StackFit.passthrough,
+          children: [
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: const Color(0xFF1C1E24).withValues(alpha: 0.66),
+                borderRadius: radius,
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.14),
+                  width: 1,
+                ),
+              ),
+              child: child,
+            ),
+            Positioned(
+              top: 0,
+              left: 1,
+              right: 1,
+              child: IgnorePointer(
+                child: Container(
+                  height: 1,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.white.withValues(alpha: 0.02),
+                        Colors.white.withValues(alpha: 0.42),
+                        Colors.white.withValues(alpha: 0.02),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// Backwards-compatible name retained for existing call sites.
 class LiquidGlassPill extends StatelessWidget {
   const LiquidGlassPill({
