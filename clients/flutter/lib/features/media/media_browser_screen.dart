@@ -450,10 +450,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         .trim();
     final artist = _trackArtist(media).trim();
     final suffixStart = name.lastIndexOf(' - ');
-    if (suffixStart >= 0 &&
-        artist.isNotEmpty &&
-        name.substring(suffixStart + 3).trim().toLowerCase() ==
-            artist.toLowerCase()) {
+    if (suffixStart >= 0 && media.path.contains('/') && artist.isNotEmpty) {
       return name.substring(0, suffixStart).trim();
     }
     return name;
