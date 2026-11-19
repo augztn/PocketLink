@@ -92,6 +92,7 @@ class _MusicShortcutMenuState extends State<MusicShortcutMenu>
         Row(
           children: [
             Expanded(
+              flex: start + 1 == items.length ? 2 : 1,
               child: _buildTile(
                 items[start],
                 start,
@@ -109,8 +110,7 @@ class _MusicShortcutMenuState extends State<MusicShortcutMenu>
                   reduceMotion,
                 ),
               ),
-            ] else
-              const Spacer(),
+            ],
           ],
         ),
       ],

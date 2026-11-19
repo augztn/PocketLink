@@ -33,6 +33,9 @@ void main() {
       expect(find.text(label), findsOneWidget);
     }
 
+    final drivesTile = find.ancestor(of: find.text('Drives'), matching: find.byType(InkWell));
+    final photosTile = find.ancestor(of: find.text('Photos'), matching: find.byType(InkWell));
+    expect(tester.getSize(drivesTile).width, greaterThan(tester.getSize(photosTile).width));
     await tester.tap(find.text('Drives'));
     expect(selected, 'drives');
   });

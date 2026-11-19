@@ -22,6 +22,7 @@ class FloatingNavigationDock extends StatelessWidget {
     this.musicShortcutsExpanded = false,
     this.musicShortcutsBottomOffset = 64,
     this.onMusicShortcutLongPress,
+    this.onMusicShortcutDismissed,
     this.onMusicShortcutSelected,
     this.onBrowseSwipeLeft,
     this.onBrowseSwipeRight,
@@ -41,6 +42,7 @@ class FloatingNavigationDock extends StatelessWidget {
   final bool musicShortcutsExpanded;
   final double musicShortcutsBottomOffset;
   final VoidCallback? onMusicShortcutLongPress;
+  final VoidCallback? onMusicShortcutDismissed;
   final ValueChanged<String>? onMusicShortcutSelected;
   final VoidCallback? onBrowseSwipeLeft;
   final VoidCallback? onBrowseSwipeRight;
@@ -117,10 +119,10 @@ class FloatingNavigationDock extends StatelessWidget {
               children: [
                 if (musicShortcutsExpanded && musicShortcuts.isNotEmpty)
                   Positioned(
-                    right: 0,
+                    left: -(MediaQuery.sizeOf(context).width - 28 - 64),
                     bottom: musicShortcutsBottomOffset,
                     child: SizedBox(
-                      width: 276,
+                      width: MediaQuery.sizeOf(context).width - 28,
                       child: MusicShortcutMenu(
                         shortcuts: musicShortcuts,
                         expanded: true,
@@ -135,7 +137,9 @@ class FloatingNavigationDock extends StatelessWidget {
                     hasMedia: hasMedia,
                     isVideo: isVideo,
                     expanded: musicShortcutsExpanded,
-                    onTap: onBrowsePressed,
+                    onTap: expanded
+                        ? (onMusicShortcutDismissed ?? () {})
+                        : onBrowsePressed,
                     onLongPress: onMusicShortcutLongPress,
                     onSwipeNext: onBrowseSwipeLeft,
                     onSwipePrevious: onBrowseSwipeRight,
@@ -268,9 +272,7 @@ class _MusicDockButtonState extends State<_MusicDockButton> {
     final colors = Theme.of(context).colorScheme;
     final reduceMotion = MediaQuery.of(context).disableAnimations;
     final direction = _dragDirection;
-    final iconKey = widget.expanded
-        ? 'close'
-        : direction < 0
+    final iconKey = direction < 0
             ? 'next'
             : direction > 0
                 ? 'previous'
@@ -343,12 +345,6 @@ class _MusicDockButtonState extends State<_MusicDockButton> {
                         );
                       },
                       child: switch (iconKey) {
-                        'close' => Icon(
-                            Icons.close_rounded,
-                            key: const ValueKey('close'),
-                            color: colors.onSurface,
-                            size: 25,
-                          ),
                         'next' => Icon(
                             Icons.skip_next_rounded,
                             key: const ValueKey('next'),

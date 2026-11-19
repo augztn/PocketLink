@@ -5,6 +5,29 @@ import 'package:pocketlink_client/core/navigation/pocketlink_navigation.dart';
 import 'package:pocketlink_client/features/home/navigation_dock.dart';
 
 void main() {
+  testWidgets('expanded shortcuts dismiss from Music button without an X icon', (tester) async {
+    var opens = 0;
+    var dismisses = 0;
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        bottomNavigationBar: FloatingNavigationDock(
+          order: const ['home', 'browse', 'explore', 'files'],
+          visibleItems: const {'home', 'browse', 'explore', 'files'},
+          selectedIndex: 0,
+          onSelect: (_) {},
+          onBrowsePressed: () => opens++,
+          musicShortcutsExpanded: true,
+          musicShortcuts: const ['photos', 'music', 'videos'],
+          onMusicShortcutDismissed: () => dismisses++,
+        ),
+      ),
+    ));
+    expect(find.byIcon(Icons.close_rounded), findsNothing);
+    await tester.tap(find.byKey(PocketLinkNavigation.musicButtonKey));
+    expect(dismisses, 1);
+    expect(opens, 0);
+  });
+
   testWidgets('Music button supports tap, hold and horizontal swipe callbacks',
       (tester) async {
     var taps = 0;
