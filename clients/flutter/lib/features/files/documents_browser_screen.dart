@@ -257,19 +257,16 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
         ),
         actionsBeforeHome: [
           GlassCircleButton(tooltip: 'Search documents', onPressed: () => setState(() => _searchExpanded = !_searchExpanded), child: const Icon(Icons.search_rounded)),
-          SmokedGlassPopoverMenu<String>(
-            tooltip: 'Sort documents',
-            items: const [
-              SmokedGlassPopoverMenuItem(value: 'name', label: 'Name', icon: Icons.sort_by_alpha_rounded),
-              SmokedGlassPopoverMenuItem(value: 'newest', label: 'Newest', icon: Icons.schedule_rounded),
-              SmokedGlassPopoverMenuItem(value: 'largest', label: 'Largest', icon: Icons.storage_rounded),
-            ],
-            onSelected: (value) => setState(() => _sortBy = value),
-            child: const GlassCircleButton(tooltip: 'Sort documents', onPressed: null, child: Icon(Icons.tune_rounded)),
-          ),
         ],
         actions: [
-          PocketLinkAppBarAction(label: 'Scan again', icon: Icons.refresh_rounded, onPressed: _loading ? null : () => _scan(refresh: true)),
+          PocketLinkAppBarAction(label: 'Sort by name', icon: Icons.sort_by_alpha_rounded,
+            onPressed: () => setState(() => _sortBy = 'name')),
+          PocketLinkAppBarAction(label: 'Sort by newest', icon: Icons.schedule_rounded,
+            onPressed: () => setState(() => _sortBy = 'newest')),
+          PocketLinkAppBarAction(label: 'Sort by largest', icon: Icons.storage_rounded,
+            onPressed: () => setState(() => _sortBy = 'largest')),
+          PocketLinkAppBarAction(label: 'Scan again', icon: Icons.refresh_rounded,
+            onPressed: _loading ? null : () => _scan(refresh: true), dividerBefore: true),
         ],
       ),
       body: Column(children: [
