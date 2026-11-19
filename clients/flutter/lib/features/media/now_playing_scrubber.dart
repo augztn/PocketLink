@@ -63,11 +63,13 @@ class _NowPlayingScrubberState extends State<NowPlayingScrubber>
   double get _progress => _hasDuration
       ? (widget.position.inMicroseconds / widget.duration.inMicroseconds)
           .clamp(0.0, 1.0)
+          .toDouble()
       : 0;
   double get _bufferedProgress => _hasDuration
       ? (widget.bufferedPosition.inMicroseconds /
               widget.duration.inMicroseconds)
           .clamp(0.0, 1.0)
+          .toDouble()
       : 0;
   bool get _showShimmer => widget.isBuffering || !_hasDuration;
 
@@ -108,7 +110,7 @@ class _NowPlayingScrubberState extends State<NowPlayingScrubber>
 
   void _seekAt(double dx, double width) {
     if (!_hasDuration || width <= 0) return;
-    final progress = (dx / width).clamp(0.0, 1.0);
+    final progress = (dx / width).clamp(0.0, 1.0).toDouble();
     setState(() => _dragProgress = progress);
   }
 
