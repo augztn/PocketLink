@@ -161,11 +161,13 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       );
       status = page.status;
       if (!mounted) break;
-      found.addAll(page.items.map((item) => _MediaFile(
-        entry: item.toFileEntry(),
-        path: item.path,
-        volume: item.volume == 'internal' ? null : item.volume,
-      )));
+      found.addAll(page.items
+          .where((item) => _isMedia(item.toFileEntry()))
+          .map((item) => _MediaFile(
+                entry: item.toFileEntry(),
+                path: item.path,
+                volume: item.volume == 'internal' ? null : item.volume,
+              )));
       offset += page.items.length;
       if (page.items.length < 500) break;
     } while (true);
