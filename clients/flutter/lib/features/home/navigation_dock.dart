@@ -429,16 +429,18 @@ class _DockTab extends StatelessWidget {
               color: selected
                   ? (Theme.of(context).brightness == Brightness.dark
                       ? Colors.white.withValues(alpha: 0.16)
-                      : activeColor.withValues(alpha: 0.10))
+                      : Color.alphaBlend(
+                          const Color(0x1A536DFE),
+                          Colors.white.withValues(alpha: 0.90),
+                        ))
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(25),
               border: selected
                   ? Border.all(
-                      color: Colors.white.withValues(
-                        alpha: Theme.of(context).brightness == Brightness.dark
-                            ? 0.28
-                            : 0.38,
-                      ),
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white.withValues(alpha: 0.28)
+                          : const Color(0xFF536DFE)
+                              .withValues(alpha: 0.25),
                     )
                   : null,
             ),
@@ -451,8 +453,8 @@ class _DockTab extends StatelessWidget {
                   color: Theme.of(context).brightness == Brightness.dark
                       ? Colors.white.withValues(alpha: selected ? 1 : 0.65)
                       : selected
-                          ? activeColor
-                          : colors.onSurfaceVariant,
+                          ? const Color(0xFF4355E8)
+                          : const Color(0xFF475569),
                 ),
                 const SizedBox(height: 3),
                 Text(
@@ -465,8 +467,8 @@ class _DockTab extends StatelessWidget {
                         color: Theme.of(context).brightness == Brightness.dark
                             ? Colors.white.withValues(alpha: selected ? 1 : 0.65)
                             : selected
-                                ? activeColor
-                                : colors.onSurfaceVariant,
+                                ? const Color(0xFF4355E8)
+                                : const Color(0xFF475569),
                       ),
                 ),
               ],
