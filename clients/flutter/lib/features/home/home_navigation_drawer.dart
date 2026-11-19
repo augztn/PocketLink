@@ -66,7 +66,8 @@ class PocketLinkHomeDrawer extends StatelessWidget {
             child: ColoredBox(
               color: const Color(0xFF1C1E24).withValues(alpha: 0.72),
               child: SafeArea(
-                bottom: true,
+                top: false,
+                bottom: false,
                 child: Column(
           children: [
             Padding(
