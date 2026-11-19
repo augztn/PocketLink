@@ -85,7 +85,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _navigationSettingsChanged() {
     final settings = AppSettings.instance;
     if (!settings.musicButtonLongPressEnabled && _musicShortcutsExpanded) {
-      _musicShortcutsExpanded = false;
+      setState(() => _musicShortcutsExpanded = false);
       PocketLinkNavigation.quickShortcutsOpen.value = false;
     }
     final selectedId = switch (_selectedIndex) {
