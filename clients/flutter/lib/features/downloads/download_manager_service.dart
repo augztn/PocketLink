@@ -148,6 +148,15 @@ class DownloadManagerService extends ChangeNotifier {
     if (configured != null && configured.trim().isNotEmpty) {
       return configured;
     }
+    if (Platform.isAndroid) {
+      const publicDownloads = '/storage/emulated/0/Download/PocketLink';
+      try {
+        await Directory(publicDownloads).create(recursive: true);
+        return publicDownloads;
+      } catch (_) {
+        // Fall back to the app-scoped documents directory on scoped-storage devices.
+      }
+    }
     Directory? downloads;
     try {
       downloads = await getDownloadsDirectory();
