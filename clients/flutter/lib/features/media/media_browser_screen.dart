@@ -7,6 +7,7 @@ import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/compact_search_field.dart';
 import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/smoked_glass_popover_menu.dart';
+import '../../core/widgets/smoked_glass_popover_menu.dart';
 
 import 'package:dio/dio.dart';
 import 'package:material_ui/material_ui.dart';
@@ -862,29 +863,37 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
           feathered: true,
           showHome: false,
           automaticallyImplyLeading: false,
-          title: PopupMenuButton<String>(
+          title: SmokedGlassPopoverMenu<String>(
             tooltip: 'Choose video view',
-            offset: const Offset(0, 48),
-            onOpened: () => setState(() => _musicMenuOpen = true),
-            onCanceled: () => setState(() => _musicMenuOpen = false),
-            onSelected: (value) {
-              setState(() { _libraryView = value; _musicMenuOpen = false; if (value != 'folders') _currentFolderPath = ''; });
-              _saveState(folderPath: _currentFolderPath);
-              if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0);
-            },
-            itemBuilder: (_) => [
-              PopupMenuItem(value: 'all', child: Row(children: [
-                const Expanded(child: Text('All Videos')), Text('${_media.length}', style: const TextStyle(fontFamily: 'monospace', color: Color(0xFFA1A7B3))),
-                if (_libraryView == 'all') const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.check_rounded, size: 18)),
-              ])),
-              PopupMenuItem(value: 'folders', child: Row(children: [
-                const Expanded(child: Text('Folders')), Text('$folderCount', style: const TextStyle(fontFamily: 'monospace', color: Color(0xFFA1A7B3))),
-                if (_libraryView == 'folders') const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.check_rounded, size: 18)),
-              ])),
-              PopupMenuItem(value: 'favorites', child: Row(children: [
-                const Expanded(child: Text('Favorites')), Text('$favoritesCount', style: const TextStyle(fontFamily: 'monospace', color: Color(0xFFA1A7B3))),
-                if (_libraryView == 'favorites') const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.check_rounded, size: 18)),
-              ])),
+            onOpenChanged: (open) => setState(() => _musicMenuOpen = open),
+            items: [
+              SmokedGlassPopoverMenuItem(
+                value: 'all',
+                label: 'All Videos',
+                icon: Icons.video_library_rounded,
+                trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Text('${_media.length}', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
+                  if (_libraryView == 'all') const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.check_rounded, size: 18)),
+                ]),
+              ),
+              SmokedGlassPopoverMenuItem(
+                value: 'folders',
+                label: 'Folders',
+                icon: Icons.folder_rounded,
+                trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Text('$folderCount', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
+                  if (_libraryView == 'folders') const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.check_rounded, size: 18)),
+                ]),
+              ),
+              SmokedGlassPopoverMenuItem(
+                value: 'favorites',
+                label: 'Favorites',
+                icon: Icons.favorite_rounded,
+                trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Text('$favoritesCount', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
+                  if (_libraryView == 'favorites') const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.check_rounded, size: 18)),
+                ]),
+              ),
             ],
             child: Row(children: [
               Expanded(
