@@ -27,10 +27,11 @@ class _Photo {
 }
 
 class PhotoGalleryScreen extends StatefulWidget {
-  const PhotoGalleryScreen({required this.api, this.showSearch = true, this.initialTab = 0, super.key});
+  const PhotoGalleryScreen({required this.api, this.showSearch = true, this.initialTab = 0, this.onBackHandlerChanged, super.key});
   final ServerApi api;
   final bool showSearch;
   final int initialTab;
+  final ValueChanged<VoidCallback?>? onBackHandlerChanged;
   @override
   State<PhotoGalleryScreen> createState() => _PhotoGalleryScreenState();
 }
@@ -90,8 +91,24 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     _persistFavorites();
   }
 
+  void _syncBackHandler() {
+    widget.onBackHandlerChanged?.call(searchOpen
+        ? () => _setSearchOpen(false)
+        : null);
+  }
+
+  void _setSearchOpen(bool open) {
+    if (searchOpen == open) return;
+    setState(() => searchOpen = open);
+    _syncBackHandler();
+  }
+
   @override
-  void dispose() { search.dispose(); super.dispose(); }
+  void dispose() {
+    widget.onBackHandlerChanged?.call(null);
+    search.dispose();
+    super.dispose();
+  }
 
   Future<List<_Photo>> _readIndexedPhotos() async {
     final found = <_Photo>[];
@@ -631,27 +648,37 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                     style: TextStyle(color: foreground, fontSize: 28, fontWeight: FontWeight.w800)),
                 ))
               else
-                Expanded(child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(12),
-                    onTap: () => setState(() => _viewMenuOpen = !_viewMenuOpen),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        Flexible(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(
-                          color: foreground, fontSize: 28, fontWeight: FontWeight.w800,
-                          letterSpacing: -0.7,
-                        ))),
-                        const SizedBox(width: 6),
-                        AnimatedRotation(
-                          turns: _viewMenuOpen ? 0.5 : 0,
-                          duration: const Duration(milliseconds: 200),
-                          curve: Curves.easeOutCubic,
-                          child: Icon(Icons.keyboard_arrow_down_rounded, color: foreground, size: 27),
-                        ),
-                      ]),
-                    ),
+                Expanded(child: SmokedGlassPopoverMenu<int>(
+                  tooltip: 'Choose photo view',
+                  onOpenChanged: (open) => setState(() => _viewMenuOpen = open),
+                  items: [
+                    for (var index = 0; index < 3; index++)
+                      SmokedGlassPopoverMenuItem(
+                        value: index,
+                        label: const ['Photos', 'Albums', 'Favorites'][index],
+                        icon: [Icons.photo_library_rounded, Icons.photo_album_rounded, Icons.favorite_rounded][index],
+                        trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Text('${counts[index]}', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
+                          if (tab == index) const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.check_rounded, size: 18)),
+                        ]),
+                      ),
+                  ],
+                  onSelected: (value) => setState(() { tab = value; selected.clear(); }),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Flexible(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(
+                        color: foreground, fontSize: 28, fontWeight: FontWeight.w800,
+                        letterSpacing: -0.7,
+                      ))),
+                      const SizedBox(width: 6),
+                      AnimatedRotation(
+                        turns: _viewMenuOpen ? 0.5 : 0,
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeOutCubic,
+                        child: Icon(Icons.keyboard_arrow_down_rounded, color: foreground, size: 27),
+                      ),
+                    ]),
                   ),
                 )),
               const SizedBox(width: 8),
@@ -684,7 +711,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                   ),
                 ],
                 onSelected: (value) {
-                  if (value == 'search') setState(() => searchOpen = !searchOpen);
+                  if (value == 'search') _setSearchOpen(!searchOpen);
                   if (value == 'filter') _showFilters();
                   if (value == 'scan') scan(refresh: true);
                   if (value == 'transfers') {
@@ -702,49 +729,6 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
               ),
             ]),
           ),
-          if (_viewMenuOpen) ...[
-            Positioned.fill(
-              top: headerTop + 64,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => setState(() => _viewMenuOpen = false),
-                child: const ColoredBox(color: Colors.transparent),
-              ),
-            ),
-            Positioned(
-              top: headerTop + 64, left: 16, width: 220,
-              child: TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0.92, end: 1),
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOutCubic,
-                builder: (context, scale, child) => Opacity(
-                  opacity: ((scale - 0.92) / 0.08).clamp(0, 1),
-                  child: Transform.scale(alignment: Alignment.topLeft, scale: scale, child: child),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: BackdropFilter(
-                    filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: isDark ? const Color(0xE51A1C22) : const Color(0xEEF8FAFC),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: isDark
-                          ? Colors.white.withValues(alpha: 0.16)
-                          : const Color(0xFF94A3B8).withValues(alpha: 0.32)),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 6),
-                        child: Column(mainAxisSize: MainAxisSize.min, children: [
-                          for (var i = 0; i < 3; i++) viewRow(i),
-                        ]),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
         ],
       ),
       bottomNavigationBar: selecting
