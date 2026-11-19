@@ -163,7 +163,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.labelSmall?.copyWith(
                             color: colors.onSurfaceVariant,
-                            fontFeatures: const [ui.FontFeature.tabularFigures()],
+                            fontFeatures: const [ui.ui.FontFeature.tabularFigures()],
                           ),
                         ),
                       ],
@@ -402,7 +402,7 @@ class _DownloadTaskCard extends StatelessWidget {
               child: LinearProgressIndicator(
                 minHeight: 5,
                 value: task.progress ?? (downloading ? null : 0),
-                backgroundColor: colors.onSurface.withValues(alpha: 0.10),
+                backgroundColor: Colors.white.withValues(alpha: 0.14),
                 color: failed ? const Color(0xFFFF7B86) : colors.primary,
               ),
             ),
@@ -415,7 +415,7 @@ class _DownloadTaskCard extends StatelessWidget {
                     style: const TextStyle(
                       fontFamily: 'monospace',
                       fontSize: 11,
-                      fontFeatures: [FontFeature.tabularFigures()],
+                      fontFeatures: [ui.FontFeature.tabularFigures()],
                     ),
                   ),
                 ),
@@ -425,7 +425,7 @@ class _DownloadTaskCard extends StatelessWidget {
                     style: const TextStyle(
                       fontFamily: 'monospace',
                       fontSize: 11,
-                      fontFeatures: [FontFeature.tabularFigures()],
+                      fontFeatures: [ui.FontFeature.tabularFigures()],
                     ),
                   ),
               ],
@@ -606,7 +606,9 @@ class _NewDownloadSheetState extends State<_NewDownloadSheet> {
                   radius: BorderRadius.circular(16),
                   child: DefaultTextStyle.merge(
                     style: const TextStyle(color: Colors.white),
-                    child: Padding(
+                    child: IconTheme.merge(
+                      data: const IconThemeData(color: Colors.white70),
+                      child: Padding(
                       padding: const EdgeInsets.all(12),
                       child: Row(
                       children: [
@@ -625,7 +627,7 @@ class _NewDownloadSheetState extends State<_NewDownloadSheet> {
                                     ? 'File size unavailable'
                                     : _formatBytes(_resolved!.totalBytes!),
                                 style: TextStyle(
-                                  color: colors.onSurfaceVariant,
+                                  color: Colors.white70,
                                   fontSize: 12,
                                 ),
                               ),
@@ -633,6 +635,7 @@ class _NewDownloadSheetState extends State<_NewDownloadSheet> {
                           ),
                         ),
                       ],
+                      ),
                       ),
                     ),
                   ),
