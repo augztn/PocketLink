@@ -928,11 +928,11 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
           ),
           actionsBeforeHome: [
             GlassCircleButton(tooltip: 'Search videos', onPressed: () => setState(() => _searchExpanded = !_searchExpanded), child: const Icon(Icons.search_rounded)),
-            GlassCircleButton(tooltip: 'Filter and sort', onPressed: _showMusicFilters, child: const Icon(Icons.tune_rounded)),
           ],
           actions: [
+            PocketLinkAppBarAction(label: 'Filter & sort', icon: Icons.tune_rounded, onPressed: _showMusicFilters),
             PocketLinkAppBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded,
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen()))),
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen())), dividerBefore: true),
             PocketLinkAppBarAction(label: 'Scan again', icon: Icons.refresh_rounded, onPressed: _loading ? null : () => _scan(refresh: true)),
           ],
         ),
@@ -1410,7 +1410,31 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
               ))),
               GlassCircleButton(tooltip: 'Search music', onPressed: () => setState(() => _searchExpanded = !_searchExpanded), child: const Icon(Icons.search_rounded)),
               const SizedBox(width: 8),
-              GlassCircleButton(tooltip: 'Filter and sort', onPressed: _showMusicFilters, child: const Icon(Icons.tune_rounded)),
+              SmokedGlassPopoverMenu<String>(
+                tooltip: 'More music actions',
+                items: const [
+                  SmokedGlassPopoverMenuItem(value: 'filter', label: 'Filter & sort', icon: Icons.tune_rounded),
+                  SmokedGlassPopoverMenuItem(value: 'shuffle', label: 'Shuffle all', icon: Icons.shuffle_rounded, dividerBefore: true),
+                  SmokedGlassPopoverMenuItem(value: 'scan', label: 'Scan library', icon: Icons.refresh_rounded),
+                  SmokedGlassPopoverMenuItem(value: 'transfers', label: 'Transfers', icon: Icons.swap_vert_rounded, dividerBefore: true),
+                ],
+                onSelected: (value) {
+                  if (value == 'filter') _showMusicFilters();
+                  if (value == 'shuffle' && visible.isNotEmpty) {
+                    final shuffled = List<_MediaFile>.of(visible)..shuffle(math.Random());
+                    _openMedia(shuffled.first, shuffled);
+                  }
+                  if (value == 'scan' && !_loading) _scan(refresh: true);
+                  if (value == 'transfers') {
+                    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen()));
+                  }
+                },
+                child: const GlassCircleButton(
+                  tooltip: 'More music actions',
+                  onPressed: null,
+                  child: Icon(Icons.more_horiz_rounded),
+                ),
+              ),
             ]),
           ),
           if (_musicMenuOpen) ...[
