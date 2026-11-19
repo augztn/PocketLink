@@ -1,4 +1,3 @@
-import 'dart:ui' as ui;
 import 'package:material_ui/material_ui.dart';
 import '../../core/network/server_api.dart';
 import 'photo_favorites_store.dart';
