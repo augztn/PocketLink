@@ -24,6 +24,18 @@ internal data class IndexStamp(val size: Long, val modified: Long, val category:
 
 internal data class SkippedIndexItem(val volume: String, val path: String, val reason: String)
 
+private val AUDIO_EXTENSIONS = setOf("mp3", "flac", "m4a", "wav", "ogg", "aac", "opus", "wma")
+private val VIDEO_EXTENSIONS = setOf("mp4", "mkv", "webm", "mov", "avi", "m4v", "3gp", "ts")
+private val AUDIO_MIME_TYPES = setOf(
+    "audio/mpeg", "audio/flac", "audio/x-flac", "audio/mp4", "audio/x-m4a",
+    "audio/wav", "audio/x-wav", "audio/ogg", "audio/aac", "audio/opus",
+    "audio/x-ms-wma"
+)
+private val VIDEO_MIME_TYPES = setOf(
+    "video/mp4", "video/x-m4v", "video/x-matroska", "video/webm",
+    "video/quicktime", "video/x-msvideo", "video/3gpp", "video/mp2t"
+)
+
 internal class MediaIndexDatabase(context: Context) :
     SQLiteOpenHelper(context, "pocketlink_index.db", null, 1) {
 
@@ -162,11 +174,11 @@ internal class MediaIndexDatabase(context: Context) :
 
     fun queryMedia(category: String, query: String, limit: Int, offset: Int): List<IndexedFile> {
         val extensions = when (category) {
-            "music" -> AUDIO
-            "video" -> VIDEO
+            "music" -> AUDIO_EXTENSIONS
+            "video" -> VIDEO_EXTENSIONS
             else -> return emptyList()
         }
-        val allowedMime = if (category == "music") AUDIO_MIME else VIDEO_MIME
+        val allowedMime = if (category == "music") AUDIO_MIME_TYPES else VIDEO_MIME_TYPES
         val extensionClause = extensions.joinToString(" OR ") { "LOWER(name) LIKE ?" }
         val where = mutableListOf(
             "category=?",
@@ -554,17 +566,6 @@ internal class MediaIndexScanner(
         private const val RESCAN_INTERVAL_MS = 10 * 60 * 1000L
         private const val MAX_DEPTH = 64
         private const val MAX_REPORTED_SKIPPED_ITEMS = 100
-        private val AUDIO = setOf("mp3", "flac", "m4a", "wav", "ogg", "aac", "opus", "wma")
-        private val VIDEO = setOf("mp4", "mkv", "webm", "mov", "avi", "m4v", "3gp", "ts")
-        private val AUDIO_MIME = setOf(
-            "audio/mpeg", "audio/flac", "audio/x-flac", "audio/mp4", "audio/x-m4a",
-            "audio/wav", "audio/x-wav", "audio/ogg", "audio/aac", "audio/opus",
-            "audio/x-ms-wma"
-        )
-        private val VIDEO_MIME = setOf(
-            "video/mp4", "video/x-m4v", "video/x-matroska", "video/webm",
-            "video/quicktime", "video/x-msvideo", "video/3gpp", "video/mp2t"
-        )
         private val PHOTO = setOf(
             "jpg","jpeg","png","webp","gif","bmp","heic","heif","avif",
             "tif","tiff","jxl","dng","cr2","nef","arw","orf","rw2"
@@ -575,8 +576,8 @@ internal class MediaIndexScanner(
             val normalizedMime = mime.substringBefore(';').trim().lowercase()
             val genericMime = normalizedMime.isEmpty() || normalizedMime == "application/octet-stream"
             return when {
-                extension in AUDIO && (genericMime || normalizedMime in AUDIO_MIME) -> "music"
-                extension in VIDEO && (genericMime || normalizedMime in VIDEO_MIME) -> "video"
+                extension in AUDIO_EXTENSIONS && (genericMime || normalizedMime in AUDIO_MIME_TYPES) -> "music"
+                extension in VIDEO_EXTENSIONS && (genericMime || normalizedMime in VIDEO_MIME_TYPES) -> "video"
                 extension in PHOTO -> "photo"
                 else -> null
             }
