@@ -38,6 +38,26 @@ void main() {
       throwsArgumentError,
     );
   });
+
+  test('Apple Glass is the default Now Playing theme', () {
+    expect(settings.nowPlayingTheme, 'apple');
+  });
+
+  test('Now Playing theme selection persists independently', () async {
+    await settings.setNowPlayingTheme('blurCard');
+
+    final preferences = await SharedPreferences.getInstance();
+    expect(settings.nowPlayingTheme, 'blurCard');
+    expect(preferences.getString('settings_now_playing_theme'), 'blurCard');
+    expect(settings.nowPlayingScrubberStyle, 'apple');
+  });
+
+  test('unsupported Now Playing themes are rejected', () async {
+    await expectLater(
+      settings.setNowPlayingTheme('unsupported'),
+      throwsArgumentError,
+    );
+  });
   testWidgets('unknown duration shows safe placeholder timestamps',
       (tester) async {
     await tester.pumpWidget(
