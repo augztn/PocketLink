@@ -577,6 +577,11 @@ class _MiniPlayerMorphContents extends StatelessWidget {
                       size: 40,
                       child: IconButton(
                         visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints.tightFor(
+                          width: 36,
+                          height: 36,
+                        ),
                         onPressed: player.togglePlayback,
                         color: Colors.white,
                         icon: Icon((playingSnapshot.data ?? false)
