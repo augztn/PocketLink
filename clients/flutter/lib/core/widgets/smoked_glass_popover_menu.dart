@@ -102,11 +102,11 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
     Animation<double> secondaryAnimation,
   ) {
     final media = MediaQuery.of(context);
-    final right = (media.size.width - anchor.right).clamp(8.0, media.size.width - 8);
+    final right = (media.size.width - anchor.right).clamp(8.0, media.size.width - 8).toDouble();
     final top = (anchor.bottom + gap).clamp(
       media.padding.top + 8,
       media.size.height - media.padding.bottom - 54,
-    );
+    ).toDouble();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final curved = CurvedAnimation(
       parent: animation,
