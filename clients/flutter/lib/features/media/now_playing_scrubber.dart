@@ -305,20 +305,18 @@ class _ScrubberPainter extends CustomPainter {
             ..isAntiAlias = true,
         );
       }
-      if (progress > 0) {
-        final x = right * progress;
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(
-            Rect.fromCenter(
-              center: Offset(x, centerY),
-              width: dragging ? 5.5 : 4,
-              height: dragging ? 18 : 16,
-            ),
-            const Radius.circular(3),
+      final playheadX = right * progress;
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromCenter(
+            center: Offset(playheadX, centerY),
+            width: dragging ? 5.5 : 4,
+            height: dragging ? 18 : 16,
           ),
-          Paint()..color = active,
-        );
-      }
+          const Radius.circular(3),
+        ),
+        Paint()..color = active,
+      );
       _paintShimmer(canvas, size);
       return;
     }
@@ -356,15 +354,17 @@ class _ScrubberPainter extends CustomPainter {
                     : inactive,
         );
       }
-    } else if (progress > 0) {
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(left, centerY - trackHeight / 2,
-              right * progress, trackHeight),
-          Radius.circular(trackHeight),
-        ),
-        Paint()..color = active,
-      );
+    } else {
+      if (progress > 0) {
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromLTWH(left, centerY - trackHeight / 2,
+                right * progress, trackHeight),
+            Radius.circular(trackHeight),
+          ),
+          Paint()..color = active,
+        );
+      }
       if (style == NowPlayingScrubberStyle.classic) {
         canvas.drawCircle(
           Offset(right * progress, centerY),
