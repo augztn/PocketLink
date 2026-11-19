@@ -105,59 +105,56 @@ class LiquidGlassSurface extends StatelessWidget {
           border: border,
         );
 
-        final surface = ClipRRect(
-          borderRadius: radius,
-          child: DecoratedBox(
-            decoration: decoration,
-            child: Stack(
-              fit: StackFit.passthrough,
-              children: [
-                child,
-                if (useGlass)
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.center,
-                            colors: [
-                              Colors.white.withValues(
-                                alpha: isDark ? 0.075 : 0.95,
-                              ),
-                              Colors.transparent,
-                            ],
-                            stops: const [0, 1],
-                          ),
+        final surface = DecoratedBox(
+          decoration: decoration,
+          child: Stack(
+            fit: StackFit.passthrough,
+            children: [
+              child,
+              if (useGlass)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.center,
+                          colors: [
+                            Colors.white.withValues(
+                              alpha: isDark ? 0.075 : 0.95,
+                            ),
+                            Colors.transparent,
+                          ],
+                          stops: const [0, 1],
                         ),
                       ),
                     ),
                   ),
-                if (useGlass && !isDark)
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.bottomCenter,
-                            end: Alignment.center,
-                            colors: [
-                              Colors.white.withValues(alpha: 0.45),
-                              Colors.transparent,
-                            ],
-                            stops: const [0, 1],
-                          ),
+                ),
+              if (useGlass && !isDark)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.center,
+                          colors: [
+                            Colors.white.withValues(alpha: 0.45),
+                            Colors.transparent,
+                          ],
+                          stops: const [0, 1],
                         ),
                       ),
                     ),
                   ),
-              ],
-            ),
+                ),
+            ],
           ),
         );
 
-        return DecoratedBox(
-          decoration: shadow,
+        final clippedSurface = ClipRRect(
+          borderRadius: radius,
           child: useGlass
               ? RepaintBoundary(
                   child: BackdropFilter(
@@ -166,6 +163,11 @@ class LiquidGlassSurface extends StatelessWidget {
                   ),
                 )
               : surface,
+        );
+
+        return DecoratedBox(
+          decoration: shadow,
+          child: clippedSurface,
         );
       },
     );
