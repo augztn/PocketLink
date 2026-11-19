@@ -1060,7 +1060,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                   });
                 }
                 if (shouldDismiss && mounted) {
-                  Navigator.maybePop(context);
+                  unawaited(Navigator.maybePop(context));
                 }
               }
             : null,
@@ -1173,6 +1173,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             ),
             const SizedBox(height: 8),
             ],
+                ),
+              ),
                 ),
               ),
             ],

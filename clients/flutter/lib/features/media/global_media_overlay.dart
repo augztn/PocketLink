@@ -381,7 +381,6 @@ class _AnimatedTrackDirection extends StatelessWidget {
 
 class _GlobalMiniPlayerBar extends StatelessWidget {
   const _GlobalMiniPlayerBar({
-    super.key,
     required this.player,
     required this.onOpen,
     required this.onDismiss,
