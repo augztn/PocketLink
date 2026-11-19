@@ -11,6 +11,7 @@ import '../../core/widgets/liquid_glass_pill.dart';
 import 'now_playing_screen.dart';
 import 'persistent_audio_player.dart';
 import 'now_playing_overlay_controller.dart';
+import 'now_playing_scrubber.dart';
 
 class GlobalMediaOverlay extends StatefulWidget {
   const GlobalMediaOverlay({required this.child, super.key});
@@ -556,15 +557,35 @@ class _MiniPlayerMorphContents extends StatelessWidget {
               ),
             ),
             StreamBuilder<bool>(
-              stream: player.player.stream.playing,
-              initialData: player.player.state.playing,
-              builder: (context, snapshot) => IconButton(
-                visualDensity: VisualDensity.compact,
-                onPressed: player.togglePlayback,
-                color: Colors.white,
-                icon: Icon((snapshot.data ?? false)
-                    ? Icons.pause_rounded
-                    : Icons.play_arrow_rounded),
+              stream: player.player.stream.buffering,
+              initialData: player.player.state.buffering,
+              builder: (context, bufferingSnapshot) =>
+                  StreamBuilder<Duration>(
+                stream: player.player.stream.duration,
+                initialData: player.player.state.duration,
+                builder: (context, durationSnapshot) =>
+                    StreamBuilder<bool>(
+                  stream: player.player.stream.playing,
+                  initialData: player.player.state.playing,
+                  builder: (context, playingSnapshot) {
+                    final loading =
+                        (bufferingSnapshot.data ?? false) ||
+                        (durationSnapshot.data ?? Duration.zero) <=
+                            Duration.zero;
+                    return PlaybackLoadingIndicator(
+                      loading: loading,
+                      size: 40,
+                      child: IconButton(
+                        visualDensity: VisualDensity.compact,
+                        onPressed: player.togglePlayback,
+                        color: Colors.white,
+                        icon: Icon((playingSnapshot.data ?? false)
+                            ? Icons.pause_rounded
+                            : Icons.play_arrow_rounded),
+                      ),
+                    );
+                  },
+                ),
               ),
             ),
             IconButton(
