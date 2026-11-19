@@ -13,6 +13,7 @@ import 'explore_search_screens.dart';
 import 'home_dashboard.dart';
 import '../media/media_player_screen.dart';
 import '../media/now_playing_screen.dart';
+import '../media/global_media_overlay.dart';
 import '../media/media_browser_screen.dart';
 import '../library/photo_gallery_screen.dart';
 import '../media/persistent_audio_player.dart';
@@ -242,6 +243,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _openNowPlaying(PersistentAudioPlayer player) async {
+    if (player.isMusic) {
+      GlobalMediaOverlay.openNowPlaying();
+      return;
+    }
     if (_openingNowPlaying) return;
     final item = player.currentItem;
     final api = player.api;
