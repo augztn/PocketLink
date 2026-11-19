@@ -328,6 +328,9 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
     super.dispose();
   }
 
+  String _pluralCount(int count, String singular, String plural) =>
+      '$count ${count == 1 ? singular : plural}';
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -450,8 +453,8 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
                             ),
                             const SizedBox(height: 3),
                             Text(
-                              '${allItems.where((item) => item.isDirectory).length} folders • '
-                              '${allItems.where((item) => !item.isDirectory).length} files • '
+                              '${_pluralCount(allItems.where((item) => item.isDirectory).length, 'folder', 'folders')} • '
+                              '${_pluralCount(allItems.where((item) => !item.isDirectory).length, 'file', 'files')} • '
                               '${selected?.writable == true ? 'Read & write' : 'Read only'}',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
