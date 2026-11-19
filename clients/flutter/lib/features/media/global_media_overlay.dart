@@ -227,13 +227,9 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay> {
                         ? Duration.zero
                         : const Duration(milliseconds: 280),
                     curve: Curves.easeOutCubic,
-                    child: AnimatedOpacity(
-                      opacity: visible ? 1 : 0,
-                      duration: reduceMotion || drawerOpen
-                          ? Duration.zero
-                          : const Duration(milliseconds: 220),
-                      curve: Curves.easeOut,
-                      child: _GlobalMiniPlayerBar(
+                    child: _GlobalMiniPlayerBar(
+                        visible: visible,
+                        reduceMotion: reduceMotion,
                         player: player,
                         onOpen: _openNowPlaying,
                         onDismiss: player.dismissMiniPlayer,
@@ -381,11 +377,15 @@ class _AnimatedTrackDirection extends StatelessWidget {
 
 class _GlobalMiniPlayerBar extends StatelessWidget {
   const _GlobalMiniPlayerBar({
+    required this.visible,
+    required this.reduceMotion,
     required this.player,
     required this.onOpen,
     required this.onDismiss,
   });
 
+  final bool visible;
+  final bool reduceMotion;
   final PersistentAudioPlayer player;
   final VoidCallback onOpen;
   final VoidCallback onDismiss;
@@ -404,7 +404,13 @@ class _GlobalMiniPlayerBar extends StatelessWidget {
         child: LiquidGlassPill(
           key: PocketLinkNavigation.miniPlayerKey,
           radius: BorderRadius.circular(22),
-          child: GestureDetector(
+          child: AnimatedOpacity(
+            opacity: visible ? 1 : 0,
+            duration: reduceMotion
+                ? Duration.zero
+                : const Duration(milliseconds: 220),
+            curve: Curves.easeOut,
+            child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onVerticalDragEnd: (details) {
               final velocity = details.primaryVelocity ?? 0;
@@ -481,6 +487,7 @@ class _GlobalMiniPlayerBar extends StatelessWidget {
                 ),
               ),
             ),
+          ),
           ),
         ),
       ),

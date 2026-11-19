@@ -126,30 +126,57 @@ abstract final class PocketLinkNavigation {
             ? origin.shortestSide / 2
             : 22.0;
         final radius = sourceRadius * (1 - progress);
-        return Align(
-          alignment: Alignment.topLeft,
-          widthFactor: 1,
-          heightFactor: 1,
-          child: Transform.translate(
-            offset: rect.topLeft,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(radius),
-              child: SizedBox(
-                width: rect.width,
-                height: rect.height,
-                child: FittedBox(
-                  fit: BoxFit.fill,
-                  child: SizedBox(
-                    width: size.width,
-                    height: size.height,
+        final scaleX = rect.width / size.width;
+        final scaleY = rect.height / size.height;
+        final contentOpacity = ((progress - 0.12) / 0.38)
+            .clamp(0.0, 1.0)
+            .toDouble();
+
+        // Keep a solid route backdrop underneath the moving clip. The page is
+        // painted at its real full-screen size and transformed only at paint
+        // time; FittedBox(BoxFit.fill) re-laid it out and produced the blue band.
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            const ColoredBox(color: Color(0xFF0A0B0E)),
+            ClipPath(
+              clipper: _MediaMorphClipper(rect: rect, radius: radius),
+              child: Transform(
+                alignment: Alignment.topLeft,
+                transform: Matrix4.identity()
+                  ..translate(rect.left, rect.top)
+                  ..scale(scaleX, scaleY),
+                child: SizedBox(
+                  width: size.width,
+                  height: size.height,
+                  child: Opacity(
+                    opacity: contentOpacity,
                     child: animatedChild,
                   ),
                 ),
               ),
             ),
-          ),
+          ],
         );
       },
     );
   }
+}
+
+
+class _MediaMorphClipper extends CustomClipper<Path> {
+  const _MediaMorphClipper({required this.rect, required this.radius});
+
+  final Rect rect;
+  final double radius;
+
+  @override
+  Path getClip(Size size) => Path()
+    ..addRRect(
+      RRect.fromRectAndRadius(rect, Radius.circular(radius)),
+    );
+
+  @override
+  bool shouldReclip(_MediaMorphClipper oldClipper) =>
+      oldClipper.rect != rect || oldClipper.radius != radius;
 }

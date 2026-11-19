@@ -6,9 +6,9 @@ import '../settings/app_settings.dart';
 
 /// Shared optical-glass surface for PocketLink's floating controls.
 ///
-/// The surface combines a clipped backdrop blur with the opaque smoked/milk
-/// glass treatment used by the native reference. Keeping the fill opaque enough
-/// preserves contrast over busy file lists and photo grids.
+/// The surface combines a clipped backdrop blur with a light translucent tint.
+/// Keep the filter directly above the content it samples: no repaint boundary,
+/// opacity, or fade transition may isolate the backdrop.
 class LiquidGlassSurface extends StatelessWidget {
   const LiquidGlassSurface({
     required this.child,
@@ -153,16 +153,24 @@ class LiquidGlassSurface extends StatelessWidget {
           ),
         );
 
+        final contentTheme = Theme.of(context).copyWith(
+          splashFactory: NoSplash.splashFactory,
+          highlightColor: Colors.transparent,
+          hoverColor: Colors.transparent,
+          focusColor: Colors.transparent,
+        );
+        final themedSurface = Theme(
+          data: contentTheme,
+          child: surface,
+        );
         final clippedSurface = ClipRRect(
           borderRadius: radius,
           child: useGlass
-              ? RepaintBoundary(
-                  child: BackdropFilter(
-                    filter: ui.ImageFilter.blur(sigmaX: 28, sigmaY: 28),
-                    child: surface,
-                  ),
+              ? BackdropFilter(
+                  filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                  child: themedSurface,
                 )
-              : surface,
+              : themedSurface,
         );
 
         return DecoratedBox(
