@@ -190,6 +190,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
 
   void _openLibrary(String id) {
+    _libraryBackHandler?.call();
+    _libraryBackHandler = null;
     final page = switch (id) {
       'music' => MediaBrowserScreen(api: widget.api, type: MediaLibraryType.music, onHome: _closeLibrary, onBackHandlerChanged: _onLibraryBackHandlerChanged),
       'videos' => MediaBrowserScreen(api: widget.api, type: MediaLibraryType.video, onHome: _closeLibrary, onBackHandlerChanged: _onLibraryBackHandlerChanged),
