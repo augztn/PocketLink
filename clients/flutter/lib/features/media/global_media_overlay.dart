@@ -254,7 +254,6 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
         player,
         settings,
         PocketLinkNavigation.drawerOpen,
-        _nowPlayingController,
       ]),
       builder: (context, _) => ValueListenableBuilder<List<Route<dynamic>>>(
         valueListenable: observer.routeStack,
