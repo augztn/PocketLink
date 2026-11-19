@@ -18,6 +18,7 @@ permissions:
   contents: read
 
 # Feature branches are validated by pull_request; main is validated by push. Keep checks required.
+# Keep regression checks active for overlay/back-navigation changes on this branch.
 # Let active validation finish; do not cancel it when a newer commit is pushed.
 concurrency:
   group: flutter-ci-${{ github.ref }}
