@@ -1,9 +1,10 @@
 import 'dart:math' as math;
 
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
-import '../../core/widgets/liquid_glass_pill.dart';
 import '../../core/navigation/pocketlink_navigation.dart';
+import '../../core/widgets/liquid_glass_pill.dart';
 import 'music_shortcut_menu.dart';
 
 class FloatingNavigationDock extends StatelessWidget {
@@ -118,7 +119,7 @@ class FloatingNavigationDock extends StatelessWidget {
                     right: 0,
                     bottom: musicShortcutsBottomOffset,
                     child: SizedBox(
-                      width: 220,
+                      width: 276,
                       child: MusicShortcutMenu(
                         shortcuts: musicShortcuts,
                         expanded: true,
@@ -127,39 +128,16 @@ class FloatingNavigationDock extends StatelessWidget {
                     ),
                   ),
                 Positioned.fill(
-                  child: GestureDetector(
-                    onHorizontalDragEnd: (details) {
-                      final velocity = details.primaryVelocity ?? 0;
-                      if (velocity.abs() < 150) return;
-                      if (velocity < 0) {
-                        onBrowseSwipeLeft?.call();
-                      } else {
-                        onBrowseSwipeRight?.call();
-                      }
-                    },
-                    child: LiquidGlassPill(
-                      radius: BorderRadius.circular(32),
-                      child: Material(
-                        color: Colors.transparent,
-                        shape: const CircleBorder(),
-                        child: InkWell(
-                          customBorder: const CircleBorder(),
-                          onTap: onBrowsePressed,
-                          onLongPress: onMusicShortcutLongPress,
-                          child: Center(
-                            child: isPlaying
-                                ? const _AnimatedEqualizer()
-                                : Icon(
-                                    hasMedia && isVideo
-                                        ? Icons.play_circle_fill_rounded
-                                        : Icons.music_note_rounded,
-                                    color: colors.primary,
-                                    size: 25,
-                                  ),
-                          ),
-                        ),
-                      ),
-                    ),
+                  child: _MusicDockButton(
+                    preview: preview,
+                    isPlaying: isPlaying,
+                    hasMedia: hasMedia,
+                    isVideo: isVideo,
+                    expanded: musicShortcutsExpanded,
+                    onTap: onBrowsePressed,
+                    onLongPress: onMusicShortcutLongPress,
+                    onSwipeNext: onBrowseSwipeLeft,
+                    onSwipePrevious: onBrowseSwipeRight,
                   ),
                 ),
               ],
@@ -192,6 +170,226 @@ class FloatingNavigationDock extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
         child: content,
+      ),
+    );
+  }
+}
+
+class _MusicDockButton extends StatefulWidget {
+  const _MusicDockButton({
+    required this.preview,
+    required this.isPlaying,
+    required this.hasMedia,
+    required this.isVideo,
+    required this.expanded,
+    required this.onTap,
+    required this.onLongPress,
+    required this.onSwipeNext,
+    required this.onSwipePrevious,
+  });
+
+  final bool preview;
+  final bool isPlaying;
+  final bool hasMedia;
+  final bool isVideo;
+  final bool expanded;
+  final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+  final VoidCallback? onSwipeNext;
+  final VoidCallback? onSwipePrevious;
+
+  @override
+  State<_MusicDockButton> createState() => _MusicDockButtonState();
+}
+
+class _MusicDockButtonState extends State<_MusicDockButton> {
+  double _dragOffset = 0;
+  double _totalDrag = 0;
+  bool _dragging = false;
+
+  int get _dragDirection {
+    if (_dragOffset < -8) return -1;
+    if (_dragOffset > 8) return 1;
+    return 0;
+  }
+
+  void _onDragStart(DragStartDetails details) {
+    if (widget.preview) return;
+    setState(() {
+      _dragging = true;
+      _dragOffset = 0;
+      _totalDrag = 0;
+    });
+  }
+
+  void _onDragUpdate(DragUpdateDetails details) {
+    if (widget.preview) return;
+    setState(() {
+      _totalDrag += details.delta.dx;
+      _dragOffset = (_dragOffset + details.delta.dx * 0.55)
+          .clamp(-34.0, 34.0);
+    });
+  }
+
+  void _onDragEnd(DragEndDetails details) {
+    if (widget.preview) return;
+    final velocity = details.velocity.pixelsPerSecond.dx;
+    final next = _totalDrag < -44 || (_totalDrag < -18 && velocity < -520);
+    final previous = _totalDrag > 44 || (_totalDrag > 18 && velocity > 520);
+
+    setState(() {
+      _dragging = false;
+      _dragOffset = 0;
+      _totalDrag = 0;
+    });
+
+    if (next) {
+      HapticFeedback.selectionClick();
+      widget.onSwipeNext?.call();
+    } else if (previous) {
+      HapticFeedback.selectionClick();
+      widget.onSwipePrevious?.call();
+    }
+  }
+
+  void _onDragCancel() {
+    if (!mounted) return;
+    setState(() {
+      _dragging = false;
+      _dragOffset = 0;
+      _totalDrag = 0;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final direction = _dragDirection;
+    final iconKey = widget.expanded
+        ? 'close'
+        : direction < 0
+            ? 'next'
+            : direction > 0
+                ? 'previous'
+                : widget.isPlaying
+                    ? 'playing'
+                    : widget.hasMedia && widget.isVideo
+                        ? 'video'
+                        : 'music';
+
+    final activeBorder = widget.expanded
+        ? colors.primary
+        : direction != 0
+            ? colors.tertiary
+            : widget.isPlaying
+                ? colors.primary.withValues(alpha: 0.72)
+                : colors.outlineVariant.withValues(alpha: 0.5);
+
+    return Semantics(
+      button: true,
+      label: 'Music button. Tap to open Now Playing, swipe to change tracks, hold for shortcuts.',
+      child: AnimatedContainer(
+        duration: _dragging ? Duration.zero : const Duration(milliseconds: 280),
+        curve: Curves.easeOutBack,
+        transform: Matrix4.translationValues(_dragOffset, 0, 0),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: activeBorder.withValues(alpha: direction == 0 && !widget.expanded ? 0.45 : 0.9),
+            width: direction == 0 && !widget.expanded ? 0.8 : 1.6,
+          ),
+        ),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onHorizontalDragStart: widget.preview ? null : _onDragStart,
+          onHorizontalDragUpdate: widget.preview ? null : _onDragUpdate,
+          onHorizontalDragEnd: widget.preview ? null : _onDragEnd,
+          onHorizontalDragCancel: widget.preview ? null : _onDragCancel,
+          child: LiquidGlassPill(
+            radius: BorderRadius.circular(32),
+            child: Material(
+              color: Colors.transparent,
+              shape: const CircleBorder(),
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: widget.preview ? null : widget.onTap,
+                onLongPress: widget.preview || widget.onLongPress == null
+                    ? null
+                    : () {
+                        HapticFeedback.mediumImpact();
+                        widget.onLongPress!.call();
+                      },
+                child: SizedBox(
+                  width: 64,
+                  height: 64,
+                  child: Center(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 180),
+                      reverseDuration: const Duration(milliseconds: 140),
+                      switchInCurve: Curves.easeOutBack,
+                      switchOutCurve: Curves.easeInCubic,
+                      transitionBuilder: (child, animation) {
+                        final offset = direction < 0
+                            ? const Offset(0.32, 0)
+                            : const Offset(-0.32, 0);
+                        return FadeTransition(
+                          opacity: animation,
+                          child: SlideTransition(
+                            position: Tween<Offset>(
+                              begin: offset,
+                              end: Offset.zero,
+                            ).animate(animation),
+                            child: ScaleTransition(
+                              scale: Tween<double>(begin: 0.72, end: 1)
+                                  .animate(animation),
+                              child: child,
+                            ),
+                          ),
+                        );
+                      },
+                      child: switch (iconKey) {
+                        'close' => Icon(
+                            Icons.close_rounded,
+                            key: const ValueKey('close'),
+                            color: colors.onSurface,
+                            size: 25,
+                          ),
+                        'next' => Icon(
+                            Icons.skip_next_rounded,
+                            key: const ValueKey('next'),
+                            color: colors.tertiary,
+                            size: 29,
+                          ),
+                        'previous' => Icon(
+                            Icons.skip_previous_rounded,
+                            key: const ValueKey('previous'),
+                            color: colors.tertiary,
+                            size: 29,
+                          ),
+                        'playing' => _AnimatedEqualizer(
+                            key: const ValueKey('playing'),
+                            color: colors.primary,
+                          ),
+                        'video' => Icon(
+                            Icons.play_circle_fill_rounded,
+                            key: const ValueKey('video'),
+                            color: colors.primary,
+                            size: 26,
+                          ),
+                        _ => Icon(
+                            Icons.music_note_rounded,
+                            key: const ValueKey('music'),
+                            color: colors.primary,
+                            size: 25,
+                          ),
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -244,15 +442,22 @@ class _DockTab extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(selected ? activeIcon : icon, size: 21,
-                    color: selected ? activeColor : colors.onSurfaceVariant),
+                  Icon(
+                    selected ? activeIcon : icon,
+                    size: 21,
+                    color: selected ? activeColor : colors.onSurfaceVariant,
+                  ),
                   const SizedBox(height: 3),
-                  Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      fontSize: 10,
-                      fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                      color: selected ? activeColor : colors.onSurfaceVariant,
-                    )),
+                          fontSize: 10,
+                          fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                          color: selected ? activeColor : colors.onSurfaceVariant,
+                        ),
+                  ),
                 ],
               ),
             ),
@@ -264,7 +469,9 @@ class _DockTab extends StatelessWidget {
 }
 
 class _AnimatedEqualizer extends StatefulWidget {
-  const _AnimatedEqualizer();
+  const _AnimatedEqualizer({super.key, required this.color});
+
+  final Color color;
 
   @override
   State<_AnimatedEqualizer> createState() => _AnimatedEqualizerState();
@@ -285,7 +492,6 @@ class _AnimatedEqualizerState extends State<_AnimatedEqualizer>
 
   @override
   Widget build(BuildContext context) {
-    final color = Theme.of(context).colorScheme.primary;
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, _) => Row(
@@ -299,7 +505,7 @@ class _AnimatedEqualizerState extends State<_AnimatedEqualizer>
             height: height,
             margin: const EdgeInsets.symmetric(horizontal: 1.5),
             decoration: BoxDecoration(
-              color: color,
+              color: widget.color,
               borderRadius: BorderRadius.circular(4),
             ),
           );
