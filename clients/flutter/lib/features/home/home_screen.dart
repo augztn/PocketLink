@@ -468,12 +468,23 @@ class _HomeScreenState extends State<HomeScreen> {
                         gradient: LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withValues(alpha: 0.18),
-                            Colors.black.withValues(alpha: 0.34),
-                            Colors.black.withValues(alpha: 0.48),
-                          ],
+                          colors: Theme.of(context).brightness ==
+                                  Brightness.dark
+                              ? [
+                                  Colors.transparent,
+                                  Colors.black.withValues(alpha: 0.18),
+                                  Colors.black.withValues(alpha: 0.34),
+                                  Colors.black.withValues(alpha: 0.48),
+                                ]
+                              : [
+                                  Colors.transparent,
+                                  const Color(0xFFF8FAFC)
+                                      .withValues(alpha: 0.28),
+                                  const Color(0xFFF8FAFC)
+                                      .withValues(alpha: 0.56),
+                                  const Color(0xFFF8FAFC)
+                                      .withValues(alpha: 0.78),
+                                ],
                           stops: const [0, 0.44, 0.76, 1],
                         ),
                       ),
