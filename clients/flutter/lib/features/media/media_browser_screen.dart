@@ -1218,10 +1218,21 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     );
   }
 
+  Future<void> _queueTrack(_MediaFile media, {required bool playNext}) async {
+    final player = PersistentAudioPlayer.instance;
+    final item = MediaQueueItem(title: media.entry.name, path: media.path, volume: media.volume, size: media.entry.size);
+    if (player.isActive && player.isMusic) {
+      await player.enqueue(item, playNext: playNext);
+    } else {
+      await player.openQueue(api: widget.api, queue: [item], initialIndex: 0, isMusic: true);
+    }
+  }
+
   Widget _musicTrackTile(_MediaFile media, List<_MediaFile> queueItems) {
     final isPlaying = PersistentAudioPlayer.instance.currentItem?.path == media.path &&
         PersistentAudioPlayer.instance.currentItem?.volume == media.volume &&
-        PersistentAudioPlayer.instance.isMusic;
+        PersistentAudioPlayer.instance.isMusic &&
+        PersistentAudioPlayer.instance.isPlaying;
     final favorite = _favoriteKeys.contains(_favoriteKey(media));
     final dark = Theme.of(context).brightness == Brightness.dark;
     return Material(
@@ -1257,13 +1268,8 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
               tooltip: 'Track actions',
               onSelected: (action) async {
                 if (action == 'favorite') await _toggleFavorite(media);
-                if (action == 'next') await PersistentAudioPlayer.instance.enqueue(
-                  MediaQueueItem(title: media.entry.name, path: media.path, volume: media.volume, size: media.entry.size),
-                  playNext: true,
-                );
-                if (action == 'queue') await PersistentAudioPlayer.instance.enqueue(
-                  MediaQueueItem(title: media.entry.name, path: media.path, volume: media.volume, size: media.entry.size),
-                );
+                if (action == 'next') await _queueTrack(media, playNext: true);
+                if (action == 'queue') await _queueTrack(media, playNext: false);
               },
               itemBuilder: (_) => [
                 const PopupMenuItem(value: 'next', child: Text('Play next')),
@@ -1287,7 +1293,6 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       return q && volume && favorite;
     }).toList(growable: false);
     final visible = _sortMedia(matches);
-    final folders = _foldersAtCurrentLevel(visible);
     final folderCount = _foldersAtCurrentLevel(_media).length;
     final favoriteCount = _media.where((m) => _favoriteKeys.contains(_favoriteKey(m))).length;
     final viewTitle = switch (_libraryView) {
@@ -1305,7 +1310,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         onTap: () {
           setState(() { _libraryView = value; _musicMenuOpen = false; _currentFolderPath = value == 'folders' && _selectedVolume == 'internal' ? 'Music' : ''; });
           _pendingScrollOffset = 0;
-          _saveState(folderPath: _currentFolderPath, clearVolume: value == 'folders' ? false : false);
+          _saveState(folderPath: _currentFolderPath);
           if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0);
         },
         child: Padding(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12), child: Row(children: [
@@ -1319,7 +1324,9 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     return PopScope(
       canPop: _libraryView != 'folders' || _atFolderRoot,
       onPopInvokedWithResult: (didPop, result) { if (!didPop && _libraryView == 'folders' && !_atFolderRoot) _goUpFolder(); },
-      child: Scaffold(
+      child: AnimatedBuilder(
+        animation: PersistentAudioPlayer.instance,
+        builder: (context, _) => Scaffold(
         extendBodyBehindAppBar: true,
         body: Stack(children: [
           Positioned.fill(child: Column(children: [
@@ -1426,6 +1433,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
             ),
           ],
         ]),
+      ),
       ),
     );
   }
