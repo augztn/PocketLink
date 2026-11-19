@@ -377,8 +377,8 @@ internal class MediaIndexScanner(
             // size + category as the best available stable fingerprint.
             val fileUnchanged = previousFile != null &&
                 previousFile.size == safeSize &&
-                if (safeModified <= 0L) previousFile.modified <= 0L
-                else previousFile.modified == safeModified
+                (if (safeModified <= 0L) previousFile.modified <= 0L
+                else previousFile.modified == safeModified)
             val mediaUnchanged = when {
                 category == null -> previousMedia == null
                 previousMedia == null -> false
@@ -520,7 +520,12 @@ internal class MediaIndexScanner(
 
     /** Release scanner resources after a completed scan (primarily for tests). */
     fun close() {
-        executor.shutdownNow()
+        executor.shutdown()
+        try {
+            executor.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS)
+        } catch (_: InterruptedException) {
+            Thread.currentThread().interrupt()
+        }
         database.close()
     }
 
