@@ -5,6 +5,7 @@ import 'photo_favorites_store.dart';
 import '../transfers/transfer_manager_screen.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/feathered_glass_header.dart';
+import '../../core/widgets/smoked_glass_popover_menu.dart';
 
 class _Photo {
   const _Photo(this.file, this.path, this.volume);
@@ -666,8 +667,21 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                 MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen())),
                 child: const Icon(Icons.swap_vert_rounded)),
               const SizedBox(width: 8),
-              PopupMenuButton<String>(
+              SmokedGlassPopoverMenu<String>(
                 tooltip: 'More photo actions',
+                items: [
+                  const SmokedGlassPopoverMenuItem(
+                    value: 'select',
+                    label: 'Select all / clear',
+                    icon: Icons.checklist_rounded,
+                  ),
+                  SmokedGlassPopoverMenuItem(
+                    value: 'scan',
+                    label: 'Scan again',
+                    icon: Icons.refresh_rounded,
+                    enabled: !loading,
+                  ),
+                ],
                 onSelected: (value) {
                   if (value == 'scan') scan(refresh: true);
                   if (value == 'select') setState(() {
@@ -675,10 +689,6 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                     else selected.clear();
                   });
                 },
-                itemBuilder: (_) => [
-                  const PopupMenuItem(value: 'select', child: Text('Select all / clear')),
-                  PopupMenuItem(value: 'scan', enabled: !loading, child: const Text('Scan again')),
-                ],
                 child: GlassCircleButton(tooltip: 'More actions', onPressed: null,
                   child: const Icon(Icons.more_horiz_rounded)),
               ),
