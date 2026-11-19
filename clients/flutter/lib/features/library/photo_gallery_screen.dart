@@ -424,6 +424,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     final colors = theme.colorScheme;
     await showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       backgroundColor: colors.surfaceContainerLow,
       isScrollControlled: true,
       builder: (sheetContext) => StatefulBuilder(
