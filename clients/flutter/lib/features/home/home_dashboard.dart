@@ -1089,15 +1089,18 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
             .take(2)
             .toList(growable: false);
         if (active.isEmpty) return const SizedBox.shrink();
-        return Material(
-          color: colors.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(18),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
-              builder: (_) => const TransferManagerScreen(),
-            )),
-            child: Padding(
+        return Container(
+          decoration: _dashboardCardDecoration(theme),
+          child: Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(18),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(18),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                builder: (_) => const TransferManagerScreen(),
+              )),
+              child: Padding(
               padding: const EdgeInsets.all(14),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
@@ -1130,6 +1133,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                     style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant)),
                 ],
               ]),
+              ),
             ),
           ),
         );
@@ -1630,12 +1634,50 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
         actions: [
           LiquidGlassPill(
             radius: BorderRadius.circular(14),
-            child: IconButton(
-              tooltip: 'Transfers',
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                builder: (_) => const TransferManagerScreen(),
-              )),
-              icon: const Icon(Icons.swap_vert_rounded),
+            child: AnimatedBuilder(
+              animation: TransferManager.instance,
+              builder: (context, _) {
+                final activeCount = TransferManager.instance.tasks
+                    .where((task) => task.status == TransferStatus.running)
+                    .length;
+                return Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    IconButton(
+                      tooltip: activeCount > 0
+                          ? 'Transfers · $activeCount active'
+                          : 'Transfers',
+                      onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                        builder: (_) => const TransferManagerScreen(),
+                      )),
+                      icon: const Icon(Icons.swap_vert_rounded),
+                    ),
+                    if (activeCount > 0)
+                      Positioned(
+                        top: 2,
+                        right: 2,
+                        child: Container(
+                          constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF536DFE),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.black.withValues(alpha: 0.45)),
+                          ),
+                          child: Text(
+                            activeCount > 9 ? '9+' : '$activeCount',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
             ),
           ),
           IconButton(
