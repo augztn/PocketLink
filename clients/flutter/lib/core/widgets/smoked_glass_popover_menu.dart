@@ -168,7 +168,7 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
                                       color: Colors.transparent,
                                       child: InkWell(
                                         onTap: item.enabled
-                                            ? () => navigator?.pop<T>(item.value)
+                                            ? () => Navigator.of(context).pop<T>(item.value)
                                             : null,
                                         borderRadius: BorderRadius.circular(12),
                                         child: Padding(
@@ -245,10 +245,6 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
       ),
     );
   }
-
-  NavigatorState? get navigator => navigatorKey?.currentState;
-
-  GlobalKey<NavigatorState>? get navigatorKey => null;
 
   @override
   Widget buildTransitions(
