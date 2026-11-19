@@ -61,8 +61,15 @@ class _NowPlayingScrubberState extends State<NowPlayingScrubber>
   bool _reduceMotion = false;
 
   bool get _hasDuration => widget.duration > Duration.zero;
+  Duration get _displayPosition => _hasDuration
+      ? Duration(
+          microseconds: widget.position.inMicroseconds
+              .clamp(0, widget.duration.inMicroseconds)
+              .toInt(),
+        )
+      : Duration.zero;
   double get _progress => _hasDuration
-      ? (widget.position.inMicroseconds / widget.duration.inMicroseconds)
+      ? (_displayPosition.inMicroseconds / widget.duration.inMicroseconds)
           .clamp(0.0, 1.0)
           .toDouble()
       : 0;
@@ -167,7 +174,7 @@ class _NowPlayingScrubberState extends State<NowPlayingScrubber>
         LayoutBuilder(
           builder: (context, constraints) => GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTapDown: (details) {
+            onTapUp: (details) {
               _seekAt(details.localPosition.dx, constraints.maxWidth);
               _commitSeek();
             },
@@ -207,7 +214,7 @@ class _NowPlayingScrubberState extends State<NowPlayingScrubber>
             children: [
               Text(
                 _time(_dragProgress == null
-                    ? widget.position
+                    ? _displayPosition
                     : _durationAt(progress)),
                 style: const TextStyle(
                   color: Colors.white54,
