@@ -1,6 +1,8 @@
+import 'dart:ui' as ui;
 import 'package:file_picker/file_picker.dart';
 import 'package:material_ui/material_ui.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
+import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/compact_search_field.dart';
 import '../../core/widgets/pocketlink_file_icon.dart';
 
@@ -55,6 +57,10 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
   bool _loading = true;
   String? _error;
   int _scanned = 0;
+  String _filter = 'all';
+  bool _searchExpanded = false;
+  bool _filterMenuOpen = false;
+  String _sortBy = 'name';
 
   @override
   void initState() {
@@ -176,106 +182,143 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
   @override
   Widget build(BuildContext context) {
     final query = _search.text.trim().toLowerCase();
-    final items = _documents.where((document) =>
-      query.isEmpty ||
-      document.entry.name.toLowerCase().contains(query) ||
-      document.path.toLowerCase().contains(query)
-    ).toList(growable: false);
-
+    String extensionOf(_DocumentFile document) {
+      final dot = document.entry.name.lastIndexOf('.');
+      return dot < 0 ? '' : document.entry.name.substring(dot + 1).toLowerCase();
+    }
+    bool inCategory(_DocumentFile document) {
+      final ext = extensionOf(document);
+      switch (_filter) {
+        case 'pdf': return ext == 'pdf';
+        case 'office': return const {'doc','docx','xls','xlsx','ppt','pptx'}.contains(ext);
+        case 'text': return const {'txt','md','csv'}.contains(ext);
+        case 'archives': return const {'zip','7z','rar','tar','gz'}.contains(ext);
+        default: return true;
+      }
+    }
+    final filtered = _documents.where((document) =>
+      inCategory(document) && (query.isEmpty ||
+        document.entry.name.toLowerCase().contains(query) ||
+        document.path.toLowerCase().contains(query))
+    ).toList();
+    filtered.sort((a, b) => _sortBy == 'newest'
+      ? (DateTime.tryParse(b.entry.modified)?.compareTo(DateTime.tryParse(a.entry.modified) ?? DateTime.fromMillisecondsSinceEpoch(0)) ?? 0)
+      : _sortBy == 'largest' ? b.entry.size.compareTo(a.entry.size)
+      : a.entry.name.toLowerCase().compareTo(b.entry.name.toLowerCase()));
+    final counts = <String, int>{
+      'all': _documents.length,
+      'pdf': _documents.where((d) => extensionOf(d) == 'pdf').length,
+      'office': _documents.where((d) => const {'doc','docx','xls','xlsx','ppt','pptx'}.contains(extensionOf(d))).length,
+      'text': _documents.where((d) => const {'txt','md','csv'}.contains(extensionOf(d))).length,
+      'archives': _documents.where((d) => const {'zip','7z','rar','tar','gz'}.contains(extensionOf(d))).length,
+    };
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final titleColor = dark ? Colors.white : const Color(0xFF0F172A);
+    final filterLabels = {'all':'All Docs','pdf':'PDF','office':'Office','text':'Text & Code','archives':'Archives'};
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: PocketLinkAppBar(
-        title: const Text('Documents', style: TextStyle(fontWeight: FontWeight.w800)),
+        feathered: true,
+        showHome: false,
+        title: PopupMenuButton<String>(
+          tooltip: 'Filter document types',
+          offset: const Offset(0, 48),
+          onOpened: () => setState(() => _filterMenuOpen = true),
+          onCanceled: () => setState(() => _filterMenuOpen = false),
+          onSelected: (value) => setState(() { _filter = value; _filterMenuOpen = false; }),
+          itemBuilder: (_) => filterLabels.entries.map((entry) => PopupMenuItem(
+            value: entry.key,
+            child: Row(children: [
+              Expanded(child: Text(entry.value)),
+              Text('${counts[entry.key]}', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
+              if (_filter == entry.key) const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.check_rounded, size: 18)),
+            ]),
+          )).toList(),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Documents', style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800, color: titleColor)),
+              Text('${filtered.length} documents', style: const TextStyle(fontSize: 10, fontFamily: 'monospace', color: Color(0xFFA1A7B3))),
+            ]),
+            AnimatedRotation(turns: _filterMenuOpen ? 0.5 : 0, duration: const Duration(milliseconds: 200), child: const Icon(Icons.keyboard_arrow_down_rounded)),
+          ]),
+        ),
+        actionsBeforeHome: [
+          GlassCircleButton(tooltip: 'Search documents', onPressed: () => setState(() => _searchExpanded = !_searchExpanded), child: const Icon(Icons.search_rounded)),
+          PopupMenuButton<String>(
+            tooltip: 'Sort documents',
+            onSelected: (value) => setState(() => _sortBy = value),
+            itemBuilder: (_) => const [PopupMenuItem(value: 'name', child: Text('Name')), PopupMenuItem(value: 'newest', child: Text('Newest')), PopupMenuItem(value: 'largest', child: Text('Largest'))],
+            child: const GlassCircleButton(tooltip: 'Sort documents', onPressed: null, child: Icon(Icons.tune_rounded)),
+          ),
+        ],
         actions: [
           PocketLinkAppBarAction(label: 'Scan again', icon: Icons.refresh_rounded, onPressed: _loading ? null : () => _scan(refresh: true)),
         ],
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-            child: CompactSearchField(
-              controller: _search,
-              hintText: 'Search documents',
-              onChanged: (_) => setState(() {}),
-            ),
-          ),
-          if (_loading) const LinearProgressIndicator(minHeight: 2),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-            child: Row(
-              children: [
-                Text('${items.length} ${items.length == 1 ? 'document' : 'documents'}',
-                  style: Theme.of(context).textTheme.labelLarge),
-                const Spacer(),
-                Text(
-                  _loading ? 'Scanning $_scanned folders…' : '$_scanned folders scanned',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+      body: Column(children: [
+        SizedBox(height: MediaQuery.paddingOf(context).top + kToolbarHeight + 4),
+        if (_searchExpanded)
+          Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: CompactSearchField(controller: _search, hintText: 'Search documents', onChanged: (_) => setState(() {}))),
+        Padding(padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+          child: Align(alignment: Alignment.centerLeft, child: Text(
+            '${filtered.length} ${filtered.length == 1 ? 'document' : 'documents'} • ${_loading ? 'Scanning $_scanned folders…' : '$_scanned folders scanned'}',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+          ))),
+        if (_loading) const LinearProgressIndicator(minHeight: 2),
+        Expanded(child: _error != null
+          ? Center(child: Text(_error!, textAlign: TextAlign.center))
+          : filtered.isEmpty
+            ? Center(child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: ClipRRect(borderRadius: BorderRadius.circular(22), child: BackdropFilter(
+                  filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                  child: Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceContainerLow.withValues(alpha: 0.88),
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.45)),
+                    ),
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      if (_loading) const SizedBox(width: 34, height: 34, child: CircularProgressIndicator(strokeWidth: 2.5))
+                      else Icon(Icons.description_outlined, size: 44, color: Theme.of(context).colorScheme.outline),
+                      const SizedBox(height: 12),
+                      Text(_loading ? 'Scanning storage for documents…' : 'No documents found', textAlign: TextAlign.center),
+                      if (!_loading) ...[
+                        const SizedBox(height: 12),
+                        FilledButton.tonal(onPressed: () => Navigator.of(context).pop(), child: const Text('Browse folders')),
+                      ],
+                    ]),
                   ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: _error != null
-                ? Center(child: Text(_error!, textAlign: TextAlign.center))
-                : items.isEmpty
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(28),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.description_outlined, size: 48,
-                                color: Theme.of(context).colorScheme.outline),
-                              const SizedBox(height: 12),
-                              Text(
-                                _loading ? 'Scanning storage for documents…' : 'No documents found',
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                    : ListView.separated(
-                        padding: EdgeInsets.fromLTRB(12, 8, 12,
-                          104 + MediaQuery.paddingOf(context).bottom),
-                        itemCount: items.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 6),
-                        itemBuilder: (context, index) {
-                          final document = items[index];
-                          final extension = document.entry.name.split('.').last.toUpperCase();
-                           final colors = Theme.of(context).colorScheme;
-                           return Container(
-                             decoration: BoxDecoration(
-                               color: colors.surfaceContainerLow,
-                               borderRadius: BorderRadius.circular(18),
-                               border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.62)),
-                            ),
-                            child: ListTile(
-                              leading: PocketLinkFileIcon(
-                                 name: document.entry.name,
-                                 size: 44,
-                               ),
-                              title: Text(document.entry.name,
-                                maxLines: 1, overflow: TextOverflow.ellipsis),
-                              subtitle: Text(
-                                '$extension · ${_formatSize(document.entry.size)} · ${document.volume == null ? 'Internal storage' : 'USB / OTG'}',
-                                maxLines: 1, overflow: TextOverflow.ellipsis,
-                              ),
-                              trailing: IconButton(
-                                tooltip: 'Download original',
-                                onPressed: () => _download(document),
-                                icon: const Icon(Icons.download_rounded),
-                              ),
-                              onTap: () => _download(document),
-                            ),
-                          );
-                        },
-                      ),
-          ),
-        ],
-      ),
+                )),
+              ))
+            : ListView.separated(
+                padding: EdgeInsets.fromLTRB(12, 8, 12, 104 + MediaQuery.paddingOf(context).bottom),
+                itemCount: filtered.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 6),
+                itemBuilder: (context, index) {
+                  final document = filtered[index];
+                  final extension = extensionOf(document).toUpperCase();
+                  final colors = Theme.of(context).colorScheme;
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: colors.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.45)),
+                    ),
+                    child: ListTile(
+                      leading: PocketLinkFileIcon(name: document.entry.name, size: 44),
+                      title: Text(document.entry.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      subtitle: Text('$extension · ${_formatSize(document.entry.size)} · ${document.volume == null ? 'Internal storage' : 'USB / OTG'}',
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                      trailing: IconButton(tooltip: 'Download original', onPressed: () => _download(document), icon: const Icon(Icons.download_rounded)),
+                      onTap: () => _download(document),
+                    ),
+                  );
+                },
+              )),
+      ]),
     );
   }
 }
