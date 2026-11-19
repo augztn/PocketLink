@@ -850,6 +850,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         appBar: PocketLinkAppBar(
           feathered: true,
           showHome: false,
+          automaticallyImplyLeading: false,
           title: PopupMenuButton<String>(
             tooltip: 'Choose video view',
             offset: const Offset(0, 48),
