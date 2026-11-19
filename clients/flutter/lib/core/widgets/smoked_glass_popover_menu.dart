@@ -54,12 +54,18 @@ class SmokedGlassPopoverMenu<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final trigger = GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => _open(context),
-      child: child,
+    return LayoutBuilder(
+      builder: (anchorContext, constraints) {
+        final trigger = GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => _open(anchorContext),
+          child: child,
+        );
+        return tooltip == null
+            ? trigger
+            : Tooltip(message: tooltip!, child: trigger);
+      },
     );
-    return tooltip == null ? trigger : Tooltip(message: tooltip!, child: trigger);
   }
 }
 
