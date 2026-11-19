@@ -37,23 +37,112 @@ class _PocketLinkAppState extends State<PocketLinkApp> {
   }
 
   ThemeData _theme({required Brightness brightness, bool amoled = false}) {
-    final scheme = ColorScheme.fromSeed(
+    final isDark = brightness == Brightness.dark;
+    final seed = ColorScheme.fromSeed(
       seedColor: const Color(0xFF536DFE),
       brightness: brightness,
     );
-    return ThemeData(
-      colorScheme: amoled ? scheme.copyWith(
-        surface: Colors.black,
-        surfaceContainerLowest: Colors.black,
-        surfaceContainerLow: const Color(0xFF080808),
-        surfaceContainer: const Color(0xFF101010),
-        surfaceContainerHigh: const Color(0xFF171717),
-        surfaceContainerHighest: const Color(0xFF202020),
-      ) : scheme,
-      scaffoldBackgroundColor: amoled ? Colors.black : null,
+    final scheme = isDark
+        ? seed.copyWith(
+            primary: const Color(0xFF8C9EFF),
+            onPrimary: const Color(0xFF0E153A),
+            primaryContainer: const Color(0xFF1F2A56),
+            onPrimaryContainer: const Color(0xFFDDE1FF),
+            secondary: const Color(0xFF2DD4BF),
+            onSecondary: const Color(0xFF002024),
+            secondaryContainer: const Color(0xFF12343A),
+            onSecondaryContainer: const Color(0xFF9AF0FA),
+            tertiary: const Color(0xFF8D72E8),
+            background: Colors.black,
+            onBackground: const Color(0xFFF3F5FA),
+            surface: const Color(0xFF0A0B0E),
+            onSurface: const Color(0xFFF3F5FA),
+            surfaceContainerLowest: Colors.black,
+            surfaceContainerLow: const Color(0xFF1E2025),
+            surfaceContainer: const Color(0xFF161618),
+            surfaceContainerHigh: const Color(0xFF22252C),
+            surfaceContainerHighest: const Color(0xFF2A2D36),
+            outline: const Color(0xFF343844),
+            outlineVariant: const Color(0xFF252832),
+            error: const Color(0xFFFF6B6B),
+          )
+        : seed.copyWith(
+            primary: const Color(0xFF4760FA),
+            onPrimary: Colors.white,
+            primaryContainer: const Color(0xFFE0E6FF),
+            onPrimaryContainer: const Color(0xFF131F6B),
+            secondary: const Color(0xFF0E8FA0),
+            onSecondary: Colors.white,
+            secondaryContainer: const Color(0xFFD4F2F6),
+            onSecondaryContainer: const Color(0xFF00363D),
+            tertiary: const Color(0xFF6D4AFF),
+            background: const Color(0xFFF3F5FB),
+            onBackground: const Color(0xFF131726),
+            surface: Colors.white,
+            onSurface: const Color(0xFF131726),
+            surfaceContainerLowest: Colors.white,
+            surfaceContainerLow: Colors.white,
+            surfaceContainer: const Color(0xFFEBEFF8),
+            surfaceContainerHigh: const Color(0xFFE1E6F3),
+            surfaceContainerHighest: const Color(0xFFD5DCEB),
+            outline: const Color(0xFF6A738D),
+            outlineVariant: const Color(0xFFD6DCEC),
+          );
+    final effectiveScheme = amoled && isDark
+        ? scheme.copyWith(
+            surface: Colors.black,
+            surfaceContainerLowest: Colors.black,
+            surfaceContainerLow: const Color(0xFF0C0D10),
+            surfaceContainer: const Color(0xFF121316),
+            surfaceContainerHigh: const Color(0xFF18191E),
+            surfaceContainerHighest: const Color(0xFF22242B),
+          )
+        : scheme;
+
+    final baseTextTheme = ThemeData(
+      brightness: brightness,
       useMaterial3: true,
-      inputDecorationTheme: const InputDecorationTheme(
-        border: OutlineInputBorder(),
+    ).textTheme.apply(fontFamily: 'sans-serif');
+
+    return ThemeData(
+      colorScheme: effectiveScheme,
+      scaffoldBackgroundColor: isDark
+          ? Colors.black
+          : const Color(0xFFF3F5FB),
+      textTheme: baseTextTheme,
+      useMaterial3: true,
+      visualDensity: VisualDensity.standard,
+      dividerColor: effectiveScheme.outlineVariant.withValues(alpha: 0.7),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: effectiveScheme.surfaceContainerLow,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(
+            color: effectiveScheme.outlineVariant.withValues(alpha: 0.55),
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(
+            color: effectiveScheme.primary,
+            width: 1.4,
+          ),
+        ),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: effectiveScheme.surfaceContainerLow,
+        modalBackgroundColor: effectiveScheme.surfaceContainerLow,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+      ),
+      snackBarTheme: const SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
       ),
     );
   }
