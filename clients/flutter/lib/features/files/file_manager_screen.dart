@@ -10,7 +10,6 @@ import '../../core/network/server_api.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/storage/home_activity_store.dart';
 import '../home/browser_state_store.dart';
-import '../../core/settings/app_settings.dart';
 import '../transfers/transfer_manager.dart';
 import '../downloads/download_manager_service.dart';
 import '../transfers/transfer_manager_screen.dart';
