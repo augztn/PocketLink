@@ -338,6 +338,197 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   }
 }
 
+class _NowPlayingMorphOverlay extends StatelessWidget {
+  const _NowPlayingMorphOverlay({
+    required this.animation,
+    required this.originRect,
+    required this.player,
+    required this.api,
+    required this.onDismiss,
+    required this.onDragStart,
+    required this.onDragUpdate,
+    required this.onDragEnd,
+  });
+
+  final Animation<double> animation;
+  final Rect? originRect;
+  final PersistentAudioPlayer player;
+  final ServerApi api;
+  final VoidCallback onDismiss;
+  final VoidCallback onDragStart;
+  final ValueChanged<double> onDragUpdate;
+  final ValueChanged<double> onDragEnd;
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    final destination = Offset.zero & size;
+    final origin = originRect ??
+        Rect.fromLTWH(size.width - 292, size.height - 142, 278, 62);
+
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, _) {
+        final t = animation.value.clamp(0.0, 1.0).toDouble();
+        final rect = Rect.lerp(origin, destination, t)!;
+        final radius = BorderRadius.lerp(
+          BorderRadius.circular(22),
+          BorderRadius.circular(t > 0 && animation.status == AnimationStatus.forward ? 0 : 32),
+          t,
+        )!;
+        final miniOpacity = (1.0 - t * 2.5).clamp(0.0, 1.0).toDouble();
+        final fullOpacity = ((t - 0.25) / 0.75).clamp(0.0, 1.0).toDouble();
+
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            Positioned.fill(
+              child: IgnorePointer(
+                child: ColoredBox(
+                  color: Colors.black.withValues(alpha: 0.55 * t),
+                ),
+              ),
+            ),
+            ClipPath(
+              clipper: _NowPlayingMorphClipper(
+                rect: rect,
+                radius: radius,
+              ),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  const ColoredBox(color: Color(0xFF0A0B0E)),
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      ignoring: fullOpacity < 1,
+                      child: Opacity(
+                        opacity: fullOpacity,
+                        child: NowPlayingScreen(
+                          api: api,
+                          queue: player.queue,
+                          initialIndex: player.currentIndex,
+                          resumeExisting: true,
+                          onDismiss: onDismiss,
+                          onDismissDragStart: onDragStart,
+                          onDismissDragUpdate: onDragUpdate,
+                          onDismissDragEnd: onDragEnd,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned.fromRect(
+                    rect: rect,
+                    child: IgnorePointer(
+                      ignoring: miniOpacity <= 0,
+                      child: Opacity(
+                        opacity: miniOpacity,
+                        child: _MiniPlayerMorphContents(player: player),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _NowPlayingMorphClipper extends CustomClipper<Path> {
+  const _NowPlayingMorphClipper({
+    required this.rect,
+    required this.radius,
+  });
+
+  final Rect rect;
+  final BorderRadius radius;
+
+  @override
+  Path getClip(Size size) => Path()..addRRect(radius.toRRect(rect));
+
+  @override
+  bool shouldReclip(_NowPlayingMorphClipper oldClipper) =>
+      oldClipper.rect != rect || oldClipper.radius != radius;
+}
+
+class _MiniPlayerMorphContents extends StatelessWidget {
+  const _MiniPlayerMorphContents({required this.player});
+
+  final PersistentAudioPlayer player;
+
+  @override
+  Widget build(BuildContext context) {
+    final item = player.currentItem;
+    if (item == null) return const SizedBox.shrink();
+    final colors = Theme.of(context).colorScheme;
+    return Align(
+      alignment: Alignment.center,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: colors.primary.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.graphic_eq_rounded, color: colors.primary, size: 21),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const Text(
+                    'NOW PLAYING',
+                    style: TextStyle(
+                      color: Colors.white54,
+                      fontSize: 8,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            StreamBuilder<bool>(
+              stream: player.player.stream.playing,
+              initialData: player.player.state.playing,
+              builder: (context, snapshot) => IconButton(
+                visualDensity: VisualDensity.compact,
+                onPressed: player.togglePlayback,
+                color: Colors.white,
+                icon: Icon((snapshot.data ?? false)
+                    ? Icons.pause_rounded
+                    : Icons.play_arrow_rounded),
+              ),
+            ),
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              onPressed: player.skipToNext,
+              color: Colors.white,
+              icon: const Icon(Icons.skip_next_rounded),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _TrackChangePopup extends StatelessWidget {
   const _TrackChangePopup({required this.item, required this.direction, super.key});
 
