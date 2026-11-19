@@ -1152,11 +1152,13 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             ),
             const SizedBox(height: 8),
             ],
-                ),
-              ),
-            ],
           ),
-    );
+        ),
+      ),
+    ),
+  ],
+),
+);
   }
 
   @override
