@@ -900,23 +900,30 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
         builder: (context, bufferSnapshot) => StreamBuilder<bool>(
           stream: _player.stream.buffering,
           initialData: _player.state.buffering,
-          builder: (context, bufferingSnapshot) {
-            final duration = durationSnapshot.data ?? Duration.zero;
-            final position = duration > Duration.zero
-                ? positionSnapshot.data ?? Duration.zero
-                : Duration.zero;
-            return NowPlayingScrubber(
-              style: NowPlayingScrubberStyle.fromKey(
-                AppSettings.instance.nowPlayingScrubberStyle,
-              ),
-              position: position,
-              duration: duration,
-              bufferedPosition: bufferSnapshot.data ?? Duration.zero,
-              isPlaying: _player.state.playing,
-              isBuffering: bufferingSnapshot.data ?? false,
-              onSeek: (value) => unawaited(_player.seek(value)),
-            );
-          },
+          builder: (context, bufferingSnapshot) => StreamBuilder<bool>(
+            stream: _player.stream.playing,
+            initialData: _player.state.playing,
+            builder: (context, playingSnapshot) {
+              final duration = durationSnapshot.data ?? Duration.zero;
+              final position = duration > Duration.zero
+                  ? positionSnapshot.data ?? Duration.zero
+                  : Duration.zero;
+              return AnimatedBuilder(
+                animation: AppSettings.instance,
+                builder: (context, _) => NowPlayingScrubber(
+                  style: NowPlayingScrubberStyle.fromKey(
+                    AppSettings.instance.nowPlayingScrubberStyle,
+                  ),
+                  position: position,
+                  duration: duration,
+                  bufferedPosition: bufferSnapshot.data ?? Duration.zero,
+                  isPlaying: playingSnapshot.data ?? false,
+                  isBuffering: bufferingSnapshot.data ?? false,
+                  onSeek: (value) => unawaited(_player.seek(value)),
+                ),
+              );
+            },
+          ),
         ),
       ),
     ),
