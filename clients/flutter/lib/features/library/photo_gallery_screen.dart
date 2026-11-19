@@ -556,32 +556,6 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     final headerTop = MediaQuery.paddingOf(context).top;
     final contentTop = headerTop + 76;
 
-    Widget viewRow(int index) {
-      final active = tab == index;
-      return InkWell(
-        onTap: () => setState(() { tab = index; _viewMenuOpen = false; selected.clear(); }),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          child: Row(children: [
-            Expanded(child: Text(
-              const ['Photos', 'Albums', 'Favorites'][index],
-              style: TextStyle(color: active ? foreground : const Color(0xFFA1A7B3),
-                fontWeight: active ? FontWeight.w700 : FontWeight.w500, fontSize: 15),
-            )),
-            Text('${counts[index]}', style: const TextStyle(
-              color: Color(0xFFA1A7B3), fontSize: 12,
-              fontFamily: 'monospace', fontFeatures: [ui.FontFeature.tabularFigures()],
-            )),
-            if (active) ...[
-              const SizedBox(width: 10),
-              Icon(Icons.check_rounded, color: foreground, size: 19),
-            ],
-          ]),
-        ),
-      );
-    }
-
     return Scaffold(
       extendBodyBehindAppBar: true,
       body: Stack(
