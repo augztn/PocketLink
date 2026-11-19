@@ -207,9 +207,11 @@ class DownloadManagerService extends ChangeNotifier {
         ?.trim();
   }
 
-  Future<DownloadTask> enqueueUrl(ResolvedDownload resolved) async {
+  Future<DownloadTask> enqueueUrl(
+    ResolvedDownload resolved, {String? directoryPath}
+  ) async {
     await initialize();
-    final directory = Directory(await defaultDirectory());
+    final directory = Directory(directoryPath ?? await defaultDirectory());
     await directory.create(recursive: true);
     final destination = await _uniqueDestination(
       directory.path,
