@@ -994,7 +994,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                   radius: BorderRadius.circular(26),
                   child: IconButton(
                     tooltip: 'Previous track',
-                    onPressed: hasMultiple ? _player.previous : null,
+                    onPressed: hasMultiple ? _persistent.skipToPrevious : null,
                     color: Colors.white,
                     iconSize: 27,
                     icon: const Icon(Icons.skip_previous_rounded),
@@ -1039,7 +1039,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                   radius: BorderRadius.circular(26),
                   child: IconButton(
                     tooltip: 'Next track',
-                    onPressed: hasMultiple ? _player.next : null,
+                    onPressed: hasMultiple ? _persistent.skipToNext : null,
                     color: Colors.white,
                     iconSize: 27,
                     icon: const Icon(Icons.skip_next_rounded),
@@ -1184,9 +1184,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
           final distance = _trackSwipeDistance;
           final velocity = details.primaryVelocity ?? 0;
           if (distance < -80 || velocity < -500) {
-            unawaited(_player.next());
+            unawaited(_persistent.skipToNext());
           } else if (distance > 80 || velocity > 500) {
-            unawaited(_player.previous());
+            unawaited(_persistent.skipToPrevious());
           }
           _trackSwipeDistance = 0;
         } : null,
