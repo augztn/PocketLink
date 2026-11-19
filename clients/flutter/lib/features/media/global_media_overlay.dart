@@ -71,6 +71,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     _openNowPlayingHandler = null;
     _nowPlayingEntry?.remove();
     _nowPlayingEntry = null;
+    _nowPlayingController.stop();
     _nowPlayingController.dispose();
     super.dispose();
   }
