@@ -106,6 +106,29 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     return Icons.insert_drive_file_outlined;
   }
 
+  Color _iconColorFor(FileEntry item, ColorScheme colors) {
+    if (item.isDirectory) return colors.primary;
+    final extension = _extension(item);
+    if (_categoryExtensions['Images']!.contains(extension)) {
+      return const Color(0xFFF4B544);
+    }
+    if (_categoryExtensions['Videos']!.contains(extension)) {
+      return const Color(0xFF2BBEAE);
+    }
+    if (_audioExtensions.contains(extension) ||
+        _categoryExtensions['Music']!.contains(extension)) {
+      return const Color(0xFF9A83F5);
+    }
+    if (extension == 'pdf') return const Color(0xFFF16B6B);
+    if (_categoryExtensions['Documents']!.contains(extension)) {
+      return const Color(0xFF64A5F5);
+    }
+    if (const {'zip', '7z', 'rar', 'tar', 'gz', 'bz2'}.contains(extension)) {
+      return const Color(0xFFF09A48);
+    }
+    return colors.secondary;
+  }
+
   @override
   void didUpdateWidget(covariant FileManagerScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -600,7 +623,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     });
 
     Widget fileIcon(FileEntry item, {double size = 24}) {
-      final color = item.isDirectory ? colors.primary : colors.secondary;
+      final color = _iconColorFor(item, colors);
       return Container(
         width: 48,
         height: 48,
