@@ -6,6 +6,7 @@ import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/pocketlink_file_icon.dart';
 import '../../core/widgets/smoked_glass_popover_menu.dart';
+import '../../core/widgets/smoked_glass_popover_menu.dart';
 
 import '../../core/network/server_api.dart';
 import '../../core/logging/app_logger.dart';
@@ -699,33 +700,45 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
         appBar: PocketLinkAppBar(
           feathered: true,
           showHome: false,
-          title: PopupMenuButton<String>(
+          title: SmokedGlassPopoverMenu<String>(
             tooltip: 'Choose storage location',
-            offset: const Offset(0, 48),
-            onOpened: () => setState(() => _storageMenuOpen = true),
-            onCanceled: () => setState(() => _storageMenuOpen = false),
+            onOpenChanged: (open) => setState(() => _storageMenuOpen = open),
+            items: [
+              SmokedGlassPopoverMenuItem(
+                value: 'internal',
+                label: 'Internal storage',
+                icon: Icons.phone_android_rounded,
+                trailing: _selectedVolume == null
+                    ? const Icon(Icons.check_rounded, size: 18)
+                    : null,
+              ),
+              for (final volume in _volumes)
+                SmokedGlassPopoverMenuItem(
+                  value: volume.id,
+                  label: volume.name,
+                  icon: Icons.usb_rounded,
+                  trailing: _selectedVolume == volume.id
+                      ? const Icon(Icons.check_rounded, size: 18)
+                      : null,
+                ),
+              const SmokedGlassPopoverMenuItem(
+                value: 'downloads',
+                label: 'Downloads',
+                icon: Icons.download_rounded,
+                dividerBefore: true,
+              ),
+              const SmokedGlassPopoverMenuItem(
+                value: 'recent',
+                label: 'Recent',
+                icon: Icons.history_rounded,
+              ),
+            ],
             onSelected: (value) {
-              setState(() => _storageMenuOpen = false);
               if (value == 'recent') { _showRecentLocations(); return; }
               if (value == 'internal') { _selectPartition(null); return; }
               if (value == 'downloads') { _selectPartition(null).then((_) => _load('Downloads')); return; }
               _selectPartition(value);
             },
-            itemBuilder: (_) => [
-              PopupMenuItem(value: 'internal', child: Row(children: [
-                const Icon(Icons.phone_android_rounded, size: 19), const SizedBox(width: 10),
-                const Expanded(child: Text('Internal storage')),
-                if (_selectedVolume == null) const Icon(Icons.check_rounded, size: 18),
-              ])),
-              for (final volume in _volumes) PopupMenuItem(value: volume.id, child: Row(children: [
-                const Icon(Icons.usb_rounded, size: 19), const SizedBox(width: 10),
-                Expanded(child: Text(volume.name, maxLines: 1, overflow: TextOverflow.ellipsis)),
-                if (_selectedVolume == volume.id) const Icon(Icons.check_rounded, size: 18),
-              ])),
-              const PopupMenuDivider(),
-              const PopupMenuItem(value: 'downloads', child: Text('Downloads')),
-              const PopupMenuItem(value: 'recent', child: Text('Recent')),
-            ],
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(_path.isEmpty ? 'Files' : _path.split('/').last,
@@ -740,10 +753,14 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
           actionsBeforeHome: [
             if (widget.showSearch) GlassCircleButton(tooltip: 'Search files', onPressed: () => setState(() => _searchExpanded = !_searchExpanded), child: Icon(_searchExpanded ? Icons.close_rounded : Icons.search_rounded)),
             GlassCircleButton(tooltip: 'Upload file', onPressed: _uploadFile, child: const Icon(Icons.upload_rounded)),
-            PopupMenuButton<String>(
+            SmokedGlassPopoverMenu<String>(
               tooltip: 'Sort files',
+              items: const [
+                SmokedGlassPopoverMenuItem(value: 'name', label: 'Name', icon: Icons.sort_by_alpha_rounded),
+                SmokedGlassPopoverMenuItem(value: 'newest', label: 'Newest', icon: Icons.schedule_rounded),
+                SmokedGlassPopoverMenuItem(value: 'largest', label: 'Largest', icon: Icons.storage_rounded),
+              ],
               onSelected: (value) { setState(() => _sortBy = value); _saveState(); },
-              itemBuilder: (_) => const [PopupMenuItem(value: 'name', child: Text('Name')), PopupMenuItem(value: 'newest', child: Text('Newest')), PopupMenuItem(value: 'largest', child: Text('Largest'))],
               child: const GlassCircleButton(tooltip: 'Sort files', onPressed: null, child: Icon(Icons.tune_rounded)),
             ),
           ],
@@ -843,15 +860,18 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                     ),
                   ),
                 ),
-                PopupMenuButton<String>(
+                SmokedGlassPopoverMenu<String>(
                   tooltip: 'Sort files',
-                  onSelected: (value) { setState(() => _sortBy = value); _saveState(); },
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(value: 'name', child: Text('Name')),
-                    PopupMenuItem(value: 'newest', child: Text('Newest')),
-                    PopupMenuItem(value: 'largest', child: Text('Largest')),
+                  items: const [
+                    SmokedGlassPopoverMenuItem(value: 'name', label: 'Name', icon: Icons.sort_by_alpha_rounded),
+                    SmokedGlassPopoverMenuItem(value: 'newest', label: 'Newest', icon: Icons.schedule_rounded),
+                    SmokedGlassPopoverMenuItem(value: 'largest', label: 'Largest', icon: Icons.storage_rounded),
                   ],
-                  icon: const Icon(Icons.sort_rounded),
+                  onSelected: (value) { setState(() => _sortBy = value); _saveState(); },
+                  child: const Padding(
+                    padding: EdgeInsets.all(8),
+                    child: Icon(Icons.sort_rounded),
+                  ),
                 ),
                 IconButton(
                   tooltip: _gridView ? 'List view' : 'Grid view',
