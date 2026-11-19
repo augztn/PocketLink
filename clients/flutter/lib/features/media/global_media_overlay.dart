@@ -194,7 +194,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
       _openingNowPlaying = false;
       setState(() {
         _nowPlayingOpen = false;
-        _isNowPlayingDragging = false;
+        _isNowPlayingDragging.value = false;
         _nowPlayingOriginRect = null;
       });
       _nowPlayingController.value = 0;
@@ -249,7 +249,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     if (_nowPlayingController.value < 0.85 || velocity > 280) {
       unawaited(_closeNowPlaying());
     } else {
-      _isNowPlayingDragging = false;
+      _isNowPlayingDragging.value = false;
       unawaited(_nowPlayingController.animateTo(
         1,
         duration: const Duration(milliseconds: 180),
