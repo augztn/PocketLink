@@ -931,20 +931,47 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
     );
   }
 
-  Future<void> _showSkippedItemsInfo(int count) async {
+  Future<void> _showSkippedItemsInfo(MediaIndexStatus status) async {
+    final items = status.skippedItems;
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Skipped items'),
-        content: Text(
-          '${count} ${count == 1 ? 'item was' : 'items were'} skipped during the host media scan. '
-          'The current media-index API reports the count only; it does not provide individual skipped paths.',
+        title: Text('${status.skipped} skipped ${status.skipped == 1 ? 'item' : 'items'}'),
+        content: SizedBox(
+          width: 440,
+          child: items.isEmpty
+              ? const Text('The host reported skipped items but did not return their locations. Run Scan host again after checking storage permissions.')
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: items.length,
+                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final item = items[index];
+                          final location = item.path.isEmpty ? item.volume : '${item.volume}/${item.path}';
+                          return ListTile(
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            leading: const Icon(Icons.folder_off_outlined, color: Color(0xFFF59E0B)),
+                            title: Text(location, maxLines: 2, overflow: TextOverflow.ellipsis),
+                            subtitle: Text(item.reason, maxLines: 2, overflow: TextOverflow.ellipsis),
+                          );
+                        },
+                      ),
+                    ),
+                    if (status.skipped > items.length) ...[
+                      const SizedBox(height: 8),
+                      Text('Showing ${items.length} of ${status.skipped}. Remaining entries are omitted to keep diagnostics lightweight.',
+                        style: Theme.of(context).textTheme.bodySmall),
+                    ],
+                  ],
+                ),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Close'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Close')),
         ],
       ),
     );
@@ -1265,7 +1292,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                   borderRadius: BorderRadius.circular(20),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(20),
-                    onTap: () => _showSkippedItemsInfo(status.skipped),
+                    onTap: () => _showSkippedItemsInfo(status),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                       child: Row(
