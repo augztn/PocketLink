@@ -948,7 +948,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
               ),
               PlaybackLoadingIndicator(
                 loading: loading,
-                size: 64,
+                size: 68,
                 child: _TransportGlyph(
                   tooltip: playing ? 'Pause' : 'Play',
                   icon: playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
