@@ -112,7 +112,6 @@ class _ExploreGrid extends StatefulWidget {
   final VoidCallback? onHome;
   final ValueChanged<Widget> onOpen;
   final VoidCallback? onOpenFiles;
-  final VoidCallback? onOpenExternalStorage;
 
   @override
   State<_ExploreGrid> createState() => _ExploreGridState();
@@ -127,7 +126,6 @@ class _ExploreGridState extends State<_ExploreGrid>
   VoidCallback? get onHome => widget.onHome;
   ValueChanged<Widget> get onOpen => widget.onOpen;
   VoidCallback? get onOpenFiles => widget.onOpenFiles;
-  VoidCallback? get onOpenExternalStorage => widget.onOpenExternalStorage;
 
   @override
   void initState() {
