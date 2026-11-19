@@ -38,20 +38,26 @@ void main() {
     await tester.longPress(find.byKey(PocketLinkNavigation.musicButtonKey));
     expect(holds, 1);
 
-    final button = find.byIcon(Icons.music_note_rounded);
+    final button = find.byKey(PocketLinkNavigation.musicButtonKey);
     final nextGesture = await tester.startGesture(tester.getCenter(button));
-    await nextGesture.moveBy(const Offset(-54, 0));
-    await tester.pump();
+    // Send several pointer updates so the horizontal drag recognizer can win
+    // the gesture arena and deliver the full drag delta.
+    for (var step = 0; step < 5; step++) {
+      await nextGesture.moveBy(const Offset(-16, 0));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
     expect(find.byIcon(Icons.skip_next_rounded), findsOneWidget);
     await nextGesture.up();
     await tester.pumpAndSettle();
     expect(next, 1);
 
     final previousGesture = await tester.startGesture(
-      tester.getCenter(find.byKey(PocketLinkNavigation.musicButtonKey)),
+      tester.getCenter(button),
     );
-    await previousGesture.moveBy(const Offset(54, 0));
-    await tester.pump();
+    for (var step = 0; step < 5; step++) {
+      await previousGesture.moveBy(const Offset(16, 0));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
     expect(find.byIcon(Icons.skip_previous_rounded), findsOneWidget);
     await previousGesture.up();
     await tester.pumpAndSettle();
