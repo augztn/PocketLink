@@ -29,13 +29,15 @@ class LiquidGlassSurface extends StatelessWidget {
         final colors = Theme.of(context).colorScheme;
 
         final glassFill = isDark
-            ? const LinearGradient(
+            ? LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Color(0xEE1D202A),
-                  Color(0xF414161E),
+                  Colors.white.withValues(alpha: 0.16),
+                  Colors.white.withValues(alpha: 0.07),
+                  Colors.white.withValues(alpha: 0.11),
                 ],
+                stops: const [0, 0.52, 1],
               )
             : const LinearGradient(
                 begin: Alignment.topLeft,
@@ -51,25 +53,25 @@ class LiquidGlassSurface extends StatelessWidget {
             ? Border(
                 top: BorderSide(
                   color: Colors.white.withValues(
-                    alpha: isDark ? 0.28 : 0.96,
+                    alpha: isDark ? 0.50 : 0.96,
                   ),
-                  width: isDark ? 1.1 : 1.2,
+                  width: 1.2,
                 ),
                 left: BorderSide(
                   color: Colors.white.withValues(
                     alpha: isDark ? 0.14 : 0.68,
                   ),
-                  width: 0.8,
+                  width: isDark ? 1.2 : 0.8,
                 ),
                 right: BorderSide(
                   color: Colors.white.withValues(
-                    alpha: isDark ? 0.12 : 0.52,
+                    alpha: isDark ? 0.14 : 0.52,
                   ),
                   width: 0.8,
                 ),
                 bottom: BorderSide(
                   color: (isDark ? Colors.white : const Color(0xFF4760FA))
-                      .withValues(alpha: isDark ? 0.09 : 0.22),
+                      .withValues(alpha: isDark ? 0.22 : 0.22),
                   width: 0.8,
                 ),
               )
@@ -86,12 +88,14 @@ class LiquidGlassSurface extends StatelessWidget {
           boxShadow: [
             BoxShadow(
               color: isDark
-                  ? Colors.black.withValues(alpha: useGlass ? 0.30 : 0.10)
+                  ? Colors.black.withValues(alpha: useGlass ? 0.45 : 0.10)
                   : const Color(0xFF283C8E)
                       .withValues(alpha: useGlass ? 0.15 : 0.07),
               blurRadius: useGlass ? (isDark ? 18 : 16) : 10,
-              offset: const Offset(0, 6),
-              spreadRadius: -5,
+              offset: useGlass && isDark
+                  ? const Offset(0, 8)
+                  : const Offset(0, 6),
+              spreadRadius: useGlass && isDark ? 0 : -5,
             ),
           ],
         );
@@ -155,7 +159,7 @@ class LiquidGlassSurface extends StatelessWidget {
           child: ClipRRect(
             borderRadius: radius,
             child: BackdropFilter(
-              filter: ui.ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+              filter: ui.ImageFilter.blur(sigmaX: 28, sigmaY: 28),
               child: surface,
             ),
           ),
