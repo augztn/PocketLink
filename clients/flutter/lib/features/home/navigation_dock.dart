@@ -296,13 +296,7 @@ class _MusicDockButtonState extends State<_MusicDockButton> {
             : const Duration(milliseconds: 280),
         curve: Curves.easeOutBack,
         transform: Matrix4.translationValues(_dragOffset, 0, 0),
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: activeBorder.withValues(alpha: direction == 0 && !widget.expanded ? 0.45 : 0.9),
-            width: direction == 0 && !widget.expanded ? 0.8 : 1.6,
-          ),
-        ),
+
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onHorizontalDragStart: widget.preview ? null : _onDragStart,
@@ -435,39 +429,55 @@ class _DockTab extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(26),
           onTap: () => onTap(index),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 5),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOutCubic,
-              decoration: BoxDecoration(
-                color: selected ? activeColor.withValues(alpha: 0.075) : Colors.transparent,
-                borderRadius: BorderRadius.circular(25),
-                border: selected
-                    ? Border.all(color: activeColor.withValues(alpha: 0.07))
-                    : null,
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    selected ? activeIcon : icon,
-                    size: 21,
-                    color: selected ? activeColor : colors.onSurfaceVariant,
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          fontSize: 10,
-                          fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                          color: selected ? activeColor : colors.onSurfaceVariant,
-                        ),
-                  ),
-                ],
-              ),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
+            decoration: BoxDecoration(
+              color: selected
+                  ? (Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white.withValues(alpha: 0.16)
+                      : activeColor.withValues(alpha: 0.10))
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(25),
+              border: selected
+                  ? Border.all(
+                      color: Colors.white.withValues(
+                        alpha: Theme.of(context).brightness == Brightness.dark
+                            ? 0.28
+                            : 0.38,
+                      ),
+                    )
+                  : null,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  selected ? activeIcon : icon,
+                  size: 21,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white.withValues(alpha: selected ? 1 : 0.65)
+                      : selected
+                          ? activeColor
+                          : colors.onSurfaceVariant,
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        fontSize: 10,
+                        fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white.withValues(alpha: selected ? 1 : 0.65)
+                            : selected
+                                ? activeColor
+                                : colors.onSurfaceVariant,
+                      ),
+                ),
+              ],
             ),
           ),
         ),
