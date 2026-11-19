@@ -172,6 +172,11 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     return (items: found, status: status);
   }
 
+  Future<void> _refreshMusic() async {
+    if (_loading) return;
+    await _scan(refresh: true);
+  }
+
   Future<void> _scan({bool refresh = false}) async {
     if (!mounted) return;
     if (refresh) {
@@ -741,6 +746,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
           ),
         Expanded(
           child: ListView(
+            physics: _isMusic ? const AlwaysScrollableScrollPhysics() : null,
             controller: _contentScrollController,
             padding: EdgeInsets.fromLTRB(12, 8, 12, 104 + MediaQuery.paddingOf(context).bottom),
             children: [
@@ -1248,35 +1254,76 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
               ),
             if (_loading) const LinearProgressIndicator(minHeight: 2),
             if (_error != null) Padding(padding: const EdgeInsets.all(16), child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
-            Expanded(child: _error != null
-              ? Center(child: FilledButton(onPressed: _scan, child: const Text('Retry scan')))
-              : _loading && _media.isEmpty
-                ? const Center(child: Text('Scanning music library…'))
-                : _libraryView == 'folders'
-                  ? _buildFolders(visible)
-                  : visible.isEmpty
-                    ? Center(child: Text(_libraryView == 'favorites' ? 'No favourite tracks yet.' : 'No music found. Scan storage to find tracks.'))
-                    : ListView.separated(
-                        controller: _contentScrollController,
-                        padding: EdgeInsets.fromLTRB(12, 8, 12, 112 + MediaQuery.paddingOf(context).bottom),
-                        itemCount: visible.length + 1,
-                        separatorBuilder: (_, index) => index == 0 ? const SizedBox(height: 10) : const SizedBox(height: 2),
-                        itemBuilder: (context, index) {
-                          if (index == 0) return Padding(
-                            padding: const EdgeInsets.fromLTRB(4, 0, 4, 2),
-                            child: Row(children: [
-                              Expanded(child: _MusicActionPill(label: 'Play All', icon: Icons.play_arrow_rounded, primary: true,
-                                onTap: () => _openMedia(visible.first, visible))),
-                              const SizedBox(width: 10),
-                              Expanded(child: _MusicActionPill(label: 'Shuffle', icon: Icons.shuffle_rounded, onTap: () {
-                                final shuffled = List<_MediaFile>.of(visible)..shuffle(math.Random());
-                                _openMedia(shuffled.first, shuffled);
-                              })),
-                            ]),
-                          );
-                          return _musicTrackTile(visible[index - 1], visible);
-                        },
-                      ),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: _refreshMusic,
+                displacement: 48,
+                child: _error != null
+                    ? ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: [
+                          SizedBox(
+                            height: MediaQuery.sizeOf(context).height * 0.55,
+                            child: Center(
+                              child: FilledButton(
+                                onPressed: _scan,
+                                child: const Text('Retry scan'),
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : _loading && _media.isEmpty
+                        ? ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            children: [
+                              SizedBox(
+                                height: MediaQuery.sizeOf(context).height * 0.55,
+                                child: const Center(child: Text('Scanning music library…')),
+                              ),
+                            ],
+                          )
+                        : _libraryView == 'folders'
+                            ? _buildFolders(visible)
+                            : visible.isEmpty
+                                ? ListView(
+                                    physics: const AlwaysScrollableScrollPhysics(),
+                                    children: [
+                                      SizedBox(
+                                        height: MediaQuery.sizeOf(context).height * 0.55,
+                                        child: Center(
+                                          child: Text(
+                                            _libraryView == 'favorites'
+                                                ? 'No favourite tracks yet.'
+                                                : 'No music found. Scan storage to find tracks.',
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                : ListView.separated(
+                                    physics: const AlwaysScrollableScrollPhysics(),
+                                    controller: _contentScrollController,
+                                    padding: EdgeInsets.fromLTRB(12, 8, 12, 112 + MediaQuery.paddingOf(context).bottom),
+                                    itemCount: visible.length + 1,
+                                    separatorBuilder: (_, index) => index == 0 ? const SizedBox(height: 10) : const SizedBox(height: 2),
+                                    itemBuilder: (context, index) {
+                                      if (index == 0) return Padding(
+                                        padding: const EdgeInsets.fromLTRB(4, 0, 4, 2),
+                                        child: Row(children: [
+                                          Expanded(child: _MusicActionPill(label: 'Play All', icon: Icons.play_arrow_rounded, primary: true,
+                                            onTap: () => _openMedia(visible.first, visible))),
+                                          const SizedBox(width: 10),
+                                          Expanded(child: _MusicActionPill(label: 'Shuffle', icon: Icons.shuffle_rounded, onTap: () {
+                                            final shuffled = List<_MediaFile>.of(visible)..shuffle(math.Random());
+                                            _openMedia(shuffled.first, shuffled);
+                                          })),
+                                        ]),
+                                      );
+                                      return _musicTrackTile(visible[index - 1], visible);
+                                    },
+                                  ),
+              ),
             ),
           ])),
           Positioned(top: 0, left: 0, right: 0, height: top + 142,
