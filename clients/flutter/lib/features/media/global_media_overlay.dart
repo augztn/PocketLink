@@ -436,7 +436,8 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
           BorderRadius.circular(isDragging ? 32 : 0),
           t,
         )!;
-        final miniOpacity = (1.0 - t * 2.5).clamp(0.0, 1.0).toDouble();
+        // Finish the source mini-player fade before the full player starts fading in.
+        final miniOpacity = (1.0 - t / 0.25).clamp(0.0, 1.0).toDouble();
         final fullOpacity = ((t - 0.25) / 0.75).clamp(0.0, 1.0).toDouble();
 
         return Material(
