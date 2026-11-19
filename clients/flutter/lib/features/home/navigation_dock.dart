@@ -265,6 +265,7 @@ class _MusicDockButtonState extends State<_MusicDockButton> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
     final direction = _dragDirection;
     final iconKey = widget.expanded
         ? 'close'
@@ -290,7 +291,9 @@ class _MusicDockButtonState extends State<_MusicDockButton> {
       button: true,
       label: 'Music button. Tap to open Now Playing, swipe to change tracks, hold for shortcuts.',
       child: AnimatedContainer(
-        duration: _dragging ? Duration.zero : const Duration(milliseconds: 280),
+        duration: _dragging || reduceMotion
+            ? Duration.zero
+            : const Duration(milliseconds: 280),
         curve: Curves.easeOutBack,
         transform: Matrix4.translationValues(_dragOffset, 0, 0),
         decoration: BoxDecoration(
@@ -325,8 +328,12 @@ class _MusicDockButtonState extends State<_MusicDockButton> {
                   height: 64,
                   child: Center(
                     child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 180),
-                      reverseDuration: const Duration(milliseconds: 140),
+                      duration: reduceMotion
+                          ? Duration.zero
+                          : const Duration(milliseconds: 180),
+                      reverseDuration: reduceMotion
+                          ? Duration.zero
+                          : const Duration(milliseconds: 140),
                       switchInCurve: Curves.easeOutBack,
                       switchOutCurve: Curves.easeInCubic,
                       transitionBuilder: (child, animation) {
