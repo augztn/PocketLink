@@ -518,6 +518,12 @@ internal class MediaIndexScanner(
     fun files(query: String, limit: Int, offset: Int) =
         database.searchFiles(query, limit, offset)
 
+    /** Release scanner resources after a completed scan (primarily for tests). */
+    fun close() {
+        executor.shutdownNow()
+        database.close()
+    }
+
     companion object {
         private const val RESCAN_INTERVAL_MS = 10 * 60 * 1000L
         private const val MAX_DEPTH = 64
