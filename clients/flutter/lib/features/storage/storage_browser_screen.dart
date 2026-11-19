@@ -11,8 +11,8 @@ import '../../core/network/server_api.dart';
 import '../../core/navigation/pocketlink_navigation.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/settings/app_settings.dart';
-import '../media/now_playing_screen.dart';
 import '../media/persistent_audio_player.dart';
+import '../media/global_media_overlay.dart';
 import '../transfers/transfer_manager.dart';
 import '../transfers/transfer_manager_screen.dart';
 
@@ -204,24 +204,20 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
       'source': 'external',
       'extension': item.name.contains('.') ? item.name.split('.').last.toLowerCase() : 'unknown',
     });
-    await Navigator.of(context, rootNavigator: true).push<void>(
-      MaterialPageRoute<void>(
-        settings: const RouteSettings(
-          name: PocketLinkRouteNames.nowPlaying,
+    await PersistentAudioPlayer.instance.openQueue(
+      api: widget.api,
+      queue: [
+        MediaQueueItem(
+          title: item.name,
+          path: _itemPath(item.name),
+          volume: volume,
+          size: item.size,
         ),
-        builder: (_) => NowPlayingScreen(
-          api: widget.api,
-          queue: [
-            MediaQueueItem(
-              title: item.name,
-              path: _itemPath(item.name),
-              volume: volume,
-              size: item.size,
-            ),
-          ],
-        ),
-      ),
+      ],
+      initialIndex: 0,
+      isMusic: true,
     );
+    GlobalMediaOverlay.openNowPlaying();
   }
 
   Future<void> _openFile(FileEntry item) async {
