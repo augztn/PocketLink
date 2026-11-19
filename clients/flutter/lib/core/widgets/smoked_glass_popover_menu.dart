@@ -102,11 +102,17 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
     Animation<double> secondaryAnimation,
   ) {
     final media = MediaQuery.of(context);
-    final right = (media.size.width - anchor.right).clamp(8.0, media.size.width - 8).toDouble();
-    final top = (anchor.bottom + gap).clamp(
-      media.padding.top + 8,
+    final right = (media.size.width - anchor.right)
+        .clamp(8.0, media.size.width - 8)
+        .toDouble();
+    final minTop = media.padding.top + 8;
+    final maxTop = mathMax(
+      minTop,
       media.size.height - media.padding.bottom - 54,
-    ).toDouble();
+    );
+    final top = (anchor.bottom + gap).clamp(minTop, maxTop).toDouble();
+    final availableWidth = mathMax(0, media.size.width - right - 8);
+    final menuMaxWidth = mathMin(280, availableWidth);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final curved = CurvedAnimation(
       parent: animation,
@@ -135,8 +141,8 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
                   scale: Tween<double>(begin: 0.84, end: 1).animate(curved),
                   child: ConstrainedBox(
                     constraints: BoxConstraints(
-                      minWidth: 210,
-                      maxWidth: mathMin(280, media.size.width - right - 8),
+                      minWidth: mathMin(210, menuMaxWidth),
+                      maxWidth: menuMaxWidth,
                       maxHeight: media.size.height - top - media.padding.bottom - 8,
                     ),
                     child: ClipRRect(
@@ -281,3 +287,4 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
 }
 
 double mathMin(double a, double b) => a < b ? a : b;
+double mathMax(double a, double b) => a > b ? a : b;
