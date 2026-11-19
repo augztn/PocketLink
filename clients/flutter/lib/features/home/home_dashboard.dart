@@ -23,6 +23,7 @@ class HomeDashboard extends StatefulWidget {
     required this.api,
     required this.serverName,
     required this.onOpenExplore,
+    required this.onOpenLibrary,
     required this.onOpenFiles,
     required this.onOpenExternalStorage,
     required this.onOpenHostSetup,
@@ -34,6 +35,7 @@ class HomeDashboard extends StatefulWidget {
   final ServerApi api;
   final String? serverName;
   final void Function(ExploreCategory category, {String? fileCategory}) onOpenExplore;
+  final ValueChanged<String> onOpenLibrary;
   final VoidCallback onOpenFiles;
   final VoidCallback onOpenExternalStorage;
   final VoidCallback onOpenHostSetup;
@@ -216,22 +218,22 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
         widget.onOpenFiles();
         return;
       case 'favorites':
-        Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PhotoGalleryScreen(api: widget.api, initialTab: 3)));
+        widget.onOpenLibrary('favorites');
         return;
       case 'photos':
-        widget.onOpenExplore(ExploreCategory.photos);
+        widget.onOpenLibrary('photos');
         return;
       case 'music':
-        widget.onOpenExplore(ExploreCategory.music);
+        widget.onOpenLibrary('music');
         return;
       case 'videos':
-        widget.onOpenExplore(ExploreCategory.videos);
+        widget.onOpenLibrary('videos');
         return;
       case 'drives':
         widget.onOpenExternalStorage();
         return;
       case 'documents':
-        widget.onOpenExplore(ExploreCategory.files, fileCategory: 'Documents');
+        widget.onOpenLibrary('documents');
         return;
       case 'transfers':
         Navigator.of(context).push(MaterialPageRoute<void>(
