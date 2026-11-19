@@ -32,6 +32,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   bool _isNowPlayingDragging = false;
   bool _closingNowPlaying = false;
   Rect? _nowPlayingOriginRect;
+  Route<dynamic>? _nowPlayingOriginRoute;
   OverlayEntry? _nowPlayingEntry;
   late final AnimationController _nowPlayingController;
   MediaQueueItem? _lastTrack;
@@ -156,6 +157,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     _nowPlayingOriginRect = globalOrigin != null && overlayBox is RenderBox
         ? globalOrigin.shift(-overlayBox.localToGlobal(Offset.zero))
         : globalOrigin;
+    _nowPlayingOriginRoute = PocketLinkNavigation.observer.currentPageRoute;
     setState(() => _nowPlayingOpen = true);
     _nowPlayingEntry = OverlayEntry(
       builder: (context) => _NowPlayingMorphOverlay(
@@ -208,6 +210,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
         _nowPlayingOpen = false;
         _isNowPlayingDragging = false;
         _nowPlayingOriginRect = null;
+        _nowPlayingOriginRoute = null;
       });
     }
     _closingNowPlaying = false;
@@ -238,7 +241,11 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
 
   @override
   Future<bool> didPopRoute() async {
-    if (!_nowPlayingOpen) return false;
+    if (!_nowPlayingOpen ||
+        PocketLinkNavigation.observer.isModalRouteOnTop ||
+        PocketLinkNavigation.observer.currentPageRoute != _nowPlayingOriginRoute) {
+      return false;
+    }
     await _closeNowPlaying();
     return true;
   }
