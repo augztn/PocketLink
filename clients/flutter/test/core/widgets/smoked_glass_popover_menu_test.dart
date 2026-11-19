@@ -54,6 +54,41 @@ void main() {
     expect(find.text('Rename'), findsNothing);
   });
 
+  testWidgets('system back dismisses only the popover route', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Column(
+            children: [
+              const Text('Music library'),
+              SmokedGlassPopoverMenu<String>(
+                items: const [
+                  SmokedGlassPopoverMenuItem(
+                    value: 'folders',
+                    label: 'Folders',
+                    icon: Icons.folder_rounded,
+                  ),
+                ],
+                onSelected: (_) {},
+                child: const Text('Music view'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Music view'));
+    await tester.pumpAndSettle();
+    expect(find.text('Folders'), findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Folders'), findsNothing);
+    expect(find.text('Music library'), findsOneWidget);
+  });
+
   testWidgets('outside tap dismisses the popover', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
