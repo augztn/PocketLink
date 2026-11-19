@@ -925,7 +925,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
             ]),
           ),
           actions: [
-            PocketLinkAppBarAction(label: 'Search videos', icon: Icons.search_rounded, onPressed: () => setState(() => _searchExpanded = !_searchExpanded)),
+            if (widget.showSearch) PocketLinkAppBarAction(label: 'Search videos', icon: Icons.search_rounded, onPressed: () => setState(() => _searchExpanded = !_searchExpanded)),
             PocketLinkAppBarAction(label: 'Filter & sort', icon: Icons.tune_rounded, onPressed: _showMusicFilters),
             PocketLinkAppBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded,
               onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen())), dividerBefore: true),
@@ -1394,7 +1394,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                 child: Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: Row(mainAxisSize: MainAxisSize.min, children: [
                   Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
                     Row(mainAxisSize: MainAxisSize.min, children: [
-                      Text(viewTitle, style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: foreground, letterSpacing: -0.7)),
+                      Flexible(child: Text(viewTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: foreground, letterSpacing: -0.7))),
                       const SizedBox(width: 6),
                       AnimatedRotation(turns: _musicMenuOpen ? 0.5 : 0, duration: const Duration(milliseconds: 200), curve: Curves.easeOutCubic,
                         child: Icon(Icons.keyboard_arrow_down_rounded, color: foreground, size: 26)),

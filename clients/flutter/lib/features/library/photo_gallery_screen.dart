@@ -652,8 +652,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                 )),
               if (selecting)
                 Text('${selected.length} selected', style: TextStyle(color: foreground, fontWeight: FontWeight.w700))
-              else ...[
-              ],
+              
               const SizedBox(width: 8),
               SmokedGlassPopoverMenu<String>(
                 tooltip: 'More photo actions',
