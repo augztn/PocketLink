@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../core/navigation/pocketlink_navigation.dart';
 import '../../core/settings/app_settings.dart';
+import '../../core/widgets/liquid_glass_pill.dart';
 import 'now_playing_screen.dart';
 import 'persistent_audio_player.dart';
 
@@ -117,16 +118,40 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay> {
     _openingNowPlaying = true;
     try {
       await navigator.push<void>(
-        MaterialPageRoute<void>(
+        PageRouteBuilder<void>(
+          opaque: false,
+          barrierColor: Colors.transparent,
           settings: const RouteSettings(
             name: PocketLinkRouteNames.nowPlaying,
           ),
-          builder: (_) => NowPlayingScreen(
+          transitionDuration: const Duration(milliseconds: 420),
+          reverseTransitionDuration: const Duration(milliseconds: 320),
+          pageBuilder: (_, __, ___) => NowPlayingScreen(
             api: api,
             queue: player.queue,
             initialIndex: player.currentIndex,
             resumeExisting: true,
           ),
+          transitionsBuilder: (_, animation, __, child) {
+            final curved = CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOutCubic,
+              reverseCurve: Curves.easeInCubic,
+            );
+            return FadeTransition(
+              opacity: curved,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, 0.075),
+                  end: Offset.zero,
+                ).animate(curved),
+                child: ScaleTransition(
+                  scale: Tween<double>(begin: 0.965, end: 1).animate(curved),
+                  child: child,
+                ),
+              ),
+            );
+          },
         ),
       );
     } finally {
@@ -185,17 +210,29 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay> {
             fit: StackFit.expand,
             children: [
               Positioned.fill(child: navigatorContent),
-              if (visible)
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: bottomInset + (onDashboard ? _homeDockHeight : 0),
-                  child: _GlobalMiniPlayerBar(
-                    player: player,
-                    onOpen: _openNowPlaying,
-                    onDismiss: player.dismissMiniPlayer,
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: bottomInset + (onDashboard ? _homeDockHeight : 0),
+                child: IgnorePointer(
+                  ignoring: !visible,
+                  child: AnimatedSlide(
+                    offset: visible ? Offset.zero : const Offset(0, 0.34),
+                    duration: const Duration(milliseconds: 280),
+                    curve: Curves.easeOutCubic,
+                    child: AnimatedOpacity(
+                      opacity: visible ? 1 : 0,
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeOut,
+                      child: _GlobalMiniPlayerBar(
+                        player: player,
+                        onOpen: _openNowPlaying,
+                        onDismiss: player.dismissMiniPlayer,
+                      ),
+                    ),
                   ),
                 ),
+              ),
               Positioned(
                 left: _trackPopupOffset?.dx ?? 0,
                 top: _trackPopupOffset?.dy ?? 0,
@@ -345,15 +382,14 @@ class _GlobalMiniPlayerBar extends StatelessWidget {
     final item = player.currentItem;
     if (item == null) return const SizedBox.shrink();
 
+    final colors = Theme.of(context).colorScheme;
     return Align(
       alignment: Alignment.centerLeft,
       child: Padding(
-        // Match the Home/Explore/Files capsule and leave the separate Music
-        // button's 64 px circle plus its 10 px gap outside this bar.
+        // Same horizontal footprint as the Home / Explore / Files capsule.
         padding: const EdgeInsets.fromLTRB(14, 4, 88, 0),
-        child: Material(
-          color: Theme.of(context).colorScheme.surfaceContainerHigh,
-          borderRadius: BorderRadius.circular(16),
+        child: LiquidGlassPill(
+          radius: BorderRadius.circular(18),
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onVerticalDragEnd: (details) {
@@ -361,18 +397,27 @@ class _GlobalMiniPlayerBar extends StatelessWidget {
               if (!player.isPlaying && velocity > 300) onDismiss();
             },
             child: InkWell(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(18),
               onTap: onOpen,
               child: SizedBox(
                 height: 58,
                 child: Row(
                   children: [
-                    const SizedBox(width: 14),
-                    Icon(
-                      Icons.music_note_rounded,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
                     const SizedBox(width: 12),
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: colors.primary.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.graphic_eq_rounded,
+                        color: colors.primary,
+                        size: 21,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -382,11 +427,17 @@ class _GlobalMiniPlayerBar extends StatelessWidget {
                             item.title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontWeight: FontWeight.w700),
+                            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                ),
                           ),
-                          const Text(
+                          Text(
                             'NOW PLAYING',
-                            style: TextStyle(fontSize: 9, letterSpacing: 1.1),
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                  fontSize: 8,
+                                  letterSpacing: 1.0,
+                                  color: colors.onSurfaceVariant,
+                                ),
                           ),
                         ],
                       ),
@@ -396,6 +447,7 @@ class _GlobalMiniPlayerBar extends StatelessWidget {
                       initialData: player.player.state.playing,
                       builder: (context, snapshot) => IconButton(
                         tooltip: (snapshot.data ?? false) ? 'Pause' : 'Play',
+                        visualDensity: VisualDensity.compact,
                         onPressed: player.togglePlayback,
                         icon: Icon(
                           (snapshot.data ?? false)
@@ -406,6 +458,7 @@ class _GlobalMiniPlayerBar extends StatelessWidget {
                     ),
                     IconButton(
                       tooltip: 'Next track',
+                      visualDensity: VisualDensity.compact,
                       onPressed: player.skipToNext,
                       icon: const Icon(Icons.skip_next_rounded),
                     ),
