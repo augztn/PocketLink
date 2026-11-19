@@ -4,9 +4,11 @@ import 'package:material_ui/material_ui.dart';
 
 import '../settings/app_settings.dart';
 
-/// Reusable translucent glass surface shared by the dock, mini-player and
-/// compact floating actions. Backdrop blur is only enabled when Liquid Glass
-/// is enabled in Appearance settings.
+/// Shared optical-glass surface for PocketLink's floating controls.
+///
+/// The surface combines a clipped backdrop blur with the opaque smoked/milk
+/// glass treatment used by the native reference. Keeping the fill opaque enough
+/// preserves contrast over busy file lists and photo grids.
 class LiquidGlassSurface extends StatelessWidget {
   const LiquidGlassSurface({
     required this.child,
@@ -26,71 +28,120 @@ class LiquidGlassSurface extends StatelessWidget {
         final isDark = Theme.of(context).brightness == Brightness.dark;
         final colors = Theme.of(context).colorScheme;
 
-        final gradient = isDark
-            ? LinearGradient(
+        final glassFill = isDark
+            ? const LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Colors.white.withValues(alpha: 0.14),
-                  Colors.white.withValues(alpha: 0.05),
+                  Color(0xEE1D202A),
+                  Color(0xF414161E),
                 ],
               )
             : const LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
                 colors: [
-                  Color(0xB8FFFFFF),
-                  Color(0x85EEF2FF),
+                  Color(0xF5FFFFFF),
+                  Color(0xEEF2F5FF),
+                  Color(0xF3EAF0FF),
                 ],
+              );
+
+        final border = useGlass
+            ? Border(
+                top: BorderSide(
+                  color: Colors.white.withValues(
+                    alpha: isDark ? 0.28 : 0.96,
+                  ),
+                  width: isDark ? 1.1 : 1.2,
+                ),
+                left: BorderSide(
+                  color: Colors.white.withValues(
+                    alpha: isDark ? 0.14 : 0.68,
+                  ),
+                  width: 0.8,
+                ),
+                right: BorderSide(
+                  color: Colors.white.withValues(
+                    alpha: isDark ? 0.12 : 0.52,
+                  ),
+                  width: 0.8,
+                ),
+                bottom: BorderSide(
+                  color: (isDark ? Colors.white : const Color(0xFF4760FA))
+                      .withValues(alpha: isDark ? 0.09 : 0.22),
+                  width: 0.8,
+                ),
+              )
+            : Border.all(
+                color: colors.outlineVariant.withValues(alpha: 0.62),
+                width: 1,
               );
 
         final decoration = BoxDecoration(
           color: useGlass ? null : colors.surfaceContainerLow,
-          gradient: useGlass ? gradient : null,
+          gradient: useGlass ? glassFill : null,
           borderRadius: radius,
-          border: useGlass
-              ? Border(
-                  top: BorderSide(
-                    color: Colors.white.withValues(
-                      alpha: isDark ? 0.28 : 0.82,
-                    ),
-                    width: 1.1,
-                  ),
-                  left: BorderSide(
-                    color: Colors.white.withValues(
-                      alpha: isDark ? 0.13 : 0.58,
-                    ),
-                    width: 0.8,
-                  ),
-                  right: BorderSide(
-                    color: Colors.white.withValues(
-                      alpha: isDark ? 0.11 : 0.48,
-                    ),
-                    width: 0.8,
-                  ),
-                  bottom: BorderSide(
-                    color: (isDark ? Colors.white : const Color(0xFF536DFE))
-                        .withValues(alpha: isDark ? 0.07 : 0.16),
-                    width: 0.8,
-                  ),
-                )
-              : Border.all(
-                  color: colors.outlineVariant.withValues(alpha: 0.62),
-                  width: 1,
-                ),
+          border: border,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.07),
-              blurRadius: useGlass ? 12 : 10,
-              offset: const Offset(0, 4),
-              spreadRadius: -4,
+              color: isDark
+                  ? Colors.black.withValues(alpha: useGlass ? 0.30 : 0.10)
+                  : const Color(0xFF283C8E)
+                      .withValues(alpha: useGlass ? 0.15 : 0.07),
+              blurRadius: useGlass ? (isDark ? 18 : 16) : 10,
+              offset: const Offset(0, 6),
+              spreadRadius: -5,
             ),
           ],
         );
 
         final surface = DecoratedBox(
           decoration: decoration,
-          child: child,
+          child: Stack(
+            fit: StackFit.passthrough,
+            children: [
+              child,
+              if (useGlass)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.center,
+                          colors: [
+                            Colors.white.withValues(
+                              alpha: isDark ? 0.075 : 0.48,
+                            ),
+                            Colors.transparent,
+                          ],
+                          stops: const [0, 1],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              if (useGlass && !isDark)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.center,
+                          colors: [
+                            const Color(0xFF4760FA).withValues(alpha: 0.055),
+                            Colors.transparent,
+                          ],
+                          stops: const [0, 1],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         );
 
         if (!useGlass) {
@@ -104,7 +155,7 @@ class LiquidGlassSurface extends StatelessWidget {
           child: ClipRRect(
             borderRadius: radius,
             child: BackdropFilter(
-              filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+              filter: ui.ImageFilter.blur(sigmaX: 22, sigmaY: 22),
               child: surface,
             ),
           ),
