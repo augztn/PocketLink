@@ -402,6 +402,7 @@ class _HomeScreenState extends State<HomeScreen> {
         animation: player,
         builder: (context, _) => Scaffold(
           key: _rootScaffoldKey,
+          drawerScrimColor: Colors.black.withValues(alpha: 0.58),
           drawer: PocketLinkHomeDrawer(
             serverName: drawerServerName,
             routeLabel: networkRouteLabel(serverHost),
