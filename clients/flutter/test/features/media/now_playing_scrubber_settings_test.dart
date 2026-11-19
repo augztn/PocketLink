@@ -71,7 +71,12 @@ void main() {
           ),
         ),
       );
-      expect(find.byType(NowPlayingScrubber), findsOneWidget);
+      final preview = find.byType(NowPlayingScrubberPreview);
+      expect(preview, findsOneWidget);
+      expect(
+        find.descendant(of: preview, matching: find.byType(CustomPaint)),
+        findsOneWidget,
+      );
     }
   });
 
