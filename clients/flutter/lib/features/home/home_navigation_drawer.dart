@@ -287,13 +287,14 @@ class PocketLinkHomeDrawer extends StatelessWidget {
                   ),
                 );
               },
-                ),
-              ),
             ),
-          ),
+          ],
         ),
       ),
-    );
+    ),
+  ),
+),
+);
   }
 
   Widget _drawerIcon(IconData icon) => Container(
