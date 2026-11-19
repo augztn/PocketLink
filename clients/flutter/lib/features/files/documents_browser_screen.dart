@@ -287,7 +287,7 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
                       Text(_loading ? 'Scanning storage for documents…' : 'No documents found', textAlign: TextAlign.center),
                       if (!_loading) ...[
                         const SizedBox(height: 12),
-                        FilledButton.tonal(onPressed: () => Navigator.of(context).pop(), child: const Text('Browse folders')),
+                        FilledButton.tonal(onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => FileManagerScreen(api: widget.api))), child: const Text('Browse folders')),
                       ],
                     ]),
                   ),
