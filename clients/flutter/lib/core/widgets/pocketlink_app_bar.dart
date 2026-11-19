@@ -70,14 +70,24 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   @override
-  Widget build(BuildContext context) => AppBar(
-    title: title,
-    leading: leading,
-    centerTitle: centerTitle,
-    backgroundColor: backgroundColor,
-    foregroundColor: foregroundColor,
-    elevation: elevation,
-    actions: [
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return AppBar(
+      title: title,
+      leading: leading,
+      centerTitle: centerTitle,
+      backgroundColor: backgroundColor ?? theme.scaffoldBackgroundColor,
+      foregroundColor: foregroundColor,
+      elevation: elevation ?? 0,
+      scrolledUnderElevation: 0,
+      surfaceTintColor: Colors.transparent,
+      shadowColor: Colors.transparent,
+      titleTextStyle: theme.textTheme.titleLarge?.copyWith(
+        color: foregroundColor ?? theme.colorScheme.onSurface,
+        fontWeight: FontWeight.w800,
+        letterSpacing: -0.25,
+      ),
+      actions: [
       ...actionsBeforeHome,
       if (showHome)
         IconButton(
@@ -103,8 +113,9 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
           ),
         ).toList(growable: false),
       ),
-    ],
-  );
+      ],
+    );
+  }
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
