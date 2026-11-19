@@ -170,6 +170,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
       if (candidates.isEmpty) return null;
       candidates.sort((a, b) => b.saturation.compareTo(a.saturation));
       final primary = candidates.first;
+      if (primary.saturation < 0.22) return null;
       final secondary = candidates.firstWhere(
         (item) {
           final distance = (item.hue - primary.hue).abs();
