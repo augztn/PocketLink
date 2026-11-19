@@ -739,12 +739,12 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
               _selectPartition(value);
             },
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Flexible(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(_path.isEmpty ? 'Files' : _path.split('/').last,
                   maxLines: 1, overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w800)),
-                Text('${folderCount == 1 ? '1 folder' : '$folderCount folders'} • ${fileCount == 1 ? '1 file' : '$fileCount files'}', style: const TextStyle(fontSize: 10, fontFamily: 'monospace', color: Color(0xFFA1A7B3))),
-              ]),
+                Text('${folderCount == 1 ? '1 folder' : '$folderCount folders'} • ${fileCount == 1 ? '1 file' : '$fileCount files'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10, fontFamily: 'monospace', color: Color(0xFFA1A7B3))),
+              ])),
               const SizedBox(width: 6),
               AnimatedRotation(turns: _storageMenuOpen ? 0.5 : 0, duration: const Duration(milliseconds: 200),
                 child: const Icon(Icons.keyboard_arrow_down_rounded, size: 24)),

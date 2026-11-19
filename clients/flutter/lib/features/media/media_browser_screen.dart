@@ -905,7 +905,11 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
             child: Row(children: [
               Expanded(
                 child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(headerTitle, style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800, color: titleColor)),
+                  Row(mainAxisSize: MainAxisSize.min, children: [
+                    Flexible(child: Text(headerTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800, color: titleColor))),
+                    const SizedBox(width: 6),
+                    AnimatedRotation(turns: _musicMenuOpen ? 0.5 : 0, duration: const Duration(milliseconds: 200), child: const Icon(Icons.keyboard_arrow_down_rounded)),
+                  ]),
                   Text(
                   _countLabel(visibleMedia.length, 'video', 'videos') + ' • ${_selectedVolume == null ? 'All storage' : _volumeName(_selectedVolume)}'
                   '${_scannedDirectories > 0 ? ' • $_scannedDirectories scanned' : ''}'
@@ -917,8 +921,6 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                   ),
                 ]),
               ),
-              const SizedBox(width: 6),
-              AnimatedRotation(turns: _musicMenuOpen ? 0.5 : 0, duration: const Duration(milliseconds: 200), child: const Icon(Icons.keyboard_arrow_down_rounded)),
               const SizedBox(width: 8),
             ]),
           ),

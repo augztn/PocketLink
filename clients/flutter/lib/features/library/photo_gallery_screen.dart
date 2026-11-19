@@ -635,10 +635,10 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 4),
                       child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        Text(title, style: TextStyle(
+                        Flexible(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(
                           color: foreground, fontSize: 28, fontWeight: FontWeight.w800,
                           letterSpacing: -0.7,
-                        )),
+                        ))),
                         const SizedBox(width: 6),
                         AnimatedRotation(
                           turns: _viewMenuOpen ? 0.5 : 0,
