@@ -180,6 +180,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay> {
               !observer.isNowPlayingVisible &&
               !observer.isModalRouteOnTop;
           final media = MediaQuery.of(context);
+          final reduceMotion = media.disableAnimations;
           final bottomInset = media.padding.bottom;
 
           final Widget navigatorContent;
@@ -218,11 +219,15 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay> {
                   ignoring: !visible,
                   child: AnimatedSlide(
                     offset: visible ? Offset.zero : const Offset(0, 0.34),
-                    duration: const Duration(milliseconds: 280),
+                    duration: reduceMotion
+                        ? Duration.zero
+                        : const Duration(milliseconds: 280),
                     curve: Curves.easeOutCubic,
                     child: AnimatedOpacity(
                       opacity: visible ? 1 : 0,
-                      duration: const Duration(milliseconds: 220),
+                      duration: reduceMotion
+                          ? Duration.zero
+                          : const Duration(milliseconds: 220),
                       curve: Curves.easeOut,
                       child: _GlobalMiniPlayerBar(
                         player: player,
@@ -238,8 +243,12 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay> {
                 top: _trackPopupOffset?.dy ?? 0,
                 child: IgnorePointer(
                   child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 260),
-                    reverseDuration: const Duration(milliseconds: 180),
+                    duration: reduceMotion
+                        ? Duration.zero
+                        : const Duration(milliseconds: 260),
+                    reverseDuration: reduceMotion
+                        ? Duration.zero
+                        : const Duration(milliseconds: 180),
                     switchInCurve: Curves.easeOutBack,
                     switchOutCurve: Curves.easeInCubic,
                     transitionBuilder: (child, animation) => FadeTransition(
