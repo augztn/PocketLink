@@ -707,11 +707,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     );
   }
 
-  String _formatDuration(Duration duration) {
-    final seconds = duration.inSeconds.clamp(0, 1 << 30);
-    return '${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}';
-  }
-
   String _formatBytes(int bytes) {
     if (bytes < 1024) return '$bytes B';
     const units = ['KB', 'MB', 'GB', 'TB'];
