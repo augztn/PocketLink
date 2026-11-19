@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/navigation/pocketlink_navigation.dart';
 import 'navigation_dock.dart';
+import 'music_shortcut_menu.dart';
 import 'home_navigation_drawer.dart';
 import 'network_route_classifier.dart';
 import 'explore_search_screens.dart';
@@ -215,9 +216,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ));
         break;
-      case 'drives':
-        _openExternalStorage();
-        break;
     }
   }
 
@@ -328,7 +326,6 @@ class _HomeScreenState extends State<HomeScreen> {
           fileCategory: _fileCategory,
           onBackAtRoot: () => _openTab(0),
           onOpenFiles: () => _openTab(2),
-          onOpenExternalStorage: _openExternalStorage,
           onCategoryChanged: (category) => setState(() {
             _exploreCategory = category;
             if (category == ExploreCategory.files) _fileCategory = 'All';
@@ -474,6 +471,18 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: const ColoredBox(color: Colors.black),
                       ),
                     ),
+                  ),
+                ),
+              if (!_hostSetupOpen && _musicShortcutsExpanded)
+                Positioned(
+                  left: 14,
+                  right: 14,
+                  bottom: 92.0 + MediaQuery.paddingOf(context).bottom +
+                      (AppSettings.instance.showMiniPlayer && player.shouldShowMiniPlayer ? 62.0 : 0.0),
+                  child: MusicShortcutMenu(
+                    shortcuts: AppSettings.instance.musicButtonShortcuts,
+                    expanded: true,
+                    onSelect: _openMusicShortcut,
                   ),
                 ),
               if (!_hostSetupOpen)
