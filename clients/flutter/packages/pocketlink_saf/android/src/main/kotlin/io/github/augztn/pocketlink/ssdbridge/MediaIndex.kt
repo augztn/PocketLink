@@ -171,7 +171,7 @@ internal class MediaIndexDatabase(context: Context) :
         val where = mutableListOf(
             "category=?",
             "($extensionClause)",
-            "(LOWER(mime) IN (\${allowedMime.joinToString(",") { "?" }}) OR LOWER(mime)=?)"
+            "(LOWER(mime) IN (${allowedMime.joinToString(",") { "?" }}) OR LOWER(mime)=?)"
         )
         val args = mutableListOf(category)
         extensions.sorted().forEach { args += "%.$it" }
