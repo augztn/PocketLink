@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/pocketlink_file_icon.dart';
+import '../../core/widgets/smoked_glass_popover_menu.dart';
 
 import '../../core/network/server_api.dart';
 import '../../core/logging/app_logger.dart';
@@ -661,19 +662,23 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
               ? () => _load(_itemPath(item.name))
               : _isAudio(item) ? () => _openAudio(item)
               : _isImage(item) ? () => _previewImage(item) : null,
-          trailing: PopupMenuButton<String>(
+          trailing: SmokedGlassPopoverMenu<String>(
             tooltip: 'More actions',
+            items: [
+              if (!item.isDirectory)
+                const SmokedGlassPopoverMenuItem(value: 'download', label: 'Download', icon: Icons.download_rounded),
+              const SmokedGlassPopoverMenuItem(value: 'rename', label: 'Rename', icon: Icons.drive_file_rename_outline_rounded),
+              const SmokedGlassPopoverMenuItem(value: 'delete', label: 'Delete', icon: Icons.delete_outline_rounded, destructive: true, dividerBefore: true),
+            ],
             onSelected: (action) {
               if (action == 'download' && !item.isDirectory) _downloadFile(item);
               if (action == 'rename') _rename(item);
               if (action == 'delete') _delete(item);
             },
-            itemBuilder: (_) => [
-              if (!item.isDirectory)
-                const PopupMenuItem(value: 'download', child: Text('Download')),
-              const PopupMenuItem(value: 'rename', child: Text('Rename')),
-              const PopupMenuItem(value: 'delete', child: Text('Delete')),
-            ],
+            child: const Padding(
+              padding: EdgeInsets.all(8),
+              child: Icon(Icons.more_vert_rounded),
+            ),
           ),
         )),
       );
@@ -918,18 +923,23 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                                               Row(children: [
                                                 fileIcon(item, size: 26),
                                                 const Spacer(),
-                                                PopupMenuButton<String>(
-                                                  padding: EdgeInsets.zero,
+                                                SmokedGlassPopoverMenu<String>(
+                                                  tooltip: 'More actions',
+                                                  items: [
+                                                    if (!item.isDirectory)
+                                                      const SmokedGlassPopoverMenuItem(value: 'download', label: 'Download', icon: Icons.download_rounded),
+                                                    const SmokedGlassPopoverMenuItem(value: 'rename', label: 'Rename', icon: Icons.drive_file_rename_outline_rounded),
+                                                    const SmokedGlassPopoverMenuItem(value: 'delete', label: 'Delete', icon: Icons.delete_outline_rounded, destructive: true, dividerBefore: true),
+                                                  ],
                                                   onSelected: (action) {
                                                     if (action == 'download' && !item.isDirectory) _downloadFile(item);
                                                     if (action == 'rename') _rename(item);
                                                     if (action == 'delete') _delete(item);
                                                   },
-                                                  itemBuilder: (_) => [
-                                                    if (!item.isDirectory) const PopupMenuItem(value: 'download', child: Text('Download')),
-                                                    const PopupMenuItem(value: 'rename', child: Text('Rename')),
-                                                    const PopupMenuItem(value: 'delete', child: Text('Delete')),
-                                                  ],
+                                                  child: const Padding(
+                                                    padding: EdgeInsets.all(6),
+                                                    child: Icon(Icons.more_vert_rounded),
+                                                  ),
                                                 ),
                                               ]),
                                               const Spacer(),
