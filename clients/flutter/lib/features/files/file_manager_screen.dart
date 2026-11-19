@@ -832,43 +832,33 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
 
             SizedBox(
               height: 40,
-              child: Row(children: [
-                Expanded(
-                  child: ShaderMask(
-                    blendMode: BlendMode.dstIn,
-                    shaderCallback: (bounds) => const LinearGradient(
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                      colors: [Colors.white, Colors.white, Colors.transparent],
-                      stops: [0, 0.82, 1],
-                    ).createShader(bounds),
-                    child: ClipRect(
-                      child: SingleChildScrollView(
+              child: ShaderMask(
+                blendMode: BlendMode.dstIn,
+                shaderCallback: (bounds) => const LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [Colors.white, Colors.white, Colors.transparent],
+                  stops: [0, 0.82, 1],
+                ).createShader(bounds),
+                child: ClipRect(
+                  child: ListView(
                     scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.only(right: 20),
-                    child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            for (final category in const ['All', 'Images', 'Videos', 'Music', 'Documents'])
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 4),
-                                child: ChoiceChip(
-                                  label: Text(category),
-                                  selected: _category == category,
-                                  onSelected: (_) { setState(() => _category = category); _saveState(); },
-                                  showCheckmark: false,
-                                ),
-                              ),
-                            const SizedBox(width: 20),
-                          ],
-                    ),
-                    ),
-                      ),
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    children: [
+                      for (final category in const ['All', 'Images', 'Videos', 'Music', 'Documents'])
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: ChoiceChip(
+                            label: Text(category),
+                            selected: _category == category,
+                            onSelected: (_) { setState(() => _category = category); _saveState(); },
+                            showCheckmark: false,
+                          ),
+                        ),
+                    ],
                   ),
                 ),
-
-              ]),
+              ),
             ),
             if (_loading) const LinearProgressIndicator(minHeight: 2),
             if (_error != null)

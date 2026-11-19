@@ -1406,7 +1406,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
               ))),
               SmokedGlassPopoverMenu<String>(
                 tooltip: 'More music actions',
-                items: const [
+                items: [
                   SmokedGlassPopoverMenuItem(value: 'search', label: _searchExpanded ? 'Close search' : 'Search music', icon: _searchExpanded ? Icons.close_rounded : Icons.search_rounded),
                   SmokedGlassPopoverMenuItem(value: 'filter', label: 'Filter & sort', icon: Icons.tune_rounded),
                   SmokedGlassPopoverMenuItem(value: 'shuffle', label: 'Shuffle all', icon: Icons.shuffle_rounded, dividerBefore: true),
