@@ -330,6 +330,7 @@ class _HomeScreenState extends State<HomeScreen> {
           fileCategory: _fileCategory,
           onBackAtRoot: () => _openTab(0),
           onOpenFiles: () => _openTab(2),
+          onOpenLibrary: _openLibrary,
           onCategoryChanged: (category) => setState(() {
             _exploreCategory = category;
             if (category == ExploreCategory.files) _fileCategory = 'All';
