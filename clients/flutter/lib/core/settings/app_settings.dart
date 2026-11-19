@@ -30,6 +30,10 @@ class AppSettings extends ChangeNotifier {
   static const _nowPlayingGesturesKey = 'settings_now_playing_gestures';
   static const _nowPlayingStatsForNerdsKey = 'settings_now_playing_stats_for_nerds';
   static const _nowPlayingScrubberStyleKey = 'settings_now_playing_scrubber_style';
+  static const _nowPlayingThemeKey = 'settings_now_playing_theme';
+  static const _downloadConcurrencyKey = 'settings_download_concurrency';
+  static const _downloadWifiOnlyKey = 'settings_download_wifi_only';
+  static const _downloadAutoResumeKey = 'settings_download_auto_resume';
   static const _videoControlsTimeoutKey = 'settings_video_controls_timeout';
   static const _videoSeekSecondsKey = 'settings_video_seek_seconds';
   static const _videoDefaultSpeedKey = 'settings_video_default_speed';
@@ -74,6 +78,10 @@ class AppSettings extends ChangeNotifier {
   bool _enableNowPlayingGestures = true;
   bool _showStatsForNerds = true;
   String _nowPlayingScrubberStyle = 'apple';
+  String _nowPlayingTheme = 'apple';
+  int _downloadConcurrency = 2;
+  bool _downloadWifiOnly = false;
+  bool _downloadAutoResume = true;
   int _videoControlsTimeoutSeconds = 4;
   int _videoSeekSeconds = 10;
   double _videoDefaultSpeed = 1.0;
@@ -108,6 +116,10 @@ class AppSettings extends ChangeNotifier {
   bool get enableNowPlayingGestures => _enableNowPlayingGestures;
   bool get showStatsForNerds => _showStatsForNerds;
   String get nowPlayingScrubberStyle => _nowPlayingScrubberStyle;
+  String get nowPlayingTheme => _nowPlayingTheme;
+  int get downloadConcurrency => _downloadConcurrency;
+  bool get downloadWifiOnly => _downloadWifiOnly;
+  bool get downloadAutoResume => _downloadAutoResume;
   int get videoControlsTimeoutSeconds => _videoControlsTimeoutSeconds;
   int get videoSeekSeconds => _videoSeekSeconds;
   double get videoDefaultSpeed => _videoDefaultSpeed;
@@ -128,6 +140,15 @@ class AppSettings extends ChangeNotifier {
       _showMiniPlayer = preferences.getBool(_nowPlayingMiniPlayerKey) ?? true;
       _enableNowPlayingGestures = preferences.getBool(_nowPlayingGesturesKey) ?? true;
       _showStatsForNerds = preferences.getBool(_nowPlayingStatsForNerdsKey) ?? true;
+      _nowPlayingTheme = const {'apple', 'blur', 'blurCard', 'gradient'}
+          .contains(preferences.getString(_nowPlayingThemeKey))
+          ? preferences.getString(_nowPlayingThemeKey)!
+          : 'apple';
+      _downloadConcurrency = const {1, 2, 3, 5}.contains(preferences.getInt(_downloadConcurrencyKey))
+          ? preferences.getInt(_downloadConcurrencyKey)!
+          : 2;
+      _downloadWifiOnly = preferences.getBool(_downloadWifiOnlyKey) ?? false;
+      _downloadAutoResume = preferences.getBool(_downloadAutoResumeKey) ?? true;
       _nowPlayingScrubberStyle = const {'apple', 'wavy', 'classic', 'waveform'}
           .contains(preferences.getString(_nowPlayingScrubberStyleKey))
           ? preferences.getString(_nowPlayingScrubberStyleKey)!
@@ -421,11 +442,43 @@ class AppSettings extends ChangeNotifier {
     await preferences.setString(_nowPlayingScrubberStyleKey, style);
   }
 
+  Future<void> setNowPlayingTheme(String theme) async {
+    if (!const {'apple', 'blur', 'blurCard', 'gradient'}.contains(theme)) {
+      throw ArgumentError.value(theme, 'theme');
+    }
+    if (_nowPlayingTheme == theme) return;
+    _nowPlayingTheme = theme;
+    notifyListeners();
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(_nowPlayingThemeKey, theme);
+  }
+
+  Future<void> setDownloadOptions({
+    int? concurrency,
+    bool? wifiOnly,
+    bool? autoResume,
+  }) async {
+    if (concurrency != null && !const {1, 2, 3, 5}.contains(concurrency)) {
+      throw ArgumentError.value(concurrency, 'concurrency');
+    }
+    if (concurrency != null) _downloadConcurrency = concurrency;
+    if (wifiOnly != null) _downloadWifiOnly = wifiOnly;
+    if (autoResume != null) _downloadAutoResume = autoResume;
+    notifyListeners();
+    final preferences = await SharedPreferences.getInstance();
+    await Future.wait([
+      if (concurrency != null) preferences.setInt(_downloadConcurrencyKey, concurrency),
+      if (wifiOnly != null) preferences.setBool(_downloadWifiOnlyKey, wifiOnly),
+      if (autoResume != null) preferences.setBool(_downloadAutoResumeKey, autoResume),
+    ]);
+  }
+
   Future<void> resetNowPlayingOptions() async {
     _showMiniPlayer = true;
     _enableNowPlayingGestures = true;
     _showStatsForNerds = true;
     _nowPlayingScrubberStyle = 'apple';
+    _nowPlayingTheme = 'apple';
     notifyListeners();
     final preferences = await SharedPreferences.getInstance();
     await Future.wait([
@@ -433,6 +486,7 @@ class AppSettings extends ChangeNotifier {
       preferences.remove(_nowPlayingGesturesKey),
       preferences.remove(_nowPlayingStatsForNerdsKey),
       preferences.remove(_nowPlayingScrubberStyleKey),
+      preferences.remove(_nowPlayingThemeKey),
     ]);
   }
 
