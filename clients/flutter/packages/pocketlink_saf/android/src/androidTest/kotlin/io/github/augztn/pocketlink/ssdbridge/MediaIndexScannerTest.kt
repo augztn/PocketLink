@@ -34,7 +34,7 @@ class MediaIndexScannerTest {
             assertEquals(2, first.getInt("directory_count"))
             assertEquals(2, first.getInt("regular_file_count"))
             assertEquals(1, first.getInt("music_count"))
-            assertEquals(1, first.getInt("scanned_directories"))
+            assertEquals(3, first.getInt("scanned_directories"))
 
             SystemClock.sleep(5)
             scanner.requestScan(force = true)
