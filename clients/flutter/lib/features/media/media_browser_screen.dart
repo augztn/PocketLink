@@ -1392,7 +1392,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                 borderRadius: BorderRadius.circular(12),
                 onTap: () => setState(() => _musicMenuOpen = !_musicMenuOpen),
                 child: Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                  Flexible(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
                     Row(mainAxisSize: MainAxisSize.min, children: [
                       Flexible(child: Text(viewTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: foreground, letterSpacing: -0.7))),
                       const SizedBox(width: 6),
@@ -1400,8 +1400,9 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                         child: Icon(Icons.keyboard_arrow_down_rounded, color: foreground, size: 26)),
                     ]),
                     Text('${_countLabel(visible.length, 'track', 'tracks')} • ${_selectedVolume == null ? 'All storage' : _volumeName(_selectedVolume)}',
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
                       style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurfaceVariant, fontFamily: 'monospace')),
-                  ]),
+                  ])),
                 ])),
               ))),
               SmokedGlassPopoverMenu<String>(

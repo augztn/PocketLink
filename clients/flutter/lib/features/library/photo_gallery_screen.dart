@@ -624,8 +624,11 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
             top: headerTop + 8, left: 16, right: 16, height: 52,
             child: Row(children: [
               if (selecting)
-                GlassCircleButton(tooltip: 'Clear selection', onPressed: () => setState(selected.clear),
-                  child: const Icon(Icons.close_rounded))
+                Expanded(child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: foreground, fontSize: 28, fontWeight: FontWeight.w800)),
+                ))
               else
                 Expanded(child: Align(
                   alignment: Alignment.centerLeft,
@@ -650,8 +653,6 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                     ),
                   ),
                 )),
-              if (selecting)
-                Text('${selected.length} selected', style: TextStyle(color: foreground, fontWeight: FontWeight.w700)),
               const SizedBox(width: 8),
               SmokedGlassPopoverMenu<String>(
                 tooltip: 'More photo actions',
