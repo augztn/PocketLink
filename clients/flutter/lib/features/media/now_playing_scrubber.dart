@@ -172,7 +172,7 @@ class _NowPlayingScrubberState extends State<NowPlayingScrubber>
             child: AnimatedBuilder(
               animation: Listenable.merge([_shimmer, _wave, _amplitude]),
               builder: (context, _) => SizedBox(
-                height: style == NowPlayingScrubberStyle.classic ? 24 : 24,
+                height: 24,
                 width: double.infinity,
                 child: CustomPaint(
                   painter: _ScrubberPainter(
