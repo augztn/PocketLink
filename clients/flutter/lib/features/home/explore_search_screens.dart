@@ -8,6 +8,7 @@ import '../library/photo_gallery_screen.dart';
 import '../media/media_browser_screen.dart';
 import '../search/search_screen.dart';
 import '../downloads/download_manager_service.dart';
+import '../downloads/downloads_screen.dart';
 
 enum ExploreCategory { files, photos, music, videos }
 
@@ -322,7 +323,7 @@ class _ExploreGridState extends State<_ExploreGrid>
                 tint: const Color(0xFF3FAD8A),
                 onTap: () => _openLibrary(
                   'downloads',
-                  const SizedBox.shrink(),
+                  DownloadsScreen(api: api),
                 ),
               );
             },
