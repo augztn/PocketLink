@@ -658,22 +658,21 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                   GlassCircleButton(tooltip: searchOpen ? 'Close search' : 'Search photos',
                     onPressed: () => setState(() => searchOpen = !searchOpen),
                     child: Icon(searchOpen ? Icons.close_rounded : Icons.search_rounded)),
-                const SizedBox(width: 8),
-                GlassCircleButton(tooltip: 'Photo filters and layout', onPressed: _showFilters,
-                  child: const Icon(Icons.tune_rounded)),
               ],
-              const SizedBox(width: 8),
-              GlassCircleButton(tooltip: 'Transfers', onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen())),
-                child: const Icon(Icons.swap_vert_rounded)),
               const SizedBox(width: 8),
               SmokedGlassPopoverMenu<String>(
                 tooltip: 'More photo actions',
                 items: [
                   const SmokedGlassPopoverMenuItem(
+                    value: 'filter',
+                    label: 'Filter & layout',
+                    icon: Icons.tune_rounded,
+                  ),
+                  const SmokedGlassPopoverMenuItem(
                     value: 'select',
                     label: 'Select all / clear',
                     icon: Icons.checklist_rounded,
+                    dividerBefore: true,
                   ),
                   SmokedGlassPopoverMenuItem(
                     value: 'scan',
@@ -681,9 +680,21 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                     icon: Icons.refresh_rounded,
                     enabled: !loading,
                   ),
+                  const SmokedGlassPopoverMenuItem(
+                    value: 'transfers',
+                    label: 'Transfers',
+                    icon: Icons.swap_vert_rounded,
+                    dividerBefore: true,
+                  ),
                 ],
                 onSelected: (value) {
+                  if (value == 'filter') _showFilters();
                   if (value == 'scan') scan(refresh: true);
+                  if (value == 'transfers') {
+                    Navigator.of(context).push(MaterialPageRoute<void>(
+                      builder: (_) => const TransferManagerScreen(),
+                    ));
+                  }
                   if (value == 'select') setState(() {
                     if (selected.isEmpty) selected.addAll(items.map((p) => p.id));
                     else selected.clear();
