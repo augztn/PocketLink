@@ -205,8 +205,14 @@ internal class MediaIndexDatabase(context: Context) :
             db.rawQuery("SELECT COUNT(*) FROM media WHERE category=?", arrayOf(category)).use {
                 if (it.moveToFirst()) it.getInt(0) else 0
             }
+        fun countType(type: String): Int =
+            db.rawQuery("SELECT COUNT(*) FROM files WHERE type=?", arrayOf(type)).use {
+                if (it.moveToFirst()) it.getInt(0) else 0
+            }
         return mapOf(
             "files" to count("files"),
+            "directories" to countType("directory"),
+            "regular_files" to countType("file"),
             "media" to count("media"),
             "photo" to countCategory("photo"),
             "video" to countCategory("video"),
@@ -228,12 +234,15 @@ internal class MediaIndexScanner(
     private val dirty = AtomicBoolean(false)
     @Volatile private var started = false
     @Volatile private var scanned = 0
+    @Volatile private var scannedDirectories = 0
+    @Volatile private var unchanged = 0
     @Volatile private var skipped = 0
     @Volatile private var state = "idle"
     @Volatile private var lastError: String? = null
     @Volatile private var lastCompletedAt: Long = 0L
     @Volatile private var lastScanStartedAt: Long = 0L
     @Volatile private var currentSource: String? = null
+    @Volatile private var currentPath: String? = null
     private val skippedItems = mutableListOf<SkippedIndexItem>()
 
     private fun recordSkipped(volume: String, path: String, reason: String) {
@@ -253,7 +262,7 @@ internal class MediaIndexScanner(
         if (!started) {
             requestScan(force = false)
         } else if (!running.get() &&
-            (dirty.get() || now - lastScanStartedAt >= RESCAN_INTERVAL_MS)) {
+            (dirty.get() || now - (lastCompletedAt.takeIf { it > 0L } ?: lastScanStartedAt) >= RESCAN_INTERVAL_MS)) {
             // Discover changes made by PocketLink immediately, and external
             // changes periodically. Unchanged rows are not rewritten.
             requestScan(force = true)
@@ -263,8 +272,8 @@ internal class MediaIndexScanner(
     @Synchronized
     fun requestScan(force: Boolean) {
         if (running.get()) {
-            // A manual refresh is idempotent while a scan is active. Mutations
-            // set dirty separately and still schedule one follow-up pass.
+            // Coalesce refreshes and mutations into one follow-up pass.
+            if (force) dirty.set(true)
             return
         }
         if (started && !force && state == "complete") return
@@ -274,7 +283,11 @@ internal class MediaIndexScanner(
         running.set(true)
         state = "scanning"
         scanned = 0
+        scannedDirectories = 0
+        unchanged = 0
         skipped = 0
+        currentSource = null
+        currentPath = null
         synchronized(skippedItems) { skippedItems.clear() }
         lastError = null
         executor.execute {
@@ -293,6 +306,7 @@ internal class MediaIndexScanner(
                         lastError = error.message ?: "One storage source could not be indexed"
                     } finally {
                         currentSource = null
+                        currentPath = null
                     }
                 }
                 if (lastError == null && skipped > 0) lastError = "Some files or folders could not be indexed."
@@ -357,16 +371,24 @@ internal class MediaIndexScanner(
             val safeSize = size.coerceAtLeast(0L)
             val safeModified = modified.coerceAtLeast(0L)
             val category = if (directory) null else categoryFor(name)
-            val fileUnchanged = safeModified > 0L && fileSnapshot[path] == IndexStamp(safeSize, safeModified)
-            val mediaUnchanged = if (safeModified <= 0L) {
-                false
-            } else if (category == null) {
-                mediaSnapshot[path] == null
-            } else {
-                mediaSnapshot[path] == IndexStamp(safeSize, safeModified, category)
+            val previousFile = fileSnapshot[path]
+            val previousMedia = mediaSnapshot[path]
+            // Some SAF providers always report modified=0. In that case use
+            // size + category as the best available stable fingerprint.
+            val fileUnchanged = previousFile != null &&
+                previousFile.size == safeSize &&
+                if (safeModified <= 0L) previousFile.modified <= 0L
+                else previousFile.modified == safeModified
+            val mediaUnchanged = when {
+                category == null -> previousMedia == null
+                previousMedia == null -> false
+                previousMedia.size != safeSize || previousMedia.category != category -> false
+                safeModified <= 0L -> previousMedia.modified <= 0L
+                else -> previousMedia.modified == safeModified
             }
             scanned++
             if (fileUnchanged && mediaUnchanged) {
+                unchanged++
                 unchangedFiles += path
                 if (category != null) unchangedMedia += path
             } else {
@@ -383,7 +405,10 @@ internal class MediaIndexScanner(
                 stack.add(base to 0)
                 while (stack.isNotEmpty()) {
                     val (directory, depth) = stack.removeLast()
-                    waitForPlaybackToPause()
+                    currentPath = runCatching {
+                        if (directory == base) "" else directory.canonicalFile.relativeTo(base).invariantSeparatorsPath
+                    }.getOrDefault("")
+                    scannedDirectories++
                     val children = try { directory.listFiles() } catch (_: Exception) { null }
                     if (children == null) {
                         complete = false
@@ -418,7 +443,8 @@ internal class MediaIndexScanner(
                 while (stack.isNotEmpty()) {
                     val (entry, depth) = stack.removeLast()
                     val (directory, parentPath) = entry
-                    waitForPlaybackToPause()
+                    currentPath = parentPath
+                    scannedDirectories++
                     val children = try { directory.listFiles() } catch (_: Exception) { null }
                     if (children == null) {
                         complete = false
@@ -452,31 +478,20 @@ internal class MediaIndexScanner(
         if (complete && mediaHealthy) database.finishMediaSource(volume, scanId)
     }
 
-    /**
-     * Storage providers can perform blocking I/O. Yield between directory reads
-     * while audio is playing so indexing does not compete with active playback.
-     */
-    private fun waitForPlaybackToPause() {
-        while (MediaPlaybackBridge.isPlaying) {
-            try {
-                Thread.sleep(1_000L)
-            } catch (_: InterruptedException) {
-                Thread.currentThread().interrupt()
-                return
-            }
-        }
-    }
-
     fun status(): org.json.JSONObject {
         val counts = database.counts()
         return org.json.JSONObject()
             .put("state", state)
             .put("scanned", scanned)
+            .put("scanned_directories", scannedDirectories)
+            .put("unchanged_count", unchanged)
+            .put("indexed_count", (scanned - unchanged).coerceAtLeast(0))
             .put("skipped", skipped)
             .put("last_completed_at", lastCompletedAt)
             .put("last_scan_started_at", lastScanStartedAt)
             .put("elapsed_ms", if (state == "scanning") System.currentTimeMillis() - lastScanStartedAt else (lastCompletedAt - lastScanStartedAt).coerceAtLeast(0L))
             .put("current_source", currentSource)
+            .put("current_path", currentPath)
             .put("last_error", lastError)
             .put("skipped_items", org.json.JSONArray().also { items ->
                 synchronized(skippedItems) {
@@ -489,6 +504,8 @@ internal class MediaIndexScanner(
                 }
             })
             .put("file_count", counts["files"] ?: 0)
+            .put("directory_count", counts["directories"] ?: 0)
+            .put("regular_file_count", counts["regular_files"] ?: 0)
             .put("media_count", counts["media"] ?: 0)
             .put("photo_count", counts["photo"] ?: 0)
             .put("video_count", counts["video"] ?: 0)
@@ -516,12 +533,45 @@ internal class MediaIndexScanner(
             else -> null
         }
 
-        private fun mimeForName(name: String): String = when (name.substringAfterLast('.', "").lowercase()) {
-            "mp3" -> "audio/mpeg"; "m4a" -> "audio/mp4"; "aac" -> "audio/aac"; "flac" -> "audio/flac"
-            "ogg","opus" -> "audio/ogg"; "wav" -> "audio/wav"; "mp4","m4v" -> "video/mp4"
-            "mkv" -> "video/x-matroska"; "jpg","jpeg" -> "image/jpeg"; "png" -> "image/png"
-            "webp" -> "image/webp"; "gif" -> "image/gif"; "pdf" -> "application/pdf"
-            else -> "application/octet-stream"
+        private fun mimeForName(name: String): String {
+            val extension = name.substringAfterLast('.', "").lowercase()
+            val known = mapOf(
+                "mp3" to "audio/mpeg", "m4a" to "audio/mp4", "aac" to "audio/aac",
+                "flac" to "audio/flac", "ogg" to "audio/ogg", "opus" to "audio/ogg",
+                "wav" to "audio/wav", "wma" to "audio/x-ms-wma", "aiff" to "audio/aiff",
+                "alac" to "audio/mp4", "amr" to "audio/amr",
+                "mp4" to "video/mp4", "m4v" to "video/mp4", "mov" to "video/quicktime",
+                "mkv" to "video/x-matroska", "webm" to "video/webm", "avi" to "video/x-msvideo",
+                "wmv" to "video/x-ms-wmv", "mpeg" to "video/mpeg", "mpg" to "video/mpeg",
+                "3gp" to "video/3gpp", "ts" to "video/mp2t", "m2ts" to "video/mp2t",
+                "mts" to "video/mp2t", "flv" to "video/x-flv", "ogv" to "video/ogg",
+                "jpg" to "image/jpeg", "jpeg" to "image/jpeg", "png" to "image/png",
+                "webp" to "image/webp", "gif" to "image/gif", "bmp" to "image/bmp",
+                "heic" to "image/heic", "heif" to "image/heif", "avif" to "image/avif",
+                "tif" to "image/tiff", "tiff" to "image/tiff",
+                "pdf" to "application/pdf", "doc" to "application/msword",
+                "docx" to "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "xls" to "application/vnd.ms-excel",
+                "xlsx" to "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "ppt" to "application/vnd.ms-powerpoint",
+                "pptx" to "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                "odt" to "application/vnd.oasis.opendocument.text",
+                "ods" to "application/vnd.oasis.opendocument.spreadsheet",
+                "odp" to "application/vnd.oasis.opendocument.presentation",
+                "txt" to "text/plain", "md" to "text/markdown", "csv" to "text/csv",
+                "html" to "text/html", "htm" to "text/html", "css" to "text/css",
+                "xml" to "application/xml", "json" to "application/json",
+                "js" to "text/javascript", "ts" to "text/typescript",
+                "py" to "text/x-python", "dart" to "text/x-dart", "kt" to "text/x-kotlin",
+                "java" to "text/x-java-source", "sh" to "text/x-shellscript",
+                "zip" to "application/zip", "7z" to "application/x-7z-compressed",
+                "rar" to "application/vnd.rar", "tar" to "application/x-tar",
+                "gz" to "application/gzip", "apk" to "application/vnd.android.package-archive",
+                "epub" to "application/epub+zip"
+            )
+            return known[extension]
+                ?: android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
+                ?: "application/octet-stream"
         }
     }
 }
