@@ -322,9 +322,13 @@ class _DownloadTaskCard extends StatelessWidget {
 
     return SmokedGlassSurface(
       radius: BorderRadius.circular(20),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
+      child: DefaultTextStyle.merge(
+        style: const TextStyle(color: Colors.white),
+        child: IconTheme.merge(
+          data: const IconThemeData(color: Colors.white70),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
@@ -357,8 +361,8 @@ class _DownloadTaskCard extends StatelessWidget {
                         status,
                         style: TextStyle(
                           color: failed
-                              ? colors.error
-                              : colors.onSurfaceVariant,
+                              ? const Color(0xFFFF7B86)
+                              : Colors.white70,
                           fontSize: 11,
                         ),
                       ),
@@ -399,7 +403,7 @@ class _DownloadTaskCard extends StatelessWidget {
                 minHeight: 5,
                 value: task.progress ?? (downloading ? null : 0),
                 backgroundColor: colors.onSurface.withValues(alpha: 0.10),
-                color: failed ? colors.error : colors.primary,
+                color: failed ? const Color(0xFFFF7B86) : colors.primary,
               ),
             ),
             const SizedBox(height: 8),
@@ -432,10 +436,12 @@ class _DownloadTaskCard extends StatelessWidget {
                 task.errorMessage!,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: colors.error, fontSize: 11),
+                style: const TextStyle(color: Color(0xFFFF7B86), fontSize: 11),
               ),
             ],
           ],
+            ),
+          ),
         ),
       ),
     );
@@ -598,9 +604,11 @@ class _NewDownloadSheetState extends State<_NewDownloadSheet> {
               if (_resolved != null) ...[
                 SmokedGlassSurface(
                   radius: BorderRadius.circular(16),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Row(
+                  child: DefaultTextStyle.merge(
+                    style: const TextStyle(color: Colors.white),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
                       children: [
                         const Icon(Icons.insert_drive_file_outlined),
                         const SizedBox(width: 10),
@@ -625,6 +633,7 @@ class _NewDownloadSheetState extends State<_NewDownloadSheet> {
                           ),
                         ),
                       ],
+                      ),
                     ),
                   ),
                 ),
