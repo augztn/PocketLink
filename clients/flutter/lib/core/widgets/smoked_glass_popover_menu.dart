@@ -153,7 +153,10 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
                     constraints: BoxConstraints(
                       minWidth: mathMin(224, menuMaxWidth),
                       maxWidth: menuMaxWidth,
-                      maxHeight: media.size.height * 0.55,
+                      maxHeight: mathMin(
+                        media.size.height * 0.55,
+                        media.size.height - top - media.padding.bottom - 8,
+                      ),
                     ),
                     child: ClipRRect(
                 borderRadius: BorderRadius.circular(22),
