@@ -275,10 +275,13 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
               !observer.isModalRouteOnTop &&
               _nowPlayingController.value <= 0.01;
           final onDashboard = observer.isDashboardVisible;
-          final reserveMiniPlayerSpace = _shouldShowMiniPlayer() &&
+          final reserveBottomContent = !onDashboard &&
               !drawerOpen &&
               !observer.isNowPlayingVisible &&
               !observer.isModalRouteOnTop;
+          final contentBottomInset = reserveBottomContent
+              ? (_shouldShowMiniPlayer() ? 148.0 : 96.0)
+              : 0.0;
           final showTrackPopup = _trackPopup != null &&
               _trackPopupOffset != null &&
               onDashboard &&
@@ -290,28 +293,17 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
           final reduceMotion = media.disableAnimations;
           final bottomInset = media.padding.bottom;
 
-          final Widget navigatorContent;
-          if (reserveMiniPlayerSpace && !onDashboard) {
-            final reservedHeight = _miniPlayerHeight + bottomInset;
-            navigatorContent = MediaQuery(
-              data: media.copyWith(
-                size: Size(
-                  media.size.width,
-                  (media.size.height - reservedHeight)
-                      .clamp(0.0, double.infinity)
-                      .toDouble(),
-                ),
-                padding: media.padding.copyWith(bottom: 0),
-                viewPadding: media.viewPadding.copyWith(bottom: 0),
+          // Keep the navigator at full height so the floating mini-player can
+          // sample real page content. Scrollables that consume MediaQuery.padding
+          // receive enough trailing space to move their final items behind it.
+          final navigatorContent = MediaQuery(
+            data: media.copyWith(
+              padding: media.padding.copyWith(
+                bottom: media.padding.bottom + contentBottomInset,
               ),
-              child: Padding(
-                padding: EdgeInsets.only(bottom: reservedHeight),
-                child: widget.child,
-              ),
-            );
-          } else {
-            navigatorContent = widget.child;
-          }
+            ),
+            child: widget.child,
+          );
 
           return Stack(
             key: PocketLinkNavigation.mediaOverlayKey,
@@ -729,7 +721,7 @@ class _GlobalMiniPlayerBar extends StatelessWidget {
       child: Padding(
         // Same horizontal footprint as the Home / Explore / Files capsule.
         padding: const EdgeInsets.fromLTRB(14, 4, 88, 0),
-        child: LiquidGlassPill(
+        child: SmokedGlassSurface(
           key: PocketLinkNavigation.miniPlayerKey,
           radius: BorderRadius.circular(22),
           child: AnimatedOpacity(
