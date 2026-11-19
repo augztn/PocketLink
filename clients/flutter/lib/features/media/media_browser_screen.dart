@@ -7,7 +7,6 @@ import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/compact_search_field.dart';
 import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/smoked_glass_popover_menu.dart';
-import '../../core/widgets/smoked_glass_popover_menu.dart';
 
 import 'package:dio/dio.dart';
 import 'package:material_ui/material_ui.dart';
@@ -895,6 +894,16 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                 ]),
               ),
             ],
+            onSelected: (value) {
+              setState(() {
+                _libraryView = value;
+                if (value != 'folders') _currentFolderPath = '';
+              });
+              _saveState(folderPath: _currentFolderPath);
+              if (_contentScrollController.hasClients) {
+                _contentScrollController.jumpTo(0);
+              }
+            },
             child: Row(children: [
               Expanded(
                 child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
