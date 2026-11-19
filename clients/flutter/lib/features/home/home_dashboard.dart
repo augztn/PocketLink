@@ -768,8 +768,8 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 2),
                   child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Padding(
-                      padding: EdgeInsets.only(top: 2),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
                       child: Icon(Icons.dns_rounded, color: colors.onSurfaceVariant, size: 19),
                     ),
                     const SizedBox(width: 9),
@@ -1055,7 +1055,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                     Text(active[index].progress == null
                         ? 'In progress'
                         : '${(active[index].progress! * 100).round()}%',
-                      style: theme.textTheme.labelSmall?.copyWith(color: muted)),
+                      style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant)),
                   ]),
                   const SizedBox(height: 7),
                   LinearProgressIndicator(value: active[index].progress, minHeight: 4),
@@ -1063,7 +1063,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                   Text(active[index].total > 0
                       ? '${_formatBytes(active[index].transferred)} of ${_formatBytes(active[index].total)}'
                       : 'Transfer in progress',
-                    style: theme.textTheme.labelSmall?.copyWith(color: muted)),
+                    style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant)),
                 ],
               ]),
             ),
