@@ -198,7 +198,13 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       var result = await _readIndexedMedia();
       var found = result.items;
       var status = result.status;
-      if (mounted) setState(() => _media = List.unmodifiable(found));
+      if (mounted) {
+        setState(() {
+          _media = List.unmodifiable(found);
+          _scannedDirectories = status.scanned;
+          _skippedDirectories = status.skipped;
+        });
+      }
 
       // Keep the existing index visible while scanning. Poll only lightweight
       // status; reload media once after the scan finishes.
@@ -222,6 +228,8 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       if (mounted) {
         setState(() {
           _media = List.unmodifiable(found);
+          _scannedDirectories = status.scanned;
+          _skippedDirectories = status.skipped;
           _loading = false;
           _error = status.state == 'partial' && found.isEmpty
               ? status.lastError
@@ -776,64 +784,6 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     );
   }
 
-  Widget _viewPill({
-    required String label,
-    required bool selected,
-    required VoidCallback onTap,
-  }) {
-    final colors = Theme.of(context).colorScheme;
-    return Material(
-      color: selected ? colors.surfaceContainerHighest : Colors.transparent,
-      borderRadius: BorderRadius.circular(18),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: onTap,
-        child: SizedBox(
-          height: 30,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Center(
-              child: Text(label, style: TextStyle(
-                color: selected ? colors.onSurface : colors.onSurfaceVariant,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              )),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _menuPill({
-    required String label,
-    required List<PopupMenuEntry<String>> items,
-    required ValueChanged<String> onSelected,
-  }) {
-    final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-    return PopupMenuButton<String>(
-      onSelected: onSelected,
-      itemBuilder: (_) => items,
-      child: Container(
-        height: 36,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: colors.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.62)),
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Text(label, style: textTheme.labelMedium?.copyWith(
-            color: colors.onSurface, fontWeight: FontWeight.w600,
-          )),
-          const SizedBox(width: 4),
-          Icon(Icons.keyboard_arrow_down_rounded, size: 17, color: colors.onSurfaceVariant),
-        ]),
-      ),
-    );
-  }
-
   @override
   void dispose() {
     _saveState();
@@ -900,8 +850,14 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(headerTitle, style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800, color: titleColor)),
-                Text('${visibleMedia.length} videos • ${_selectedVolume == null ? 'All storage' : _volumeName(_selectedVolume)}',
-                  style: const TextStyle(fontSize: 10, fontFamily: 'monospace', color: Color(0xFFA1A7B3))),
+                Text(
+                  '${visibleMedia.length} videos • ${_selectedVolume == null ? 'All storage' : _volumeName(_selectedVolume)}'
+                  '${_scannedDirectories > 0 ? ' • $_scannedDirectories scanned' : ''}'
+                  '${_skippedDirectories > 0 ? ' · $_skippedDirectories skipped' : ''}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 10, fontFamily: 'monospace', color: Color(0xFFA1A7B3)),
+                ),
               ]),
               AnimatedRotation(turns: _musicMenuOpen ? 0.5 : 0, duration: const Duration(milliseconds: 200), child: const Icon(Icons.keyboard_arrow_down_rounded)),
             ]),
