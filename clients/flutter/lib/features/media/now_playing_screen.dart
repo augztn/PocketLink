@@ -1021,7 +1021,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
         transform: Matrix4.translationValues(0, _dismissDragDistance, 0),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(
-            (_dismissDragDistance * 0.10).clamp(0.0, 32.0).toDouble(),
+            _isDismissDragging ? 32 : 0,
           ),
           child: Stack(
             fit: StackFit.expand,
