@@ -654,7 +654,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                       ),
                     ]),
                   ),
-                )),
+                ))),
               const SizedBox(width: 8),
               SmokedGlassPopoverMenu<String>(
                 tooltip: 'More photo actions',
