@@ -262,6 +262,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
         player,
         settings,
         PocketLinkNavigation.drawerOpen,
+        _nowPlayingController,
       ]),
       builder: (context, _) => ValueListenableBuilder<List<Route<dynamic>>>(
         valueListenable: observer.routeStack,
@@ -271,7 +272,8 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
               !_nowPlayingOpen &&
               !drawerOpen &&
               !observer.isNowPlayingVisible &&
-              !observer.isModalRouteOnTop;
+              !observer.isModalRouteOnTop &&
+              _nowPlayingController.value <= 0.01;
           final onDashboard = observer.isDashboardVisible;
           final reserveMiniPlayerSpace = _shouldShowMiniPlayer() &&
               !drawerOpen &&
@@ -740,10 +742,13 @@ class _GlobalMiniPlayerBar extends StatelessWidget {
               final velocity = details.primaryVelocity ?? 0;
               if (!player.isPlaying && velocity > 300) onDismiss();
             },
-            child: InkWell(
+            child: Material(
+              type: MaterialType.transparency,
               borderRadius: BorderRadius.circular(22),
-              onTap: onOpen,
-              child: SizedBox(
+              child: InkWell(
+                borderRadius: BorderRadius.circular(22),
+                onTap: onOpen,
+                child: SizedBox(
                 height: 58,
                 child: Row(
                   children: [
