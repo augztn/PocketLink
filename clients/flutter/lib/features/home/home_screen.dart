@@ -12,7 +12,7 @@ import 'network_route_classifier.dart';
 import 'explore_search_screens.dart';
 import 'home_dashboard.dart';
 import '../media/media_player_screen.dart';
-import '../media/global_media_overlay.dart';
+import '../media/now_playing_overlay_controller.dart';
 import '../media/media_browser_screen.dart';
 import '../library/photo_gallery_screen.dart';
 import '../media/persistent_audio_player.dart';
@@ -246,7 +246,7 @@ class _HomeScreenState extends State<HomeScreen> {
         player.isActive &&
         player.currentItem != null &&
         player.api != null) {
-      GlobalMediaOverlay.openNowPlaying();
+      NowPlayingOverlayController.open();
       return;
     }
     if (_openingNowPlaying) return;
