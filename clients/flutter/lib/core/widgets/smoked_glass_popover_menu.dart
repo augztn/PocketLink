@@ -284,6 +284,7 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
                   ),
                 ),
               ),
+            ),
         ],
       ),
     );
