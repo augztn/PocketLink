@@ -27,6 +27,7 @@ class DownloadManagerService extends ChangeNotifier {
   ));
   final List<DownloadTask> _tasks = [];
   final Map<String, CancelToken> _tokens = {};
+  final Map<String, bool> _removeAfterStop = {};
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   ServerApi? _serverApi;
   Future<void> _writeQueue = Future<void>.value();
@@ -360,10 +361,10 @@ class DownloadManagerService extends ChangeNotifier {
     task.errorMessage = null;
     task.speedBytesPerSecond = 0;
     notifyListeners();
-    await _persist();
 
     RandomAccessFile? output;
     try {
+      await _persist();
       final file = File(task.destinationPath);
       final partialFile = File('${task.destinationPath}.part');
       await file.parent.create(recursive: true);
@@ -374,9 +375,10 @@ class DownloadManagerService extends ChangeNotifier {
       }
       task.downloadedBytes = offset;
       if (task.totalBytes != null && offset == task.totalBytes!) {
-        if (await partialFile.exists()) {
-          await partialFile.rename(task.destinationPath);
+        if (!await partialFile.exists()) {
+          await partialFile.create(recursive: true);
         }
+        await partialFile.rename(task.destinationPath);
         task.status = DownloadStatus.completed;
         task.speedBytesPerSecond = 0;
         return;
@@ -477,10 +479,25 @@ class DownloadManagerService extends ChangeNotifier {
         task.speedBytesPerSecond = 0;
       }
     } finally {
-      await output?.close();
+      try {
+        await output?.close();
+      } catch (_) {}
       _tokens.remove(task.id);
+      final deleteFinalFile = _removeAfterStop.remove(task.id);
+      if (deleteFinalFile != null) {
+        try {
+          final partial = File('${task.destinationPath}.part');
+          if (await partial.exists()) await partial.delete();
+          if (deleteFinalFile) {
+            final completed = File(task.destinationPath);
+            if (await completed.exists()) await completed.delete();
+          }
+        } catch (_) {}
+      }
       _activeWorkers = (_activeWorkers - 1).clamp(0, 1 << 30);
-      await _persist();
+      try {
+        await _persist();
+      } catch (_) {}
       notifyListeners();
       _pumpQueue();
     }
@@ -543,16 +560,21 @@ class DownloadManagerService extends ChangeNotifier {
   Future<void> remove(String id, {bool deleteFile = false}) async {
     final task = _find(id);
     if (task == null) return;
-    _tokens[id]?.cancel('removed');
+    final token = _tokens[id];
     _tasks.remove(task);
-    try {
-      final partial = File('${task.destinationPath}.part');
-      if (await partial.exists()) await partial.delete();
-    } catch (_) {}
-    if (deleteFile) {
+    if (token != null) {
+      _removeAfterStop[id] = deleteFile;
+      token.cancel('removed');
+    } else {
       try {
-        await File(task.destinationPath).delete();
+        final partial = File('${task.destinationPath}.part');
+        if (await partial.exists()) await partial.delete();
       } catch (_) {}
+      if (deleteFile) {
+        try {
+          await File(task.destinationPath).delete();
+        } catch (_) {}
+      }
     }
     await _persist();
     notifyListeners();
