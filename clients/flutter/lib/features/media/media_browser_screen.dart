@@ -857,8 +857,6 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     }).toList(growable: false);
     final visibleMedia = _sortMedia(filtered);
     final isFolderView = _libraryView == 'folders';
-    final selectedVolumes = _volumes.where((volume) => volume.id == _selectedVolume).toList();
-    final sourceLabel = _selectedVolume == 'internal' ? 'Internal storage' : selectedVolumes.isEmpty ? 'All Storage' : selectedVolumes.first.name;
 
     final favoritesCount = _media.where((m) => _favoriteKeys.contains(_favoriteKey(m))).length;
     final folderCount = _foldersAtCurrentLevel(_media).length;
@@ -879,8 +877,10 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
           title: PopupMenuButton<String>(
             tooltip: 'Choose video view',
             offset: const Offset(0, 48),
+            onOpened: () => setState(() => _musicMenuOpen = true),
+            onCanceled: () => setState(() => _musicMenuOpen = false),
             onSelected: (value) {
-              setState(() { _libraryView = value; if (value != 'folders') _currentFolderPath = ''; });
+              setState(() { _libraryView = value; _musicMenuOpen = false; if (value != 'folders') _currentFolderPath = ''; });
               _saveState(folderPath: _currentFolderPath);
               if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0);
             },
@@ -899,8 +899,12 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
               ])),
             ],
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Text(headerTitle, style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800, color: titleColor)),
-              const Icon(Icons.keyboard_arrow_down_rounded),
+              Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(headerTitle, style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800, color: titleColor)),
+                Text('${visibleMedia.length} videos • ${_selectedVolume == null ? 'All storage' : _volumeName(_selectedVolume)}',
+                  style: const TextStyle(fontSize: 10, fontFamily: 'monospace', color: Color(0xFFA1A7B3))),
+              ]),
+              AnimatedRotation(turns: _musicMenuOpen ? 0.5 : 0, duration: const Duration(milliseconds: 200), child: const Icon(Icons.keyboard_arrow_down_rounded)),
             ]),
           ),
           actionsBeforeHome: [
