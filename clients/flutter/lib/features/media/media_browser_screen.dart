@@ -890,7 +890,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                   ),
                 ]),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 16),
               AnimatedRotation(turns: _musicMenuOpen ? 0.5 : 0, duration: const Duration(milliseconds: 200), child: const Icon(Icons.keyboard_arrow_down_rounded)),
             ]),
           ),
@@ -1061,6 +1061,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   Future<void> _showMusicFilters() async {
     final selected = await showModalBottomSheet<({String? volume, String sort})>(
       context: context,
+      useRootNavigator: true,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (sheetContext) {
