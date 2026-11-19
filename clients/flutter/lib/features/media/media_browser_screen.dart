@@ -874,19 +874,22 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                 if (_libraryView == 'favorites') const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.check_rounded, size: 18)),
               ])),
             ],
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(headerTitle, style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800, color: titleColor)),
-                Text(
-                  '${visibleMedia.length} videos • ${_selectedVolume == null ? 'All storage' : _volumeName(_selectedVolume)}'
+            child: Row(children: [
+              Expanded(
+                child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(headerTitle, style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800, color: titleColor)),
+                  Text(
+                  _countLabel(visibleMedia.length, 'video', 'videos') + ' • ${_selectedVolume == null ? 'All storage' : _volumeName(_selectedVolume)}'
                   '${_scannedDirectories > 0 ? ' • $_scannedDirectories scanned' : ''}'
                   '${_skippedDirectories > 0 ? ' · $_skippedDirectories skipped' : ''}'
                   '${_loading && _scanLocation.isNotEmpty ? ' · $_scanLocation' : ''}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontSize: 10, fontFamily: 'monospace', color: Color(0xFFA1A7B3)),
-                ),
-              ]),
+                  ),
+                ]),
+              ),
+              const SizedBox(width: 12),
               AnimatedRotation(turns: _musicMenuOpen ? 0.5 : 0, duration: const Duration(milliseconds: 200), child: const Icon(Icons.keyboard_arrow_down_rounded)),
             ]),
           ),
