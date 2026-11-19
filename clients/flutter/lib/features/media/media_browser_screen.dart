@@ -1014,6 +1014,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       ),
       ),
     );
+  }
 
   String get _favoritesPreferenceKey => 'pocketlink.media.favorites.$_stateKey.${widget.type.name}';
 
