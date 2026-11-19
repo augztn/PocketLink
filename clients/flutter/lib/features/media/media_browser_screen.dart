@@ -40,12 +40,13 @@ class _MediaFolder {
 class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   static const _audioExtensions = {
     'mp3', 'm4a', 'aac', 'wav', 'flac', 'ogg', 'opus',
-    'wma', 'aiff', 'alac',
+    'wma', 'aiff', 'alac', 'amr', 'ape', 'wv', 'dsf', 'dff',
+    'mid', 'midi', 'mka',
   };
   static const _videoExtensions = {
     'mp4', 'm4v', 'mov', 'mkv', 'webm', 'avi', 'wmv',
     'mpeg', 'mpg', '3gp', 'ts', 'm2ts', 'mts', 'flv', 'f4v',
-    '3g2', 'm2v', 'ogv', 'vob', 'rmvb',
+    '3g2', 'm2v', 'ogv', 'vob', 'rmvb', 'h264', 'h265', 'hevc',
   };
   static const _maxDirectories = 10000;
   static const _maxDepth = 24;
