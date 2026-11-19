@@ -29,6 +29,7 @@ class AppSettings extends ChangeNotifier {
   static const _nowPlayingMiniPlayerKey = 'settings_now_playing_mini_player';
   static const _nowPlayingGesturesKey = 'settings_now_playing_gestures';
   static const _nowPlayingStatsForNerdsKey = 'settings_now_playing_stats_for_nerds';
+  static const _nowPlayingScrubberStyleKey = 'settings_now_playing_scrubber_style';
   static const _videoControlsTimeoutKey = 'settings_video_controls_timeout';
   static const _videoSeekSecondsKey = 'settings_video_seek_seconds';
   static const _videoDefaultSpeedKey = 'settings_video_default_speed';
@@ -72,6 +73,7 @@ class AppSettings extends ChangeNotifier {
   bool _showMiniPlayer = true;
   bool _enableNowPlayingGestures = true;
   bool _showStatsForNerds = true;
+  String _nowPlayingScrubberStyle = 'apple';
   int _videoControlsTimeoutSeconds = 4;
   int _videoSeekSeconds = 10;
   double _videoDefaultSpeed = 1.0;
@@ -105,6 +107,7 @@ class AppSettings extends ChangeNotifier {
   bool get showMiniPlayer => _showMiniPlayer;
   bool get enableNowPlayingGestures => _enableNowPlayingGestures;
   bool get showStatsForNerds => _showStatsForNerds;
+  String get nowPlayingScrubberStyle => _nowPlayingScrubberStyle;
   int get videoControlsTimeoutSeconds => _videoControlsTimeoutSeconds;
   int get videoSeekSeconds => _videoSeekSeconds;
   double get videoDefaultSpeed => _videoDefaultSpeed;
@@ -125,6 +128,10 @@ class AppSettings extends ChangeNotifier {
       _showMiniPlayer = preferences.getBool(_nowPlayingMiniPlayerKey) ?? true;
       _enableNowPlayingGestures = preferences.getBool(_nowPlayingGesturesKey) ?? true;
       _showStatsForNerds = preferences.getBool(_nowPlayingStatsForNerdsKey) ?? true;
+      _nowPlayingScrubberStyle = const {'apple', 'wavy', 'classic', 'waveform'}
+          .contains(preferences.getString(_nowPlayingScrubberStyleKey))
+          ? preferences.getString(_nowPlayingScrubberStyleKey)!
+          : 'apple';
       _videoControlsTimeoutSeconds = preferences.getInt(_videoControlsTimeoutKey) ?? 4;
       _videoSeekSeconds = preferences.getInt(_videoSeekSecondsKey) ?? 10;
       _videoDefaultSpeed = preferences.getDouble(_videoDefaultSpeedKey) ?? 1.0;
@@ -403,16 +410,29 @@ class AppSettings extends ChangeNotifier {
     ]);
   }
 
+  Future<void> setNowPlayingScrubberStyle(String style) async {
+    if (!const {'apple', 'wavy', 'classic', 'waveform'}.contains(style)) {
+      throw ArgumentError.value(style, 'style');
+    }
+    if (_nowPlayingScrubberStyle == style) return;
+    _nowPlayingScrubberStyle = style;
+    notifyListeners();
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(_nowPlayingScrubberStyleKey, style);
+  }
+
   Future<void> resetNowPlayingOptions() async {
     _showMiniPlayer = true;
     _enableNowPlayingGestures = true;
     _showStatsForNerds = true;
+    _nowPlayingScrubberStyle = 'apple';
     notifyListeners();
     final preferences = await SharedPreferences.getInstance();
     await Future.wait([
       preferences.remove(_nowPlayingMiniPlayerKey),
       preferences.remove(_nowPlayingGesturesKey),
       preferences.remove(_nowPlayingStatsForNerdsKey),
+      preferences.remove(_nowPlayingScrubberStyleKey),
     ]);
   }
 
