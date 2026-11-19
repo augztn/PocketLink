@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
 import 'music_shortcut_customization_screen.dart';
+import '../media/now_playing_scrubber.dart';
 
 class NowPlayingSettingsScreen extends StatelessWidget {
   const NowPlayingSettingsScreen({super.key});
@@ -95,6 +96,44 @@ class NowPlayingSettingsScreen extends StatelessWidget {
                     ),
                   ),
                 ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Now Playing scrubber',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Card(
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                children: NowPlayingScrubberStyle.values.map((style) {
+                  final selected = settings.nowPlayingScrubberStyle == style.key;
+                  return Column(
+                    children: [
+                      RadioListTile<String>(
+                        value: style.key,
+                        groupValue: settings.nowPlayingScrubberStyle,
+                        onChanged: (value) {
+                          if (value != null) {
+                            settings.setNowPlayingScrubberStyle(value);
+                          }
+                        },
+                        title: Text(style.label),
+                        subtitle: Padding(
+                          padding: const EdgeInsets.only(top: 7, right: 12),
+                          child: NowPlayingScrubberPreview(style: style),
+                        ),
+                        selected: selected,
+                        dense: false,
+                      ),
+                      if (style != NowPlayingScrubberStyle.values.last)
+                        const Divider(height: 1),
+                    ],
+                  );
+                }).toList(growable: false),
               ),
             ),
             const SizedBox(height: 20),
