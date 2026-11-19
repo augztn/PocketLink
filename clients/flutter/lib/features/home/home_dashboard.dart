@@ -13,7 +13,6 @@ import 'explore_search_screens.dart';
 import '../media/persistent_audio_player.dart';
 import '../media/now_playing_overlay_controller.dart';
 import '../../core/network/server_api.dart';
-import '../library/photo_gallery_screen.dart';
 import '../transfers/transfer_manager_screen.dart';
 import '../transfers/transfer_manager.dart';
 import '../search/search_screen.dart';
