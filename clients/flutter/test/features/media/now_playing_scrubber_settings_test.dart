@@ -71,7 +71,7 @@ void main() {
           ),
         ),
       );
-      expect(find.byType(CustomPaint), findsOneWidget);
+      expect(find.byType(NowPlayingScrubber), findsOneWidget);
     }
   });
 
