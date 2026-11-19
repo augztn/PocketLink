@@ -873,7 +873,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
               const SizedBox(height: 11),
               InkWell(
                 borderRadius: BorderRadius.circular(8),
-                onTap: () => widget.onOpenExplore(ExploreCategory.drives),
+                onTap: widget.onOpenFiles,
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Row(children: [
                     Text('MOUNTED PARTITIONS', style: theme.textTheme.labelSmall?.copyWith(color: muted, letterSpacing: 0.65)),
