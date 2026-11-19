@@ -47,17 +47,24 @@ class PocketLinkHomeDrawer extends StatelessWidget {
       backgroundColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
       child: Container(
-        margin: EdgeInsets.fromLTRB(12, MediaQuery.paddingOf(context).top + 8, 0, MediaQuery.paddingOf(context).bottom + 12),
+        margin: EdgeInsets.fromLTRB(12, MediaQuery.paddingOf(context).top + 8, 0, MediaQuery.paddingOf(context).bottom + 16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(28),
           border: Border.all(color: Colors.white.withValues(alpha: 0.13)),
+        ),
+        foregroundDecoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(27),
+          border: Border(top: BorderSide(
+            color: Colors.white.withValues(alpha: 0.24),
+            width: 1,
+          )),
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(27),
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
             child: ColoredBox(
-              color: const Color(0xFF1C1E24).withValues(alpha: 0.78),
+              color: const Color(0xFF1C1E24).withValues(alpha: 0.72),
               child: SafeArea(
                 bottom: true,
                 child: Column(
