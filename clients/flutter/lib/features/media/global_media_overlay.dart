@@ -14,6 +14,9 @@ import 'persistent_audio_player.dart';
 class GlobalMediaOverlay extends StatefulWidget {
   const GlobalMediaOverlay({required this.child, super.key});
 
+  static VoidCallback? _openNowPlayingHandler;
+
+  static void openNowPlaying() => _openNowPlayingHandler?.call();
 
   final Widget child;
 
@@ -34,10 +37,6 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   Rect? _nowPlayingOriginRect;
   OverlayEntry? _nowPlayingEntry;
   late final AnimationController _nowPlayingController;
-
-  static VoidCallback? _openNowPlayingHandler;
-
-  static void openNowPlaying() => _openNowPlayingHandler?.call();
   MediaQueueItem? _lastTrack;
   int _lastTrackIndex = 0;
   MediaQueueItem? _trackPopup;
