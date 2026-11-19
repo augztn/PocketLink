@@ -843,7 +843,6 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     super.dispose();
   }
 
-  @override
   Widget _buildVideoScreen(BuildContext context) {
     final query = _searchQuery.trim().toLowerCase();
     final filtered = _media.where((media) {
@@ -1005,12 +1004,25 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                                             ),
                                        
 
+     trailing: const Icon(Icons.play_arrow_rounded),
+                                            onTap: () => _openMedia(media, visibleMedia),
+                                          );
+                                        },
+                                      ),
+          ),
+        ],
+      ),
+      ),
+    );
+
+  String get _favoritesPreferenceKey => 'pocketlink.media.favorites.$_stateKey.${widget.type.name}';
+
   String _favoriteKey(_MediaFile media) => '${media.volume ?? 'internal'}:${media.path}';
 
   Future<void> _loadFavorites() async {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
-    setState(() => _favoriteKeys = prefs.getStringList('pocketlink.media.favorites.$_stateKey.${widget.type.name}')?.toSet() ?? <String>{});
+    setState(() => _favoriteKeys = prefs.getStringList(_favoritesPreferenceKey)?.toSet() ?? <String>{});
   }
 
   Future<void> _toggleFavorite(_MediaFile media) async {
@@ -1019,7 +1031,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     if (!next.add(key)) next.remove(key);
     setState(() => _favoriteKeys = next);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList('pocketlink.music.favorites.$_stateKey', next.toList()..sort());
+    await prefs.setStringList(_favoritesPreferenceKey, next.toList()..sort());
   }
 
   String _trackArtist(_MediaFile media) {
@@ -1114,7 +1126,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       },
     );
     if (selected == null || !mounted) return;
-    final rootPath = selected.volume == 'internal' ? 'Music' : '';
+    final rootPath = _isMusic && selected.volume == 'internal' ? 'Music' : '';
     setState(() {
       _selectedVolume = selected.volume;
       _sortBy = selected.sort;
@@ -1368,20 +1380,10 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     );
   }
 
+
   @override
   Widget build(BuildContext context) => _isMusic ? _musicScreen(context) : _buildVideoScreen(context);
 
-     trailing: const Icon(Icons.play_arrow_rounded),
-                                            onTap: () => _openMedia(media, visibleMedia),
-                                          );
-                                        },
-                                      ),
-          ),
-        ],
-      ),
-      ),
-    );
-  }
 }
 
 class _VideoTag extends StatelessWidget {
