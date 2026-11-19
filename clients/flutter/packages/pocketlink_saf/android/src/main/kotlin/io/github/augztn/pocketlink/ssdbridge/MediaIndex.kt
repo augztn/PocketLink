@@ -22,6 +22,8 @@ internal data class IndexedFile(
 
 internal data class IndexStamp(val size: Long, val modified: Long, val category: String? = null)
 
+internal data class SkippedIndexItem(val volume: String, val path: String, val reason: String)
+
 internal class MediaIndexDatabase(context: Context) :
     SQLiteOpenHelper(context, "pocketlink_index.db", null, 1) {
 
@@ -232,6 +234,15 @@ internal class MediaIndexScanner(
     @Volatile private var lastCompletedAt: Long = 0L
     @Volatile private var lastScanStartedAt: Long = 0L
     @Volatile private var currentSource: String? = null
+    private val skippedItems = mutableListOf<SkippedIndexItem>()
+
+    private fun recordSkipped(volume: String, path: String, reason: String) {
+        synchronized(skippedItems) {
+            if (skippedItems.size < MAX_REPORTED_SKIPPED_ITEMS) {
+                skippedItems += SkippedIndexItem(volume, path, reason)
+            }
+        }
+    }
 
     fun markDirty() {
         dirty.set(true)
@@ -264,6 +275,7 @@ internal class MediaIndexScanner(
         state = "scanning"
         scanned = 0
         skipped = 0
+        synchronized(skippedItems) { skippedItems.clear() }
         lastError = null
         executor.execute {
             android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND)
@@ -277,6 +289,7 @@ internal class MediaIndexScanner(
                         scanSource(id, root)
                     } catch (error: Exception) {
                         skipped++
+                        recordSkipped(id, "", error.message ?: "Storage source could not be indexed")
                         lastError = error.message ?: "One storage source could not be indexed"
                     } finally {
                         currentSource = null
@@ -314,22 +327,26 @@ internal class MediaIndexScanner(
                 try { database.upsertFiles(snapshot, scanId) } catch (error: Exception) {
                     filesHealthy = false
                     skipped++
+                    recordSkipped(volume, "", error.message ?: "File index update failed")
                     lastError = error.message ?: "File index update failed"
                 }
                 try { database.upsertMedia(snapshot, scanId) } catch (error: Exception) {
                     mediaHealthy = false
                     skipped++
+                    recordSkipped(volume, "", error.message ?: "Media index update failed")
                     lastError = error.message ?: "Media index update failed"
                 }
             }
             try { database.markFilesSeen(volume, unchangedFiles.toList(), scanId) } catch (error: Exception) {
                 filesHealthy = false
                 skipped++
+                recordSkipped(volume, "", error.message ?: "File index update failed")
                 lastError = error.message ?: "File index update failed"
             }
             try { database.markMediaSeen(volume, unchangedMedia.toList(), scanId) } catch (error: Exception) {
                 mediaHealthy = false
                 skipped++
+                recordSkipped(volume, "", error.message ?: "Media index update failed")
                 lastError = error.message ?: "Media index update failed"
             }
             batch.clear()
@@ -371,6 +388,8 @@ internal class MediaIndexScanner(
                     if (children == null) {
                         complete = false
                         skipped++
+                        val inaccessiblePath = runCatching { directory.canonicalFile.relativeTo(base).invariantSeparatorsPath }.getOrDefault("")
+                        recordSkipped(volume, inaccessiblePath, "Folder could not be read")
                         continue
                     }
                     children.forEach { child ->
@@ -380,6 +399,7 @@ internal class MediaIndexScanner(
                                 canonical.path.startsWith(base.path + File.separator))) {
                             complete = false
                             skipped++
+                            recordSkipped(volume, child.name, "Path could not be safely resolved")
                             return@forEach
                         }
                         val relative = canonical.relativeTo(base).invariantSeparatorsPath
@@ -387,7 +407,7 @@ internal class MediaIndexScanner(
                             child.lastModified(), mimeForName(child.name))
                         if (child.isDirectory) {
                             if (depth < MAX_DEPTH) stack.add(child to depth + 1)
-                            else { complete = false; skipped++ }
+                            else { complete = false; skipped++; recordSkipped(volume, relative, "Maximum folder depth reached") }
                         }
                     }
                 }
@@ -403,17 +423,23 @@ internal class MediaIndexScanner(
                     if (children == null) {
                         complete = false
                         skipped++
+                        recordSkipped(volume, parentPath, "Folder could not be read")
                         continue
                     }
                     children.forEach { child ->
-                        val name = child.name ?: return@forEach
+                        val name = child.name ?: run {
+                            complete = false
+                            skipped++
+                            recordSkipped(volume, parentPath, "Storage provider returned an item without a name")
+                            return@forEach
+                        }
                         if (name.startsWith(".")) return@forEach
                         val relative = if (parentPath.isEmpty()) name else "$parentPath/$name"
                         add(relative, name, child.isDirectory, if (child.isFile) child.length() else 0L,
                             child.lastModified(), child.type ?: mimeForName(name))
                         if (child.isDirectory) {
                             if (depth < MAX_DEPTH) stack.add((child to relative) to depth + 1)
-                            else { complete = false; skipped++ }
+                            else { complete = false; skipped++; recordSkipped(volume, relative, "Maximum folder depth reached") }
                         }
                     }
                 }
@@ -452,6 +478,16 @@ internal class MediaIndexScanner(
             .put("elapsed_ms", if (state == "scanning") System.currentTimeMillis() - lastScanStartedAt else (lastCompletedAt - lastScanStartedAt).coerceAtLeast(0L))
             .put("current_source", currentSource)
             .put("last_error", lastError)
+            .put("skipped_items", org.json.JSONArray().also { items ->
+                synchronized(skippedItems) {
+                    skippedItems.forEach { item ->
+                        items.put(org.json.JSONObject()
+                            .put("volume", item.volume)
+                            .put("path", item.path)
+                            .put("reason", item.reason))
+                    }
+                }
+            })
             .put("file_count", counts["files"] ?: 0)
             .put("media_count", counts["media"] ?: 0)
             .put("photo_count", counts["photo"] ?: 0)
@@ -468,6 +504,7 @@ internal class MediaIndexScanner(
     companion object {
         private const val RESCAN_INTERVAL_MS = 10 * 60 * 1000L
         private const val MAX_DEPTH = 64
+        private const val MAX_REPORTED_SKIPPED_ITEMS = 100
         private val AUDIO = setOf("mp3","m4a","aac","wav","flac","ogg","opus","wma","aiff","alac")
         private val VIDEO = setOf("mp4","m4v","mov","mkv","webm","avi","wmv","mpeg","mpg","3gp","ts","m2ts","mts","flv","f4v","3g2","m2v","ogv","vob","rmvb")
         private val PHOTO = setOf("jpg","jpeg","png","webp","gif","bmp","heic","heif","avif")
