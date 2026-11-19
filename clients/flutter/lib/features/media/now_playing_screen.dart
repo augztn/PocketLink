@@ -68,7 +68,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   int _artworkRequest = 0;
   bool _cached = false;
   Set<String> _favorites = <String>{};
-  double? _dragPosition;
   double _trackSwipeDistance = 0;
 
 
@@ -261,7 +260,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     setState(() {
       _artwork = null;
       _artworkKey = null;
-      _dragPosition = null;
     });
     await Future.wait([
       _refreshCacheStatus(),
