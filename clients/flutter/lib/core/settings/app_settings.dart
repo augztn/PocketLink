@@ -43,10 +43,10 @@ class AppSettings extends ChangeNotifier {
   static const homeSectionDefaults = <String>['search', 'quick', 'transfers', 'continue', 'recent'];
   static const navigationDefaults = <String>['home', 'explore', 'files', 'browse'];
   static const musicButtonShortcutDefaults = <String>[
-    'photos', 'music', 'videos', 'documents', 'files', 'search', 'drives',
+    'photos', 'music', 'videos', 'documents', 'files', 'search',
   ];
   static const musicButtonShortcutDestinations = <String>{
-    'explore', 'files', 'music', 'videos', 'photos', 'documents', 'favorites', 'upload', 'search', 'drives',
+    'explore', 'files', 'music', 'videos', 'photos', 'documents', 'favorites', 'upload', 'search',
   };
 
   ThemeMode _themeMode = ThemeMode.system;
@@ -145,13 +145,13 @@ class AppSettings extends ChangeNotifier {
       if (rawMusicButtonShortcuts != null) {
         final decoded = jsonDecode(rawMusicButtonShortcuts);
         if (decoded is List) {
-          final values = decoded.whereType<String>().toList();
+          final values = decoded.whereType<String>()
+              .where(musicButtonShortcutDestinations.contains)
+              .toList();
           const legacyDefaults = ['explore', 'music', 'files', 'videos', 'photos', 'documents'];
           if (values.length == legacyDefaults.length && values.toSet().containsAll(legacyDefaults)) {
             _musicButtonShortcuts = List.of(musicButtonShortcutDefaults);
-          } else if (values.isNotEmpty && values.length == decoded.length &&
-              values.toSet().length == values.length &&
-              values.every(musicButtonShortcutDestinations.contains)) {
+          } else if (values.isNotEmpty && values.toSet().length == values.length) {
             _musicButtonShortcuts = values;
           }
         }
