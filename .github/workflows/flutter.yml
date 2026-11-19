@@ -1,4 +1,5 @@
 name: Flutter CI
+run-name: PocketLink CI • ${{ github.event_name }} • ${{ github.ref_name }}
 
 on:
   push:
@@ -11,6 +12,7 @@ on:
     paths:
       - "clients/flutter/**"
       - ".github/workflows/flutter.yml"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -24,6 +26,8 @@ concurrency:
 jobs:
   analyze:
     name: Flutter Code Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: clients/flutter
@@ -38,6 +42,8 @@ jobs:
 
   test:
     name: Flutter Unit & Widget Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: clients/flutter
@@ -52,6 +58,8 @@ jobs:
 
   linux-appimage:
     name: Linux AppImage Build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
     defaults:
       run:
         working-directory: clients/flutter
@@ -128,6 +136,8 @@ jobs:
 
   android-apk:
     name: Android APK Build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
     defaults:
       run:
         working-directory: clients/flutter
@@ -299,6 +309,12 @@ jobs:
           done
           echo "::error::Android APK build failed after three attempts."
           exit 1
+      - uses: actions/upload-artifact@v7
+        with:
+          name: PocketLink-Android-APK
+          path: clients/flutter/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 14
       - name: Run native Android unit tests
         run: cd android && ./gradlew :pocketlink_saf:testDebugUnitTest
       - name: Enable KVM acceleration for Android emulator
@@ -326,9 +342,3 @@ jobs:
             adb shell settings put global transition_animation_scale 0
             adb shell settings put global animator_duration_scale 0
             cd clients/flutter/android && ./gradlew --no-daemon --stacktrace :pocketlink_saf:connectedDebugAndroidTest
-      - uses: actions/upload-artifact@v7
-        with:
-          name: PocketLink-Android-APK
-          path: clients/flutter/build/app/outputs/flutter-apk/app-release.apk
-          if-no-files-found: error
-          retention-days: 14
