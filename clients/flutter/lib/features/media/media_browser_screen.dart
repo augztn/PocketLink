@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/compact_search_field.dart';
 import '../../core/widgets/feathered_glass_header.dart';
+import '../../core/widgets/smoked_glass_popover_menu.dart';
 
 import 'package:dio/dio.dart';
 import 'package:material_ui/material_ui.dart';
@@ -1207,19 +1208,22 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                 ),
                 child: Text(_fileExtension(media), style: const TextStyle(fontSize: 9, letterSpacing: 0.4, fontWeight: FontWeight.w700)),
               ),
-            PopupMenuButton<String>(
+            SmokedGlassPopoverMenu<String>(
               tooltip: 'Track actions',
+              items: [
+                const SmokedGlassPopoverMenuItem(value: 'next', label: 'Play next', icon: Icons.skip_next_rounded),
+                const SmokedGlassPopoverMenuItem(value: 'queue', label: 'Add to queue', icon: Icons.queue_music_rounded),
+                SmokedGlassPopoverMenuItem(value: 'favorite', label: favorite ? 'Remove favourite' : 'Add to favourites', icon: favorite ? Icons.favorite_rounded : Icons.favorite_border_rounded),
+              ],
               onSelected: (action) async {
                 if (action == 'favorite') await _toggleFavorite(media);
                 if (action == 'next') await _queueTrack(media, playNext: true);
                 if (action == 'queue') await _queueTrack(media, playNext: false);
               },
-              itemBuilder: (_) => [
-                const PopupMenuItem(value: 'next', child: Text('Play next')),
-                const PopupMenuItem(value: 'queue', child: Text('Add to queue')),
-                PopupMenuItem(value: 'favorite', child: Text(favorite ? 'Remove favourite' : 'Add to favourites')),
-              ],
-              child: Icon(Icons.more_vert_rounded, color: Theme.of(context).colorScheme.onSurfaceVariant),
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Icon(Icons.more_vert_rounded, color: Theme.of(context).colorScheme.onSurfaceVariant),
+              ),
             ),
           ]),
         ),
