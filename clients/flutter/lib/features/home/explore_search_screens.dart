@@ -7,6 +7,7 @@ import '../files/documents_browser_screen.dart';
 import '../library/photo_gallery_screen.dart';
 import '../media/media_browser_screen.dart';
 import '../search/search_screen.dart';
+import '../downloads/download_manager_service.dart';
 
 enum ExploreCategory { files, photos, music, videos }
 
@@ -304,6 +305,27 @@ class _ExploreGridState extends State<_ExploreGrid>
             title: 'Search', subtitle: 'Find files across storage',
             icon: Icons.search_rounded, tint: const Color(0xFF6C9DCE),
             onTap: () => onOpen(SearchScreen(api: api, onHome: () => Navigator.of(context).maybePop())),
+          ),
+          AnimatedBuilder(
+            animation: DownloadManagerService.instance,
+            builder: (context, _) {
+              final manager = DownloadManagerService.instance;
+              return card(
+                index: 6,
+                title: 'Downloads',
+                subtitle: manager.activeCount > 0
+                    ? '${manager.activeCount} downloading'
+                    : manager.queuedCount > 0
+                        ? '${manager.queuedCount} queued'
+                        : 'Manage downloads',
+                icon: Icons.download_rounded,
+                tint: const Color(0xFF3FAD8A),
+                onTap: () => _openLibrary(
+                  'downloads',
+                  const SizedBox.shrink(),
+                ),
+              );
+            },
           ),
         ],
       ),
