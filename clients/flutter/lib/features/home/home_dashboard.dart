@@ -563,11 +563,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
 
     return Container(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.62)),
-      ),
+      decoration: _dashboardCardDecoration(theme, radius: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -902,21 +898,80 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
     );
   }
 
+  BoxDecoration _dashboardCardDecoration(ThemeData theme, {double radius = 18}) {
+    final dark = theme.brightness == Brightness.dark;
+    final colors = theme.colorScheme;
+    return BoxDecoration(
+      color: dark ? null : colors.surfaceContainerLow,
+      gradient: dark
+          ? const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFF1B1D24), Color(0xFF131419)],
+            )
+          : null,
+      borderRadius: BorderRadius.circular(radius),
+      border: Border.all(
+        color: dark
+            ? Colors.white.withValues(alpha: 0.07)
+            : colors.outlineVariant.withValues(alpha: 0.62),
+      ),
+    );
+  }
+
+  Future<void> _showSkippedItemsInfo(int count) async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Skipped items'),
+        content: Text(
+          '${count} ${count == 1 ? 'item was' : 'items were'} skipped during the host media scan. '
+          'The current media-index API reports the count only; it does not provide individual skipped paths.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildContinueStrip(BuildContext context, ThemeData theme, ColorScheme colors) {
     final player = PersistentAudioPlayer.instance;
     final items = HomeActivityStore.instance.itemsForServer(widget.api.baseUrl).take(8).toList();
     if (items.isEmpty) {
       return Container(
-        height: 72,
-        alignment: Alignment.centerLeft,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(color: colors.surfaceContainerLow, borderRadius: BorderRadius.circular(18)),
-        child: Row(children: [
-          Icon(Icons.history_rounded, color: colors.onSurfaceVariant),
-          const SizedBox(width: 10),
-          Expanded(child: Text('Your recent tracks, folders and files will appear here.',
-            style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant))),
-        ]),
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        decoration: _dashboardCardDecoration(theme),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.history_rounded, color: colors.onSurfaceVariant, size: 22),
+            const SizedBox(height: 7),
+            Text(
+              'Your recent tracks, folders and files will appear here.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+            ),
+            const SizedBox(height: 10),
+            TextButton.icon(
+              onPressed: () => widget.onOpenExplore(ExploreCategory.music),
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF8C9EFF),
+                backgroundColor: const Color(0xFF536DFE).withValues(alpha: 0.16),
+                padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                shape: const StadiumBorder(),
+              ),
+              icon: const Icon(Icons.play_arrow_rounded, size: 17),
+              label: const Text('Browse media'),
+            ),
+          ],
+        ),
       );
     }
     return SizedBox(
@@ -932,10 +987,13 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
           final icon = isTrack ? Icons.music_note_rounded : isFolder ? Icons.folder_rounded : Icons.insert_drive_file_rounded;
           return SizedBox(
             width: 250,
-            child: Material(
-              color: colors.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(18),
-              child: InkWell(
+            child: Container(
+              decoration: _dashboardCardDecoration(theme),
+              child: Material(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(18),
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
                 borderRadius: BorderRadius.circular(18),
                 onTap: () async {
                   if (isTrack) {
@@ -984,6 +1042,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                     ])),
                     Icon(isTrack ? Icons.play_arrow_rounded : Icons.chevron_right_rounded),
                   ]),
+                  ),
                 ),
               ),
             ),
@@ -994,10 +1053,13 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
   }
 
   Widget _buildGlobalSearchEntry(ThemeData theme, ColorScheme colors) {
-    return Material(
-      color: colors.surfaceContainerLow,
-      borderRadius: BorderRadius.circular(18),
-      child: InkWell(
+    return Container(
+      decoration: _dashboardCardDecoration(theme),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(18),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
         borderRadius: BorderRadius.circular(18),
         onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
           builder: (_) => SearchScreen(api: widget.api),
@@ -1011,6 +1073,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
               style: theme.textTheme.bodyMedium?.copyWith(color: colors.onSurfaceVariant))),
             Icon(Icons.arrow_forward_rounded, color: colors.onSurfaceVariant, size: 18),
           ]),
+          ),
         ),
       ),
     );
@@ -1138,11 +1201,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
         : source == null ? 'Preparing storage' : 'External storage';
     return Container(
       padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: colors.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.62)),
-      ),
+      decoration: _dashboardCardDecoration(theme),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Icon(Icons.manage_search_rounded, color: colors.primary, size: 20),
@@ -1172,9 +1231,45 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
         if (status != null) ...[
           const SizedBox(height: 7),
           Text(
-            '${status.mediaCount} media · ${status.fileCount} files · '
-            '${status.scanned} checked · ${status.skipped} skipped',
+            '${status.mediaCount} media · ${status.fileCount} files',
             style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
+          ),
+          const SizedBox(height: 7),
+          Wrap(
+            spacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(
+                '${status.scanned} checked',
+                style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
+              ),
+              if (status.skipped > 0)
+                Material(
+                  color: const Color(0xFFF59E0B).withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(20),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(20),
+                    onTap: () => _showSkippedItemsInfo(status.skipped),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '${status.skipped} skipped',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: const Color(0xFFFBBF24),
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(width: 2),
+                          const Icon(Icons.chevron_right_rounded, size: 15, color: Color(0xFFFBBF24)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
           if (status.lastError != null && status.lastError!.isNotEmpty) ...[
             const SizedBox(height: 5),
@@ -1186,16 +1281,24 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
           const LinearProgressIndicator(),
         ],
         const SizedBox(height: 10),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
             onPressed: scanning || _startingMediaScan || _checking || _serverOnline != true
                 ? null
                 : _startHostMediaScan,
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF8C9EFF),
+              backgroundColor: const Color(0xFF536DFE).withValues(alpha: 0.16),
+              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              shape: const StadiumBorder(),
+            ),
             icon: _startingMediaScan || scanning
-                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.refresh_rounded, size: 18),
-            label: Text(scanning ? 'Scanning on host…' : _startingMediaScan ? 'Starting…' : 'Scan host now'),
+                ? const SizedBox(width: 15, height: 15, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.refresh_rounded, size: 17),
+            label: Text(scanning ? 'Scanning…' : _startingMediaScan ? 'Starting…' : 'Scan host now'),
           ),
         ),
       ]),
@@ -1305,13 +1408,16 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
     }
 
     Widget quickAction(IconData icon, String label, VoidCallback onTap) {
-      return Material(
-        color: colors.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(18),
-        child: InkWell(
-          onTap: onTap,
+      return Container(
+        decoration: _dashboardCardDecoration(theme),
+        child: Material(
+          color: Colors.transparent,
           borderRadius: BorderRadius.circular(18),
-          child: Padding(
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(18),
+            child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1321,6 +1427,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                 Text(label, maxLines: 1, overflow: TextOverflow.visible, softWrap: false,
                   style: theme.textTheme.labelLarge?.copyWith(fontSize: 11.5, fontWeight: FontWeight.w600)),
               ],
+            ),
             ),
           ),
         ),
@@ -1394,10 +1501,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                 if (_recentFiles.isEmpty)
                   Container(
                     padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      color: colors.surfaceContainerLow,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
+                    decoration: _dashboardCardDecoration(theme, radius: 20),
                     child: Row(children: [
                       Icon(Icons.history_rounded, color: colors.onSurfaceVariant),
                       const SizedBox(width: 12),
@@ -1412,11 +1516,13 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                     ]),
                   )
                 else
-                  Material(
-                    color: colors.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(20),
-                    clipBehavior: Clip.antiAlias,
-                    child: Column(children: [
+                  Container(
+                    decoration: _dashboardCardDecoration(theme, radius: 20),
+                    child: Material(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(20),
+                      clipBehavior: Clip.antiAlias,
+                      child: Column(children: [
                       for (var index = 0; index < _recentFiles.take(8).length; index++) ...[
                         if (index > 0) const Divider(height: 1, indent: 68),
                         ListTile(
@@ -1464,7 +1570,8 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                           },
                         ),
                       ],
-                    ]),
+                      ]),
+                    ),
                   ),
               ]),
             )
@@ -1482,8 +1589,30 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
           onPressed: widget.onOpenDrawer,
           icon: const Icon(Icons.menu_rounded),
         ),
-        backgroundColor: theme.scaffoldBackgroundColor,
+        backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        flexibleSpace: ClipRect(
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: theme.brightness == Brightness.dark
+                    ? Colors.black.withValues(alpha: 0.72)
+                    : theme.scaffoldBackgroundColor.withValues(alpha: 0.88),
+                border: Border(
+                  bottom: BorderSide(
+                    color: theme.brightness == Brightness.dark
+                        ? Colors.white.withValues(alpha: 0.06)
+                        : colors.outlineVariant.withValues(alpha: 0.55),
+                    width: 1,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
         titleSpacing: 20,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1521,7 +1650,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
         onRefresh: () => _refreshStatus(forceRefresh: true),
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: EdgeInsets.fromLTRB(18, 6, 18, 104 + MediaQuery.paddingOf(context).bottom),
+          padding: EdgeInsets.fromLTRB(18, 18, 18, 104 + MediaQuery.paddingOf(context).bottom),
           children: [
             _buildServerTelemetry(context, theme, colors),
             const SizedBox(height: 12),
