@@ -13,18 +13,18 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
       shaderCallback: (bounds) => const LinearGradient(
         begin: Alignment.topCenter, end: Alignment.bottomCenter,
         colors: [Colors.black, Colors.black, Colors.transparent],
-        stops: [0, 0.62, 1],
+        stops: [0, 0.45, 1],
       ).createShader(bounds),
       child: ClipRect(child: BackdropFilter(
         filter: ui.ImageFilter.blur(sigmaX: 22, sigmaY: 22),
         child: DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(
           begin: Alignment.topCenter, end: Alignment.bottomCenter,
           colors: [
-            tint.withValues(alpha: isDark ? 0.78 : 0.88),
-            tint.withValues(alpha: isDark ? 0.42 : 0.55),
+            tint.withValues(alpha: isDark ? 0.98 : 0.97),
+            tint.withValues(alpha: isDark ? 0.88 : 0.92),
             tint.withValues(alpha: 0),
           ],
-          stops: const [0, 0.65, 1],
+          stops: const [0, 0.45, 1],
         )), child: const SizedBox.expand()),
       )),
     );
