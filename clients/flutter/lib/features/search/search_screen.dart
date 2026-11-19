@@ -40,9 +40,9 @@ class _Result {
 }
 
 class _SearchScreenState extends State<SearchScreen> {
-  static const _audio = {'mp3','m4a','aac','wav','flac','ogg','opus','wma','aiff','alac'};
-  static const _video = {'mp4','m4v','mov','mkv','webm','avi','wmv','mpeg','mpg','3gp','ts','m2ts','mts','flv','ogv'};
-  static const _photo = {'jpg','jpeg','png','webp','gif','bmp','heic','heif','avif'};
+  static const _audio = {'mp3','m4a','aac','wav','flac','ogg','opus','wma','aiff','alac','amr','ape','wv','dsf','dff','mid','midi','mka'};
+  static const _video = {'mp4','m4v','mov','mkv','webm','avi','wmv','mpeg','mpg','3gp','ts','m2ts','mts','flv','ogv','f4v','3g2','m2v','vob','rmvb','h264','h265','hevc'};
+  static const _photo = {'jpg','jpeg','png','webp','gif','bmp','heic','heif','avif','tif','tiff','jxl','dng','cr2','nef','arw','orf','rw2'};
   static const _docs = {'pdf','doc','docx','xls','xlsx','ppt','pptx','txt','rtf','odt','ods','csv','md'};
   static const _historyKey = 'pocketlink_recent_searches';
   static const _legacyHistoryKey = 'homeserver_recent_searches';
