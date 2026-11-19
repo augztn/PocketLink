@@ -412,11 +412,13 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
         final miniOpacity = (1.0 - t * 2.5).clamp(0.0, 1.0).toDouble();
         final fullOpacity = ((t - 0.25) / 0.75).clamp(0.0, 1.0).toDouble();
 
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            Positioned.fill(
-              child: AbsorbPointer(
+        return Material(
+          type: MaterialType.transparency,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Positioned.fill(
+                child: AbsorbPointer(
                 child: ColoredBox(
                   color: Colors.black.withValues(alpha: 0.55 * t),
                 ),
@@ -463,6 +465,7 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
               ),
             ),
           ],
+          ),
         );
       },
     );
