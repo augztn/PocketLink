@@ -659,6 +659,24 @@ class ServerApi {
         .toString();
   }
 
+  /// Opens an authenticated file stream and requests a byte range when resuming.
+  Future<Response<ResponseBody>> openDownloadStream({
+    required String path,
+    String? volume,
+    int offset = 0,
+    CancelToken? cancelToken,
+  }) {
+    return _dio.get<ResponseBody>(
+      volume == null ? '/api/files/stream' : '/api/storage/download',
+      queryParameters: {'path': path, if (volume != null) 'volume': volume},
+      options: Options(
+        responseType: ResponseType.stream,
+        headers: offset > 0 ? {'Range': 'bytes=$offset-'} : null,
+      ),
+      cancelToken: cancelToken,
+    );
+  }
+
   /// Headers required by the native media player for authenticated requests.
   Map<String, String> get mediaHeaders => {
         'Authorization': _dio.options.headers['Authorization'] as String,
