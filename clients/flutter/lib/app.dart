@@ -111,6 +111,15 @@ class _PocketLinkAppState extends State<PocketLinkApp> {
           : const Color(0xFFF3F5FB),
       textTheme: baseTextTheme,
       useMaterial3: true,
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.linux: FadeUpwardsPageTransitionsBuilder(),
+          TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.windows: FadeUpwardsPageTransitionsBuilder(),
+        },
+      ),
       visualDensity: VisualDensity.standard,
       dividerColor: effectiveScheme.outlineVariant.withValues(alpha: 0.7),
       inputDecorationTheme: InputDecorationTheme(
