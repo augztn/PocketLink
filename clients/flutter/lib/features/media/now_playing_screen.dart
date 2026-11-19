@@ -5,7 +5,6 @@ import 'dart:typed_data';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
-import 'package:file_picker/file_picker.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:media_kit/media_kit.dart';
@@ -847,8 +846,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             style: const TextStyle(color: Colors.white54, fontSize: 10, letterSpacing: 1.2, fontWeight: FontWeight.w700)),
         ])),
         const SizedBox(width: 12),
-        SizedBox(width: 40, height: 40, child: LiquidGlassPill(
-          radius: BorderRadius.circular(20),
+        SizedBox(width: 38, height: 38, child: LiquidGlassPill(
+          radius: BorderRadius.circular(19),
           child: SmokedGlassPopoverMenu<String>(
             tooltip: 'Quick destinations',
             items: [
@@ -856,20 +855,22 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
               const SmokedGlassPopoverMenuItem(value: 'queue', label: 'Queue', icon: Icons.queue_music_rounded),
               if (AppSettings.instance.showStatsForNerds)
                 const SmokedGlassPopoverMenuItem(value: 'stats', label: 'Stats for nerds', icon: Icons.query_stats_rounded),
+              const SmokedGlassPopoverMenuItem(value: 'download', label: 'Download track', icon: Icons.download_rounded, dividerBefore: true),
               const SmokedGlassPopoverMenuItem(value: 'track_options', label: 'Track options', icon: Icons.more_horiz_rounded),
             ],
             onSelected: (value) {
               switch (value) {
                 case 'home': PocketLinkAppBar.goToDashboard(context); break;
                 case 'stats': _showStatsForNerds(); break;
+                case 'download': unawaited(_downloadTrack()); break;
                 case 'track_options': _showOptions(); break;
                 case 'queue': _showQueue(); break;
               }
             },
             child: const SizedBox(
-              width: 40,
-              height: 40,
-              child: Icon(Icons.grid_view_rounded, color: Colors.white, size: 19),
+              width: 38,
+              height: 38,
+              child: Icon(Icons.more_vert_rounded, color: Colors.white, size: 19),
             ),
           ),
         )),
@@ -1137,185 +1138,351 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     ],
   );
 
+  Widget _trackMetadata() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(22, 8, 22, 0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _formatTag,
+                      maxLines: 1,
+                      style: const TextStyle(
+                        color: Colors.white38,
+                        fontSize: 10,
+                        letterSpacing: 1.3,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    StreamBuilder<bool>(
+                      stream: _player.stream.buffering,
+                      initialData: _player.state.buffering,
+                      builder: (context, bufferingSnapshot) =>
+                          StreamBuilder<Duration>(
+                        stream: _player.stream.duration,
+                        initialData: _player.state.duration,
+                        builder: (context, durationSnapshot) {
+                          final loading =
+                              (bufferingSnapshot.data ?? false) ||
+                              (durationSnapshot.data ?? Duration.zero) <=
+                                  Duration.zero;
+                          return AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 220),
+                            switchInCurve: Curves.easeOut,
+                            switchOutCurve: Curves.easeIn,
+                            child: loading
+                                ? const BufferingBadge(
+                                    key: ValueKey('buffering'),
+                                  )
+                                : const SizedBox.shrink(
+                                    key: ValueKey('ready'),
+                                  ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  _fileName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.35,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  _folderName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white54, fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          _roundAction(
+            icon: _isFavorite
+                ? Icons.star_rounded
+                : Icons.star_border_rounded,
+            tooltip: _isFavorite ? 'Remove favorite' : 'Favorite',
+            foreground: _isFavorite
+                ? const Color(0xFFFFD66B)
+                : Colors.white,
+            onTap: () => unawaited(_toggleFavorite()),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _playerDetails({bool glassCard = false}) {
+    final content = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _trackMetadata(),
+        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 22),
+          child: _timeline(),
+        ),
+        const SizedBox(height: 14),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 22),
+          child: _transport(),
+        ),
+        const SizedBox(height: 8),
+        _bottomUtilities(),
+        const SizedBox(height: 2),
+        const Text(
+          'This device',
+          style: TextStyle(color: Colors.white38, fontSize: 11),
+        ),
+        const SizedBox(height: 8),
+      ],
+    );
+    if (!glassCard) return content;
+    return SmokedGlassSurface(
+      radius: BorderRadius.circular(28),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(0, 12, 0, 4),
+        child: content,
+      ),
+    );
+  }
+
+  Widget _themeBackground(String theme) {
+    final palette = _trackPalette;
+    final hasArtwork = _artwork != null && _artworkKey == _trackKey;
+    if (theme == 'blur' || theme == 'blurCard') {
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [palette[0], palette[1], palette[2]],
+              ),
+            ),
+          ),
+          if (hasArtwork)
+            ImageFiltered(
+              imageFilter: ui.ImageFilter.blur(sigmaX: 36, sigmaY: 36),
+              child: Image.memory(
+                _artwork!,
+                fit: BoxFit.cover,
+                gaplessPlayback: true,
+              ),
+            ),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withValues(alpha: 0.38),
+                  Colors.black.withValues(alpha: 0.56),
+                  Colors.black.withValues(alpha: 0.82),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+    if (theme == 'gradient') {
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  palette[0].withValues(alpha: 0.72),
+                  palette[1].withValues(alpha: 0.46),
+                  palette[2],
+                  const Color(0xFF08090D),
+                ],
+                stops: const [0, 0.42, 0.76, 1],
+              ),
+            ),
+          ),
+          if (hasArtwork)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: MediaQuery.sizeOf(context).height * 0.64,
+              child: ShaderMask(
+                blendMode: BlendMode.dstIn,
+                shaderCallback: (bounds) => const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.white, Colors.white, Colors.transparent],
+                  stops: [0, 0.56, 1],
+                ).createShader(bounds),
+                child: Image.memory(
+                  _artwork!,
+                  fit: BoxFit.cover,
+                  gaplessPlayback: true,
+                ),
+              ),
+            ),
+        ],
+      );
+    }
+    return _ambientBackground();
+  }
+
+  Widget _themeLayout(String theme) {
+    if (theme == 'blur') {
+      return Column(
+        children: [
+          _header(),
+          Expanded(
+            flex: 3,
+            child: Center(
+              child: SizedBox(
+                width: 250,
+                height: 250,
+                child: _artworkCard(),
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 4,
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: _playerDetails(),
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (theme == 'blurCard') {
+      return Column(
+        children: [
+          _header(),
+          Expanded(
+            flex: 2,
+            child: Center(
+              child: SizedBox(
+                width: 210,
+                height: 210,
+                child: _artworkCard(),
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 4,
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
+              child: _playerDetails(glassCard: true),
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (theme == 'gradient') {
+      return Column(
+        children: [
+          _header(),
+          const Expanded(child: SizedBox.expand()),
+          _playerDetails(),
+        ],
+      );
+    }
+
+    // Apple Glass remains the default layout.
+    return Column(
+      children: [
+        _header(),
+        Expanded(
+          child: Center(child: _artworkCard()),
+        ),
+        _playerDetails(),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0A0B0E),
-      body: Stack(
+    return AnimatedBuilder(
+      animation: AppSettings.instance,
+      builder: (context, _) {
+        final theme = AppSettings.instance.nowPlayingTheme;
+        return Scaffold(
+          backgroundColor: const Color(0xFF0A0B0E),
+          body: Stack(
             fit: StackFit.expand,
             children: [
               const Positioned.fill(
                 child: ColoredBox(color: Color(0xFF0A0B0E)),
               ),
-              Positioned.fill(child: _ambientBackground()),
+              Positioned.fill(child: _themeBackground(theme)),
               Positioned.fill(
                 child: GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onVerticalDragStart: AppSettings.instance.enableNowPlayingGestures
-            ? (_) => widget.onDismissDragStart()
-            : null,
-        onVerticalDragUpdate: AppSettings.instance.enableNowPlayingGestures
-            ? (details) => widget.onDismissDragUpdate(details.primaryDelta ?? 0)
-            : null,
-        onHorizontalDragStart: AppSettings.instance.enableNowPlayingGestures ? (_) => _trackSwipeDistance = 0 : null,
-        onHorizontalDragUpdate: AppSettings.instance.enableNowPlayingGestures ? (details) => _trackSwipeDistance += details.primaryDelta ?? 0 : null,
-        onVerticalDragEnd: AppSettings.instance.enableNowPlayingGestures
-            ? (details) => widget.onDismissDragEnd(details.primaryVelocity ?? 0)
-            : null,
-        onVerticalDragCancel: AppSettings.instance.enableNowPlayingGestures
-            ? () => widget.onDismissDragEnd(0)
-            : null,
-        onHorizontalDragEnd: AppSettings.instance.enableNowPlayingGestures ? (details) {
-          final distance = _trackSwipeDistance;
-          final velocity = details.primaryVelocity ?? 0;
-          if (distance < -80 || velocity < -500) {
-            unawaited(_persistent.skipToNext());
-          } else if (distance > 80 || velocity > 500) {
-            unawaited(_persistent.skipToPrevious());
-          }
-          _trackSwipeDistance = 0;
-        } : null,
-        child: SafeArea(
-          child: Column(
-            children: [
-            _header(),
-            Expanded(
-              child: Center(
-                child: _artworkCard(),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(22, 8, 22, 0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  _formatTag,
-                                  maxLines: 1,
-                                  style: const TextStyle(
-                                    color: Colors.white38,
-                                    fontSize: 10,
-                                    letterSpacing: 1.3,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                StreamBuilder<bool>(
-                                  stream: _player.stream.buffering,
-                                  initialData: _player.state.buffering,
-                                  builder: (context, bufferingSnapshot) =>
-                                      StreamBuilder<Duration>(
-                                    stream: _player.stream.duration,
-                                    initialData: _player.state.duration,
-                                    builder: (context, durationSnapshot) {
-                                      final loading =
-                                          (bufferingSnapshot.data ?? false) ||
-                                          (durationSnapshot.data ??
-                                                  Duration.zero) <=
-                                              Duration.zero;
-                                      return AnimatedSwitcher(
-                                        duration: const Duration(
-                                          milliseconds: 220,
-                                        ),
-                                        switchInCurve: Curves.easeOut,
-                                        switchOutCurve: Curves.easeIn,
-                                        child: loading
-                                            ? const BufferingBadge(
-                                                key: ValueKey('buffering'),
-                                              )
-                                            : const SizedBox.shrink(
-                                                key: ValueKey('ready'),
-                                              ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 5),
-                            Text(
-                              _fileName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 22,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -0.35,
-                              ),
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              _folderName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Colors.white54,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      _roundAction(
-                        icon: _isFavorite
-                            ? Icons.star_rounded
-                            : Icons.star_border_rounded,
-                        tooltip: _isFavorite ? 'Remove favorite' : 'Favorite',
-                        foreground: _isFavorite
-                            ? const Color(0xFFFFD66B)
-                            : Colors.white,
-                        onTap: () => unawaited(_toggleFavorite()),
-                      ),
-                      const SizedBox(width: 8),
-                      _roundAction(
-                        icon: Icons.more_horiz_rounded,
-                        tooltip: 'More options',
-                        onTap: _showOptions,
-                      ),
-                    ],
+                  behavior: HitTestBehavior.translucent,
+                  onVerticalDragStart: AppSettings.instance.enableNowPlayingGestures
+                      ? (_) => widget.onDismissDragStart()
+                      : null,
+                  onVerticalDragUpdate: AppSettings.instance.enableNowPlayingGestures
+                      ? (details) => widget.onDismissDragUpdate(details.primaryDelta ?? 0)
+                      : null,
+                  onHorizontalDragStart: AppSettings.instance.enableNowPlayingGestures
+                      ? (_) => _trackSwipeDistance = 0
+                      : null,
+                  onHorizontalDragUpdate: AppSettings.instance.enableNowPlayingGestures
+                      ? (details) => _trackSwipeDistance += details.primaryDelta ?? 0
+                      : null,
+                  onVerticalDragEnd: AppSettings.instance.enableNowPlayingGestures
+                      ? (details) => widget.onDismissDragEnd(details.primaryVelocity ?? 0)
+                      : null,
+                  onVerticalDragCancel: AppSettings.instance.enableNowPlayingGestures
+                      ? () => widget.onDismissDragEnd(0)
+                      : null,
+                  onHorizontalDragEnd: AppSettings.instance.enableNowPlayingGestures
+                      ? (details) {
+                          final distance = _trackSwipeDistance;
+                          final velocity = details.primaryVelocity ?? 0;
+                          if (distance < -80 || velocity < -500) {
+                            unawaited(_persistent.skipToNext());
+                          } else if (distance > 80 || velocity > 500) {
+                            unawaited(_persistent.skipToPrevious());
+                          }
+                          _trackSwipeDistance = 0;
+                        }
+                      : null,
+                  child: SafeArea(
+                    child: _themeLayout(theme),
                   ),
-                  ... [
-                    const SizedBox(height: 16),
-                    _timeline(),
-                  ],
-                  ... [
-                    const SizedBox(height: 16),
-                    _transport(),
-                  ],
-                  ... [
-                    
-                  ],
-                ],
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            _bottomUtilities(),
-            const SizedBox(height: 2),
-            const Text(
-              'This device',
-              style: TextStyle(color: Colors.white38, fontSize: 11),
-            ),
-            const SizedBox(height: 8),
             ],
           ),
-        ),
-      ),
-    ),
-  ],
-),
+        );
+      },
     );
   }
 
