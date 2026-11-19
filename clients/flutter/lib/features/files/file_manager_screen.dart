@@ -14,8 +14,8 @@ import '../home/browser_state_store.dart';
 import '../../core/settings/app_settings.dart';
 import '../transfers/transfer_manager.dart';
 import '../transfers/transfer_manager_screen.dart';
-import '../media/now_playing_screen.dart';
 import '../media/persistent_audio_player.dart';
+import '../media/global_media_overlay.dart';
 
 class FileManagerScreen extends StatefulWidget {
   const FileManagerScreen({
@@ -450,24 +450,20 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
       'extension': _extension(item),
     });
     try {
-      await Navigator.of(context, rootNavigator: true).push<void>(
-        MaterialPageRoute<void>(
-          settings: const RouteSettings(
-            name: PocketLinkRouteNames.nowPlaying,
+      await PersistentAudioPlayer.instance.openQueue(
+        api: widget.api,
+        queue: [
+          MediaQueueItem(
+            title: item.name,
+            path: path,
+            volume: volume,
+            size: item.size,
           ),
-          builder: (_) => NowPlayingScreen(
-            api: widget.api,
-            queue: [
-              MediaQueueItem(
-                title: item.name,
-                path: path,
-                volume: volume,
-                size: item.size,
-              ),
-            ],
-          ),
-        ),
+        ],
+        initialIndex: 0,
+        isMusic: true,
       );
+      GlobalMediaOverlay.openNowPlaying();
     } catch (error, stackTrace) {
       await AppLogger.error('Could not open Now Playing screen', error: error, stackTrace: stackTrace);
       _showError('Could not open the music player. Check diagnostics for details.');
