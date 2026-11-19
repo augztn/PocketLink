@@ -430,6 +430,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     final fileName = _track.path.split('/').last;
     showDialog<void>(
       context: context,
+      useRootNavigator: true,
       builder: (dialogContext) => FutureBuilder<int?>(
         future: _resolveFileSize(),
         builder: (context, snapshot) => AlertDialog(
@@ -466,6 +467,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   Future<void> _chooseSleepTimer() async {
     final minutes = await showModalBottomSheet<int>(
       context: context,
+      useRootNavigator: true,
       backgroundColor: const Color(0xFF1C1C1E),
       builder: (context) => SafeArea(
         child: Column(
@@ -538,6 +540,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   Future<void> _showQueue() async {
     await showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       backgroundColor: const Color(0xFF1C1C1E),
       isScrollControlled: true,
       builder: (context) => SafeArea(
