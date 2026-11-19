@@ -523,21 +523,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                     ),
-                    ListTile(
-                      leading: const Icon(Icons.speed_rounded),
-                      title: const Text('Concurrent downloads'),
-                      subtitle: const Text('Maximum number of simultaneous HTTP downloads'),
-                      trailing: SegmentedButton<int>(
-                        showSelectedIcon: false,
-                        segments: const [
-                          ButtonSegment(value: 1, label: Text('1')),
-                          ButtonSegment(value: 2, label: Text('2')),
-                          ButtonSegment(value: 3, label: Text('3')),
-                          ButtonSegment(value: 5, label: Text('5')),
-                        ],
-                        selected: {_settings.downloadConcurrency},
-                        onSelectionChanged: (values) => _settings.setDownloadOptions(
-                          concurrency: values.first,
+                    const ListTile(
+                      leading: Icon(Icons.speed_rounded),
+                      title: Text('Concurrent downloads'),
+                      subtitle: Text('Maximum simultaneous HTTP downloads'),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: SegmentedButton<int>(
+                          showSelectedIcon: false,
+                          segments: const [
+                            ButtonSegment(value: 1, label: Text('1')),
+                            ButtonSegment(value: 2, label: Text('2')),
+                            ButtonSegment(value: 3, label: Text('3')),
+                            ButtonSegment(value: 5, label: Text('5')),
+                          ],
+                          selected: {_settings.downloadConcurrency},
+                          onSelectionChanged: (values) => _settings.setDownloadOptions(
+                            concurrency: values.first,
+                          ),
                         ),
                       ),
                     ),
