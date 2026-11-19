@@ -158,6 +158,11 @@ class LiquidGlassSurface extends StatelessWidget {
           highlightColor: Colors.transparent,
           hoverColor: Colors.transparent,
           focusColor: Colors.transparent,
+          iconButtonTheme: IconButtonThemeData(
+            style: ButtonStyle(
+              overlayColor: WidgetStatePropertyAll(Colors.transparent),
+            ),
+          ),
         );
         final themedSurface = Theme(
           data: contentTheme,
