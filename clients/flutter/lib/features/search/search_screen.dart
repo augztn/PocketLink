@@ -13,7 +13,6 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/network/server_api.dart';
-import '../../core/navigation/pocketlink_navigation.dart';
 import '../../core/network/offline_file_cache.dart';
 import 'dart:io';
 import '../files/file_manager_screen.dart';
