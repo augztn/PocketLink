@@ -1116,9 +1116,20 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                                           (durationSnapshot.data ??
                                                   Duration.zero) <=
                                               Duration.zero;
-                                      return loading
-                                          ? const BufferingBadge()
-                                          : const SizedBox.shrink();
+                                      return AnimatedSwitcher(
+                                        duration: const Duration(
+                                          milliseconds: 220,
+                                        ),
+                                        switchInCurve: Curves.easeOut,
+                                        switchOutCurve: Curves.easeIn,
+                                        child: loading
+                                            ? const BufferingBadge(
+                                                key: ValueKey('buffering'),
+                                              )
+                                            : const SizedBox.shrink(
+                                                key: ValueKey('ready'),
+                                              ),
+                                      );
                                     },
                                   ),
                                 ),
