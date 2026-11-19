@@ -28,10 +28,18 @@ class NowPlayingScreen extends StatefulWidget {
     required this.queue,
     this.initialIndex = 0,
     this.resumeExisting = false,
+    required this.onDismiss,
+    required this.onDismissDragStart,
+    required this.onDismissDragUpdate,
+    required this.onDismissDragEnd,
     super.key,
   });
 
   final ServerApi api;
+  final VoidCallback onDismiss;
+  final VoidCallback onDismissDragStart;
+  final ValueChanged<double> onDismissDragUpdate;
+  final ValueChanged<double> onDismissDragEnd;
   final List<MediaQueueItem> queue;
   final int initialIndex;
   final bool resumeExisting;
@@ -60,8 +68,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   bool _cached = false;
   Set<String> _favorites = <String>{};
   double? _dragPosition;
-  double _dismissDragDistance = 0;
-  bool _isDismissDragging = false;
   double _trackSwipeDistance = 0;
 
 
@@ -725,7 +731,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(children: [
         _roundAction(icon: Icons.keyboard_arrow_down_rounded, tooltip: 'Minimize player',
-          onTap: () => Navigator.maybePop(context)),
+          onTap: widget.onDismiss),
         const SizedBox(width: 12),
         Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
           Container(width: 34, height: 4, decoration: BoxDecoration(
@@ -1011,19 +1017,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0A0B0E),
-      body: AnimatedContainer(
-        duration: _isDismissDragging
-            ? Duration.zero
-            : const Duration(milliseconds: 180),
-        curve: Curves.easeOutCubic,
-        transform: Matrix4.translationValues(0, _dismissDragDistance, 0),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(
-            _isDismissDragging ? 32 : 0,
-          ),
-          child: Stack(
+    return ColoredBox(
+      color: const Color(0xFF0A0B0E),
+      child: Stack(
             fit: StackFit.expand,
             children: [
               const Positioned.fill(
@@ -1034,35 +1030,18 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                 child: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onVerticalDragStart: AppSettings.instance.enableNowPlayingGestures
-            ? (_) => setState(() {
-                  _isDismissDragging = true;
-                  _dismissDragDistance = 0;
-                })
+            ? (_) => widget.onDismissDragStart()
             : null,
         onVerticalDragUpdate: AppSettings.instance.enableNowPlayingGestures
-            ? (details) => setState(() {
-                  _dismissDragDistance = (_dismissDragDistance +
-                          (details.primaryDelta ?? 0))
-                      .clamp(0.0, 320.0)
-                      .toDouble();
-                })
+            ? (details) => widget.onDismissDragUpdate(details.primaryDelta ?? 0)
             : null,
         onHorizontalDragStart: AppSettings.instance.enableNowPlayingGestures ? (_) => _trackSwipeDistance = 0 : null,
         onHorizontalDragUpdate: AppSettings.instance.enableNowPlayingGestures ? (details) => _trackSwipeDistance += details.primaryDelta ?? 0 : null,
         onVerticalDragEnd: AppSettings.instance.enableNowPlayingGestures
-            ? (details) {
-                final shouldDismiss = _dismissDragDistance > 80 ||
-                    (details.primaryVelocity ?? 0) > 350;
-                if (mounted) {
-                  setState(() {
-                    _isDismissDragging = false;
-                    _dismissDragDistance = 0;
-                  });
-                }
-                if (shouldDismiss && mounted) {
-                  unawaited(Navigator.maybePop(context));
-                }
-              }
+            ? (details) => widget.onDismissDragEnd(details.primaryVelocity ?? 0)
+            : null,
+        onVerticalDragCancel: AppSettings.instance.enableNowPlayingGestures
+            ? () => widget.onDismissDragEnd(0)
             : null,
         onHorizontalDragEnd: AppSettings.instance.enableNowPlayingGestures ? (details) {
           final distance = _trackSwipeDistance;
@@ -1175,12 +1154,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             ],
                 ),
               ),
-                ),
-              ),
             ],
           ),
-        ),
-      ),
     );
   }
 
