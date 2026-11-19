@@ -227,7 +227,8 @@ class _MusicDockButtonState extends State<_MusicDockButton> {
     setState(() {
       _totalDrag += details.delta.dx;
       _dragOffset = (_dragOffset + details.delta.dx * 0.55)
-          .clamp(-34.0, 34.0);
+          .clamp(-34.0, 34.0)
+          .toDouble();
     });
   }
 
