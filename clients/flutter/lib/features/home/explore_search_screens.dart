@@ -126,6 +126,12 @@ class _ExploreGridState extends State<_ExploreGrid>
     with SingleTickerProviderStateMixin {
   late final AnimationController _entryController;
 
+  ServerApi get api => widget.api;
+  VoidCallback? get onHome => widget.onHome;
+  ValueChanged<Widget> get onOpen => widget.onOpen;
+  VoidCallback? get onOpenFiles => widget.onOpenFiles;
+  VoidCallback? get onOpenExternalStorage => widget.onOpenExternalStorage;
+
   @override
   void initState() {
     super.initState();
@@ -142,10 +148,10 @@ class _ExploreGridState extends State<_ExploreGrid>
   }
 
   Widget _staggeredCard(int index, Widget child) {
-    final start = (index * 0.07).clamp(0.0, 0.5);
+    final start = (index * 0.07).clamp(0.0, 0.5).toDouble();
     final animation = CurvedAnimation(
       parent: _entryController,
-      curve: Interval(start, 1, curve: Curves.easeOutCubic),
+      curve: Interval(start, 1.0, curve: Curves.easeOutCubic),
     );
     return AnimatedBuilder(
       animation: animation,
