@@ -5,7 +5,6 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../core/navigation/pocketlink_navigation.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
-import 'music_shortcut_menu.dart';
 
 class FloatingNavigationDock extends StatelessWidget {
   const FloatingNavigationDock({
@@ -18,12 +17,9 @@ class FloatingNavigationDock extends StatelessWidget {
     this.hasMedia = false,
     this.isVideo = false,
     this.preview = false,
-    this.musicShortcuts = const <String>[],
     this.musicShortcutsExpanded = false,
-    this.musicShortcutsBottomOffset = 64,
     this.onMusicShortcutLongPress,
     this.onMusicShortcutDismissed,
-    this.onMusicShortcutSelected,
     this.onBrowseSwipeLeft,
     this.onBrowseSwipeRight,
     super.key,
@@ -38,12 +34,9 @@ class FloatingNavigationDock extends StatelessWidget {
   final bool hasMedia;
   final bool isVideo;
   final bool preview;
-  final List<String> musicShortcuts;
   final bool musicShortcutsExpanded;
-  final double musicShortcutsBottomOffset;
   final VoidCallback? onMusicShortcutLongPress;
   final VoidCallback? onMusicShortcutDismissed;
-  final ValueChanged<String>? onMusicShortcutSelected;
   final VoidCallback? onBrowseSwipeLeft;
   final VoidCallback? onBrowseSwipeRight;
 
@@ -117,20 +110,7 @@ class FloatingNavigationDock extends StatelessWidget {
             child: Stack(
               clipBehavior: Clip.none,
               children: [
-                if (musicShortcuts.isNotEmpty)
-                  Positioned(
-                    left: -(MediaQuery.sizeOf(context).width - 28 - 64),
-                    bottom: musicShortcutsBottomOffset,
-                    child: SizedBox(
-                      width: MediaQuery.sizeOf(context).width - 28,
-                      child: MusicShortcutMenu(
-                        shortcuts: musicShortcuts,
-                        expanded: musicShortcutsExpanded,
-                        onSelect: onMusicShortcutSelected ?? (_) {},
-                      ),
-                    ),
-                  ),
-                Positioned.fill(
+                 Positioned.fill(
                   child: _MusicDockButton(
                     preview: preview,
                     isPlaying: isPlaying,
