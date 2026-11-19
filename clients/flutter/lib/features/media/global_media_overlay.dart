@@ -56,7 +56,9 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
       reverseDuration: const Duration(milliseconds: 320),
     );
     _openNowPlayingHandler = _openNowPlaying;
-    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) WidgetsBinding.instance.addObserver(this);
+    });
     _player.addListener(_onPlayerChanged);
   }
 
@@ -147,9 +149,13 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     }
 
     _openingNowPlaying = true;
-    _nowPlayingOriginRect = PocketLinkNavigation.resolveMediaOriginRect(
+    final globalOrigin = PocketLinkNavigation.resolveMediaOriginRect(
       preferMiniPlayer: _shouldShowMiniPlayer(),
     );
+    final overlayBox = overlay.context.findRenderObject();
+    _nowPlayingOriginRect = globalOrigin != null && overlayBox is RenderBox
+        ? globalOrigin.shift(-overlayBox.localToGlobal(Offset.zero))
+        : globalOrigin;
     setState(() => _nowPlayingOpen = true);
     _nowPlayingEntry = OverlayEntry(
       builder: (context) => _NowPlayingMorphOverlay(
