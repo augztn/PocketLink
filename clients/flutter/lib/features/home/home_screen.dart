@@ -48,6 +48,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _fileLocationRequest = 0;
   int _uploadRequest = 0;
   bool _musicShortcutsExpanded = false;
+      PocketLinkNavigation.quickShortcutsOpen.value = false;
   bool _filesCanNavigateBack = false;
   bool _openingNowPlaying = false;
   bool _libraryOpen = false;
@@ -59,6 +60,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     PocketLinkNavigation.drawerOpen.value = false;
+    PocketLinkNavigation.quickShortcutsOpen.value = false;
     AppSettings.instance.addListener(_navigationSettingsChanged);
   }
 
@@ -110,6 +112,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     AppSettings.instance.removeListener(_navigationSettingsChanged);
     PocketLinkNavigation.drawerOpen.value = false;
+    PocketLinkNavigation.quickShortcutsOpen.value = false;
     super.dispose();
   }
 
@@ -226,6 +229,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!AppSettings.instance.musicButtonLongPressEnabled) return;
     HapticFeedback.lightImpact();
     setState(() => _musicShortcutsExpanded = true);
+    PocketLinkNavigation.quickShortcutsOpen.value = true;
   }
 
   void _handleMusicButtonSwipe({required bool left}) {
@@ -409,6 +413,10 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           onDrawerChanged: (opened) {
             PocketLinkNavigation.drawerOpen.value = opened;
+            if (opened) {
+              _musicShortcutsExpanded = false;
+              PocketLinkNavigation.quickShortcutsOpen.value = false;
+            }
           },
           extendBody: !_hostSetupOpen,
           body: Stack(
