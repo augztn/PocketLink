@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 
@@ -431,9 +433,27 @@ class _HomeScreenState extends State<HomeScreen> {
                   final nextIndex = visibleTabs[nextPosition];
                   if (nextIndex != _selectedIndex) _openTab(nextIndex);
                 },
-                child: IndexedStack(index: _hostSetupOpen ? 3 : _selectedIndex, children: pages),
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween<double>(
+                    end: _musicShortcutsExpanded ? 16 : 0,
+                  ),
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, blurSigma, child) => ImageFiltered(
+                    imageFilter: ui.ImageFilter.blur(
+                      sigmaX: blurSigma,
+                      sigmaY: blurSigma,
+                    ),
+                    enabled: blurSigma > 0.1,
+                    child: child,
+                  ),
+                  child: IndexedStack(
+                    index: _hostSetupOpen ? 3 : _selectedIndex,
+                    children: pages,
+                  ),
+                ),
               ),
-              if (!_hostSetupOpen && AppSettings.instance.useLiquidGlass)
+              if (!_hostSetupOpen)
                 Positioned(
                   left: 0,
                   right: 0,
@@ -443,24 +463,39 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: DecoratedBox(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          begin: Alignment.bottomCenter,
-                          end: Alignment.topCenter,
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
                           colors: [
-                            Colors.black.withValues(alpha: 0.72),
-                            Colors.black.withValues(alpha: 0.0),
+                            Colors.transparent,
+                            Theme.of(context).colorScheme.background
+                                .withValues(alpha: 0.55),
+                            Theme.of(context).colorScheme.background
+                                .withValues(alpha: 0.88),
+                            Theme.of(context).colorScheme.background
+                                .withValues(alpha: 0.96),
                           ],
-                          stops: const [0, 1],
+                          stops: const [0, 0.44, 0.76, 1],
                         ),
                       ),
                     ),
                   ),
                 ),
-              if (!_hostSetupOpen && _musicShortcutsExpanded)
+              if (!_hostSetupOpen)
                 Positioned.fill(
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => setState(() => _musicShortcutsExpanded = false),
-                    child: const SizedBox.expand(),
+                  child: IgnorePointer(
+                    ignoring: !_musicShortcutsExpanded,
+                    child: AnimatedOpacity(
+                      opacity: _musicShortcutsExpanded ? 0.36 : 0,
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOutCubic,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => setState(
+                          () => _musicShortcutsExpanded = false,
+                        ),
+                        child: const ColoredBox(color: Colors.black),
+                      ),
+                    ),
                   ),
                 ),
               if (!_hostSetupOpen)
