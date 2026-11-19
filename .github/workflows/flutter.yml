@@ -23,7 +23,7 @@ concurrency:
 
 jobs:
   analyze:
-    runs-on: ubuntu-latest
+    name: Flutter Code Analysis
     defaults:
       run:
         working-directory: clients/flutter
@@ -37,7 +37,7 @@ jobs:
       - run: flutter analyze --no-fatal-infos
 
   test:
-    runs-on: ubuntu-latest
+    name: Flutter Unit & Widget Tests
     defaults:
       run:
         working-directory: clients/flutter
@@ -51,7 +51,7 @@ jobs:
       - run: flutter test
 
   linux-appimage:
-    runs-on: ubuntu-22.04
+    name: Linux AppImage Build
     defaults:
       run:
         working-directory: clients/flutter
@@ -127,7 +127,7 @@ jobs:
           retention-days: 14
 
   android-apk:
-    runs-on: ubuntu-22.04
+    name: Android APK Build
     defaults:
       run:
         working-directory: clients/flutter
