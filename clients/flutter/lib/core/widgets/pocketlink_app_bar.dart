@@ -10,12 +10,14 @@ class PocketLinkAppBarAction {
     required this.icon,
     required this.onPressed,
     this.enabled = true,
+    this.dividerBefore = false,
   });
 
   final String label;
   final IconData icon;
   final VoidCallback? onPressed;
   final bool enabled;
+  final bool dividerBefore;
 }
 
 /// Shared navigation and action surface for every secondary screen.
@@ -109,6 +111,7 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
           label: action.label,
           icon: action.icon,
           enabled: action.enabled && action.onPressed != null,
+          dividerBefore: action.dividerBefore,
         )).toList(growable: false),
         onSelected: (action) => action.onPressed?.call(),
         child: feathered
