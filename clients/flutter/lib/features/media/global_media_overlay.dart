@@ -33,7 +33,6 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   bool _isNowPlayingDragging = false;
   bool _closingNowPlaying = false;
   Rect? _nowPlayingOriginRect;
-  Route<dynamic>? _nowPlayingOriginRoute;
   Route<void>? _nowPlayingRoute;
   late final AnimationController _nowPlayingController;
   MediaQueueItem? _lastTrack;
@@ -68,8 +67,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     _trackPopupTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     NowPlayingOverlayController.unregister();
-    _nowPlayingEntry?.remove();
-    _nowPlayingEntry = null;
+    _nowPlayingRoute = null;
     _nowPlayingController.stop();
     _nowPlayingController.dispose();
     super.dispose();
