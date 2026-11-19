@@ -191,7 +191,7 @@ class _MiniPlayerEqualizerState extends State<_MiniPlayerEqualizer>
 
   @override
   Widget build(BuildContext context) {
-    if (MediaQuery.disableAnimationsOf(context)) {
+    if (MediaQuery.of(context).disableAnimations) {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: List.generate(
