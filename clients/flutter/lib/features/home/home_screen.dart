@@ -124,14 +124,14 @@ class _HomeScreenState extends State<HomeScreen> {
     _libraryBackHandler?.call();
     _tabBackHandler?.call();
     setState(() {
-    _libraryBackHandler = null;
-    _tabBackHandler = null;
-    _libraryOpen = false;
-    _hostSetupOpen = false;
-    _musicShortcutsExpanded = false;
-    PocketLinkNavigation.quickShortcutsOpen.value = false;
-    _initializedTabs.add(index);
-    _selectedIndex = index;
+      _libraryBackHandler = null;
+      _tabBackHandler = null;
+      _libraryOpen = false;
+      _hostSetupOpen = false;
+      _musicShortcutsExpanded = false;
+      PocketLinkNavigation.quickShortcutsOpen.value = false;
+      _initializedTabs.add(index);
+      _selectedIndex = index;
     });
   }
 
@@ -191,7 +191,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _openLibrary(String id) {
     _libraryBackHandler?.call();
+    _tabBackHandler?.call();
     _libraryBackHandler = null;
+    _tabBackHandler = null;
     final page = switch (id) {
       'music' => MediaBrowserScreen(api: widget.api, type: MediaLibraryType.music, onHome: _closeLibrary, onBackHandlerChanged: _onLibraryBackHandlerChanged),
       'videos' => MediaBrowserScreen(api: widget.api, type: MediaLibraryType.video, onHome: _closeLibrary, onBackHandlerChanged: _onLibraryBackHandlerChanged),
