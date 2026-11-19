@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/settings/app_settings.dart';
@@ -10,7 +12,6 @@ class PocketLinkHomeDrawer extends StatelessWidget {
     required this.routeLabel,
     required this.onOpenLibrary,
     required this.onOpenFiles,
-    required this.onOpenDrives,
     required this.onConnectDrive,
     required this.onOpenTransfers,
     required this.onOpenSettings,
@@ -22,7 +23,6 @@ class PocketLinkHomeDrawer extends StatelessWidget {
   final String routeLabel;
   final ValueChanged<String> onOpenLibrary;
   final VoidCallback onOpenFiles;
-  final VoidCallback onOpenDrives;
   final VoidCallback onConnectDrive;
   final VoidCallback onOpenTransfers;
   final VoidCallback onOpenSettings;
@@ -42,9 +42,25 @@ class PocketLinkHomeDrawer extends StatelessWidget {
         : serverName.trim();
 
     return Drawer(
-      child: SafeArea(
-        bottom: true,
-        child: Column(
+      width: MediaQuery.sizeOf(context).width * 0.88,
+      elevation: 0,
+      backgroundColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      child: Container(
+        margin: EdgeInsets.fromLTRB(12, MediaQuery.paddingOf(context).top + 8, 0, MediaQuery.paddingOf(context).bottom + 12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.13)),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(27),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+            child: ColoredBox(
+              color: const Color(0xFF1C1E24).withValues(alpha: 0.78),
+              child: SafeArea(
+                bottom: true,
+                child: Column(
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
@@ -181,20 +197,17 @@ class PocketLinkHomeDrawer extends StatelessWidget {
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.folder_open_rounded),
+                    minTileHeight: 54,
+                    leading: _drawerIcon(Icons.folder_open_rounded),
                     title: const Text('Files'),
-                    subtitle: const Text('Browse server folders'),
+                    subtitle: const Text('Browse server folders and drives'),
                     onTap: () => _closeThen(context, onOpenFiles),
                   ),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.usb_rounded),
-                    title: const Text('Drives'),
-                    subtitle: const Text('Internal and external storage'),
-                    onTap: () => _closeThen(context, onOpenDrives),
-                  ),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.add_to_drive_rounded),
+                    minTileHeight: 54,
+                    leading: _drawerIcon(Icons.add_to_drive_rounded),
                     title: const Text('Connect a drive'),
                     subtitle: const Text('USB, SSD and OTG setup'),
                     onTap: () => _closeThen(context, onConnectDrive),
@@ -204,12 +217,16 @@ class PocketLinkHomeDrawer extends StatelessWidget {
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.swap_vert_rounded),
+                    minTileHeight: 54,
+                    leading: _drawerIcon(Icons.swap_vert_rounded),
                     title: const Text('Transfers'),
                     onTap: () => _closeThen(context, onOpenTransfers),
                   ),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.settings_rounded),
+                    minTileHeight: 48,
+                    leading: _drawerIcon(Icons.settings_rounded),
                     title: const Text('Settings'),
                     onTap: () => _closeThen(context, onOpenSettings),
                   ),
@@ -235,7 +252,8 @@ class PocketLinkHomeDrawer extends StatelessWidget {
                   decoration: BoxDecoration(
                     border: Border(
                       top: BorderSide(
-                        color: colors.outlineVariant.withValues(alpha: 0.55),
+                        color: Colors.white.withValues(alpha: 0.06),
+                        width: 1,
                       ),
                     ),
                   ),
@@ -251,46 +269,46 @@ class PocketLinkHomeDrawer extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 9),
-                      Wrap(
-                        spacing: 7,
-                        children: [
-                          ChoiceChip(
-                            label: const Text('Light'),
-                            selected: settings.themeMode == ThemeMode.light,
-                            onSelected: (selected) {
-                              if (selected) {
-                                settings.setThemeMode(ThemeMode.light);
-                              }
-                            },
-                          ),
-                          ChoiceChip(
-                            label: const Text('Dark'),
-                            selected: isDark && !settings.amoled,
-                            onSelected: (selected) {
-                              if (selected) {
-                                settings.setThemeMode(ThemeMode.dark);
-                              }
-                            },
-                          ),
-                          ChoiceChip(
-                            label: const Text('AMOLED'),
-                            selected: settings.amoled,
-                            onSelected: (selected) {
-                              if (selected) settings.setAmoled(true);
-                            },
-                          ),
-                        ],
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.09)),
+                        ),
+                        child: Row(
+                          children: [
+                            _ThemeSegment(label: 'Light', selected: settings.themeMode == ThemeMode.light,
+                              onTap: () => settings.setThemeMode(ThemeMode.light)),
+                            _ThemeSegment(label: 'Dark', selected: isDark && !settings.amoled,
+                              onTap: () => settings.setThemeMode(ThemeMode.dark)),
+                            _ThemeSegment(label: 'AMOLED', selected: settings.amoled,
+                              onTap: () => settings.setAmoled(true)),
+                          ],
+                        ),
                       ),
                     ],
                   ),
                 );
               },
+                ),
+              ),
             ),
-          ],
+          ),
         ),
       ),
     );
   }
+
+  Widget _drawerIcon(IconData icon) => Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.055),
+          borderRadius: BorderRadius.circular(11),
+        ),
+        child: Icon(icon, size: 19),
+      );
 
   Widget _sectionLabel(BuildContext context, String label) => Padding(
         padding: const EdgeInsets.only(left: 2, bottom: 3),
@@ -385,4 +403,32 @@ class _DrawerStatusPill extends StatelessWidget {
           ],
         ),
       );
+}
+
+class _ThemeSegment extends StatelessWidget {
+  const _ThemeSegment({required this.label, required this.selected, required this.onTap});
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+    child: Material(
+      color: selected ? Colors.white.withValues(alpha: 0.16) : Colors.transparent,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Text(label, textAlign: TextAlign.center,
+            style: TextStyle(
+              color: selected ? Colors.white : Theme.of(context).colorScheme.onSurfaceVariant,
+              fontSize: 12, fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
 }
