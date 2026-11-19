@@ -279,14 +279,6 @@ class _MusicDockButtonState extends State<_MusicDockButton> {
                         ? 'video'
                         : 'music';
 
-    final activeBorder = widget.expanded
-        ? colors.primary
-        : direction != 0
-            ? colors.tertiary
-            : widget.isPlaying
-                ? colors.primary.withValues(alpha: 0.72)
-                : colors.outlineVariant.withValues(alpha: 0.5);
-
     return Semantics(
       button: true,
       label: 'Music button. Tap to open Now Playing, swipe to change tracks, hold for shortcuts.',
