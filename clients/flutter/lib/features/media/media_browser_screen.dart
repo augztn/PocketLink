@@ -12,7 +12,6 @@ import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/network/server_api.dart';
-import '../../core/navigation/pocketlink_navigation.dart';
 import 'media_player_screen.dart';
 import 'persistent_audio_player.dart';
 import 'now_playing_overlay_controller.dart';
