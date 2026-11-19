@@ -44,6 +44,15 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   static const _videoExtensions = {
     'mp4', 'mkv', 'webm', 'mov', 'avi', 'm4v', '3gp', 'ts',
   };
+  static const _audioMimeTypes = {
+    'audio/mpeg', 'audio/flac', 'audio/x-flac', 'audio/mp4', 'audio/x-m4a',
+    'audio/wav', 'audio/x-wav', 'audio/ogg', 'audio/aac', 'audio/opus',
+    'audio/x-ms-wma',
+  };
+  static const _videoMimeTypes = {
+    'video/mp4', 'video/x-m4v', 'video/x-matroska', 'video/webm',
+    'video/quicktime', 'video/x-msvideo', 'video/3gpp', 'video/mp2t',
+  };
   static const _maxDirectories = 10000;
   static const _maxDepth = 24;
 
@@ -134,12 +143,19 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     return 'USB / OTG';
   }
 
-  bool _isMedia(FileEntry item) {
+  bool _isMedia(FileEntry item, {String? mime}) {
     final extension = item.name.contains('.')
         ? item.name.split('.').last.toLowerCase()
         : '';
-    return (_isMusic ? _audioExtensions : _videoExtensions)
+    final allowedExtension = (_isMusic ? _audioExtensions : _videoExtensions)
         .contains(extension);
+    if (!allowedExtension) return false;
+    final normalizedMime = mime?.split(';').first.trim().toLowerCase() ?? '';
+    if (normalizedMime.isEmpty || normalizedMime == 'application/octet-stream') {
+      return true;
+    }
+    return (_isMusic ? _audioMimeTypes : _videoMimeTypes)
+        .contains(normalizedMime);
   }
 
   Future<({List<_MediaFile> items, MediaIndexStatus status})>
@@ -158,7 +174,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       status = page.status;
       if (!mounted) break;
       found.addAll(page.items
-          .where((item) => _isMedia(item.toFileEntry()))
+          .where((item) => _isMedia(item.toFileEntry(), mime: item.mime))
           .map((item) => _MediaFile(
                 entry: item.toFileEntry(),
                 path: item.path,
