@@ -48,7 +48,6 @@ class _HomeScreenState extends State<HomeScreen> {
   int _fileLocationRequest = 0;
   int _uploadRequest = 0;
   bool _musicShortcutsExpanded = false;
-      PocketLinkNavigation.quickShortcutsOpen.value = false;
   bool _filesCanNavigateBack = false;
   bool _openingNowPlaying = false;
   bool _libraryOpen = false;
@@ -70,6 +69,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _hostSetupInitialized = true;
       _hostSetupOpen = true;
       _musicShortcutsExpanded = false;
+      PocketLinkNavigation.quickShortcutsOpen.value = false;
     });
   }
 
@@ -78,6 +78,7 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _hostSetupOpen = false;
       _musicShortcutsExpanded = false;
+      PocketLinkNavigation.quickShortcutsOpen.value = false;
     });
   }
 
@@ -85,6 +86,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final settings = AppSettings.instance;
     if (!settings.musicButtonLongPressEnabled && _musicShortcutsExpanded) {
       _musicShortcutsExpanded = false;
+      PocketLinkNavigation.quickShortcutsOpen.value = false;
     }
     final selectedId = switch (_selectedIndex) {
       0 => 'home',
@@ -120,6 +122,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _libraryOpen = false;
     _hostSetupOpen = false;
     _musicShortcutsExpanded = false;
+    PocketLinkNavigation.quickShortcutsOpen.value = false;
     _initializedTabs.add(index);
     _selectedIndex = index;
   });
@@ -129,6 +132,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _libraryOpen = false;
       _hostSetupOpen = false;
       _musicShortcutsExpanded = false;
+      PocketLinkNavigation.quickShortcutsOpen.value = false;
       _initializedTabs.add(2);
       _selectedIndex = 2;
       _requestedVolume = volume;
@@ -142,6 +146,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _libraryOpen = false;
       _hostSetupOpen = false;
       _musicShortcutsExpanded = false;
+      PocketLinkNavigation.quickShortcutsOpen.value = false;
       _initializedTabs.add(2);
       _selectedIndex = 2;
       _externalDriveRequest++;
@@ -157,6 +162,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _libraryOpen = false;
       _hostSetupOpen = false;
       _musicShortcutsExpanded = false;
+      PocketLinkNavigation.quickShortcutsOpen.value = false;
       _initializedTabs.add(1);
       _exploreCategory = category;
       _fileCategory = fileCategory ?? 'All';
@@ -178,6 +184,7 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _hostSetupOpen = false;
       _musicShortcutsExpanded = false;
+      PocketLinkNavigation.quickShortcutsOpen.value = false;
       _libraryPage = page;
       _libraryOpen = true;
     });
@@ -190,7 +197,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _openMusicShortcut(String id) {
     if (_musicShortcutsExpanded) {
-      setState(() => _musicShortcutsExpanded = false);
+      setState(() {
+          _musicShortcutsExpanded = false;
+          PocketLinkNavigation.quickShortcutsOpen.value = false;
+        });
     }
     switch (id) {
       case 'explore':
@@ -378,6 +388,7 @@ class _HomeScreenState extends State<HomeScreen> {
         } else if (_musicShortcutsExpanded) {
           setState(() {
             _musicShortcutsExpanded = false;
+            PocketLinkNavigation.quickShortcutsOpen.value = false;
           });
         } else if (_selectedIndex == 2 && _filesCanNavigateBack) {
           // FileManagerScreen handles folder-level back navigation.
@@ -480,7 +491,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: GestureDetector(
                         behavior: HitTestBehavior.opaque,
                         onTap: () => setState(
-                          () => _musicShortcutsExpanded = false,
+                          () {
+                            _musicShortcutsExpanded = false;
+                            PocketLinkNavigation.quickShortcutsOpen.value = false;
+                          },
                         ),
                         child: const ColoredBox(color: Colors.black),
                       ),
