@@ -47,7 +47,7 @@ class PocketLinkHomeDrawer extends StatelessWidget {
       backgroundColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
       child: Container(
-        margin: EdgeInsets.fromLTRB(12, MediaQuery.paddingOf(context).top + 8, 0, MediaQuery.paddingOf(context).bottom + 16),
+        margin: EdgeInsets.fromLTRB(12, MediaQuery.paddingOf(context).top + 8, 0, MediaQuery.paddingOf(context).bottom + 12),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(28),
           border: Border.all(color: Colors.white.withValues(alpha: 0.13)),
@@ -150,7 +150,7 @@ class PocketLinkHomeDrawer extends StatelessWidget {
             ),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
                 children: [
                   _sectionLabel(context, 'QUICK LIBRARIES'),
                   const SizedBox(height: 9),
@@ -204,7 +204,7 @@ class PocketLinkHomeDrawer extends StatelessWidget {
                   _sectionLabel(context, 'STORAGE & HOST'),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    minTileHeight: 54,
+                    minTileHeight: 46,
                     leading: _drawerIcon(Icons.folder_open_rounded),
                     title: const Text('Files'),
                     subtitle: const Text('Browse server folders and drives'),
@@ -213,7 +213,7 @@ class PocketLinkHomeDrawer extends StatelessWidget {
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: _drawerIcon(Icons.add_to_drive_rounded),
-                    minTileHeight: 54,
+                    minTileHeight: 46,
                     title: const Text('Connect a drive'),
                     subtitle: const Text('USB, SSD and OTG setup'),
                     onTap: () => _closeThen(context, onConnectDrive),
@@ -222,14 +222,14 @@ class PocketLinkHomeDrawer extends StatelessWidget {
                   _sectionLabel(context, 'TOOLS'),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    minTileHeight: 54,
+                    minTileHeight: 46,
                     leading: _drawerIcon(Icons.swap_vert_rounded),
                     title: const Text('Transfers'),
                     onTap: () => _closeThen(context, onOpenTransfers),
                   ),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    minTileHeight: 48,
+                    minTileHeight: 46,
                     leading: _drawerIcon(Icons.settings_rounded),
                     title: const Text('Settings'),
                     onTap: () => _closeThen(context, onOpenSettings),
@@ -252,7 +252,7 @@ class PocketLinkHomeDrawer extends StatelessWidget {
                       final settings = AppSettings.instance;
                       final isDark = settings.themeMode == ThemeMode.dark;
                       return Padding(
-                        padding: const EdgeInsets.fromLTRB(0, 16, 0, 24),
+                        padding: const EdgeInsets.fromLTRB(0, 12, 0, 20),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -348,7 +348,7 @@ class _DrawerLibraryTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
         child: Container(
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: Colors.white.withValues(alpha: 0.07)),

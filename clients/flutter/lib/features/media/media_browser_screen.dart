@@ -39,14 +39,10 @@ class _MediaFolder {
 
 class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   static const _audioExtensions = {
-    'mp3', 'm4a', 'aac', 'wav', 'flac', 'ogg', 'opus',
-    'wma', 'aiff', 'alac', 'amr', 'ape', 'wv', 'dsf', 'dff',
-    'mid', 'midi', 'mka',
+    'mp3', 'flac', 'm4a', 'wav', 'ogg', 'aac', 'opus', 'wma',
   };
   static const _videoExtensions = {
-    'mp4', 'm4v', 'mov', 'mkv', 'webm', 'avi', 'wmv',
-    'mpeg', 'mpg', '3gp', 'ts', 'm2ts', 'mts', 'flv', 'f4v',
-    '3g2', 'm2v', 'ogv', 'vob', 'rmvb', 'h264', 'h265', 'hevc',
+    'mp4', 'mkv', 'webm', 'mov', 'avi', 'm4v', '3gp', 'ts',
   };
   static const _maxDirectories = 10000;
   static const _maxDepth = 24;
@@ -921,15 +917,13 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                   ),
                 ]),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 6),
               AnimatedRotation(turns: _musicMenuOpen ? 0.5 : 0, duration: const Duration(milliseconds: 200), child: const Icon(Icons.keyboard_arrow_down_rounded)),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
             ]),
           ),
-          actionsBeforeHome: [
-            GlassCircleButton(tooltip: 'Search videos', onPressed: () => setState(() => _searchExpanded = !_searchExpanded), child: const Icon(Icons.search_rounded)),
-          ],
           actions: [
+            PocketLinkAppBarAction(label: 'Search videos', icon: Icons.search_rounded, onPressed: () => setState(() => _searchExpanded = !_searchExpanded)),
             PocketLinkAppBarAction(label: 'Filter & sort', icon: Icons.tune_rounded, onPressed: _showMusicFilters),
             PocketLinkAppBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded,
               onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen())), dividerBefore: true),
@@ -1399,7 +1393,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                   Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
                     Row(mainAxisSize: MainAxisSize.min, children: [
                       Text(viewTitle, style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: foreground, letterSpacing: -0.7)),
-                      const SizedBox(width: 2),
+                      const SizedBox(width: 6),
                       AnimatedRotation(turns: _musicMenuOpen ? 0.5 : 0, duration: const Duration(milliseconds: 200), curve: Curves.easeOutCubic,
                         child: Icon(Icons.keyboard_arrow_down_rounded, color: foreground, size: 26)),
                     ]),
@@ -1408,17 +1402,17 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                   ]),
                 ])),
               ))),
-              GlassCircleButton(tooltip: 'Search music', onPressed: () => setState(() => _searchExpanded = !_searchExpanded), child: const Icon(Icons.search_rounded)),
-              const SizedBox(width: 8),
               SmokedGlassPopoverMenu<String>(
                 tooltip: 'More music actions',
                 items: const [
+                  SmokedGlassPopoverMenuItem(value: 'search', label: _searchExpanded ? 'Close search' : 'Search music', icon: _searchExpanded ? Icons.close_rounded : Icons.search_rounded),
                   SmokedGlassPopoverMenuItem(value: 'filter', label: 'Filter & sort', icon: Icons.tune_rounded),
                   SmokedGlassPopoverMenuItem(value: 'shuffle', label: 'Shuffle all', icon: Icons.shuffle_rounded, dividerBefore: true),
                   SmokedGlassPopoverMenuItem(value: 'scan', label: 'Scan library', icon: Icons.refresh_rounded),
                   SmokedGlassPopoverMenuItem(value: 'transfers', label: 'Transfers', icon: Icons.swap_vert_rounded, dividerBefore: true),
                 ],
                 onSelected: (value) {
+                  if (value == 'search') setState(() => _searchExpanded = !_searchExpanded);
                   if (value == 'filter') _showMusicFilters();
                   if (value == 'shuffle' && visible.isNotEmpty) {
                     final shuffled = List<_MediaFile>.of(visible)..shuffle(math.Random());
@@ -1432,7 +1426,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                 child: const GlassCircleButton(
                   tooltip: 'More music actions',
                   onPressed: null,
-                  child: Icon(Icons.more_horiz_rounded),
+                  child: Icon(Icons.more_vert_rounded),
                 ),
               ),
             ]),

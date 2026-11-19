@@ -251,14 +251,12 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
                 Text('${filtered.length} ${filtered.length == 1 ? 'document' : 'documents'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10, fontFamily: 'monospace', color: Color(0xFFA1A7B3))),
               ]),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 6),
             AnimatedRotation(turns: _filterMenuOpen ? 0.5 : 0, duration: const Duration(milliseconds: 200), child: const Icon(Icons.keyboard_arrow_down_rounded)),
           ]),
         ),
-        actionsBeforeHome: [
-          GlassCircleButton(tooltip: 'Search documents', onPressed: () => setState(() => _searchExpanded = !_searchExpanded), child: const Icon(Icons.search_rounded)),
-        ],
         actions: [
+          PocketLinkAppBarAction(label: 'Search documents', icon: Icons.search_rounded, onPressed: () => setState(() => _searchExpanded = !_searchExpanded)),
           PocketLinkAppBarAction(label: 'Sort by name', icon: Icons.sort_by_alpha_rounded,
             onPressed: () => setState(() => _sortBy = 'name')),
           PocketLinkAppBarAction(label: 'Sort by newest', icon: Icons.schedule_rounded,

@@ -639,7 +639,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                           color: foreground, fontSize: 28, fontWeight: FontWeight.w800,
                           letterSpacing: -0.7,
                         )),
-                        const SizedBox(width: 2),
+                        const SizedBox(width: 6),
                         AnimatedRotation(
                           turns: _viewMenuOpen ? 0.5 : 0,
                           duration: const Duration(milliseconds: 200),
@@ -653,15 +653,12 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
               if (selecting)
                 Text('${selected.length} selected', style: TextStyle(color: foreground, fontWeight: FontWeight.w700))
               else ...[
-                if (widget.showSearch)
-                  GlassCircleButton(tooltip: searchOpen ? 'Close search' : 'Search photos',
-                    onPressed: () => setState(() => searchOpen = !searchOpen),
-                    child: Icon(searchOpen ? Icons.close_rounded : Icons.search_rounded)),
               ],
               const SizedBox(width: 8),
               SmokedGlassPopoverMenu<String>(
                 tooltip: 'More photo actions',
                 items: [
+                  if (widget.showSearch) SmokedGlassPopoverMenuItem(value: 'search', label: searchOpen ? 'Close search' : 'Search photos', icon: searchOpen ? Icons.close_rounded : Icons.search_rounded),
                   const SmokedGlassPopoverMenuItem(
                     value: 'filter',
                     label: 'Filter & layout',
@@ -687,6 +684,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                   ),
                 ],
                 onSelected: (value) {
+                  if (value == 'search') setState(() => searchOpen = !searchOpen);
                   if (value == 'filter') _showFilters();
                   if (value == 'scan') scan(refresh: true);
                   if (value == 'transfers') {
@@ -700,7 +698,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                   });
                 },
                 child: GlassCircleButton(tooltip: 'More actions', onPressed: null,
-                  child: const Icon(Icons.more_horiz_rounded)),
+                  child: const Icon(Icons.more_vert_rounded)),
               ),
             ]),
           ),

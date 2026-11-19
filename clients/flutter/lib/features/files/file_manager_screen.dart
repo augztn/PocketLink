@@ -745,19 +745,13 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                   style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w800)),
                 Text('${folderCount == 1 ? '1 folder' : '$folderCount folders'} • ${fileCount == 1 ? '1 file' : '$fileCount files'}', style: const TextStyle(fontSize: 10, fontFamily: 'monospace', color: Color(0xFFA1A7B3))),
               ]),
+              const SizedBox(width: 6),
               AnimatedRotation(turns: _storageMenuOpen ? 0.5 : 0, duration: const Duration(milliseconds: 200),
                 child: const Icon(Icons.keyboard_arrow_down_rounded, size: 24)),
             ]),
           ),
-          actionsBeforeHome: [
-            if (widget.showSearch)
-              GlassCircleButton(
-                tooltip: 'Search files',
-                onPressed: () => setState(() => _searchExpanded = !_searchExpanded),
-                child: Icon(_searchExpanded ? Icons.close_rounded : Icons.search_rounded),
-              ),
-          ],
           actions: [
+            if (widget.showSearch) PocketLinkAppBarAction(label: _searchExpanded ? 'Close search' : 'Search files', icon: _searchExpanded ? Icons.close_rounded : Icons.search_rounded, onPressed: () => setState(() => _searchExpanded = !_searchExpanded)),
             PocketLinkAppBarAction(label: 'Upload file', icon: Icons.upload_rounded, onPressed: _uploadFile),
             PocketLinkAppBarAction(label: 'New folder', icon: Icons.create_new_folder_outlined, onPressed: _createFolder),
             PocketLinkAppBarAction(label: 'Sort by name', icon: Icons.sort_by_alpha_rounded,
@@ -873,25 +867,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                     ),
                   ),
                 ),
-                SmokedGlassPopoverMenu<String>(
-                  tooltip: 'Sort files',
-                  items: const [
-                    SmokedGlassPopoverMenuItem(value: 'name', label: 'Name', icon: Icons.sort_by_alpha_rounded),
-                    SmokedGlassPopoverMenuItem(value: 'newest', label: 'Newest', icon: Icons.schedule_rounded),
-                    SmokedGlassPopoverMenuItem(value: 'largest', label: 'Largest', icon: Icons.storage_rounded),
-                  ],
-                  onSelected: (value) { setState(() => _sortBy = value); _saveState(); },
-                  child: const Padding(
-                    padding: EdgeInsets.all(8),
-                    child: Icon(Icons.sort_rounded),
-                  ),
-                ),
-                IconButton(
-                  tooltip: _gridView ? 'List view' : 'Grid view',
-                  onPressed: () { setState(() => _gridView = !_gridView); _saveState(); },
-                  icon: Icon(_gridView ? Icons.view_list_rounded : Icons.grid_view_rounded),
-                ),
-                const SizedBox(width: 12),
+
               ]),
             ),
             if (_loading) const LinearProgressIndicator(minHeight: 2),

@@ -33,7 +33,7 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
 
 /// Circular frosted action control for edge-to-edge headers.
 class GlassCircleButton extends StatelessWidget {
-  const GlassCircleButton({required this.tooltip, required this.onPressed, required this.child, this.size = 44, super.key});
+  const GlassCircleButton({required this.tooltip, required this.onPressed, required this.child, this.size = 38, super.key});
   final String tooltip;
   final VoidCallback? onPressed;
   final Widget child;
@@ -57,7 +57,7 @@ class GlassCircleButton extends StatelessWidget {
               ? Colors.white.withValues(alpha: 0.24)
               : const Color(0xFF94A3B8).withValues(alpha: 0.30)),
           ),
-          child: IconTheme(data: IconThemeData(color: foreground, size: 20), child: child),
+          child: IconTheme(data: IconThemeData(color: foreground, size: 18), child: child),
         )),
       )),
     )));

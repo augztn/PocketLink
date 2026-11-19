@@ -1645,49 +1645,59 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
           ],
         ),
         actions: [
-          AnimatedBuilder(
-              animation: TransferManager.instance,
-              builder: (context, _) {
-                final activeCount = TransferManager.instance.tasks
-                    .where((task) => task.status == TransferStatus.running)
-                    .length;
-                return Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    GlassCircleButton(
-                      tooltip: activeCount > 0 ? 'Transfers · $activeCount active' : 'Transfers',
-                      onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen())),
-                      child: const Icon(Icons.swap_vert_rounded),
-                    ),
-                    if (activeCount > 0)
-                      Positioned(
-                        top: 2,
-                        right: 2,
-                        child: Container(
-                          constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF536DFE),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: Colors.black.withValues(alpha: 0.45)),
-                          ),
-                          child: Text(
-                            activeCount > 9 ? '9+' : '$activeCount',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w800,
+          SmokedGlassPopoverMenu<String>(
+            tooltip: 'More actions',
+            items: [
+              SmokedGlassPopoverMenuItem(
+                value: 'transfers',
+                label: 'Transfers',
+                icon: Icons.swap_vert_rounded,
+                trailing: AnimatedBuilder(
+                  animation: TransferManager.instance,
+                  builder: (context, _) {
+                    final count = TransferManager.instance.tasks
+                        .where((task) => task.status == TransferStatus.running)
+                        .length;
+                    return count == 0
+                        ? const SizedBox.shrink()
+                        : Container(
+                            constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                            padding: const EdgeInsets.symmetric(horizontal: 5),
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF536DFE),
+                              borderRadius: BorderRadius.circular(10),
                             ),
-                          ),
-                        ),
-                      ),
-                  ],
-                );
-              },
+                            child: Text(count > 9 ? '9+' : '$count',
+                              style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800)),
+                          );
+                  },
+                ),
+              ),
+              SmokedGlassPopoverMenuItem(
+                value: 'refresh',
+                label: 'Refresh server status',
+                icon: Icons.refresh_rounded,
+                enabled: !_checking,
+                dividerBefore: true,
+              ),
+            ],
+            onSelected: (value) {
+              if (value == 'transfers') {
+                Navigator.of(context).push(MaterialPageRoute<void>(
+                  builder: (_) => const TransferManagerScreen(),
+                ));
+              } else if (value == 'refresh') {
+                _refreshStatus(forceRefresh: true);
+              }
+            },
+            child: const GlassCircleButton(
+              tooltip: 'More actions',
+              onPressed: null,
+              child: Icon(Icons.more_vert_rounded),
             ),
-          GlassCircleButton(tooltip: 'Refresh server status', onPressed: _checking ? null : () => _refreshStatus(forceRefresh: true), child: const Icon(Icons.refresh_rounded)),
-          const SizedBox(width: 6),
+          ),
+          const SizedBox(width: 8),
         ],
       ),
       body: RefreshIndicator(
