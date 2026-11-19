@@ -300,6 +300,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final player = PersistentAudioPlayer.instance;
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
     final parsedServerHost = Uri.tryParse(widget.api.baseUrl)?.host;
     final serverHost = parsedServerHost == null || parsedServerHost.isEmpty
         ? widget.api.baseUrl
@@ -437,7 +438,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   tween: Tween<double>(
                     end: _musicShortcutsExpanded ? 16 : 0,
                   ),
-                  duration: const Duration(milliseconds: 220),
+                  duration: reduceMotion
+                      ? Duration.zero
+                      : const Duration(milliseconds: 220),
                   curve: Curves.easeOutCubic,
                   builder: (context, blurSigma, child) => ImageFiltered(
                     imageFilter: ui.ImageFilter.blur(
@@ -486,7 +489,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     ignoring: !_musicShortcutsExpanded,
                     child: AnimatedOpacity(
                       opacity: _musicShortcutsExpanded ? 0.36 : 0,
-                      duration: const Duration(milliseconds: 180),
+                      duration: reduceMotion
+                          ? Duration.zero
+                          : const Duration(milliseconds: 180),
                       curve: Curves.easeOutCubic,
                       child: GestureDetector(
                         behavior: HitTestBehavior.opaque,
