@@ -29,6 +29,7 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.foregroundColor,
     this.elevation,
     this.showHome = true,
+    this.automaticallyImplyLeading = true,
     this.actionsBeforeHome = const [],
     this.feathered = false,
     super.key,
@@ -43,6 +44,7 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
   final Color? foregroundColor;
   final double? elevation;
   final bool showHome;
+  final bool automaticallyImplyLeading;
   final List<Widget> actionsBeforeHome;
   final bool feathered;
 
@@ -78,6 +80,7 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
     return AppBar(
       title: title,
       leading: leading,
+      automaticallyImplyLeading: automaticallyImplyLeading,
       centerTitle: centerTitle,
       backgroundColor: feathered ? Colors.transparent : (backgroundColor ?? theme.scaffoldBackgroundColor),
       flexibleSpace: feathered ? const FeatheredGlassHeaderBackground() : null,
