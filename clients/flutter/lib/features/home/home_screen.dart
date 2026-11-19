@@ -505,8 +505,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Positioned(
                   left: 14,
                   right: 14,
-                  bottom: 92.0 + MediaQuery.paddingOf(context).bottom +
-                      (AppSettings.instance.showMiniPlayer && player.shouldShowMiniPlayer ? 62.0 : 0.0),
+                  bottom: 92.0 + MediaQuery.paddingOf(context).bottom,
                   child: MusicShortcutMenu(
                     shortcuts: AppSettings.instance.musicButtonShortcuts,
                     expanded: true,
