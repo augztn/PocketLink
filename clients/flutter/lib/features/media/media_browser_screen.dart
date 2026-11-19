@@ -72,6 +72,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   bool _searchExpanded = false;
   Set<String> _favoriteKeys = <String>{};
   final Map<String, Future<Uint8List?>> _musicArtworkCache = {};
+  final Map<String, Future<VideoMetadata?>> _videoMetadataCache = {};
 
   bool get _isMusic => widget.type == MediaLibraryType.music;
   String get _title => _isMusic ? 'Music' : 'Videos';
@@ -529,9 +530,12 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     );
   }
 
+  Future<VideoMetadata?> _videoMetadataFor(_MediaFile media) =>
+      _videoMetadataCache.putIfAbsent(_favoriteKey(media), () => widget.api.videoMetadata(media.path, volume: media.volume));
+
   Widget _videoMetadataLabel(_MediaFile media) {
     return FutureBuilder<VideoMetadata?>(
-      future: widget.api.videoMetadata(media.path, volume: media.volume),
+      future: _videoMetadataFor(media),
       builder: (context, snapshot) {
         final metadata = snapshot.data;
         if (metadata == null) return const SizedBox.shrink();
@@ -557,7 +561,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   }
   Widget _videoDurationBadge(_MediaFile media) {
     return FutureBuilder<VideoMetadata?>(
-      future: widget.api.videoMetadata(media.path, volume: media.volume),
+      future: _videoMetadataFor(media),
       builder: (context, snapshot) {
         final duration = snapshot.data?.durationMs ?? 0;
         if (duration <= 0) return const SizedBox.shrink();
