@@ -21,6 +21,7 @@ import '../files/file_manager_screen.dart';
 import '../storage/storage_browser_screen.dart';
 import 'persistent_audio_player.dart';
 import 'track_options_sheet.dart';
+import 'now_playing_scrubber.dart';
 
 class NowPlayingScreen extends StatefulWidget {
   const NowPlayingScreen({
@@ -893,76 +894,82 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     builder: (context, positionSnapshot) => StreamBuilder<Duration>(
       stream: _player.stream.duration,
       initialData: _player.state.duration,
-      builder: (context, durationSnapshot) {
-        final position = positionSnapshot.data ?? Duration.zero;
-        final duration = durationSnapshot.data ?? Duration.zero;
-        final max = duration.inMilliseconds.toDouble().clamp(1, double.infinity).toDouble();
-        final current = (_dragPosition ?? position.inMilliseconds.toDouble()).clamp(0, max).toDouble();
-        final progress = (current / max).clamp(0.0, 1.0).toDouble();
-        void update(double dx, double width) {
-          if (duration > Duration.zero && width > 0) {
-            setState(() => _dragPosition = (dx / width).clamp(0.0, 1.0) * max);
-          }
-        }
-        return Column(children: [
-          LayoutBuilder(builder: (context, constraints) => GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTapDown: duration > Duration.zero ? (d) {
-              update(d.localPosition.dx, constraints.maxWidth);
-              _player.seek(Duration(milliseconds: (_dragPosition ?? current).round()));
-              setState(() => _dragPosition = null);
-            } : null,
-            onHorizontalDragStart: duration > Duration.zero ? (d) => update(d.localPosition.dx, constraints.maxWidth) : null,
-            onHorizontalDragUpdate: duration > Duration.zero ? (d) => update(d.localPosition.dx, constraints.maxWidth) : null,
-            onHorizontalDragEnd: duration > Duration.zero ? (_) {
-              _player.seek(Duration(milliseconds: (_dragPosition ?? current).round()));
-              setState(() => _dragPosition = null);
-            } : null,
-            onHorizontalDragCancel: () => setState(() => _dragPosition = null),
-            child: SizedBox(height: 24, child: Align(alignment: Alignment.center,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 140), curve: Curves.easeOutCubic,
-                height: _dragPosition == null ? 6 : 11,
-                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.22), borderRadius: BorderRadius.circular(99)),
-                child: Align(alignment: Alignment.centerLeft, child: FractionallySizedBox(
-                  widthFactor: progress,
-                  child: const DecoratedBox(decoration: BoxDecoration(color: Colors.white,
-                    borderRadius: BorderRadius.all(Radius.circular(99)))),
-                )),
+      builder: (context, durationSnapshot) => StreamBuilder<Duration>(
+        stream: _player.stream.buffer,
+        initialData: _player.state.buffer,
+        builder: (context, bufferSnapshot) => StreamBuilder<bool>(
+          stream: _player.stream.buffering,
+          initialData: _player.state.buffering,
+          builder: (context, bufferingSnapshot) {
+            final duration = durationSnapshot.data ?? Duration.zero;
+            final position = duration > Duration.zero
+                ? positionSnapshot.data ?? Duration.zero
+                : Duration.zero;
+            return NowPlayingScrubber(
+              style: NowPlayingScrubberStyle.fromKey(
+                AppSettings.instance.nowPlayingScrubberStyle,
               ),
-            )),
-          )),
-          Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(_formatDuration(_dragPosition == null ? position : Duration(milliseconds: current.round())),
-                style: const TextStyle(color: Colors.white54, fontSize: 11)),
-              Text('-${_formatDuration(duration - Duration(milliseconds: current.round()))}',
-                style: const TextStyle(color: Colors.white54, fontSize: 11)),
-            ],
-          )),
-        ]);
-      },
+              position: position,
+              duration: duration,
+              bufferedPosition: bufferSnapshot.data ?? Duration.zero,
+              isPlaying: _player.state.playing,
+              isBuffering: bufferingSnapshot.data ?? false,
+              onSeek: (value) => unawaited(_player.seek(value)),
+            );
+          },
+        ),
+      ),
     ),
   );
 
   Widget _transport() => StreamBuilder<bool>(
     stream: _player.stream.playing,
     initialData: _player.state.playing,
-    builder: (context, snapshot) {
-      final playing = snapshot.data ?? false;
-      final hasMultiple = _persistent.queue.length > 1;
-      return Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-        _TransportGlyph(tooltip: 'Previous track', icon: Icons.skip_previous_rounded, size: 32,
-          enabled: hasMultiple, onTap: _persistent.skipToPrevious),
-        _TransportGlyph(tooltip: playing ? 'Pause' : 'Play', icon: playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
-          size: 48, enabled: true, onTap: _player.playOrPause),
-        _TransportGlyph(tooltip: 'Next track', icon: Icons.skip_next_rounded, size: 32,
-          enabled: hasMultiple, onTap: _persistent.skipToNext),
-      ]);
-    },
+    builder: (context, playingSnapshot) => StreamBuilder<bool>(
+      stream: _player.stream.buffering,
+      initialData: _player.state.buffering,
+      builder: (context, bufferingSnapshot) => StreamBuilder<Duration>(
+        stream: _player.stream.duration,
+        initialData: _player.state.duration,
+        builder: (context, durationSnapshot) {
+          final playing = playingSnapshot.data ?? false;
+          final loading = (bufferingSnapshot.data ?? false) ||
+              (durationSnapshot.data ?? Duration.zero) <= Duration.zero;
+          final hasMultiple = _persistent.queue.length > 1;
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _TransportGlyph(
+                tooltip: 'Previous track',
+                icon: Icons.skip_previous_rounded,
+                size: 32,
+                enabled: hasMultiple,
+                onTap: _persistent.skipToPrevious,
+              ),
+              PlaybackLoadingIndicator(
+                loading: loading,
+                size: 64,
+                child: _TransportGlyph(
+                  tooltip: playing ? 'Pause' : 'Play',
+                  icon: playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                  size: 48,
+                  enabled: true,
+                  onTap: _player.playOrPause,
+                ),
+              ),
+              _TransportGlyph(
+                tooltip: 'Next track',
+                icon: Icons.skip_next_rounded,
+                size: 32,
+                enabled: hasMultiple,
+                onTap: _persistent.skipToNext,
+              ),
+            ],
+          );
+        },
+      ),
+    ),
   );
-
 
   Widget _bottomUtilities() => Row(
     mainAxisAlignment: MainAxisAlignment.center,
@@ -1075,15 +1082,40 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
-                              _formatTag,
-                              maxLines: 1,
-                              style: const TextStyle(
-                                color: Colors.white38,
-                                fontSize: 10,
-                                letterSpacing: 1.3,
-                                fontWeight: FontWeight.w700,
-                              ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  _formatTag,
+                                  maxLines: 1,
+                                  style: const TextStyle(
+                                    color: Colors.white38,
+                                    fontSize: 10,
+                                    letterSpacing: 1.3,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                StreamBuilder<bool>(
+                                  stream: _player.stream.buffering,
+                                  initialData: _player.state.buffering,
+                                  builder: (context, bufferingSnapshot) =>
+                                      StreamBuilder<Duration>(
+                                    stream: _player.stream.duration,
+                                    initialData: _player.state.duration,
+                                    builder: (context, durationSnapshot) {
+                                      final loading =
+                                          (bufferingSnapshot.data ?? false) ||
+                                          (durationSnapshot.data ??
+                                                  Duration.zero) <=
+                                              Duration.zero;
+                                      return loading
+                                          ? const BufferingBadge()
+                                          : const SizedBox.shrink();
+                                    },
+                                  ),
+                                ),
+                              ],
                             ),
                             const SizedBox(height: 5),
                             Text(
