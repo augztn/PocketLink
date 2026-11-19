@@ -132,6 +132,15 @@ class _ExploreGridState extends State<_ExploreGrid>
   ValueChanged<Widget> get onOpen => widget.onOpen;
   VoidCallback? get onOpenFiles => widget.onOpenFiles;
 
+  void _openLibrary(String id, Widget fallback) {
+    final callback = widget.onOpenLibrary;
+    if (callback != null) {
+      callback(id);
+    } else {
+      onOpen(fallback);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -260,13 +269,13 @@ class _ExploreGridState extends State<_ExploreGrid>
             index: 0,
             title: 'Photos', subtitle: 'Your picture collection',
             icon: Icons.photo_library_rounded, tint: const Color(0xFFE5A044),
-            onTap: () => onOpenLibrary?.call('photos') ?? onOpen(PhotoGalleryScreen(api: api)),
+            onTap: () => _openLibrary('photos', PhotoGalleryScreen(api: api)),
           ),
           card(
             index: 1,
             title: 'Music', subtitle: 'Albums and playlists',
             icon: Icons.headphones_rounded, tint: const Color(0xFF8D72E8),
-            onTap: () => onOpenLibrary?.call('music') ?? onOpen(MediaBrowserScreen(
+            onTap: () => _openLibrary('music', MediaBrowserScreen(
               api: api,
               type: MediaLibraryType.music,
               onHome: () => Navigator.of(context).maybePop(),
@@ -276,7 +285,7 @@ class _ExploreGridState extends State<_ExploreGrid>
             index: 2,
             title: 'Videos', subtitle: 'Movies and clips',
             icon: Icons.play_circle_fill_rounded, tint: const Color(0xFF279D91),
-            onTap: () => onOpenLibrary?.call('videos') ?? onOpen(MediaBrowserScreen(
+            onTap: () => _openLibrary('videos', MediaBrowserScreen(
               api: api,
               type: MediaLibraryType.video,
               onHome: () => Navigator.of(context).maybePop(),
@@ -286,7 +295,7 @@ class _ExploreGridState extends State<_ExploreGrid>
             index: 3,
             title: 'Documents', subtitle: 'PDF, Office and text',
             icon: Icons.description_rounded, tint: const Color(0xFF4C8ED9),
-            onTap: () => onOpenLibrary?.call('documents') ?? onOpen(DocumentsBrowserScreen(api: api)),
+            onTap: () => _openLibrary('documents', DocumentsBrowserScreen(api: api)),
           ),
           card(
             index: 4,
