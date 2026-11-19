@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/settings/app_settings.dart';
+import '../downloads/download_manager_service.dart';
 
 /// Navigation drawer owned by HomeScreen's outer Scaffold so its scrim covers
 /// the bottom navigation dock and the app-level media overlay.
@@ -14,6 +15,7 @@ class PocketLinkHomeDrawer extends StatelessWidget {
     required this.onOpenFiles,
     required this.onConnectDrive,
     required this.onOpenTransfers,
+    required this.onOpenDownloads,
     required this.onOpenSettings,
     this.onSwitchServer,
     super.key,
@@ -25,6 +27,7 @@ class PocketLinkHomeDrawer extends StatelessWidget {
   final VoidCallback onOpenFiles;
   final VoidCallback onConnectDrive;
   final VoidCallback onOpenTransfers;
+  final VoidCallback onOpenDownloads;
   final VoidCallback onOpenSettings;
   final VoidCallback? onSwitchServer;
 
@@ -226,6 +229,39 @@ class PocketLinkHomeDrawer extends StatelessWidget {
                     leading: _drawerIcon(Icons.swap_vert_rounded),
                     title: const Text('Transfers'),
                     onTap: () => _closeThen(context, onOpenTransfers),
+                  ),
+                  AnimatedBuilder(
+                    animation: DownloadManagerService.instance,
+                    builder: (context, _) {
+                      final active = DownloadManagerService.instance.activeCount;
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        minTileHeight: 46,
+                        leading: _drawerIcon(Icons.download_rounded),
+                        title: Row(
+                          children: [
+                            const Expanded(child: Text('Downloads')),
+                            if (active > 0)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.16),
+                                  borderRadius: BorderRadius.circular(99),
+                                ),
+                                child: Text(
+                                  '$active active',
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.primary,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        onTap: () => _closeThen(context, onOpenDownloads),
+                      );
+                    },
                   ),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
