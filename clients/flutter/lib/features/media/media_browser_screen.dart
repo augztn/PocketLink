@@ -113,6 +113,9 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     _currentFolderPath = saved.folderPath;
     _pendingScrollOffset = saved.scrollOffset;
     _contentScrollController.addListener(_saveScrollOffset);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _syncBackHandler();
+    });
     _loadFavorites();
     _scan();
   }
@@ -777,6 +780,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                           _pendingScrollOffset = 0;
                           _saveState(folderPath: '', clearVolume: true);
                           if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0);
+                          _syncBackHandler();
                         },
                   child: const Text('All storage'),
                 ),
@@ -785,7 +789,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                   TextButton(
                     onPressed: _currentFolderPath.isEmpty
                         ? null
-                        : () { setState(() => _currentFolderPath = _selectedVolume == 'internal' && _isMusic ? 'Music' : ''); _pendingScrollOffset = 0; _saveState(folderPath: _currentFolderPath); if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0); },
+                        : () { setState(() => _currentFolderPath = _selectedVolume == 'internal' && _isMusic ? 'Music' : ''); _pendingScrollOffset = 0; _saveState(folderPath: _currentFolderPath); if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0); _syncBackHandler(); },
                     child: Text(_volumeName(_selectedVolume)),
                   ),
                 ],
@@ -799,6 +803,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                             setState(() => _currentFolderPath = path);
                             _saveState(folderPath: path);
                             if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0);
+                            _syncBackHandler();
                           },
                     child: Text(parts[i]),
                   ),
@@ -827,6 +832,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                       _pendingScrollOffset = 0;
                       _saveState(folderPath: folder.path);
                       if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0);
+                      _syncBackHandler();
                     },
                   ),
                 ),
@@ -1192,6 +1198,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     _pendingScrollOffset = 0;
     _saveState(folderPath: rootPath, clearVolume: selected.volume == null);
     if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0);
+    _syncBackHandler();
   }
 
   Widget _musicArtwork(_MediaFile media, {bool playing = false}) {
