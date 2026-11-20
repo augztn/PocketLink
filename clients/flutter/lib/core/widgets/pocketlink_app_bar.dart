@@ -34,6 +34,7 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.foregroundColor,
     this.elevation,
     this.showHome = true,
+    this.showMoreMenu = true,
     this.automaticallyImplyLeading = true,
     this.actionsBeforeHome = const [],
     this.feathered = false,
@@ -51,6 +52,7 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
   final Color? foregroundColor;
   final double? elevation;
   final bool showHome;
+  final bool showMoreMenu;
   final bool automaticallyImplyLeading;
   final List<Widget> actionsBeforeHome;
   final bool feathered;
@@ -123,28 +125,29 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
             ),
           ),
         ),
-      SmokedGlassPopoverMenu<PocketLinkAppBarAction>(
-        tooltip: 'More actions',
-        items: actions.map((action) => SmokedGlassPopoverMenuItem<PocketLinkAppBarAction>(
-          value: action,
-          label: action.label,
-          icon: action.icon,
-          enabled: action.enabled && action.onPressed != null,
-          dividerBefore: action.dividerBefore,
-        )).toList(growable: false),
-        onSelected: (action) => action.onPressed?.call(),
-        child: const Padding(
-          padding: EdgeInsets.symmetric(vertical: 4),
-          child: SizedBox.square(
-            dimension: 38,
-            child: GlassCircleButton(
-              tooltip: 'More actions',
-              onPressed: null,
-              child: Icon(Icons.more_vert_rounded, size: 18),
+      if (showMoreMenu)
+        SmokedGlassPopoverMenu<PocketLinkAppBarAction>(
+          tooltip: 'More actions',
+          items: actions.map((action) => SmokedGlassPopoverMenuItem<PocketLinkAppBarAction>(
+            value: action,
+            label: action.label,
+            icon: action.icon,
+            enabled: action.enabled && action.onPressed != null,
+            dividerBefore: action.dividerBefore,
+          )).toList(growable: false),
+          onSelected: (action) => action.onPressed?.call(),
+          child: const Padding(
+            padding: EdgeInsets.symmetric(vertical: 4),
+            child: SizedBox.square(
+              dimension: 38,
+              child: GlassCircleButton(
+                tooltip: 'More actions',
+                onPressed: null,
+                child: Icon(Icons.more_vert_rounded, size: 18),
+              ),
             ),
           ),
         ),
-      ),
       ],
     );
   }
