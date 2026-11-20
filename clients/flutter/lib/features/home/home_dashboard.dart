@@ -1304,7 +1304,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                 subtitle: Text(
                   '${_formatScanTimestamp(entry.completedAt)} · ${(entry.durationMs / 1000).toStringAsFixed(1)}s\n'
                   '${entry.scanned} checked · ${entry.newFiles} new · ${entry.updatedFiles} updated · ${entry.skipped} skipped'
-                  '${entry.lastError == null ? '' : '\\n${entry.lastError}'}',
+                  '${entry.lastError == null ? '' : '\n${entry.lastError}'}',
                 ),
                 isThreeLine: true,
               );
@@ -1631,7 +1631,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
             label: Text(scanning ? 'Scanning…' : _startingMediaScan ? 'Starting…' : 'Scan host now'),
           ),
         ),
-        if (status != null && (status.state == 'partial' || status.state == 'failed' || status.skipped > 0))
+        if (status != null && (status.state == 'partial' || status.state == 'failed' || status.state == 'interrupted' || status.skipped > 0))
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
