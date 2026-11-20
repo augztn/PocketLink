@@ -612,7 +612,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
           ]),
           Positioned(
             top: 0, left: 0, right: 0, height: headerTop + 88,
-            child: const IgnorePointer(child: FeatheredGlassHeaderBackground()),
+            child: const IgnorePointer(child: FeatheredGlassHeaderBackground(contentHeight: 52)),
           ),
           Positioned(
             top: headerTop + 8, left: 16, right: 16, height: 52,
