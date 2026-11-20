@@ -9,6 +9,7 @@ import 'package:path/path.dart' as p;
 import '../../core/network/server_api.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
+import '../../core/widgets/pocketlink_scaffold.dart';
 import '../../core/widgets/smoked_glass_popover_menu.dart';
 import 'download_manager_service.dart';
 import 'download_task.dart';
@@ -243,9 +244,9 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
           body: ListView.builder(
             padding: EdgeInsets.fromLTRB(
               16,
-              MediaQuery.paddingOf(context).top + kToolbarHeight + 12,
+              LayoutInsetsScope.of(context).topClearance + 2,
               16,
-              132 + MediaQuery.paddingOf(context).bottom,
+              LayoutInsetsScope.of(context).bottomClearance,
             ),
             itemCount: tasks.isEmpty ? 2 : tasks.length + 1,
             itemBuilder: (context, index) {
