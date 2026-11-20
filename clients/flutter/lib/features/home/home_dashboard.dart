@@ -57,6 +57,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
   MediaIndexStatus? _mediaScanStatus;
   bool _startingMediaScan = false;
   bool _watchingMediaScan = false;
+  bool _savingMediaScanSettings = false;
   HostSystemTelemetry? _hostTelemetry;
   String? _telemetryError;
   String? _mediaScanError;
@@ -1226,6 +1227,47 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
     }
   }
 
+  Future<void> _updateAutomaticMediaScanning({
+    required bool enabled,
+    required int intervalMinutes,
+  }) async {
+    if (_savingMediaScanSettings || _mediaScanStatus?.isScanning == true) return;
+    setState(() => _savingMediaScanSettings = true);
+    try {
+      await widget.api.updateAutomaticMediaScanning(enabled: enabled, intervalMinutes: intervalMinutes);
+      final status = await widget.api.mediaIndexStatus();
+      if (!mounted) return;
+      setState(() { _mediaScanStatus = status; _mediaScanError = null; });
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not update automatic media scanning on the host.')),
+      );
+    } finally {
+      if (mounted) setState(() => _savingMediaScanSettings = false);
+    }
+  }
+
+  Future<void> _retryFailedMediaScan() async {
+    if (_startingMediaScan || _mediaScanStatus?.isScanning == true) return;
+    setState(() { _startingMediaScan = true; _mediaScanError = null; });
+    try {
+      final status = await widget.api.retryFailedMediaScan();
+      if (!mounted) return;
+      setState(() => _mediaScanStatus = status);
+      if (status.isScanning) unawaited(_watchHostMediaScan());
+    } catch (_) {
+      if (mounted) setState(() => _mediaScanError = 'Could not retry the failed media scan.');
+    } finally {
+      if (mounted) setState(() => _startingMediaScan = false);
+    }
+  }
+
+  String _formatScanInterval(int minutes) {
+    if (minutes < 60) return '$minutes min';
+    if (minutes % 60 == 0) return '${minutes ~/ 60} hr';
+    return '${minutes ~/ 60}h ${minutes % 60}m';
+  }
+
   String _formatScanTimestamp(int timestamp) {
     if (timestamp <= 0) return 'Not yet scanned';
     final date = DateTime.fromMillisecondsSinceEpoch(timestamp).toLocal();
@@ -1242,7 +1284,14 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
       'Status: ${status.state}',
       'Trigger: ${status.scanTrigger}',
       'Started: ${_formatScanTimestamp(status.lastScanStartedAt)}',
-      'Completed: ${_formatScanTimestamp(status.lastCompletedAt)}',
+      'Last attempt completed: ${_formatScanTimestamp(status.lastAttemptFinishedAt)}',
+      'Last successful scan: ${_formatScanTimestamp(status.lastSuccessfulAt)}',
+      'Timezone: ${status.timezoneId ?? 'unknown'}',
+      'Automatic scanning: ${status.automaticScanning.enabled ? 'enabled' : 'disabled'} · every ${status.automaticScanning.intervalMinutes} minutes',
+      'Indexed bytes: ${status.indexedBytes}',
+      'Media bytes: ${status.mediaBytes}',
+      'Other files: ${status.otherFileCount}',
+      'Average successful duration: ${status.averageDurationMs} ms',
       'Duration: ${(status.elapsedMs / 1000).toStringAsFixed(1)} seconds',
       'Checked: ${status.scanned}',
       'New files: ${status.newFiles}',
@@ -1304,6 +1353,24 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
         if (status != null) ...[
           const SizedBox(height: 7),
           Text(
+            '${status.regularFileCount} files · ${status.directoryCount} folders · ${status.mediaCount} media',
+            style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
+          ),
+          Text(
+            '${_formatBytes(status.indexedBytes)} indexed · ${_formatBytes(status.mediaBytes)} media',
+            style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
+          ),
+          Text(
+            'Photos ${status.photoCount} · Videos ${status.videoCount} · Music ${status.musicCount} · Other ${status.otherFileCount}',
+            style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
+          ),
+          if (status.averageDurationMs > 0)
+            Text(
+              'Average successful scan: ${(status.averageDurationMs / 1000).toStringAsFixed(1)}s',
+              style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
+            ),
+          const SizedBox(height: 7),
+          Text(
             '${status.mediaCount} media · ${status.fileCount} indexed entries',
             style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
           ),
@@ -1311,7 +1378,11 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
           Text(
             scanning
                 ? 'Started ${_formatScanTimestamp(status.lastScanStartedAt)} · ${status.scanTrigger == 'manual' ? 'Manual' : 'Automatic'}'
-                : 'Last scan: ${_formatScanTimestamp(status.lastCompletedAt)} · ${status.scanTrigger == 'manual' ? 'Manual' : 'Automatic'}',
+                : 'Last attempt: ${_formatScanTimestamp(status.lastAttemptFinishedAt)} · ${status.scanTrigger == 'manual' ? 'Manual' : 'Automatic'}',
+            style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
+          ),
+          Text(
+            'Last successful: ${_formatScanTimestamp(status.lastSuccessfulAt)}',
             style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
           ),
           if (!scanning && status.lastCompletedAt > 0)
@@ -1334,7 +1405,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
               child: Row(children: [
                 Expanded(child: Text(volume.volume == 'internal' ? 'Internal storage' : volume.volume,
                   style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant))),
-                Text(volume.state == 'complete' ? 'Scanned' : volume.state == 'scanning' ? 'Scanning' : volume.state,
+                Text(volume.stale ? 'Unavailable · stale index' : volume.state == 'complete' ? 'Scanned' : volume.state == 'scanning' ? 'Scanning' : volume.state,
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: volume.state == 'complete' ? colors.onSurfaceVariant : const Color(0xFFFBBF24),
                   )),
@@ -1409,6 +1480,45 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
             Text(status.lastError!, style: theme.textTheme.bodySmall?.copyWith(color: colors.error)),
           ],
         ],
+        if (status != null) ...[
+          const Divider(height: 18),
+          Row(children: [
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Automatic scanning', style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700)),
+              Text(
+                status.automaticScanning.enabled
+                    ? 'Every ${_formatScanInterval(status.automaticScanning.intervalMinutes)} · startup and storage changes'
+                    : 'Disabled',
+                style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
+              ),
+              if (status.automaticScanning.enabled && status.automaticScanning.nextScanAt > 0)
+                Text('Next check: ${_formatScanTimestamp(status.automaticScanning.nextScanAt)}',
+                  style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant)),
+            ])),
+            Switch.adaptive(
+              value: status.automaticScanning.enabled,
+              onChanged: scanning || _savingMediaScanSettings ? null : (enabled) =>
+                  _updateAutomaticMediaScanning(enabled: enabled, intervalMinutes: status.automaticScanning.intervalMinutes),
+            ),
+          ]),
+          if (status.automaticScanning.enabled)
+            Align(
+              alignment: Alignment.centerRight,
+              child: DropdownButton<int>(
+                value: status.automaticScanning.intervalMinutes,
+                isDense: true,
+                underline: const SizedBox.shrink(),
+                items: const [15, 30, 60, 180, 360, 720, 1440]
+                    .map((minutes) => DropdownMenuItem<int>(
+                      value: minutes,
+                      child: Text('Every ${minutes < 60 ? '$minutes minutes' : minutes == 1440 ? '24 hours' : '${minutes ~/ 60} hours'}'),
+                    )).toList(),
+                onChanged: scanning || _savingMediaScanSettings ? null : (minutes) {
+                  if (minutes != null) _updateAutomaticMediaScanning(enabled: true, intervalMinutes: minutes);
+                },
+              ),
+            ),
+        ],
         if (scanning) ...[
           const SizedBox(height: 10),
           const LinearProgressIndicator(),
@@ -1434,6 +1544,15 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
             label: Text(scanning ? 'Scanning…' : _startingMediaScan ? 'Starting…' : 'Scan host now'),
           ),
         ),
+        if (status != null && (status.state == 'partial' || status.state == 'failed' || status.skipped > 0))
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: scanning || _startingMediaScan || _serverOnline != true ? null : _retryFailedMediaScan,
+              icon: const Icon(Icons.replay_rounded, size: 16),
+              label: const Text('Retry failed scan'),
+            ),
+          ),
         if (status != null && status.lastScanStartedAt > 0)
           Align(
             alignment: Alignment.centerLeft,
