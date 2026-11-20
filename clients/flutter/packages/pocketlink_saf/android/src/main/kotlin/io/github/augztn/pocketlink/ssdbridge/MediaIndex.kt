@@ -313,7 +313,9 @@ internal class MediaIndexScanner(
     @Volatile private var newFiles = readScanHistory().optJSONObject(0)?.optInt("new_files") ?: 0
     @Volatile private var updatedFiles = readScanHistory().optJSONObject(0)?.optInt("updated_files") ?: 0
     @Volatile private var scannedBytes = readScanHistory().optJSONObject(0)?.optLong("scanned_bytes") ?: 0L
-    private val disconnectedVolumes = java.util.concurrent.ConcurrentHashMap.newKeySet<String>().apply {
+    private val disconnectedVolumes = java.util.Collections.newSetFromMap(
+        java.util.concurrent.ConcurrentHashMap<String, Boolean>()
+    ).apply {
         addAll(reportPrefs.getStringSet("disconnected_volumes", emptySet()) ?: emptySet())
     }
     private val volumeReports = java.util.concurrent.ConcurrentHashMap<String, org.json.JSONObject>().apply {
