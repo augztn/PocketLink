@@ -16,16 +16,12 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
-# Feature branches are validated by pull_request; main is validated by push. Keep checks required.
-# Keep regression checks active for overlay/back-navigation changes on this branch.
-# Verify Flutter analysis, widget tests and platform builds after the latest UI changes.
-# Include the final status-bar feather mask and route-popover regression test.
-# Re-run static analysis after removing the superseded photo overlay import.
-# Let active validation finish; do not cancel it when a newer commit is pushed.
+# Keep only the newest validation for a branch/PR; stale runs waste hosted minutes.
 concurrency:
   group: flutter-ci-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   analyze:
@@ -45,9 +41,13 @@ jobs:
       - run: flutter analyze --no-fatal-infos
 
   test:
-    name: Flutter Unit & Widget Tests
+    name: Flutter Tests (shard ${{ matrix.shard }}/${{ strategy.job-total }})
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2]
     defaults:
       run:
         working-directory: clients/flutter
@@ -58,7 +58,22 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: flutter test
+      - name: Run Flutter unit and widget test shard
+        run: flutter test --total-shards=3 --shard-index=${{ matrix.shard }}
+
+  changes:
+    name: Detect native Android changes
+    runs-on: ubuntu-latest
+    outputs:
+      android_native: ${{ steps.filter.outputs.android_native }}
+    steps:
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            android_native:
+              - 'clients/flutter/packages/pocketlink_saf/android/**'
+              - 'clients/flutter/android/**'
 
   linux-appimage:
     name: Linux AppImage Build
@@ -140,6 +155,7 @@ jobs:
 
   android-apk:
     name: Android APK Build
+    needs: changes
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     defaults:
@@ -322,6 +338,7 @@ jobs:
       - name: Run native Android unit tests
         run: cd android && ./gradlew :pocketlink_saf:testDebugUnitTest
       - name: Enable KVM acceleration for Android emulator
+        if: needs.changes.outputs.android_native == 'true'
         run: |
           if [ ! -e /dev/kvm ]; then
             echo "::error::KVM device is unavailable on this runner"
@@ -331,6 +348,7 @@ jobs:
           test -r /dev/kvm && test -w /dev/kvm
           ls -l /dev/kvm
       - name: Run native Android integration tests
+        if: needs.changes.outputs.android_native == 'true'
         uses: ReactiveCircus/android-emulator-runner@v2
         with:
           api-level: 34
