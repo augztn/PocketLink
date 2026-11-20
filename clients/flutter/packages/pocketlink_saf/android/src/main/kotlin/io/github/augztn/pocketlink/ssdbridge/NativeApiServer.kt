@@ -569,32 +569,46 @@ internal class NativeApiServer(
         } else jsonError(Response.Status.INTERNAL_ERROR, "Delete failed")
     }
 
-    private fun withVideoSource(volume: String?, relative: String, action: (MediaMetadataRetriever) -> Response): Response {
-        if (relative.isBlank()) return bad("Video path is required")
+    private fun withMediaSource(
+        volume: String?,
+        relative: String,
+        allowAudio: Boolean = false,
+        action: (MediaMetadataRetriever) -> Response
+    ): Response {
+        if (relative.isBlank()) return bad("Media path is required")
         val retriever = MediaMetadataRetriever()
         return try {
             if (volume.isNullOrBlank()) {
-                val file = internalFile(relative) ?: return notFound("Video not found")
-                if (!file.isFile || !file.canRead() || !isVideoFile(file.name)) return bad("Not a readable video")
+                val file = internalFile(relative) ?: return notFound("Media not found")
+                val supported = isVideoFile(file.name) || (allowAudio && isAudioFile(file.name))
+                if (!file.isFile || !file.canRead() || !supported) return bad("Not a readable media file")
                 retriever.setDataSource(file.absolutePath)
             } else {
                 val root = externalRoot(volume) ?: return notFound("Storage permission not granted")
-                val document = resolveDocument(root, relative) ?: return notFound("Video not found")
-                if (!document.isFile || !isVideoFile(document.name.orEmpty())) return bad("Not a video file")
+                val document = resolveDocument(root, relative) ?: return notFound("Media not found")
+                val name = document.name.orEmpty()
+                val supported = isVideoFile(name) || (allowAudio && isAudioFile(name))
+                if (!document.isFile || !supported) return bad("Unsupported media file")
                 retriever.setDataSource(context, document.uri)
             }
             action(retriever)
         } catch (_: SecurityException) {
             jsonError(Response.Status.FORBIDDEN, "Storage permission was revoked")
         } catch (_: Exception) {
-            notFound("Video metadata is unavailable")
+            notFound("Media metadata is unavailable")
         } finally {
             try { retriever.release() } catch (_: Exception) { }
         }
     }
 
+    private fun withVideoSource(
+        volume: String?,
+        relative: String,
+        action: (MediaMetadataRetriever) -> Response
+    ): Response = withMediaSource(volume, relative, action = action)
+
     private fun videoMetadata(volume: String?, relative: String): Response =
-        withVideoSource(volume, relative) { retriever ->
+        withMediaSource(volume, relative, allowAudio = true) { retriever ->
             val duration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
             val width = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 0
             val height = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: 0
@@ -633,6 +647,11 @@ internal class NativeApiServer(
         name.substringAfterLast(".", "").lowercase(Locale.ROOT) in setOf(
             "mp4", "m4v", "mov", "mkv", "webm", "avi", "wmv", "mpeg", "mpg",
             "3gp", "ts", "m2ts", "mts", "flv", "f4v", "3g2", "m2v", "ogv", "vob", "rmvb"
+        )
+
+    private fun isAudioFile(name: String): Boolean =
+        name.substringAfterLast(".", "").lowercase(Locale.ROOT) in setOf(
+            "mp3", "flac", "m4a", "wav", "ogg", "aac", "opus", "wma", "aiff", "alac", "amr"
         )
     private fun internalFile(relative: String): File? {
         if (relative.isBlank()) return internalRoot
