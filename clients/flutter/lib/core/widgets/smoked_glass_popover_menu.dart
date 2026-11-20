@@ -22,6 +22,38 @@ class SmokedGlassPopoverMenuItem<T> {
   final Widget? trailing;
 }
 
+/// Consistent left-anchored dropdown used by screen title selectors.
+class TitleDropdownPopover<T> extends StatelessWidget {
+  const TitleDropdownPopover({
+    required this.items,
+    required this.onSelected,
+    required this.child,
+    this.tooltip,
+    this.onOpenChanged,
+    super.key,
+  });
+
+  final List<SmokedGlassPopoverMenuItem<T>> items;
+  final ValueChanged<T> onSelected;
+  final Widget child;
+  final String? tooltip;
+  final ValueChanged<bool>? onOpenChanged;
+
+  @override
+  Widget build(BuildContext context) => SmokedGlassPopoverMenu<T>(
+    items: items,
+    onSelected: onSelected,
+    child: child,
+    tooltip: tooltip,
+    onOpenChanged: onOpenChanged,
+    titleMenu: true,
+    itemHeight: 44,
+    menuVerticalPadding: 6,
+    itemHorizontalPadding: 14,
+    trailingWidth: 48,
+  );
+}
+
 /// Root-navigator popover with a measured anchor and reversible glass bloom.
 class SmokedGlassPopoverMenu<T> extends StatelessWidget {
   const SmokedGlassPopoverMenu({
