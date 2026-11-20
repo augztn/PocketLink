@@ -706,7 +706,7 @@ tooltip: 'Choose photo view',
                     else selected.clear();
                   });
                 },
-                child: GlassCircleButton(tooltip: 'More actions', onPressed: null,
+                child: GlassCircleButton(tooltip: 'Open more photo actions', onPressed: null,
                   child: const Icon(Icons.more_vert_rounded)),
               ),
             ]),
