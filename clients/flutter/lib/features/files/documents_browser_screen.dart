@@ -1,6 +1,7 @@
 import 'dart:ui' as ui;
 import 'package:material_ui/material_ui.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
+import '../../core/widgets/pocketlink_scaffold.dart';
 import '../../core/widgets/compact_search_field.dart';
 import '../../core/widgets/pocketlink_file_icon.dart';
 import '../../core/widgets/smoked_glass_popover_menu.dart';
@@ -301,9 +302,9 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
                   : ListView.separated(
                       padding: EdgeInsets.fromLTRB(
                         12,
-                        MediaQuery.paddingOf(context).top + kToolbarHeight + (_searchExpanded ? 68 : 4),
+                        LayoutInsetsScope.of(context).topClearance + (_searchExpanded ? 58 : -6),
                         12,
-                        104 + MediaQuery.paddingOf(context).bottom,
+                        LayoutInsetsScope.of(context).bottomClearance,
                       ),
                       itemCount: filtered.length + 1,
                       separatorBuilder: (_, __) => const SizedBox(height: 6),
@@ -340,7 +341,7 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
         ),
         if (_searchExpanded)
           Positioned(
-            top: MediaQuery.paddingOf(context).top + kToolbarHeight + 4,
+            top: LayoutInsetsScope.of(context).topClearance - 6,
             left: 16,
             right: 16,
             child: CompactSearchField(
@@ -351,7 +352,7 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
           ),
         if (_loading)
           Positioned(
-            top: MediaQuery.paddingOf(context).top + kToolbarHeight,
+            top: LayoutInsetsScope.of(context).topClearance - 10,
             left: 0,
             right: 0,
             child: const LinearProgressIndicator(minHeight: 2),
