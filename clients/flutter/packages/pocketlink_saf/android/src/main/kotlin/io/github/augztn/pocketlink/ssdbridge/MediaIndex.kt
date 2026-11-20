@@ -244,15 +244,26 @@ internal class MediaIndexDatabase(context: Context) :
             db.rawQuery("SELECT COUNT(*) FROM files WHERE type=?", arrayOf(type)).use {
                 if (it.moveToFirst()) it.getInt(0) else 0
             }
+        val regularFiles = countType("file")
+        val mediaFiles = count("media")
         return mapOf(
             "files" to count("files"),
             "directories" to countType("directory"),
-            "regular_files" to countType("file"),
-            "media" to count("media"),
+            "regular_files" to regularFiles,
+            "media" to mediaFiles,
             "photo" to countCategory("photo"),
             "video" to countCategory("video"),
-            "music" to countCategory("music")
+            "music" to countCategory("music"),
+            "other" to (regularFiles - mediaFiles).coerceAtLeast(0)
         )
+    }
+
+    fun sizeTotals(): Map<String, Long> {
+        val db = readableDatabase
+        fun total(table: String): Long = db.rawQuery("SELECT COALESCE(SUM(size), 0) FROM $table", null).use {
+            if (it.moveToFirst()) it.getLong(0) else 0L
+        }
+        return mapOf("indexed_bytes" to total("files"), "media_bytes" to total("media"))
     }
 }
 
@@ -269,11 +280,15 @@ internal class MediaIndexScanner(
     private val running = AtomicBoolean(false)
     private val dirty = AtomicBoolean(false)
     @Volatile private var started = false
+    @Volatile private var lastAttemptStartedAt = reportPrefs.getLong("last_attempt_started_at", 0L)
+    @Volatile private var lastAttemptFinishedAt = reportPrefs.getLong("last_attempt_finished_at", 0L)
+    @Volatile private var lastSuccessfulAt = reportPrefs.getLong("last_successful_at", 0L)
     @Volatile private var scanned = readScanHistory().optJSONObject(0)?.optInt("scanned") ?: 0
     @Volatile private var scannedDirectories = 0
     @Volatile private var unchanged = 0
     @Volatile private var skipped = readScanHistory().optJSONObject(0)?.optInt("skipped") ?: 0
-    @Volatile private var state = "idle"
+    @Volatile private var state = if (lastAttemptStartedAt > lastAttemptFinishedAt) "interrupted" else
+        (readScanHistory().optJSONObject(0)?.optString("state") ?: "idle")
     @Volatile private var lastError: String? = readScanHistory().optJSONObject(0)?.optString("last_error")?.takeIf { it.isNotBlank() }
     @Volatile private var lastCompletedAt: Long = readScanHistory().optJSONObject(0)?.optLong("completed_at") ?: 0L
     @Volatile private var lastScanStartedAt: Long = readScanHistory().optJSONObject(0)?.optLong("started_at") ?: 0L
@@ -313,15 +328,62 @@ internal class MediaIndexScanner(
     }
 
     fun ensureStarted() {
-        val now = System.currentTimeMillis()
         if (!started) {
-            requestScan(force = false, trigger = "automatic")
-        } else if (!running.get() &&
-            (dirty.get() || now - (lastCompletedAt.takeIf { it > 0L } ?: lastScanStartedAt) >= RESCAN_INTERVAL_MS)) {
-            // Discover changes made by PocketLink immediately, and external
-            // changes periodically. Unchanged rows are not rewritten.
+            started = true
+            if (automaticScanningEnabled() && reportPrefs.getBoolean("scan_on_startup", true)) {
+                requestScan(force = false, trigger = "automatic")
+            }
+        } else if (automaticScanningEnabled() && dirty.get() && !running.get()) {
             requestScan(force = true, trigger = "automatic")
         }
+    }
+
+    fun automaticScanningEnabled(): Boolean =
+        reportPrefs.getBoolean("automatic_scanning_enabled", true)
+
+    fun scanIntervalMinutes(): Int =
+        reportPrefs.getInt("scan_interval_minutes", 60).coerceIn(15, 1440)
+
+    fun configureAutomaticScanning(enabled: Boolean, intervalMinutes: Int): org.json.JSONObject {
+        val safeInterval = intervalMinutes.coerceIn(15, 1440)
+        reportPrefs.edit()
+            .putBoolean("automatic_scanning_enabled", enabled)
+            .putInt("scan_interval_minutes", safeInterval)
+            .apply()
+        return automaticSettings()
+    }
+
+    fun automaticSettings(): org.json.JSONObject {
+        val enabled = automaticScanningEnabled()
+        val interval = scanIntervalMinutes()
+        val baseline = lastCompletedAt.takeIf { it > 0L } ?: lastAttemptStartedAt
+        return org.json.JSONObject()
+            .put("enabled", enabled)
+            .put("scan_on_startup", reportPrefs.getBoolean("scan_on_startup", true))
+            .put("scan_on_storage_change", reportPrefs.getBoolean("scan_on_storage_change", true))
+            .put("interval_minutes", interval)
+            .put("next_scan_at", if (enabled && baseline > 0L) baseline + interval * 60_000L else 0L)
+    }
+
+    fun maybeRunScheduledScan() {
+        if (!automaticScanningEnabled() || running.get()) return
+        val baseline = lastCompletedAt.takeIf { it > 0L } ?: lastAttemptStartedAt
+        if (baseline == 0L || System.currentTimeMillis() - baseline >= scanIntervalMinutes() * 60_000L) {
+            requestScan(force = true, trigger = "automatic")
+        }
+    }
+
+    fun onStorageChanged(connected: Boolean) {
+        dirty.set(true)
+        if (connected && automaticScanningEnabled() &&
+            reportPrefs.getBoolean("scan_on_storage_change", true)) {
+            requestScan(force = true, trigger = "automatic")
+        }
+    }
+
+    fun retryFailedScan() {
+        if (running.get()) return
+        requestScan(force = true, trigger = "manual")
     }
 
     @Synchronized
@@ -337,6 +399,8 @@ internal class MediaIndexScanner(
         if (started && !force && state == "complete") return
         started = true
         lastScanStartedAt = System.currentTimeMillis()
+        lastAttemptStartedAt = lastScanStartedAt
+        reportPrefs.edit().putLong("last_attempt_started_at", lastAttemptStartedAt).apply()
         scanTrigger = trigger
         newFiles = 0
         updatedFiles = 0
@@ -391,11 +455,19 @@ internal class MediaIndexScanner(
                 if (lastError == null && skipped > 0) lastError = "Some files or folders could not be indexed."
                 state = if (lastError == null && skipped == 0) "complete" else "partial"
                 lastCompletedAt = System.currentTimeMillis()
+                lastAttemptFinishedAt = lastCompletedAt
+                reportPrefs.edit().putLong("last_attempt_finished_at", lastAttemptFinishedAt).apply()
+                if (state == "complete") {
+                    lastSuccessfulAt = lastCompletedAt
+                    reportPrefs.edit().putLong("last_successful_at", lastSuccessfulAt).apply()
+                }
                 persistScanReport()
             } catch (error: Exception) {
                 state = "failed"
                 lastError = error.message ?: "Index scan failed"
                 lastCompletedAt = System.currentTimeMillis()
+                lastAttemptFinishedAt = lastCompletedAt
+                reportPrefs.edit().putLong("last_attempt_finished_at", lastAttemptFinishedAt).apply()
                 persistScanReport()
                 currentSource = null
                 currentPath = null
@@ -459,10 +531,6 @@ internal class MediaIndexScanner(
             val safeModified = modified.coerceAtLeast(0L)
             val category = if (directory) null else categoryFor(name, mime)
             scannedBytes += safeSize
-            if (!directory) {
-                if (previousFile == null) newFiles++ 
-                else if (!fileUnchanged) updatedFiles++
-            }
             val previousFile = fileSnapshot[path]
             val previousMedia = mediaSnapshot[path]
             // Some SAF providers always report modified=0. In that case use
@@ -471,6 +539,10 @@ internal class MediaIndexScanner(
                 previousFile.size == safeSize &&
                 (if (safeModified <= 0L) previousFile.modified <= 0L
                 else previousFile.modified == safeModified)
+            if (!directory) {
+                if (previousFile == null) newFiles++
+                else if (!fileUnchanged) updatedFiles++
+            }
             val mediaUnchanged = when {
                 category == null -> previousMedia == null
                 previousMedia == null -> false
@@ -572,8 +644,13 @@ internal class MediaIndexScanner(
 
     fun status(): org.json.JSONObject {
         val counts = database.counts()
+        val sizes = database.sizeTotals()
+        val history = readScanHistory()
         return org.json.JSONObject()
             .put("state", state)
+            .put("last_attempt_started_at", lastAttemptStartedAt)
+            .put("last_attempt_finished_at", lastAttemptFinishedAt)
+            .put("last_successful_at", lastSuccessfulAt)
             .put("scanned", scanned)
             .put("scanned_directories", scannedDirectories)
             .put("unchanged_count", unchanged)
@@ -610,6 +687,17 @@ internal class MediaIndexScanner(
             .put("photo_count", counts["photo"] ?: 0)
             .put("video_count", counts["video"] ?: 0)
             .put("music_count", counts["music"] ?: 0)
+            .put("other_file_count", counts["other"] ?: 0)
+            .put("indexed_bytes", sizes["indexed_bytes"] ?: 0L)
+            .put("media_bytes", sizes["media_bytes"] ?: 0L)
+            .put("automatic_scanning", automaticSettings())
+            .put("duration_average_ms", run {
+                val durations = (0 until history.length()).mapNotNull { index ->
+                    history.optJSONObject(index)?.takeIf { it.optString("state") == "complete" }
+                        ?.optLong("duration_ms")?.takeIf { it > 0L }
+                }
+                if (durations.isEmpty()) 0L else durations.average().toLong()
+            })
     }
 
     private fun readScanHistory(): org.json.JSONArray = try {
@@ -646,7 +734,12 @@ internal class MediaIndexScanner(
         for (index in 0 until minOf(history.length(), 19)) {
             next.put(history.getJSONObject(index))
         }
-        reportPrefs.edit().putString("scan_history", next.toString()).apply()
+        reportPrefs.edit()
+            .putString("scan_history", next.toString())
+            .putLong("last_attempt_started_at", lastAttemptStartedAt)
+            .putLong("last_attempt_finished_at", lastAttemptFinishedAt)
+            .putLong("last_successful_at", lastSuccessfulAt)
+            .apply()
     }
 
     fun media(category: String, query: String, limit: Int, offset: Int) =
