@@ -17,7 +17,10 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
         final isDark = Theme.of(context).brightness == Brightness.dark;
         final settings = AppSettings.instance;
         final useProgressiveBlur =
-            settings.progressiveBlurEnabled && !media.disableAnimations;
+            settings.progressiveBlurEnabled &&
+            settings.progressiveBlurStrength > 0 &&
+            !media.disableAnimations;
+        final blurScale = settings.progressiveBlurStrength / 55;
         final headerHeight = media.padding.top + kToolbarHeight + 16;
         final statusBlurHeight = media.padding.top + 12;
 
@@ -60,7 +63,7 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
                           stops: [0.0, 0.68, 1.0],
                         ).createShader(bounds),
                         child: BackdropFilter(
-                          filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                          filter: ui.ImageFilter.blur(sigmaX: 24 * blurScale, sigmaY: 24 * blurScale),
                           child: const ColoredBox(color: Colors.transparent),
                         ),
                       ),
@@ -81,7 +84,7 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
                           stops: [0.0, 0.55, 1.0],
                         ).createShader(bounds),
                         child: BackdropFilter(
-                          filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                          filter: ui.ImageFilter.blur(sigmaX: 10 * blurScale, sigmaY: 10 * blurScale),
                           child: const ColoredBox(color: Colors.transparent),
                         ),
                       ),
@@ -181,12 +184,14 @@ class GlassCircleButton extends StatelessWidget {
       animation: settings,
       builder: (context, _) {
         final useBlur = settings.progressiveBlurEnabled &&
+            settings.progressiveBlurStrength > 0 &&
             !MediaQuery.of(context).disableAnimations;
+        final blurScale = settings.progressiveBlurStrength / 55;
         return RepaintBoundary(
           child: ClipOval(
             child: useBlur
                 ? BackdropFilter(
-                    filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                    filter: ui.ImageFilter.blur(sigmaX: 24 * blurScale, sigmaY: 24 * blurScale),
                     child: button,
                   )
                 : button,
