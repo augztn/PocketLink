@@ -477,7 +477,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 '${_settings.progressiveBlurStrength.round()}%',
                                 style: Theme.of(context).textTheme.labelLarge?.copyWith(
                                   color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                  fontFeatures: const [FontFeature.tabularFigures()],
                                 ),
                               ),
                             ],
