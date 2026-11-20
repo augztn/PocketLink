@@ -46,8 +46,19 @@ class MediaIndexScannerTest {
             assertEquals(3, first.getInt("other_file_count"))
             assertTrue(first.getLong("last_successful_at") > 0L)
             assertEquals(first.getLong("last_completed_at"), first.getLong("last_attempt_finished_at"))
+            assertTrue(first.getString("scan_run_id").isNotBlank())
             assertTrue(first.getJSONObject("automatic_scanning").getBoolean("enabled"))
             assertEquals(60, first.getJSONObject("automatic_scanning").getInt("interval_minutes"))
+            val disabledSettings = scanner.configureAutomaticScanning(
+                enabled = false,
+                intervalMinutes = 180,
+                scanOnStartup = false,
+                scanOnStorageChange = false
+            )
+            assertEquals(false, disabledSettings.getBoolean("enabled"))
+            assertEquals(false, disabledSettings.getBoolean("scan_on_startup"))
+            assertEquals(false, disabledSettings.getBoolean("scan_on_storage_change"))
+            assertEquals(180, disabledSettings.getInt("interval_minutes"))
             assertEquals(1, first.getJSONArray("scan_history").length())
             assertEquals("complete", first.getJSONArray("volumes").getJSONObject(0).getString("state"))
             assertEquals(10, first.getInt("file_count"))
