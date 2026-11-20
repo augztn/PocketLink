@@ -189,8 +189,8 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
                       DecoratedBox(
                         decoration: BoxDecoration(
                           color: isDark
-                              ? const Color(0xFF16181F).withValues(alpha: 0.88)
-                              : Colors.white.withValues(alpha: 0.94),
+                              ? const Color(0xFF16181F).withValues(alpha: 0.90)
+                              : Colors.white.withValues(alpha: 0.95),
                           borderRadius: BorderRadius.circular(22),
                           border: Border.all(
                             color: isDark
