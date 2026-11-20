@@ -83,7 +83,7 @@ class _PocketLinkScaffoldState extends State<PocketLinkScaffold> {
             : (_renderedHeaderHeight! - statusBarHeight - 16).clamp(
                 kToolbarHeight,
                 200.0,
-              );
+              ).toDouble();
     final topClearance = statusBarHeight + headerContentHeight + 10;
     final bottomClearance = media.padding.bottom +
         (widget.hasFloatingNavBar ? 84.0 : 12.0) +
