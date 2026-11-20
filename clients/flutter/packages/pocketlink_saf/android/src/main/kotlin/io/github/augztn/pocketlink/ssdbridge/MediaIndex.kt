@@ -387,7 +387,7 @@ internal class MediaIndexScanner(
                     running.set(false)
                     dirty.getAndSet(false)
                 }
-                if (scanAgain) requestScan(force = true)
+                if (scanAgain) requestScan(force = true, trigger = scanTrigger)
             }
         }
     }
@@ -566,7 +566,7 @@ internal class MediaIndexScanner(
             .put("updated_files", updatedFiles)
             .put("scanned_bytes", scannedBytes)
             .put("volumes", org.json.JSONArray().also { items ->
-                volumeReports.values.sortedBy { it.optString("volume") }.forEach(items::put)
+                volumeReports.values.sortedBy { it.optString("volume") }.forEach { items.put(it) }
             })
             .put("scan_history", readScanHistory())
             .put("elapsed_ms", if (state == "scanning") System.currentTimeMillis() - lastScanStartedAt else (lastCompletedAt - lastScanStartedAt).coerceAtLeast(0L))
