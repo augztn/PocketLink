@@ -70,8 +70,8 @@ class SettingsBackupService {
     if (key == 'settings_video_seek_seconds') return value is int && const {5, 10, 15, 30}.contains(value);
     if (key == 'settings_progressive_blur_strength') return value is num && value.isFinite && value >= 0 && value <= 100;
     if (key == 'settings_video_controls_timeout') return value is num && const [0.0, 2.0, 3.0, 3.5, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0].contains(value);
-    if (key == 'settings_video_default_speed') return value is num && const [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 3.0, 4.0].contains(value);
-    if (key == 'settings_video_subtitle_font_size') return value is num && value >= 14 && value <= 32;
+
+    if (key == 'settings_video_subtitle_font_size') return value is double && value >= 14 && value <= 32;\n    if (key == 'settings_video_default_speed') return value is double && const [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 3.0, 4.0].contains(value);
     if (value is! String || value.length > 16384) return false;
 
     if (const {
@@ -119,7 +119,7 @@ class SettingsBackupService {
         }
         if (key == 'settings_navigation_visibility') {
           return items.length >= 2 && items.contains('home') &&
-              items.every(const {'home', 'explore', 'files', 'browse'}.contains);
+              items.every((item) => const {'home', 'explore', 'files', 'browse'}.contains(item));
         }
         const destinations = {
           'explore', 'files', 'music', 'videos', 'photos',
