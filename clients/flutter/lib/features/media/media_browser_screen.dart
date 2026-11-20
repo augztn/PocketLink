@@ -1566,7 +1566,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                       child: _error != null || (_loading && _media.isEmpty) || visible.isEmpty
                           ? ListView(
                               physics: const AlwaysScrollableScrollPhysics(),
-                              padding: EdgeInsets.fromLTRB(0, top + 64, 0, LayoutInsetsScope.of(context).bottomClearance),
+                              padding: EdgeInsets.fromLTRB(0, LayoutInsetsScope.of(context).topClearance, 0, LayoutInsetsScope.of(context).bottomClearance),
                               children: [
                                 SizedBox(
                                   height: MediaQuery.sizeOf(context).height * 0.55,
@@ -1585,7 +1585,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                           : ListView.separated(
                               physics: const AlwaysScrollableScrollPhysics(),
                               controller: _contentScrollController,
-                              padding: EdgeInsets.fromLTRB(0, top + 64, 0, 112 + MediaQuery.paddingOf(context).bottom),
+                              padding: EdgeInsets.fromLTRB(0, LayoutInsetsScope.of(context).topClearance, 0, LayoutInsetsScope.of(context).bottomClearance),
                               itemCount: visible.length,
                               separatorBuilder: (_, __) => Container(
                                 height: 1,
