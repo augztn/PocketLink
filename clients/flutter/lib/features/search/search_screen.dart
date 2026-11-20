@@ -742,6 +742,7 @@ class _SearchScreenState extends State<SearchScreen> {
     final query = _controller.text.trim();
     final categories = const ['All','Files','Photos','Audio','Videos','Documents'];
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: PocketLinkAppBar(
         feathered: true,
         showHome: false,
