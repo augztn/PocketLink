@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../core/logging/app_logger.dart';
 import '../../core/settings/app_settings.dart';
+import '../../core/settings/settings_backup_service.dart';
 import 'navigation_customization_screen.dart';
 import 'now_playing_settings_screen.dart';
 import 'video_player_settings_screen.dart';
@@ -28,6 +29,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _settings = AppSettings.instance;
   bool _clearingCache = false;
   bool _exportingLogs = false;
+  bool _exportingSettings = false;
+  bool _importingSettings = false;
 
   Future<void> _chooseDownloadDirectory() async {
     try {
@@ -92,6 +95,71 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (mounted) _message('Could not export diagnostic logs.');
     } finally {
       if (mounted) setState(() => _exportingLogs = false);
+    }
+  }
+
+  Future<void> _exportSettingsBackup() async {
+    if (_exportingSettings || _importingSettings) return;
+    setState(() => _exportingSettings = true);
+    try {
+      final bytes = await SettingsBackupService.exportBackup();
+      final directory = await getTemporaryDirectory();
+      final file = File('${directory.path}/pocketlink-settings-backup.json');
+      await file.writeAsBytes(bytes, flush: true);
+      await SharePlus.instance.share(ShareParams(
+        files: [XFile(file.path, mimeType: 'application/json')],
+        subject: 'PocketLink settings backup',
+        text: 'Settings only. Server profiles, credentials and device-specific storage access are not included.',
+      ));
+      if (mounted) _message('Settings backup is ready to save or share.');
+    } catch (error, stack) {
+      await AppLogger.error('Settings backup export failed', error: error, stackTrace: stack);
+      if (mounted) _message('Could not export settings backup.');
+    } finally {
+      if (mounted) setState(() => _exportingSettings = false);
+    }
+  }
+
+  Future<void> _importSettingsBackup() async {
+    if (_exportingSettings || _importingSettings) return;
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom, allowedExtensions: ['json'], withData: true,
+      );
+      if (result == null || result.files.isEmpty) return;
+      final bytes = result.files.single.bytes;
+      if (bytes == null) {
+        _message('Could not read the selected backup file.');
+        return;
+      }
+      if (!mounted) return;
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Restore settings?'),
+          content: const Text(
+            'This replaces supported PocketLink preferences on this device. '
+            'Server profiles, credentials, downloads, files and storage permissions are not changed.',
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Restore')),
+          ],
+        ),
+      );
+      if (confirmed != true || !mounted) return;
+      setState(() => _importingSettings = true);
+      final count = await SettingsBackupService.importBackup(bytes);
+      await _settings.reloadPreferences();
+      if (mounted) {
+        setState(() {});
+        _message('Restored $count settings successfully.');
+      }
+    } catch (error, stack) {
+      await AppLogger.error('Settings backup import failed', error: error, stackTrace: stack);
+      if (mounted) _message('Backup was not restored. The file may be invalid or unsupported.');
+    } finally {
+      if (mounted) setState(() => _importingSettings = false);
     }
   }
 
@@ -390,6 +458,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title: 'Media Library & Storage',
                     subtitle: 'Download location and temporary cache',
                   ),
+                  _categoryTile(
+                    id: 'backup',
+                    icon: Icons.backup_rounded,
+                    tint: const Color(0xFF60A5FA),
+                    title: 'Backup & Restore',
+                    subtitle: 'Export or restore your PocketLink preferences',
+                  ),
                   _settingsGroupTitle('Network & System'),
                   _categoryTile(
                     id: 'connection',
@@ -407,6 +482,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ]
               : [
+                if (widget.category == 'Backup & Restore')
+                  _section('Settings Backup', [
+                    ListTile(
+                      leading: const Icon(Icons.file_upload_outlined),
+                      title: const Text('Export settings'),
+                      subtitle: const Text('Create a portable JSON backup of supported preferences'),
+                      trailing: _exportingSettings
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.ios_share_rounded),
+                      onTap: _exportingSettings || _importingSettings ? null : _exportSettingsBackup,
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.restore_rounded),
+                      title: const Text('Import settings'),
+                      subtitle: const Text('Restore preferences from a PocketLink backup'),
+                      trailing: _importingSettings
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.folder_open_rounded),
+                      onTap: _exportingSettings || _importingSettings ? null : _importSettingsBackup,
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(16, 8, 16, 16),
+                      child: Text(
+                        'Backups include supported app preferences only. Server profiles, passwords, tokens, storage permissions, downloads and personal files are excluded.',
+                      ),
+                    ),
+                  ]),
                 if (widget.category == 'Appearance')
                   _section('Appearance & Theme', [
                     ListTile(
