@@ -20,7 +20,7 @@ void main() {
     expect(AppSettings.instance.progressiveBlurStrength, 55);
   });
 
-  testWidgets('progressive blur strength is clamped, persisted and validated', (tester) async {
+  test('progressive blur strength is clamped, persisted and validated', () async {
     await AppSettings.instance.setProgressiveBlurStrength(72.5);
     expect(AppSettings.instance.progressiveBlurStrength, 72.5);
     expect(
@@ -33,15 +33,15 @@ void main() {
     );
   });
 
-  testWidgets('progressive blur preference persists when toggled', (tester) async {
-    await AppSettings.instance.setProgressiveBlurEnabled(true);
+  test('progressive blur preference persists when toggled', () async {
+    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(true));
     expect(AppSettings.instance.progressiveBlurEnabled, isTrue);
     expect(
       (await SharedPreferences.getInstance()).getBool('settings_progressive_blur'),
       isTrue,
     );
 
-    await AppSettings.instance.setProgressiveBlurEnabled(false);
+    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(false));
     expect(AppSettings.instance.progressiveBlurEnabled, isFalse);
     expect(
       (await SharedPreferences.getInstance()).getBool('settings_progressive_blur'),
@@ -63,7 +63,7 @@ void main() {
 
   testWidgets('zero blur strength removes backdrop filters while enabled', (tester) async {
     await AppSettings.instance.setProgressiveBlurEnabled(true);
-    await AppSettings.instance.setProgressiveBlurStrength(0);
+    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurStrength(0));
 
     await tester.pumpWidget(
       const MaterialApp(
