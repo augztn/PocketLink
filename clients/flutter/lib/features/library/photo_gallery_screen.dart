@@ -357,7 +357,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
       Text('Moments grouped by the dates stored with your photos.',style:Theme.of(context).textTheme.bodySmall),
       const SizedBox(height:14),
       SizedBox(height:190,child:featured.isEmpty?empty('Your memories will appear here.'):ListView.separated(
-        scrollDirection:Axis.horizontal,itemCount:featured.length,separatorBuilder:(_,__)=>const SizedBox(width:12),
+        scrollDirection:Axis.horizontal,padding:EdgeInsets.zero,itemCount:featured.length,separatorBuilder:(_,__)=>const SizedBox(width:12),
         itemBuilder:(_,i){
           final m=featured[i];
           return SizedBox(width:260,child:InkWell(
