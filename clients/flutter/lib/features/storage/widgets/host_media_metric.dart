@@ -1,14 +1,15 @@
 import 'package:material_ui/material_ui.dart';
 
 class HostMediaMetric extends StatelessWidget {
-  const _MediaMetric({
+  const HostMediaMetric({
+    super.key,
     required this.label,
     required this.value,
     required this.icon,
   });
 
   final String label;
-  final dynamic value;
+  final Object? value;
   final IconData icon;
 
   @override
