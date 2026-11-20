@@ -330,7 +330,7 @@ jobs:
             if [ "$build_status" -eq 0 ]; then
               exit 0
             fi
-            if [ "$attempt" -eq 1 ] && grep -Eiq               'NDK at .*did not have a source\.properties|failed to install.*NDK|NDK.*(download|install).*(failed|error)'               /tmp/pocketlink-apk-build.log; then
+            if [ "$attempt" -eq 1 ] && grep -Eiq 'NDK at .*did not have a source\\.properties|failed to install.*NDK|NDK.*(download|install).*(failed|error)' /tmp/pocketlink-apk-build.log; then
               echo "Detected an incomplete NDK installation; clearing it and retrying once."
               rm -rf "$SDK_ROOT/ndk/28.2.13676358" "$SDK_ROOT/.temp"
               continue
