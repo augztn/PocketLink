@@ -684,6 +684,11 @@ tooltip: 'Choose photo view',
                     icon: Icons.swap_vert_rounded,
                     dividerBefore: true,
                   ),
+                  const SmokedGlassPopoverMenuItem(
+                    value: 'home',
+                    label: 'Return to Home',
+                    icon: Icons.home_rounded,
+                  ),
                 ],
                 onSelected: (value) {
                   if (value == 'search') _setSearchOpen(!searchOpen);
@@ -694,6 +699,7 @@ tooltip: 'Choose photo view',
                       builder: (_) => const TransferManagerScreen(),
                     ));
                   }
+                  if (value == 'home') PocketLinkAppBar.goToDashboard(context);
                   if (value == 'select') setState(() {
                     if (selected.isEmpty) selected.addAll(items.map((p) => p.id));
                     else selected.clear();
