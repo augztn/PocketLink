@@ -33,6 +33,7 @@ class TransferManagerScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final manager = TransferManager.instance;
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: PocketLinkAppBar(
         feathered: true,
         title: const Text('Transfers'),
@@ -45,8 +46,12 @@ class TransferManagerScreen extends StatelessWidget {
         builder: (context, _) {
           final tasks = manager.tasks;
           if (tasks.isEmpty) {
-            return const Center(
-              child: Column(
+            return Padding(
+              padding: EdgeInsets.only(
+                top: MediaQuery.paddingOf(context).top + kToolbarHeight,
+              ),
+              child: const Center(
+                child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.swap_vert_rounded, size: 52),
@@ -59,7 +64,12 @@ class TransferManagerScreen extends StatelessWidget {
             );
           }
           return ListView.separated(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.fromLTRB(
+              16,
+              MediaQuery.paddingOf(context).top + kToolbarHeight + 16,
+              16,
+              16 + MediaQuery.paddingOf(context).bottom,
+            ),
             itemCount: tasks.length,
             separatorBuilder: (_, __) => const SizedBox(height: 10),
             itemBuilder: (context, index) {
