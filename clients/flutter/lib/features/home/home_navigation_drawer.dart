@@ -215,9 +215,8 @@ class PocketLinkHomeDrawer extends StatelessWidget {
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: _drawerIcon(Icons.add_to_drive_rounded),
-                    minTileHeight: 46,
+                    minTileHeight: 42,
                     title: const Text('Connect a drive'),
-                    subtitle: const Text('USB, SSD and OTG setup'),
                     onTap: () => _closeThen(context, onConnectDrive),
                   ),
                   const SizedBox(height: 12),
@@ -225,7 +224,7 @@ class PocketLinkHomeDrawer extends StatelessWidget {
                   _sectionLabel(context, 'TOOLS'),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    minTileHeight: 46,
+                    minTileHeight: 42,
                     leading: _drawerIcon(Icons.swap_vert_rounded),
                     title: const Text('Transfers'),
                     onTap: () => _closeThen(context, onOpenTransfers),
@@ -236,7 +235,7 @@ class PocketLinkHomeDrawer extends StatelessWidget {
                       final active = DownloadManagerService.instance.activeCount;
                       return ListTile(
                         contentPadding: EdgeInsets.zero,
-                        minTileHeight: 46,
+                        minTileHeight: 42,
                         leading: _drawerIcon(Icons.download_rounded),
                         title: Row(
                           children: [
@@ -265,7 +264,7 @@ class PocketLinkHomeDrawer extends StatelessWidget {
                   ),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    minTileHeight: 46,
+                    minTileHeight: 42,
                     leading: _drawerIcon(Icons.settings_rounded),
                     title: const Text('Settings'),
                     onTap: () => _closeThen(context, onOpenSettings),
@@ -273,6 +272,7 @@ class PocketLinkHomeDrawer extends StatelessWidget {
                   if (onSwitchServer != null)
                     ListTile(
                       contentPadding: EdgeInsets.zero,
+                      minTileHeight: 42,
                       leading: _drawerIcon(Icons.switch_account_rounded),
                       title: const Text('Switch server'),
                       onTap: () => _closeThen(context, onSwitchServer!),
