@@ -104,7 +104,7 @@ class _NavigationCustomizationScreenState
       ),
       body: ListView(
         padding: EdgeInsets.fromLTRB(
-          16, 12, 16, 28 + MediaQuery.paddingOf(context).bottom,
+          16, 12, 16, MediaQuery.paddingOf(context).bottom + 140,
         ),
         children: [
           Text('Live preview', style: theme.textTheme.titleMedium?.copyWith(
@@ -143,9 +143,9 @@ class _NavigationCustomizationScreenState
           const SizedBox(height: 12),
           Container(
             decoration: BoxDecoration(
-              color: const Color(0xFF121316),
+              color: colors.surfaceContainerHigh,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
+              border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.7)),
             ),
             child: ReorderableListView.builder(
               shrinkWrap: true,
