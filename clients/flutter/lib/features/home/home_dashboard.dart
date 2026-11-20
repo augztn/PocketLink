@@ -1327,6 +1327,8 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
       'Started: ${_formatScanTimestamp(status.lastScanStartedAt)}',
       'Last attempt completed: ${_formatScanTimestamp(status.lastAttemptFinishedAt)}',
       'Last successful scan: ${_formatScanTimestamp(status.lastSuccessfulAt)}',
+      'Last automatic scan: ${_formatScanTimestamp(status.lastAutomaticScanAt)}',
+      'Last manual scan: ${_formatScanTimestamp(status.lastManualScanAt)}',
       'Timezone: ${status.timezoneId ?? 'unknown'}',
       'Automatic scanning: ${status.automaticScanning.enabled ? 'enabled' : 'disabled'} · every ${status.automaticScanning.intervalMinutes} minutes',
       'Indexed bytes: ${status.indexedBytes}',
@@ -1427,6 +1429,11 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
             'Last successful: ${_formatScanTimestamp(status.lastSuccessfulAt)}',
             style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
           ),
+          if (status.lastAutomaticScanAt > 0)
+            Text(
+              'Last automatic: ${_formatScanTimestamp(status.lastAutomaticScanAt)}',
+              style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
+            ),
           if (!scanning && status.lastCompletedAt > 0)
             Text(
               'Duration: ${(status.elapsedMs / 1000).toStringAsFixed(1)}s · ${status.newFiles} new · ${status.updatedFiles} updated',
