@@ -16,6 +16,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/network/server_api.dart';
 import 'media_player_screen.dart';
+import 'widgets/video_tag.dart';
 import 'persistent_audio_player.dart';
 import 'now_playing_overlay_controller.dart';
 import '../transfers/transfer_manager_screen.dart';
@@ -653,7 +654,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       builder: (context, snapshot) {
         final duration = snapshot.data?.durationMs ?? 0;
         if (duration <= 0) return const SizedBox.shrink();
-        return _VideoTag(label: _formatDuration(duration));
+        return VideoTag(label: _formatDuration(duration));
       },
     );
   }
@@ -1848,31 +1849,6 @@ tooltip: 'Choose music view',
   @override
   Widget build(BuildContext context) => _isMusic ? _musicScreen(context) : _buildVideoScreen(context);
 
-}
-
-class _VideoTag extends StatelessWidget {
-  const _VideoTag({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) => DecoratedBox(
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.68),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-          child: Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-      );
 }
 
 class MediaBrowserScreen extends StatefulWidget {
