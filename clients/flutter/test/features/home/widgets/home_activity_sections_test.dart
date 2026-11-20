@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pocketlink/features/home/widgets/home_activity_sections.dart';
-import 'package:pocketlink/core/storage/home_activity_store.dart';
+import 'package:pocketlink_client/features/home/widgets/home_activity_sections.dart';
+import 'package:pocketlink_client/core/storage/home_activity_store.dart';
 
 void main() {
   BoxDecoration decoration(ThemeData theme, {double radius = 18}) => BoxDecoration(
