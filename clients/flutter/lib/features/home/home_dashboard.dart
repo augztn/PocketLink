@@ -1737,12 +1737,15 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        leading: SizedBox.square(
-          dimension: 38,
-          child: GlassCircleButton(
-            tooltip: 'Open navigation menu',
-            onPressed: widget.onOpenDrawer,
-            child: const Icon(Icons.menu_rounded, size: 18),
+        leadingWidth: 70,
+        leading: Center(
+          child: SizedBox.square(
+            dimension: 38,
+            child: GlassCircleButton(
+              tooltip: 'Open navigation menu',
+              onPressed: widget.onOpenDrawer,
+              child: const Icon(Icons.menu_rounded, size: 18),
+            ),
           ),
         ),
         backgroundColor: Colors.transparent,
@@ -1750,7 +1753,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
         elevation: 0,
         scrolledUnderElevation: 0,
         flexibleSpace: const FeatheredGlassHeaderBackground(),
-        titleSpacing: 20,
+        titleSpacing: 8,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1811,13 +1814,16 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                 _refreshStatus(forceRefresh: true);
               }
             },
-            child: const GlassCircleButton(
-              tooltip: 'More actions',
-              onPressed: null,
-              child: Icon(Icons.more_vert_rounded),
+            child: const SizedBox.square(
+              dimension: 38,
+              child: GlassCircleButton(
+                tooltip: 'More actions',
+                onPressed: null,
+                child: Icon(Icons.more_vert_rounded, size: 18),
+              ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 16),
         ],
       ),
       body: RefreshIndicator(
