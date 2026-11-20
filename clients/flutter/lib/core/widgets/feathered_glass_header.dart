@@ -111,12 +111,17 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [
-                          isDark
-                              ? const Color(0xE6000000)
-                              : const Color(0xF2FFFFFF),
-                          Colors.transparent,
-                        ],
+                        colors: darkTint != null && isDark
+                            ? tint
+                            : [
+                                isDark
+                                    ? const Color(0xE6000000)
+                                    : const Color(0xF2FFFFFF),
+                                Colors.transparent,
+                              ],
+                        stops: darkTint != null && isDark
+                            ? const [0.0, 0.48, 1.0]
+                            : null,
                       ),
                     ),
                   ),
