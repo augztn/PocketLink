@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'features/home/browser_state_store.dart';
@@ -182,11 +183,23 @@ class _PocketLinkAppState extends State<PocketLinkApp> {
       theme: _theme(brightness: Brightness.light),
       darkTheme: _theme(brightness: Brightness.dark, amoled: _settings.amoled),
       home: const ConnectionScreen(),
-      builder: (context, child) => MaterialUiCompatibilityBridge(
-        child: GlobalMediaOverlay(
-          child: child ?? const SizedBox.shrink(),
-        ),
-      ),
+      builder: (context, child) {
+        final isLight = Theme.of(context).brightness == Brightness.light;
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: isLight ? Brightness.dark : Brightness.light,
+            statusBarBrightness: isLight ? Brightness.light : Brightness.dark,
+            systemNavigationBarIconBrightness:
+                isLight ? Brightness.dark : Brightness.light,
+          ),
+          child: MaterialUiCompatibilityBridge(
+            child: GlobalMediaOverlay(
+              child: child ?? const SizedBox.shrink(),
+            ),
+          ),
+        );
+      },
       ),
     );
   }
