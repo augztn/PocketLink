@@ -94,14 +94,12 @@ class LiquidGlassSurface extends StatelessWidget {
               : themedSurface,
         );
 
-        return RepaintBoundary(
-          child: refractive
-              ? CustomPaint(
-                  foregroundPainter: _RefractiveGlassRimPainter(radius: radius),
-                  child: clippedSurface,
-                )
-              : clippedSurface,
-        );
+        return refractive
+            ? CustomPaint(
+                foregroundPainter: _RefractiveGlassRimPainter(radius: radius),
+                child: clippedSurface,
+              )
+            : RepaintBoundary(child: clippedSurface);
       },
     );
   }
