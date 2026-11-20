@@ -31,9 +31,9 @@ class SmokedGlassPopoverMenu<T> extends StatelessWidget {
     this.tooltip,
     this.gap = 8,
     this.onOpenChanged,
-    this.itemHeight = 46,
-    this.menuVerticalPadding = 8,
-    this.itemHorizontalPadding = 16,
+    this.itemHeight = 44,
+    this.menuVerticalPadding = 6,
+    this.itemHorizontalPadding = 14,
     this.trailingWidth = 48,
     super.key,
   });
@@ -120,10 +120,11 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
     Animation<double> secondaryAnimation,
   ) {
     final media = MediaQuery.of(context);
-    final minMenuWidth = mathMin(215, media.size.width - 16);
-    final menuMaxWidth = mathMin(260, media.size.width - 16);
+    final minMenuWidth = mathMin(210, media.size.width - 32);
+    final menuMaxWidth = mathMin(236, media.size.width - 32);
+    final maxRight = mathMax(16, media.size.width - minMenuWidth - 16);
     final right = (media.size.width - anchor.right)
-        .clamp(8.0, media.size.width - minMenuWidth - 8)
+        .clamp(16.0, maxRight)
         .toDouble();
     final minTop = media.padding.top + 8;
     final maxTop = mathMax(
@@ -210,7 +211,7 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
                                       ),
                                       child: Divider(
                                         height: 1,
-                                        color: foreground.withValues(alpha: 0.12),
+                                        color: foreground.withValues(alpha: 0.08),
                                       ),
                                     ),
                                   SizedBox(
@@ -230,7 +231,7 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
                                             children: [
                                               Icon(
                                                 item.icon,
-                                                size: 20,
+                                                size: 18,
                                                 color: item.enabled
                                                     ? item.destructive
                                                         ? const Color(0xFFEF4444)
@@ -247,7 +248,8 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
                                                   style: Theme.of(context)
                                                       .textTheme.bodyMedium
                                                       ?.copyWith(
-                                                        fontSize: 15,
+                                                        fontSize: 14.5,
+                                                        fontWeight: FontWeight.w500,
                                                         color: item.enabled
                                                             ? item.destructive
                                                                 ? const Color(0xFFEF4444)
