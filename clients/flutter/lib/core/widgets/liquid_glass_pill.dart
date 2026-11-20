@@ -28,18 +28,19 @@ class LiquidGlassSurface extends StatelessWidget {
     return AnimatedBuilder(
       animation: AppSettings.instance,
       builder: (context, _) {
-        final useGlass = AppSettings.instance.useLiquidGlass || refractive;
+        final useGlass = AppSettings.instance.useLiquidGlass;
+        final useRefraction = useGlass && refractive;
         final isDark = Theme.of(context).brightness == Brightness.dark;
         final colors = Theme.of(context).colorScheme;
 
         final decoration = useGlass
             ? BoxDecoration(
-                color: refractive
+                color: useRefraction
                     ? (!isDark && lightRefractive
                         ? Colors.white.withValues(alpha: 0.58)
                         : const Color(0xFF1A1C23).withValues(alpha: 0.40))
                     : null,
-                gradient: refractive ? null : LinearGradient(
+                gradient: useRefraction ? null : LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: isDark
@@ -94,13 +95,13 @@ class LiquidGlassSurface extends StatelessWidget {
           clipBehavior: Clip.antiAlias,
           child: useGlass
               ? BackdropFilter(
-                  filter: ui.ImageFilter.blur(sigmaX: refractive ? 28 : 22, sigmaY: refractive ? 28 : 22),
+                  filter: ui.ImageFilter.blur(sigmaX: useRefraction ? 28 : 22, sigmaY: useRefraction ? 28 : 22),
                   child: themedSurface,
                 )
               : themedSurface,
         );
 
-        return refractive
+        return useRefraction
             ? CustomPaint(
                 foregroundPainter: _RefractiveGlassRimPainter(radius: radius),
                 child: clippedSurface,
@@ -112,10 +113,7 @@ class LiquidGlassSurface extends StatelessWidget {
 }
 
 
-/// Always-on smoked glass treatment for the persistent mini-player.
-///
-/// Unlike the optional decorative glass surfaces, this keeps its backdrop blur
-/// and translucent smoked tint active so page content remains visible beneath it.
+/// Optional smoked-glass treatment for persistent floating surfaces.
 class SmokedGlassSurface extends StatelessWidget {
   const SmokedGlassSurface({
     required this.child,
@@ -130,68 +128,97 @@ class SmokedGlassSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isLight = Theme.of(context).brightness == Brightness.light;
-    final borderColor = isLight
-        ? const Color(0x1A0F172A)
-        : Colors.white.withValues(alpha: 0.14);
-    final surface = ClipRRect(
-      borderRadius: radius,
-      clipBehavior: Clip.antiAlias,
-      child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: refractive ? 28 : 24, sigmaY: refractive ? 28 : 24),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: refractive
-                ? const Color(0xFF1A1C23).withValues(alpha: 0.40)
-                : isLight
-                    ? Colors.white.withValues(alpha: 0.78)
-                    : const Color(0xFF1C1E24).withValues(alpha: 0.68),
-            borderRadius: radius,
-            border: Border.all(color: borderColor, width: 1),
-            boxShadow: isLight
-                ? const [BoxShadow(color: Color(0x140F172A), blurRadius: 18, offset: Offset(0, 5))]
-                : const [],
-          ),
-          child: Stack(
-            fit: StackFit.passthrough,
-            children: [
-              child,
-              Positioned(
-                top: 0,
-                left: 1,
-                right: 1,
-                child: IgnorePointer(
-                  child: Container(
-                    height: 1,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: isLight
-                            ? [
-                                Colors.white.withValues(alpha: 0.55),
-                                Colors.white.withValues(alpha: 0.90),
-                                Colors.white.withValues(alpha: 0.55),
-                              ]
-                            : [
-                                Colors.white.withValues(alpha: 0.02),
-                                Colors.white.withValues(alpha: 0.42),
-                                Colors.white.withValues(alpha: 0.02),
-                              ],
+    return AnimatedBuilder(
+      animation: AppSettings.instance,
+      builder: (context, _) {
+        final enabled = AppSettings.instance.useLiquidGlass;
+        final isLight = Theme.of(context).brightness == Brightness.light;
+        final borderColor = isLight
+            ? const Color(0x1A0F172A)
+            : Colors.white.withValues(alpha: 0.14);
+        final content = enabled
+            ? Stack(
+                fit: StackFit.passthrough,
+                children: [
+                  child,
+                  Positioned(
+                    top: 0,
+                    left: 1,
+                    right: 1,
+                    child: IgnorePointer(
+                      child: Container(
+                        height: 1,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: isLight
+                                ? [
+                                    Colors.white.withValues(alpha: 0.55),
+                                    Colors.white.withValues(alpha: 0.90),
+                                    Colors.white.withValues(alpha: 0.55),
+                                  ]
+                                : [
+                                    Colors.white.withValues(alpha: 0.02),
+                                    Colors.white.withValues(alpha: 0.42),
+                                    Colors.white.withValues(alpha: 0.02),
+                                  ],
+                          ),
+                        ),
                       ),
                     ),
                   ),
+                ],
+              )
+            : child;
+        final surface = ClipRRect(
+          borderRadius: radius,
+          clipBehavior: Clip.antiAlias,
+          child: enabled
+              ? BackdropFilter(
+                  filter: ui.ImageFilter.blur(
+                    sigmaX: refractive ? 28 : 24,
+                    sigmaY: refractive ? 28 : 24,
+                  ),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: refractive
+                          ? const Color(0xFF1A1C23).withValues(alpha: 0.40)
+                          : isLight
+                              ? Colors.white.withValues(alpha: 0.78)
+                              : const Color(0xFF1C1E24).withValues(alpha: 0.68),
+                      borderRadius: radius,
+                      border: Border.all(color: borderColor, width: 1),
+                      boxShadow: isLight
+                          ? const [
+                              BoxShadow(
+                                color: Color(0x140F172A),
+                                blurRadius: 18,
+                                offset: Offset(0, 5),
+                              ),
+                            ]
+                          : const [],
+                    ),
+                    child: content,
+                  ),
+                )
+              : DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerLow,
+                    borderRadius: radius,
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                    ),
+                  ),
+                  child: child,
                 ),
-              ),
-            ],
-          ),
-        ),
-      ),
+        );
+        return enabled && refractive
+            ? CustomPaint(
+                foregroundPainter: _RefractiveGlassRimPainter(radius: radius),
+                child: surface,
+              )
+            : surface;
+      },
     );
-    return refractive
-        ? CustomPaint(
-            foregroundPainter: _RefractiveGlassRimPainter(radius: radius),
-            child: surface,
-          )
-        : surface;
   }
 }
 
