@@ -1,5 +1,6 @@
 import 'dart:io';
 import '../../core/widgets/pocketlink_app_bar.dart';
+import '../../core/widgets/pocketlink_scaffold.dart';
 
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
@@ -391,7 +392,7 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
           Padding(
             padding: EdgeInsets.fromLTRB(
               16,
-              MediaQuery.paddingOf(context).top + kToolbarHeight + 8,
+              LayoutInsetsScope.of(context).topClearance + 0,
               16,
               10,
             ),
@@ -541,7 +542,7 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
                             child: _gridView
                                 ? GridView.builder(
                                     physics: const AlwaysScrollableScrollPhysics(),
-                                    padding: EdgeInsets.fromLTRB(16, 10, 16, 104 + MediaQuery.paddingOf(context).bottom),
+                                    padding: EdgeInsets.fromLTRB(16, 10, 16, LayoutInsetsScope.of(context).bottomClearance),
                                     gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                                       maxCrossAxisExtent: 190, mainAxisExtent: 158,
                                       crossAxisSpacing: 10, mainAxisSpacing: 10),
@@ -570,7 +571,7 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
                                   )
                                 : ListView.separated(
                                     physics: const AlwaysScrollableScrollPhysics(),
-                                    padding: EdgeInsets.fromLTRB(16, 10, 16, 104 + MediaQuery.paddingOf(context).bottom),
+                                    padding: EdgeInsets.fromLTRB(16, 10, 16, LayoutInsetsScope.of(context).bottomClearance),
                                     itemCount: items.length,
                                     separatorBuilder: (_, __) => const SizedBox(height: 8),
                                     itemBuilder: (context, index) {
