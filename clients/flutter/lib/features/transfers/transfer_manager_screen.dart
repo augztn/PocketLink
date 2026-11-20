@@ -60,6 +60,7 @@ class TransferManagerScreen extends StatelessWidget {
                   SizedBox(height: 4),
                   Text('Uploads and downloads will appear here.'),
                 ],
+                ),
               ),
             );
           }
