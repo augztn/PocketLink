@@ -952,7 +952,7 @@ class _SearchScreenState extends State<SearchScreen> {
               Positioned(
                 left: 12,
                 right: 12,
-                bottom: MediaQuery.paddingOf(context).bottom + 8,
+                bottom: LayoutInsetsScope.of(context).bottomClearance,
                 child: Material(
                   color: theme.colorScheme.surfaceContainer.withValues(alpha: 0.94),
                   borderRadius: BorderRadius.circular(14),
@@ -970,7 +970,7 @@ class _SearchScreenState extends State<SearchScreen> {
               Positioned(
                 left: 0,
                 right: 0,
-                bottom: MediaQuery.paddingOf(context).bottom + 2,
+                bottom: LayoutInsetsScope.of(context).bottomClearance - 2,
                 child: IgnorePointer(
                   child: Center(
                     child: Text('${_visible.length} results · $_scannedFolders folders scanned',
