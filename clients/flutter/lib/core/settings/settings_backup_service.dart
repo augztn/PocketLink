@@ -46,9 +46,6 @@ class SettingsBackupService {
   };
 
   static const _stringKeys = <String>{
-    'settings_home_quick_actions',
-    'settings_home_library',
-    'settings_home_recent',
     'settings_home_section_order',
     'settings_navigation_order',
     'settings_navigation_visibility',
@@ -75,13 +72,6 @@ class SettingsBackupService {
     if (key == 'settings_video_default_speed') return value is double && const [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 3.0, 4.0].contains(value);
     if (value is! String || value.length > 16384) return false;
 
-    if (const {
-      'settings_home_quick_actions',
-      'settings_home_library',
-      'settings_home_recent',
-    }.contains(key)) {
-      return value == 'true' || value == 'false';
-    }
     if (key == 'settings_music_button_swipe_left_action' ||
         key == 'settings_music_button_swipe_right_action') {
       return const {'next', 'previous', 'none'}.contains(value);
