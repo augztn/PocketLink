@@ -55,7 +55,7 @@ class GlassCircleButton extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final foreground = isDark ? Colors.white : const Color(0xFF0F172A);
     return RepaintBoundary(child: ClipOval(child: BackdropFilter(
-      filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+      filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
       child: Material(color: Colors.transparent, child: InkWell(
         onTap: onPressed, customBorder: const CircleBorder(),
         splashColor: foreground.withValues(alpha: 0.08),
@@ -64,12 +64,43 @@ class GlassCircleButton extends StatelessWidget {
           width: size, height: size, alignment: Alignment.center,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: Colors.white.withValues(alpha: isDark ? 0.14 : 0.78),
+            color: isDark
+                ? const Color(0xFF1C1E24).withValues(alpha: 0.58)
+                : Colors.white.withValues(alpha: 0.58),
             border: Border.all(color: isDark
               ? Colors.white.withValues(alpha: 0.24)
               : const Color(0xFF94A3B8).withValues(alpha: 0.30)),
           ),
-          child: IconTheme(data: IconThemeData(color: foreground, size: 18), child: child),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Center(
+                child: IconTheme(
+                  data: IconThemeData(color: foreground, size: 18),
+                  child: child,
+                ),
+              ),
+              Positioned(
+                top: 0,
+                left: size * 0.22,
+                right: size * 0.22,
+                child: IgnorePointer(
+                  child: Container(
+                    height: 1,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.white.withValues(alpha: 0.02),
+                          Colors.white.withValues(alpha: isDark ? 0.42 : 0.86),
+                          Colors.white.withValues(alpha: 0.02),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         )),
       )),
     )));
