@@ -526,7 +526,11 @@ internal class MediaIndexScanner(
                             .put("completed_at", System.currentTimeMillis())
                             .put("scanned", scanned - scannedBefore)
                             .put("skipped", skipped - skippedBefore)
-                            .put("error", if (id in disconnectedVolumes) "Storage disconnected during scan; previous index retained" else "")
+                            .also { report ->
+                                if (id in disconnectedVolumes) {
+                                    report.put("error", "Storage disconnected during scan; previous index retained")
+                                }
+                            }
                     } catch (error: Exception) {
                         volumeReports[id] = org.json.JSONObject()
                             .put("volume", id)
