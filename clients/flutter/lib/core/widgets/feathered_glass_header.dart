@@ -142,9 +142,6 @@ class GlassCircleButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final settings = AppSettings.instance;
-    final useBlur = settings.progressiveBlurEnabled &&
-        !settings.reduceDynamicBlur &&
-        !MediaQuery.of(context).disableAnimations;
     final foreground = isDark ? Colors.white : const Color(0xFF0F172A);
     final button = Material(
       color: Colors.transparent,
@@ -182,15 +179,23 @@ class GlassCircleButton extends StatelessWidget {
       ),
     );
 
-    return RepaintBoundary(
-      child: ClipOval(
-        child: useBlur
-            ? BackdropFilter(
-                filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-                child: button,
-              )
-            : button,
-      ),
+    return AnimatedBuilder(
+      animation: settings,
+      builder: (context, _) {
+        final useBlur = settings.progressiveBlurEnabled &&
+            !settings.reduceDynamicBlur &&
+            !MediaQuery.of(context).disableAnimations;
+        return RepaintBoundary(
+          child: ClipOval(
+            child: useBlur
+                ? BackdropFilter(
+                    filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                    child: button,
+                  )
+                : button,
+          ),
+        );
+      },
     );
   }
 }
