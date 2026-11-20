@@ -238,7 +238,8 @@ tooltip: 'Filter document types',
               icon: icon,
               trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                 Text('${counts[entry.key]}', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
-                if (_filter == entry.key) const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.check_rounded, size: 18)),
+                const SizedBox(width: 8),
+                SizedBox(width: 20, child: _filter == entry.key ? const Icon(Icons.check_rounded, size: 18) : null),
               ]),
             );
           }).toList(),
