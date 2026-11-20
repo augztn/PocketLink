@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
+import '../../core/widgets/pocketlink_scaffold.dart';
 
 import 'transfer_manager.dart';
 
@@ -48,7 +49,7 @@ class TransferManagerScreen extends StatelessWidget {
           if (tasks.isEmpty) {
             return Padding(
               padding: EdgeInsets.only(
-                top: MediaQuery.paddingOf(context).top + kToolbarHeight,
+                top: LayoutInsetsScope.of(context).topClearance - 10,
               ),
               child: const Center(
                 child: Column(
@@ -67,9 +68,9 @@ class TransferManagerScreen extends StatelessWidget {
           return ListView.separated(
             padding: EdgeInsets.fromLTRB(
               16,
-              MediaQuery.paddingOf(context).top + kToolbarHeight + 16,
+              LayoutInsetsScope.of(context).topClearance - 10 + 16,
               16,
-              16 + MediaQuery.paddingOf(context).bottom,
+              LayoutInsetsScope.of(context).bottomClearance,
             ),
             itemCount: tasks.length,
             separatorBuilder: (_, __) => const SizedBox(height: 10),
