@@ -10,33 +10,42 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
     final legibility = isDark
         ? const [Color(0xC8000000), Color(0x55000000), Colors.transparent]
         : const [Color(0xD8FFFFFF), Color(0x66FFFFFF), Colors.transparent];
-    return ClipRect(
-      child: ShaderMask(
-        blendMode: BlendMode.dstIn,
-        shaderCallback: (bounds) => const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Colors.white, Colors.white, Colors.transparent],
-          stops: [0.0, 0.58, 1.0],
-        ).createShader(bounds),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            BackdropFilter(
-              filter: ui.ImageFilter.blur(sigmaX: 22, sigmaY: 22),
-              child: const ColoredBox(color: Colors.transparent),
-            ),
-            DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: legibility,
-                  stops: const [0.0, 0.58, 1.0],
+    final fadeHeight = MediaQuery.paddingOf(context).top + 4;
+    return Align(
+      alignment: Alignment.topCenter,
+      heightFactor: 1,
+      child: SizedBox(
+        width: double.infinity,
+        height: fadeHeight,
+        child: ClipRect(
+          child: ShaderMask(
+            blendMode: BlendMode.dstIn,
+            shaderCallback: (bounds) => const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Colors.white, Colors.white, Colors.transparent],
+              stops: [0.0, 0.58, 1.0],
+            ).createShader(bounds),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                BackdropFilter(
+                  filter: ui.ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+                  child: const ColoredBox(color: Colors.transparent),
                 ),
-              ),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: legibility,
+                      stops: const [0.0, 0.58, 1.0],
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
