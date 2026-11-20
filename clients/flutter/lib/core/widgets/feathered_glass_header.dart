@@ -7,26 +7,38 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final tint = isDark ? const Color(0xFF000000) : const Color(0xFFF8FAFC);
-    return ShaderMask(
-      blendMode: BlendMode.dstIn,
-      shaderCallback: (bounds) => const LinearGradient(
-        begin: Alignment.topCenter, end: Alignment.bottomCenter,
-        colors: [Colors.black, Colors.black, Colors.transparent],
-        stops: [0, 0.45, 1],
-      ).createShader(bounds),
-      child: ClipRect(child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: 22, sigmaY: 22),
-        child: DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(
-          begin: Alignment.topCenter, end: Alignment.bottomCenter,
-          colors: [
-            tint.withValues(alpha: isDark ? 0.80 : 0.88),
-            tint.withValues(alpha: isDark ? 0.42 : 0.70),
-            tint.withValues(alpha: 0),
+    final legibility = isDark
+        ? const [Color(0xC8000000), Color(0x55000000), Colors.transparent]
+        : const [Color(0xD8FFFFFF), Color(0x66FFFFFF), Colors.transparent];
+    return ClipRect(
+      child: ShaderMask(
+        blendMode: BlendMode.dstIn,
+        shaderCallback: (bounds) => const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Colors.white, Colors.white, Colors.transparent],
+          stops: [0.0, 0.58, 1.0],
+        ).createShader(bounds),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            BackdropFilter(
+              filter: ui.ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+              child: const ColoredBox(color: Colors.transparent),
+            ),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: legibility,
+                  stops: const [0.0, 0.58, 1.0],
+                ),
+              ),
+            ),
           ],
-          stops: const [0, 0.45, 1],
-        )), child: const SizedBox.expand()),
-      )),
+        ),
+      ),
     );
   }
 }
