@@ -302,6 +302,7 @@ internal class MediaIndexScanner(
     @Volatile private var lastError: String? = readScanHistory().optJSONObject(0)?.optString("last_error")?.takeIf { it.isNotBlank() }
     @Volatile private var lastCompletedAt: Long = readScanHistory().optJSONObject(0)?.optLong("completed_at") ?: 0L
     @Volatile private var lastScanStartedAt: Long = readScanHistory().optJSONObject(0)?.optLong("started_at") ?: 0L
+    @Volatile private var scanRunId: String = readScanHistory().optJSONObject(0)?.optString("run_id").orEmpty()
     @Volatile private var scanTrigger: String = "automatic"
     @Volatile private var queuedTrigger: String? = null
     @Volatile private var lastScanTrigger: String = reportPrefs.getString("last_trigger", "automatic") ?: "automatic"
@@ -354,10 +355,17 @@ internal class MediaIndexScanner(
     fun scanIntervalMinutes(): Int =
         reportPrefs.getInt("scan_interval_minutes", 60).coerceIn(15, 1440)
 
-    fun configureAutomaticScanning(enabled: Boolean, intervalMinutes: Int): org.json.JSONObject {
+    fun configureAutomaticScanning(
+        enabled: Boolean,
+        intervalMinutes: Int,
+        scanOnStartup: Boolean = reportPrefs.getBoolean("scan_on_startup", true),
+        scanOnStorageChange: Boolean = reportPrefs.getBoolean("scan_on_storage_change", true)
+    ): org.json.JSONObject {
         val safeInterval = intervalMinutes.coerceIn(15, 1440)
         reportPrefs.edit()
             .putBoolean("automatic_scanning_enabled", enabled)
+            .putBoolean("scan_on_startup", scanOnStartup)
+            .putBoolean("scan_on_storage_change", scanOnStorageChange)
             .putInt("scan_interval_minutes", safeInterval)
             .apply()
         return automaticSettings()
@@ -424,6 +432,7 @@ internal class MediaIndexScanner(
         lastAttemptStartedAt = lastScanStartedAt
         reportPrefs.edit().putLong("last_attempt_started_at", lastAttemptStartedAt).apply()
         scanTrigger = trigger
+        scanRunId = UUID.randomUUID().toString()
         newFiles = 0
         updatedFiles = 0
         scannedBytes = 0L
@@ -703,6 +712,7 @@ internal class MediaIndexScanner(
             .put("last_completed_at", lastCompletedAt)
             .put("last_scan_started_at", lastScanStartedAt)
             .put("scan_trigger", if (state == "scanning") scanTrigger else lastScanTrigger)
+            .put("scan_run_id", scanRunId)
             .put("new_files", newFiles)
             .put("updated_files", updatedFiles)
             .put("scanned_bytes", scannedBytes)
@@ -742,6 +752,16 @@ internal class MediaIndexScanner(
                 }
                 if (durations.isEmpty()) 0L else durations.average().toLong()
             })
+            .put("duration_trend_percent", run {
+                val completed = (0 until history.length()).mapNotNull { index ->
+                    history.optJSONObject(index)?.takeIf { it.optString("state") == "complete" }
+                        ?.optLong("duration_ms")?.takeIf { it > 0L }
+                }
+                if (completed.size < 2) 0 else {
+                    val baseline = completed.drop(1).take(5).average()
+                    if (baseline <= 0.0) 0 else (((completed.first() - baseline) / baseline) * 100.0).toInt()
+                }
+            })
     }
 
     private fun readScanHistory(): org.json.JSONArray = try {
@@ -753,6 +773,7 @@ internal class MediaIndexScanner(
         reportPrefs.edit().putString("last_trigger", lastScanTrigger).apply()
         val history = readScanHistory()
         val record = org.json.JSONObject()
+            .put("run_id", scanRunId)
             .put("started_at", lastScanStartedAt)
             .put("completed_at", lastCompletedAt)
             .put("timezone_id", java.util.TimeZone.getDefault().id)
@@ -805,7 +826,6 @@ internal class MediaIndexScanner(
     }
 
     companion object {
-        private const val RESCAN_INTERVAL_MS = 10 * 60 * 1000L
         private const val MAX_DEPTH = 64
         private const val MAX_REPORTED_SKIPPED_ITEMS = 100
         private val PHOTO = setOf(
