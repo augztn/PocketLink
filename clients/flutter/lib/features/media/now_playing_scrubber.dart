@@ -281,54 +281,54 @@ class _ScrubberPainter extends CustomPainter {
     );
 
     if (style == NowPlayingScrubberStyle.wavy) {
-      final remaining = Paint()
-        ..color = inactive
-        ..strokeWidth = 2.5
-        ..strokeCap = StrokeCap.round;
-      canvas.drawLine(Offset(left, centerY), Offset(right, centerY), remaining);
-      if (bufferedProgress > progress) {
-        canvas.drawLine(
-          Offset(right * progress, centerY),
-          Offset(right * bufferedProgress, centerY),
-          Paint()
-            ..color = buffered
-            ..strokeWidth = 4
-            ..strokeCap = StrokeCap.round,
-        );
-      }
-      if (progress > 0) {
+      final thumbX = right * progress;
+      final playedEnd = math.max(left, thumbX - 4);
+      if (playedEnd > left) {
         final path = Path();
-        final end = right * progress;
-        for (double x = 0; x <= end; x += 2) {
+        for (double x = left; x <= playedEnd; x += 2) {
           final y = centerY +
               math.sin((x / 26 * math.pi * 2) - wavePhase * math.pi * 2) *
                   waveAmplitude;
-          if (x == 0) {
+          if (x == left) {
             path.moveTo(x, y);
           } else {
             path.lineTo(x, y);
           }
         }
-        path.lineTo(end, centerY);
+        path.lineTo(playedEnd, centerY);
         canvas.drawPath(
           path,
           Paint()
             ..color = active
             ..style = PaintingStyle.stroke
-            ..strokeWidth = 3
+            ..strokeWidth = 3.2
             ..strokeCap = StrokeCap.round
             ..isAntiAlias = true,
         );
       }
-      final playheadX = right * progress;
+
+      final unplayedStart = thumbX + 6;
+      if (unplayedStart < right) {
+        canvas.drawLine(
+          Offset(unplayedStart, centerY),
+          Offset(right, centerY),
+          Paint()
+            ..color = inactive
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 3.2
+            ..strokeCap = StrokeCap.round
+            ..isAntiAlias = true,
+        );
+      }
+
       canvas.drawRRect(
         RRect.fromRectAndRadius(
           Rect.fromCenter(
-            center: Offset(playheadX, centerY),
-            width: dragging ? 5.5 : 4,
-            height: dragging ? 18 : 16,
+            center: Offset(thumbX, centerY),
+            width: 4,
+            height: 16,
           ),
-          const Radius.circular(3),
+          const Radius.circular(2),
         ),
         Paint()..color = active,
       );
