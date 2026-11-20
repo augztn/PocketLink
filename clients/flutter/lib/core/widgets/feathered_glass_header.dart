@@ -4,39 +4,31 @@ import 'package:material_ui/material_ui.dart';
 /// Progressive blur surface used behind edge-to-edge browsing headers.
 class FeatheredGlassHeaderBackground extends StatelessWidget {
   const FeatheredGlassHeaderBackground({super.key});
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final legibility = isDark
-        ? const [Color(0xC8000000), Color(0x55000000), Colors.transparent]
-        : const [Color(0xD8FFFFFF), Color(0x66FFFFFF), Colors.transparent];
-    return ClipRect(
-      child: ShaderMask(
-        blendMode: BlendMode.dstIn,
-        shaderCallback: (bounds) => const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Colors.white, Colors.white, Colors.transparent],
-          stops: [0.0, 0.58, 1.0],
-        ).createShader(bounds),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            BackdropFilter(
-              filter: ui.ImageFilter.blur(sigmaX: 22, sigmaY: 22),
-              child: const ColoredBox(color: Colors.transparent),
-            ),
-            DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: legibility,
-                  stops: const [0.0, 0.58, 1.0],
-                ),
-              ),
-            ),
-          ],
+    // Keep the page artwork and scroll content visible. This is only a soft
+    // status-bar legibility fade, not a full-width blurred toolbar surface.
+    return IgnorePointer(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: isDark
+                ? const [
+                    Color(0x55000000),
+                    Color(0x22000000),
+                    Colors.transparent,
+                  ]
+                : const [
+                    Color(0x66FFFFFF),
+                    Color(0x22FFFFFF),
+                    Colors.transparent,
+                  ],
+            stops: const [0, 0.48, 1],
+          ),
         ),
       ),
     );
