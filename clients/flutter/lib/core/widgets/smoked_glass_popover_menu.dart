@@ -130,7 +130,7 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
       reverseCurve: Curves.easeInCubic,
     );
     final foreground = isDark ? Colors.white : const Color(0xFF172033);
-    final iconColor = isDark ? const Color(0xFFA1A7B3) : const Color(0xFF64748B);
+    final iconColor = isDark ? const Color(0xFFD0D5DD) : const Color(0xFF475569);
 
     return Material(
       type: MaterialType.transparency,
@@ -161,18 +161,18 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
                     child: ClipRRect(
                 borderRadius: BorderRadius.circular(22),
                 child: BackdropFilter(
-                  filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                  filter: ui.ImageFilter.blur(sigmaX: 28, sigmaY: 28),
                   child: Stack(
                     children: [
                       DecoratedBox(
                         decoration: BoxDecoration(
                           color: isDark
-                              ? const Color(0xFF1C1E24).withValues(alpha: 0.72)
-                              : Colors.white.withValues(alpha: 0.86),
+                              ? const Color(0xFF15171D).withValues(alpha: 0.90)
+                              : Colors.white.withValues(alpha: 0.94),
                           borderRadius: BorderRadius.circular(22),
                           border: Border.all(
                             color: isDark
-                                ? Colors.white.withValues(alpha: 0.16)
+                                ? Colors.white.withValues(alpha: 0.14)
                                 : const Color(0xFF94A3B8).withValues(alpha: 0.34),
                           ),
                           boxShadow: const [
