@@ -1780,6 +1780,7 @@ tooltip: 'Choose music view',
                             const SmokedGlassPopoverMenuItem(value: 'select', label: 'Select tracks', icon: Icons.checklist_rounded),
                             const SmokedGlassPopoverMenuItem(value: 'scan', label: 'Scan library', icon: Icons.refresh_rounded),
                             const SmokedGlassPopoverMenuItem(value: 'settings', label: 'Settings', icon: Icons.settings_rounded, dividerBefore: true),
+                            const SmokedGlassPopoverMenuItem(value: 'home', label: 'Return to Home', icon: Icons.home_rounded),
                           ],
                           onSelected: (value) {
                             if (value == 'shuffle' && visible.isNotEmpty) {
@@ -1798,11 +1799,14 @@ tooltip: 'Choose music view',
                                 builder: (_) => const SettingsScreen(),
                               ));
                             }
+                            if (value == 'home') {
+                              PocketLinkAppBar.goToDashboard(context);
+                            }
                           },
-                          child: SizedBox(
-                            width: 36,
-                            height: 36,
-                            child: Center(child: Icon(Icons.more_horiz_rounded, size: 18, color: foreground)),
+                          child: GlassCircleButton(
+                            tooltip: 'More music actions',
+                            onPressed: null,
+                            child: const Icon(Icons.more_vert_rounded, size: 18),
                           ),
                         ),
                         ]),
