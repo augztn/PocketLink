@@ -1616,7 +1616,15 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
               left: 0,
               right: 0,
               height: top + 88,
-              child: const IgnorePointer(child: FeatheredGlassHeaderBackground()),
+              child: const IgnorePointer(
+                child: FeatheredGlassHeaderBackground(
+                  darkTint: [
+                    Color(0xD9000000),
+                    Color(0x66000000),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
             ),
             Positioned(
               top: top + 10,
