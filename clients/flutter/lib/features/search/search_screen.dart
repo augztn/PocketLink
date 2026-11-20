@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import '../../core/widgets/pocketlink_app_bar.dart';
+import '../../core/widgets/pocketlink_scaffold.dart';
 import '../../core/widgets/pocketlink_file_icon.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
 import '../../core/widgets/smoked_glass_popover_menu.dart';
@@ -629,7 +630,7 @@ class _SearchScreenState extends State<SearchScreen> {
     return ListView.separated(
       shrinkWrap: shrink,
       physics: shrink ? const NeverScrollableScrollPhysics() : const AlwaysScrollableScrollPhysics(),
-      padding: EdgeInsets.fromLTRB(12, topInset, 12, 132 + MediaQuery.paddingOf(context).bottom),
+      padding: EdgeInsets.fromLTRB(12, topInset, 12, LayoutInsetsScope.of(context).bottomClearance),
       itemCount: list.length,
       separatorBuilder: (_, __) => const Divider(height: 1, indent: 62),
       itemBuilder: (ctx, i) {
@@ -708,7 +709,7 @@ class _SearchScreenState extends State<SearchScreen> {
   );
 
   Widget _idle(ThemeData theme, {double topInset = 20}) => ListView(
-    padding: EdgeInsets.fromLTRB(16, topInset, 16, 132 + MediaQuery.paddingOf(context).bottom),
+    padding: EdgeInsets.fromLTRB(16, topInset, 16, LayoutInsetsScope.of(context).bottomClearance),
     children: [
       if (_history.isNotEmpty) ...[
         Row(children: [
@@ -773,7 +774,7 @@ class _SearchScreenState extends State<SearchScreen> {
       ),
       body: Builder(builder: (context) {
         final safeTop = MediaQuery.paddingOf(context).top;
-        final headerBottom = safeTop + kToolbarHeight;
+        final headerBottom = LayoutInsetsScope.of(context).topClearance - 10;
         final contentTop = headerBottom + 8 + 64 + 54 +
             (_loading ? 34 : 0) + (_quick != null ? 42 : 0) + 8;
         final Widget scrollContent = query.isEmpty && _quick == null
@@ -782,7 +783,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 ? _resultsList(theme, topInset: contentTop)
                 : query.isEmpty
                     ? ListView(
-                        padding: EdgeInsets.fromLTRB(0, contentTop, 0, 132 + safeTop),
+                        padding: EdgeInsets.fromLTRB(0, contentTop, 0, LayoutInsetsScope.of(context).bottomClearance),
                         children: [_resultsList(theme, shrink: true, topInset: 0)],
                       )
                     : _resultsList(theme, topInset: contentTop);
