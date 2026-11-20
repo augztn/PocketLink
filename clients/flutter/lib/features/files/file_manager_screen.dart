@@ -723,7 +723,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                     ),
                   ),
                 ),
-          leadingWidth: _path.isEmpty ? 62 : 62,
+          leadingWidth: _path.isEmpty ? 0 : 62,
           titleSpacing: _path.isEmpty ? 16 : 8,
           title: SmokedGlassPopoverMenu<String>(
             tooltip: 'Choose storage location',
