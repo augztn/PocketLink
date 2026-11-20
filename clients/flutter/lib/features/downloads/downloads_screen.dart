@@ -163,7 +163,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.labelSmall?.copyWith(
                             color: colors.onSurfaceVariant,
-                            fontFeatures: const [ui.ui.FontFeature.tabularFigures()],
+                            fontFeatures: [ui.FontFeature.tabularFigures()],
                           ),
                         ),
                       ],
