@@ -48,7 +48,9 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
         return LayoutBuilder(
           builder: (context, constraints) {
             final renderedHeight = constraints.constrainHeight(headerHeight);
-            LayoutInsetsScope.reportRenderedHeader(context, renderedHeight);
+            if (TickerMode.of(context)) {
+              LayoutInsetsScope.reportRenderedHeader(context, renderedHeight);
+            }
             return SizedBox(
           width: double.infinity,
           height: renderedHeight,
