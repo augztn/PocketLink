@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/widgets/pocketlink_app_bar.dart';
+import '../../core/widgets/liquid_glass_pill.dart';
 
 import '../diagnostics/diagnostics_screen.dart';
 import '../about/about_screen.dart';
@@ -1204,11 +1205,80 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
 
     Widget sectionList(String storageKey, List<Widget> sections) => ListView(
       key: PageStorageKey<String>(storageKey),
-      padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
+      padding: EdgeInsets.fromLTRB(
+        18,
+        12,
+        18,
+        MediaQuery.paddingOf(context).bottom + 92,
+      ),
       children: sections,
     );
 
+    Widget hostDestination({
+      required int index,
+      required IconData icon,
+      required IconData selectedIcon,
+      required String label,
+    }) {
+      final selected = _selectedSectionIndex == index;
+      final foreground = selected ? colors.onSecondaryContainer : colors.onSurfaceVariant;
+      return Expanded(
+        child: Semantics(
+          button: true,
+          selected: selected,
+          label: label,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(28),
+              onTap: () {
+                if (_selectedSectionIndex == index) return;
+                setState(() => _selectedSectionIndex = index);
+                _sectionPageController.animateToPage(
+                  index,
+                  duration: const Duration(milliseconds: 260),
+                  curve: Curves.easeOutCubic,
+                );
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+                margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 5),
+                decoration: BoxDecoration(
+                  color: selected ? colors.secondaryContainer : Colors.transparent,
+                  borderRadius: BorderRadius.circular(26),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 7),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(selected ? selectedIcon : icon, size: 21, color: foreground),
+                      const SizedBox(height: 2),
+                      Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: foreground,
+                          fontSize: 11,
+                          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                          height: 1.1,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
+      extendBody: true,
       appBar: PocketLinkAppBar(
         title: const Text('Host PocketLink'),
         onHome: widget.onHome,
@@ -1258,39 +1328,45 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
           ]),
         ],
       ),
-      bottomNavigationBar: NavigationBar(
-        height: 72,
-        elevation: 0,
-        backgroundColor: colors.surfaceContainerLow,
-        indicatorColor: colors.primaryContainer,
-        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-        selectedIndex: _selectedSectionIndex,
-        onDestinationSelected: (index) {
-          if (_selectedSectionIndex == index) return;
-          setState(() => _selectedSectionIndex = index);
-          _sectionPageController.animateToPage(
-            index,
-            duration: const Duration(milliseconds: 260),
-            curve: Curves.easeOutCubic,
-          );
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.dashboard_outlined),
-            selectedIcon: Icon(Icons.dashboard_rounded),
-            label: 'Overview',
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 380),
+              child: SizedBox(
+                height: 64,
+                width: double.infinity,
+                child: SmokedGlassSurface(
+                  radius: BorderRadius.circular(34),
+                  child: Row(
+                    children: [
+                      hostDestination(
+                        index: 0,
+                        icon: Icons.dashboard_outlined,
+                        selectedIcon: Icons.dashboard_rounded,
+                        label: 'Overview',
+                      ),
+                      hostDestination(
+                        index: 1,
+                        icon: Icons.devices_outlined,
+                        selectedIcon: Icons.devices_rounded,
+                        label: 'Device',
+                      ),
+                      hostDestination(
+                        index: 2,
+                        icon: Icons.lock_outline_rounded,
+                        selectedIcon: Icons.lock_rounded,
+                        label: 'Security',
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
-          NavigationDestination(
-            icon: Icon(Icons.devices_outlined),
-            selectedIcon: Icon(Icons.devices_rounded),
-            label: 'Device',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.lock_outline_rounded),
-            selectedIcon: Icon(Icons.lock_rounded),
-            label: 'Security',
-          ),
-        ],
+        ),
       ),
     );
   }
