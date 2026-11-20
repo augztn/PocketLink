@@ -397,10 +397,15 @@ internal class MediaIndexScanner(
         if (!connected) {
             // Never traverse a possibly detached SAF tree: some providers report
             // an empty directory on removal, which could otherwise prune valid rows.
-            volumeReports.values.filter { it.optString("volume") != "internal" }.forEach { report ->
+            val externalReports = volumeReports.values.filter { it.optString("volume") != "internal" }
+            externalReports.forEach { report ->
                 report.put("state", "unavailable")
                     .put("stale", true)
                     .put("error", "Storage volume disconnected; indexed content is retained")
+            }
+            if (externalReports.isNotEmpty()) {
+                state = "partial"
+                lastError = "External storage disconnected; its indexed content is retained but may be stale."
             }
             dirty.set(true)
             return
