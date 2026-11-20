@@ -623,6 +623,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
         return HomeActiveTransfersPreview(
           tasks: active,
           formatBytes: _formatBytes,
+          cardDecoration: _dashboardCardDecoration,
           onOpen: () => Navigator.of(context).push(MaterialPageRoute<void>(
             builder: (_) => const TransferManagerScreen(),
           )),
