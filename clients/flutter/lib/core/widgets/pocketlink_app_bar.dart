@@ -101,7 +101,14 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
       ...actionsBeforeHome,
       if (showHome)
         if (feathered)
-          GlassCircleButton(tooltip: 'Home', onPressed: () => _goHome(context), child: const Icon(Icons.home_rounded))
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: GlassCircleButton(
+              tooltip: 'Home',
+              onPressed: () => _goHome(context),
+              child: const Icon(Icons.home_rounded),
+            ),
+          )
         else
           IconButton(tooltip: 'Home', onPressed: () => _goHome(context), icon: const Icon(Icons.home_rounded)),
       SmokedGlassPopoverMenu<PocketLinkAppBarAction>(
@@ -115,12 +122,15 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
         )).toList(growable: false),
         onSelected: (action) => action.onPressed?.call(),
         child: feathered
-            ? SizedBox.square(
-                dimension: 38,
-                child: const GlassCircleButton(
-                  tooltip: 'More actions',
-                  onPressed: null,
-                  child: Icon(Icons.more_vert_rounded, size: 18),
+            ? const Padding(
+                padding: EdgeInsets.symmetric(vertical: 4),
+                child: SizedBox.square(
+                  dimension: 38,
+                  child: GlassCircleButton(
+                    tooltip: 'More actions',
+                    onPressed: null,
+                    child: Icon(Icons.more_vert_rounded, size: 18),
+                  ),
                 ),
               )
             : const Padding(
