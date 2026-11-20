@@ -9,6 +9,9 @@ import '../media/media_browser_screen.dart';
 import '../search/search_screen.dart';
 import '../downloads/download_manager_service.dart';
 import '../downloads/downloads_screen.dart';
+import '../storage/storage_browser_screen.dart';
+import '../transfers/transfer_manager_screen.dart';
+import '../settings/settings_screen.dart';
 
 enum ExploreCategory { files, photos, music, videos }
 
@@ -170,6 +173,21 @@ class _ExploreGridState extends State<_ExploreGrid>
     super.dispose();
   }
 
+  Future<void> _scanAllLibraries() async {
+    try {
+      await api.startMediaIndexScan();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Library scan started.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not start the library scan.')),
+      );
+    }
+  }
+
   Widget _staggeredCard(int index, Widget child) {
     final start = (index * 0.07).clamp(0.0, 0.5).toDouble();
     final animation = CurvedAnimation(
@@ -272,11 +290,40 @@ class _ExploreGridState extends State<_ExploreGrid>
 
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: const PocketLinkAppBar(
+      appBar: PocketLinkAppBar(
         feathered: true,
         showHome: false,
         automaticallyImplyLeading: false,
-        title: Text('Explore'),
+        title: const Text('Explore'),
+        actions: [
+          PocketLinkAppBarAction(
+            label: 'Download manager',
+            icon: Icons.download_rounded,
+            onPressed: () => onOpen(DownloadsScreen(api: api)),
+          ),
+          PocketLinkAppBarAction(
+            label: 'Transfers',
+            icon: Icons.swap_vert_rounded,
+            onPressed: () => onOpen(const TransferManagerScreen()),
+          ),
+          PocketLinkAppBarAction(
+            label: 'Drives & storage',
+            icon: Icons.storage_rounded,
+            onPressed: () => onOpen(StorageBrowserScreen(api: api)),
+          ),
+          PocketLinkAppBarAction(
+            label: 'Scan all libraries',
+            icon: Icons.refresh_rounded,
+            onPressed: _scanAllLibraries,
+            dividerBefore: true,
+          ),
+          PocketLinkAppBarAction(
+            label: 'Settings',
+            icon: Icons.settings_rounded,
+            onPressed: () => onOpen(const SettingsScreen()),
+            dividerBefore: true,
+          ),
+        ],
       ),
       body: GridView.count(
         padding: EdgeInsets.fromLTRB(16, MediaQuery.paddingOf(context).top + kToolbarHeight + 12, 16, 112 + MediaQuery.paddingOf(context).bottom),
