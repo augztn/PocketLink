@@ -358,3 +358,4 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
       ]),
     );
 }
+}
