@@ -147,7 +147,7 @@ class AppSettings extends ChangeNotifier {
       _progressiveBlurEnabled = preferences.getBool(_progressiveBlurKey) ?? false;
       final storedBlurStrength = preferences.get(_progressiveBlurStrengthKey);
       _progressiveBlurStrength = storedBlurStrength is num
-          ? storedBlurStrength.toDouble().clamp(0, 100)
+          ? storedBlurStrength.toDouble().clamp(0, 100).toDouble()
           : 55;
       _showMiniPlayer = preferences.getBool(_nowPlayingMiniPlayerKey) ?? true;
       _enableNowPlayingGestures = preferences.getBool(_nowPlayingGesturesKey) ?? true;
