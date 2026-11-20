@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Compact status label shared by PocketLink surfaces.
 class PocketLinkStatusPill extends StatelessWidget {
