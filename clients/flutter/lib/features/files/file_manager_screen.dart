@@ -777,179 +777,78 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
             PocketLinkAppBarAction(label: 'Refresh', icon: Icons.refresh_rounded, onPressed: _loading ? null : _refreshDirectory),
           ],
         ),
-        body: Column(
+        body: Stack(
           children: [
-            SizedBox(height: MediaQuery.paddingOf(context).top + kToolbarHeight),
-            if (_searchExpanded)
-              Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                child: TextField(
-                  controller: _searchController,
-                  autofocus: true,
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    hintText: 'Search this folder',
-                    prefixIcon: const Icon(Icons.search_rounded),
-                    suffixIcon: IconButton(onPressed: () { _searchController.clear(); setState(() {}); }, icon: const Icon(Icons.close_rounded)),
-                    filled: true, fillColor: colors.surfaceContainerLow,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-                  ),
-                ),
-              ),
-            if (_path.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-                child: SizedBox(
-                  height: 30,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: [
-                      TextButton(
-                        style: TextButton.styleFrom(
-                          visualDensity: VisualDensity.compact,
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          minimumSize: const Size(0, 28),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        onPressed: () => _load(''),
-                        child: Text(
-                          _selectedVolume == null ? 'Internal storage' : _volumeName(_selectedVolume!),
-                          style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
-                        ),
-                      ),
-                      for (var i = 0; i < _path.split('/').where((part) => part.isNotEmpty).length; i++) ...[
-                        const Center(child: Icon(Icons.chevron_right_rounded, size: 15)),
-                        TextButton(
-                          style: TextButton.styleFrom(
-                            visualDensity: VisualDensity.compact,
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            minimumSize: const Size(0, 28),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          onPressed: i == _path.split('/').where((part) => part.isNotEmpty).length - 1
-                              ? null
-                              : () => _load(_path.split('/').where((part) => part.isNotEmpty).take(i + 1).join('/')),
-                          child: Text(
-                            _path.split('/').where((part) => part.isNotEmpty).elementAt(i),
-                            style: theme.textTheme.labelSmall,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-            const SizedBox(height: 8),
-
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: SmokedGlassPopoverMenu<String>(
-                  tooltip: 'Filter file types',
-                  items: [
-                    for (final category in const ['All', 'Images', 'Videos', 'Music', 'Documents'])
-                      SmokedGlassPopoverMenuItem(
-                        value: category,
-                        label: category,
-                        icon: switch (category) {
-                          'Images' => Icons.image_rounded,
-                          'Videos' => Icons.video_library_rounded,
-                          'Music' => Icons.music_note_rounded,
-                          'Documents' => Icons.description_rounded,
-                          _ => Icons.folder_rounded,
-                        },
-                        trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                          Text(
-                            '${allItems.where((item) => item.isDirectory || category == 'All' || (_categoryExtensions[category]?.contains(_extension(item)) ?? false)).length}',
-                            style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3)),
-                          ),
-                          if (_category == category)
-                            const Padding(
-                              padding: EdgeInsets.only(left: 8),
-                              child: Icon(Icons.check_rounded, size: 18),
-                            ),
+            Positioned.fill(
+              child: Builder(builder: (context) {
+                final topInset = MediaQuery.paddingOf(context).top +
+                    kToolbarHeight +
+                    (_searchExpanded ? 64 : 0) +
+                    (_path.isNotEmpty ? 38 : 0) +
+                    62;
+                Widget emptyList(String message, {Widget? action}) => ListView(
+                  controller: _scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.fromLTRB(16, topInset + 72, 16, 104 + MediaQuery.paddingOf(context).bottom),
+                  children: [
+                    SizedBox(
+                      height: 150,
+                      child: Center(
+                        child: Column(mainAxisSize: MainAxisSize.min, children: [
+                          Text(message, style: theme.textTheme.bodyLarge?.copyWith(color: colors.onSurfaceVariant)),
+                          if (action != null) ...[const SizedBox(height: 12), action],
                         ]),
                       ),
-                  ],
-                  onSelected: (category) {
-                    setState(() => _category = category);
-                    _saveState();
-                  },
-                  child: SmokedGlassSurface(
-                    radius: BorderRadius.circular(18),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        const Icon(Icons.filter_list_rounded, size: 17),
-                        const SizedBox(width: 7),
-                        Text('Filter: $_category', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-                        const SizedBox(width: 4),
-                        const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
-                      ]),
                     ),
-                  ),
-                ),
-              ),
-            ),
-            if (_loading) const LinearProgressIndicator(minHeight: 2),
-            if (_error != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-                child: Material(
-                  color: colors.errorContainer,
-                  borderRadius: BorderRadius.circular(14),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Row(children: [
-                      Icon(Icons.error_outline_rounded, color: colors.onErrorContainer),
-                      const SizedBox(width: 8),
-                      Expanded(child: Text(_error!, style: TextStyle(color: colors.onErrorContainer))),
-                    ]),
-                  ),
-                ),
-              ),
-            Expanded(
-              child: _error != null
-                  ? Center(child: FilledButton.icon(onPressed: _refreshDirectory,
-                      icon: const Icon(Icons.refresh), label: const Text('Try again')))
-                  : _loading && _listing == null
-                      ? const SizedBox.shrink()
-                      : items.isEmpty
-                          ? RefreshIndicator(
-                              onRefresh: _refreshDirectory,
-                              child: ListView(physics: const AlwaysScrollableScrollPhysics(),
-                                children: [SizedBox(height: 150, child: Center(child: Text(
-                                  allItems.isEmpty ? 'This folder is empty' : 'No matching files',
-                                  style: theme.textTheme.bodyLarge?.copyWith(color: colors.onSurfaceVariant),
-                                )))],
-                              ),
-                            )
-                          : RefreshIndicator(
-                              onRefresh: _refreshDirectory,
-                              child: _gridView
-                                  ? GridView.builder(
-                                      controller: _scrollController,
-                                      physics: const AlwaysScrollableScrollPhysics(),
-                                      padding: EdgeInsets.fromLTRB(16, 12, 16, 104 + MediaQuery.paddingOf(context).bottom),
-                                      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                                        maxCrossAxisExtent: 190, mainAxisExtent: 156,
-                                        crossAxisSpacing: 10, mainAxisSpacing: 10,
-                                      ),
-                                      itemCount: items.length,
-                                      itemBuilder: (context, index) {
-                                        final item = items[index];
-                                        return InkWell(
-                                          borderRadius: BorderRadius.circular(20),
-                                          onTap: item.isDirectory ? () => _load(_itemPath(item.name))
-                                              : _isAudio(item) ? () => _openAudio(item)
-                                              : _isImage(item) ? () => _previewImage(item) : null,
-                                          child: Container(
-                                            padding: const EdgeInsets.all(14),
-                                            decoration: BoxDecoration(
-                                              color: colors.surfaceContainerLow,
-                                              borderRadius: BorderRadius.circular(20),
-                                            ),
-                                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  ],
+                );
+
+                final Widget content = _error != null
+                    ? emptyList(
+                        _error!,
+                        action: FilledButton.icon(
+                          onPressed: _refreshDirectory,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Try again'),
+                        ),
+                      )
+                    : _loading && _listing == null
+                        ? const SizedBox.shrink()
+                        : items.isEmpty
+                            ? emptyList(allItems.isEmpty ? 'This folder is empty' : 'No matching files')
+                            : _gridView
+                                ? GridView.builder(
+                                    controller: _scrollController,
+                                    physics: const AlwaysScrollableScrollPhysics(),
+                                    padding: EdgeInsets.fromLTRB(16, topInset + 8, 16, 104 + MediaQuery.paddingOf(context).bottom),
+                                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                                      maxCrossAxisExtent: 190,
+                                      mainAxisExtent: 156,
+                                      crossAxisSpacing: 10,
+                                      mainAxisSpacing: 10,
+                                    ),
+                                    itemCount: items.length,
+                                    itemBuilder: (context, index) {
+                                      final item = items[index];
+                                      return InkWell(
+                                        borderRadius: BorderRadius.circular(20),
+                                        onTap: item.isDirectory
+                                            ? () => _load(_itemPath(item.name))
+                                            : _isAudio(item)
+                                                ? () => _openAudio(item)
+                                                : _isImage(item)
+                                                    ? () => _previewImage(item)
+                                                    : null,
+                                        child: Container(
+                                          padding: const EdgeInsets.all(14),
+                                          decoration: BoxDecoration(
+                                            color: colors.surfaceContainerLow,
+                                            borderRadius: BorderRadius.circular(20),
+                                            border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.32)),
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
                                               Row(children: [
                                                 fileIcon(item, size: 26),
                                                 const Spacer(),
@@ -978,23 +877,154 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                                               const SizedBox(height: 3),
                                               Text(item.isDirectory ? 'Folder' : _formatSize(item.size),
                                                 style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
-                                            ]),
+                                            ],
                                           ),
-                                        );
-                                      },
-                                    )
-                                  : ListView.separated(
-                                      controller: _scrollController,
-                                      physics: const AlwaysScrollableScrollPhysics(),
-                                      padding: EdgeInsets.fromLTRB(16, 12, 16, 104 + MediaQuery.paddingOf(context).bottom),
-                                      itemCount: items.length,
-                                      separatorBuilder: (_, __) => const SizedBox(height: 8),
-                                      itemBuilder: (context, index) => fileTile(items[index]),
-                                    ),
+                                        ),
+                                      );
+                                    },
+                                  )
+                                : ListView.separated(
+                                    controller: _scrollController,
+                                    physics: const AlwaysScrollableScrollPhysics(),
+                                    padding: EdgeInsets.fromLTRB(16, topInset + 8, 16, 104 + MediaQuery.paddingOf(context).bottom),
+                                    itemCount: items.length,
+                                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                                    itemBuilder: (context, index) => fileTile(items[index]),
+                                  );
+                return RefreshIndicator(
+                  onRefresh: _refreshDirectory,
+                  child: content,
+                );
+              }),
+            ),
+            Positioned(
+              top: MediaQuery.paddingOf(context).top + kToolbarHeight,
+              left: 0,
+              right: 0,
+              child: Material(
+                color: Colors.transparent,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_searchExpanded)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                        child: TextField(
+                          controller: _searchController,
+                          autofocus: true,
+                          onChanged: (_) => setState(() {}),
+                          decoration: InputDecoration(
+                            hintText: 'Search this folder',
+                            prefixIcon: const Icon(Icons.search_rounded),
+                            suffixIcon: IconButton(
+                              onPressed: () { _searchController.clear(); setState(() {}); },
+                              icon: const Icon(Icons.close_rounded),
                             ),
+                            filled: true,
+                            fillColor: colors.surfaceContainerLow.withValues(alpha: 0.92),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                          ),
+                        ),
+                      ),
+                    if (_path.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 2),
+                        child: SizedBox(
+                          height: 30,
+                          child: ListView(
+                            scrollDirection: Axis.horizontal,
+                            children: [
+                              TextButton(
+                                style: TextButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 4), minimumSize: const Size(0, 28), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                                onPressed: () => _load(''),
+                                child: Text(_selectedVolume == null ? 'Internal storage' : _volumeName(_selectedVolume!),
+                                  style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant)),
+                              ),
+                              for (var i = 0; i < _path.split('/').where((part) => part.isNotEmpty).length; i++) ...[
+                                const Center(child: Icon(Icons.chevron_right_rounded, size: 15)),
+                                TextButton(
+                                  style: TextButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 4), minimumSize: const Size(0, 28), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                                  onPressed: i == _path.split('/').where((part) => part.isNotEmpty).length - 1
+                                      ? null
+                                      : () => _load(_path.split('/').where((part) => part.isNotEmpty).take(i + 1).join('/')),
+                                  child: Text(_path.split('/').where((part) => part.isNotEmpty).elementAt(i), style: theme.textTheme.labelSmall),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: SmokedGlassPopoverMenu<String>(
+                          tooltip: 'Filter file types',
+                          items: [
+                            for (final category in const ['All', 'Images', 'Videos', 'Music', 'Documents'])
+                              SmokedGlassPopoverMenuItem(
+                                value: category,
+                                label: category,
+                                icon: switch (category) {
+                                  'Images' => Icons.image_rounded,
+                                  'Videos' => Icons.video_library_rounded,
+                                  'Music' => Icons.music_note_rounded,
+                                  'Documents' => Icons.description_rounded,
+                                  _ => Icons.folder_rounded,
+                                },
+                                trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                                  Text(
+                                    '${allItems.where((item) => item.isDirectory || category == 'All' || (_categoryExtensions[category]?.contains(_extension(item)) ?? false)).length}',
+                                    style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3)),
+                                  ),
+                                  if (_category == category)
+                                    const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.check_rounded, size: 18)),
+                                ]),
+                              ),
+                          ],
+                          onSelected: (category) {
+                            setState(() => _category = category);
+                            _saveState();
+                          },
+                          child: SmokedGlassSurface(
+                            radius: BorderRadius.circular(18),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                const Icon(Icons.filter_list_rounded, size: 17),
+                                const SizedBox(width: 7),
+                                Text('Filter: $_category', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                                const SizedBox(width: 4),
+                                const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+                              ]),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (_loading) const LinearProgressIndicator(minHeight: 2),
+                    if (_error != null)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                        child: Material(
+                          color: colors.errorContainer,
+                          borderRadius: BorderRadius.circular(14),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Row(children: [
+                              Icon(Icons.error_outline_rounded, color: colors.onErrorContainer),
+                              const SizedBox(width: 8),
+                              Expanded(child: Text(_error!, style: TextStyle(color: colors.onErrorContainer))),
+                            ]),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ),
           ],
-        ),
+        )
       ),
     );
   }
