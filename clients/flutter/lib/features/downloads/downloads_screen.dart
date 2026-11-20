@@ -125,6 +125,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
             showHome: false,
             automaticallyImplyLeading: false,
             title: SmokedGlassPopoverMenu<_DownloadFilter>(
+              titleMenu: true,
               tooltip: 'Filter downloads',
               items: [
                 for (final filter in _DownloadFilter.values)
