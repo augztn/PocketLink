@@ -1591,6 +1591,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                       child: LiquidGlassSurface(
                         radius: BorderRadius.circular(22),
                         refractive: true,
+                        lightRefractive: true,
                         child: Row(children: [
                           const SizedBox(width: 14),
                           const Icon(Icons.search_rounded, size: 18, color: Colors.white70),
@@ -1699,6 +1700,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                     child: LiquidGlassSurface(
                       radius: BorderRadius.circular(22),
                       refractive: true,
+                        lightRefractive: true,
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 6),
                         child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -1747,6 +1749,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                     child: LiquidGlassSurface(
                       radius: BorderRadius.circular(22),
                       refractive: true,
+                        lightRefractive: true,
                       child: Row(mainAxisSize: MainAxisSize.min, children: [
                         Padding(
                           padding: const EdgeInsets.only(left: 10),
