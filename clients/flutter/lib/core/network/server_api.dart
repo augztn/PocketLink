@@ -278,13 +278,13 @@ class MediaScanHistoryEntry {
     required this.startedAt, required this.completedAt, required this.durationMs,
     required this.trigger, required this.state, required this.scanned, required this.skipped,
     required this.newFiles, required this.updatedFiles, required this.scannedBytes,
-    this.runId, this.lastError, this.timezoneOffsetMinutes = 0,
+    this.runId, this.lastError, this.timezoneOffsetMinutes,
     this.volumes = const [], this.skippedItems = const [],
   });
   final int startedAt, completedAt, durationMs, scanned, skipped, newFiles, updatedFiles, scannedBytes;
   final String trigger, state;
   final String? runId, lastError;
-  final int timezoneOffsetMinutes;
+  final int? timezoneOffsetMinutes;
   final List<MediaScanVolumeStatus> volumes;
   final List<SkippedMediaIndexItem> skippedItems;
   factory MediaScanHistoryEntry.fromJson(Map<String, dynamic> json) => MediaScanHistoryEntry(
@@ -346,7 +346,7 @@ class MediaIndexStatus {
     this.lastAttemptStartedAt = 0, this.lastAttemptFinishedAt = 0, this.lastSuccessfulAt = 0,
     this.indexedBytes = 0, this.mediaBytes = 0, this.otherFileCount = 0,
     this.averageDurationMs = 0, this.durationTrendPercent = 0, this.scanRunId, this.timezoneId,
-    this.timezoneOffsetMinutes = 0,
+    this.timezoneOffsetMinutes,
     this.lastAutomaticScanAt = 0, this.lastManualScanAt = 0,
     this.automaticScanning = const AutomaticMediaScanSettings(),
   });
@@ -377,7 +377,8 @@ class MediaIndexStatus {
   final List<MediaScanHistoryEntry> scanHistory;
   final int lastAttemptStartedAt, lastAttemptFinishedAt, lastSuccessfulAt;
   final int indexedBytes, mediaBytes, otherFileCount, averageDurationMs, durationTrendPercent;
-  final int lastAutomaticScanAt, lastManualScanAt, timezoneOffsetMinutes;
+  final int lastAutomaticScanAt, lastManualScanAt;
+  final int? timezoneOffsetMinutes;
   final String? scanRunId, timezoneId;
   final AutomaticMediaScanSettings automaticScanning;
   bool get isScanning => state == 'scanning';
