@@ -268,70 +268,92 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
             onPressed: _loading ? null : () => _scan(refresh: true), dividerBefore: true),
         ],
       ),
-      body: Column(children: [
-        SizedBox(height: MediaQuery.paddingOf(context).top + kToolbarHeight + 4),
+      body: Stack(children: [
+        Positioned.fill(
+          child: _error != null
+              ? Center(child: Text(_error!, textAlign: TextAlign.center))
+              : filtered.isEmpty
+                  ? Center(child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: ClipRRect(borderRadius: BorderRadius.circular(22), child: BackdropFilter(
+                        filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                        child: Container(
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surfaceContainerLow.withValues(alpha: 0.88),
+                            borderRadius: BorderRadius.circular(22),
+                            border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.45)),
+                          ),
+                          child: Column(mainAxisSize: MainAxisSize.min, children: [
+                            if (_loading) const SizedBox(width: 34, height: 34, child: CircularProgressIndicator(strokeWidth: 2.5))
+                            else Icon(Icons.description_outlined, size: 44, color: Theme.of(context).colorScheme.outline),
+                            const SizedBox(height: 12),
+                            Text(_loading ? 'Scanning storage for documents…' : 'No documents found', textAlign: TextAlign.center),
+                            if (!_loading) ...[
+                              const SizedBox(height: 12),
+                              FilledButton.tonal(onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => FileManagerScreen(api: widget.api))), child: const Text('Browse folders')),
+                            ],
+                          ]),
+                        ),
+                      )),
+                    ))
+                  : ListView.separated(
+                      padding: EdgeInsets.fromLTRB(
+                        12,
+                        MediaQuery.paddingOf(context).top + kToolbarHeight + (_searchExpanded ? 68 : 4),
+                        12,
+                        104 + MediaQuery.paddingOf(context).bottom,
+                      ),
+                      itemCount: filtered.length + 1,
+                      separatorBuilder: (_, __) => const SizedBox(height: 6),
+                      itemBuilder: (context, index) {
+                        if (index == 0) {
+                          return Padding(
+                            padding: const EdgeInsets.fromLTRB(4, 0, 4, 4),
+                            child: Text(
+                              '${filtered.length} ${filtered.length == 1 ? 'document' : 'documents'} • ${_loading ? 'Scanning $_scanned folders…' : '$_scanned folders scanned'}',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                            ),
+                          );
+                        }
+                        final document = filtered[index - 1];
+                        final extension = extensionOf(document).toUpperCase();
+                        final colors = Theme.of(context).colorScheme;
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: colors.surfaceContainerLow,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.45)),
+                          ),
+                          child: ListTile(
+                            leading: PocketLinkFileIcon(name: document.entry.name, size: 44),
+                            title: Text(document.entry.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                            subtitle: Text('$extension · ${_formatSize(document.entry.size)} · ${document.volume == null ? 'Internal storage' : 'USB / OTG'}',
+                              maxLines: 1, overflow: TextOverflow.ellipsis),
+                            trailing: IconButton(tooltip: 'Download original', onPressed: () => _download(document), icon: const Icon(Icons.download_rounded)),
+                            onTap: () => _download(document),
+                          ),
+                        );
+                      },
+                    ),
+        ),
         if (_searchExpanded)
-          Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: CompactSearchField(controller: _search, hintText: 'Search documents', onChanged: (_) => setState(() {}))),
-        Padding(padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-          child: Align(alignment: Alignment.centerLeft, child: Text(
-            '${filtered.length} ${filtered.length == 1 ? 'document' : 'documents'} • ${_loading ? 'Scanning $_scanned folders…' : '$_scanned folders scanned'}',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
-          ))),
-        if (_loading) const LinearProgressIndicator(minHeight: 2),
-        Expanded(child: _error != null
-          ? Center(child: Text(_error!, textAlign: TextAlign.center))
-          : filtered.isEmpty
-            ? Center(child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: ClipRRect(borderRadius: BorderRadius.circular(22), child: BackdropFilter(
-                  filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                  child: Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainerLow.withValues(alpha: 0.88),
-                      borderRadius: BorderRadius.circular(22),
-                      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.45)),
-                    ),
-                    child: Column(mainAxisSize: MainAxisSize.min, children: [
-                      if (_loading) const SizedBox(width: 34, height: 34, child: CircularProgressIndicator(strokeWidth: 2.5))
-                      else Icon(Icons.description_outlined, size: 44, color: Theme.of(context).colorScheme.outline),
-                      const SizedBox(height: 12),
-                      Text(_loading ? 'Scanning storage for documents…' : 'No documents found', textAlign: TextAlign.center),
-                      if (!_loading) ...[
-                        const SizedBox(height: 12),
-                        FilledButton.tonal(onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => FileManagerScreen(api: widget.api))), child: const Text('Browse folders')),
-                      ],
-                    ]),
-                  ),
-                )),
-              ))
-            : ListView.separated(
-                padding: EdgeInsets.fromLTRB(12, 8, 12, 104 + MediaQuery.paddingOf(context).bottom),
-                itemCount: filtered.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 6),
-                itemBuilder: (context, index) {
-                  final document = filtered[index];
-                  final extension = extensionOf(document).toUpperCase();
-                  final colors = Theme.of(context).colorScheme;
-                  return Container(
-                    decoration: BoxDecoration(
-                      color: colors.surfaceContainerLow,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.45)),
-                    ),
-                    child: ListTile(
-                      leading: PocketLinkFileIcon(name: document.entry.name, size: 44),
-                      title: Text(document.entry.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-                      subtitle: Text('$extension · ${_formatSize(document.entry.size)} · ${document.volume == null ? 'Internal storage' : 'USB / OTG'}',
-                        maxLines: 1, overflow: TextOverflow.ellipsis),
-                      trailing: IconButton(tooltip: 'Download original', onPressed: () => _download(document), icon: const Icon(Icons.download_rounded)),
-                      onTap: () => _download(document),
-                    ),
-                  );
-                },
-              )),
+          Positioned(
+            top: MediaQuery.paddingOf(context).top + kToolbarHeight + 4,
+            left: 16,
+            right: 16,
+            child: CompactSearchField(
+              controller: _search,
+              hintText: 'Search documents',
+              onChanged: (_) => setState(() {}),
+            ),
+          ),
+        if (_loading)
+          Positioned(
+            top: MediaQuery.paddingOf(context).top + kToolbarHeight,
+            left: 0,
+            right: 0,
+            child: const LinearProgressIndicator(minHeight: 2),
+          ),
       ]),
     );
-  }
-}
