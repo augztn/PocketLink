@@ -137,13 +137,11 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
     Animation<double> secondaryAnimation,
   ) {
     final media = MediaQuery.of(context);
-    final minMenuWidth = mathMin(210, media.size.width - 32);
-    final menuMaxWidth = mathMin(236, media.size.width - 32);
-    final maxRight = mathMax(16, media.size.width - minMenuWidth - 16);
+    final menuMaxWidth = mathMin(232, media.size.width - 32);
     final right = titleMenu
-        ? media.size.width - mathMin(16 + menuMaxWidth, media.size.width - 16)
-        : (media.size.width - anchor.right).clamp(16.0, maxRight).toDouble();
-    final menuWidth = titleMenu ? menuMaxWidth : null;
+        ? 16.0
+        : (media.size.width - anchor.right).clamp(16.0, media.size.width - menuMaxWidth - 16).toDouble();
+    final menuWidth = menuMaxWidth;
     final minTop = media.padding.top + 8;
     final maxTop = mathMax(
       minTop,
@@ -176,12 +174,12 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
                   end: Offset.zero,
                 ).animate(curved),
                 child: ScaleTransition(
-                  alignment: Alignment.topRight,
+                  alignment: titleMenu ? Alignment.topLeft : Alignment.topRight,
                   scale: Tween<double>(begin: 0.84, end: 1).animate(curved),
                   child: ConstrainedBox(
                     constraints: BoxConstraints(
-                      minWidth: menuWidth ?? mathMin(minMenuWidth, availableWidth),
-                      maxWidth: menuWidth ?? menuMaxWidth,
+                      minWidth: menuWidth,
+                      maxWidth: menuWidth,
                       maxHeight: mathMin(
                         media.size.height * 0.55,
                         media.size.height - top - media.padding.bottom - 8,
