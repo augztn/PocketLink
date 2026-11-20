@@ -419,7 +419,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ListView(
           padding: EdgeInsets.fromLTRB(
             16,
-            LayoutInsetsScope.of(bodyContext).topClearance + 8,
+            LayoutInsetsScope.of(bodyContext).topClearance,
             16,
             bottomClearance,
           ),
