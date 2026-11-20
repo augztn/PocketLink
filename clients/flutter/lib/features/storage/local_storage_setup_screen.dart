@@ -7,7 +7,6 @@ import 'package:material_ui/material_ui.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/shared/status_pill.dart';
 import 'widgets/storage_permission_row.dart';
-import 'widgets/host_media_metric.dart';
 import 'widgets/storage_volume_tile.dart';
 import 'widgets/host_service_status_row.dart';
 import 'widgets/host_section_destination.dart';
