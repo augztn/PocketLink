@@ -534,6 +534,7 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
                         ? RefreshIndicator(
                             onRefresh: _refreshDirectory,
                             child: ListView(physics: const AlwaysScrollableScrollPhysics(),
+                              padding: EdgeInsets.zero,
                               children: [SizedBox(height: 140, child: Center(child: Text(
                                 allItems.isEmpty ? 'This folder is empty' : 'No matching files',
                                 style: TextStyle(color: colors.onSurfaceVariant))))]))
