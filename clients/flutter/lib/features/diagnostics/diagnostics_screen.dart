@@ -86,9 +86,15 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: const PocketLinkAppBar(title: Text('Diagnostics & logs')),
       body: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.fromLTRB(
+          20,
+          MediaQuery.paddingOf(context).top + kToolbarHeight + 20,
+          20,
+          20 + MediaQuery.paddingOf(context).bottom,
+        ),
         children: [
           Card(
             child: Padding(
