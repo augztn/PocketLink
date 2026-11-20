@@ -35,6 +35,7 @@ class SmokedGlassPopoverMenu<T> extends StatelessWidget {
     this.menuVerticalPadding = 6,
     this.itemHorizontalPadding = 14,
     this.trailingWidth = 48,
+    this.titleMenu = false,
     super.key,
   });
 
@@ -48,6 +49,7 @@ class SmokedGlassPopoverMenu<T> extends StatelessWidget {
   final double menuVerticalPadding;
   final double itemHorizontalPadding;
   final double trailingWidth;
+  final bool titleMenu;
 
   Future<void> _open(BuildContext context) async {
     final renderObject = context.findRenderObject();
@@ -66,6 +68,7 @@ class SmokedGlassPopoverMenu<T> extends StatelessWidget {
           menuVerticalPadding: menuVerticalPadding,
           itemHorizontalPadding: itemHorizontalPadding,
           trailingWidth: trailingWidth,
+          titleMenu: titleMenu,
         ),
       );
     } finally {
@@ -100,6 +103,7 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
     required this.menuVerticalPadding,
     required this.itemHorizontalPadding,
     required this.trailingWidth,
+    required this.titleMenu,
   });
 
   final Rect anchor;
@@ -109,6 +113,7 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
   final double menuVerticalPadding;
   final double itemHorizontalPadding;
   final double trailingWidth;
+  final bool titleMenu;
 
   @override
   Color? get barrierColor => Colors.transparent;
@@ -135,9 +140,10 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
     final minMenuWidth = mathMin(210, media.size.width - 32);
     final menuMaxWidth = mathMin(236, media.size.width - 32);
     final maxRight = mathMax(16, media.size.width - minMenuWidth - 16);
-    final right = (media.size.width - anchor.right)
-        .clamp(16.0, maxRight)
-        .toDouble();
+    final right = titleMenu
+        ? media.size.width - mathMin(16 + menuMaxWidth, media.size.width - 16)
+        : (media.size.width - anchor.right).clamp(16.0, maxRight).toDouble();
+    final menuWidth = titleMenu ? menuMaxWidth : null;
     final minTop = media.padding.top + 8;
     final maxTop = mathMax(
       minTop,
@@ -160,6 +166,7 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
         children: [
           Positioned(
             top: top,
+            left: titleMenu ? 16 : null,
             right: right,
             child: FadeTransition(
               opacity: curved,
@@ -173,8 +180,8 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
                   scale: Tween<double>(begin: 0.84, end: 1).animate(curved),
                   child: ConstrainedBox(
                     constraints: BoxConstraints(
-                      minWidth: mathMin(minMenuWidth, availableWidth),
-                      maxWidth: menuMaxWidth,
+                      minWidth: menuWidth ?? mathMin(minMenuWidth, availableWidth),
+                      maxWidth: menuWidth ?? menuMaxWidth,
                       maxHeight: mathMin(
                         media.size.height * 0.55,
                         media.size.height - top - media.padding.bottom - 8,
