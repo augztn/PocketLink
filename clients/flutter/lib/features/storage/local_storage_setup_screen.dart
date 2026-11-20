@@ -1335,77 +1335,74 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
         ],
       ),
 
-      body: Stack(
+      body: PageView(
+        controller: _sectionPageController,
+        onPageChanged: (index) {
+          if (_selectedSectionIndex != index) {
+            setState(() => _selectedSectionIndex = index);
+          }
+        },
         children: [
-          Positioned.fill(
-            child: PageView(
-              controller: _sectionPageController,
-              onPageChanged: (index) {
-                if (_selectedSectionIndex != index) {
-                  setState(() => _selectedSectionIndex = index);
-                }
-              },
-              children: [
-                sectionList('host-overview', [
-                  ...hostSections,
-                  ...serviceSections,
-                  ...feedbackSections,
-                ]),
-                sectionList('host-storage', [
-                  ...permissionSections,
-                  ...usbSections,
-                  ...mediaSections,
-                  ...feedbackSections,
-                ]),
-                sectionList('host-security', [
-                  ...securitySections,
-                  ...tokenSections,
-                  ...feedbackSections,
-                ]),
-              ],
-            ),
-          ),
-          Positioned(
-            left: 20,
-            right: 20,
-            bottom: MediaQuery.paddingOf(context).bottom + 14,
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 380),
-                child: SizedBox(
-                  key: const ValueKey<String>('host-section-dock'),
-                  height: 64,
-                  width: double.infinity,
-                  child: SmokedGlassSurface(
-                    radius: BorderRadius.circular(34),
-                    child: Row(
-                      children: [
-                        hostDestination(
-                          index: 0,
-                          icon: Icons.dashboard_outlined,
-                          selectedIcon: Icons.dashboard_rounded,
-                          label: 'Overview',
-                        ),
-                        hostDestination(
-                          index: 1,
-                          icon: Icons.devices_outlined,
-                          selectedIcon: Icons.devices_rounded,
-                          label: 'Device',
-                        ),
-                        hostDestination(
-                          index: 2,
-                          icon: Icons.lock_outline_rounded,
-                          selectedIcon: Icons.lock_rounded,
-                          label: 'Security',
-                        ),
-                      ],
+          sectionList('host-overview', [
+            ...hostSections,
+            ...serviceSections,
+            ...feedbackSections,
+          ]),
+          sectionList('host-storage', [
+            ...permissionSections,
+            ...usbSections,
+            ...mediaSections,
+            ...feedbackSections,
+          ]),
+          sectionList('host-security', [
+            ...securitySections,
+            ...tokenSections,
+            ...feedbackSections,
+          ]),
+        ],
+      ),
+      bottomNavigationBar: Padding(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          0,
+          20,
+          MediaQuery.paddingOf(context).bottom + 12,
+        ),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 380),
+            child: SizedBox(
+              key: const ValueKey<String>('host-section-dock'),
+              height: 64,
+              width: double.infinity,
+              child: SmokedGlassSurface(
+                radius: BorderRadius.circular(34),
+                child: Row(
+                  children: [
+                    hostDestination(
+                      index: 0,
+                      icon: Icons.dashboard_outlined,
+                      selectedIcon: Icons.dashboard_rounded,
+                      label: 'Overview',
                     ),
-                  ),
+                    hostDestination(
+                      index: 1,
+                      icon: Icons.devices_outlined,
+                      selectedIcon: Icons.devices_rounded,
+                      label: 'Device',
+                    ),
+                    hostDestination(
+                      index: 2,
+                      icon: Icons.lock_outline_rounded,
+                      selectedIcon: Icons.lock_rounded,
+                      label: 'Security',
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
-        ],
+        ),
       ),
     );
   }
