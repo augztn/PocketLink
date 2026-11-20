@@ -71,10 +71,13 @@ class PocketLinkHomeDrawer extends StatelessWidget {
               child: SafeArea(
                 top: false,
                 bottom: false,
-                child: Column(
+                child: ListView(
+          padding: EdgeInsets.fromLTRB(
+            14, 14, 14, MediaQuery.paddingOf(context).bottom + 16,
+          ),
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+              padding: const EdgeInsets.fromLTRB(2, 0, 2, 12),
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
@@ -151,66 +154,62 @@ class PocketLinkHomeDrawer extends StatelessWidget {
                 ),
               ),
             ),
-            Expanded(
-              child: ListView(
-                padding: EdgeInsets.fromLTRB(16, 4, 16, MediaQuery.paddingOf(context).bottom + 20),
-                children: [
                   _sectionLabel(context, 'QUICK LIBRARIES'),
                   const SizedBox(height: 9),
-                  GridView.count(
-                    crossAxisCount: 2,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    mainAxisSpacing: 9,
-                    crossAxisSpacing: 9,
-                    childAspectRatio: 1.65,
+                  Column(
                     children: [
-                      _DrawerLibraryTile(
-                        label: 'Music',
-                        icon: Icons.music_note_rounded,
-                        tint: const Color(0xFF9B7CFF),
-                        onTap: () => _closeThen(
-                          context,
-                          () => onOpenLibrary('music'),
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _DrawerLibraryTile(
+                              label: 'Music',
+                              icon: Icons.music_note_rounded,
+                              tint: const Color(0xFF9B7CFF),
+                              onTap: () => _closeThen(context, () => onOpenLibrary('music')),
+                            ),
+                          ),
+                          const SizedBox(width: 9),
+                          Expanded(
+                            child: _DrawerLibraryTile(
+                              label: 'Videos',
+                              icon: Icons.movie_rounded,
+                              tint: const Color(0xFF2FAFC1),
+                              onTap: () => _closeThen(context, () => onOpenLibrary('videos')),
+                            ),
+                          ),
+                        ],
                       ),
-                      _DrawerLibraryTile(
-                        label: 'Videos',
-                        icon: Icons.movie_rounded,
-                        tint: const Color(0xFF2FAFC1),
-                        onTap: () => _closeThen(
-                          context,
-                          () => onOpenLibrary('videos'),
-                        ),
-                      ),
-                      _DrawerLibraryTile(
-                        label: 'Photos',
-                        icon: Icons.photo_library_rounded,
-                        tint: const Color(0xFFEA8B62),
-                        onTap: () => _closeThen(
-                          context,
-                          () => onOpenLibrary('photos'),
-                        ),
-                      ),
-                      _DrawerLibraryTile(
-                        label: 'Documents',
-                        icon: Icons.description_rounded,
-                        tint: const Color(0xFF5D8FEF),
-                        onTap: () => _closeThen(
-                          context,
-                          () => onOpenLibrary('documents'),
-                        ),
+                      const SizedBox(height: 9),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _DrawerLibraryTile(
+                              label: 'Photos',
+                              icon: Icons.photo_library_rounded,
+                              tint: const Color(0xFFEA8B62),
+                              onTap: () => _closeThen(context, () => onOpenLibrary('photos')),
+                            ),
+                          ),
+                          const SizedBox(width: 9),
+                          Expanded(
+                            child: _DrawerLibraryTile(
+                              label: 'Documents',
+                              icon: Icons.description_rounded,
+                              tint: const Color(0xFF5D8FEF),
+                              onTap: () => _closeThen(context, () => onOpenLibrary('documents')),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 12),
                   _sectionLabel(context, 'STORAGE & HOST'),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    minTileHeight: 46,
+                    minTileHeight: 42,
                     leading: _drawerIcon(Icons.folder_open_rounded),
                     title: const Text('Files'),
-                    subtitle: const Text('Browse server folders and drives'),
                     onTap: () => _closeThen(context, onOpenFiles),
                   ),
                   ListTile(
@@ -221,7 +220,8 @@ class PocketLinkHomeDrawer extends StatelessWidget {
                     subtitle: const Text('USB, SSD and OTG setup'),
                     onTap: () => _closeThen(context, onConnectDrive),
                   ),
-                  const Divider(height: 22),
+                  const SizedBox(height: 12),
+                  const Divider(height: 13),
                   _sectionLabel(context, 'TOOLS'),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
@@ -275,11 +275,10 @@ class PocketLinkHomeDrawer extends StatelessWidget {
                       contentPadding: EdgeInsets.zero,
                       leading: _drawerIcon(Icons.switch_account_rounded),
                       title: const Text('Switch server'),
-                      subtitle: const Text('Return to server connection'),
                       onTap: () => _closeThen(context, onSwitchServer!),
                     ),
                   const Padding(
-                    padding: EdgeInsets.only(top: 12),
+                    padding: EdgeInsets.only(top: 8),
                     child: Divider(height: 1),
                   ),
                   AnimatedBuilder(
@@ -288,7 +287,7 @@ class PocketLinkHomeDrawer extends StatelessWidget {
                       final settings = AppSettings.instance;
                       final isDark = settings.themeMode == ThemeMode.dark;
                       return Padding(
-                        padding: const EdgeInsets.fromLTRB(0, 12, 0, 20),
+                        padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -324,9 +323,6 @@ class PocketLinkHomeDrawer extends StatelessWidget {
                       );
                     },
                   ),
-                ],
-              ),
-            ),
           ],
         ),
       ),
@@ -384,30 +380,41 @@ class _DrawerLibraryTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
         child: Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
           ),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 34,
-                height: 34,
+                width: 32,
+                height: 32,
                 decoration: BoxDecoration(
                   color: tint.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(11),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(icon, color: tint, size: 19),
+                child: Icon(icon, color: tint, size: 18),
               ),
-              const SizedBox(height: 7),
-              Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontWeight: FontWeight.w800)),
-              Text('Open library', style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: colors.onSurfaceVariant,
-              )),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+              Text(
+                'Open library',
+                maxLines: 1,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: colors.onSurfaceVariant,
+                  fontSize: 11.5,
+                  height: 1.2,
+                ),
+              ),
             ],
           ),
         ),
