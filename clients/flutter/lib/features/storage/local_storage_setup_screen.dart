@@ -11,6 +11,7 @@ import 'widgets/host_media_metric.dart';
 import 'widgets/storage_volume_tile.dart';
 import 'widgets/host_service_status_row.dart';
 import 'widgets/host_section_destination.dart';
+import 'widgets/host_media_scan_card.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
 import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
@@ -950,119 +951,13 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
             subtitle: 'Index photos, videos, music and searchable files in the background.',
           ),
           const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: colors.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.35)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      _scanningMedia ? Icons.sync_rounded : Icons.perm_media_outlined,
-                      color: colors.primary,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        switch (_mediaScanStatus['state']) {
-                          'scanning' => 'Scanning device storage',
-                          'complete' => 'Media and files indexed',
-                          'partial' => 'Scan completed with skipped items',
-                          'failed' => 'Scan failed',
-                          _ => 'Media scan ready',
-                        },
-                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                    if (_mediaScanStatus['state'] == 'complete')
-                      const PocketLinkStatusPill(label: 'Complete', granted: true),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                const SizedBox(height: 4),
-                GridView.count(
-                  crossAxisCount: 2,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  mainAxisSpacing: 8,
-                  crossAxisSpacing: 8,
-                  childAspectRatio: 2.7,
-                  children: [
-                    HostMediaMetric(
-                      label: 'Photos',
-                      value: _mediaScanStatus['photo_count'] ?? 0,
-                      icon: Icons.photo_outlined,
-                    ),
-                    HostMediaMetric(
-                      label: 'Videos',
-                      value: _mediaScanStatus['video_count'] ?? 0,
-                      icon: Icons.video_library_outlined,
-                    ),
-                    HostMediaMetric(
-                      label: 'Music',
-                      value: _mediaScanStatus['music_count'] ?? 0,
-                      icon: Icons.music_note_rounded,
-                    ),
-                    HostMediaMetric(
-                      label: 'Files',
-                      value: _mediaScanStatus['file_count'] ?? 0,
-                      icon: Icons.insert_drive_file_outlined,
-                    ),
-                  ],
-                ),
-                Text(
-                  '${_mediaScanStatus['scanned'] ?? 0} items checked in this scan',
-                  style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
-                ),
-                if (_scanningMedia && _mediaScanStatus['current_source'] != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    'Scanning ${_mediaScanStatus['current_source'] == 'internal' ? 'internal storage' : 'external storage'} · ${((_mediaScanStatus['elapsed_ms'] as num?)?.toInt() ?? 0) ~/ 1000}s elapsed',
-                    style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
-                  ),
-                ],
-                if (skippedScanItems > 0) ...[
-                  const SizedBox(height: 4),
-                  Text('$skippedScanItems items skipped', style: theme.textTheme.bodySmall?.copyWith(color: colors.error)),
-                ],
-                if (!_scanningMedia && completedScanAt != null) ...[
-                  const SizedBox(height: 4),
-                  Text('Last completed: $completedScanAt', style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
-                ],
-                if (_scanningMedia) ...[
-                  const SizedBox(height: 10),
-                  const LinearProgressIndicator(),
-                ],
-                if (_mediaScanStatus['last_error'] != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    _mediaScanStatus['last_error'].toString(),
-                    style: theme.textTheme.bodySmall?.copyWith(color: colors.error),
-                  ),
-                ],
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: _scanningMedia || _busy ? null : _scanMediaAndFiles,
-                    icon: _scanningMedia
-                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                        : const Icon(Icons.refresh_rounded, size: 18),
-                    label: Text(_scanningMedia ? 'Scanning…' : 'Scan media & files now'),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'The scan runs on the host in the background. Existing indexed results remain available while it updates.',
-                  style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant, height: 1.35),
-                ),
-              ],
-            ),
+          HostMediaScanCard(
+            status: _mediaScanStatus,
+            scanning: _scanningMedia,
+            skippedItems: skippedScanItems,
+            completedAt: completedScanAt,
+            busy: _busy,
+            onScan: _scanMediaAndFiles,
           ),
     ];
     final feedbackSections = <Widget>[
