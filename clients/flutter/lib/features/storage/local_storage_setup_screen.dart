@@ -8,6 +8,7 @@ import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/shared/status_pill.dart';
 import 'widgets/storage_permission_row.dart';
 import 'widgets/host_media_metric.dart';
+import 'widgets/storage_volume_tile.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
 import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
@@ -876,7 +877,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
             final selected = volume['selected'] == true;
             return Padding(
               padding: const EdgeInsets.only(bottom: 10),
-              child: _VolumeTile(
+              child: StorageVolumeTile(
                 title: volume['name']?.toString() ?? 'USB storage',
                 value: volume['access'] == 'direct'
                     ? (volume['writable'] == true ? 'Direct access · read and write' : 'Direct access · read-only')
@@ -1431,55 +1432,3 @@ class _SetupSectionTitle extends StatelessWidget {
   }
 }
 
-class _VolumeTile extends StatelessWidget {
-  const _VolumeTile({required this.title, required this.value, required this.selected, required this.onTap, required this.accessType});
-  final String title;
-  final String value;
-  final bool selected;
-  final VoidCallback? onTap;
-  final String accessType;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Material(
-      color: colors.surfaceContainerLow,
-      borderRadius: BorderRadius.circular(17),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(17),
-        child: Padding(
-          padding: const EdgeInsets.all(15),
-          child: Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(color: colors.surfaceContainerHighest, borderRadius: BorderRadius.circular(13)),
-                child: Icon(
-                  accessType == 'direct' ? Icons.sd_storage_rounded : Icons.usb_rounded,
-                  color: selected ? Colors.green : colors.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(width: 13),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 4),
-                    Text(value, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
-                  ],
-                ),
-              ),
-              if (selected)
-                const Icon(Icons.check_circle_rounded, color: Colors.green)
-              else
-                Icon(Icons.folder_open_rounded, color: colors.onSurfaceVariant),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
