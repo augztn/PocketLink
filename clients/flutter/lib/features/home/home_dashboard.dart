@@ -7,6 +7,7 @@ import 'quick_actions_store.dart';
 import 'widgets/host_device_metrics_card.dart';
 import 'widgets/host_media_scan_card.dart';
 import 'widgets/home_activity_sections.dart';
+import 'widgets/home_quick_actions_section.dart';
 import 'widgets/server_telemetry_card.dart';
 import 'network_route_classifier.dart';
 import '../../core/settings/app_settings.dart';
@@ -966,33 +967,6 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
       );
     }
 
-    Widget quickAction(IconData icon, String label, VoidCallback onTap) {
-      return Container(
-        decoration: _dashboardCardDecoration(theme),
-        child: Material(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(18),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(18),
-            child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, size: 23, color: colors.primary),
-                const SizedBox(height: 8),
-                Text(label, maxLines: 1, overflow: TextOverflow.visible, softWrap: false,
-                  style: theme.textTheme.labelLarge?.copyWith(fontSize: 11.5, fontWeight: FontWeight.w600)),
-              ],
-            ),
-            ),
-          ),
-        ),
-      );
-    }
-
     final sectionBuilders = <String, Widget Function()>{
       'search': () => appSettings.showGlobalSearch
           ? Padding(
@@ -1003,30 +977,18 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
       'quick': () => appSettings.showQuickActions
           ? Padding(
               padding: const EdgeInsets.only(bottom: 24),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                sectionTitle('Quick actions', action: 'Edit', onAction: _editQuickActions),
-                const SizedBox(height: 14),
-                if (_quickActions.isEmpty)
-                  OutlinedButton.icon(
-                    onPressed: _editQuickActions,
-                    icon: const Icon(Icons.add_rounded),
-                    label: const Text('Add quick actions'),
-                  )
-                else
-                  GridView.count(
-                    padding: EdgeInsets.zero,
-                    crossAxisCount: 4,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisSpacing: 9,
-                    mainAxisSpacing: 9,
-                    childAspectRatio: 0.88,
-                    children: _quickActions.map((id) {
-                      final detail = _quickActionDetails[id]!;
-                      return quickAction(detail.icon, detail.label, () => _runQuickAction(id));
-                    }).toList(),
-                  ),
-              ]),
+              child: HomeQuickActionsSection(
+                actions: _quickActions
+                    .map((id) => HomeQuickAction(
+                          id: id,
+                          label: _quickActionDetails[id]!.label,
+                          icon: _quickActionDetails[id]!.icon,
+                        ))
+                    .toList(growable: false),
+                cardDecoration: _dashboardCardDecoration,
+                onEdit: _editQuickActions,
+                onSelect: _runQuickAction,
+              ),
             )
           : const SizedBox.shrink(),
       'transfers': () => appSettings.showActiveTransfers
