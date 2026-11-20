@@ -988,9 +988,8 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
           feathered: true,
           showHome: false,
           automaticallyImplyLeading: false,
-            title: SmokedGlassPopoverMenu<String>(
-            titleMenu: true,
-            tooltip: 'Choose video view',
+            title: TitleDropdownPopover<String>(
+tooltip: 'Choose video view',
             onOpenChanged: (open) => setState(() => _musicMenuOpen = open),
             items: [
               SmokedGlassPopoverMenuItem(
@@ -1679,9 +1678,8 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                   )
                 else
                   Expanded(
-                    child: SmokedGlassPopoverMenu<String>(
-                      titleMenu: true,
-                      tooltip: 'Choose music view',
+                    child: TitleDropdownPopover<String>(
+tooltip: 'Choose music view',
                       onOpenChanged: (open) => setState(() => _musicMenuOpen = open),
                       items: [
                         SmokedGlassPopoverMenuItem(value: 'all', label: 'Songs', icon: Icons.music_note_rounded,
