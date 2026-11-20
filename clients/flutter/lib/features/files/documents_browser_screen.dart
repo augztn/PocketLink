@@ -221,6 +221,7 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
         showHome: false,
         automaticallyImplyLeading: false,
         title: SmokedGlassPopoverMenu<String>(
+          titleMenu: true,
           tooltip: 'Filter document types',
           onOpenChanged: (open) => setState(() => _filterMenuOpen = open),
           items: filterLabels.entries.map((entry) {
