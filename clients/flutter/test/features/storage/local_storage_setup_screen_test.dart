@@ -162,5 +162,4 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Return to Client / Home'), findsOneWidget);
   });
-  });
 }
