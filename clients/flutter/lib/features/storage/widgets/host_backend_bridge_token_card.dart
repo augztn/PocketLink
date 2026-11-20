@@ -1,5 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../../../core/widgets/shared/status_pill.dart';
+
 class HostBackendBridgeTokenCard extends StatelessWidget {
   const HostBackendBridgeTokenCard({
     required this.token,
