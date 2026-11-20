@@ -282,7 +282,7 @@ class _ScrubberPainter extends CustomPainter {
 
     if (style == NowPlayingScrubberStyle.wavy) {
       final thumbX = right * progress;
-      final playedEnd = math.max(left, thumbX - 4);
+      final playedEnd = (thumbX - 4).clamp(left, right).toDouble();
       if (playedEnd > left) {
         final path = Path();
         for (double x = left; x <= playedEnd; x += 2) {
@@ -295,7 +295,10 @@ class _ScrubberPainter extends CustomPainter {
             path.lineTo(x, y);
           }
         }
-        path.lineTo(playedEnd, centerY);
+        final endY = centerY +
+            math.sin((playedEnd / 26 * math.pi * 2) - wavePhase * math.pi * 2) *
+                waveAmplitude;
+        path.lineTo(playedEnd, endY);
         canvas.drawPath(
           path,
           Paint()
