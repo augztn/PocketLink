@@ -1,5 +1,6 @@
 import 'dart:io';
 import '../../core/widgets/pocketlink_app_bar.dart';
+import '../../core/widgets/feathered_glass_header.dart';
 
 import 'package:file_picker/file_picker.dart' as file_picker;
 import 'package:material_ui/material_ui.dart';
@@ -397,15 +398,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
         extendBodyBehindAppBar: true,
         appBar: PocketLinkAppBar(
           title: Text(widget.category ?? 'Settings'),
+          actions: [
+            PocketLinkAppBarAction(
+              label: 'Return to Home',
+              icon: Icons.home_rounded,
+              onPressed: () => PocketLinkAppBar.goToDashboard(context),
+            ),
+          ],
           showHome: false,
-          showMoreMenu: false,
+          showMoreMenu: true,
+          feathered: true,
         ),
-        body: ListView(
+        body: Builder(
+          builder: (bodyContext) {
+            const showBottomNav = false;
+            final hasActiveMiniPlayer = _settings.showMiniPlayer;
+            final bottomClearance =
+                MediaQuery.paddingOf(bodyContext).bottom +
+                (showBottomNav ? 88.0 : 12.0) +
+                (hasActiveMiniPlayer ? 76.0 : 0.0);
+            return Stack(
+              children: [
+                ListView(
           padding: EdgeInsets.fromLTRB(
             16,
-            MediaQuery.paddingOf(context).top + kToolbarHeight + 8,
+            MediaQuery.paddingOf(bodyContext).top + kToolbarHeight + 8,
             16,
-            32 + MediaQuery.paddingOf(context).bottom,
+            bottomClearance,
           ),
           children: widget.category == null
               ? [
@@ -760,7 +779,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ),
                               ]),
                 ],
-
+                ),
+                const Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: IgnorePointer(
+                    child: FeatheredGlassHeaderBackground(),
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
