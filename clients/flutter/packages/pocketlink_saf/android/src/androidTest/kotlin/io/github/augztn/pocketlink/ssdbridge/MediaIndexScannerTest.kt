@@ -16,7 +16,13 @@ class MediaIndexScannerTest {
     fun scansInternalFilesAndPrunesDeletedEntriesAfterACompleteRefresh() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         context.deleteDatabase("pocketlink_index.db")
-        context.getSharedPreferences("media-index-report", Context.MODE_PRIVATE).edit().clear().commit()
+        context.getSharedPreferences("media-index-report", Context.MODE_PRIVATE).edit()
+            .clear()
+            // Keep startup/storage observers from racing the explicitly manual scan.
+            .putBoolean("automatic_scanning_enabled", false)
+            .putBoolean("scan_on_startup", false)
+            .putBoolean("scan_on_storage_change", false)
+            .commit()
         val root = File(context.cacheDir, "media-index-test").apply {
             deleteRecursively()
             mkdirs()
@@ -38,6 +44,12 @@ class MediaIndexScannerTest {
             val first = awaitFinished(scanner)
             assertEquals("complete", first.getString("state"))
             assertEquals("manual", first.getString("scan_trigger"))
+            scanner.configureAutomaticScanning(
+                enabled = true,
+                intervalMinutes = 60,
+                scanOnStartup = false,
+                scanOnStorageChange = false
+            )
             assertEquals(6, first.getInt("new_files"))
             assertEquals(0, first.getInt("updated_files"))
             assertTrue(first.getLong("scanned_bytes") >= 18L)
