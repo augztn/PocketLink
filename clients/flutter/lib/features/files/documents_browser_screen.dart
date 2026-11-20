@@ -221,9 +221,8 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
         feathered: true,
         showHome: false,
         automaticallyImplyLeading: false,
-        title: SmokedGlassPopoverMenu<String>(
-          titleMenu: true,
-          tooltip: 'Filter document types',
+        title: TitleDropdownPopover<String>(
+tooltip: 'Filter document types',
           onOpenChanged: (open) => setState(() => _filterMenuOpen = open),
           items: filterLabels.entries.map((entry) {
             final icon = switch (entry.key) {
