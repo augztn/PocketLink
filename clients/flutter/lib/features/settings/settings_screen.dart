@@ -461,6 +461,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       value: _settings.progressiveBlurEnabled,
                       onChanged: _settings.setProgressiveBlurEnabled,
                     ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                'Blur strength',
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                              const Spacer(),
+                              Text(
+                                '${_settings.progressiveBlurStrength.round()}%',
+                                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                  fontFeatures: const [FontFeature.tabularFigures()],
+                                ),
+                              ),
+                            ],
+                          ),
+                          Slider(
+                            min: 0,
+                            max: 100,
+                            divisions: 20,
+                            value: _settings.progressiveBlurStrength,
+                            onChanged: _settings.progressiveBlurEnabled
+                                ? _settings.setProgressiveBlurStrength
+                                : null,
+                          ),
+                          Text(
+                            'Subtle at 0% · Strong at 100%',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ]),
                 if (widget.category == 'Dashboard & Shortcuts')
                   _section('Dashboard & Shortcuts', [
