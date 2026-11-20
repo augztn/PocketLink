@@ -373,6 +373,8 @@ internal class MediaIndexScanner(
         }
     }
 
+    fun runScheduledScanCheck() = maybeRunScheduledScan()
+
     fun onStorageChanged(connected: Boolean) {
         dirty.set(true)
         if (connected && automaticScanningEnabled() &&
@@ -405,7 +407,6 @@ internal class MediaIndexScanner(
         newFiles = 0
         updatedFiles = 0
         scannedBytes = 0L
-        volumeReports.clear()
         dirty.set(false)
         running.set(true)
         state = "scanning"
@@ -423,6 +424,18 @@ internal class MediaIndexScanner(
                 val sources = mutableListOf<Pair<String, Any>>()
                 sources += "internal" to internalRoot()
                 externalRoots().forEach { (id, root) -> sources += id to root }
+                val previousVolumes = volumeReports.values.map { org.json.JSONObject(it.toString()) }
+                val activeVolumeIds = sources.map { it.first }.toSet()
+                volumeReports.clear()
+                previousVolumes.filter { it.optString("volume") !in activeVolumeIds }.forEach { previous ->
+                    val volume = previous.optString("volume")
+                    volumeReports[volume] = org.json.JSONObject()
+                        .put("volume", volume)
+                        .put("state", "unavailable")
+                        .put("stale", true)
+                        .put("last_scanned_at", previous.optLong("completed_at"))
+                        .put("error", "Storage volume is disconnected or no longer accessible")
+                }
                 sources.forEach { (id, root) ->
                     currentSource = id
                     val skippedBefore = skipped
@@ -452,8 +465,12 @@ internal class MediaIndexScanner(
                         currentPath = null
                     }
                 }
+                val unavailableVolumes = volumeReports.values.any { it.optString("state") == "unavailable" }
                 if (lastError == null && skipped > 0) lastError = "Some files or folders could not be indexed."
-                state = if (lastError == null && skipped == 0) "complete" else "partial"
+                if (lastError == null && unavailableVolumes) {
+                    lastError = "One or more previously indexed storage volumes are disconnected; their indexed content may be stale."
+                }
+                state = if (lastError == null && skipped == 0 && !unavailableVolumes) "complete" else "partial"
                 lastCompletedAt = System.currentTimeMillis()
                 lastAttemptFinishedAt = lastCompletedAt
                 reportPrefs.edit().putLong("last_attempt_finished_at", lastAttemptFinishedAt).apply()
@@ -651,6 +668,7 @@ internal class MediaIndexScanner(
             .put("last_attempt_started_at", lastAttemptStartedAt)
             .put("last_attempt_finished_at", lastAttemptFinishedAt)
             .put("last_successful_at", lastSuccessfulAt)
+            .put("timezone_id", java.util.TimeZone.getDefault().id)
             .put("scanned", scanned)
             .put("scanned_directories", scannedDirectories)
             .put("unchanged_count", unchanged)
@@ -711,6 +729,7 @@ internal class MediaIndexScanner(
         val record = org.json.JSONObject()
             .put("started_at", lastScanStartedAt)
             .put("completed_at", lastCompletedAt)
+            .put("timezone_id", java.util.TimeZone.getDefault().id)
             .put("duration_ms", (lastCompletedAt - lastScanStartedAt).coerceAtLeast(0L))
             .put("trigger", lastScanTrigger)
             .put("state", state)
