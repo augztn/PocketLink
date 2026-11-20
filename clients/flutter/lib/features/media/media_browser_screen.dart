@@ -232,6 +232,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     }
     if (!mounted) return;
     widget.api.clearMediaCache();
+    _musicDurationRequests.clear();
     setState(() {
       _loading = true;
       _error = null;
@@ -312,6 +313,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     if (!mounted) return;
     if (refresh) widget.api.invalidateDirectoryCache();
     widget.api.clearMediaCache();
+    _musicDurationRequests.clear();
     setState(() {
       _loading = true;
       _error = null;
