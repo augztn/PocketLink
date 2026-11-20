@@ -86,11 +86,11 @@ class VideoMetadata {
 
   static int _durationMilliseconds(Map<String, dynamic> json) {
     final milliseconds = json['duration_ms'] ?? json['durationMs'];
-    if (milliseconds is num) return milliseconds.toInt().clamp(0, 1 << 62);
+    if (milliseconds is num) return milliseconds.toInt().clamp(0, 1 << 62).toInt();
 
     final seconds = json['duration_seconds'] ?? json['durationSeconds'];
     if (seconds is num) {
-      return (seconds * 1000).round().clamp(0, 1 << 62);
+      return (seconds * 1000).round().clamp(0, 1 << 62).toInt();
     }
 
     // Some compatible hosts expose a generic duration field. Values below
@@ -102,7 +102,7 @@ class VideoMetadata {
           : duration < 100000
               ? (duration * 1000).round()
               : duration.toInt();
-      return value.clamp(0, 1 << 62);
+      return value.clamp(0, 1 << 62).toInt();
     }
     return 0;
   }
