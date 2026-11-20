@@ -59,8 +59,11 @@ class MediaIndexScannerTest {
             assertTrue(first.getLong("last_successful_at") > 0L)
             assertEquals(first.getLong("last_completed_at"), first.getLong("last_attempt_finished_at"))
             assertTrue(first.getString("scan_run_id").isNotBlank())
-            assertTrue(first.getJSONObject("automatic_scanning").getBoolean("enabled"))
-            assertEquals(60, first.getJSONObject("automatic_scanning").getInt("interval_minutes"))
+            // The first scan result is an immutable snapshot captured before
+            // automatic scanning was configured; assert the live settings instead.
+            val enabledSettings = scanner.status().getJSONObject("automatic_scanning")
+            assertTrue(enabledSettings.getBoolean("enabled"))
+            assertEquals(60, enabledSettings.getInt("interval_minutes"))
             val disabledSettings = scanner.configureAutomaticScanning(
                 enabled = false,
                 intervalMinutes = 180,
