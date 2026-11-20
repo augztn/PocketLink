@@ -63,7 +63,7 @@ class AppSettings extends ChangeNotifier {
   bool _showGlobalSearch = true;
   bool _showActiveTransfers = true;
   List<String> _homeSectionOrder = List.of(homeSectionDefaults);
-  bool _useLiquidGlass = false;
+  bool _useLiquidGlass = true;
   bool _loaded = false;
   List<String> _navigationOrder = List.of(navigationDefaults);
   Set<String> _visibleNavigationItems = Set.of(navigationDefaults);
@@ -136,7 +136,7 @@ class AppSettings extends ChangeNotifier {
     if (_loaded) return;
     try {
       final preferences = await SharedPreferences.getInstance();
-      _useLiquidGlass = preferences.getBool(_liquidGlassKey) ?? false;
+      _useLiquidGlass = preferences.getBool(_liquidGlassKey) ?? true;
       _showMiniPlayer = preferences.getBool(_nowPlayingMiniPlayerKey) ?? true;
       _enableNowPlayingGestures = preferences.getBool(_nowPlayingGesturesKey) ?? true;
       _showStatsForNerds = preferences.getBool(_nowPlayingStatsForNerdsKey) ?? true;
