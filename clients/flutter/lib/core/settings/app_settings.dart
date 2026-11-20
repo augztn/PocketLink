@@ -82,7 +82,7 @@ class AppSettings extends ChangeNotifier {
   int _downloadConcurrency = 2;
   bool _downloadWifiOnly = false;
   bool _downloadAutoResume = true;
-  int _videoControlsTimeoutSeconds = 4;
+  double _videoControlsTimeoutSeconds = 3.5;
   int _videoSeekSeconds = 10;
   double _videoDefaultSpeed = 1.0;
   String _videoFitMode = 'contain';
@@ -120,7 +120,7 @@ class AppSettings extends ChangeNotifier {
   int get downloadConcurrency => _downloadConcurrency;
   bool get downloadWifiOnly => _downloadWifiOnly;
   bool get downloadAutoResume => _downloadAutoResume;
-  int get videoControlsTimeoutSeconds => _videoControlsTimeoutSeconds;
+  double get videoControlsTimeoutSeconds => _videoControlsTimeoutSeconds;
   int get videoSeekSeconds => _videoSeekSeconds;
   double get videoDefaultSpeed => _videoDefaultSpeed;
   String get videoFitMode => _videoFitMode;
@@ -153,7 +153,8 @@ class AppSettings extends ChangeNotifier {
           .contains(preferences.getString(_nowPlayingScrubberStyleKey))
           ? preferences.getString(_nowPlayingScrubberStyleKey)!
           : 'apple';
-      _videoControlsTimeoutSeconds = preferences.getInt(_videoControlsTimeoutKey) ?? 4;
+      final controlsTimeout = preferences.get(_videoControlsTimeoutKey);
+      _videoControlsTimeoutSeconds = controlsTimeout is num ? controlsTimeout.toDouble() : 3.5;
       _videoSeekSeconds = preferences.getInt(_videoSeekSecondsKey) ?? 10;
       _videoDefaultSpeed = preferences.getDouble(_videoDefaultSpeedKey) ?? 1.0;
       _videoFitMode = preferences.getString(_videoFitModeKey) ?? 'contain';
@@ -491,13 +492,13 @@ class AppSettings extends ChangeNotifier {
   }
 
   Future<void> setVideoPlayerOptions({
-    int? controlsTimeoutSeconds, int? seekSeconds, double? defaultSpeed,
+    double? controlsTimeoutSeconds, int? seekSeconds, double? defaultSpeed,
     String? fitMode, bool? gesturesEnabled, bool? pinchZoomEnabled, bool? tapToTogglePlayback,
     double? subtitleFontSize, bool? subtitleBackground, bool? autoFullscreen,
     String? fullscreenOrientation,
   }) async {
     const speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 3.0, 4.0];
-    if (controlsTimeoutSeconds != null && ![0, 3, 4, 5, 8, 12].contains(controlsTimeoutSeconds)) throw ArgumentError.value(controlsTimeoutSeconds, 'controlsTimeoutSeconds');
+    if (controlsTimeoutSeconds != null && ![0.0, 2.0, 3.5, 4.0, 6.0, 10.0].contains(controlsTimeoutSeconds)) throw ArgumentError.value(controlsTimeoutSeconds, 'controlsTimeoutSeconds');
     if (seekSeconds != null && ![5, 10, 15, 30].contains(seekSeconds)) throw ArgumentError.value(seekSeconds, 'seekSeconds');
     if (defaultSpeed != null && !speeds.contains(defaultSpeed)) throw ArgumentError.value(defaultSpeed, 'defaultSpeed');
     if (fitMode != null && !['contain', 'cover', 'fill'].contains(fitMode)) throw ArgumentError.value(fitMode, 'fitMode');
@@ -517,7 +518,7 @@ class AppSettings extends ChangeNotifier {
     notifyListeners();
     final preferences = await SharedPreferences.getInstance();
     await Future.wait([
-      if (controlsTimeoutSeconds != null) preferences.setInt(_videoControlsTimeoutKey, controlsTimeoutSeconds),
+      if (controlsTimeoutSeconds != null) preferences.setDouble(_videoControlsTimeoutKey, controlsTimeoutSeconds),
       if (seekSeconds != null) preferences.setInt(_videoSeekSecondsKey, seekSeconds),
       if (defaultSpeed != null) preferences.setDouble(_videoDefaultSpeedKey, defaultSpeed),
       if (fitMode != null) preferences.setString(_videoFitModeKey, fitMode),
@@ -532,7 +533,7 @@ class AppSettings extends ChangeNotifier {
   }
 
   Future<void> resetVideoPlayerOptions() async {
-    _videoControlsTimeoutSeconds = 4;
+    _videoControlsTimeoutSeconds = 3.5;
     _videoSeekSeconds = 10;
     _videoDefaultSpeed = 1.0;
     _videoFitMode = 'contain';
