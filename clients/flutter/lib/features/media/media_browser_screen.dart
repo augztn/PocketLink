@@ -17,6 +17,7 @@ import 'package:provider/provider.dart';
 import '../../core/network/server_api.dart';
 import 'media_player_screen.dart';
 import 'widgets/video_tag.dart';
+import 'widgets/music_equalizer.dart';
 import 'persistent_audio_player.dart';
 import 'now_playing_overlay_controller.dart';
 import '../transfers/transfer_manager_screen.dart';
