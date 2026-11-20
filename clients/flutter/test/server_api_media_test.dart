@@ -65,6 +65,37 @@ void main() {
       expect(status.currentSource, isNull);
     });
 
+    test('parses scan trigger, counters, volume status and history', () {
+      final status = MediaIndexStatus.fromJson({
+        'state': 'complete',
+        'scanned': 12,
+        'skipped': 1,
+        'last_completed_at': 1794900005000,
+        'last_scan_started_at': 1794900000000,
+        'elapsed_ms': 5000,
+        'file_count': 10,
+        'media_count': 4,
+        'scan_trigger': 'manual',
+        'new_files': 2,
+        'updated_files': 1,
+        'scanned_bytes': 4096,
+        'volumes': [
+          {'volume': 'internal', 'state': 'partial', 'started_at': 1794900000000, 'completed_at': 1794900005000, 'scanned': 12, 'skipped': 1}
+        ],
+        'scan_history': [
+          {'started_at': 1794900000000, 'completed_at': 1794900005000, 'duration_ms': 5000, 'trigger': 'manual', 'state': 'partial', 'scanned': 12, 'skipped': 1, 'new_files': 2, 'updated_files': 1, 'scanned_bytes': 4096}
+        ],
+      });
+
+      expect(status.scanTrigger, 'manual');
+      expect(status.newFiles, 2);
+      expect(status.updatedFiles, 1);
+      expect(status.scannedBytes, 4096);
+      expect(status.volumes.single.state, 'partial');
+      expect(status.scanHistory.single.trigger, 'manual');
+      expect(status.scanHistory.single.durationMs, 5000);
+    });
+
     test('parses remote host scan progress details', () {
       final status = MediaIndexStatus.fromJson({
         'state': 'scanning',
