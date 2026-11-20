@@ -33,7 +33,7 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.backgroundColor,
     this.foregroundColor,
     this.elevation,
-    this.showHome = true,
+    this.showHome = false,
     this.showMoreMenu = true,
     this.automaticallyImplyLeading = true,
     this.actionsBeforeHome = const [],
@@ -107,8 +107,9 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
       shadowColor: Colors.transparent,
       titleTextStyle: theme.textTheme.titleLarge?.copyWith(
         color: foregroundColor ?? theme.colorScheme.onSurface,
-        fontWeight: FontWeight.w800,
-        letterSpacing: -0.25,
+        fontSize: 26,
+        fontWeight: FontWeight.w700,
+        letterSpacing: -0.5,
       ),
       actionsPadding: const EdgeInsets.only(right: 16),
       actions: [
@@ -128,13 +129,24 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
       if (showMoreMenu)
         SmokedGlassPopoverMenu<PocketLinkAppBarAction>(
           tooltip: 'More actions',
-          items: actions.map((action) => SmokedGlassPopoverMenuItem<PocketLinkAppBarAction>(
-            value: action,
-            label: action.label,
-            icon: action.icon,
-            enabled: action.enabled && action.onPressed != null,
-            dividerBefore: action.dividerBefore,
-          )).toList(growable: false),
+          items: [
+            SmokedGlassPopoverMenuItem<PocketLinkAppBarAction>(
+              value: PocketLinkAppBarAction(
+                label: 'Return to Home',
+                icon: Icons.home_rounded,
+                onPressed: () => _goHome(context),
+              ),
+              label: 'Return to Home',
+              icon: Icons.home_rounded,
+            ),
+            ...actions.map((action) => SmokedGlassPopoverMenuItem<PocketLinkAppBarAction>(
+              value: action,
+              label: action.label,
+              icon: action.icon,
+              enabled: action.enabled && action.onPressed != null,
+              dividerBefore: action.dividerBefore,
+            )),
+          ],
           onSelected: (action) => action.onPressed?.call(),
           child: const Padding(
             padding: EdgeInsets.symmetric(vertical: 4),
