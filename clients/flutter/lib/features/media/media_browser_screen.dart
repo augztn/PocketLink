@@ -19,6 +19,7 @@ import 'media_player_screen.dart';
 import 'widgets/video_tag.dart';
 import 'widgets/music_equalizer.dart';
 import 'widgets/video_metadata_label.dart';
+import 'widgets/video_duration_badge.dart';
 import 'persistent_audio_player.dart';
 import 'now_playing_overlay_controller.dart';
 import '../transfers/transfer_manager_screen.dart';
@@ -636,16 +637,10 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     final two = (int value) => value.toString().padLeft(2, '0');
     return hours > 0 ? '${hours}:${two(minutes)}:${two(seconds)}' : '${minutes}:${two(seconds)}';
   }
-  Widget _videoDurationBadge(_MediaFile media) {
-    return FutureBuilder<VideoMetadata?>(
-      future: _videoMetadataFor(media),
-      builder: (context, snapshot) {
-        final duration = snapshot.data?.durationMs ?? 0;
-        if (duration <= 0) return const SizedBox.shrink();
-        return VideoTag(label: _formatDuration(duration));
-      },
-    );
-  }
+  Widget _videoDurationBadge(_MediaFile media) => VideoDurationBadge(
+        future: _videoMetadataFor(media),
+        formatDuration: _formatDuration,
+      );
 
   Widget _buildVideoGrid(List<_MediaFile> items) {
     return GridView.builder(
