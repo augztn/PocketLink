@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:material_ui/material_ui.dart';
+import '../../core/widgets/shared/status_pill.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/widgets/pocketlink_app_bar.dart';
@@ -1474,7 +1475,17 @@ class _PermissionRow extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  _StatusPill(label: status, granted: granted),
+                  PocketLinkStatusPill(
+                    label: status,
+                    foreground: statusColor,
+                    background: statusColor.withValues(alpha: 0.12),
+                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                    radius: 30,
+                    textStyle: theme.textTheme.labelSmall?.copyWith(
+                      color: statusColor,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                   if (onTap != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 3),
@@ -1559,26 +1570,6 @@ class _SetupSectionTitle extends StatelessWidget {
         const SizedBox(height: 4),
         Text(subtitle, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
       ],
-    );
-  }
-}
-
-class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.label, required this.granted});
-  final String label;
-  final bool granted;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final color = granted ? Colors.green : colors.tertiary;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(30),
-      ),
-      child: Text(label, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: color, fontWeight: FontWeight.w700)),
     );
   }
 }

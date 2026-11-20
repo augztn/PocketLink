@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import '../../core/widgets/shared/status_pill.dart';
 
 import '../../core/settings/app_settings.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
@@ -130,19 +131,33 @@ class PocketLinkHomeDrawer extends StatelessWidget {
                       spacing: 7,
                       runSpacing: 7,
                       children: [
-                        const _DrawerStatusPill(
+                        const PocketLinkStatusPill(
                           label: 'Connected',
                           icon: Icons.check_circle_rounded,
                           foreground: Color(0xFF16865B),
                           background: Color(0x2210B981),
+                          padding: EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+                          radius: 20,
+                          textStyle: TextStyle(
+                            color: Color(0xFF16865B),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                        _DrawerStatusPill(
+                        PocketLinkStatusPill(
                           label: routeLabel,
                           icon: routeLabel == 'Tailscale'
                               ? Icons.shield_rounded
                               : Icons.route_rounded,
                           foreground: colors.primary,
                           background: colors.primary.withValues(alpha: 0.10),
+                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+                          radius: 20,
+                          textStyle: TextStyle(
+                            color: colors.primary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ],
                     ),
@@ -425,44 +440,6 @@ class _DrawerLibraryTile extends StatelessWidget {
     );
   }
 }
-
-class _DrawerStatusPill extends StatelessWidget {
-  const _DrawerStatusPill({
-    required this.label,
-    required this.icon,
-    required this.foreground,
-    required this.background,
-  });
-
-  final String label;
-  final IconData icon;
-  final Color foreground;
-  final Color background;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-        decoration: BoxDecoration(
-          color: background,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 13, color: foreground),
-            const SizedBox(width: 5),
-            Text(
-              label,
-              style: TextStyle(
-                color: foreground,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-      );
-  }
 
 class _ThemeSegment extends StatelessWidget {
   const _ThemeSegment({required this.label, required this.selected, required this.onTap});
