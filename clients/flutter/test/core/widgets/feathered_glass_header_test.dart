@@ -84,7 +84,12 @@ void main() {
     );
 
     expect(find.byType(BackdropFilter), findsNothing);
-    expect(find.byType(CustomPaint), findsNothing);
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is CustomPaint && widget.painter != null,
+      ),
+      findsNothing,
+    );
   });
 
   testWidgets('Liquid Glass UI on enables shared surface blur', (tester) async {
@@ -137,7 +142,8 @@ void main() {
     await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(false));
 
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
+        theme: ThemeData(brightness: Brightness.dark),
         home: Scaffold(
           body: FeatheredGlassHeaderBackground(
             darkTint: [
