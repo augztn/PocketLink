@@ -456,23 +456,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       secondary: const Icon(Icons.gradient_rounded),
                       title: const Text('Progressive Blur'),
                       subtitle: const Text(
-                        'Progressively blur scrolling content behind top headers',
+                        'Blur scrolling content smoothly behind the status bar and floating headers',
                       ),
                       value: _settings.progressiveBlurEnabled,
-                      onChanged: (value) =>
-                          _settings.setProgressiveBlurOptions(enabled: value),
-                    ),
-                    const Divider(height: 1),
-                    SwitchListTile(
-                      secondary: const Icon(Icons.speed_rounded),
-                      title: const Text('Reduce dynamic blur'),
-                      subtitle: const Text(
-                        'Use a lightweight top fade without live backdrop blur',
-                      ),
-                      value: _settings.reduceDynamicBlur,
-                      onChanged: (value) => _settings.setProgressiveBlurOptions(
-                        reduceDynamicBlur: value,
-                      ),
+                      onChanged: _settings.setProgressiveBlurEnabled,
                     ),
                   ]),
                 if (widget.category == 'Dashboard & Shortcuts')
