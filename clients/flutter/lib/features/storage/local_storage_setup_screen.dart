@@ -14,6 +14,7 @@ import 'widgets/host_media_scan_card.dart';
 import 'widgets/host_server_password_card.dart';
 import 'widgets/host_backend_bridge_token_card.dart';
 import 'widgets/host_storage_service_card.dart';
+import 'widgets/host_setup_section_title.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
 import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
@@ -602,7 +603,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
     ];
     final securitySections = <Widget>[
       const SizedBox(height: 22),
-      const _SetupSectionTitle(
+      const HostSetupSectionTitle(
         title: 'Server security',
         subtitle: 'Set the password used by remote clients to connect.',
       ),
@@ -714,7 +715,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
           Row(
             children: [
               const Expanded(
-                child: _SetupSectionTitle(
+                child: HostSetupSectionTitle(
                   title: 'USB / External Storage',
                   subtitle: 'PocketLink detects mounted SD cards and USB drives automatically. Direct access is preferred; folder approval is the fallback.',
                 ),
@@ -832,7 +833,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
     ];
     final mediaSections = <Widget>[
           const SizedBox(height: 24),
-          const _SetupSectionTitle(
+          const HostSetupSectionTitle(
             title: 'Device media & files',
             subtitle: 'Index photos, videos, music and searchable files in the background.',
           ),
@@ -873,7 +874,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
     ];
     final tokenSections = <Widget>[
           const SizedBox(height: 24),
-          const _SetupSectionTitle(
+          const HostSetupSectionTitle(
             title: 'Backend bridge',
             subtitle: 'Authentication for the Termux backend to access Android storage.',
           ),
@@ -1032,23 +1033,3 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
     );
   }
 }
-
-class _SetupSectionTitle extends StatelessWidget {
-  const _SetupSectionTitle({required this.title, required this.subtitle});
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
-        const SizedBox(height: 4),
-        Text(subtitle, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-      ],
-    );
-  }
-}
-
