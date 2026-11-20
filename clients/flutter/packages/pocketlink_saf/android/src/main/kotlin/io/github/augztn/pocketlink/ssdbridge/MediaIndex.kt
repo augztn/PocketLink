@@ -343,6 +343,8 @@ internal class MediaIndexScanner(
             started = true
             if (automaticScanningEnabled() && reportPrefs.getBoolean("scan_on_startup", true)) {
                 requestScan(force = false, trigger = "automatic")
+            } else if (automaticScanningEnabled() && reportPrefs.getLong("schedule_anchor_at", 0L) == 0L) {
+                reportPrefs.edit().putLong("schedule_anchor_at", System.currentTimeMillis()).apply()
             }
         } else if (automaticScanningEnabled() && dirty.get() && !running.get()) {
             requestScan(force = true, trigger = "automatic")
@@ -362,19 +364,25 @@ internal class MediaIndexScanner(
         scanOnStorageChange: Boolean = reportPrefs.getBoolean("scan_on_storage_change", true)
     ): org.json.JSONObject {
         val safeInterval = intervalMinutes.coerceIn(15, 1440)
-        reportPrefs.edit()
+        val editor = reportPrefs.edit()
             .putBoolean("automatic_scanning_enabled", enabled)
             .putBoolean("scan_on_startup", scanOnStartup)
             .putBoolean("scan_on_storage_change", scanOnStorageChange)
             .putInt("scan_interval_minutes", safeInterval)
-            .apply()
+        if (enabled && lastCompletedAt == 0L && lastAttemptStartedAt == 0L &&
+            reportPrefs.getLong("schedule_anchor_at", 0L) == 0L) {
+            editor.putLong("schedule_anchor_at", System.currentTimeMillis())
+        }
+        editor.apply()
         return automaticSettings()
     }
 
     fun automaticSettings(): org.json.JSONObject {
         val enabled = automaticScanningEnabled()
         val interval = scanIntervalMinutes()
-        val baseline = lastCompletedAt.takeIf { it > 0L } ?: lastAttemptStartedAt
+        val baseline = lastCompletedAt.takeIf { it > 0L }
+            ?: lastAttemptStartedAt.takeIf { it > 0L }
+            ?: reportPrefs.getLong("schedule_anchor_at", 0L)
         return org.json.JSONObject()
             .put("enabled", enabled)
             .put("scan_on_startup", reportPrefs.getBoolean("scan_on_startup", true))
@@ -385,7 +393,9 @@ internal class MediaIndexScanner(
 
     fun maybeRunScheduledScan() {
         if (!automaticScanningEnabled() || running.get()) return
-        val baseline = lastCompletedAt.takeIf { it > 0L } ?: lastAttemptStartedAt
+        val baseline = lastCompletedAt.takeIf { it > 0L }
+            ?: lastAttemptStartedAt.takeIf { it > 0L }
+            ?: reportPrefs.getLong("schedule_anchor_at", 0L)
         if (baseline == 0L || System.currentTimeMillis() - baseline >= scanIntervalMinutes() * 60_000L) {
             requestScan(force = true, trigger = "automatic")
         }
