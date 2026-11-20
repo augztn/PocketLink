@@ -253,6 +253,43 @@ class SkippedMediaIndexItem {
   );
 }
 
+class MediaScanVolumeStatus {
+  const MediaScanVolumeStatus({required this.volume, required this.state, this.startedAt = 0, this.completedAt = 0, this.scanned = 0, this.skipped = 0, this.error});
+  final String volume;
+  final String state;
+  final int startedAt, completedAt, scanned, skipped;
+  final String? error;
+  factory MediaScanVolumeStatus.fromJson(Map<String, dynamic> json) => MediaScanVolumeStatus(
+    volume: json['volume']?.toString() ?? 'unknown',
+    state: json['state']?.toString() ?? 'unknown',
+    startedAt: (json['started_at'] as num?)?.toInt() ?? 0,
+    completedAt: (json['completed_at'] as num?)?.toInt() ?? 0,
+    scanned: (json['scanned'] as num?)?.toInt() ?? 0,
+    skipped: (json['skipped'] as num?)?.toInt() ?? 0,
+    error: json['error']?.toString(),
+  );
+}
+
+class MediaScanHistoryEntry {
+  const MediaScanHistoryEntry({required this.startedAt, required this.completedAt, required this.durationMs, required this.trigger, required this.state, required this.scanned, required this.skipped, required this.newFiles, required this.updatedFiles, required this.scannedBytes, this.lastError});
+  final int startedAt, completedAt, durationMs, scanned, skipped, newFiles, updatedFiles, scannedBytes;
+  final String trigger, state;
+  final String? lastError;
+  factory MediaScanHistoryEntry.fromJson(Map<String, dynamic> json) => MediaScanHistoryEntry(
+    startedAt: (json['started_at'] as num?)?.toInt() ?? 0,
+    completedAt: (json['completed_at'] as num?)?.toInt() ?? 0,
+    durationMs: (json['duration_ms'] as num?)?.toInt() ?? 0,
+    trigger: json['trigger']?.toString() ?? 'automatic',
+    state: json['state']?.toString() ?? 'unknown',
+    scanned: (json['scanned'] as num?)?.toInt() ?? 0,
+    skipped: (json['skipped'] as num?)?.toInt() ?? 0,
+    newFiles: (json['new_files'] as num?)?.toInt() ?? 0,
+    updatedFiles: (json['updated_files'] as num?)?.toInt() ?? 0,
+    scannedBytes: (json['scanned_bytes'] as num?)?.toInt() ?? 0,
+    lastError: json['last_error']?.toString(),
+  );
+}
+
 class MediaIndexStatus {
   const MediaIndexStatus({
     required this.state, required this.scanned, required this.skipped,
@@ -262,7 +299,8 @@ class MediaIndexStatus {
     this.currentPath, this.scannedDirectories = 0, this.unchangedCount = 0,
     this.indexedCount = 0, this.directoryCount = 0, this.regularFileCount = 0,
     this.photoCount = 0, this.videoCount = 0, this.musicCount = 0,
-    this.skippedItems = const [],
+    this.skippedItems = const [], this.scanTrigger = "automatic", this.newFiles = 0,
+    this.updatedFiles = 0, this.scannedBytes = 0, this.volumes = const [], this.scanHistory = const [],
   });
   final String state;
   final int scanned;
@@ -285,6 +323,10 @@ class MediaIndexStatus {
   final int videoCount;
   final int musicCount;
   final List<SkippedMediaIndexItem> skippedItems;
+  final String scanTrigger;
+  final int newFiles, updatedFiles, scannedBytes;
+  final List<MediaScanVolumeStatus> volumes;
+  final List<MediaScanHistoryEntry> scanHistory;
   bool get isScanning => state == 'scanning';
   bool get isUsable => state == 'complete' || state == 'partial';
 
@@ -313,6 +355,16 @@ class MediaIndexStatus {
             .whereType<Map<String, dynamic>>()
             .map(SkippedMediaIndexItem.fromJson)
             .toList(growable: false),
+        scanTrigger: json['scan_trigger']?.toString() ?? 'automatic',
+        newFiles: (json['new_files'] as num?)?.toInt() ?? 0,
+        updatedFiles: (json['updated_files'] as num?)?.toInt() ?? 0,
+        scannedBytes: (json['scanned_bytes'] as num?)?.toInt() ?? 0,
+        volumes: (json['volumes'] as List<dynamic>? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(MediaScanVolumeStatus.fromJson).toList(growable: false),
+        scanHistory: (json['scan_history'] as List<dynamic>? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(MediaScanHistoryEntry.fromJson).toList(growable: false),
       );
 }
 
