@@ -377,8 +377,7 @@ internal class MediaIndexScanner(
 
     fun onStorageChanged(connected: Boolean) {
         dirty.set(true)
-        if (connected && automaticScanningEnabled() &&
-            reportPrefs.getBoolean("scan_on_storage_change", true)) {
+        if (automaticScanningEnabled() && reportPrefs.getBoolean("scan_on_storage_change", true)) {
             requestScan(force = true, trigger = "automatic")
         }
     }
