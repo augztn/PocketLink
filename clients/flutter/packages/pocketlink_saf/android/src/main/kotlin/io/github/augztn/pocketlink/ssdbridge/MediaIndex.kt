@@ -262,6 +262,7 @@ internal class MediaIndexScanner(
     private val externalRoots: () -> List<Pair<String, DocumentFile>>
 ) {
     private val database = MediaIndexDatabase(context.applicationContext)
+    private val reportPrefs = context.applicationContext.getSharedPreferences("media-index-report", Context.MODE_PRIVATE)
     private val executor = Executors.newSingleThreadExecutor { runnable ->
         Thread(runnable, "PocketLink-MediaIndex").apply { isDaemon = true }
     }
@@ -276,6 +277,12 @@ internal class MediaIndexScanner(
     @Volatile private var lastError: String? = null
     @Volatile private var lastCompletedAt: Long = 0L
     @Volatile private var lastScanStartedAt: Long = 0L
+    @Volatile private var scanTrigger: String = "automatic"
+    @Volatile private var lastScanTrigger: String = reportPrefs.getString("last_trigger", "automatic") ?: "automatic"
+    @Volatile private var newFiles = 0
+    @Volatile private var updatedFiles = 0
+    @Volatile private var scannedBytes = 0L
+    private val volumeReports = java.util.concurrent.ConcurrentHashMap<String, org.json.JSONObject>()
     @Volatile private var currentSource: String? = null
     @Volatile private var currentPath: String? = null
     private val skippedItems = mutableListOf<SkippedIndexItem>()
@@ -295,17 +302,17 @@ internal class MediaIndexScanner(
     fun ensureStarted() {
         val now = System.currentTimeMillis()
         if (!started) {
-            requestScan(force = false)
+            requestScan(force = false, trigger = "automatic")
         } else if (!running.get() &&
             (dirty.get() || now - (lastCompletedAt.takeIf { it > 0L } ?: lastScanStartedAt) >= RESCAN_INTERVAL_MS)) {
             // Discover changes made by PocketLink immediately, and external
             // changes periodically. Unchanged rows are not rewritten.
-            requestScan(force = true)
+            requestScan(force = true, trigger = "automatic")
         }
     }
 
     @Synchronized
-    fun requestScan(force: Boolean) {
+    fun requestScan(force: Boolean, trigger: String = "manual") {
         if (running.get()) {
             // Coalesce refreshes and mutations into one follow-up pass.
             if (force) dirty.set(true)
@@ -314,6 +321,11 @@ internal class MediaIndexScanner(
         if (started && !force && state == "complete") return
         started = true
         lastScanStartedAt = System.currentTimeMillis()
+        scanTrigger = trigger
+        newFiles = 0
+        updatedFiles = 0
+        scannedBytes = 0L
+        volumeReports.clear()
         dirty.set(false)
         running.set(true)
         state = "scanning"
@@ -333,9 +345,24 @@ internal class MediaIndexScanner(
                 externalRoots().forEach { (id, root) -> sources += id to root }
                 sources.forEach { (id, root) ->
                     currentSource = id
+                    val skippedBefore = skipped
+                    val startedAt = System.currentTimeMillis()
+                    volumeReports[id] = org.json.JSONObject()
+                        .put("volume", id).put("state", "scanning").put("started_at", startedAt)
                     try {
                         scanSource(id, root)
+                        volumeReports[id] = org.json.JSONObject()
+                            .put("volume", id)
+                            .put("state", if (skipped == skippedBefore) "complete" else "partial")
+                            .put("started_at", startedAt)
+                            .put("completed_at", System.currentTimeMillis())
+                            .put("scanned", scanned)
+                            .put("skipped", skipped - skippedBefore)
                     } catch (error: Exception) {
+                        volumeReports[id] = org.json.JSONObject()
+                            .put("volume", id).put("state", "failed")
+                            .put("started_at", startedAt).put("completed_at", System.currentTimeMillis())
+                            .put("error", error.message ?: "Storage source could not be indexed")
                         skipped++
                         recordSkipped(id, "", error.message ?: "Storage source could not be indexed")
                         lastError = error.message ?: "One storage source could not be indexed"
@@ -347,10 +374,12 @@ internal class MediaIndexScanner(
                 if (lastError == null && skipped > 0) lastError = "Some files or folders could not be indexed."
                 state = if (lastError == null && skipped == 0) "complete" else "partial"
                 lastCompletedAt = System.currentTimeMillis()
+                persistScanReport()
             } catch (error: Exception) {
                 state = "failed"
                 lastError = error.message ?: "Index scan failed"
                 lastCompletedAt = System.currentTimeMillis()
+                persistScanReport()
                 currentSource = null
                 currentPath = null
             } finally {
@@ -409,6 +438,11 @@ internal class MediaIndexScanner(
             val safeSize = size.coerceAtLeast(0L)
             val safeModified = modified.coerceAtLeast(0L)
             val category = if (directory) null else categoryFor(name, mime)
+            scannedBytes += safeSize
+            if (!directory) {
+                if (previousFile == null) newFiles++ 
+                else if (!fileUnchanged) updatedFiles++
+            }
             val previousFile = fileSnapshot[path]
             val previousMedia = mediaSnapshot[path]
             // Some SAF providers always report modified=0. In that case use
@@ -527,6 +561,14 @@ internal class MediaIndexScanner(
             .put("skipped", skipped)
             .put("last_completed_at", lastCompletedAt)
             .put("last_scan_started_at", lastScanStartedAt)
+            .put("scan_trigger", if (state == "scanning") scanTrigger else lastScanTrigger)
+            .put("new_files", newFiles)
+            .put("updated_files", updatedFiles)
+            .put("scanned_bytes", scannedBytes)
+            .put("volumes", org.json.JSONArray().also { items ->
+                volumeReports.values.sortedBy { it.optString("volume") }.forEach(items::put)
+            })
+            .put("scan_history", readScanHistory())
             .put("elapsed_ms", if (state == "scanning") System.currentTimeMillis() - lastScanStartedAt else (lastCompletedAt - lastScanStartedAt).coerceAtLeast(0L))
             .put("current_source", currentSource)
             .put("current_path", currentPath)
@@ -548,6 +590,33 @@ internal class MediaIndexScanner(
             .put("photo_count", counts["photo"] ?: 0)
             .put("video_count", counts["video"] ?: 0)
             .put("music_count", counts["music"] ?: 0)
+    }
+
+    private fun readScanHistory(): org.json.JSONArray = try {
+        org.json.JSONArray(reportPrefs.getString("scan_history", "[]"))
+    } catch (_: Exception) { org.json.JSONArray() }
+
+    private fun persistScanReport() {
+        lastScanTrigger = scanTrigger
+        reportPrefs.edit().putString("last_trigger", lastScanTrigger).apply()
+        val history = readScanHistory()
+        val record = org.json.JSONObject()
+            .put("started_at", lastScanStartedAt)
+            .put("completed_at", lastCompletedAt)
+            .put("duration_ms", (lastCompletedAt - lastScanStartedAt).coerceAtLeast(0L))
+            .put("trigger", lastScanTrigger)
+            .put("state", state)
+            .put("scanned", scanned)
+            .put("skipped", skipped)
+            .put("new_files", newFiles)
+            .put("updated_files", updatedFiles)
+            .put("scanned_bytes", scannedBytes)
+            .put("last_error", lastError)
+        val next = org.json.JSONArray().put(record)
+        for (index in 0 until minOf(history.length(), 19)) {
+            next.put(history.getJSONObject(index))
+        }
+        reportPrefs.edit().putString("scan_history", next.toString()).apply()
     }
 
     fun media(category: String, query: String, limit: Int, offset: Int) =
