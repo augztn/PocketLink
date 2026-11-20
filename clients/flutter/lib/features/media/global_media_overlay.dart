@@ -7,6 +7,7 @@ import 'package:flutter/scheduler.dart' show TickerCanceled;
 import '../../core/navigation/pocketlink_navigation.dart';
 import '../../core/network/server_api.dart';
 import '../../core/settings/app_settings.dart';
+import '../../core/widgets/pocketlink_scaffold.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
 import 'now_playing_screen.dart';
 import 'persistent_audio_player.dart';
@@ -295,13 +296,6 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
               !observer.isModalRouteOnTop &&
               _nowPlayingController.value <= 0.0;
           final onDashboard = observer.isDashboardVisible;
-          final reserveBottomContent = !onDashboard &&
-              !drawerOpen &&
-              !observer.isNowPlayingVisible &&
-              !observer.isModalRouteOnTop;
-          final contentBottomInset = reserveBottomContent
-              ? (_shouldShowMiniPlayer() ? 148.0 : 96.0)
-              : 0.0;
           final showTrackPopup = _trackPopup != null &&
               _trackPopupOffset != null &&
               onDashboard &&
@@ -314,15 +308,11 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
           final reduceMotion = media.disableAnimations;
           final bottomInset = media.padding.bottom;
 
-          // Keep the navigator at full height so the floating mini-player can
-          // sample real page content. Scrollables that consume MediaQuery.padding
-          // receive enough trailing space to move their final items behind it.
-          final navigatorContent = MediaQuery(
-            data: media.copyWith(
-              padding: media.padding.copyWith(
-                bottom: media.padding.bottom + contentBottomInset,
-              ),
-            ),
+          // Keep the navigator at full height. Every route reads the same
+          // measured header and mounted-overlay geometry from this scope.
+          final navigatorContent = PocketLinkScaffold(
+            hasFloatingNavBar: onDashboard,
+            hasActiveMiniPlayer: visible,
             child: widget.child,
           );
 
