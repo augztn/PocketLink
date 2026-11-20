@@ -148,7 +148,6 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
       media.size.height - media.padding.bottom - 54,
     );
     final top = (anchor.bottom + (titleMenu ? 6 : gap)).clamp(minTop, maxTop).toDouble();
-    final availableWidth = mathMax(0, media.size.width - right - 8);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final curved = CurvedAnimation(
       parent: animation,
