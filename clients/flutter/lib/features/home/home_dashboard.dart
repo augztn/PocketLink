@@ -1226,6 +1226,16 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
     }
   }
 
+  String _formatScanTimestamp(int timestamp) {
+    if (timestamp <= 0) return 'Not yet scanned';
+    final date = DateTime.fromMillisecondsSinceEpoch(timestamp).toLocal();
+    final hour = date.hour % 12 == 0 ? 12 : date.hour % 12;
+    final minute = date.minute.toString().padLeft(2, '0');
+    final period = date.hour >= 12 ? 'PM' : 'AM';
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${date.day} ${months[date.month - 1]} ${date.year} · $hour:$minute $period';
+  }
+
   Widget _buildHostMediaScanCard(ThemeData theme, ColorScheme colors) {
     final status = _mediaScanStatus;
     final scanning = status?.isScanning ?? false;
@@ -1266,9 +1276,62 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
         if (status != null) ...[
           const SizedBox(height: 7),
           Text(
-            '${status.mediaCount} media · ${status.fileCount} files',
+            '${status.mediaCount} media · ${status.fileCount} indexed entries',
             style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
           ),
+          const SizedBox(height: 6),
+          Text(
+            scanning
+                ? 'Started ${_formatScanTimestamp(status.lastScanStartedAt)} · ${status.scanTrigger == 'manual' ? 'Manual' : 'Automatic'}'
+                : 'Last scan: ${_formatScanTimestamp(status.lastCompletedAt)} · ${status.scanTrigger == 'manual' ? 'Manual' : 'Automatic'}',
+            style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
+          ),
+          if (!scanning && status.lastCompletedAt > 0)
+            Text(
+              'Duration: ${(status.elapsedMs / 1000).toStringAsFixed(1)}s · ${status.newFiles} new · ${status.updatedFiles} updated',
+              style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
+            ),
+          if (status.scannedBytes > 0)
+            Text(
+              '${_formatBytes(status.scannedBytes)} traversed',
+              style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
+            ),
+          if (status.volumes.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text('STORAGE SOURCES', style: theme.textTheme.labelSmall?.copyWith(
+              color: colors.onSurfaceVariant, fontWeight: FontWeight.w800, letterSpacing: 0.5,
+            )),
+            ...status.volumes.map((volume) => Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Row(children: [
+                Expanded(child: Text(volume.volume == 'internal' ? 'Internal storage' : volume.volume,
+                  style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant))),
+                Text(volume.state == 'complete' ? 'Scanned' : volume.state == 'scanning' ? 'Scanning' : volume.state,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: volume.state == 'complete' ? colors.onSurfaceVariant : const Color(0xFFFBBF24),
+                  )),
+                if (volume.skipped > 0)
+                  Text(' · ${volume.skipped} skipped', style: theme.textTheme.labelSmall?.copyWith(color: const Color(0xFFFBBF24))),
+              ]),
+            )),
+          ],
+          if (status.scanHistory.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text('RECENT SCANS', style: theme.textTheme.labelSmall?.copyWith(
+              color: colors.onSurfaceVariant, fontWeight: FontWeight.w800, letterSpacing: 0.5,
+            )),
+            ...status.scanHistory.take(3).map((entry) => Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Row(children: [
+                Expanded(child: Text(
+                  '${_formatScanTimestamp(entry.completedAt)} · ${entry.trigger == 'manual' ? 'Manual' : 'Automatic'}',
+                  style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
+                )),
+                Text(entry.state == 'complete' ? 'Complete' : entry.state,
+                  style: theme.textTheme.labelSmall?.copyWith(color: entry.state == 'complete' ? colors.onSurfaceVariant : const Color(0xFFFBBF24))),
+              ]),
+            )),
+          ],
           const SizedBox(height: 7),
           Wrap(
             spacing: 8,
