@@ -139,5 +139,27 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('test-token'), findsOneWidget);
     expect(find.text('Device permissions'), findsNothing);
+
+  testWidgets('Host glass dock stays bottom anchored and Home is in the menu',
+      (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: LocalStorageSetupScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    final dock = find.byKey(const ValueKey<String>('host-section-dock'));
+    expect(dock, findsOneWidget);
+    expect(find.byTooltip('Back'), findsOneWidget);
+    expect(find.byTooltip('Home'), findsNothing);
+
+    final dockRect = tester.getRect(dock);
+    final screenHeight =
+        tester.view.physicalSize.height / tester.view.devicePixelRatio;
+    expect(screenHeight - dockRect.bottom, closeTo(14, 1));
+
+    await tester.tap(find.byTooltip('More actions'));
+    await tester.pumpAndSettle();
+    expect(find.text('Return to Client / Home'), findsOneWidget);
+  });
   });
 }
