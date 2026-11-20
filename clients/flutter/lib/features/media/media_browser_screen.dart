@@ -18,6 +18,7 @@ import '../../core/network/server_api.dart';
 import 'media_player_screen.dart';
 import 'widgets/video_tag.dart';
 import 'widgets/music_equalizer.dart';
+import 'widgets/video_metadata_label.dart';
 import 'persistent_audio_player.dart';
 import 'now_playing_overlay_controller.dart';
 import '../transfers/transfer_manager_screen.dart';
@@ -397,8 +398,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
               path: itemPath,
               volume: current.volume,
             ));
-          }
-        }
+          }        }
 
         if (mounted) {
           setState(() => _media = List.unmodifiable(found));
@@ -623,23 +623,10 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   Future<VideoMetadata?> _videoMetadataFor(_MediaFile media) =>
       _videoMetadataCache.putIfAbsent(_favoriteKey(media), () => widget.api.videoMetadata(media.path, volume: media.volume));
 
-  Widget _videoMetadataLabel(_MediaFile media) {
-    return FutureBuilder<VideoMetadata?>(
-      future: _videoMetadataFor(media),
-      builder: (context, snapshot) {
-        final metadata = snapshot.data;
-        if (metadata == null) return const SizedBox.shrink();
-        final parts = <String>[
-          if (metadata.resolution.isNotEmpty) metadata.resolution,
-          if (metadata.durationMs > 0) _formatDuration(metadata.durationMs),
-        ];
-        if (parts.isEmpty) return const SizedBox.shrink();
-        return Text(parts.join(' · '), maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.bodySmall);
-      },
-    );
-  }
+  Widget _videoMetadataLabel(_MediaFile media) => VideoMetadataLabel(
+        future: _videoMetadataFor(media),
+        formatDuration: _formatDuration,
+      );
 
   String _formatDuration(int milliseconds) {
     final totalSeconds = milliseconds ~/ 1000;
@@ -797,8 +784,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                   maxLines: 1, overflow: TextOverflow.ellipsis),
                 _videoMetadataLabel(media),
               ],
-            ),
-            trailing: Row(
+            ),            trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 SmokedGlassPopoverMenu<String>(
@@ -1197,8 +1183,7 @@ tooltip: 'Choose video view',
   Future<Uint8List?> _fetchTrackArtwork(_MediaFile media) async {
     final folder = media.path.contains('/')
         ? media.path.substring(0, media.path.lastIndexOf('/') + 1)
-        : '';
-    try {
+        : '';    try {
       final listing = media.volume == null
           ? await widget.api.listDirectory(folder)
           : await widget.api.listStorageDirectory(media.volume!, folder);
@@ -1597,8 +1582,7 @@ tooltip: 'Choose video view',
                             ),
                     ),
             ),
-            if (_loading)
-              Positioned(
+            if (_loading)              Positioned(
                 top: top + 60,
                 left: 16,
                 right: 16,
