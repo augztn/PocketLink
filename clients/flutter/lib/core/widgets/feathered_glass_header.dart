@@ -6,7 +6,12 @@ import '../settings/app_settings.dart';
 
 /// Shared top-edge blur and legibility surface for edge-to-edge screens.
 class FeatheredGlassHeaderBackground extends StatelessWidget {
-  const FeatheredGlassHeaderBackground({super.key});
+  const FeatheredGlassHeaderBackground({
+    this.darkTint,
+    super.key,
+  });
+
+  final List<Color>? darkTint;
 
   @override
   Widget build(BuildContext context) {
@@ -25,11 +30,11 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
         final statusBlurHeight = media.padding.top + 12;
 
         final tint = isDark
-            ? const [
+            ? (darkTint ?? const [
                 Color(0xB8000000),
                 Color(0x40000000),
                 Colors.transparent,
-              ]
+              ])
             : const [
                 Color(0xCCFFFFFF),
                 Color(0x55FFFFFF),
