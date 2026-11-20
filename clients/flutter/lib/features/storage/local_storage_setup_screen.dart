@@ -1281,6 +1281,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
 
     final activeMiniPlayer =
         LayoutInsetsScope.maybeOf(context)?.hasActiveMiniPlayer ?? false;
+    final bottomSystemInset = MediaQuery.paddingOf(context).bottom;
     return PocketLinkScaffold(
       hasFloatingNavBar: true,
       hasActiveMiniPlayer: activeMiniPlayer,
@@ -1362,43 +1363,41 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
         ],
       ),
       ),
-      bottomNavigationBar: Padding(
-        padding: EdgeInsets.fromLTRB(
-          20,
-          0,
-          20,
-          MediaQuery.paddingOf(context).bottom + 12,
-        ),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 380),
-            child: SizedBox(
-              key: const ValueKey<String>('host-section-dock'),
-              height: 64,
-              width: double.infinity,
-              child: SmokedGlassSurface(
-                radius: BorderRadius.circular(34),
-                child: Row(
-                  children: [
-                    hostDestination(
-                      index: 0,
-                      icon: Icons.dashboard_outlined,
-                      selectedIcon: Icons.dashboard_rounded,
-                      label: 'Overview',
-                    ),
-                    hostDestination(
-                      index: 1,
-                      icon: Icons.devices_outlined,
-                      selectedIcon: Icons.devices_rounded,
-                      label: 'Device',
-                    ),
-                    hostDestination(
-                      index: 2,
-                      icon: Icons.lock_outline_rounded,
-                      selectedIcon: Icons.lock_rounded,
-                      label: 'Security',
-                    ),
-                  ],
+      bottomNavigationBar: SizedBox(
+        height: 64 + bottomSystemInset + 12,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(20, 0, 20, bottomSystemInset + 12),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 380),
+              child: SizedBox(
+                key: const ValueKey<String>('host-section-dock'),
+                height: 64,
+                width: double.infinity,
+                child: SmokedGlassSurface(
+                  radius: BorderRadius.circular(34),
+                  child: Row(
+                    children: [
+                      hostDestination(
+                        index: 0,
+                        icon: Icons.dashboard_outlined,
+                        selectedIcon: Icons.dashboard_rounded,
+                        label: 'Overview',
+                      ),
+                      hostDestination(
+                        index: 1,
+                        icon: Icons.devices_outlined,
+                        selectedIcon: Icons.devices_rounded,
+                        label: 'Device',
+                      ),
+                      hostDestination(
+                        index: 2,
+                        icon: Icons.lock_outline_rounded,
+                        selectedIcon: Icons.lock_rounded,
+                        label: 'Security',
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
