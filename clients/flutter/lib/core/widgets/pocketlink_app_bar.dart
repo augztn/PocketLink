@@ -27,6 +27,8 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.actions = const [],
     this.onHome,
     this.leading,
+    this.leadingWidth,
+    this.titleSpacing,
     this.centerTitle,
     this.backgroundColor,
     this.foregroundColor,
@@ -42,6 +44,8 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
   final List<PocketLinkAppBarAction> actions;
   final VoidCallback? onHome;
   final Widget? leading;
+  final double? leadingWidth;
+  final double? titleSpacing;
   final bool? centerTitle;
   final Color? backgroundColor;
   final Color? foregroundColor;
@@ -81,8 +85,12 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return AppBar(
-      title: title,
+      title: feathered
+          ? Transform.translate(offset: const Offset(0, 6), child: title)
+          : title,
       leading: leading,
+      leadingWidth: leadingWidth,
+      titleSpacing: titleSpacing,
       automaticallyImplyLeading: automaticallyImplyLeading,
       centerTitle: centerTitle,
       backgroundColor: feathered ? Colors.transparent : (backgroundColor ?? theme.scaffoldBackgroundColor),
@@ -97,6 +105,7 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
         fontWeight: FontWeight.w800,
         letterSpacing: -0.25,
       ),
+      actionsPadding: feathered ? const EdgeInsets.only(right: 16) : null,
       actions: [
       ...actionsBeforeHome,
       if (showHome)
