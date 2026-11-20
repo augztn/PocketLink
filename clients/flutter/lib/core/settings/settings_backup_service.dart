@@ -34,13 +34,13 @@ class SettingsBackupService {
   };
 
   static const _integerKeys = <String>{
+    'settings_download_concurrency',
+    'settings_video_seek_seconds',
   };
 
   static const _numberKeys = <String>{
     'settings_progressive_blur_strength',
-    'settings_download_concurrency',
     'settings_video_controls_timeout',
-    'settings_video_seek_seconds',
     'settings_video_default_speed',
     'settings_video_subtitle_font_size',
   };
@@ -147,14 +147,19 @@ class SettingsBackupService {
           switch (value) {
             case bool v:
               await preferences.setBool(entry.key, v);
+              break;
             case int v:
               await preferences.setInt(entry.key, v);
+              break;
             case double v:
               await preferences.setDouble(entry.key, v);
+              break;
             case String v:
               await preferences.setString(entry.key, v);
+              break;
             case List<String> v:
               await preferences.setStringList(entry.key, v);
+              break;
           }
         }
       }
