@@ -2024,8 +2024,9 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('PocketLink', style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w900,
-              letterSpacing: -0.6,
+              fontSize: 26,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.5,
             )),
             Text('Your private space', style: theme.textTheme.labelSmall?.copyWith(
               color: colors.onSurfaceVariant,
