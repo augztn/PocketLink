@@ -208,6 +208,7 @@ class PocketLinkHomeDrawer extends StatelessWidget {
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     minTileHeight: 42,
+                    minVerticalPadding: 0,
                     leading: _drawerIcon(Icons.folder_open_rounded),
                     title: const Text('Files'),
                     onTap: () => _closeThen(context, onOpenFiles),
@@ -216,6 +217,7 @@ class PocketLinkHomeDrawer extends StatelessWidget {
                     contentPadding: EdgeInsets.zero,
                     leading: _drawerIcon(Icons.add_to_drive_rounded),
                     minTileHeight: 42,
+                    minVerticalPadding: 0,
                     title: const Text('Connect a drive'),
                     onTap: () => _closeThen(context, onConnectDrive),
                   ),
@@ -225,6 +227,7 @@ class PocketLinkHomeDrawer extends StatelessWidget {
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     minTileHeight: 42,
+                    minVerticalPadding: 0,
                     leading: _drawerIcon(Icons.swap_vert_rounded),
                     title: const Text('Transfers'),
                     onTap: () => _closeThen(context, onOpenTransfers),
@@ -236,6 +239,7 @@ class PocketLinkHomeDrawer extends StatelessWidget {
                       return ListTile(
                         contentPadding: EdgeInsets.zero,
                         minTileHeight: 42,
+                    minVerticalPadding: 0,
                         leading: _drawerIcon(Icons.download_rounded),
                         title: Row(
                           children: [
@@ -265,6 +269,7 @@ class PocketLinkHomeDrawer extends StatelessWidget {
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     minTileHeight: 42,
+                    minVerticalPadding: 0,
                     leading: _drawerIcon(Icons.settings_rounded),
                     title: const Text('Settings'),
                     onTap: () => _closeThen(context, onOpenSettings),
@@ -273,6 +278,7 @@ class PocketLinkHomeDrawer extends StatelessWidget {
                     ListTile(
                       contentPadding: EdgeInsets.zero,
                       minTileHeight: 42,
+                    minVerticalPadding: 0,
                       leading: _drawerIcon(Icons.switch_account_rounded),
                       title: const Text('Switch server'),
                       onTap: () => _closeThen(context, onSwitchServer!),
