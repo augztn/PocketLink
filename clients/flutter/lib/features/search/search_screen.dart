@@ -124,6 +124,13 @@ class _SearchScreenState extends State<SearchScreen> {
     }
   }
 
+  String _volumeLabel(String id) {
+    for (final volume in _volumes) {
+      if (volume.id == id) return volume.name;
+    }
+    return 'USB / OTG';
+  }
+
   Future<void> _loadVolumes() async {
     try {
       final values = await widget.api.listStorageVolumes();
@@ -876,7 +883,7 @@ class _SearchScreenState extends State<SearchScreen> {
                       const SizedBox(width: 6),
                       Expanded(child: Text(
                         _scope == null ? 'Drive: All Drives' : _scope == 'internal'
-                            ? 'Drive: Internal' : 'Drive: ${_volumes.where((v) => v.id == _scope).firstOrNull?.name ?? 'USB / OTG'}',
+                            ? 'Drive: Internal' : 'Drive: ${_volumeLabel(_scope!)}',
                         maxLines: 1, overflow: TextOverflow.ellipsis,
                         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
                       )),
