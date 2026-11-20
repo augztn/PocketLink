@@ -62,6 +62,39 @@ void main() {
     expect(find.byType(BackdropFilter), findsNWidgets(2));
   });
 
+  testWidgets('custom dark tint is retained when progressive blur is disabled', (tester) async {
+    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(false));
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: FeatheredGlassHeaderBackground(
+            darkTint: [
+              Color(0xD9000000),
+              Color(0x66000000),
+              Colors.transparent,
+            ],
+          ),
+        ),
+      ),
+    );
+
+    final gradients = tester
+        .widgetList<DecoratedBox>(find.byType(DecoratedBox))
+        .map((box) => box.decoration)
+        .whereType<BoxDecoration>()
+        .map((decoration) => decoration.gradient)
+        .whereType<LinearGradient>();
+    expect(
+      gradients.any((gradient) => gradient.colors == const [
+        Color(0xD9000000),
+        Color(0x66000000),
+        Colors.transparent,
+      ]),
+      isTrue,
+    );
+  });
+
   testWidgets('zero blur strength removes backdrop filters while enabled', (tester) async {
     await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(true));
     await tester.runAsync(() => AppSettings.instance.setProgressiveBlurStrength(0));
