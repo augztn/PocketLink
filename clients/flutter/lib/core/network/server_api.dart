@@ -274,10 +274,17 @@ class MediaScanVolumeStatus {
 }
 
 class MediaScanHistoryEntry {
-  const MediaScanHistoryEntry({required this.startedAt, required this.completedAt, required this.durationMs, required this.trigger, required this.state, required this.scanned, required this.skipped, required this.newFiles, required this.updatedFiles, required this.scannedBytes, this.lastError});
+  const MediaScanHistoryEntry({
+    required this.startedAt, required this.completedAt, required this.durationMs,
+    required this.trigger, required this.state, required this.scanned, required this.skipped,
+    required this.newFiles, required this.updatedFiles, required this.scannedBytes,
+    this.runId, this.lastError, this.volumes = const [], this.skippedItems = const [],
+  });
   final int startedAt, completedAt, durationMs, scanned, skipped, newFiles, updatedFiles, scannedBytes;
   final String trigger, state;
-  final String? lastError;
+  final String? runId, lastError;
+  final List<MediaScanVolumeStatus> volumes;
+  final List<SkippedMediaIndexItem> skippedItems;
   factory MediaScanHistoryEntry.fromJson(Map<String, dynamic> json) => MediaScanHistoryEntry(
     startedAt: (json['started_at'] as num?)?.toInt() ?? 0,
     completedAt: (json['completed_at'] as num?)?.toInt() ?? 0,
@@ -289,7 +296,14 @@ class MediaScanHistoryEntry {
     newFiles: (json['new_files'] as num?)?.toInt() ?? 0,
     updatedFiles: (json['updated_files'] as num?)?.toInt() ?? 0,
     scannedBytes: (json['scanned_bytes'] as num?)?.toInt() ?? 0,
+    runId: json['run_id']?.toString(),
     lastError: json['last_error']?.toString(),
+    volumes: (json['volumes'] as List<dynamic>? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(MediaScanVolumeStatus.fromJson).toList(growable: false),
+    skippedItems: (json['skipped_items'] as List<dynamic>? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(SkippedMediaIndexItem.fromJson).toList(growable: false),
   );
 }
 
