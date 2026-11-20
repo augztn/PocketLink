@@ -17,9 +17,7 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
         final isDark = Theme.of(context).brightness == Brightness.dark;
         final settings = AppSettings.instance;
         final useProgressiveBlur =
-            settings.progressiveBlurEnabled &&
-            !settings.reduceDynamicBlur &&
-            !media.disableAnimations;
+            settings.progressiveBlurEnabled && !media.disableAnimations;
         final headerHeight = media.padding.top + kToolbarHeight + 16;
         final statusBlurHeight = media.padding.top + 12;
 
@@ -183,7 +181,6 @@ class GlassCircleButton extends StatelessWidget {
       animation: settings,
       builder: (context, _) {
         final useBlur = settings.progressiveBlurEnabled &&
-            !settings.reduceDynamicBlur &&
             !MediaQuery.of(context).disableAnimations;
         return RepaintBoundary(
           child: ClipOval(
