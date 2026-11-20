@@ -188,20 +188,24 @@ class SettingsBackupService {
 
     final preferences = await SharedPreferences.getInstance();
     final previous = <String, Object?>{
-      for (final key in incoming.keys) key: preferences.get(key),
+      for (final key in _allowedKeys) key: preferences.get(key),
     };
 
     try {
-      for (final entry in incoming.entries) {
-        final value = entry.value;
+      for (final key in _allowedKeys) {
+        final value = incoming[key];
+        if (value == null) {
+          await preferences.remove(key);
+          continue;
+        }
         final success = switch (value) {
-          bool v => await preferences.setBool(entry.key, v),
-          int v => await preferences.setInt(entry.key, v),
-          double v => await preferences.setDouble(entry.key, v),
-          String v => await preferences.setString(entry.key, v),
+          bool v => await preferences.setBool(key, v),
+          int v => await preferences.setInt(key, v),
+          double v => await preferences.setDouble(key, v),
+          String v => await preferences.setString(key, v),
           _ => false,
         };
-        if (!success) throw StateError('Could not restore ${entry.key}.');
+        if (!success) throw StateError('Could not restore $key.');
       }
     } catch (_) {
       for (final entry in previous.entries) {
