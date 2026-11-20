@@ -138,8 +138,14 @@ class MediaIndexScannerTest {
         val deadline = SystemClock.elapsedRealtime() + 15_000L
         while (SystemClock.elapsedRealtime() < deadline) {
             val status = scanner.status()
+            val scanRunId = status.optString("scan_run_id")
+            val history = status.optJSONArray("scan_history")
+            val reportPersisted = history != null &&
+                history.length() > 0 &&
+                history.optJSONObject(0)?.optString("run_id") == scanRunId
             if (status.optString("state") != "scanning" &&
-                status.optLong("last_scan_started_at") > afterStartedAt
+                status.optLong("last_scan_started_at") > afterStartedAt &&
+                reportPersisted
             ) {
                 return status
             }
