@@ -819,7 +819,7 @@ class _PhotoViewerState extends State<_PhotoViewer>{
           ));},
         ),
       ),
-      bottomNavigationBar:controls?SafeArea(child:Padding(padding:const EdgeInsets.all(12),child:Text(
+      bottomNavigationBar:controls?SafeArea(bottom:false,child:Padding(padding:EdgeInsets.fromLTRB(12,12,12,LayoutInsetsScope.of(context).bottomClearance),child:Text(
         '${p.album} · ${p.date.day}/${p.date.month}/${p.date.year} · ${p.file.size} bytes',
         textAlign:TextAlign.center,style:const TextStyle(color:Colors.white70,fontSize:12),
       ))):null,
