@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/pocketlink_file_icon.dart';
 import '../../core/widgets/smoked_glass_popover_menu.dart';
+import '../../core/widgets/liquid_glass_pill.dart';
 
 import '../../core/network/server_api.dart';
 import '../../core/logging/app_logger.dart';
@@ -839,32 +840,53 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
               ),
             const SizedBox(height: 8),
 
-            SizedBox(
-              height: 40,
-              child: ShaderMask(
-                blendMode: BlendMode.dstIn,
-                shaderCallback: (bounds) => const LinearGradient(
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                  colors: [Colors.white, Colors.white, Colors.transparent],
-                  stops: [0, 0.82, 1],
-                ).createShader(bounds),
-                child: ClipRect(
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    children: [
-                      for (final category in const ['All', 'Images', 'Videos', 'Music', 'Documents'])
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: ChoiceChip(
-                            label: Text(category),
-                            selected: _category == category,
-                            onSelected: (_) { setState(() => _category = category); _saveState(); },
-                            showCheckmark: false,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: SmokedGlassPopoverMenu<String>(
+                  tooltip: 'Filter file types',
+                  items: [
+                    for (final category in const ['All', 'Images', 'Videos', 'Music', 'Documents'])
+                      SmokedGlassPopoverMenuItem(
+                        value: category,
+                        label: category,
+                        icon: switch (category) {
+                          'Images' => Icons.image_rounded,
+                          'Videos' => Icons.video_library_rounded,
+                          'Music' => Icons.music_note_rounded,
+                          'Documents' => Icons.description_rounded,
+                          _ => Icons.folder_rounded,
+                        },
+                        trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Text(
+                            '${allItems.where((item) => item.isDirectory || category == 'All' || (_categoryExtensions[category]?.contains(_extension(item)) ?? false)).length}',
+                            style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3)),
                           ),
-                        ),
-                    ],
+                          if (_category == category)
+                            const Padding(
+                              padding: EdgeInsets.only(left: 8),
+                              child: Icon(Icons.check_rounded, size: 18),
+                            ),
+                        ]),
+                      ),
+                  ],
+                  onSelected: (category) {
+                    setState(() => _category = category);
+                    _saveState();
+                  },
+                  child: SmokedGlassSurface(
+                    radius: BorderRadius.circular(18),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        const Icon(Icons.filter_list_rounded, size: 17),
+                        const SizedBox(width: 7),
+                        Text('Filter: $_category', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+                      ]),
+                    ),
                   ),
                 ),
               ),
