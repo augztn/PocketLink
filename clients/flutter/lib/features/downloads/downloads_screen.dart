@@ -125,9 +125,8 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
             feathered: true,
             showHome: false,
             automaticallyImplyLeading: false,
-            title: SmokedGlassPopoverMenu<_DownloadFilter>(
-              titleMenu: true,
-              tooltip: 'Filter downloads',
+            title: TitleDropdownPopover<_DownloadFilter>(
+tooltip: 'Filter downloads',
               items: [
                 for (final filter in _DownloadFilter.values)
                   SmokedGlassPopoverMenuItem(
