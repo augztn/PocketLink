@@ -15,6 +15,8 @@ class AppSettings extends ChangeNotifier {
   static const _libraryKey = 'settings_home_library';
   static const _recentKey = 'settings_home_recent';
   static const _liquidGlassKey = 'settings_use_liquid_glass';
+  static const _progressiveBlurKey = 'settings_progressive_blur';
+  static const _reduceDynamicBlurKey = 'settings_reduce_dynamic_blur';
   static const _navigationOrderKey = 'settings_navigation_order';
   static const _navigationVisibilityKey = 'settings_navigation_visibility';
   static const _homeSearchKey = 'settings_home_search';
@@ -64,6 +66,8 @@ class AppSettings extends ChangeNotifier {
   bool _showActiveTransfers = true;
   List<String> _homeSectionOrder = List.of(homeSectionDefaults);
   bool _useLiquidGlass = false;
+  bool _progressiveBlurEnabled = true;
+  bool _reduceDynamicBlur = false;
   bool _loaded = false;
   List<String> _navigationOrder = List.of(navigationDefaults);
   Set<String> _visibleNavigationItems = Set.of(navigationDefaults);
@@ -104,6 +108,8 @@ class AppSettings extends ChangeNotifier {
   bool get showActiveTransfers => _showActiveTransfers;
   List<String> get homeSectionOrder => List.unmodifiable(_homeSectionOrder);
   bool get useLiquidGlass => _useLiquidGlass;
+  bool get progressiveBlurEnabled => _progressiveBlurEnabled;
+  bool get reduceDynamicBlur => _reduceDynamicBlur;
   List<String> get navigationOrder => List.unmodifiable(_navigationOrder);
   Set<String> get visibleNavigationItems => Set.unmodifiable(_visibleNavigationItems);
   bool get navigationLayoutIsDefault => _navigationOrder.join(',') == navigationDefaults.join(',') && _visibleNavigationItems.length == navigationDefaults.length;
@@ -137,6 +143,8 @@ class AppSettings extends ChangeNotifier {
     try {
       final preferences = await SharedPreferences.getInstance();
       _useLiquidGlass = preferences.getBool(_liquidGlassKey) ?? false;
+      _progressiveBlurEnabled = preferences.getBool(_progressiveBlurKey) ?? true;
+      _reduceDynamicBlur = preferences.getBool(_reduceDynamicBlurKey) ?? false;
       _showMiniPlayer = preferences.getBool(_nowPlayingMiniPlayerKey) ?? true;
       _enableNowPlayingGestures = preferences.getBool(_nowPlayingGesturesKey) ?? true;
       _showStatsForNerds = preferences.getBool(_nowPlayingStatsForNerdsKey) ?? true;
@@ -560,6 +568,21 @@ class AppSettings extends ChangeNotifier {
     notifyListeners();
     final preferences = await SharedPreferences.getInstance();
     await preferences.setBool(_liquidGlassKey, value);
+  }
+
+  Future<void> setProgressiveBlurOptions({
+    bool? enabled,
+    bool? reduceDynamicBlur,
+  }) async {
+    if (enabled != null) _progressiveBlurEnabled = enabled;
+    if (reduceDynamicBlur != null) _reduceDynamicBlur = reduceDynamicBlur;
+    notifyListeners();
+    final preferences = await SharedPreferences.getInstance();
+    await Future.wait([
+      if (enabled != null) preferences.setBool(_progressiveBlurKey, enabled),
+      if (reduceDynamicBlur != null)
+        preferences.setBool(_reduceDynamicBlurKey, reduceDynamicBlur),
+    ]);
   }
 
   Future<void> setHomeSectionOrder(List<String> order) async {
