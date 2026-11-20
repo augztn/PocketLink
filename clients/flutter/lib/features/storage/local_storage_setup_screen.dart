@@ -11,6 +11,7 @@ import 'widgets/storage_volume_tile.dart';
 import 'widgets/host_service_status_row.dart';
 import 'widgets/host_section_destination.dart';
 import 'widgets/host_media_scan_card.dart';
+import 'widgets/host_server_password_card.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
 import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
@@ -598,74 +599,22 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
       ),
     ];
     final securitySections = <Widget>[
-          const SizedBox(height: 22),
-          const _SetupSectionTitle(title: 'Server security', subtitle: 'Set the password used by remote clients to connect.'),
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: colors.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.35)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.lock_outline_rounded, color: colors.primary),
-                    const SizedBox(width: 10),
-                    Expanded(child: Text('Native server password', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800))),
-                    if (_serverPasswordConfigured)
-                      const PocketLinkStatusPill(label: 'Configured', granted: true),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  _serverPasswordConfigured
-                      ? 'A salted password verifier is saved on this device.'
-                      : 'Choose a password with at least 12 characters.',
-                  style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant, height: 1.4),
-                ),
-                const SizedBox(height: 14),
-                TextField(
-                  controller: _serverPasswordController,
-                  obscureText: _obscureServerPassword,
-                  enabled: !_busy,
-                  decoration: InputDecoration(
-                    labelText: 'New server password',
-                    helperText: 'Never uploaded or stored in plaintext.',
-                    prefixIcon: const Icon(Icons.password_rounded),
-                    suffixIcon: IconButton(
-                      tooltip: _obscureServerPassword ? 'Show password' : 'Hide password',
-                      onPressed: _busy
-                          ? null
-                          : () => setState(() =>
-                              _obscureServerPassword = !_obscureServerPassword),
-                      icon: Icon(
-                        _obscureServerPassword
-                            ? Icons.visibility_outlined
-                            : Icons.visibility_off_outlined,
-                      ),
-                    ),
-                    filled: true,
-                    fillColor: colors.surface,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: _busy ? null : _saveServerPassword,
-                    icon: const Icon(Icons.shield_outlined, size: 18),
-                    label: Text(_serverPasswordConfigured ? 'Update password' : 'Save password'),
-                    style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
-                  ),
-                ),
-              ],
-            ),
-          ),
+      const SizedBox(height: 22),
+      const _SetupSectionTitle(
+        title: 'Server security',
+        subtitle: 'Set the password used by remote clients to connect.',
+      ),
+      const SizedBox(height: 10),
+      HostServerPasswordCard(
+        controller: _serverPasswordController,
+        configured: _serverPasswordConfigured,
+        busy: _busy,
+        obscurePassword: _obscureServerPassword,
+        onToggleVisibility: () => setState(
+          () => _obscureServerPassword = !_obscureServerPassword,
+        ),
+        onSave: _saveServerPassword,
+      ),
     ];
     final permissionSections = <Widget>[
           const SizedBox(height: 24),
