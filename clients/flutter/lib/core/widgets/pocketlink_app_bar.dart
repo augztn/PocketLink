@@ -34,7 +34,7 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.showHome = true,
     this.automaticallyImplyLeading = true,
     this.actionsBeforeHome = const [],
-    this.feathered = false,
+    this.feathered = true,
     super.key,
   });
 
