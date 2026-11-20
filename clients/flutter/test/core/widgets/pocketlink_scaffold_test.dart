@@ -61,6 +61,32 @@ void main() {
     expect(insets.bottomClearance, 46);
   });
 
+  testWidgets('reserves mini-player space without a floating dock', (tester) async {
+    late LayoutInsetsScope insets;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(
+            padding: EdgeInsets.only(top: 24, bottom: 34),
+          ),
+          child: PocketLinkScaffold(
+            hasFloatingNavBar: false,
+            hasActiveMiniPlayer: true,
+            child: Builder(
+              builder: (context) {
+                insets = LayoutInsetsScope.of(context);
+                return const SizedBox.shrink();
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(insets.bottomClearance, 120);
+  });
+
   testWidgets('updates top clearance from the rendered header measurement', (tester) async {
     late LayoutInsetsScope insets;
 
