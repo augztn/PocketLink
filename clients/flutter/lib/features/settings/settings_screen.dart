@@ -328,9 +328,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return AnimatedBuilder(
       animation: _settings,
       builder: (context, _) => Scaffold(
+        extendBodyBehindAppBar: true,
         appBar: PocketLinkAppBar(title: Text(widget.category ?? 'Settings')),
         body: ListView(
-          padding: EdgeInsets.fromLTRB(16, 8, 16, 32 + MediaQuery.paddingOf(context).bottom),
+          padding: EdgeInsets.fromLTRB(
+            16,
+            MediaQuery.paddingOf(context).top + kToolbarHeight + 8,
+            16,
+            32 + MediaQuery.paddingOf(context).bottom,
+          ),
           children: widget.category == null
               ? [
                   _settingsGroupTitle('Personalization'),
