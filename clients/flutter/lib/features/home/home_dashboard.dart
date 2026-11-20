@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 
 import 'quick_actions_store.dart';
 import 'widgets/host_device_metrics_card.dart';
+import 'widgets/server_telemetry_card.dart';
 import 'network_route_classifier.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/storage/home_activity_store.dart';
@@ -470,209 +471,22 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
     return request;
   }
 
-  Widget _buildServerTelemetry(BuildContext context, ThemeData theme, ColorScheme colors) {
-    final transfers = TransferManager.instance;
-    final base = Uri.tryParse(widget.api.baseUrl);
-    final host = base == null ? widget.api.baseUrl : '${base.host}:${base.hasPort ? base.port : (base.scheme == 'https' ? 443 : 80)}';
-    final displayName = (widget.serverName ?? '').trim().isNotEmpty ? widget.serverName!.trim() : host;
-    final route = _networkRouteLabel(base);
-    final online = _serverOnline == true;
-    final muted = colors.onSurfaceVariant;
-    final statusColor = _checking
-        ? (theme.brightness == Brightness.dark ? const Color(0xFFFBBF24) : const Color(0xFFB45309))
-        : online
-            ? (theme.brightness == Brightness.dark ? const Color(0xFF4ADE80) : const Color(0xFF059669))
-            : (theme.brightness == Brightness.dark ? const Color(0xFFF59E0B) : const Color(0xFFB45309));
-    final latencyMs = _latency?.inMilliseconds;
-    final latencyColor = latencyMs == null
-        ? muted
-        : latencyMs <= 150
-            ? (theme.brightness == Brightness.dark ? const Color(0xFF4ADE80) : const Color(0xFF15803D))
-            : latencyMs <= 300
-                ? (theme.brightness == Brightness.dark ? const Color(0xFFFBBF24) : const Color(0xFFB45309))
-                : latencyMs <= 600
-                    ? (theme.brightness == Brightness.dark ? const Color(0xFFFB923C) : const Color(0xFFC2410C))
-                    : (theme.brightness == Brightness.dark ? const Color(0xFFF87171) : const Color(0xFFB91C1C));
-    final cardColor = colors.surfaceContainerLow;
-    final foreground = colors.onSurface;
-    final mountedVolumes = _volumes.where((volume) => volume.available).toList(growable: false);
-    return AnimatedBuilder(
-      animation: transfers,
-      builder: (context, _) {
-        final activeTransfers = transfers.tasks.where((task) => task.status == TransferStatus.running).length;
-        return Container(
-          padding: const EdgeInsets.all(15),
-          decoration: BoxDecoration(
-            color: theme.brightness == Brightness.dark ? null : cardColor,
-            gradient: theme.brightness == Brightness.dark
-                ? const LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Color(0xFF1B1D24), Color(0xFF131419)],
-                  )
-                : null,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: online
-                  ? theme.brightness == Brightness.dark
-                      ? Colors.white.withValues(alpha: 0.07)
-                      : colors.outlineVariant.withValues(alpha: 0.62)
-                  : statusColor.withValues(alpha: 0.42),
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              InkWell(
-                borderRadius: BorderRadius.circular(14),
-                onTap: _showServerSwitcherSheet,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2),
-                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Icon(Icons.dns_rounded, color: colors.onSurfaceVariant, size: 19),
-                    ),
-                    const SizedBox(width: 9),
-                    Expanded(
-                      child: Text(
-                        displayName,
-                        softWrap: true,
-                        style: theme.textTheme.titleSmall?.copyWith(color: foreground, fontWeight: FontWeight.w800, height: 1.2),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                      decoration: BoxDecoration(color: colors.surfaceContainerHighest, borderRadius: BorderRadius.circular(20)),
-                      child: Text(route, style: theme.textTheme.labelSmall?.copyWith(color: foreground, fontWeight: FontWeight.w700)),
-                    ),
-                    const SizedBox(width: 2),
-                    Icon(Icons.expand_more_rounded, color: colors.onSurfaceVariant, size: 19),
-                  ]),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Row(children: [
-                Container(width: 7, height: 7, decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle)),
-                const SizedBox(width: 7),
-                Expanded(
-                  child: Text.rich(
-                    _checking
-                        ? const TextSpan(text: 'Checking server')
-                        : !online
-                            ? const TextSpan(text: 'Offline')
-                            : TextSpan(
-                                children: [
-                                  const TextSpan(text: 'Online'),
-                                  if (latencyMs != null)
-                                    TextSpan(
-                                      text: ' • $latencyMs ms',
-                                      style: TextStyle(color: latencyColor),
-                                    ),
-                                ],
-                              ),
-                    maxLines: 1,
-                    overflow: TextOverflow.visible,
-                    style: theme.textTheme.labelMedium?.copyWith(color: statusColor, fontWeight: FontWeight.w700),
-                  ),
-                ),
-                LiquidGlassPill(
-                  radius: BorderRadius.circular(13),
-                  child: IconButton(
-                    visualDensity: VisualDensity.compact,
-                    tooltip: 'Quick upload',
-                    onPressed: online ? _quickUpload : null,
-                    icon: Icon(Icons.arrow_upward_rounded, color: colors.onSurface, size: 18),
-                  ),
-                ),
-              ]),
-              if (_lastCheckedAt != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  'Last checked ${_lastCheckedAt!.hour.toString().padLeft(2, '0')}:${_lastCheckedAt!.minute.toString().padLeft(2, '0')}',
-                  style: theme.textTheme.labelSmall?.copyWith(color: muted),
-                ),
-              ],
-              if (!online && !_checking) ...[
-                const SizedBox(height: 8),
-                Row(children: [
-                  Expanded(child: Text('Server is unreachable. Check the network or server service.',
-                    style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant))),
-                  TextButton(onPressed: () => _refreshStatus(forceRefresh: true), child: const Text('Reconnect')),
-                  TextButton(onPressed: widget.onReturnToConnection, child: const Text('Switch')),
-                ]),
-              ],
-              const SizedBox(height: 13),
-              Row(children: [
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('STORAGE', style: theme.textTheme.labelSmall?.copyWith(color: muted, letterSpacing: 0.7)),
-                  const SizedBox(height: 5),
-                  Text(
-                    '${mountedVolumes.length + 1} volume${mountedVolumes.isEmpty ? '' : 's'} mounted',
-                    maxLines: 1,
-                    overflow: TextOverflow.visible,
-                    style: theme.textTheme.labelMedium?.copyWith(color: foreground, fontWeight: FontWeight.w600),
-                  ),
-                ])),
-                const SizedBox(width: 10),
-                Expanded(child: InkWell(
-                  borderRadius: BorderRadius.circular(10),
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen())),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('TRANSFERS', style: theme.textTheme.labelSmall?.copyWith(color: muted, letterSpacing: 0.7)),
-                    const SizedBox(height: 5),
-                    Text('$activeTransfers active', style: theme.textTheme.labelMedium?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
-                  ]),
-                )),
-                const SizedBox(width: 10),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('LATENCY', style: theme.textTheme.labelSmall?.copyWith(color: muted, letterSpacing: 0.7)),
-                  const SizedBox(height: 5),
-                  Text(_checking ? 'Checking' : (latencyMs == null ? '—' : '$latencyMs ms'),
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: latencyMs == null ? muted : latencyColor,
-                      fontWeight: FontWeight.w700,
-                    )),
-                ])),
-              ]),
-              const SizedBox(height: 11),
-              InkWell(
-                borderRadius: BorderRadius.circular(8),
-                onTap: widget.onOpenFiles,
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Row(children: [
-                    Text('MOUNTED PARTITIONS', style: theme.textTheme.labelSmall?.copyWith(color: muted, letterSpacing: 0.65)),
-                    const Spacer(),
-                    Text('${mountedVolumes.length + 1} mounted', style: theme.textTheme.labelSmall?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
-                    const SizedBox(width: 3),
-                    Icon(Icons.chevron_right_rounded, color: colors.onSurfaceVariant, size: 17),
-                  ]),
-                  const SizedBox(height: 7),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(5),
-                    child: SizedBox(height: 5, child: Row(children: [
-                      Expanded(child: Container(color: const Color(0xFF60A5FA))),
-                      for (var i = 0; i < mountedVolumes.length; i++) ...[
-                        const SizedBox(width: 2),
-                        Expanded(child: Container(color: const Color(0xFF2DD4BF))),
-                      ],
-                    ])),
-                  ),
-                  const SizedBox(height: 5),
-                  Text('Internal storage${mountedVolumes.isEmpty ? '' : ' · ${mountedVolumes.map((volume) => volume.name).join(' · ')}'}',
-                    maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.labelSmall?.copyWith(color: muted)),
-                  if (_volumeError != null) ...[
-                    const SizedBox(height: 5),
-                    Text(_volumeError!, style: theme.textTheme.labelSmall?.copyWith(color: const Color(0xFFFBBF24))),
-                  ],
-                ]),
-              ),
-            ],
-          ),
-        );
-      },
+  Widget _buildServerTelemetry() {
+    return ServerTelemetryCard(
+      apiBaseUrl: widget.api.baseUrl,
+      serverName: widget.serverName,
+      routeLabel: _networkRouteLabel(Uri.tryParse(widget.api.baseUrl)),
+      checking: _checking,
+      serverOnline: _serverOnline == true,
+      latency: _latency,
+      lastCheckedAt: _lastCheckedAt,
+      volumes: _volumes,
+      volumeError: _volumeError,
+      onShowServerSwitcher: _showServerSwitcherSheet,
+      onQuickUpload: _quickUpload,
+      onRefresh: () => _refreshStatus(forceRefresh: true),
+      onReturnToConnection: widget.onReturnToConnection,
+      onOpenFiles: widget.onOpenFiles,
     );
   }
 
@@ -1847,7 +1661,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
             LayoutInsetsScope.of(context).bottomClearance,
           ),
           children: [
-            _buildServerTelemetry(context, theme, colors),
+            _buildServerTelemetry(),
             const SizedBox(height: 12),
             HostDeviceMetricsCard(
               telemetry: _hostTelemetry,
