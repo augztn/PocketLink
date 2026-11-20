@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/shared/status_pill.dart';
+import 'widgets/storage_permission_row.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
 import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
@@ -757,7 +758,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                 const SizedBox(height: 14),
                 Divider(height: 1, color: colors.outlineVariant.withValues(alpha: 0.45)),
                 const SizedBox(height: 4),
-                _PermissionRow(
+                StoragePermissionRow(
                   icon: Icons.folder_open_rounded,
                   title: 'All-files access',
                   description: 'Direct access to shared and supported removable storage. Some drives may still need folder approval.',
@@ -766,7 +767,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                   neutral: !_statusLoaded,
                   onTap: !_statusLoaded || internalGranted || _busy ? null : _requestInternalStorageAccess,
                 ),
-                _PermissionRow(
+                StoragePermissionRow(
                   icon: Icons.battery_charging_full_rounded,
                   title: 'Background activity',
                   description: 'Battery exemption may reduce background restrictions',
@@ -821,7 +822,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
               borderRadius: BorderRadius.circular(18),
               border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.35)),
             ),
-            child: _PermissionRow(
+            child: StoragePermissionRow(
               icon: Icons.usb_rounded,
               title: 'USB folder access',
               description: selectedVolumeCount > 0
@@ -1405,87 +1406,6 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
           ),
         ),
       ),
-      ),
-    );
-  }
-}
-
-class _PermissionRow extends StatelessWidget {
-  const _PermissionRow({
-    required this.icon,
-    required this.title,
-    required this.description,
-    required this.status,
-    required this.granted,
-    required this.onTap,
-    this.recommended = false,
-    this.neutral = false,
-  });
-
-  final IconData icon;
-  final String title;
-  final String description;
-  final String status;
-  final bool granted;
-  final bool recommended;
-  final bool neutral;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-    final statusColor = granted
-        ? Colors.green
-        : recommended
-            ? colors.tertiary
-            : neutral
-                ? colors.onSurfaceVariant
-                : colors.error;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 2),
-          child: Row(
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, size: 20, color: statusColor),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 2),
-                    Text(description, style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant, height: 1.3)),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  PocketLinkStatusPill(label: status, granted: granted),
-                  if (onTap != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 3),
-                      child: Icon(Icons.chevron_right_rounded, size: 18, color: colors.onSurfaceVariant),
-                    ),
-                ],
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
