@@ -1011,6 +1011,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                           height: 30,
                           child: ListView(
                             scrollDirection: Axis.horizontal,
+                            padding: EdgeInsets.zero,
                             children: [
                               TextButton(
                                 style: TextButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 4), minimumSize: const Size(0, 28), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
