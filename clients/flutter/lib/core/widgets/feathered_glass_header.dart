@@ -44,8 +44,8 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
               ];
 
         return LayoutBuilder(
-          builder: (context, constraints) {
-            PocketLinkScaffoldHeaderReporter.report(context, headerHeight);
+          builder: (context, _) {
+            LayoutInsetsScope.reportRenderedHeader(context, headerHeight);
             return SizedBox(
           width: double.infinity,
           height: headerHeight,
