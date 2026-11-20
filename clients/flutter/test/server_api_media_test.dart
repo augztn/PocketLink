@@ -103,7 +103,21 @@ void main() {
           {'volume': 'usb1', 'state': 'unavailable', 'last_scanned_at': 1794800000000, 'stale': true}
         ],
         'scan_history': [
-          {'started_at': 1794900000000, 'completed_at': 1794900005000, 'duration_ms': 5000, 'trigger': 'manual', 'state': 'partial', 'scanned': 12, 'skipped': 1, 'new_files': 2, 'updated_files': 1, 'scanned_bytes': 4096}
+          {
+            'run_id': 'history-run-1',
+            'started_at': 1794900000000,
+            'completed_at': 1794900005000,
+            'duration_ms': 5000,
+            'trigger': 'manual',
+            'state': 'partial',
+            'scanned': 12,
+            'skipped': 1,
+            'new_files': 2,
+            'updated_files': 1,
+            'scanned_bytes': 4096,
+            'volumes': [{'volume': 'usb1', 'state': 'failed', 'error': 'Permission denied'}],
+            'skipped_items': [{'volume': 'usb1', 'path': 'Movies/clip.mp4', 'reason': 'Permission denied'}],
+          }
         ],
       });
 
@@ -114,6 +128,9 @@ void main() {
       expect(status.volumes.first.state, 'partial');
       expect(status.scanHistory.single.trigger, 'manual');
       expect(status.scanHistory.single.durationMs, 5000);
+      expect(status.scanHistory.single.runId, 'history-run-1');
+      expect(status.scanHistory.single.volumes.single.error, 'Permission denied');
+      expect(status.scanHistory.single.skippedItems.single.path, 'Movies/clip.mp4');
       expect(status.lastAttemptStartedAt, 1794900000000);
       expect(status.lastAttemptFinishedAt, 1794900005000);
       expect(status.lastSuccessfulAt, 1794800000000);
