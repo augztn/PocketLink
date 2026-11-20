@@ -95,7 +95,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   }
 
   int _categoryCount(List<FileEntry> entries, String category) {
-    if (category == 'All') return entries.length;
+    if (category == 'All') return entries.where((item) => !item.isDirectory).length;
     final extensions = _categoryExtensions[category];
     if (extensions == null) return 0;
     return entries
