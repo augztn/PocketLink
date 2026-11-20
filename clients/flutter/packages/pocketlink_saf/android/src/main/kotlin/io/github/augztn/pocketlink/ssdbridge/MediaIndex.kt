@@ -387,9 +387,10 @@ internal class MediaIndexScanner(
     fun automaticSettings(): org.json.JSONObject {
         val enabled = automaticScanningEnabled()
         val interval = scanIntervalMinutes()
-        val baseline = lastCompletedAt.takeIf { it > 0L }
-            ?: lastAttemptStartedAt.takeIf { it > 0L }
-            ?: reportPrefs.getLong("schedule_anchor_at", 0L)
+        val baseline = if (state == "scanning") lastScanStartedAt else
+            lastCompletedAt.takeIf { it > 0L }
+                ?: lastAttemptStartedAt.takeIf { it > 0L }
+                ?: reportPrefs.getLong("schedule_anchor_at", 0L)
         return org.json.JSONObject()
             .put("enabled", enabled)
             .put("scan_on_startup", reportPrefs.getBoolean("scan_on_startup", true))
@@ -809,6 +810,18 @@ internal class MediaIndexScanner(
             .put("indexed_bytes", sizes["indexed_bytes"] ?: 0L)
             .put("media_bytes", sizes["media_bytes"] ?: 0L)
             .put("automatic_scanning", automaticSettings())
+            .put("last_automatic_scan_at", run {
+                (0 until history.length()).mapNotNull { index ->
+                    history.optJSONObject(index)?.takeIf { it.optString("trigger") == "automatic" }
+                        ?.optLong("completed_at")?.takeIf { it > 0L }
+                }.firstOrNull() ?: 0L
+            })
+            .put("last_manual_scan_at", run {
+                (0 until history.length()).mapNotNull { index ->
+                    history.optJSONObject(index)?.takeIf { it.optString("trigger") == "manual" }
+                        ?.optLong("completed_at")?.takeIf { it > 0L }
+                }.firstOrNull() ?: 0L
+            })
             .put("duration_average_ms", run {
                 val durations = (0 until history.length()).mapNotNull { index ->
                     history.optJSONObject(index)?.takeIf { it.optString("state") == "complete" }
