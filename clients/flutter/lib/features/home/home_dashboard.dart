@@ -10,6 +10,7 @@ import '../../core/storage/home_activity_store.dart';
 import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
 import '../../core/widgets/smoked_glass_popover_menu.dart';
+import '../../core/widgets/pocketlink_scaffold.dart';
 import 'explore_search_screens.dart';
 import '../media/persistent_audio_player.dart';
 import '../media/now_playing_overlay_controller.dart';
@@ -2101,13 +2102,9 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
           physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.fromLTRB(
             18,
-            MediaQuery.paddingOf(context).top + kToolbarHeight + 12,
+            LayoutInsetsScope.of(context).topClearance + 2,
             18,
-            MediaQuery.paddingOf(context).bottom +
-                (appSettings.showMiniPlayer &&
-                        PersistentAudioPlayer.instance.shouldShowMiniPlayer
-                    ? 156
-                    : 96),
+            LayoutInsetsScope.of(context).bottomClearance,
           ),
           children: [
             _buildServerTelemetry(context, theme, colors),
