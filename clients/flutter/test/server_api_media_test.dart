@@ -107,7 +107,7 @@ void main() {
       expect(status.newFiles, 2);
       expect(status.updatedFiles, 1);
       expect(status.scannedBytes, 4096);
-      expect(status.volumes.single.state, 'partial');
+      expect(status.volumes.first.state, 'partial');
       expect(status.scanHistory.single.trigger, 'manual');
       expect(status.scanHistory.single.durationMs, 5000);
       expect(status.lastAttemptStartedAt, 1794900000000);
