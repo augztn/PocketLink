@@ -311,6 +311,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
           // Keep the navigator at full height. Every route reads the same
           // measured header and mounted-overlay geometry from this scope.
           final navigatorContent = PocketLinkScaffold(
+            key: ValueKey<Route<dynamic>?>(observer.currentPageRoute),
             hasFloatingNavBar: onDashboard,
             hasActiveMiniPlayer: visible,
             child: widget.child,
