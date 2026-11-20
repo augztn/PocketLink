@@ -7,12 +7,14 @@ class HomeActiveTransfersPreview extends StatelessWidget {
   const HomeActiveTransfersPreview({
     required this.tasks,
     required this.formatBytes,
+    required this.cardDecoration,
     required this.onOpen,
     super.key,
   });
 
   final List<TransferTask> tasks;
   final String Function(int bytes) formatBytes;
+  final BoxDecoration Function(ThemeData theme, {double radius}) cardDecoration;
   final VoidCallback onOpen;
 
   @override
@@ -22,11 +24,7 @@ class HomeActiveTransfersPreview extends StatelessWidget {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     return Container(
-      decoration: BoxDecoration(
-        color: colors.surfaceContainer,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.55)),
-      ),
+      decoration: cardDecoration(theme),
       child: Material(
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(18),
