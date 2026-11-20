@@ -14,12 +14,14 @@ class LiquidGlassSurface extends StatelessWidget {
     required this.child,
     required this.radius,
     this.refractive = false,
+    this.lightRefractive = false,
     super.key,
   });
 
   final Widget child;
   final BorderRadius radius;
   final bool refractive;
+  final bool lightRefractive;
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +34,11 @@ class LiquidGlassSurface extends StatelessWidget {
 
         final decoration = useGlass
             ? BoxDecoration(
-                color: refractive ? const Color(0xFF1A1C23).withValues(alpha: 0.40) : null,
+                color: refractive
+                    ? (!isDark && lightRefractive
+                        ? Colors.white.withValues(alpha: 0.58)
+                        : const Color(0xFF1A1C23).withValues(alpha: 0.40))
+                    : null,
                 gradient: refractive ? null : LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
