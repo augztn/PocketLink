@@ -741,11 +741,6 @@ class _SearchScreenState extends State<SearchScreen> {
     final theme = Theme.of(context);
     final query = _controller.text.trim();
     final categories = const ['All','Files','Photos','Audio','Videos','Documents'];
-    final scopes = <DropdownMenuItem<String?>>[
-      const DropdownMenuItem(value: null, child: Text('All Drives')),
-      const DropdownMenuItem(value: 'internal', child: Text('Internal storage')),
-      for (final v in _volumes) DropdownMenuItem(value: v.id, child: Text(v.name, overflow: TextOverflow.ellipsis)),
-    ];
     return Scaffold(
       appBar: PocketLinkAppBar(
         feathered: true,
