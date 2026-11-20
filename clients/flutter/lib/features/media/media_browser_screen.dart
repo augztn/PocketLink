@@ -993,7 +993,8 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                 icon: Icons.video_library_rounded,
                 trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                   Text('${_media.length}', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
-                  if (_libraryView == 'all') const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.check_rounded, size: 18)),
+                  const SizedBox(width: 8),
+                  SizedBox(width: 20, child: _libraryView == 'all' ? const Icon(Icons.check_rounded, size: 18) : null),
                 ]),
               ),
               SmokedGlassPopoverMenuItem(
@@ -1002,7 +1003,8 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                 icon: Icons.folder_rounded,
                 trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                   Text('$folderCount', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
-                  if (_libraryView == 'folders') const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.check_rounded, size: 18)),
+                  const SizedBox(width: 8),
+                  SizedBox(width: 20, child: _libraryView == 'folders' ? const Icon(Icons.check_rounded, size: 18) : null),
                 ]),
               ),
               SmokedGlassPopoverMenuItem(
@@ -1011,7 +1013,8 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                 icon: Icons.favorite_rounded,
                 trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                   Text('$favoritesCount', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
-                  if (_libraryView == 'favorites') const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.check_rounded, size: 18)),
+                  const SizedBox(width: 8),
+                  SizedBox(width: 20, child: _libraryView == 'favorites' ? const Icon(Icons.check_rounded, size: 18) : null),
                 ]),
               ),
             ],
@@ -1638,17 +1641,20 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                         SmokedGlassPopoverMenuItem(value: 'all', label: 'Songs', icon: Icons.music_note_rounded,
                           trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                             Text('${_media.length}', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
-                            if (_libraryView == 'all') const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.check_rounded, size: 18)),
+                            const SizedBox(width: 8),
+                            SizedBox(width: 20, child: _libraryView == 'all' ? const Icon(Icons.check_rounded, size: 18) : null),
                           ])),
                         SmokedGlassPopoverMenuItem(value: 'folders', label: 'Folders', icon: Icons.folder_rounded,
                           trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                             Text('$folderCount', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
-                            if (_libraryView == 'folders') const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.check_rounded, size: 18)),
+                            const SizedBox(width: 8),
+                            SizedBox(width: 20, child: _libraryView == 'folders' ? const Icon(Icons.check_rounded, size: 18) : null),
                           ])),
                         SmokedGlassPopoverMenuItem(value: 'favorites', label: 'Favorites', icon: Icons.favorite_rounded,
                           trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                             Text('$favoriteCount', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
-                            if (_libraryView == 'favorites') const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.check_rounded, size: 18)),
+                            const SizedBox(width: 8),
+                            SizedBox(width: 20, child: _libraryView == 'favorites' ? const Icon(Icons.check_rounded, size: 18) : null),
                           ])),
                       ],
                       onSelected: (value) {
@@ -1682,11 +1688,17 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                                   ),
                                 ]),
                                 const SizedBox(height: 3),
-                                Text(
-                                  '${visible.length} tracks • ${_selectedVolume == null ? 'All storage' : _volumeName(_selectedVolume)}',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(color: foreground.withValues(alpha: 0.62), fontSize: 11, height: 1.0, fontWeight: FontWeight.w500),
+                                ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    maxWidth: MediaQuery.sizeOf(context).width - 180,
+                                  ),
+                                  child: Text(
+                                    '${visible.length} tracks • ${_selectedVolume == null ? 'All storage' : _volumeName(_selectedVolume)}',
+                                    maxLines: 1,
+                                    softWrap: false,
+                                    overflow: TextOverflow.fade,
+                                    style: TextStyle(color: foreground.withValues(alpha: 0.62), fontSize: 11, height: 1.0, fontWeight: FontWeight.w500),
+                                  ),
                                 ),
                               ],
                             ),
