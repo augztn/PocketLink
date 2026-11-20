@@ -62,6 +62,22 @@ void main() {
     expect(find.byType(BackdropFilter), findsNWidgets(2));
   });
 
+  testWidgets('progressive blur remains active when reduced motion is enabled', (tester) async {
+    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurStrength(55));
+    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(true));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(disableAnimations: true),
+          child: const Scaffold(body: FeatheredGlassHeaderBackground()),
+        ),
+      ),
+    );
+
+    expect(find.byType(BackdropFilter), findsNWidgets(2));
+  });
+
   testWidgets('custom dark tint is retained when progressive blur is disabled', (tester) async {
     await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(false));
 
