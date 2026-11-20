@@ -645,7 +645,6 @@ tooltip: 'Choose photo view',
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
                       Flexible(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(
                         color: foreground, fontSize: 26, fontWeight: FontWeight.w700, letterSpacing: -0.5,
-                        letterSpacing: -0.7,
                       ))),
                       const SizedBox(width: 6),
                       AnimatedRotation(
