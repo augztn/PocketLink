@@ -657,7 +657,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   Widget _buildVideoGrid(List<_MediaFile> items) {
     return GridView.builder(
       controller: _contentScrollController,
-      padding: EdgeInsets.fromLTRB(12, ((_searchExpanded && widget.showSearch) || _libraryView == 'folders') ? 8 : MediaQuery.paddingOf(context).top + kToolbarHeight + 8, 12, 104 + MediaQuery.paddingOf(context).bottom),
+      padding: EdgeInsets.fromLTRB(12, _isMusic ? MediaQuery.paddingOf(context).top + 64 : ((_searchExpanded && widget.showSearch) || _libraryView == 'folders') ? 8 : MediaQuery.paddingOf(context).top + kToolbarHeight + 8, 12, 104 + MediaQuery.paddingOf(context).bottom),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 14,
         childAspectRatio: 0.88,
@@ -1283,7 +1283,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
 
   Widget _musicArtwork(_MediaFile media, {bool playing = false}) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(10),
       child: SizedBox(
         width: 48, height: 48,
         child: Stack(fit: StackFit.expand, children: [
@@ -1298,7 +1298,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                 : Image.memory(snapshot.data!, fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.music_note_rounded, color: Colors.white70))),
           ),
-          if (playing) const ColoredBox(color: Color(0x99536DFE), child: Center(child: _MusicEqualizer())),
+          if (playing) const ColoredBox(color: Color(0x66000000), child: Center(child: _MusicEqualizer())),
         ]),
       ),
     );
@@ -1614,7 +1614,9 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                             ]),
                           ),
                         )
-                      : SmokedGlassPopoverMenu<String>(
+                      : SizedBox(
+                          height: 44,
+                          child: SmokedGlassPopoverMenu<String>(
                           tooltip: 'Choose music view',
                           onOpenChanged: (open) => setState(() => _musicMenuOpen = open),
                           items: [
@@ -1660,16 +1662,19 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                               ]),
                             ),
                           ),
+                          ),
                         ),
                 ),
                 const Spacer(),
-                if (!_searchExpanded)
-                  LiquidGlassSurface(
-                    radius: BorderRadius.circular(22),
-                    refractive: true,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 6),
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                if (!_searchExpanded && !_selectionMode)
+                  SizedBox(
+                    height: 44,
+                    child: LiquidGlassSurface(
+                      radius: BorderRadius.circular(22),
+                      refractive: true,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
                         iconAction(Icons.search_rounded, 'Search', () => _setSearchExpanded(true)),
                         iconAction(Icons.tune_rounded, 'Sort and filter', _showMusicFilters),
                         SmokedGlassPopoverMenu<String>(
@@ -1704,7 +1709,8 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                             child: Center(child: Icon(Icons.more_horiz_rounded, size: 18, color: foreground)),
                           ),
                         ),
-                      ]),
+                        ]),
+                      ),
                     ),
                   ),
                 if (_selectionMode)
@@ -1840,7 +1846,7 @@ class _MusicEqualizerState extends State<_MusicEqualizer> with SingleTickerProvi
         Container(
           width: 3, height: 5 + 12 * (0.5 + 0.5 * math.sin((_controller.value * math.pi * 2) + i * 1.35)),
           margin: const EdgeInsets.symmetric(horizontal: 1),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(3)),
+          decoration: BoxDecoration(color: const Color(0xFF536DFE), borderRadius: BorderRadius.circular(3)),
         ),
     ]),
   );
