@@ -12,6 +12,26 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
+  test('progressive blur is disabled by default', () {
+    expect(AppSettings.instance.progressiveBlurEnabled, isFalse);
+  });
+
+  testWidgets('progressive blur preference persists when toggled', (tester) async {
+    await AppSettings.instance.setProgressiveBlurEnabled(true);
+    expect(AppSettings.instance.progressiveBlurEnabled, isTrue);
+    expect(
+      (await SharedPreferences.getInstance()).getBool('settings_progressive_blur'),
+      isTrue,
+    );
+
+    await AppSettings.instance.setProgressiveBlurEnabled(false);
+    expect(AppSettings.instance.progressiveBlurEnabled, isFalse);
+    expect(
+      (await SharedPreferences.getInstance()).getBool('settings_progressive_blur'),
+      isFalse,
+    );
+  });
+
   testWidgets('progressive header uses staged blur when enabled', (tester) async {
     await AppSettings.instance.setProgressiveBlurEnabled(true);
 
