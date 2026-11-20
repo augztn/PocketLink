@@ -161,7 +161,9 @@ class GlassCircleButton extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final settings = AppSettings.instance;
     final foreground = isDark ? Colors.white : const Color(0xFF0F172A);
-    final button = Material(
+    final button = CustomPaint(
+      foregroundPainter: _GlassCircleRimPainter(isDark: isDark),
+      child: Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onPressed,
@@ -195,6 +197,7 @@ class GlassCircleButton extends StatelessWidget {
           ),
         ),
       ),
+      ),
     );
 
     return AnimatedBuilder(
@@ -217,4 +220,47 @@ class GlassCircleButton extends StatelessWidget {
       },
     );
   }
+}
+
+
+class _GlassCircleRimPainter extends CustomPainter {
+  const _GlassCircleRimPainter({required this.isDark});
+
+  final bool isDark;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final diameter = size.shortestSide;
+    if (diameter <= 1) return;
+    final rect = Offset.zero & size;
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1
+      ..isAntiAlias = true
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: isDark
+            ? const [
+                Color(0x99FFFFFF),
+                Color(0x38FFFFFF),
+                Color(0x08FFFFFF),
+              ]
+            : const [
+                Color(0xAFFFFFFF),
+                Color(0x54FFFFFF),
+                Color(0x12FFFFFF),
+              ],
+        stops: const [0, 0.52, 1],
+      ).createShader(rect);
+    canvas.drawCircle(
+      Offset(size.width / 2, size.height / 2),
+      diameter / 2 - 0.6,
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _GlassCircleRimPainter oldDelegate) =>
+      oldDelegate.isDark != isDark;
 }
