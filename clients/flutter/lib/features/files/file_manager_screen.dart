@@ -3,6 +3,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
+import '../../core/widgets/pocketlink_scaffold.dart';
 import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/pocketlink_file_icon.dart';
 import '../../core/widgets/smoked_glass_popover_menu.dart';
@@ -859,15 +860,14 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
           children: [
             Positioned.fill(
               child: Builder(builder: (context) {
-                final topInset = MediaQuery.paddingOf(context).top +
-                    kToolbarHeight +
+                final topInset = LayoutInsetsScope.of(context).topClearance +
                     (_searchExpanded ? 64 : 0) +
                     (_path.isNotEmpty ? 38 : 0) +
-                    44; // Filter row: 10px outer padding + 34px pill.
+                    34; // Filter row follows the shared measured header.
                 Widget emptyList(String message, {Widget? action}) => ListView(
                   controller: _scrollController,
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: EdgeInsets.fromLTRB(16, topInset + 12, 16, 104 + MediaQuery.paddingOf(context).bottom),
+                  padding: EdgeInsets.fromLTRB(16, topInset + 12, 16, LayoutInsetsScope.of(context).bottomClearance),
                   children: [
                     SizedBox(
                       height: 150,
@@ -898,7 +898,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                                 ? GridView.builder(
                                     controller: _scrollController,
                                     physics: const AlwaysScrollableScrollPhysics(),
-                                    padding: EdgeInsets.fromLTRB(16, topInset + 12, 16, 104 + MediaQuery.paddingOf(context).bottom),
+                                    padding: EdgeInsets.fromLTRB(16, topInset + 12, 16, LayoutInsetsScope.of(context).bottomClearance),
                                     gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                                       maxCrossAxisExtent: 190,
                                       mainAxisExtent: 156,
@@ -964,7 +964,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                                 : ListView.separated(
                                     controller: _scrollController,
                                     physics: const AlwaysScrollableScrollPhysics(),
-                                    padding: EdgeInsets.fromLTRB(16, topInset + 12, 16, 104 + MediaQuery.paddingOf(context).bottom),
+                                    padding: EdgeInsets.fromLTRB(16, topInset + 12, 16, LayoutInsetsScope.of(context).bottomClearance),
                                     itemCount: items.length,
                                     separatorBuilder: (_, __) => const SizedBox(height: 8),
                                     itemBuilder: (context, index) => fileTile(items[index]),
@@ -976,7 +976,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
               }),
             ),
             Positioned(
-              top: MediaQuery.paddingOf(context).top + kToolbarHeight,
+              top: LayoutInsetsScope.of(context).topClearance - 10,
               left: 0,
               right: 0,
               child: Material(
