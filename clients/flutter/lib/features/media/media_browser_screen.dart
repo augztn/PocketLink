@@ -988,6 +988,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
           showHome: false,
           automaticallyImplyLeading: false,
             title: SmokedGlassPopoverMenu<String>(
+            titleMenu: true,
             tooltip: 'Choose video view',
             onOpenChanged: (open) => setState(() => _musicMenuOpen = open),
             items: [
@@ -1678,6 +1679,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                 else
                   Expanded(
                     child: SmokedGlassPopoverMenu<String>(
+                      titleMenu: true,
                       tooltip: 'Choose music view',
                       onOpenChanged: (open) => setState(() => _musicMenuOpen = open),
                       items: [
