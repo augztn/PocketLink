@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/settings/app_settings.dart';
+import '../../core/widgets/pocketlink_scaffold.dart';
 import '../../core/navigation/pocketlink_navigation.dart';
 import 'navigation_dock.dart';
 import 'music_shortcut_menu.dart';
@@ -549,7 +550,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Positioned(
                   left: 14,
                   right: 14,
-                  bottom: 92.0 + MediaQuery.paddingOf(context).bottom,
+                  bottom: LayoutInsetsScope.of(context).bottomClearance + 8,
                   child: MusicShortcutMenu(
                     shortcuts: AppSettings.instance.musicButtonShortcuts,
                     expanded: true,
