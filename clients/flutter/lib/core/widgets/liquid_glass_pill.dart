@@ -114,45 +114,57 @@ class SmokedGlassSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final borderColor = isLight
+        ? const Color(0x1A0F172A)
+        : Colors.white.withValues(alpha: 0.14);
     return ClipRRect(
       borderRadius: radius,
       clipBehavior: Clip.antiAlias,
       child: BackdropFilter(
         filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-        child: Stack(
-          fit: StackFit.passthrough,
-          children: [
-            DecoratedBox(
-              decoration: BoxDecoration(
-                color: const Color(0xFF1C1E24).withValues(alpha: 0.66),
-                borderRadius: radius,
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.14),
-                  width: 1,
-                ),
-              ),
-              child: child,
-            ),
-            Positioned(
-              top: 0,
-              left: 1,
-              right: 1,
-              child: IgnorePointer(
-                child: Container(
-                  height: 1,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.white.withValues(alpha: 0.02),
-                        Colors.white.withValues(alpha: 0.42),
-                        Colors.white.withValues(alpha: 0.02),
-                      ],
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: isLight
+                ? Colors.white.withValues(alpha: 0.78)
+                : const Color(0xFF1C1E24).withValues(alpha: 0.68),
+            borderRadius: radius,
+            border: Border.all(color: borderColor, width: 1),
+            boxShadow: isLight
+                ? const [BoxShadow(color: Color(0x140F172A), blurRadius: 18, offset: Offset(0, 5))]
+                : const [],
+          ),
+          child: Stack(
+            fit: StackFit.passthrough,
+            children: [
+              child,
+              Positioned(
+                top: 0,
+                left: 1,
+                right: 1,
+                child: IgnorePointer(
+                  child: Container(
+                    height: 1,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: isLight
+                            ? [
+                                Colors.white.withValues(alpha: 0.55),
+                                Colors.white.withValues(alpha: 0.90),
+                                Colors.white.withValues(alpha: 0.55),
+                              ]
+                            : [
+                                Colors.white.withValues(alpha: 0.02),
+                                Colors.white.withValues(alpha: 0.42),
+                                Colors.white.withValues(alpha: 0.02),
+                              ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
