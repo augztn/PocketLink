@@ -346,6 +346,7 @@ internal class MediaIndexScanner(
                 sources.forEach { (id, root) ->
                     currentSource = id
                     val skippedBefore = skipped
+                    val scannedBefore = scanned
                     val startedAt = System.currentTimeMillis()
                     volumeReports[id] = org.json.JSONObject()
                         .put("volume", id).put("state", "scanning").put("started_at", startedAt)
@@ -356,7 +357,7 @@ internal class MediaIndexScanner(
                             .put("state", if (skipped == skippedBefore) "complete" else "partial")
                             .put("started_at", startedAt)
                             .put("completed_at", System.currentTimeMillis())
-                            .put("scanned", scanned)
+                            .put("scanned", scanned - scannedBefore)
                             .put("skipped", skipped - skippedBefore)
                     } catch (error: Exception) {
                         volumeReports[id] = org.json.JSONObject()
