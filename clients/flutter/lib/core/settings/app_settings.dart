@@ -139,6 +139,11 @@ class AppSettings extends ChangeNotifier {
   bool get videoAutoFullscreen => _videoAutoFullscreen;
   String get videoFullscreenOrientation => _videoFullscreenOrientation;
 
+  Future<void> reloadPreferences() async {
+    _loaded = false;
+    await load();
+  }
+
   Future<void> load() async {
     if (_loaded) return;
     try {
