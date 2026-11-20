@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:pocketlink_client/core/settings/app_settings.dart';
 import 'package:pocketlink_client/core/widgets/feathered_glass_header.dart';
+import 'package:pocketlink_client/core/widgets/liquid_glass_pill.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -47,6 +48,60 @@ void main() {
       (await SharedPreferences.getInstance()).getBool('settings_progressive_blur'),
       isFalse,
     );
+  });
+
+  testWidgets('Liquid Glass UI off disables LiquidGlassSurface blur', (tester) async {
+    await tester.runAsync(() => AppSettings.instance.setUseLiquidGlass(false));
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: LiquidGlassSurface(
+            radius: BorderRadius.all(Radius.circular(16)),
+            refractive: true,
+            child: Text('Dock'),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(BackdropFilter), findsNothing);
+  });
+
+  testWidgets('Liquid Glass UI off disables SmokedGlassSurface blur and rim', (tester) async {
+    await tester.runAsync(() => AppSettings.instance.setUseLiquidGlass(false));
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: SmokedGlassSurface(
+            radius: BorderRadius.all(Radius.circular(16)),
+            refractive: true,
+            child: Text('Mini player'),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(BackdropFilter), findsNothing);
+    expect(find.byType(CustomPaint), findsNothing);
+  });
+
+  testWidgets('Liquid Glass UI on enables shared surface blur', (tester) async {
+    await tester.runAsync(() => AppSettings.instance.setUseLiquidGlass(true));
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: LiquidGlassSurface(
+            radius: BorderRadius.all(Radius.circular(16)),
+            child: Text('Dock'),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(BackdropFilter), findsOneWidget);
   });
 
   testWidgets('progressive header uses staged blur when enabled', (tester) async {
