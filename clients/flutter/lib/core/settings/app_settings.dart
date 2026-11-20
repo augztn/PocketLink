@@ -66,6 +66,7 @@ class AppSettings extends ChangeNotifier {
   List<String> _homeSectionOrder = List.of(homeSectionDefaults);
   bool _useLiquidGlass = false;
   bool _progressiveBlurEnabled = false;
+  Future<void> _progressiveBlurWrite = Future<void>.value();
   bool _loaded = false;
   List<String> _navigationOrder = List.of(navigationDefaults);
   Set<String> _visibleNavigationItems = Set.of(navigationDefaults);
@@ -569,8 +570,13 @@ class AppSettings extends ChangeNotifier {
   Future<void> setProgressiveBlurEnabled(bool value) async {
     _progressiveBlurEnabled = value;
     notifyListeners();
-    final preferences = await SharedPreferences.getInstance();
-    await preferences.setBool(_progressiveBlurKey, value);
+    final snapshot = value;
+    final write = _progressiveBlurWrite.catchError((_) {}).then((_) async {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setBool(_progressiveBlurKey, snapshot);
+    });
+    _progressiveBlurWrite = write;
+    await write;
   }
 
   Future<void> setHomeSectionOrder(List<String> order) async {
