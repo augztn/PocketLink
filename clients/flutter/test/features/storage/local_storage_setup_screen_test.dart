@@ -107,7 +107,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.text('Overview'), findsOneWidget);
+    expect(find.text('Device'), findsOneWidget);
+    expect(find.text('Security'), findsOneWidget);
     expect(find.text('Host PocketLink on this device'), findsOneWidget);
     expect(find.text('Host status'), findsOneWidget);
     expect(find.text('Android storage bridge'), findsOneWidget);
