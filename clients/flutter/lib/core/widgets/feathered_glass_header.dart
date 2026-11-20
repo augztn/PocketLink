@@ -1,6 +1,8 @@
 import 'dart:ui' as ui;
 import 'package:material_ui/material_ui.dart';
 
+import 'liquid_glass_pill.dart';
+
 /// Progressive blur surface used behind edge-to-edge browsing headers.
 class FeatheredGlassHeaderBackground extends StatelessWidget {
   const FeatheredGlassHeaderBackground({super.key});
@@ -46,55 +48,32 @@ class GlassCircleButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final foreground = isDark ? Colors.white : const Color(0xFF0F172A);
-    return RepaintBoundary(child: ClipOval(child: BackdropFilter(
-      filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-      child: Material(color: Colors.transparent, child: InkWell(
-        onTap: onPressed, customBorder: const CircleBorder(),
-        splashColor: foreground.withValues(alpha: 0.08),
-        highlightColor: Colors.transparent,
-        child: Tooltip(message: tooltip, child: Container(
-          width: size, height: size, alignment: Alignment.center,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: isDark
-                ? const Color(0xFF1C1E24).withValues(alpha: 0.58)
-                : Colors.white.withValues(alpha: 0.58),
-            border: Border.all(color: isDark
-              ? Colors.white.withValues(alpha: 0.24)
-              : const Color(0xFF94A3B8).withValues(alpha: 0.30)),
-          ),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Center(
+    return SizedBox.square(
+      dimension: size,
+      child: LiquidGlassSurface(
+        radius: BorderRadius.circular(size / 2),
+        refractive: true,
+        lightRefractive: true,
+        child: Material(
+          color: Colors.transparent,
+          shape: const CircleBorder(),
+          child: InkWell(
+            onTap: onPressed,
+            customBorder: const CircleBorder(),
+            splashColor: foreground.withValues(alpha: 0.08),
+            highlightColor: Colors.transparent,
+            child: Tooltip(
+              message: tooltip,
+              child: Center(
                 child: IconTheme(
                   data: IconThemeData(color: foreground, size: 18),
                   child: child,
                 ),
               ),
-              Positioned(
-                top: 0,
-                left: size * 0.22,
-                right: size * 0.22,
-                child: IgnorePointer(
-                  child: Container(
-                    height: 1,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.white.withValues(alpha: 0.02),
-                          Colors.white.withValues(alpha: isDark ? 0.42 : 0.86),
-                          Colors.white.withValues(alpha: 0.02),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
-        )),
-      )),
-    )));
+        ),
+      ),
+    );
   }
 }
