@@ -153,7 +153,7 @@ class PocketLinkHomeDrawer extends StatelessWidget {
             ),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+                padding: EdgeInsets.fromLTRB(16, 4, 16, MediaQuery.paddingOf(context).bottom + 20),
                 children: [
                   _sectionLabel(context, 'QUICK LIBRARIES'),
                   const SizedBox(height: 9),
