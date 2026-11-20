@@ -630,7 +630,7 @@ class _SearchScreenState extends State<SearchScreen> {
     return ListView.separated(
       shrinkWrap: shrink,
       physics: shrink ? const NeverScrollableScrollPhysics() : const AlwaysScrollableScrollPhysics(),
-      padding: EdgeInsets.fromLTRB(12, topInset, 12, LayoutInsetsScope.of(context).bottomClearance),
+      padding: EdgeInsets.fromLTRB(12, topInset, 12, shrink ? 0 : LayoutInsetsScope.of(context).bottomClearance),
       itemCount: list.length,
       separatorBuilder: (_, __) => const Divider(height: 1, indent: 62),
       itemBuilder: (ctx, i) {
