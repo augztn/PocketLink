@@ -395,7 +395,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       animation: _settings,
       builder: (context, _) => Scaffold(
         extendBodyBehindAppBar: true,
-        appBar: PocketLinkAppBar(title: Text(widget.category ?? 'Settings')),
+        appBar: PocketLinkAppBar(
+          title: Text(widget.category ?? 'Settings'),
+          showHome: false,
+          showMoreMenu: false,
+        ),
         body: ListView(
           padding: EdgeInsets.fromLTRB(
             16,
