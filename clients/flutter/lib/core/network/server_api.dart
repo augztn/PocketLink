@@ -79,10 +79,33 @@ class VideoMetadata {
   final int height;
 
   factory VideoMetadata.fromJson(Map<String, dynamic> json) => VideoMetadata(
-        durationMs: (json['duration_ms'] as num?)?.toInt() ?? 0,
+        durationMs: _durationMilliseconds(json),
         width: (json['width'] as num?)?.toInt() ?? 0,
         height: (json['height'] as num?)?.toInt() ?? 0,
       );
+
+  static int _durationMilliseconds(Map<String, dynamic> json) {
+    final milliseconds = json['duration_ms'] ?? json['durationMs'];
+    if (milliseconds is num) return milliseconds.toInt().clamp(0, 1 << 62);
+
+    final seconds = json['duration_seconds'] ?? json['durationSeconds'];
+    if (seconds is num) {
+      return (seconds * 1000).round().clamp(0, 1 << 62);
+    }
+
+    // Some compatible hosts expose a generic duration field. Values below
+    // 100,000 are treated as seconds; larger values are milliseconds.
+    final duration = json['duration'];
+    if (duration is num) {
+      final value = duration <= 0
+          ? 0
+          : duration < 100000
+              ? (duration * 1000).round()
+              : duration.toInt();
+      return value.clamp(0, 1 << 62);
+    }
+    return 0;
+  }
 
   String get resolution => width > 0 && height > 0 ? '${width}×${height}' : '';
 }
