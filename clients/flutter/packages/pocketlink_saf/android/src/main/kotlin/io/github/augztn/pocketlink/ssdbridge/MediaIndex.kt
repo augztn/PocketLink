@@ -301,9 +301,13 @@ internal class MediaIndexScanner(
         (readScanHistory().optJSONObject(0)?.optString("state") ?: "idle")
     @Volatile private var lastError: String? = readScanHistory().optJSONObject(0)?.optString("last_error")?.takeIf { it.isNotBlank() }
     @Volatile private var lastCompletedAt: Long = readScanHistory().optJSONObject(0)?.optLong("completed_at") ?: 0L
-    @Volatile private var lastScanStartedAt: Long = readScanHistory().optJSONObject(0)?.optLong("started_at") ?: 0L
-    @Volatile private var scanRunId: String = readScanHistory().optJSONObject(0)?.optString("run_id").orEmpty()
-    @Volatile private var scanTrigger: String = "automatic"
+    @Volatile private var lastScanStartedAt: Long = reportPrefs.getLong(
+        "last_attempt_started_at", readScanHistory().optJSONObject(0)?.optLong("started_at") ?: 0L
+    )
+    @Volatile private var scanRunId: String = reportPrefs.getString(
+        "last_attempt_run_id", readScanHistory().optJSONObject(0)?.optString("run_id").orEmpty()
+    ) ?: ""
+    @Volatile private var scanTrigger: String = reportPrefs.getString("last_attempt_trigger", "automatic") ?: "automatic"
     @Volatile private var queuedTrigger: String? = null
     @Volatile private var lastScanTrigger: String = reportPrefs.getString("last_trigger", "automatic") ?: "automatic"
     @Volatile private var newFiles = readScanHistory().optJSONObject(0)?.optInt("new_files") ?: 0
@@ -450,9 +454,13 @@ internal class MediaIndexScanner(
         started = true
         lastScanStartedAt = System.currentTimeMillis()
         lastAttemptStartedAt = lastScanStartedAt
-        reportPrefs.edit().putLong("last_attempt_started_at", lastAttemptStartedAt).apply()
         scanTrigger = trigger
         scanRunId = UUID.randomUUID().toString()
+        reportPrefs.edit()
+            .putLong("last_attempt_started_at", lastAttemptStartedAt)
+            .putString("last_attempt_trigger", scanTrigger)
+            .putString("last_attempt_run_id", scanRunId)
+            .apply()
         newFiles = 0
         updatedFiles = 0
         scannedBytes = 0L
@@ -733,7 +741,7 @@ internal class MediaIndexScanner(
             .put("skipped", skipped)
             .put("last_completed_at", lastCompletedAt)
             .put("last_scan_started_at", lastScanStartedAt)
-            .put("scan_trigger", if (state == "scanning") scanTrigger else lastScanTrigger)
+            .put("scan_trigger", if (state == "scanning" || state == "interrupted") scanTrigger else lastScanTrigger)
             .put("scan_run_id", scanRunId)
             .put("new_files", newFiles)
             .put("updated_files", updatedFiles)
@@ -742,10 +750,16 @@ internal class MediaIndexScanner(
                 volumeReports.values.sortedBy { it.optString("volume") }.forEach { items.put(it) }
             })
             .put("scan_history", readScanHistory())
-            .put("elapsed_ms", if (state == "scanning") System.currentTimeMillis() - lastScanStartedAt else (lastCompletedAt - lastScanStartedAt).coerceAtLeast(0L))
+            .put("elapsed_ms", when (state) {
+                "scanning" -> System.currentTimeMillis() - lastScanStartedAt
+                "interrupted" -> (System.currentTimeMillis() - lastAttemptStartedAt).coerceAtLeast(0L)
+                else -> (lastCompletedAt - lastScanStartedAt).coerceAtLeast(0L)
+            })
             .put("current_source", currentSource)
             .put("current_path", currentPath)
-            .put("last_error", lastError)
+            .put("last_error", if (state == "interrupted") {
+                "The host restarted before the previous scan finished. Run a new scan to reconcile the index."
+            } else lastError)
             .put("skipped_items", org.json.JSONArray().also { items ->
                 synchronized(skippedItems) {
                     skippedItems.forEach { item ->
