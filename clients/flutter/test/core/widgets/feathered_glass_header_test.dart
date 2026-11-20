@@ -61,6 +61,19 @@ void main() {
     expect(find.byType(BackdropFilter), findsNWidgets(2));
   });
 
+  testWidgets('zero blur strength removes backdrop filters while enabled', (tester) async {
+    await AppSettings.instance.setProgressiveBlurEnabled(true);
+    await AppSettings.instance.setProgressiveBlurStrength(0);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(body: FeatheredGlassHeaderBackground()),
+      ),
+    );
+
+    expect(find.byType(BackdropFilter), findsNothing);
+  });
+
   testWidgets('progressive blur off removes backdrop filters immediately', (tester) async {
     await AppSettings.instance.setProgressiveBlurEnabled(true);
 
