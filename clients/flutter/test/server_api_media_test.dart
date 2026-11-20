@@ -86,6 +86,8 @@ void main() {
         'media_bytes': 4096,
         'other_file_count': 6,
         'duration_average_ms': 3500,
+        'duration_trend_percent': 15,
+        'scan_run_id': 'scan-run-123',
         'timezone_id': 'Asia/Kolkata',
         'automatic_scanning': {
           'enabled': true,
@@ -117,6 +119,8 @@ void main() {
       expect(status.mediaBytes, 4096);
       expect(status.otherFileCount, 6);
       expect(status.averageDurationMs, 3500);
+      expect(status.durationTrendPercent, 15);
+      expect(status.scanRunId, 'scan-run-123');
       expect(status.timezoneId, 'Asia/Kolkata');
       expect(status.automaticScanning.intervalMinutes, 180);
       expect(status.automaticScanning.nextScanAt, 1794910800000);
