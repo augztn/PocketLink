@@ -552,6 +552,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                   ]),
+                if (widget.category == 'Appearance')
                   _section('Glass & Visual Effects', [
                     SwitchListTile(
                       secondary: const Icon(Icons.gradient_rounded),
