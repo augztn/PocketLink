@@ -31,7 +31,12 @@ class BridgeService : Service() {
         override fun onReceive(context: Context, intent: Intent) {
             val connected = intent.action == Intent.ACTION_MEDIA_MOUNTED
             if (intent.action in STORAGE_ACTIONS) {
-                apiServer?.onStorageChanged(connected)
+                val volumeId = intent.data?.path
+                    ?.trimEnd('/')
+                    ?.substringAfterLast('/')
+                    ?.takeIf { it.contains('-') && !it.equals("emulated", ignoreCase = true) }
+                    ?.let { externalVolumeKey(externalVolumeIdentity(it, null, it)) }
+                apiServer?.onStorageChanged(connected, volumeId)
             }
         }
     }
