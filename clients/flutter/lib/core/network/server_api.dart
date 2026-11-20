@@ -278,11 +278,13 @@ class MediaScanHistoryEntry {
     required this.startedAt, required this.completedAt, required this.durationMs,
     required this.trigger, required this.state, required this.scanned, required this.skipped,
     required this.newFiles, required this.updatedFiles, required this.scannedBytes,
-    this.runId, this.lastError, this.volumes = const [], this.skippedItems = const [],
+    this.runId, this.lastError, this.timezoneOffsetMinutes = 0,
+    this.volumes = const [], this.skippedItems = const [],
   });
   final int startedAt, completedAt, durationMs, scanned, skipped, newFiles, updatedFiles, scannedBytes;
   final String trigger, state;
   final String? runId, lastError;
+  final int timezoneOffsetMinutes;
   final List<MediaScanVolumeStatus> volumes;
   final List<SkippedMediaIndexItem> skippedItems;
   factory MediaScanHistoryEntry.fromJson(Map<String, dynamic> json) => MediaScanHistoryEntry(
@@ -298,6 +300,7 @@ class MediaScanHistoryEntry {
     scannedBytes: (json['scanned_bytes'] as num?)?.toInt() ?? 0,
     runId: json['run_id']?.toString(),
     lastError: json['last_error']?.toString(),
+    timezoneOffsetMinutes: (json['timezone_offset_minutes'] as num?)?.toInt() ?? 0,
     volumes: (json['volumes'] as List<dynamic>? ?? const [])
         .whereType<Map<String, dynamic>>()
         .map(MediaScanVolumeStatus.fromJson).toList(growable: false),
@@ -343,6 +346,7 @@ class MediaIndexStatus {
     this.lastAttemptStartedAt = 0, this.lastAttemptFinishedAt = 0, this.lastSuccessfulAt = 0,
     this.indexedBytes = 0, this.mediaBytes = 0, this.otherFileCount = 0,
     this.averageDurationMs = 0, this.durationTrendPercent = 0, this.scanRunId, this.timezoneId,
+    this.timezoneOffsetMinutes = 0,
     this.lastAutomaticScanAt = 0, this.lastManualScanAt = 0,
     this.automaticScanning = const AutomaticMediaScanSettings(),
   });
@@ -373,7 +377,7 @@ class MediaIndexStatus {
   final List<MediaScanHistoryEntry> scanHistory;
   final int lastAttemptStartedAt, lastAttemptFinishedAt, lastSuccessfulAt;
   final int indexedBytes, mediaBytes, otherFileCount, averageDurationMs, durationTrendPercent;
-  final int lastAutomaticScanAt, lastManualScanAt;
+  final int lastAutomaticScanAt, lastManualScanAt, timezoneOffsetMinutes;
   final String? scanRunId, timezoneId;
   final AutomaticMediaScanSettings automaticScanning;
   bool get isScanning => state == 'scanning';
@@ -426,6 +430,7 @@ class MediaIndexStatus {
         lastManualScanAt: (json['last_manual_scan_at'] as num?)?.toInt() ?? 0,
         scanRunId: json['scan_run_id']?.toString(),
         timezoneId: json['timezone_id']?.toString(),
+        timezoneOffsetMinutes: (json['timezone_offset_minutes'] as num?)?.toInt() ?? 0,
         automaticScanning: AutomaticMediaScanSettings.fromJson(
           json['automatic_scanning'] as Map<String, dynamic>? ?? const {},
         ),
