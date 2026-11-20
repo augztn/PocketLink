@@ -275,13 +275,13 @@ internal class MediaIndexScanner(
     @Volatile private var skipped = 0
     @Volatile private var state = "idle"
     @Volatile private var lastError: String? = null
-    @Volatile private var lastCompletedAt: Long = 0L
-    @Volatile private var lastScanStartedAt: Long = 0L
+    @Volatile private var lastCompletedAt: Long = readScanHistory().optJSONObject(0)?.optLong("completed_at") ?: 0L
+    @Volatile private var lastScanStartedAt: Long = readScanHistory().optJSONObject(0)?.optLong("started_at") ?: 0L
     @Volatile private var scanTrigger: String = "automatic"
     @Volatile private var lastScanTrigger: String = reportPrefs.getString("last_trigger", "automatic") ?: "automatic"
-    @Volatile private var newFiles = 0
-    @Volatile private var updatedFiles = 0
-    @Volatile private var scannedBytes = 0L
+    @Volatile private var newFiles = readScanHistory().optJSONObject(0)?.optInt("new_files") ?: 0
+    @Volatile private var updatedFiles = readScanHistory().optJSONObject(0)?.optInt("updated_files") ?: 0
+    @Volatile private var scannedBytes = readScanHistory().optJSONObject(0)?.optLong("scanned_bytes") ?: 0L
     private val volumeReports = java.util.concurrent.ConcurrentHashMap<String, org.json.JSONObject>()
     @Volatile private var currentSource: String? = null
     @Volatile private var currentPath: String? = null
@@ -613,6 +613,9 @@ internal class MediaIndexScanner(
             .put("updated_files", updatedFiles)
             .put("scanned_bytes", scannedBytes)
             .put("last_error", lastError)
+            .put("volumes", org.json.JSONArray().also { items ->
+                volumeReports.values.sortedBy { it.optString("volume") }.forEach { items.put(it) }
+            })
         val next = org.json.JSONArray().put(record)
         for (index in 0 until minOf(history.length(), 19)) {
             next.put(history.getJSONObject(index))
