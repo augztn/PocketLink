@@ -1292,6 +1292,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
         title: const Text('Media scan history'),
         content: SizedBox(
           width: 460,
+          height: 360,
           child: ListView.separated(
             shrinkWrap: true,
             itemCount: status.scanHistory.length,
@@ -1301,10 +1302,16 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
               return ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text('${entry.trigger == 'manual' ? 'Manual' : 'Automatic'} · ${entry.state}'),
+                leading: const Icon(Icons.history_rounded, size: 19),
+                trailing: entry.runId == null
+                    ? null
+                    : Tooltip(message: entry.runId!, child: const Icon(Icons.fingerprint_rounded, size: 16)),
                 subtitle: Text(
                   '${_formatScanTimestamp(entry.completedAt)} · ${(entry.durationMs / 1000).toStringAsFixed(1)}s\n'
                   '${entry.scanned} checked · ${entry.newFiles} new · ${entry.updatedFiles} updated · ${entry.skipped} skipped'
-                  '${entry.lastError == null ? '' : '\n${entry.lastError}'}',
+                  '${entry.volumes.isEmpty ? '' : '\nVolumes: ${entry.volumes.map((volume) => '${volume.volume} ${volume.state}').join(' · ')}'}'
+                  '${entry.lastError == null ? '' : '\n${entry.lastError}'}'
+                  '${entry.skippedItems.isEmpty ? '' : '\n${entry.skippedItems.take(3).map((item) => '${item.volume}/${item.path}: ${item.reason}').join('\n')}'}',
                 ),
                 isThreeLine: true,
               );
