@@ -377,6 +377,7 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
         if (!didPop && _path.isNotEmpty) _goUp();
       },
       child: Scaffold(
+        extendBodyBehindAppBar: true,
         appBar: PocketLinkAppBar(
           title: const Text('External storage', style: TextStyle(fontWeight: FontWeight.w800)),
           actions: [
@@ -388,7 +389,12 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
         ),
         body: Column(children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+            padding: EdgeInsets.fromLTRB(
+              16,
+              MediaQuery.paddingOf(context).top + kToolbarHeight + 8,
+              16,
+              10,
+            ),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
