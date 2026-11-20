@@ -76,8 +76,14 @@ internal class NativeApiServer(
 
     fun mediaIndexSettings(): String = mediaIndex.automaticSettings().toString()
 
-    fun updateMediaIndexSettings(enabled: Boolean, intervalMinutes: Int): String =
-        mediaIndex.configureAutomaticScanning(enabled, intervalMinutes).toString()
+    fun updateMediaIndexSettings(
+        enabled: Boolean,
+        intervalMinutes: Int,
+        scanOnStartup: Boolean,
+        scanOnStorageChange: Boolean
+    ): String = mediaIndex.configureAutomaticScanning(
+        enabled, intervalMinutes, scanOnStartup, scanOnStorageChange
+    ).toString()
 
     fun retryMediaIndex(): String {
         mediaIndex.retryFailedScan()
@@ -154,7 +160,14 @@ internal class NativeApiServer(
                     val interval = query["interval_minutes"]?.toIntOrNull()
                         ?: return bad("A valid scan interval is required")
                     if (interval !in 15..1440) return bad("Scan interval must be between 15 and 1440 minutes")
-                    json(org.json.JSONObject(mediaIndex.configureAutomaticScanning(enabled, interval).toString()))
+                    val current = mediaIndex.automaticSettings()
+                    val scanOnStartup = query["scan_on_startup"]?.toBooleanStrictOrNull()
+                        ?: current.optBoolean("scan_on_startup", true)
+                    val scanOnStorageChange = query["scan_on_storage_change"]?.toBooleanStrictOrNull()
+                        ?: current.optBoolean("scan_on_storage_change", true)
+                    json(org.json.JSONObject(mediaIndex.configureAutomaticScanning(
+                        enabled, interval, scanOnStartup, scanOnStorageChange
+                    ).toString()))
                 }
                 session.uri == "/api/index/retry" && session.method == Method.POST -> {
                     mediaIndex.retryFailedScan()
