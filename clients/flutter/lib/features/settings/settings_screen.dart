@@ -475,7 +475,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                   ]),
-                  ]),
                 if (widget.category == 'Dashboard & Shortcuts')
                   _section('Dashboard & Shortcuts', [
                     SwitchListTile(
