@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
+import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
 
 import '../diagnostics/diagnostics_screen.dart';
@@ -1294,25 +1295,17 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
           padding: const EdgeInsets.only(left: 16),
           child: SizedBox.square(
             dimension: 38,
-            child: LiquidGlassSurface(
-              radius: BorderRadius.circular(50),
-              child: IconButton(
-                tooltip: 'Back',
-                onPressed: () {
-                  final navigator = Navigator.of(context);
-                  if (navigator.canPop()) {
-                    navigator.pop();
-                  } else {
-                    widget.onHome?.call();
-                  }
-                },
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints.tightFor(
-                  width: 38,
-                  height: 38,
-                ),
-                icon: const Icon(Icons.arrow_back_rounded, size: 18),
-              ),
+            child: GlassCircleButton(
+              tooltip: 'Back',
+              onPressed: () {
+                final navigator = Navigator.of(context);
+                if (navigator.canPop()) {
+                  navigator.pop();
+                } else {
+                  widget.onHome?.call();
+                }
+              },
+              child: const Icon(Icons.arrow_back_rounded, size: 18),
             ),
           ),
         ),
