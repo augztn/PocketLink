@@ -1040,7 +1040,7 @@ tooltip: 'Choose video view',
                   Row(mainAxisSize: MainAxisSize.min, children: [
                     Flexible(child: Text(headerTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700, letterSpacing: -0.5, color: titleColor))),
                     const SizedBox(width: 6),
-                    AnimatedRotation(turns: _musicMenuOpen ? 0.5 : 0, duration: const Duration(milliseconds: 200), child: const Icon(Icons.keyboard_arrow_down_rounded)),
+                    AnimatedRotation(turns: _musicMenuOpen ? 0.5 : 0, duration: const Duration(milliseconds: 200), child: const Icon(Icons.keyboard_arrow_down_rounded, size: 20)),
                   ]),
                   Text(
                   _countLabel(visibleMedia.length, 'video', 'videos') + ' • ${_selectedVolume == null ? 'All storage' : _volumeName(_selectedVolume)}'
