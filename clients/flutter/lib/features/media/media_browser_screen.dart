@@ -1619,7 +1619,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
               child: const IgnorePointer(child: FeatheredGlassHeaderBackground()),
             ),
             Positioned(
-              top: top + 8,
+              top: top + 10,
               left: 16,
               right: 16,
               height: 44,
@@ -1715,12 +1715,25 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Row(mainAxisSize: MainAxisSize.min, children: [
-                                  Text('Music', style: TextStyle(color: foreground, fontSize: 15, fontWeight: FontWeight.w700, height: 1.0)),
-                                  const SizedBox(width: 3),
+                                  Text(
+                                    'Music',
+                                    style: TextStyle(
+                                      color: foreground,
+                                      fontSize: 26,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: -0.5,
+                                      height: 1.0,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
                                   AnimatedRotation(
                                     turns: _musicMenuOpen ? 0.5 : 0,
                                     duration: const Duration(milliseconds: 200),
-                                    child: Icon(Icons.keyboard_arrow_down_rounded, color: foreground, size: 18),
+                                    child: Icon(
+                                      Icons.keyboard_arrow_down_rounded,
+                                      color: foreground,
+                                      size: 20,
+                                    ),
                                   ),
                                 ]),
                                 const SizedBox(height: 3),
