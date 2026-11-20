@@ -737,6 +737,9 @@ class _GlobalMiniPlayerBar extends StatelessWidget {
     if (item == null) return const SizedBox.shrink();
 
     final colors = Theme.of(context).colorScheme;
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final foreground = isLight ? const Color(0xFF0F172A) : colors.onSurface;
+    final secondaryForeground = isLight ? const Color(0xFF475569) : colors.onSurfaceVariant;
     return Align(
       alignment: Alignment.centerLeft,
       child: Padding(
@@ -792,6 +795,7 @@ class _GlobalMiniPlayerBar extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                  color: foreground,
                                   fontWeight: FontWeight.w800,
                                 ),
                           ),
@@ -800,7 +804,7 @@ class _GlobalMiniPlayerBar extends StatelessWidget {
                             style: Theme.of(context).textTheme.labelSmall?.copyWith(
                                   fontSize: 8,
                                   letterSpacing: 1.0,
-                                  color: colors.onSurfaceVariant,
+                                  color: secondaryForeground,
                                 ),
                           ),
                         ],
@@ -813,6 +817,7 @@ class _GlobalMiniPlayerBar extends StatelessWidget {
                         tooltip: (snapshot.data ?? false) ? 'Pause' : 'Play',
                         visualDensity: VisualDensity.compact,
                         onPressed: player.togglePlayback,
+                        color: foreground,
                         icon: Icon(
                           (snapshot.data ?? false)
                               ? Icons.pause_rounded
@@ -824,6 +829,7 @@ class _GlobalMiniPlayerBar extends StatelessWidget {
                       tooltip: 'Next track',
                       visualDensity: VisualDensity.compact,
                       onPressed: player.skipToNext,
+                      color: foreground,
                       icon: const Icon(Icons.skip_next_rounded),
                     ),
                     const SizedBox(width: 4),
