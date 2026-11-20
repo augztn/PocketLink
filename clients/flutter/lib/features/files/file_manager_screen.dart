@@ -787,9 +787,8 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                 ),
           leadingWidth: _path.isEmpty ? 0 : 62,
           titleSpacing: _path.isEmpty ? 16 : 8,
-          title: SmokedGlassPopoverMenu<String>(
-            titleMenu: true,
-            tooltip: 'Choose storage location',
+          title: TitleDropdownPopover<String>(
+tooltip: 'Choose storage location',
             onOpenChanged: (open) => setState(() => _storageMenuOpen = open),
             items: [
               SmokedGlassPopoverMenuItem(
