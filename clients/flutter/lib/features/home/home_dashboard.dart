@@ -737,6 +737,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
     final displayName = (widget.serverName ?? '').trim().isNotEmpty ? widget.serverName!.trim() : host;
     final route = _networkRouteLabel(base);
     final online = _serverOnline == true;
+    final muted = colors.onSurfaceVariant;
     final statusColor = _checking
         ? (theme.brightness == Brightness.dark ? const Color(0xFFFBBF24) : const Color(0xFFB45309))
         : online
@@ -754,7 +755,6 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                     : (theme.brightness == Brightness.dark ? const Color(0xFFF87171) : const Color(0xFFB91C1C));
     final cardColor = colors.surfaceContainerLow;
     final foreground = colors.onSurface;
-    final muted = colors.onSurfaceVariant;
     final mountedVolumes = _volumes.where((volume) => volume.available).toList(growable: false);
     return AnimatedBuilder(
       animation: transfers,
