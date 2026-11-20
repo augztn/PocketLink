@@ -163,11 +163,10 @@ void main() {
         .map((decoration) => decoration.gradient)
         .whereType<LinearGradient>();
     expect(
-      gradients.any((gradient) => gradient.colors == const [
-        Color(0xD9000000),
-        Color(0x66000000),
-        Colors.transparent,
-      ]),
+      gradients.any((gradient) => gradient.colors.length == 3 &&
+          gradient.colors[0] == const Color(0xD9000000) &&
+          gradient.colors[1] == const Color(0x66000000) &&
+          gradient.colors[2] == Colors.transparent),
       isTrue,
     );
   });
