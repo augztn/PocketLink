@@ -3,6 +3,16 @@ import 'package:pocketlink_client/core/network/server_api.dart';
 
 void main() {
   group('ServerApi media streaming', () {
+    test('normalizes media durations reported in seconds or milliseconds', () {
+      expect(VideoMetadata.fromJson({'duration_ms': 245000}).durationMs, 245000);
+      expect(VideoMetadata.fromJson({'durationMs': 245000}).durationMs, 245000);
+      expect(VideoMetadata.fromJson({'duration_seconds': 245}).durationMs, 245000);
+      expect(VideoMetadata.fromJson({'durationSeconds': 245}).durationMs, 245000);
+      expect(VideoMetadata.fromJson({'duration': 245}).durationMs, 245000);
+      expect(VideoMetadata.fromJson({'duration_ms': 0}).durationMs, 0);
+      expect(VideoMetadata.fromJson({}).durationMs, 0);
+    });
+
     test('builds a safely encoded stream URL', () {
       final api = ServerApi(
         baseUrl: 'http://127.0.0.1:8000',
