@@ -50,6 +50,7 @@ void main() {
   });
 
   testWidgets('progressive header uses staged blur when enabled', (tester) async {
+    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurStrength(55));
     await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(true));
 
     await tester.pumpWidget(
@@ -75,6 +76,7 @@ void main() {
   });
 
   testWidgets('progressive blur off removes backdrop filters immediately', (tester) async {
+    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurStrength(55));
     await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(true));
 
     await tester.pumpWidget(
@@ -91,6 +93,7 @@ void main() {
   });
 
   testWidgets('glass header buttons disable their filter in fallback mode', (tester) async {
+    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurStrength(55));
     await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(false));
 
     await tester.pumpWidget(
