@@ -74,8 +74,18 @@ internal class NativeApiServer(
         return mediaIndex.status().toString()
     }
 
+    fun mediaIndexSettings(): String = mediaIndex.automaticSettings().toString()
+
+    fun updateMediaIndexSettings(enabled: Boolean, intervalMinutes: Int): String =
+        mediaIndex.configureAutomaticScanning(enabled, intervalMinutes).toString()
+
+    fun retryMediaIndex(): String {
+        mediaIndex.retryFailedScan()
+        return mediaIndex.status().toString()
+    }
+
     fun refreshMediaIndex(): String {
-        mediaIndex.requestScan(force = true)
+        mediaIndex.requestScan(force = true, trigger = "manual")
         return mediaIndex.status().toString()
     }
 
@@ -132,8 +142,22 @@ internal class NativeApiServer(
                     mediaIndex.ensureStarted()
                     json(mediaIndex.status())
                 }
+                session.uri == "/api/index/settings" && session.method == Method.GET ->
+                    json(org.json.JSONObject(mediaIndex.automaticSettings().toString()))
+                session.uri == "/api/index/settings" && session.method == Method.POST -> {
+                    val enabled = query["enabled"]?.toBooleanStrictOrNull()
+                        ?: return bad("A valid automatic scanning enabled value is required")
+                    val interval = query["interval_minutes"]?.toIntOrNull()
+                        ?: return bad("A valid scan interval is required")
+                    if (interval !in 15..1440) return bad("Scan interval must be between 15 and 1440 minutes")
+                    json(org.json.JSONObject(mediaIndex.configureAutomaticScanning(enabled, interval).toString()))
+                }
+                session.uri == "/api/index/retry" && session.method == Method.POST -> {
+                    mediaIndex.retryFailedScan()
+                    json(mediaIndex.status())
+                }
                 session.uri == "/api/index/scan" && session.method == Method.POST -> {
-                    mediaIndex.requestScan(force = true)
+                    mediaIndex.requestScan(force = true, trigger = "manual")
                     json(mediaIndex.status())
                 }
                 session.uri == "/api/index/media" && session.method == Method.GET -> {
