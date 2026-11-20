@@ -33,7 +33,7 @@ class SettingsBackupService {
     'settings_home_transfers',
   };
 
-  static const _numberKeys = <String>{
+  static const _integerKeys = <String>{\n    'settings_download_concurrency',\n    'settings_video_seek_seconds',\n  };\n\n  static const _numberKeys = <String>{
     'settings_progressive_blur_strength',
     'settings_download_concurrency',
     'settings_video_controls_timeout',
