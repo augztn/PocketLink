@@ -84,6 +84,10 @@ internal class NativeApiServer(
         return mediaIndex.status().toString()
     }
 
+    fun runScheduledMediaScanCheck() = mediaIndex.runScheduledScanCheck()
+
+    fun onStorageChanged(connected: Boolean) = mediaIndex.onStorageChanged(connected)
+
     fun refreshMediaIndex(): String {
         mediaIndex.requestScan(force = true, trigger = "manual")
         return mediaIndex.status().toString()
