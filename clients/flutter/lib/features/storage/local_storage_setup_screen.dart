@@ -501,7 +501,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                     ),
                   ),
                 ),
-                _StatusPill(
+                PocketLinkStatusPill(
                   label: !_statusLoaded
                       ? 'Checking'
                       : running
@@ -653,7 +653,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                     const SizedBox(width: 10),
                     Expanded(child: Text('Native server password', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800))),
                     if (_serverPasswordConfigured)
-                      const _StatusPill(label: 'Configured', granted: true),
+                      const PocketLinkStatusPill(label: 'Configured', granted: true),
                   ],
                 ),
                 const SizedBox(height: 10),
@@ -744,7 +744,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                         ],
                       ),
                     ),
-                    _StatusPill(
+                    PocketLinkStatusPill(
                       label: !_statusLoaded
                           ? 'Checking'
                           : requiredAccessReady
@@ -950,7 +950,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                         ],
                       ),
                     ),
-                    _StatusPill(label: running ? 'Running' : 'Stopped', granted: running),
+                    PocketLinkStatusPill(label: running ? 'Running' : 'Stopped', granted: running),
                   ],
                 ),
                 const SizedBox(height: 14),
@@ -1016,7 +1016,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                       ),
                     ),
                     if (_mediaScanStatus['state'] == 'complete')
-                      const _StatusPill(label: 'Complete', granted: true),
+                      const PocketLinkStatusPill(label: 'Complete', granted: true),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -1153,7 +1153,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                         style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
                       ),
                     ),
-                    _StatusPill(
+                    PocketLinkStatusPill(
                       label: _token != null ? 'Ready' : _statusLoaded ? 'Unavailable' : 'Loading',
                       granted: _token != null,
                     ),
@@ -1475,17 +1475,7 @@ class _PermissionRow extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  PocketLinkStatusPill(
-                    label: status,
-                    foreground: statusColor,
-                    background: statusColor.withValues(alpha: 0.12),
-                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                    radius: 30,
-                    textStyle: theme.textTheme.labelSmall?.copyWith(
-                      color: statusColor,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+                  PocketLinkStatusPill(label: status, granted: granted),
                   if (onTap != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 3),
