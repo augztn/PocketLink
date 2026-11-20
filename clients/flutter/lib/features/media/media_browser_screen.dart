@@ -1428,98 +1428,99 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         builder: (context, _) => Scaffold(
         extendBodyBehindAppBar: true,
         body: Stack(children: [
-          Positioned.fill(child: Column(children: [
-            SizedBox(height: top + 104),
-            if (_searchExpanded)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-                child: TextField(
-                  controller: _searchController,
-                  autofocus: true,
-                  onChanged: (value) => setState(() => _searchQuery = value),
-                  decoration: InputDecoration(
-                    hintText: 'Search songs or folders',
-                    prefixIcon: const Icon(Icons.search_rounded),
-                    suffixIcon: IconButton(onPressed: () { _searchController.clear(); setState(() => _searchQuery = ''); }, icon: const Icon(Icons.close_rounded)),
-                    filled: true, fillColor: Theme.of(context).colorScheme.surfaceContainerLow,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
-                  ),
-                ),
-              ),
-            if (_loading) const LinearProgressIndicator(minHeight: 2),
-            if (_error != null) Padding(padding: const EdgeInsets.all(16), child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: _refreshMusic,
-                displacement: 48,
-                child: _error != null
-                    ? ListView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        children: [
-                          SizedBox(
-                            height: MediaQuery.sizeOf(context).height * 0.55,
-                            child: Center(
-                              child: FilledButton(
-                                onPressed: _scan,
-                                child: const Text('Retry scan'),
-                              ),
-                            ),
-                          ),
-                        ],
-                      )
-                    : _loading && _media.isEmpty
+          Positioned.fill(
+            child: _libraryView == 'folders'
+                ? Column(children: [
+                    SizedBox(height: top + 104),
+                    Expanded(
+                      child: RefreshIndicator(
+                        onRefresh: _refreshMusic,
+                        child: _buildFolders(visible),
+                      ),
+                    ),
+                  ])
+                : RefreshIndicator(
+                    onRefresh: _refreshMusic,
+                    displacement: 48,
+                    child: _error != null || (_loading && _media.isEmpty) || visible.isEmpty
                         ? ListView(
                             physics: const AlwaysScrollableScrollPhysics(),
+                            padding: EdgeInsets.fromLTRB(12, top + 142 + (_searchExpanded ? 60 : 0), 12, 112 + MediaQuery.paddingOf(context).bottom),
                             children: [
                               SizedBox(
                                 height: MediaQuery.sizeOf(context).height * 0.55,
-                                child: const Center(child: Text('Scanning music library…')),
+                                child: Center(
+                                  child: _error != null
+                                      ? FilledButton(onPressed: _scan, child: const Text('Retry scan'))
+                                      : Text(_loading && _media.isEmpty
+                                          ? 'Scanning music library…'
+                                          : _libraryView == 'favorites'
+                                              ? 'No favourite tracks yet.'
+                                              : 'No music found. Scan storage to find tracks.'),
+                                ),
                               ),
                             ],
                           )
-                        : _libraryView == 'folders'
-                            ? _buildFolders(visible)
-                            : visible.isEmpty
-                                ? ListView(
-                                    physics: const AlwaysScrollableScrollPhysics(),
-                                    children: [
-                                      SizedBox(
-                                        height: MediaQuery.sizeOf(context).height * 0.55,
-                                        child: Center(
-                                          child: Text(
-                                            _libraryView == 'favorites'
-                                                ? 'No favourite tracks yet.'
-                                                : 'No music found. Scan storage to find tracks.',
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  )
-                                : ListView.separated(
-                                    physics: const AlwaysScrollableScrollPhysics(),
-                                    controller: _contentScrollController,
-                                    padding: EdgeInsets.fromLTRB(12, 8, 12, 112 + MediaQuery.paddingOf(context).bottom),
-                                    itemCount: visible.length + 1,
-                                    separatorBuilder: (_, index) => index == 0 ? const SizedBox(height: 10) : const SizedBox(height: 2),
-                                    itemBuilder: (context, index) {
-                                      if (index == 0) return Padding(
-                                        padding: const EdgeInsets.fromLTRB(4, 0, 4, 2),
-                                        child: Row(children: [
-                                          Expanded(child: _MusicActionPill(label: 'Play All', icon: Icons.play_arrow_rounded, primary: true,
-                                            onTap: () => _openMedia(visible.first, visible))),
-                                          const SizedBox(width: 10),
-                                          Expanded(child: _MusicActionPill(label: 'Shuffle', icon: Icons.shuffle_rounded, onTap: () {
-                                            final shuffled = List<_MediaFile>.of(visible)..shuffle(math.Random());
-                                            _openMedia(shuffled.first, shuffled);
-                                          })),
-                                        ]),
-                                      );
-                                      return _musicTrackTile(visible[index - 1], visible);
-                                    },
-                                  ),
+                        : ListView.separated(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            controller: _contentScrollController,
+                            padding: EdgeInsets.fromLTRB(12, top + 142 + (_searchExpanded ? 60 : 0), 12, 112 + MediaQuery.paddingOf(context).bottom),
+                            itemCount: visible.length + 1,
+                            separatorBuilder: (_, index) => index == 0 ? const SizedBox(height: 10) : const SizedBox(height: 2),
+                            itemBuilder: (context, index) {
+                              if (index == 0) return Padding(
+                                padding: const EdgeInsets.fromLTRB(4, 0, 4, 2),
+                                child: Row(children: [
+                                  Expanded(child: _MusicActionPill(label: 'Play All', icon: Icons.play_arrow_rounded, primary: true,
+                                    onTap: () => _openMedia(visible.first, visible))),
+                                  const SizedBox(width: 10),
+                                  Expanded(child: _MusicActionPill(label: 'Shuffle', icon: Icons.shuffle_rounded, onTap: () {
+                                    final shuffled = List<_MediaFile>.of(visible)..shuffle(math.Random());
+                                    _openMedia(shuffled.first, shuffled);
+                                  })),
+                                ]),
+                              );
+                              return _musicTrackTile(visible[index - 1], visible);
+                            },
+                          ),
+                  ),
+          ),
+          if (_searchExpanded)
+            Positioned(
+              top: top + 76,
+              left: 16,
+              right: 16,
+              child: TextField(
+                controller: _searchController,
+                autofocus: true,
+                onChanged: (value) => setState(() => _searchQuery = value),
+                decoration: InputDecoration(
+                  hintText: 'Search songs or folders',
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  suffixIcon: IconButton(
+                    onPressed: () { _searchController.clear(); setState(() => _searchQuery = ''); },
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                  filled: true,
+                  fillColor: Theme.of(context).colorScheme.surfaceContainerLow.withValues(alpha: 0.90),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
+                ),
               ),
             ),
-          ])),
+          if (_loading)
+            Positioned(
+              top: top + 136,
+              left: 0,
+              right: 0,
+              child: const LinearProgressIndicator(minHeight: 2),
+            ),
+          if (_error != null)
+            Positioned(
+              top: top + 142,
+              left: 16,
+              right: 16,
+              child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            ),
           Positioned(top: 0, left: 0, right: 0, height: top + 142,
             child: const IgnorePointer(child: FeatheredGlassHeaderBackground())),
           Positioned(top: top + 8, left: 16, right: 16, height: 56,
