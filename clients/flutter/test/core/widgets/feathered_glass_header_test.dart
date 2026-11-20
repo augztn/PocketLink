@@ -60,4 +60,30 @@ void main() {
 
     expect(find.byType(BackdropFilter), findsNothing);
   });
+
+  testWidgets('glass header buttons disable their filter in fallback mode', (tester) async {
+    await AppSettings.instance.setProgressiveBlurOptions(
+      enabled: false,
+      reduceDynamicBlur: false,
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: GlassCircleButton(
+            tooltip: 'Back',
+            onPressed: null,
+            child: Icon(Icons.arrow_back_rounded),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(BackdropFilter), findsNothing);
+
+    await AppSettings.instance.setProgressiveBlurOptions(enabled: true);
+    await tester.pump();
+
+    expect(find.byType(BackdropFilter), findsOneWidget);
+  });
 }
