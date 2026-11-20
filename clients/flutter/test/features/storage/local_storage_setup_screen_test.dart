@@ -153,10 +153,14 @@ void main() {
     expect(find.byTooltip('Back'), findsOneWidget);
     expect(find.byTooltip('Home'), findsNothing);
 
+    final scaffold = tester.widget<Scaffold>(find.byType(Scaffold).first);
+    expect(scaffold.extendBody, isTrue);
+    expect(scaffold.bottomNavigationBar, isNotNull);
+
     final dockRect = tester.getRect(dock);
     final screenHeight =
         tester.view.physicalSize.height / tester.view.devicePixelRatio;
-    expect(screenHeight - dockRect.bottom, closeTo(14, 1));
+    expect(screenHeight - dockRect.bottom, closeTo(12, 1));
 
     await tester.tap(find.byTooltip('More actions'));
     await tester.pumpAndSettle();
