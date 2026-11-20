@@ -64,7 +64,7 @@ class HostMediaScanCard extends StatelessWidget {
         : source == null ? 'Preparing storage' : 'External storage';
     return Container(
       padding: const EdgeInsets.all(15),
-      decoration: _dashboardCardDecoration(theme),
+      decoration: cardDecoration,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Icon(Icons.manage_search_rounded, color: colors.primary, size: 20),
