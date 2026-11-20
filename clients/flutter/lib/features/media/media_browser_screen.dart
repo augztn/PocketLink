@@ -1805,7 +1805,7 @@ tooltip: 'Choose music view',
                             }
                           },
                           child: GlassCircleButton(
-                            tooltip: 'More music actions',
+                            tooltip: 'Open more music actions',
                             onPressed: null,
                             child: const Icon(Icons.more_vert_rounded, size: 18),
                           ),
