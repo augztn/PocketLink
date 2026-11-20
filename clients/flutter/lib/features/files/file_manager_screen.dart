@@ -3,6 +3,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
+import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/pocketlink_file_icon.dart';
 import '../../core/widgets/smoked_glass_popover_menu.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
