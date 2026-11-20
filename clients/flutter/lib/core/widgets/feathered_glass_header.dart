@@ -76,39 +76,18 @@ class GlassCircleButton extends StatelessWidget {
             color: isDark
                 ? const Color(0xFF1C1E24).withValues(alpha: 0.58)
                 : Colors.white.withValues(alpha: 0.58),
-            border: Border.all(color: isDark
-              ? Colors.white.withValues(alpha: 0.24)
-              : const Color(0xFF94A3B8).withValues(alpha: 0.30)),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.24)
+                  : const Color(0xFF94A3B8).withValues(alpha: 0.30),
+              width: 1.0,
+            ),
           ),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Center(
-                child: IconTheme(
-                  data: IconThemeData(color: foreground, size: 18),
-                  child: child,
-                ),
-              ),
-              Positioned(
-                top: 0,
-                left: size * 0.22,
-                right: size * 0.22,
-                child: IgnorePointer(
-                  child: Container(
-                    height: 1,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.white.withValues(alpha: 0.02),
-                          Colors.white.withValues(alpha: isDark ? 0.42 : 0.86),
-                          Colors.white.withValues(alpha: 0.02),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+          child: Center(
+            child: IconTheme(
+              data: IconThemeData(color: foreground, size: 18),
+              child: child,
+            ),
           ),
         )),
       )),

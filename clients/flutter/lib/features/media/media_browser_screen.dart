@@ -724,7 +724,8 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                     child: const GlassCircleButton(
                       tooltip: 'Video actions',
                       onPressed: null,
-                      child: Icon(Icons.more_vert_rounded, size: 18),
+                      size: 28,
+                      child: Icon(Icons.more_vert_rounded, size: 15),
                     ),
                   )),
                   Positioned(right: 4, top: 4, child: IconButton(
