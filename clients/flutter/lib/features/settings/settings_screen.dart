@@ -1,7 +1,7 @@
 import 'dart:io';
 import '../../core/widgets/pocketlink_app_bar.dart';
 
-import 'package:file_picker/file_picker.dart';
+import 'package:file_picker/file_picker.dart' as file_picker;
 import 'package:material_ui/material_ui.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -123,7 +123,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _importSettingsBackup() async {
     if (_exportingSettings || _importingSettings) return;
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final result = await file_picker.FilePicker.platform.pickFiles(
         type: FileType.custom, allowedExtensions: ['json'], withData: true,
       );
       if (!mounted || result == null || result.files.isEmpty) return;
