@@ -26,6 +26,7 @@ internal data class SkippedIndexItem(val volume: String, val path: String, val r
 
 private val AUDIO_EXTENSIONS = setOf("mp3", "flac", "m4a", "wav", "ogg", "aac", "opus", "wma")
 private val VIDEO_EXTENSIONS = setOf("mp4", "mkv", "webm", "mov", "avi", "m4v", "3gp", "ts")
+private val PHOTO_EXTENSIONS = setOf("jpg", "jpeg", "png", "webp", "gif", "bmp", "heic", "heif", "tif", "tiff", "avif")
 private val AUDIO_MIME_TYPES = setOf(
     "audio/mpeg", "audio/flac", "audio/x-flac", "audio/mp4", "audio/x-m4a",
     "audio/wav", "audio/x-wav", "audio/ogg", "audio/aac", "audio/opus",
@@ -34,6 +35,10 @@ private val AUDIO_MIME_TYPES = setOf(
 private val VIDEO_MIME_TYPES = setOf(
     "video/mp4", "video/x-m4v", "video/x-matroska", "video/webm",
     "video/quicktime", "video/x-msvideo", "video/3gpp", "video/mp2t"
+)
+private val PHOTO_MIME_TYPES = setOf(
+    "image/jpeg", "image/png", "image/webp", "image/gif", "image/bmp",
+    "image/heic", "image/heif", "image/tiff", "image/avif"
 )
 
 internal class MediaIndexDatabase(context: Context) :
@@ -173,12 +178,12 @@ internal class MediaIndexDatabase(context: Context) :
     }
 
     fun queryMedia(category: String, query: String, limit: Int, offset: Int): List<IndexedFile> {
-        val extensions = when (category) {
-            "music" -> AUDIO_EXTENSIONS
-            "video" -> VIDEO_EXTENSIONS
+        val (extensions, allowedMime) = when (category) {
+            "music" -> AUDIO_EXTENSIONS to AUDIO_MIME_TYPES
+            "video" -> VIDEO_EXTENSIONS to VIDEO_MIME_TYPES
+            "photo" -> PHOTO_EXTENSIONS to PHOTO_MIME_TYPES
             else -> return emptyList()
         }
-        val allowedMime = if (category == "music") AUDIO_MIME_TYPES else VIDEO_MIME_TYPES
         val extensionClause = extensions.joinToString(" OR ") { "LOWER(name) LIKE ?" }
         val where = mutableListOf(
             "category=?",
