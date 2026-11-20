@@ -1992,7 +1992,9 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
         scrolledUnderElevation: 0,
         flexibleSpace: const FeatheredGlassHeaderBackground(),
         titleSpacing: 8,
-        title: Column(
+        title: Transform.translate(
+          offset: const Offset(0, 6),
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('PocketLink', style: theme.textTheme.titleLarge?.copyWith(
@@ -2004,7 +2006,9 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
               fontWeight: FontWeight.w500,
             )),
           ],
+          ),
         ),
+        actionsPadding: const EdgeInsets.only(right: 16),
         actions: [
           SmokedGlassPopoverMenu<String>(
             tooltip: 'More actions',
@@ -2064,7 +2068,6 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
               ),
             ),
           ),
-          const SizedBox(width: 16),
         ],
       ),
       body: RefreshIndicator(
