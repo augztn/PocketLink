@@ -94,6 +94,15 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     return _categoryExtensions[_category]?.contains(_extension(item)) ?? false;
   }
 
+  int _categoryCount(List<FileEntry> entries, String category) {
+    if (category == 'All') return entries.length;
+    final extensions = _categoryExtensions[category];
+    if (extensions == null) return 0;
+    return entries
+        .where((item) => !item.isDirectory && extensions.contains(_extension(item)))
+        .length;
+  }
+
   PocketLinkFileVisual _fileVisual(FileEntry item, ColorScheme colors) =>
       PocketLinkFileVisuals.resolve(
         name: item.name,
@@ -805,11 +814,11 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                     kToolbarHeight +
                     (_searchExpanded ? 64 : 0) +
                     (_path.isNotEmpty ? 38 : 0) +
-                    62;
+                    44; // Filter row: 10px outer padding + 34px pill.
                 Widget emptyList(String message, {Widget? action}) => ListView(
                   controller: _scrollController,
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: EdgeInsets.fromLTRB(16, topInset + 72, 16, 104 + MediaQuery.paddingOf(context).bottom),
+                  padding: EdgeInsets.fromLTRB(16, topInset + 12, 16, 104 + MediaQuery.paddingOf(context).bottom),
                   children: [
                     SizedBox(
                       height: 150,
@@ -840,7 +849,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                                 ? GridView.builder(
                                     controller: _scrollController,
                                     physics: const AlwaysScrollableScrollPhysics(),
-                                    padding: EdgeInsets.fromLTRB(16, topInset + 8, 16, 104 + MediaQuery.paddingOf(context).bottom),
+                                    padding: EdgeInsets.fromLTRB(16, topInset + 12, 16, 104 + MediaQuery.paddingOf(context).bottom),
                                     gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                                       maxCrossAxisExtent: 190,
                                       mainAxisExtent: 156,
@@ -906,7 +915,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                                 : ListView.separated(
                                     controller: _scrollController,
                                     physics: const AlwaysScrollableScrollPhysics(),
-                                    padding: EdgeInsets.fromLTRB(16, topInset + 8, 16, 104 + MediaQuery.paddingOf(context).bottom),
+                                    padding: EdgeInsets.fromLTRB(16, topInset + 12, 16, 104 + MediaQuery.paddingOf(context).bottom),
                                     itemCount: items.length,
                                     separatorBuilder: (_, __) => const SizedBox(height: 8),
                                     itemBuilder: (context, index) => fileTile(items[index]),
@@ -980,25 +989,37 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                         alignment: Alignment.centerLeft,
                         child: SmokedGlassPopoverMenu<String>(
                           tooltip: 'Filter file types',
+                          itemHeight: 44,
+                          menuVerticalPadding: 6,
+                          itemHorizontalPadding: 14,
+                          trailingWidth: 52,
                           items: [
                             for (final category in const ['All', 'Images', 'Videos', 'Music', 'Documents'])
                               SmokedGlassPopoverMenuItem(
                                 value: category,
                                 label: category,
                                 icon: switch (category) {
-                                  'Images' => Icons.image_rounded,
-                                  'Videos' => Icons.video_library_rounded,
-                                  'Music' => Icons.music_note_rounded,
-                                  'Documents' => Icons.description_rounded,
-                                  _ => Icons.folder_rounded,
+                                  'Images' => Icons.image_outlined,
+                                  'Videos' => Icons.movie_outlined,
+                                  'Music' => Icons.music_note_outlined,
+                                  'Documents' => Icons.description_outlined,
+                                  _ => Icons.apps_rounded,
                                 },
                                 trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                                   Text(
-                                    '${allItems.where((item) => item.isDirectory || category == 'All' || (_categoryExtensions[category]?.contains(_extension(item)) ?? false)).length}',
+                                    '${_categoryCount(allItems, category)}',
                                     style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3)),
                                   ),
-                                  if (_category == category)
-                                    const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.check_rounded, size: 18)),
+                                  const SizedBox(width: 6),
+                                  SizedBox(
+                                    width: 20,
+                                    child: Align(
+                                      alignment: Alignment.centerRight,
+                                      child: _category == category
+                                          ? const Icon(Icons.check_rounded, size: 16)
+                                          : const SizedBox.shrink(),
+                                    ),
+                                  ),
                                 ]),
                               ),
                           ],
