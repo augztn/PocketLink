@@ -773,7 +773,6 @@ class _SearchScreenState extends State<SearchScreen> {
         ],
       ),
       body: Builder(builder: (context) {
-        final safeTop = MediaQuery.paddingOf(context).top;
         final headerBottom = LayoutInsetsScope.of(context).topClearance - 10;
         final contentTop = headerBottom + 8 + 64 + 54 +
             (_loading ? 34 : 0) + (_quick != null ? 42 : 0) + 8;
