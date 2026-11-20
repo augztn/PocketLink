@@ -45,6 +45,11 @@ void main() {
 
     expect(find.text('Rename'), findsOneWidget);
     expect(find.text('Delete'), findsOneWidget);
+    final menuCard = find.ancestor(
+      of: find.text('Rename'),
+      matching: find.byType(ConstrainedBox),
+    ).first;
+    expect(tester.getSize(menuCard).width, greaterThanOrEqualTo(215));
 
     await tester.tap(find.text('Rename'));
     await tester.pump();
