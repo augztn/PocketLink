@@ -57,12 +57,14 @@ class PocketLinkScaffold extends StatefulWidget {
     required this.child,
     required this.hasFloatingNavBar,
     required this.hasActiveMiniPlayer,
+    this.routeIdentity,
     super.key,
   });
 
   final Widget child;
   final bool hasFloatingNavBar;
   final bool hasActiveMiniPlayer;
+  final Object? routeIdentity;
 
   @override
   State<PocketLinkScaffold> createState() => _PocketLinkScaffoldState();
@@ -70,6 +72,14 @@ class PocketLinkScaffold extends StatefulWidget {
 
 class _PocketLinkScaffoldState extends State<PocketLinkScaffold> {
   double? _renderedHeaderHeight;
+
+  @override
+  void didUpdateWidget(covariant PocketLinkScaffold oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.routeIdentity != widget.routeIdentity) {
+      _renderedHeaderHeight = null;
+    }
+  }
 
   void reportHeaderHeight(double height) {
     if (!height.isFinite || height <= 0 ||
