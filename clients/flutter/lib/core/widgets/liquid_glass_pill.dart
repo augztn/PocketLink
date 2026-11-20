@@ -31,29 +31,27 @@ class LiquidGlassSurface extends StatelessWidget {
         final useGlass = AppSettings.instance.useLiquidGlass || refractive;
         final isDark = Theme.of(context).brightness == Brightness.dark;
         final colors = Theme.of(context).colorScheme;
-        final optical = useGlass;
+
         final decoration = useGlass
             ? BoxDecoration(
-                color: optical
-                    ? (!isDark
-                        ? Colors.white.withValues(alpha: 0.56)
-                        : const Color(0xFF16181F).withValues(alpha: 0.44))
+                color: refractive
+                    ? (!isDark && lightRefractive
+                        ? Colors.white.withValues(alpha: 0.58)
+                        : const Color(0xFF1A1C23).withValues(alpha: 0.40))
                     : null,
-                gradient: optical
-                    ? null
-                    : LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: isDark
-                            ? [
-                                Colors.white.withValues(alpha: 0.14),
-                                Colors.white.withValues(alpha: 0.08),
-                              ]
-                            : [
-                                Colors.white.withValues(alpha: 0.85),
-                                Colors.white.withValues(alpha: 0.72),
-                              ],
-                      ),
+                gradient: refractive ? null : LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: isDark
+                      ? [
+                          Colors.white.withValues(alpha: 0.14),
+                          Colors.white.withValues(alpha: 0.08),
+                        ]
+                      : [
+                          Colors.white.withValues(alpha: 0.85),
+                          Colors.white.withValues(alpha: 0.72),
+                        ],
+                ),
                 borderRadius: radius,
                 border: Border.all(
                   color: isDark
@@ -71,6 +69,11 @@ class LiquidGlassSurface extends StatelessWidget {
                 ),
               );
 
+        final surface = DecoratedBox(
+          decoration: decoration,
+          child: child,
+        );
+
         final contentTheme = Theme.of(context).copyWith(
           splashFactory: NoSplash.splashFactory,
           highlightColor: Colors.transparent,
@@ -82,92 +85,37 @@ class LiquidGlassSurface extends StatelessWidget {
             ),
           ),
         );
-        final surface = ClipRRect(
+        final themedSurface = Theme(
+          data: contentTheme,
+          child: surface,
+        );
+        final clippedSurface = ClipRRect(
           borderRadius: radius,
           clipBehavior: Clip.antiAlias,
           child: useGlass
               ? BackdropFilter(
-                  filter: ui.ImageFilter.blur(
-                    sigmaX: optical ? 28 : 22,
-                    sigmaY: optical ? 28 : 22,
-                  ),
-                  child: DecoratedBox(
-                    decoration: decoration,
-                    child: Stack(
-                      fit: StackFit.passthrough,
-                      children: [
-                        Theme(data: contentTheme, child: child),
-                        if (optical)
-                          Positioned.fill(
-                            child: IgnorePointer(
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: isDark
-                                        ? [
-                                            Colors.white.withValues(alpha: 0.11),
-                                            Colors.transparent,
-                                            Colors.white.withValues(alpha: 0.05),
-                                          ]
-                                        : [
-                                            Colors.white.withValues(alpha: 0.35),
-                                            Colors.transparent,
-                                            Colors.white.withValues(alpha: 0.18),
-                                          ],
-                                    stops: const [0, 0.52, 1],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
+                  filter: ui.ImageFilter.blur(sigmaX: refractive ? 28 : 22, sigmaY: refractive ? 28 : 22),
+                  child: themedSurface,
                 )
-              : ClipRRect(
-                  borderRadius: radius,
-                  clipBehavior: Clip.antiAlias,
-                  child: DecoratedBox(
-                    decoration: decoration,
-                    child: Theme(data: contentTheme, child: child),
-                  ),
-                ),
+              : themedSurface,
         );
-        final polishedSurface = optical
-            ? CustomPaint(
-                foregroundPainter: _RefractiveGlassRimPainter(
-                  radius: radius,
-                  isDark: isDark,
-                ),
-                child: surface,
-              )
-            : surface;
 
-        return Container(
-          decoration: BoxDecoration(
-            borderRadius: radius,
-            boxShadow: useGlass
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.35),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    ),
-                  ]
-                : const [],
-          ),
-          child: polishedSurface,
-        );
+        return refractive
+            ? CustomPaint(
+                foregroundPainter: _RefractiveGlassRimPainter(radius: radius),
+                child: clippedSurface,
+              )
+            : RepaintBoundary(child: clippedSurface);
       },
     );
   }
 }
 
-/// Shared floating smoked-glass surface used by the persistent mini-player.
-/// The Appearance setting switches between the classic smoked treatment and
-/// the higher-translucency optical lens treatment without changing layout.
+
+/// Always-on smoked glass treatment for the persistent mini-player.
+///
+/// Unlike the optional decorative glass surfaces, this keeps its backdrop blur
+/// and translucent smoked tint active so page content remains visible beneath it.
 class SmokedGlassSurface extends StatelessWidget {
   const SmokedGlassSurface({
     required this.child,
@@ -182,140 +130,99 @@ class SmokedGlassSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: AppSettings.instance,
-      builder: (context, _) {
-        final isLight = Theme.of(context).brightness == Brightness.light;
-        final optical = AppSettings.instance.useLiquidGlass || refractive;
-        final borderColor = isLight
-            ? const Color(0x1A0F172A)
-            : Colors.white.withValues(alpha: 0.14);
-        final surface = ClipRRect(
-          borderRadius: radius,
-          clipBehavior: Clip.antiAlias,
-          child: BackdropFilter(
-            filter: ui.ImageFilter.blur(
-              sigmaX: optical ? 28 : 24,
-              sigmaY: optical ? 28 : 24,
-            ),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: optical
-                    ? isLight
-                        ? Colors.white.withValues(alpha: 0.56)
-                        : const Color(0xFF16181F).withValues(alpha: 0.44)
-                    : isLight
-                        ? Colors.white.withValues(alpha: 0.78)
-                        : const Color(0xFF1C1E24).withValues(alpha: 0.68),
-                borderRadius: radius,
-                border: Border.all(
-                  color: optical
-                      ? (isLight
-                          ? Colors.white.withValues(alpha: 0.70)
-                          : Colors.white.withValues(alpha: 0.18))
-                      : borderColor,
-                  width: 1,
-                ),
-              ),
-              child: Stack(
-                fit: StackFit.passthrough,
-                children: [
-                  child,
-                  if (optical)
-                    Positioned.fill(
-                      child: IgnorePointer(
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: isLight
-                                  ? [
-                                      Colors.white.withValues(alpha: 0.35),
-                                      Colors.transparent,
-                                      Colors.white.withValues(alpha: 0.18),
-                                    ]
-                                  : [
-                                      Colors.white.withValues(alpha: 0.11),
-                                      Colors.transparent,
-                                      Colors.white.withValues(alpha: 0.05),
-                                    ],
-                              stops: const [0, 0.52, 1],
-                            ),
-                          ),
-                        ),
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final borderColor = isLight
+        ? const Color(0x1A0F172A)
+        : Colors.white.withValues(alpha: 0.14);
+    final surface = ClipRRect(
+      borderRadius: radius,
+      clipBehavior: Clip.antiAlias,
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: refractive ? 28 : 24, sigmaY: refractive ? 28 : 24),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: refractive
+                ? const Color(0xFF1A1C23).withValues(alpha: 0.40)
+                : isLight
+                    ? Colors.white.withValues(alpha: 0.78)
+                    : const Color(0xFF1C1E24).withValues(alpha: 0.68),
+            borderRadius: radius,
+            border: Border.all(color: borderColor, width: 1),
+            boxShadow: isLight
+                ? const [BoxShadow(color: Color(0x140F172A), blurRadius: 18, offset: Offset(0, 5))]
+                : const [],
+          ),
+          child: Stack(
+            fit: StackFit.passthrough,
+            children: [
+              child,
+              Positioned(
+                top: 0,
+                left: 1,
+                right: 1,
+                child: IgnorePointer(
+                  child: Container(
+                    height: 1,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: isLight
+                            ? [
+                                Colors.white.withValues(alpha: 0.55),
+                                Colors.white.withValues(alpha: 0.90),
+                                Colors.white.withValues(alpha: 0.55),
+                              ]
+                            : [
+                                Colors.white.withValues(alpha: 0.02),
+                                Colors.white.withValues(alpha: 0.42),
+                                Colors.white.withValues(alpha: 0.02),
+                              ],
                       ),
                     ),
-                ],
-              ),
-            ),
-          ),
-        );
-        final polishedSurface = optical
-            ? CustomPaint(
-                foregroundPainter: _RefractiveGlassRimPainter(
-                  radius: radius,
-                  isDark: !isLight,
+                  ),
                 ),
-                child: surface,
-              )
-            : surface;
-        return Container(
-          decoration: BoxDecoration(
-            borderRadius: radius,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: optical ? 0.35 : 0.12),
-                blurRadius: optical ? 20 : 18,
-                offset: const Offset(0, 8),
               ),
             ],
           ),
-          child: polishedSurface,
-        );
-      },
+        ),
+      ),
     );
+    return refractive
+        ? CustomPaint(
+            foregroundPainter: _RefractiveGlassRimPainter(radius: radius),
+            child: surface,
+          )
+        : surface;
   }
 }
 
 class _RefractiveGlassRimPainter extends CustomPainter {
-  const _RefractiveGlassRimPainter({
-    required this.radius,
-    required this.isDark,
-  });
+  const _RefractiveGlassRimPainter({required this.radius});
 
   final BorderRadius radius;
-  final bool isDark;
 
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
-    final rrect = radius.toRRect(rect).deflate(0.62);
+    final rrect = radius.toRRect(rect).deflate(0.6);
     final paint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.25
-      ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: isDark
-            ? const [
-                Color(0x73FFFFFF),
-                Color(0x1AFFFFFF),
-                Color(0x47FFFFFF),
-              ]
-            : const [
-                Color(0xB3FFFFFF),
-                Color(0x2694A3B8),
-                Color(0x80FFFFFF),
-              ],
-        stops: const [0, 0.52, 1],
+      ..strokeWidth = 1.2
+      ..shader = const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Color(0x73FFFFFF),
+          Color(0x16FFFFFF),
+          Color(0x52FFFFFF),
+        ],
+        stops: [0, 0.52, 1],
       ).createShader(rect);
     canvas.drawRRect(rrect, paint);
   }
 
   @override
   bool shouldRepaint(covariant _RefractiveGlassRimPainter oldDelegate) =>
-      oldDelegate.radius != radius || oldDelegate.isDark != isDark;
+      oldDelegate.radius != radius;
 }
 
 /// Backwards-compatible name retained for existing call sites.
