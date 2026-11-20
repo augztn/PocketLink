@@ -978,6 +978,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         appBar: PocketLinkAppBar(
           feathered: true,
           showHome: false,
+          automaticallyImplyLeading: false,
             title: SmokedGlassPopoverMenu<String>(
             tooltip: 'Choose video view',
             onOpenChanged: (open) => setState(() => _musicMenuOpen = open),
