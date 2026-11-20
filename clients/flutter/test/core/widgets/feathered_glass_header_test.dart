@@ -16,6 +16,23 @@ void main() {
     expect(AppSettings.instance.progressiveBlurEnabled, isFalse);
   });
 
+  test('progressive blur strength defaults to 55 percent', () {
+    expect(AppSettings.instance.progressiveBlurStrength, 55);
+  });
+
+  testWidgets('progressive blur strength is clamped, persisted and validated', (tester) async {
+    await AppSettings.instance.setProgressiveBlurStrength(72.5);
+    expect(AppSettings.instance.progressiveBlurStrength, 72.5);
+    expect(
+      (await SharedPreferences.getInstance()).getDouble('settings_progressive_blur_strength'),
+      72.5,
+    );
+    await expectLater(
+      AppSettings.instance.setProgressiveBlurStrength(101),
+      throwsArgumentError,
+    );
+  });
+
   testWidgets('progressive blur preference persists when toggled', (tester) async {
     await AppSettings.instance.setProgressiveBlurEnabled(true);
     expect(AppSettings.instance.progressiveBlurEnabled, isTrue);
