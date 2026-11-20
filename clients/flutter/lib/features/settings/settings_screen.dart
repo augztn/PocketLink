@@ -126,7 +126,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom, allowedExtensions: ['json'], withData: true,
       );
-      if (result == null || result.files.isEmpty) return;
+      if (!mounted || result == null || result.files.isEmpty) return;
       final bytes = result.files.single.bytes;
       if (bytes == null) {
         _message('Could not read the selected backup file.');
@@ -507,7 +507,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const Padding(
                       padding: EdgeInsets.fromLTRB(16, 8, 16, 16),
                       child: Text(
-                        'Backups include supported app preferences only. Server profiles, passwords, tokens, storage permissions, downloads and personal files are excluded.',
+                        'Backups include supported app preferences only. Theme and download location stay unchanged; server profiles, credentials, storage permissions, downloads and personal files are excluded.',
                       ),
                     ),
                   ]),
