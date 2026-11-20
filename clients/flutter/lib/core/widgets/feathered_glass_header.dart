@@ -9,10 +9,12 @@ import 'pocketlink_scaffold.dart';
 class FeatheredGlassHeaderBackground extends StatelessWidget {
   const FeatheredGlassHeaderBackground({
     this.darkTint,
+    this.contentHeight = kToolbarHeight,
     super.key,
   });
 
   final List<Color>? darkTint;
+  final double contentHeight;
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +30,7 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
             settings.progressiveBlurEnabled &&
             settings.progressiveBlurStrength > 0;
         final blurScale = settings.progressiveBlurStrength / 55;
-        final headerHeight = media.padding.top + kToolbarHeight + 16;
+        final headerHeight = media.padding.top + contentHeight + 16;
         final statusBlurHeight = media.padding.top + 12;
 
         final tint = isDark
