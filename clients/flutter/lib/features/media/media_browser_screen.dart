@@ -653,7 +653,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   Widget _buildVideoGrid(List<_MediaFile> items) {
     return GridView.builder(
       controller: _contentScrollController,
-      padding: EdgeInsets.fromLTRB(12, MediaQuery.paddingOf(context).top + kToolbarHeight + 8, 12, 104 + MediaQuery.paddingOf(context).bottom),
+      padding: EdgeInsets.fromLTRB(12, ((_searchExpanded && widget.showSearch) || _libraryView == 'folders') ? 8 : MediaQuery.paddingOf(context).top + kToolbarHeight + 8, 12, 104 + MediaQuery.paddingOf(context).bottom),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 14,
         childAspectRatio: 0.88,
@@ -753,7 +753,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   Widget _buildVideoList(List<_MediaFile> items) {
     return ListView.separated(
       controller: _contentScrollController,
-      padding: EdgeInsets.fromLTRB(12, MediaQuery.paddingOf(context).top + kToolbarHeight + 8, 12, 104 + MediaQuery.paddingOf(context).bottom),
+      padding: EdgeInsets.fromLTRB(12, ((_searchExpanded && widget.showSearch) || _libraryView == 'folders') ? 8 : MediaQuery.paddingOf(context).top + kToolbarHeight + 8, 12, 104 + MediaQuery.paddingOf(context).bottom),
       itemCount: items.length,
       separatorBuilder: (_, __) => const SizedBox(height: 4),
       itemBuilder: (context, index) {
@@ -889,7 +889,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
           child: ListView(
             physics: _isMusic ? const AlwaysScrollableScrollPhysics() : null,
             controller: _contentScrollController,
-            padding: EdgeInsets.fromLTRB(12, MediaQuery.paddingOf(context).top + kToolbarHeight + 8, 12, 104 + MediaQuery.paddingOf(context).bottom),
+            padding: EdgeInsets.fromLTRB(12, ((_searchExpanded && widget.showSearch) || _libraryView == 'folders') ? 8 : MediaQuery.paddingOf(context).top + kToolbarHeight + 8, 12, 104 + MediaQuery.paddingOf(context).bottom),
             children: [
               for (final folder in folders)
                 Card(
@@ -1119,7 +1119,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                                     ? _buildVideoList(visibleMedia)
                                     : ListView.builder(
                                         controller: _contentScrollController,
-                                        padding: EdgeInsets.fromLTRB(12, MediaQuery.paddingOf(context).top + kToolbarHeight + 8, 12, 104 + MediaQuery.paddingOf(context).bottom),
+                                        padding: EdgeInsets.fromLTRB(12, ((_searchExpanded && widget.showSearch) || _libraryView == 'folders') ? 8 : MediaQuery.paddingOf(context).top + kToolbarHeight + 8, 12, 104 + MediaQuery.paddingOf(context).bottom),
                                         itemCount: visibleMedia.length,
                                         itemBuilder: (context, index) {
                                           final media = visibleMedia[index];
