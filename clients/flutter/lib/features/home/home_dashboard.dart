@@ -1275,9 +1275,12 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
     return '${minutes ~/ 60}h ${minutes % 60}m';
   }
 
-  String _formatScanTimestamp(int timestamp) {
+  String _formatScanTimestamp(int timestamp, {int? timezoneOffsetMinutes}) {
     if (timestamp <= 0) return 'Not yet scanned';
-    final date = DateTime.fromMillisecondsSinceEpoch(timestamp).toLocal();
+    final date = timezoneOffsetMinutes == null
+        ? DateTime.fromMillisecondsSinceEpoch(timestamp).toLocal()
+        : DateTime.fromMillisecondsSinceEpoch(timestamp, isUtc: true)
+            .add(Duration(minutes: timezoneOffsetMinutes));
     final hour = date.hour % 12 == 0 ? 12 : date.hour % 12;
     final minute = date.minute.toString().padLeft(2, '0');
     final period = date.hour >= 12 ? 'PM' : 'AM';
@@ -1307,7 +1310,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                     ? null
                     : Tooltip(message: entry.runId!, child: const Icon(Icons.fingerprint_rounded, size: 16)),
                 subtitle: Text(
-                  '${_formatScanTimestamp(entry.completedAt)} · ${(entry.durationMs / 1000).toStringAsFixed(1)}s\n'
+                  '${_formatScanTimestamp(entry.completedAt, timezoneOffsetMinutes: entry.timezoneOffsetMinutes)} · ${(entry.durationMs / 1000).toStringAsFixed(1)}s\n'
                   '${entry.scanned} checked · ${entry.newFiles} new · ${entry.updatedFiles} updated · ${entry.skipped} skipped'
                   '${entry.volumes.isEmpty ? '' : '\nVolumes: ${entry.volumes.map((volume) => '${volume.volume} ${volume.state}').join(' · ')}'}'
                   '${entry.lastError == null ? '' : '\n${entry.lastError}'}'
@@ -1331,11 +1334,11 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
       'Status: ${status.state}',
       'Scan run ID: ${status.scanRunId ?? 'unavailable'}',
       'Trigger: ${status.scanTrigger}',
-      'Started: ${_formatScanTimestamp(status.lastScanStartedAt)}',
-      'Last attempt completed: ${_formatScanTimestamp(status.lastAttemptFinishedAt)}',
-      'Last successful scan: ${_formatScanTimestamp(status.lastSuccessfulAt)}',
-      'Last automatic scan: ${_formatScanTimestamp(status.lastAutomaticScanAt)}',
-      'Last manual scan: ${_formatScanTimestamp(status.lastManualScanAt)}',
+      'Started: ${_formatScanTimestamp(status.lastScanStartedAt, timezoneOffsetMinutes: status.timezoneOffsetMinutes)}',
+      'Last attempt completed: ${_formatScanTimestamp(status.lastAttemptFinishedAt, timezoneOffsetMinutes: status.timezoneOffsetMinutes)}',
+      'Last successful scan: ${_formatScanTimestamp(status.lastSuccessfulAt, timezoneOffsetMinutes: status.timezoneOffsetMinutes)}',
+      'Last automatic scan: ${_formatScanTimestamp(status.lastAutomaticScanAt, timezoneOffsetMinutes: status.timezoneOffsetMinutes)}',
+      'Last manual scan: ${_formatScanTimestamp(status.lastManualScanAt, timezoneOffsetMinutes: status.timezoneOffsetMinutes)}',
       'Timezone: ${status.timezoneId ?? 'unknown'}',
       'Automatic scanning: ${status.automaticScanning.enabled ? 'enabled' : 'disabled'} · every ${status.automaticScanning.intervalMinutes} minutes',
       'Indexed bytes: ${status.indexedBytes}',
@@ -1355,7 +1358,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
       ...status.volumes.map((volume) => '${volume.volume}: ${volume.state}, ${volume.scanned} checked, ${volume.skipped} skipped'),
       '',
       'Recent scans:',
-      ...status.scanHistory.map((entry) => '${_formatScanTimestamp(entry.completedAt)} · ${entry.trigger} · ${entry.state} · ${entry.scanned} checked · ${entry.skipped} skipped'),
+      ...status.scanHistory.map((entry) => '${_formatScanTimestamp(entry.completedAt, timezoneOffsetMinutes: entry.timezoneOffsetMinutes)} · ${entry.trigger} · ${entry.state} · ${entry.scanned} checked · ${entry.skipped} skipped'),
       '',
       'Skipped items:',
       ...status.skippedItems.map((item) => '${item.volume}/${item.path}: ${item.reason}'),
@@ -1428,17 +1431,17 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
           const SizedBox(height: 6),
           Text(
             scanning || status.state == 'interrupted'
-                ? '${status.state == 'interrupted' ? 'Interrupted' : 'Started'} ${_formatScanTimestamp(status.lastAttemptStartedAt)} · ${status.scanTrigger == 'manual' ? 'Manual' : 'Automatic'}'
-                : 'Last attempt: ${_formatScanTimestamp(status.lastAttemptFinishedAt)} · ${status.scanTrigger == 'manual' ? 'Manual' : 'Automatic'}',
+                ? '${status.state == 'interrupted' ? 'Interrupted' : 'Started'} ${_formatScanTimestamp(status.lastAttemptStartedAt, timezoneOffsetMinutes: status.timezoneOffsetMinutes)} · ${status.scanTrigger == 'manual' ? 'Manual' : 'Automatic'}'
+                : 'Last attempt: ${_formatScanTimestamp(status.lastAttemptFinishedAt, timezoneOffsetMinutes: status.timezoneOffsetMinutes)} · ${status.scanTrigger == 'manual' ? 'Manual' : 'Automatic'}',
             style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
           ),
           Text(
-            'Last successful: ${_formatScanTimestamp(status.lastSuccessfulAt)}',
+            'Last successful: ${_formatScanTimestamp(status.lastSuccessfulAt, timezoneOffsetMinutes: status.timezoneOffsetMinutes)}',
             style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
           ),
           if (status.lastAutomaticScanAt > 0)
             Text(
-              'Last automatic: ${_formatScanTimestamp(status.lastAutomaticScanAt)}',
+              'Last automatic: ${_formatScanTimestamp(status.lastAutomaticScanAt, timezoneOffsetMinutes: status.timezoneOffsetMinutes)}',
               style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
             ),
           if (!scanning && status.lastCompletedAt > 0)
@@ -1493,7 +1496,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
               padding: const EdgeInsets.only(top: 4),
               child: Row(children: [
                 Expanded(child: Text(
-                  '${_formatScanTimestamp(entry.completedAt)} · ${entry.trigger == 'manual' ? 'Manual' : 'Automatic'}',
+                  '${_formatScanTimestamp(entry.completedAt, timezoneOffsetMinutes: entry.timezoneOffsetMinutes)} · ${entry.trigger == 'manual' ? 'Manual' : 'Automatic'}',
                   style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
                 )),
                 Text(entry.state == 'complete' ? 'Complete' : entry.state,
@@ -1555,7 +1558,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                 style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
               ),
               if (status.automaticScanning.enabled && status.automaticScanning.nextScanAt > 0)
-                Text('Next check: ${_formatScanTimestamp(status.automaticScanning.nextScanAt)}',
+                Text('Next check: ${_formatScanTimestamp(status.automaticScanning.nextScanAt, timezoneOffsetMinutes: status.timezoneOffsetMinutes)}',
                   style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant)),
             ])),
             Switch.adaptive(
