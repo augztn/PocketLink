@@ -2088,7 +2088,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
               child: SizedBox.square(
                 dimension: 38,
                 child: GlassCircleButton(
-                  tooltip: 'More actions',
+                  tooltip: 'Open more actions',
                   onPressed: null,
                   child: Icon(Icons.more_vert_rounded, size: 18),
                 ),
