@@ -621,7 +621,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                 Expanded(child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: foreground, fontSize: 28, fontWeight: FontWeight.w800)),
+                    style: TextStyle(color: foreground, fontSize: 26, fontWeight: FontWeight.w700, letterSpacing: -0.5)),
                 ))
               else
                 Expanded(child: Align(alignment: Alignment.centerLeft, child: SmokedGlassPopoverMenu<int>(
@@ -645,7 +645,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 4),
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
                       Flexible(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(
-                        color: foreground, fontSize: 28, fontWeight: FontWeight.w800,
+                        color: foreground, fontSize: 26, fontWeight: FontWeight.w700, letterSpacing: -0.5,
                         letterSpacing: -0.7,
                       ))),
                       const SizedBox(width: 6),
