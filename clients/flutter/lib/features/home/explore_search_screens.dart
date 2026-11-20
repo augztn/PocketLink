@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../core/network/server_api.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
+import '../../core/widgets/pocketlink_scaffold.dart';
 import '../files/file_manager_screen.dart';
 import '../files/documents_browser_screen.dart';
 import '../library/photo_gallery_screen.dart';
@@ -326,7 +327,7 @@ class _ExploreGridState extends State<_ExploreGrid>
         ],
       ),
       body: GridView.count(
-        padding: EdgeInsets.fromLTRB(16, MediaQuery.paddingOf(context).top + kToolbarHeight + 12, 16, 112 + MediaQuery.paddingOf(context).bottom),
+        padding: EdgeInsets.fromLTRB(16, LayoutInsetsScope.of(context).topClearance + 2, 16, LayoutInsetsScope.of(context).bottomClearance),
         crossAxisCount: 2,
         crossAxisSpacing: 14,
         mainAxisSpacing: 14,
