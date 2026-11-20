@@ -1230,11 +1230,18 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
   Future<void> _updateAutomaticMediaScanning({
     required bool enabled,
     required int intervalMinutes,
+    required bool scanOnStartup,
+    required bool scanOnStorageChange,
   }) async {
     if (_savingMediaScanSettings || _mediaScanStatus?.isScanning == true) return;
     setState(() => _savingMediaScanSettings = true);
     try {
-      await widget.api.updateAutomaticMediaScanning(enabled: enabled, intervalMinutes: intervalMinutes);
+      await widget.api.updateAutomaticMediaScanning(
+        enabled: enabled,
+        intervalMinutes: intervalMinutes,
+        scanOnStartup: scanOnStartup,
+        scanOnStorageChange: scanOnStorageChange,
+      );
       final status = await widget.api.mediaIndexStatus();
       if (!mounted) return;
       setState(() { _mediaScanStatus = status; _mediaScanError = null; });
@@ -1282,6 +1289,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
     final lines = <String>[
       'PocketLink Media Library Scan Report',
       'Status: ${status.state}',
+      'Scan run ID: ${status.scanRunId ?? 'unavailable'}',
       'Trigger: ${status.scanTrigger}',
       'Started: ${_formatScanTimestamp(status.lastScanStartedAt)}',
       'Last attempt completed: ${_formatScanTimestamp(status.lastAttemptFinishedAt)}',
@@ -1369,11 +1377,12 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
               'Average successful scan: ${(status.averageDurationMs / 1000).toStringAsFixed(1)}s',
               style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
             ),
-          const SizedBox(height: 7),
-          Text(
-            '${status.mediaCount} media · ${status.fileCount} indexed entries',
-            style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
-          ),
+          if (status.durationTrendPercent != 0)
+            Text(
+              'Latest scan ${status.durationTrendPercent.abs()}% ${status.durationTrendPercent > 0 ? 'slower' : 'faster'} than recent baseline',
+              style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
+            ),
+          const SizedBox(height: 6),
           const SizedBox(height: 6),
           Text(
             scanning
@@ -1498,9 +1507,42 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
             Switch.adaptive(
               value: status.automaticScanning.enabled,
               onChanged: scanning || _savingMediaScanSettings ? null : (enabled) =>
-                  _updateAutomaticMediaScanning(enabled: enabled, intervalMinutes: status.automaticScanning.intervalMinutes),
+                  _updateAutomaticMediaScanning(
+                    enabled: enabled,
+                    intervalMinutes: status.automaticScanning.intervalMinutes,
+                    scanOnStartup: status.automaticScanning.scanOnStartup,
+                    scanOnStorageChange: status.automaticScanning.scanOnStorageChange,
+                  ),
             ),
           ]),
+          Wrap(
+            spacing: 6,
+            runSpacing: 2,
+            children: [
+              FilterChip(
+                label: const Text('On startup'),
+                selected: status.automaticScanning.scanOnStartup,
+                onSelected: scanning || _savingMediaScanSettings ? null : (selected) =>
+                    _updateAutomaticMediaScanning(
+                      enabled: status.automaticScanning.enabled,
+                      intervalMinutes: status.automaticScanning.intervalMinutes,
+                      scanOnStartup: selected,
+                      scanOnStorageChange: status.automaticScanning.scanOnStorageChange,
+                    ),
+              ),
+              FilterChip(
+                label: const Text('On storage connect'),
+                selected: status.automaticScanning.scanOnStorageChange,
+                onSelected: scanning || _savingMediaScanSettings ? null : (selected) =>
+                    _updateAutomaticMediaScanning(
+                      enabled: status.automaticScanning.enabled,
+                      intervalMinutes: status.automaticScanning.intervalMinutes,
+                      scanOnStartup: status.automaticScanning.scanOnStartup,
+                      scanOnStorageChange: selected,
+                    ),
+              ),
+            ],
+          ),
           if (status.automaticScanning.enabled)
             Align(
               alignment: Alignment.centerRight,
@@ -1514,7 +1556,12 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                       child: Text('Every ${minutes < 60 ? '$minutes minutes' : minutes == 1440 ? '24 hours' : '${minutes ~/ 60} hours'}'),
                     )).toList(),
                 onChanged: scanning || _savingMediaScanSettings ? null : (minutes) {
-                  if (minutes != null) _updateAutomaticMediaScanning(enabled: true, intervalMinutes: minutes);
+                  if (minutes != null) _updateAutomaticMediaScanning(
+                    enabled: true,
+                    intervalMinutes: minutes,
+                    scanOnStartup: status.automaticScanning.scanOnStartup,
+                    scanOnStorageChange: status.automaticScanning.scanOnStorageChange,
+                  );
                 },
               ),
             ),
