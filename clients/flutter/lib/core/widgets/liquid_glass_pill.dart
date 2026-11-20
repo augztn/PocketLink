@@ -13,24 +13,27 @@ class LiquidGlassSurface extends StatelessWidget {
   const LiquidGlassSurface({
     required this.child,
     required this.radius,
+    this.refractive = false,
     super.key,
   });
 
   final Widget child;
   final BorderRadius radius;
+  final bool refractive;
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: AppSettings.instance,
       builder: (context, _) {
-        final useGlass = AppSettings.instance.useLiquidGlass;
+        final useGlass = AppSettings.instance.useLiquidGlass || refractive;
         final isDark = Theme.of(context).brightness == Brightness.dark;
         final colors = Theme.of(context).colorScheme;
 
         final decoration = useGlass
             ? BoxDecoration(
-                gradient: LinearGradient(
+                color: refractive ? const Color(0xFF1A1C23).withValues(alpha: 0.40) : null,
+                gradient: refractive ? null : LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: isDark
@@ -85,13 +88,20 @@ class LiquidGlassSurface extends StatelessWidget {
           clipBehavior: Clip.antiAlias,
           child: useGlass
               ? BackdropFilter(
-                  filter: ui.ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+                  filter: ui.ImageFilter.blur(sigmaX: refractive ? 28 : 22, sigmaY: refractive ? 28 : 22),
                   child: themedSurface,
                 )
               : themedSurface,
         );
 
-        return RepaintBoundary(child: clippedSurface);
+        return RepaintBoundary(
+          child: refractive
+              ? CustomPaint(
+                  foregroundPainter: _RefractiveGlassRimPainter(radius: radius),
+                  child: clippedSurface,
+                )
+              : clippedSurface,
+        );
       },
     );
   }
@@ -106,11 +116,13 @@ class SmokedGlassSurface extends StatelessWidget {
   const SmokedGlassSurface({
     required this.child,
     required this.radius,
+    this.refractive = false,
     super.key,
   });
 
   final Widget child;
   final BorderRadius radius;
+  final bool refractive;
 
   @override
   Widget build(BuildContext context) {
@@ -118,16 +130,18 @@ class SmokedGlassSurface extends StatelessWidget {
     final borderColor = isLight
         ? const Color(0x1A0F172A)
         : Colors.white.withValues(alpha: 0.14);
-    return ClipRRect(
+    final surface = ClipRRect(
       borderRadius: radius,
       clipBehavior: Clip.antiAlias,
       child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+        filter: ui.ImageFilter.blur(sigmaX: refractive ? 28 : 24, sigmaY: refractive ? 28 : 24),
         child: DecoratedBox(
           decoration: BoxDecoration(
-            color: isLight
-                ? Colors.white.withValues(alpha: 0.78)
-                : const Color(0xFF1C1E24).withValues(alpha: 0.68),
+            color: refractive
+                ? const Color(0xFF1A1C23).withValues(alpha: 0.40)
+                : isLight
+                    ? Colors.white.withValues(alpha: 0.78)
+                    : const Color(0xFF1C1E24).withValues(alpha: 0.68),
             borderRadius: radius,
             border: Border.all(color: borderColor, width: 1),
             boxShadow: isLight
@@ -168,7 +182,43 @@ class SmokedGlassSurface extends StatelessWidget {
         ),
       ),
     );
+    return refractive
+        ? CustomPaint(
+            foregroundPainter: _RefractiveGlassRimPainter(radius: radius),
+            child: surface,
+          )
+        : surface;
   }
+}
+
+class _RefractiveGlassRimPainter extends CustomPainter {
+  const _RefractiveGlassRimPainter({required this.radius});
+
+  final BorderRadius radius;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final rrect = radius.toRRect(rect).deflate(0.6);
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2
+      ..shader = const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Color(0x73FFFFFF),
+          Color(0x16FFFFFF),
+          Color(0x52FFFFFF),
+        ],
+        stops: [0, 0.52, 1],
+      ).createShader(rect);
+    canvas.drawRRect(rrect, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _RefractiveGlassRimPainter oldDelegate) =>
+      oldDelegate.radius != radius;
 }
 
 /// Backwards-compatible name retained for existing call sites.
@@ -176,15 +226,18 @@ class LiquidGlassPill extends StatelessWidget {
   const LiquidGlassPill({
     required this.child,
     required this.radius,
+    this.refractive = false,
     super.key,
   });
 
   final Widget child;
   final BorderRadius radius;
+  final bool refractive;
 
   @override
   Widget build(BuildContext context) => LiquidGlassSurface(
         radius: radius,
+        refractive: refractive,
         child: child,
       );
 }
