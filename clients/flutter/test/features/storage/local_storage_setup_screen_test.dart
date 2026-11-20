@@ -158,14 +158,13 @@ void main() {
     expect(scaffold.bottomNavigationBar, isNotNull);
 
     final dockRect = tester.getRect(dock);
+    final scaffoldRect = tester.getRect(find.byWidget(scaffold));
     final bottomNavigationBar =
         tester.getRect(find.byWidget(scaffold.bottomNavigationBar!));
-    final screenHeight =
-        tester.view.physicalSize.height / tester.view.devicePixelRatio;
     // Assert the navigation slot reaches the Scaffold's bottom edge and the
-    // dock respects its configured bottom inset. Avoid assuming the dock's
-    // absolute position in a test viewport with platform-specific insets.
-    expect(screenHeight - bottomNavigationBar.bottom, closeTo(0, 1));
+    // dock respects its configured bottom inset. Avoid assuming a particular
+    // test viewport size or platform system-bar inset.
+    expect(scaffoldRect.bottom - bottomNavigationBar.bottom, closeTo(0, 1));
     expect(
       bottomNavigationBar.bottom - dockRect.bottom,
       closeTo(MediaQuery.paddingOf(tester.element(dock)).bottom + 12, 1),
