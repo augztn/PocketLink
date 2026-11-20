@@ -5,7 +5,6 @@ import 'dart:ui' as ui;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/compact_search_field.dart';
-import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
 import '../../core/widgets/smoked_glass_popover_menu.dart';
 
@@ -1794,41 +1793,6 @@ class MediaBrowserScreen extends StatefulWidget {
 
   @override
   State<MediaBrowserScreen> createState() => _MediaBrowserScreenState();
-}
-
-class _MusicActionPill extends StatelessWidget {
-  const _MusicActionPill({required this.label, required this.icon, required this.onTap, this.primary = false});
-  final String label;
-  final IconData icon;
-  final VoidCallback onTap;
-  final bool primary;
-  @override
-  Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-        child: Material(
-          color: primary ? const Color(0x33536DFE) : (dark ? Colors.white.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.75)),
-          child: InkWell(
-            onTap: onTap,
-            child: Container(
-              height: 44,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: primary ? const Color(0x66536DFE) : Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5))),
-              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Icon(icon, size: 19, color: primary ? const Color(0xFF8C9EFF) : Theme.of(context).colorScheme.onSurface),
-                const SizedBox(width: 7),
-                Text(label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-              ]),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 class _MusicEqualizer extends StatefulWidget {
