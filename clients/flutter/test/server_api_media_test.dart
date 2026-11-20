@@ -91,6 +91,7 @@ void main() {
         'last_manual_scan_at': 1794900005000,
         'scan_run_id': 'scan-run-123',
         'timezone_id': 'Asia/Kolkata',
+        'timezone_offset_minutes': 330,
         'automatic_scanning': {
           'enabled': true,
           'scan_on_startup': true,
@@ -105,6 +106,7 @@ void main() {
         'scan_history': [
           {
             'run_id': 'history-run-1',
+            'timezone_offset_minutes': 330,
             'started_at': 1794900000000,
             'completed_at': 1794900005000,
             'duration_ms': 5000,
@@ -143,6 +145,8 @@ void main() {
       expect(status.lastManualScanAt, 1794900005000);
       expect(status.scanRunId, 'scan-run-123');
       expect(status.timezoneId, 'Asia/Kolkata');
+      expect(status.timezoneOffsetMinutes, 330);
+      expect(status.scanHistory.single.timezoneOffsetMinutes, 330);
       expect(status.automaticScanning.intervalMinutes, 180);
       expect(status.automaticScanning.nextScanAt, 1794910800000);
       expect(status.volumes.last.stale, isTrue);
