@@ -997,7 +997,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                 label: 'All Videos',
                 icon: Icons.video_library_rounded,
                 trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Text('${_media.length}', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
+                  Text('${visible.length}', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
                   const SizedBox(width: 8),
                   SizedBox(width: 20, child: _libraryView == 'all' ? const Icon(Icons.check_rounded, size: 18) : null),
                 ]),
