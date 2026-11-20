@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:material_ui/material_ui.dart';
 
 import '../settings/app_settings.dart';
+import 'pocketlink_scaffold.dart';
 
 /// Shared top-edge blur and legibility surface for edge-to-edge screens.
 class FeatheredGlassHeaderBackground extends StatelessWidget {
@@ -42,7 +43,10 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
                 Colors.transparent,
               ];
 
-        return SizedBox(
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            PocketLinkScaffoldHeaderReporter.report(context, headerHeight);
+            return SizedBox(
           width: double.infinity,
           height: headerHeight,
           child: ClipRect(
@@ -129,6 +133,8 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
               ],
             ),
           ),
+        );
+          },
         );
       },
     );
