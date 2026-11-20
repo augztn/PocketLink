@@ -328,7 +328,8 @@ class MediaIndexStatus {
     this.updatedFiles = 0, this.scannedBytes = 0, this.volumes = const [], this.scanHistory = const [],
     this.lastAttemptStartedAt = 0, this.lastAttemptFinishedAt = 0, this.lastSuccessfulAt = 0,
     this.indexedBytes = 0, this.mediaBytes = 0, this.otherFileCount = 0,
-    this.averageDurationMs = 0, this.timezoneId, this.automaticScanning = const AutomaticMediaScanSettings(),
+    this.averageDurationMs = 0, this.durationTrendPercent = 0, this.scanRunId, this.timezoneId,
+    this.automaticScanning = const AutomaticMediaScanSettings(),
   });
   final String state;
   final int scanned;
@@ -356,8 +357,8 @@ class MediaIndexStatus {
   final List<MediaScanVolumeStatus> volumes;
   final List<MediaScanHistoryEntry> scanHistory;
   final int lastAttemptStartedAt, lastAttemptFinishedAt, lastSuccessfulAt;
-  final int indexedBytes, mediaBytes, otherFileCount, averageDurationMs;
-  final String? timezoneId;
+  final int indexedBytes, mediaBytes, otherFileCount, averageDurationMs, durationTrendPercent;
+  final String? scanRunId, timezoneId;
   final AutomaticMediaScanSettings automaticScanning;
   bool get isScanning => state == 'scanning';
   bool get isUsable => state == 'complete' || state == 'partial';
@@ -404,6 +405,8 @@ class MediaIndexStatus {
         mediaBytes: (json['media_bytes'] as num?)?.toInt() ?? 0,
         otherFileCount: (json['other_file_count'] as num?)?.toInt() ?? 0,
         averageDurationMs: (json['duration_average_ms'] as num?)?.toInt() ?? 0,
+        durationTrendPercent: (json['duration_trend_percent'] as num?)?.toInt() ?? 0,
+        scanRunId: json['scan_run_id']?.toString(),
         timezoneId: json['timezone_id']?.toString(),
         automaticScanning: AutomaticMediaScanSettings.fromJson(
           json['automatic_scanning'] as Map<String, dynamic>? ?? const {},
@@ -1048,10 +1051,17 @@ class ServerApi {
   Future<AutomaticMediaScanSettings> updateAutomaticMediaScanning({
     required bool enabled,
     required int intervalMinutes,
+    required bool scanOnStartup,
+    required bool scanOnStorageChange,
   }) async {
     final response = await _dio.post<Map<String, dynamic>>(
       '/api/index/settings',
-      queryParameters: {'enabled': enabled, 'interval_minutes': intervalMinutes},
+      queryParameters: {
+        'enabled': enabled,
+        'interval_minutes': intervalMinutes,
+        'scan_on_startup': scanOnStartup,
+        'scan_on_storage_change': scanOnStorageChange,
+      },
     );
     return AutomaticMediaScanSettings.fromJson(response.data ?? const {});
   }
