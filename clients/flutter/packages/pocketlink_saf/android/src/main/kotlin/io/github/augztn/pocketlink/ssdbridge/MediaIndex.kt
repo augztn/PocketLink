@@ -341,7 +341,7 @@ internal class MediaIndexScanner(
                     .put("error", "Storage volume disconnected; indexed content is retained")
             }
         }
-        if (disconnectedVolumes.isNotEmpty() && volumeReports.isNotEmpty()) {
+        if (disconnectedVolumes.isNotEmpty() && volumeReports.isNotEmpty() && state != "interrupted") {
             state = "partial"
             lastError = "External storage disconnected; its indexed content is retained but may be stale."
         }
