@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/widgets/pocketlink_app_bar.dart';
+import '../../core/widgets/pocketlink_scaffold.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
 
 import '../diagnostics/diagnostics_screen.dart';
@@ -1209,7 +1210,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
         18,
         12,
         18,
-        MediaQuery.paddingOf(context).bottom + 94,
+        LayoutInsetsScope.of(context).bottomClearance,
       ),
       children: sections,
     );
@@ -1277,7 +1278,12 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
       );
     }
 
-    return Scaffold(
+    final activeMiniPlayer =
+        LayoutInsetsScope.maybeOf(context)?.hasActiveMiniPlayer ?? false;
+    return PocketLinkScaffold(
+      hasFloatingNavBar: false,
+      hasActiveMiniPlayer: activeMiniPlayer,
+      child: Scaffold(
       extendBody: true,
       appBar: PocketLinkAppBar(
         title: const Text('Host PocketLink'),
@@ -1403,6 +1409,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
             ),
           ),
         ),
+      ),
       ),
     );
   }
