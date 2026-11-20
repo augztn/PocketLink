@@ -62,6 +62,10 @@ class SmokedGlassPopoverMenu<T> extends StatelessWidget {
           anchor: anchor,
           gap: gap,
           items: items,
+          itemHeight: itemHeight,
+          menuVerticalPadding: menuVerticalPadding,
+          itemHorizontalPadding: itemHorizontalPadding,
+          trailingWidth: trailingWidth,
         ),
       );
     } finally {
@@ -92,11 +96,19 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
     required this.anchor,
     required this.gap,
     required this.items,
+    required this.itemHeight,
+    required this.menuVerticalPadding,
+    required this.itemHorizontalPadding,
+    required this.trailingWidth,
   });
 
   final Rect anchor;
   final double gap;
   final List<SmokedGlassPopoverMenuItem<T>> items;
+  final double itemHeight;
+  final double menuVerticalPadding;
+  final double itemHorizontalPadding;
+  final double trailingWidth;
 
   @override
   Color? get barrierColor => Colors.transparent;
