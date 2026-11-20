@@ -5,7 +5,7 @@ import '../../core/widgets/pocketlink_app_bar.dart';
 
 class VideoPlayerSettingsScreen extends StatelessWidget {
   const VideoPlayerSettingsScreen({super.key});
-  static const List<double> _timeouts = [2.0, 3.5, 4.0, 6.0, 10.0, 0.0];
+  static const List<double> _timeouts = [2.0, 3.0, 3.5, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0, 0.0];
   static const _seeks = [5, 10, 15, 30];
   static const _speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 3.0, 4.0];
 
