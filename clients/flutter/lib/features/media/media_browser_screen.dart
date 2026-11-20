@@ -1288,7 +1288,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         child: Stack(fit: StackFit.expand, children: [
           const DecoratedBox(decoration: BoxDecoration(
             gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
-              colors: [Color(0xFF536DFE), Color(0xFF252B52), Color(0xFF141722)]),
+              colors: [Color(0xFF536DFE), Color(0xFF7250C8), Color(0xFF171827)]),
           )),
           FutureBuilder<Uint8List?>(
             future: _loadTrackArtwork(media),
