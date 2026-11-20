@@ -450,6 +450,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onChanged: _settings.setUseLiquidGlass,
                     ),
                     const Divider(height: 1),
+                  ]),
+                  _section('Glass & Visual Effects', [
                     SwitchListTile(
                       secondary: const Icon(Icons.gradient_rounded),
                       title: const Text('Progressive Blur'),
@@ -472,6 +474,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         reduceDynamicBlur: value,
                       ),
                     ),
+                  ]),
                   ]),
                 if (widget.category == 'Dashboard & Shortcuts')
                   _section('Dashboard & Shortcuts', [
