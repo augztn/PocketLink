@@ -7,6 +7,7 @@ import 'quick_actions_store.dart';
 import 'widgets/host_device_metrics_card.dart';
 import 'widgets/host_media_scan_card.dart';
 import 'widgets/home_activity_sections.dart';
+import 'widgets/home_active_transfers_preview.dart';
 import 'widgets/home_quick_actions_section.dart';
 import 'widgets/server_telemetry_card.dart';
 import 'network_route_classifier.dart';
@@ -619,54 +620,12 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
             .where((task) => task.status == TransferStatus.running)
             .take(2)
             .toList(growable: false);
-        if (active.isEmpty) return const SizedBox.shrink();
-        return Container(
-          decoration: _dashboardCardDecoration(theme),
-          child: Material(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(18),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(18),
-              onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                builder: (_) => const TransferManagerScreen(),
-              )),
-              child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  Expanded(child: Text('Active transfers',
-                    style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800))),
-                  Text('View all', style: theme.textTheme.labelMedium?.copyWith(color: colors.primary)),
-                ]),
-                const SizedBox(height: 10),
-                for (var index = 0; index < active.length; index++) ...[
-                  if (index > 0) const SizedBox(height: 12),
-                  Row(children: [
-                    Icon(active[index].direction == 'Upload'
-                        ? Icons.cloud_upload_outlined : Icons.download_rounded,
-                      color: colors.primary, size: 19),
-                    const SizedBox(width: 9),
-                    Expanded(child: Text(active[index].name, maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600))),
-                    Text(active[index].progress == null
-                        ? 'In progress'
-                        : '${(active[index].progress! * 100).round()}%',
-                      style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant)),
-                  ]),
-                  const SizedBox(height: 7),
-                  LinearProgressIndicator(value: active[index].progress, minHeight: 4),
-                  const SizedBox(height: 4),
-                  Text(active[index].total > 0
-                      ? '${_formatBytes(active[index].transferred)} of ${_formatBytes(active[index].total)}'
-                      : 'Transfer in progress',
-                    style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant)),
-                ],
-              ]),
-              ),
-            ),
-          ),
+        return HomeActiveTransfersPreview(
+          tasks: active,
+          formatBytes: _formatBytes,
+          onOpen: () => Navigator.of(context).push(MaterialPageRoute<void>(
+            builder: (_) => const TransferManagerScreen(),
+          )),
         );
       },
     );
