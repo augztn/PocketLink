@@ -35,7 +35,12 @@ void main() {
   testWidgets('shows offline state and reconnect guidance', (tester) async {
     await tester.pumpWidget(buildSubject(serverOnline: false));
 
-    expect(find.text('Offline'), findsOneWidget);
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is RichText && widget.text.toPlainText() == 'Offline',
+      ),
+      findsOneWidget,
+    );
     expect(
       find.text('Server is unreachable. Check the network or server service.'),
       findsOneWidget,
@@ -53,7 +58,12 @@ void main() {
     );
 
     expect(find.text('PocketLink server'), findsOneWidget);
-    expect(find.textContaining('Online'), findsOneWidget);
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is RichText && widget.text.toPlainText().contains('Online'),
+      ),
+      findsOneWidget,
+    );
     expect(find.text('123 ms'), findsWidgets);
   });
 }
