@@ -705,6 +705,22 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
         appBar: PocketLinkAppBar(
           feathered: true,
           showHome: false,
+          automaticallyImplyLeading: false,
+          leading: _path.isEmpty
+              ? null
+              : Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: SizedBox.square(
+                    dimension: 38,
+                    child: GlassCircleButton(
+                      tooltip: 'Back',
+                      onPressed: _goUp,
+                      child: const Icon(Icons.arrow_back_rounded, size: 18),
+                    ),
+                  ),
+                ),
+          leadingWidth: _path.isEmpty ? 0 : 48,
+          titleSpacing: _path.isEmpty ? 16 : 0,
           title: SmokedGlassPopoverMenu<String>(
             tooltip: 'Choose storage location',
             onOpenChanged: (open) => setState(() => _storageMenuOpen = open),
