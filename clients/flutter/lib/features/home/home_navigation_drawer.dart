@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/settings/app_settings.dart';
+import '../../core/widgets/liquid_glass_pill.dart';
 import '../downloads/download_manager_service.dart';
 
 /// Navigation drawer owned by HomeScreen's outer Scaffold so its scrim covers
@@ -40,6 +41,7 @@ class PocketLinkHomeDrawer extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    final isLight = theme.brightness == Brightness.light;
     final compactServerName = serverName.trim().isEmpty
         ? 'Connected server'
         : serverName.trim();
@@ -53,7 +55,7 @@ class PocketLinkHomeDrawer extends StatelessWidget {
         margin: EdgeInsets.fromLTRB(12, MediaQuery.paddingOf(context).top + 8, 0, MediaQuery.paddingOf(context).bottom + 12),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(28),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.13)),
+          border: Border.all(color: isLight ? const Color(0x1A0F172A) : Colors.white.withValues(alpha: 0.13)),
         ),
         foregroundDecoration: BoxDecoration(
           borderRadius: BorderRadius.circular(27),
@@ -62,13 +64,9 @@ class PocketLinkHomeDrawer extends StatelessWidget {
             width: 1,
           )),
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(27),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-            child: ColoredBox(
-              color: const Color(0xFF1C1E24).withValues(alpha: 0.72),
-              child: SafeArea(
+        child: SmokedGlassSurface(
+          radius: BorderRadius.circular(27),
+          child: SafeArea(
                 top: false,
                 bottom: false,
                 child: ListView(
@@ -380,16 +378,16 @@ class _DrawerLibraryTile extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final colors = Theme.of(context).colorScheme;
     return Material(
-      color: Colors.white.withValues(alpha: isDark ? 0.045 : 0.48),
+      color: isDark ? Colors.white.withValues(alpha: 0.045) : const Color(0xFFF1F5F9),
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
+            border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.07) : const Color(0x1A0F172A)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -418,7 +416,7 @@ class _DrawerLibraryTile extends StatelessWidget {
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   color: colors.onSurfaceVariant,
                   fontSize: 11.5,
-                  height: 1.2,
+                  height: 1.25,
                 ),
               ),
             ],
