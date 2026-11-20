@@ -113,9 +113,11 @@ class SettingsBackupService {
       final value = entry.value;
       final valid = _booleanKeys.contains(entry.key)
           ? value is bool
-          : _numberKeys.contains(entry.key)
-              ? value is num && value.isFinite
-              : value is String && value.length <= 16384;
+          : _integerKeys.contains(entry.key)
+              ? value is int
+              : _numberKeys.contains(entry.key)
+                  ? value is num && value.isFinite
+                  : value is String && value.length <= 16384;
       if (!valid) {
         throw FormatException('Invalid value for ${entry.key}.');
       }
