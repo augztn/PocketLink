@@ -34,14 +34,14 @@ void main() {
   });
 
   test('progressive blur preference persists when toggled', () async {
-    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(true));
+    await AppSettings.instance.setProgressiveBlurEnabled(true);
     expect(AppSettings.instance.progressiveBlurEnabled, isTrue);
     expect(
       (await SharedPreferences.getInstance()).getBool('settings_progressive_blur'),
       isTrue,
     );
 
-    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(false));
+    await AppSettings.instance.setProgressiveBlurEnabled(false);
     expect(AppSettings.instance.progressiveBlurEnabled, isFalse);
     expect(
       (await SharedPreferences.getInstance()).getBool('settings_progressive_blur'),
@@ -50,7 +50,7 @@ void main() {
   });
 
   testWidgets('progressive header uses staged blur when enabled', (tester) async {
-    await AppSettings.instance.setProgressiveBlurEnabled(true);
+    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(true));
 
     await tester.pumpWidget(
       const MaterialApp(
@@ -62,7 +62,7 @@ void main() {
   });
 
   testWidgets('zero blur strength removes backdrop filters while enabled', (tester) async {
-    await AppSettings.instance.setProgressiveBlurEnabled(true);
+    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(true));
     await tester.runAsync(() => AppSettings.instance.setProgressiveBlurStrength(0));
 
     await tester.pumpWidget(
@@ -75,7 +75,7 @@ void main() {
   });
 
   testWidgets('progressive blur off removes backdrop filters immediately', (tester) async {
-    await AppSettings.instance.setProgressiveBlurEnabled(true);
+    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(true));
 
     await tester.pumpWidget(
       const MaterialApp(
@@ -84,14 +84,14 @@ void main() {
     );
     expect(find.byType(BackdropFilter), findsNWidgets(2));
 
-    await AppSettings.instance.setProgressiveBlurEnabled(false);
+    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(false));
     await tester.pump();
 
     expect(find.byType(BackdropFilter), findsNothing);
   });
 
   testWidgets('glass header buttons disable their filter in fallback mode', (tester) async {
-    await AppSettings.instance.setProgressiveBlurEnabled(false);
+    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(false));
 
     await tester.pumpWidget(
       const MaterialApp(
@@ -107,7 +107,7 @@ void main() {
 
     expect(find.byType(BackdropFilter), findsNothing);
 
-    await AppSettings.instance.setProgressiveBlurEnabled(true);
+    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(true));
     await tester.pump();
 
     expect(find.byType(BackdropFilter), findsOneWidget);
