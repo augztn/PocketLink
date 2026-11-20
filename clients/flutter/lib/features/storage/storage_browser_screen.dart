@@ -380,7 +380,7 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
       child: Scaffold(
         extendBodyBehindAppBar: true,
         appBar: PocketLinkAppBar(
-          title: const Text('External storage', style: TextStyle(fontWeight: FontWeight.w800)),
+          title: const Text('External storage', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700, letterSpacing: -0.5)),
           actions: [
             PocketLinkAppBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded, onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen()))),
             PocketLinkAppBarAction(label: 'Upload', icon: Icons.cloud_upload_outlined, onPressed: _volume == null ? null : _upload),
