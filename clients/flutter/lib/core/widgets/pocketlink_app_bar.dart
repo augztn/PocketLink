@@ -154,7 +154,7 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
             child: SizedBox.square(
               dimension: 38,
               child: GlassCircleButton(
-                tooltip: 'More actions',
+                tooltip: 'Open overflow menu',
                 onPressed: null,
                 child: Icon(Icons.more_vert_rounded, size: 18),
               ),
