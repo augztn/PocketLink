@@ -112,8 +112,10 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
     Animation<double> secondaryAnimation,
   ) {
     final media = MediaQuery.of(context);
+    final minMenuWidth = mathMin(215, media.size.width - 16);
+    final menuMaxWidth = mathMin(260, media.size.width - 16);
     final right = (media.size.width - anchor.right)
-        .clamp(8.0, media.size.width - 8)
+        .clamp(8.0, media.size.width - minMenuWidth - 8)
         .toDouble();
     final minTop = media.padding.top + 8;
     final maxTop = mathMax(
@@ -122,7 +124,6 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
     );
     final top = (anchor.bottom + gap).clamp(minTop, maxTop).toDouble();
     final availableWidth = mathMax(0, media.size.width - right - 8);
-    final menuMaxWidth = mathMin(256, availableWidth);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final curved = CurvedAnimation(
       parent: animation,
@@ -151,7 +152,7 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
                   scale: Tween<double>(begin: 0.84, end: 1).animate(curved),
                   child: ConstrainedBox(
                     constraints: BoxConstraints(
-                      minWidth: mathMin(224, menuMaxWidth),
+                      minWidth: mathMin(minMenuWidth, availableWidth),
                       maxWidth: menuMaxWidth,
                       maxHeight: mathMin(
                         media.size.height * 0.55,
@@ -167,7 +168,7 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
                       DecoratedBox(
                         decoration: BoxDecoration(
                           color: isDark
-                              ? const Color(0xFF15171D).withValues(alpha: 0.90)
+                              ? const Color(0xFF16181F).withValues(alpha: 0.88)
                               : Colors.white.withValues(alpha: 0.94),
                           borderRadius: BorderRadius.circular(22),
                           border: Border.all(
@@ -233,7 +234,8 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
                                                 child: Text(
                                                   item.label,
                                                   maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
+                                                  softWrap: false,
+                                                  overflow: TextOverflow.fade,
                                                   style: Theme.of(context)
                                                       .textTheme.bodyMedium
                                                       ?.copyWith(
@@ -247,8 +249,14 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
                                                 ),
                                               ),
                                               if (item.trailing != null) ...[
-                                                const SizedBox(width: 10),
-                                                item.trailing!,
+                                                const SizedBox(width: 12),
+                                                SizedBox(
+                                                  width: 48,
+                                                  child: Align(
+                                                    alignment: Alignment.centerRight,
+                                                    child: item.trailing!,
+                                                  ),
+                                                ),
                                               ],
                                             ],
                                           ),
