@@ -1619,6 +1619,7 @@ tooltip: 'Choose video view',
               height: top + 88,
               child: const IgnorePointer(
                 child: FeatheredGlassHeaderBackground(
+                  contentHeight: 44,
                   darkTint: [
                     Color(0xD9000000),
                     Color(0x66000000),
