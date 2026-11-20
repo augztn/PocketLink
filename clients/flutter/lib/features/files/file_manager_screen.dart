@@ -801,18 +801,24 @@ tooltip: 'Choose storage location',
                 value: 'internal',
                 label: 'Internal storage',
                 icon: Icons.phone_android_rounded,
-                trailing: _selectedVolume == null
-                    ? const Icon(Icons.check_rounded, size: 18)
-                    : null,
+                trailing: SizedBox(
+                  width: 20,
+                  child: _selectedVolume == null
+                      ? const Icon(Icons.check_rounded, size: 18)
+                      : null,
+                ),
               ),
               for (final volume in _volumes)
                 SmokedGlassPopoverMenuItem(
                   value: volume.id,
                   label: volume.name,
                   icon: Icons.usb_rounded,
-                  trailing: _selectedVolume == volume.id
-                      ? const Icon(Icons.check_rounded, size: 18)
-                      : null,
+                  trailing: SizedBox(
+                    width: 20,
+                    child: _selectedVolume == volume.id
+                        ? const Icon(Icons.check_rounded, size: 18)
+                        : null,
+                  ),
                 ),
               const SmokedGlassPopoverMenuItem(
                 value: 'downloads',
