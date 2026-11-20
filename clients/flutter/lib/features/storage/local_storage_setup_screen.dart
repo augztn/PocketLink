@@ -1204,13 +1204,13 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
           ),
     ];
 
-    Widget sectionList(String storageKey, List<Widget> sections) => ListView(
+    Widget sectionList(BuildContext layoutContext, String storageKey, List<Widget> sections) => ListView(
       key: PageStorageKey<String>(storageKey),
       padding: EdgeInsets.fromLTRB(
         18,
         12,
         18,
-        LayoutInsetsScope.of(context).bottomClearance,
+        LayoutInsetsScope.of(layoutContext).bottomClearance,
       ),
       children: sections,
     );
@@ -1341,7 +1341,8 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
         ],
       ),
 
-      body: PageView(
+      body: Builder(
+        builder: (layoutContext) => PageView(
         controller: _sectionPageController,
         onPageChanged: (index) {
           if (_selectedSectionIndex != index) {
@@ -1349,23 +1350,24 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
           }
         },
         children: [
-          sectionList('host-overview', [
+          sectionList(layoutContext, 'host-overview', [
             ...hostSections,
             ...serviceSections,
             ...feedbackSections,
           ]),
-          sectionList('host-storage', [
+          sectionList(layoutContext, 'host-storage', [
             ...permissionSections,
             ...usbSections,
             ...mediaSections,
             ...feedbackSections,
           ]),
-          sectionList('host-security', [
+          sectionList(layoutContext, 'host-security', [
             ...securitySections,
             ...tokenSections,
             ...feedbackSections,
           ]),
         ],
+      ),
       ),
       bottomNavigationBar: Padding(
         padding: EdgeInsets.fromLTRB(
