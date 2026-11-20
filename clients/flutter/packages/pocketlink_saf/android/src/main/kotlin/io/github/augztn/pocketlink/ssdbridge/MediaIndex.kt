@@ -313,6 +313,9 @@ internal class MediaIndexScanner(
     @Volatile private var newFiles = readScanHistory().optJSONObject(0)?.optInt("new_files") ?: 0
     @Volatile private var updatedFiles = readScanHistory().optJSONObject(0)?.optInt("updated_files") ?: 0
     @Volatile private var scannedBytes = readScanHistory().optJSONObject(0)?.optLong("scanned_bytes") ?: 0L
+    private val disconnectedVolumes = java.util.concurrent.ConcurrentHashMap.newKeySet<String>().apply {
+        addAll(reportPrefs.getStringSet("disconnected_volumes", emptySet()) ?: emptySet())
+    }
     private val volumeReports = java.util.concurrent.ConcurrentHashMap<String, org.json.JSONObject>().apply {
         val previous = readScanHistory().optJSONObject(0)?.optJSONArray("volumes")
         if (previous != null) for (index in 0 until previous.length()) {
@@ -411,6 +414,11 @@ internal class MediaIndexScanner(
         if (!connected) {
             // Never traverse a possibly detached SAF tree: some providers report
             // an empty directory on removal, which could otherwise prune valid rows.
+            val externalIds = volumeReports.values.map { it.optString("volume") }
+                .filter { it.isNotBlank() && it != "internal" }.toMutableSet()
+            currentSource?.takeIf { it != "internal" }?.let { externalIds.add(it) }
+            disconnectedVolumes.addAll(externalIds)
+            reportPrefs.edit().putStringSet("disconnected_volumes", disconnectedVolumes.toSet()).apply()
             val externalReports = volumeReports.values.filter { it.optString("volume") != "internal" }
             externalReports.forEach { report ->
                 report.put("state", "unavailable")
@@ -424,6 +432,8 @@ internal class MediaIndexScanner(
             dirty.set(true)
             return
         }
+        disconnectedVolumes.clear()
+        reportPrefs.edit().putStringSet("disconnected_volumes", emptySet()).apply()
         volumeReports.values.filter { it.optString("volume") != "internal" }.forEach { report ->
             if (report.optString("state") == "unavailable") {
                 report.put("state", "stale").put("stale", true)
@@ -481,7 +491,7 @@ internal class MediaIndexScanner(
                 val sources = mutableListOf<Pair<String, Any>>()
                 sources += "internal" to internalRoot()
                 externalRoots()
-                    .filterNot { (id, _) -> volumeReports[id]?.optString("state") == "unavailable" }
+                    .filterNot { (id, _) -> id in disconnectedVolumes || volumeReports[id]?.optString("state") == "unavailable" }
                     .forEach { (id, root) -> sources += id to root }
                 val previousVolumes = volumeReports.values.map { org.json.JSONObject(it.toString()) }
                 val activeVolumeIds = sources.map { it.first }.toSet()
@@ -718,6 +728,12 @@ internal class MediaIndexScanner(
             }
         }
         flush()
+        if (volume in disconnectedVolumes) {
+            complete = false
+            skipped++
+            recordSkipped(volume, "", "Storage volume disconnected during scan")
+            lastError = "A storage volume disconnected during scanning; its previous index was retained."
+        }
         // Each index is committed and pruned independently. A media-index
         // failure must not invalidate the general file index, or vice versa.
         if (complete && filesHealthy) database.finishFilesSource(volume, scanId)
