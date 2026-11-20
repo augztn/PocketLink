@@ -318,22 +318,26 @@ jobs:
                       patched.append(str(gradle))
           print("Checked Android plugin compile SDK; updated: " + (", ".join(patched) if patched else "no overrides needed"))
           PY
-      - name: Build Android APK with SDK download retry
+      - name: Build Android APK (retry only transient NDK setup failures)
         run: |
           set -euo pipefail
           SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:?Android SDK path is not configured}}"
-          for attempt in 1 2 3; do
-            if flutter build apk --release; then
+          for attempt in 1 2; do
+            set +e
+            flutter build apk --release 2>&1 | tee /tmp/pocketlink-apk-build.log
+            build_status=${PIPESTATUS[0]}
+            set -e
+            if [ "$build_status" -eq 0 ]; then
               exit 0
             fi
-            if [ "$attempt" -lt 3 ]; then
-              echo "Android build failed on attempt $attempt; clearing incomplete NDK downloads and retrying."
+            if [ "$attempt" -eq 1 ] && grep -Eiq               'NDK at .*did not have a source\.properties|failed to install.*NDK|NDK.*(download|install).*(failed|error)'               /tmp/pocketlink-apk-build.log; then
+              echo "Detected an incomplete NDK installation; clearing it and retrying once."
               rm -rf "$SDK_ROOT/ndk/28.2.13676358" "$SDK_ROOT/.temp"
-              sleep $((attempt * 10))
+              continue
             fi
+            echo "::error::Android APK build failed; not retrying a non-transient build error."
+            exit "$build_status"
           done
-          echo "::error::Android APK build failed after three attempts."
-          exit 1
       - uses: actions/upload-artifact@v7
         with:
           name: PocketLink-Android-APK
