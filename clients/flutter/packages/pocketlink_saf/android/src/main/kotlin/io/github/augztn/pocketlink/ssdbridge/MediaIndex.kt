@@ -363,7 +363,7 @@ internal class MediaIndexScanner(
         if (!started) {
             started = true
             if (automaticScanningEnabled() && reportPrefs.getBoolean("scan_on_startup", true)) {
-                requestScan(force = false, trigger = "automatic")
+                requestScan(force = true, trigger = "automatic")
             } else if (automaticScanningEnabled() && reportPrefs.getLong("schedule_anchor_at", 0L) == 0L) {
                 reportPrefs.edit().putLong("schedule_anchor_at", System.currentTimeMillis()).apply()
             }
