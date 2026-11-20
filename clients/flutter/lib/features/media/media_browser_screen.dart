@@ -1523,7 +1523,7 @@ tooltip: 'Choose video view',
           child: IconButton(
             tooltip: tooltip,
             padding: EdgeInsets.zero,
-            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+            constraints: const BoxConstraints.tightFor(width: 38, height: 38),
             onPressed: onPressed,
             icon: Icon(icon, size: 18, color: foreground),
           ),
