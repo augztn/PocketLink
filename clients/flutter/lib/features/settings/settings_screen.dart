@@ -34,7 +34,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _chooseDownloadDirectory() async {
     try {
-      final path = await FilePicker.getDirectoryPath();
+      final path = await file_picker.FilePicker.getDirectoryPath();
       if (path != null) await _settings.setDownloadDirectory(path);
     } catch (_) {
       _message('Could not select a download directory.');
@@ -123,15 +123,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _importSettingsBackup() async {
     if (_exportingSettings || _importingSettings) return;
     try {
-      final result = await file_picker.FilePicker.platform.pickFiles(
-        type: FileType.custom, allowedExtensions: ['json'], withData: true,
+      final pickedFile = await file_picker.FilePicker.pickFile(
+        type: file_picker.FileType.custom,
+        allowedExtensions: ['json'],
       );
-      if (!mounted || result == null || result.files.isEmpty) return;
-      final bytes = result.files.single.bytes;
-      if (bytes == null) {
-        _message('Could not read the selected backup file.');
-        return;
-      }
+      if (!mounted || pickedFile == null) return;
+      final bytes = await pickedFile.readAsBytes();
       if (!mounted) return;
       final confirmed = await showDialog<bool>(
         context: context,
