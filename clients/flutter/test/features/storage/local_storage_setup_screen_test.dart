@@ -139,6 +139,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('test-token'), findsOneWidget);
     expect(find.text('Device permissions'), findsNothing);
+  });
 
   testWidgets('Host glass dock stays bottom anchored and Home is in the menu',
       (tester) async {
