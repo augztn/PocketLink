@@ -280,6 +280,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               'appearance' => 'Appearance',
               'dashboard' => 'Dashboard & Shortcuts',
               'media' => 'Media & Storage',
+              'backup' => 'Backup & Restore',
               _ => 'Connection & Diagnostics',
             },
           ),
