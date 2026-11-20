@@ -1473,7 +1473,9 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     final folderCount = _foldersAtCurrentLevel(_media).length;
     final favoriteCount = _media.where((m) => _favoriteKeys.contains(_favoriteKey(m))).length;
     final top = MediaQuery.paddingOf(context).top;
-    final foreground = Colors.white;
+    final foreground = Theme.of(context).brightness == Brightness.dark
+        ? Colors.white
+        : const Color(0xFF172033);
 
     Widget iconAction(IconData icon, String tooltip, VoidCallback onPressed) =>
         SizedBox(
@@ -1591,10 +1593,10 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                       child: LiquidGlassSurface(
                         radius: BorderRadius.circular(22),
                         refractive: true,
-                        lightRefractive: true,
+                      lightRefractive: true,
                         child: Row(children: [
                           const SizedBox(width: 14),
-                          const Icon(Icons.search_rounded, size: 18, color: Colors.white70),
+                          Icon(Icons.search_rounded, size: 18, color: foreground.withValues(alpha: 0.72)),
                           const SizedBox(width: 8),
                           Expanded(
                             child: TextField(
@@ -1621,7 +1623,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                                 _setSearchExpanded(false);
                               }
                             },
-                            icon: const Icon(Icons.close_rounded, size: 18, color: Colors.white70),
+                            icon: Icon(Icons.close_rounded, size: 18, color: foreground.withValues(alpha: 0.72)),
                           ),
                         ]),
                       ),
@@ -1708,7 +1710,6 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                         iconAction(Icons.tune_rounded, 'Sort and filter', _showMusicFilters),
                         SmokedGlassPopoverMenu<String>(
                           tooltip: 'More music actions',
-                          onOpenChanged: (open) => setState(() => _musicMenuOpen = open),
                           items: [
                             const SmokedGlassPopoverMenuItem(value: 'shuffle', label: 'Shuffle all', icon: Icons.shuffle_rounded),
                             const SmokedGlassPopoverMenuItem(value: 'select', label: 'Select tracks', icon: Icons.checklist_rounded),
@@ -1753,7 +1754,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                       child: Row(mainAxisSize: MainAxisSize.min, children: [
                         Padding(
                           padding: const EdgeInsets.only(left: 10),
-                          child: Text('${_selectedTrackKeys.length} selected', style: const TextStyle(color: Colors.white, fontSize: 12)),
+                          child: Text('${_selectedTrackKeys.length} selected', style: TextStyle(color: foreground, fontSize: 12)),
                         ),
                         IconButton(
                           tooltip: 'Done selecting',
@@ -1761,7 +1762,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                             _selectionMode = false;
                             _selectedTrackKeys.clear();
                           }),
-                          icon: const Icon(Icons.close_rounded, size: 18, color: Colors.white),
+                          icon: Icon(Icons.close_rounded, size: 18, color: foreground),
                         ),
                       ]),
                     ),
