@@ -49,7 +49,16 @@ void main() {
       of: find.text('Rename'),
       matching: find.byType(ConstrainedBox),
     ).first;
-    expect(tester.getSize(menuCard).width, greaterThanOrEqualTo(215));
+    final menuWidth = tester.getSize(menuCard).width;
+    expect(menuWidth, greaterThanOrEqualTo(210));
+    expect(menuWidth, lessThanOrEqualTo(236));
+    final menuRow = find.ancestor(
+      of: find.text('Rename'),
+      matching: find.byWidgetPredicate(
+        (widget) => widget is SizedBox && widget.height == 44,
+      ),
+    ).first;
+    expect(tester.getSize(menuRow).height, 44);
 
     await tester.tap(find.text('Rename'));
     await tester.pump();
