@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pocketlink_client/features/home/widgets/home_activity_sections.dart';
 import 'package:pocketlink_client/core/storage/home_activity_store.dart';
