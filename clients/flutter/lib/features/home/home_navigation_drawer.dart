@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/settings/app_settings.dart';
@@ -60,7 +58,7 @@ class PocketLinkHomeDrawer extends StatelessWidget {
         foregroundDecoration: BoxDecoration(
           borderRadius: BorderRadius.circular(27),
           border: Border(top: BorderSide(
-            color: Colors.white.withValues(alpha: 0.24),
+            color: isLight ? Colors.white.withValues(alpha: 0.9) : Colors.white.withValues(alpha: 0.24),
             width: 1,
           )),
         ),
@@ -332,20 +330,21 @@ class PocketLinkHomeDrawer extends StatelessWidget {
       ),
     ),
   ),
-),
-  ),
 );
   }
 
-  Widget _drawerIcon(IconData icon) => Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.055),
-          borderRadius: BorderRadius.circular(11),
-        ),
-        child: Icon(icon, size: 19),
-      );
+  Widget _drawerIcon(IconData icon) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(11),
+      ),
+      child: Icon(icon, size: 19, color: colors.onSurfaceVariant),
+    );
+  }
 
   Widget _sectionLabel(BuildContext context, String label) => Padding(
         padding: const EdgeInsets.only(left: 2, bottom: 3),
@@ -463,6 +462,7 @@ class _DrawerStatusPill extends StatelessWidget {
           ],
         ),
       );
+  }
 }
 
 class _ThemeSegment extends StatelessWidget {
@@ -472,9 +472,14 @@ class _ThemeSegment extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => Expanded(
+  Widget build(BuildContext context) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final colors = Theme.of(context).colorScheme;
+    return Expanded(
     child: Material(
-      color: selected ? Colors.white.withValues(alpha: 0.16) : Colors.transparent,
+      color: selected
+          ? (isLight ? colors.primary.withValues(alpha: 0.12) : Colors.white.withValues(alpha: 0.16))
+          : Colors.transparent,
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         onTap: onTap,
@@ -483,7 +488,7 @@ class _ThemeSegment extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 10),
           child: Text(label, textAlign: TextAlign.center,
             style: TextStyle(
-              color: selected ? Colors.white : Theme.of(context).colorScheme.onSurfaceVariant,
+              color: selected ? colors.primary : colors.onSurfaceVariant,
               fontSize: 12, fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
             ),
           ),
