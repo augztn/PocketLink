@@ -405,6 +405,11 @@ internal class MediaIndexScanner(
             dirty.set(true)
             return
         }
+        volumeReports.values.filter { it.optString("volume") != "internal" }.forEach { report ->
+            if (report.optString("state") == "unavailable") {
+                report.put("state", "stale").put("stale", true)
+            }
+        }
         dirty.set(true)
         if (automaticScanningEnabled() && reportPrefs.getBoolean("scan_on_storage_change", true)) {
             requestScan(force = true, trigger = "automatic")
@@ -452,7 +457,9 @@ internal class MediaIndexScanner(
             try {
                 val sources = mutableListOf<Pair<String, Any>>()
                 sources += "internal" to internalRoot()
-                externalRoots().forEach { (id, root) -> sources += id to root }
+                externalRoots()
+                    .filterNot { (id, _) -> volumeReports[id]?.optString("state") == "unavailable" }
+                    .forEach { (id, root) -> sources += id to root }
                 val previousVolumes = volumeReports.values.map { org.json.JSONObject(it.toString()) }
                 val activeVolumeIds = sources.map { it.first }.toSet()
                 volumeReports.clear()
