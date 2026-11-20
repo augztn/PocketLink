@@ -126,9 +126,13 @@ class LiquidGlassSurface extends StatelessWidget {
                     ),
                   ),
                 )
-              : DecoratedBox(
-                  decoration: decoration,
-                  child: Theme(data: contentTheme, child: child),
+              : ClipRRect(
+                  borderRadius: radius,
+                  clipBehavior: Clip.antiAlias,
+                  child: DecoratedBox(
+                    decoration: decoration,
+                    child: Theme(data: contentTheme, child: child),
+                  ),
                 ),
         );
         final polishedSurface = optical
