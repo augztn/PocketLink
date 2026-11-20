@@ -24,9 +24,21 @@ class LayoutInsetsScope extends InheritedWidget {
   static LayoutInsetsScope? maybeOf(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<LayoutInsetsScope>();
 
-  static LayoutInsetsScope of(BuildContext context) =>
-      maybeOf(context) ??
-      (throw FlutterError('LayoutInsetsScope is missing above this context.'));
+  static LayoutInsetsScope of(BuildContext context) {
+    final scope = maybeOf(context);
+    if (scope != null) return scope;
+    final media = MediaQuery.maybeOf(context);
+    final safeTop = media?.padding.top ?? 0.0;
+    final safeBottom = media?.padding.bottom ?? 0.0;
+    return LayoutInsetsScope(
+      topClearance: safeTop + kToolbarHeight + 10,
+      bottomClearance: safeBottom + 12,
+      hasFloatingNavBar: false,
+      hasActiveMiniPlayer: false,
+      reportHeaderHeight: (_) {},
+      child: const SizedBox.shrink(),
+    );
+  }
 
   @override
   bool updateShouldNotify(LayoutInsetsScope oldWidget) =>
