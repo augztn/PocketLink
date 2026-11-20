@@ -86,7 +86,10 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
     final theme = Theme.of(context);
     return AppBar(
       title: feathered
-          ? Transform.translate(offset: const Offset(0, 6), child: title)
+          ? Align(
+              alignment: Alignment.topLeft,
+              child: Padding(padding: const EdgeInsets.only(top: 8), child: title),
+            )
           : title,
       leading: leading,
       leadingWidth: leadingWidth,
@@ -105,7 +108,7 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
         fontWeight: FontWeight.w800,
         letterSpacing: -0.25,
       ),
-      actionsPadding: feathered ? const EdgeInsets.only(right: 16) : null,
+      actionsPadding: const EdgeInsets.only(right: 16),
       actions: [
       ...actionsBeforeHome,
       if (showHome)

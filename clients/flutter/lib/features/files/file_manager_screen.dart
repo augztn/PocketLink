@@ -709,19 +709,22 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
           automaticallyImplyLeading: false,
           leading: _path.isEmpty
               ? null
-              : Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: SizedBox.square(
-                    dimension: 38,
-                    child: GlassCircleButton(
-                      tooltip: 'Back',
-                      onPressed: _goUp,
-                      child: const Icon(Icons.arrow_back_rounded, size: 18),
+              : Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 16, top: 4, bottom: 4),
+                    child: SizedBox.square(
+                      dimension: 38,
+                      child: GlassCircleButton(
+                        tooltip: 'Back',
+                        onPressed: _goUp,
+                        child: const Icon(Icons.arrow_back_rounded, size: 18),
+                      ),
                     ),
                   ),
                 ),
-          leadingWidth: _path.isEmpty ? 0 : 48,
-          titleSpacing: _path.isEmpty ? 16 : 0,
+          leadingWidth: _path.isEmpty ? 62 : 62,
+          titleSpacing: _path.isEmpty ? 16 : 8,
           title: SmokedGlassPopoverMenu<String>(
             tooltip: 'Choose storage location',
             onOpenChanged: (open) => setState(() => _storageMenuOpen = open),
