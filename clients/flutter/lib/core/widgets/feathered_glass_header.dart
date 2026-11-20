@@ -21,10 +21,11 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
         final media = MediaQuery.of(context);
         final isDark = Theme.of(context).brightness == Brightness.dark;
         final settings = AppSettings.instance;
+        // Backdrop blur is a static rendering effect, not an animation.
+        // Keep it available when the OS requests reduced motion.
         final useProgressiveBlur =
             settings.progressiveBlurEnabled &&
-            settings.progressiveBlurStrength > 0 &&
-            !media.disableAnimations;
+            settings.progressiveBlurStrength > 0;
         final blurScale = settings.progressiveBlurStrength / 55;
         final headerHeight = media.padding.top + kToolbarHeight + 16;
         final statusBlurHeight = media.padding.top + 12;
