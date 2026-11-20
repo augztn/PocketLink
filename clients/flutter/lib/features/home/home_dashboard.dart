@@ -1285,6 +1285,39 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
     return '${date.day} ${months[date.month - 1]} ${date.year} · $hour:$minute $period';
   }
 
+  Future<void> _showMediaScanHistory(MediaIndexStatus status) async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Media scan history'),
+        content: SizedBox(
+          width: 460,
+          child: ListView.separated(
+            shrinkWrap: true,
+            itemCount: status.scanHistory.length,
+            separatorBuilder: (_, __) => const Divider(height: 1),
+            itemBuilder: (context, index) {
+              final entry = status.scanHistory[index];
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text('${entry.trigger == 'manual' ? 'Manual' : 'Automatic'} · ${entry.state}'),
+                subtitle: Text(
+                  '${_formatScanTimestamp(entry.completedAt)} · ${(entry.durationMs / 1000).toStringAsFixed(1)}s\n'
+                  '${entry.scanned} checked · ${entry.newFiles} new · ${entry.updatedFiles} updated · ${entry.skipped} skipped'
+                  '${entry.lastError == null ? '' : '\\n${entry.lastError}'}',
+                ),
+                isThreeLine: true,
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Close')),
+        ],
+      ),
+    );
+  }
+
   Future<void> _shareMediaScanReport(MediaIndexStatus status) async {
     final lines = <String>[
       'PocketLink Media Library Scan Report',
@@ -1339,7 +1372,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
           Expanded(child: Text('Host media library', style: theme.textTheme.titleSmall?.copyWith(
             color: colors.onSurface, fontWeight: FontWeight.w800,
           ))),
-          Text(scanning ? 'Scanning' : _mediaScanError != null ? 'Unavailable' : status == null ? 'Checking' : status.state == 'failed' ? 'Failed' : status.state == 'partial' ? 'Partial' : status.state == 'complete' ? 'Up to date' : 'Ready',
+          Text(scanning ? 'Scanning' : _mediaScanError != null ? 'Unavailable' : status == null ? 'Checking' : status.state == 'failed' ? 'Failed' : status.state == 'interrupted' ? 'Interrupted' : status.state == 'partial' ? 'Partial' : status.state == 'complete' ? 'Up to date' : 'Ready',
             style: theme.textTheme.labelSmall?.copyWith(
               color: scanning || _mediaScanError != null
                   ? (theme.brightness == Brightness.dark ? const Color(0xFFFBBF24) : const Color(0xFFB45309))
@@ -1385,8 +1418,8 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
           const SizedBox(height: 6),
           const SizedBox(height: 6),
           Text(
-            scanning
-                ? 'Started ${_formatScanTimestamp(status.lastScanStartedAt)} · ${status.scanTrigger == 'manual' ? 'Manual' : 'Automatic'}'
+            scanning || status.state == 'interrupted'
+                ? '${status.state == 'interrupted' ? 'Interrupted' : 'Started'} ${_formatScanTimestamp(status.lastAttemptStartedAt)} · ${status.scanTrigger == 'manual' ? 'Manual' : 'Automatic'}'
                 : 'Last attempt: ${_formatScanTimestamp(status.lastAttemptFinishedAt)} · ${status.scanTrigger == 'manual' ? 'Manual' : 'Automatic'}',
             style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
           ),
@@ -1431,6 +1464,13 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
             )),
           ],
           if (status.scanHistory.isNotEmpty) ...[
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                onPressed: () => _showMediaScanHistory(status),
+                child: Text('View all ${status.scanHistory.length} scans'),
+              ),
+            ),
             const SizedBox(height: 8),
             Text('RECENT SCANS', style: theme.textTheme.labelSmall?.copyWith(
               color: colors.onSurfaceVariant, fontWeight: FontWeight.w800, letterSpacing: 0.5,
