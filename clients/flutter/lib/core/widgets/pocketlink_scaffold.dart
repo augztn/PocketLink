@@ -1,0 +1,95 @@
+import 'package:material_ui/material_ui.dart';
+
+/// Route-level layout geometry shared by every PocketLink screen.
+class LayoutInsetsScope extends InheritedWidget {
+  const LayoutInsetsScope({
+    required this.topClearance,
+    required this.bottomClearance,
+    required this.hasFloatingNavBar,
+    required this.hasActiveMiniPlayer,
+    required super.child,
+    super.key,
+  });
+
+  final double topClearance;
+  final double bottomClearance;
+  final bool hasFloatingNavBar;
+  final bool hasActiveMiniPlayer;
+
+  static LayoutInsetsScope? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<LayoutInsetsScope>();
+
+  static LayoutInsetsScope of(BuildContext context) =>
+      maybeOf(context) ??
+      (throw FlutterError('LayoutInsetsScope is missing above this context.'));
+
+  @override
+  bool updateShouldNotify(LayoutInsetsScope oldWidget) =>
+      topClearance != oldWidget.topClearance ||
+      bottomClearance != oldWidget.bottomClearance ||
+      hasFloatingNavBar != oldWidget.hasFloatingNavBar ||
+      hasActiveMiniPlayer != oldWidget.hasActiveMiniPlayer;
+}
+
+/// Installs the shared layout scope around the active navigator route tree.
+///
+/// Header clearance is reported by the rendered FeatheredGlassHeaderBackground;
+/// bottom clearance follows the overlays that are currently mounted.
+class PocketLinkScaffold extends StatefulWidget {
+  const PocketLinkScaffold({
+    required this.child,
+    required this.hasFloatingNavBar,
+    required this.hasActiveMiniPlayer,
+    super.key,
+  });
+
+  final Widget child;
+  final bool hasFloatingNavBar;
+  final bool hasActiveMiniPlayer;
+
+  @override
+  State<PocketLinkScaffold> createState() => _PocketLinkScaffoldState();
+}
+
+class _PocketLinkScaffoldState extends State<PocketLinkScaffold> {
+  double? _renderedHeaderHeight;
+
+  void reportHeaderHeight(double height) {
+    if (!height.isFinite || height <= 0 ||
+        (_renderedHeaderHeight != null &&
+            (_renderedHeaderHeight! - height).abs() < 0.5)) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && (_renderedHeaderHeight == null ||
+          (_renderedHeaderHeight! - height).abs() >= 0.5)) {
+        setState(() => _renderedHeaderHeight = height);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    final statusBarHeight = media.padding.top;
+    final headerContentHeight =
+        _renderedHeaderHeight == null
+            ? kToolbarHeight
+            : (_renderedHeaderHeight! - statusBarHeight - 16).clamp(
+                kToolbarHeight,
+                200.0,
+              );
+    final topClearance = statusBarHeight + headerContentHeight + 10;
+    final bottomClearance = media.padding.bottom +
+        (widget.hasFloatingNavBar ? 84.0 : 12.0) +
+        (widget.hasActiveMiniPlayer ? 74.0 : 0.0);
+
+    return LayoutInsetsScope(
+      topClearance: topClearance,
+      bottomClearance: bottomClearance,
+      hasFloatingNavBar: widget.hasFloatingNavBar,
+      hasActiveMiniPlayer: widget.hasActiveMiniPlayer,
+      child: widget.child,
+    );
+  }
+}
