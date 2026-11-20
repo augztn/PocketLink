@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 import 'quick_actions_store.dart';
 import 'widgets/host_device_metrics_card.dart';
 import 'widgets/host_media_scan_card.dart';
+import 'widgets/home_activity_sections.dart';
 import 'widgets/server_telemetry_card.dart';
 import 'network_route_classifier.dart';
 import '../../core/settings/app_settings.dart';
@@ -560,106 +561,25 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
     );
   }
 
-  Widget _buildContinueStrip(BuildContext context, ThemeData theme, ColorScheme colors) {
-    final player = PersistentAudioPlayer.instance;
-    final items = HomeActivityStore.instance.itemsForServer(widget.api.baseUrl).take(8).toList();
-    if (items.isEmpty) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-        decoration: _dashboardCardDecoration(theme),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.history_rounded, color: colors.onSurfaceVariant, size: 22),
-            const SizedBox(height: 7),
-            Text(
-              'Your recent tracks, folders and files will appear here.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
-            ),
-            const SizedBox(height: 10),
-            TextButton.icon(
-              onPressed: () => widget.onOpenExplore(ExploreCategory.music),
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFF8C9EFF),
-                backgroundColor: const Color(0xFF536DFE).withValues(alpha: 0.16),
-                padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                shape: const StadiumBorder(),
-              ),
-              icon: const Icon(Icons.play_arrow_rounded, size: 17),
-              label: const Text('Browse media'),
-            ),
-          ],
-        ),
+  Future<void> _openHomeActivityItem(HomeActivityItem recent) async {
+    if (recent.kind == 'track') {
+      final queueItem = MediaQueueItem(
+        title: recent.title,
+        path: recent.path,
+        volume: recent.volume,
       );
+      await PersistentAudioPlayer.instance.openQueue(
+        api: widget.api,
+        queue: [queueItem],
+        initialIndex: 0,
+        isMusic: true,
+      );
+      NowPlayingOverlayController.open();
+      return;
     }
-    return SizedBox(
-      height: 92,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: items.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 10),
-        itemBuilder: (context, index) {
-          final recent = items[index];
-          final isTrack = recent.kind == 'track';
-          final isFolder = recent.kind == 'folder';
-          final icon = isTrack ? Icons.music_note_rounded : isFolder ? Icons.folder_rounded : Icons.insert_drive_file_rounded;
-          return SizedBox(
-            width: 250,
-            child: Container(
-              decoration: _dashboardCardDecoration(theme),
-              child: Material(
-                color: Colors.transparent,
-                borderRadius: BorderRadius.circular(18),
-                clipBehavior: Clip.antiAlias,
-                child: InkWell(
-                borderRadius: BorderRadius.circular(18),
-                onTap: () async {
-                  if (isTrack) {
-                    final queueItem = MediaQueueItem(
-                      title: recent.title,
-                      path: recent.path,
-                      volume: recent.volume,
-                    );
-                    await player.openQueue(
-                      api: widget.api,
-                      queue: [queueItem],
-                      initialIndex: 0,
-                      isMusic: true,
-                    );
-                    NowPlayingOverlayController.open();
-                  } else {
-                    final path = isFolder ? recent.path : recent.parentPath;
-                    widget.onOpenFileLocation(recent.volume, path);
-                  }
-                },
-                child: Padding(
-                  padding: const EdgeInsets.all(13),
-                  child: Row(children: [
-                    Container(width: 48, height: 48, decoration: BoxDecoration(
-                      color: colors.primaryContainer, borderRadius: BorderRadius.circular(14)),
-                      child: Icon(icon, color: colors.primary)),
-                    const SizedBox(width: 11),
-                    Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(isTrack ? 'Continue listening' : isFolder ? 'Recent folder' : 'Recent file',
-                        style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant)),
-                      const SizedBox(height: 3),
-                      Text(recent.title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-                    ])),
-                    Icon(isTrack ? Icons.play_arrow_rounded : Icons.chevron_right_rounded),
-                  ]),
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
+
+    final path = recent.isFolder ? recent.path : recent.parentPath;
+    widget.onOpenFileLocation(recent.volume, path);
   }
 
   Widget _buildGlobalSearchEntry(ThemeData theme, ColorScheme colors) {
@@ -1123,7 +1043,12 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                 const SizedBox(height: 10),
                 AnimatedBuilder(
                   animation: HomeActivityStore.instance,
-                  builder: (context, _) => _buildContinueStrip(context, theme, colors),
+                  builder: (context, _) => HomeContinueSection(
+                    items: HomeActivityStore.instance.itemsForServer(widget.api.baseUrl).take(8).toList(),
+                    cardDecoration: _dashboardCardDecoration,
+                    onBrowseMedia: () => widget.onOpenExplore(ExploreCategory.music),
+                    onSelectItem: _openHomeActivityItem,
+                  ),
                 ),
               ]),
             )
@@ -1131,93 +1056,26 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
       'recent': () => appSettings.showRecentFiles
           ? Padding(
               padding: const EdgeInsets.only(bottom: 18),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                sectionTitle(
-                  'Recent files',
-                  action: 'Browse',
-                  onAction: () => widget.onOpenExplore(ExploreCategory.files),
-                ),
-                const SizedBox(height: 10),
-                if (_recentFiles.isEmpty)
-                  Container(
-                    padding: const EdgeInsets.all(18),
-                    decoration: _dashboardCardDecoration(theme, radius: 20),
-                    child: Row(children: [
-                      Icon(Icons.history_rounded, color: colors.onSurfaceVariant),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          _recentFilesError ?? (_checking
-                              ? 'Checking your folders for recent files…'
-                              : 'No recent files found in the scanned folders.'),
-                          style: theme.textTheme.bodyMedium?.copyWith(color: colors.onSurfaceVariant),
-                        ),
-                      ),
-                    ]),
-                  )
-                else
-                  Container(
-                    decoration: _dashboardCardDecoration(theme, radius: 20),
-                    child: Material(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(20),
-                      clipBehavior: Clip.antiAlias,
-                      child: Column(children: [
-                      for (var index = 0; index < _recentFiles.take(8).length; index++) ...[
-                        if (index > 0) const Divider(height: 1, indent: 68),
-                        ListTile(
-                          dense: true,
-                          minVerticalPadding: 8,
-                          leading: Container(
-                            width: 42,
-                            height: 42,
-                            decoration: BoxDecoration(
-                              color: colors.secondaryContainer,
-                              borderRadius: BorderRadius.circular(13),
-                            ),
-                            child: Icon(_recentIcon(_recentFiles[index].file), color: colors.onSecondaryContainer),
-                          ),
-                          title: Text(
-                            _recentFiles[index].file.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-                          ),
-                          subtitle: Text(
-                            '${_formatBytes(_recentFiles[index].file.size)} · ${_relativeTime(_recentFiles[index].modifiedAt)} · ${_recentFiles[index].volumeName}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          trailing: SmokedGlassPopoverMenu<String>(
-                            tooltip: 'File actions',
-                            items: const [
-                              SmokedGlassPopoverMenuItem(value: 'download', label: 'Download', icon: Icons.download_rounded),
-                              SmokedGlassPopoverMenuItem(value: 'share', label: 'Share', icon: Icons.ios_share_rounded),
-                              SmokedGlassPopoverMenuItem(value: 'rename', label: 'Rename', icon: Icons.drive_file_rename_outline_rounded),
-                              SmokedGlassPopoverMenuItem(value: 'delete', label: 'Delete', icon: Icons.delete_outline_rounded, destructive: true, dividerBefore: true),
-                            ],
-                            onSelected: (action) => _handleRecentAction(_recentFiles[index], action),
-                            child: const Padding(
-                              padding: EdgeInsets.all(8),
-                              child: Icon(Icons.more_vert_rounded, size: 18),
-                            ),
-                          ),
-                          onTap: () {
-                            final recent = _recentFiles[index];
-                            HomeActivityStore.instance.recordFile(
-                              serverUrl: widget.api.baseUrl,
-                              title: recent.file.name,
-                              path: recent.path,
-                              volume: recent.volume,
-                            );
-                            widget.onOpenFileLocation(recent.volume, recent.parentPath);
-                          },
-                        ),
-                      ],
-                      ]),
-                    ),
-                  ),
-              ]),
+              child: HomeRecentFilesSection(
+                files: _recentFiles,
+                error: _recentFilesError,
+                checking: _checking,
+                cardDecoration: _dashboardCardDecoration,
+                formatBytes: _formatBytes,
+                relativeTime: _relativeTime,
+                iconForFile: _recentIcon,
+                onBrowse: () => widget.onOpenExplore(ExploreCategory.files),
+                onAction: _handleRecentAction,
+                onFileTap: (recent) {
+                  HomeActivityStore.instance.recordFile(
+                    serverUrl: widget.api.baseUrl,
+                    title: recent.file.name,
+                    path: recent.path,
+                    volume: recent.volume,
+                  );
+                  widget.onOpenFileLocation(recent.volume, recent.parentPath);
+                },
+              ),
             )
           : const SizedBox.shrink(),
     };
