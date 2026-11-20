@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:typed_data';
 import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/pocketlink_file_icon.dart';
+import '../../core/widgets/liquid_glass_pill.dart';
+import '../../core/widgets/smoked_glass_popover_menu.dart';
 
 import 'package:cross_file/cross_file.dart';
 import 'package:dio/dio.dart';
@@ -20,6 +22,8 @@ import '../media/media_player_screen.dart';
 import '../media/persistent_audio_player.dart';
 import '../media/now_playing_overlay_controller.dart';
 import '../storage/storage_browser_screen.dart';
+import '../downloads/downloads_screen.dart';
+import '../settings/settings_screen.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({required this.api, this.onHome, super.key});
@@ -108,6 +112,16 @@ class _SearchScreenState extends State<SearchScreen> {
     final values = _history.where((v) => v != query).toList();
     setState(() => _history = values);
     try { await _secure.write(key: _historyKey, value: jsonEncode(values)); } catch (_) {}
+  }
+
+  Future<void> _clearSearchHistory() async {
+    setState(() => _history = []);
+    try {
+      await _secure.delete(key: _historyKey);
+      await _secure.delete(key: _legacyHistoryKey);
+    } catch (_) {
+      if (mounted) _message('Could not clear search history.');
+    }
   }
 
   Future<void> _loadVolumes() async {
@@ -655,12 +669,36 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _quickChip(String label, String value, IconData icon) => Padding(
-    padding: const EdgeInsets.only(right: 8),
-    child: FilterChip(
-      selected: _quick == value,
-      avatar: Icon(icon, size: 16),
-      label: Text(label),
-      onSelected: (_) => _chooseQuick(value)));
+    padding: const EdgeInsets.only(right: 8, bottom: 8),
+    child: SmokedGlassSurface(
+      radius: BorderRadius.circular(18),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: () => _chooseQuick(value),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(icon, size: 16, color: _quick == value
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.onSurfaceVariant),
+              const SizedBox(width: 7),
+              Text(label, style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.onSurface,
+              )),
+              if (_quick == value) ...[
+                const SizedBox(width: 5),
+                const Icon(Icons.check_rounded, size: 14),
+              ],
+            ]),
+          ),
+        ),
+      ),
+    ),
+  );
 
   Widget _idle(ThemeData theme) => ListView(
     padding: EdgeInsets.fromLTRB(16, 20, 16, 96 + MediaQuery.paddingOf(context).bottom),
@@ -668,10 +706,7 @@ class _SearchScreenState extends State<SearchScreen> {
       if (_history.isNotEmpty) ...[
         Row(children: [
           Expanded(child: Text('Recent searches', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800))),
-          TextButton(onPressed: () async {
-            setState(() => _history = []);
-            try { await _secure.delete(key: _historyKey); } catch (_) {}
-          }, child: const Text('Clear')),
+          TextButton(onPressed: _clearSearchHistory, child: const Text('Clear')),
         ]),
         Wrap(spacing: 8, children: [for (final item in _history)
           InputChip(label: Text(item), onPressed: () { _controller.text = item; _scan(); },
@@ -706,48 +741,153 @@ class _SearchScreenState extends State<SearchScreen> {
     ];
     return Scaffold(
       appBar: PocketLinkAppBar(
+        feathered: true,
+        showHome: false,
+        automaticallyImplyLeading: false,
         title: const Text('Search'),
-        onHome: widget.onHome,
-        leading: widget.onHome == null ? null : IconButton(
-          tooltip: 'Back to Dashboard',
-          onPressed: widget.onHome,
-          icon: const Icon(Icons.arrow_back_rounded),
-        ),
+        actions: [
+          PocketLinkAppBarAction(
+            label: 'Clear search history',
+            icon: Icons.history_rounded,
+            onPressed: _clearSearchHistory,
+          ),
+          PocketLinkAppBarAction(
+            label: 'Download manager',
+            icon: Icons.download_rounded,
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+              builder: (_) => DownloadsScreen(api: widget.api),
+            )),
+            dividerBefore: true,
+          ),
+          PocketLinkAppBarAction(
+            label: 'Settings',
+            icon: Icons.settings_rounded,
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+              builder: (_) => const SettingsScreen(),
+            )),
+          ),
+        ],
       ),
       body: Column(children: [
-        Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 8), child: TextField(
-          controller: _controller,
-          textInputAction: TextInputAction.search,
-          onSubmitted: (_) { _debounce?.cancel(); _scan(); },
-          decoration: InputDecoration(
-            hintText: 'Search across all drives and media...',
-            prefixIcon: const Icon(Icons.search_rounded),
-            suffixIcon: query.isEmpty ? null : IconButton(
-              tooltip: 'Clear search', onPressed: () { _controller.clear(); setState(() => _quick = null); },
-              icon: const Icon(Icons.close_rounded)),
-            filled: true, fillColor: theme.colorScheme.surfaceContainerLow,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20),
-              borderSide: BorderSide(color: theme.colorScheme.primary.withValues(alpha: 0.6))),
-          ))),
-        SizedBox(height: 44, child: ListView(scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 14), children: [
-            for (final item in categories) Padding(padding: const EdgeInsets.only(right: 7),
-              child: ChoiceChip(label: Text(item), selected: _category == item, onSelected: (_) => setState(() => _category = item))),
-          ])),
-        Padding(padding: const EdgeInsets.fromLTRB(16, 4, 16, 10), child: Row(children: [
-          Icon(Icons.storage_rounded, size: 18, color: theme.colorScheme.onSurfaceVariant),
-          const SizedBox(width: 8),
-          Text('Search in', style: theme.textTheme.labelLarge),
-          const SizedBox(width: 10),
-          Expanded(child: DropdownButtonFormField<String?>(
-            initialValue: _scope, isDense: true, items: scopes, onChanged: _chooseScope,
-            decoration: InputDecoration(contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-              filled: true, fillColor: theme.colorScheme.surfaceContainerLow,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)),
-          )),
-        ])),
+        SizedBox(height: MediaQuery.paddingOf(context).top + kToolbarHeight),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          child: SmokedGlassSurface(
+            radius: BorderRadius.circular(20),
+            child: SizedBox(
+              height: 48,
+              child: TextField(
+                controller: _controller,
+                textInputAction: TextInputAction.search,
+                onSubmitted: (_) { _debounce?.cancel(); _scan(); },
+                decoration: InputDecoration(
+                  hintText: 'Search across all drives and media...',
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  suffixIcon: query.isEmpty ? null : IconButton(
+                    tooltip: 'Clear search',
+                    onPressed: () { _controller.clear(); setState(() => _quick = null); },
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                  filled: true,
+                  fillColor: Colors.transparent,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    borderSide: BorderSide(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.6),
+                    ),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+          child: Row(children: [
+            Expanded(
+              child: SmokedGlassPopoverMenu<String>(
+                tooltip: 'Choose file type',
+                items: [
+                  for (final category in categories)
+                    SmokedGlassPopoverMenuItem(
+                      value: category,
+                      label: category,
+                      icon: switch (category) {
+                        'Photos' => Icons.photo_library_rounded,
+                        'Audio' => Icons.headphones_rounded,
+                        'Videos' => Icons.video_library_rounded,
+                        'Documents' => Icons.description_rounded,
+                        'Files' => Icons.folder_rounded,
+                        _ => Icons.apps_rounded,
+                      },
+                      trailing: _category == category
+                          ? const Icon(Icons.check_rounded, size: 18)
+                          : null,
+                    ),
+                ],
+                onSelected: (value) => setState(() => _category = value),
+                child: SmokedGlassSurface(
+                  radius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                    child: Row(children: [
+                      const Icon(Icons.filter_list_rounded, size: 17),
+                      const SizedBox(width: 6),
+                      Expanded(child: Text('Type: $_category', maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700))),
+                      const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+                    ]),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: SmokedGlassPopoverMenu<String>(
+                tooltip: 'Choose storage drive',
+                items: [
+                  const SmokedGlassPopoverMenuItem(
+                    value: '__all__', label: 'All Drives', icon: Icons.storage_rounded,
+                  ),
+                  const SmokedGlassPopoverMenuItem(
+                    value: 'internal', label: 'Internal storage', icon: Icons.phone_android_rounded,
+                  ),
+                  for (final volume in _volumes)
+                    SmokedGlassPopoverMenuItem(
+                      value: volume.id, label: volume.name, icon: Icons.usb_rounded,
+                    ),
+                ],
+                onSelected: (value) => _chooseScope(value == '__all__' ? null : value),
+                child: SmokedGlassSurface(
+                  radius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                    child: Row(children: [
+                      const Icon(Icons.storage_rounded, size: 17),
+                      const SizedBox(width: 6),
+                      Expanded(child: Text(
+                        _scope == null ? 'Drive: All Drives' : _scope == 'internal'
+                            ? 'Drive: Internal' : 'Drive: ${_volumes.where((v) => v.id == _scope).firstOrNull?.name ?? 'USB / OTG'}',
+                        maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                      )),
+                      const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+                    ]),
+                  ),
+                ),
+              ),
+            ),
+          ]),
+        ),
         if (_loading) ...[
           const LinearProgressIndicator(minHeight: 2),
           Padding(
