@@ -3,6 +3,7 @@ import '../../core/network/server_api.dart';
 import 'photo_favorites_store.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/feathered_glass_header.dart';
+import '../../core/widgets/pocketlink_scaffold.dart';
 import '../../core/widgets/smoked_glass_popover_menu.dart';
 import '../downloads/download_manager_service.dart';
 import '../transfers/transfer_manager_screen.dart';
@@ -274,8 +275,8 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     shrinkWrap: shrinkWrap,
     physics: shrinkWrap ? const NeverScrollableScrollPhysics() : null,
     padding: EdgeInsets.fromLTRB(
-      2, shrinkWrap || searchOpen ? 2 : MediaQuery.paddingOf(context).top + 76,
-      2, shrinkWrap ? 0 : 104 + MediaQuery.paddingOf(context).bottom,
+      2, shrinkWrap || searchOpen ? 2 : LayoutInsetsScope.of(context).topClearance,
+      2, shrinkWrap ? 0 : LayoutInsetsScope.of(context).bottomClearance,
     ),
     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
       crossAxisCount: gridColumns.clamp(2, 5), crossAxisSpacing: 2, mainAxisSpacing: 2),
@@ -304,7 +305,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     if (dateMode == 3) return grid(items);
     final groups = <String,List<_Photo>>{};
     for (final p in items) { groups.putIfAbsent(group(p), () => []).add(p); }
-    return ListView(padding: EdgeInsets.fromLTRB(0, searchOpen ? 0 : MediaQuery.paddingOf(context).top + 76, 0, 104 + MediaQuery.paddingOf(context).bottom), children: [
+    return ListView(padding: EdgeInsets.fromLTRB(0, searchOpen ? 0 : LayoutInsetsScope.of(context).topClearance, 0, LayoutInsetsScope.of(context).bottomClearance), children: [
       for (final entry in groups.entries) ...[
         Padding(padding: const EdgeInsets.fromLTRB(16,18,16,8),
           child: Row(children: [
@@ -321,7 +322,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     final albums = groupByAlbum(items).entries.toList()..sort((a,b)=>a.key.compareTo(b.key));
     if (albums.isEmpty) return empty('Albums will appear when photos are found.');
     return GridView.builder(
-      padding: EdgeInsets.fromLTRB(12, searchOpen ? 12 : MediaQuery.paddingOf(context).top + 76, 12, 104 + MediaQuery.paddingOf(context).bottom),
+      padding: EdgeInsets.fromLTRB(12, searchOpen ? 12 : LayoutInsetsScope.of(context).topClearance, 12, LayoutInsetsScope.of(context).bottomClearance),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount:2,crossAxisSpacing:12,mainAxisSpacing:16,childAspectRatio:.92),
       itemCount: albums.length,
@@ -350,7 +351,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     }
     final featured=memories.entries.take(8).toList();
     final albums=groupByAlbum(items);
-    return ListView(padding:EdgeInsets.fromLTRB(16, searchOpen ? 16 : MediaQuery.paddingOf(context).top + 76, 16, 104 + MediaQuery.paddingOf(context).bottom),children:[
+    return ListView(padding:EdgeInsets.fromLTRB(16, searchOpen ? 16 : LayoutInsetsScope.of(context).topClearance, 16, LayoutInsetsScope.of(context).bottomClearance),children:[
       Text('Memories',style:Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight:FontWeight.w800)),
       const SizedBox(height:4),
       Text('Moments grouped by the dates stored with your photos.',style:Theme.of(context).textTheme.bodySmall),
@@ -555,7 +556,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     final favoriteCount = photos.where((p) => favorites.contains(p.id)).length;
     final counts = [photos.length, albumCount, favoriteCount];
     final headerTop = MediaQuery.paddingOf(context).top;
-    final contentTop = headerTop + 76;
+    final contentTop = LayoutInsetsScope.of(context).topClearance;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
