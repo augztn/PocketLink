@@ -591,7 +591,7 @@ class _SearchScreenState extends State<SearchScreen> {
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(value)));
   }
 
-  Widget _resultsList(ThemeData theme, {bool shrink = false}) {
+  Widget _resultsList(ThemeData theme, {bool shrink = false, double topInset = 8}) {
     final list = _visible;
     final q = _controller.text.trim();
     if (_error != null) return Padding(padding: const EdgeInsets.all(24), child: Text(_error!, textAlign: TextAlign.center));
@@ -629,7 +629,7 @@ class _SearchScreenState extends State<SearchScreen> {
     return ListView.separated(
       shrinkWrap: shrink,
       physics: shrink ? const NeverScrollableScrollPhysics() : const AlwaysScrollableScrollPhysics(),
-      padding: EdgeInsets.fromLTRB(12, 8, 12, 96 + MediaQuery.paddingOf(context).bottom),
+      padding: EdgeInsets.fromLTRB(12, topInset, 12, 132 + MediaQuery.paddingOf(context).bottom),
       itemCount: list.length,
       separatorBuilder: (_, __) => const Divider(height: 1, indent: 62),
       itemBuilder: (ctx, i) {
@@ -707,8 +707,8 @@ class _SearchScreenState extends State<SearchScreen> {
     ),
   );
 
-  Widget _idle(ThemeData theme) => ListView(
-    padding: EdgeInsets.fromLTRB(16, 20, 16, 96 + MediaQuery.paddingOf(context).bottom),
+  Widget _idle(ThemeData theme, {double topInset = 20}) => ListView(
+    padding: EdgeInsets.fromLTRB(16, topInset, 16, 132 + MediaQuery.paddingOf(context).bottom),
     children: [
       if (_history.isNotEmpty) ...[
         Row(children: [
@@ -775,177 +775,220 @@ class _SearchScreenState extends State<SearchScreen> {
           ),
         ],
       ),
-      body: Column(children: [
-        SizedBox(height: MediaQuery.paddingOf(context).top + kToolbarHeight),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-          child: SmokedGlassSurface(
-            radius: BorderRadius.circular(20),
-            child: SizedBox(
-              height: 48,
-              child: TextField(
-                controller: _controller,
-                textInputAction: TextInputAction.search,
-                onSubmitted: (_) { _debounce?.cancel(); _scan(); },
-                decoration: InputDecoration(
-                  hintText: 'Search across all drives and media...',
-                  prefixIcon: const Icon(Icons.search_rounded),
-                  suffixIcon: query.isEmpty ? null : IconButton(
-                    tooltip: 'Clear search',
-                    onPressed: () { _controller.clear(); setState(() => _quick = null); },
-                    icon: const Icon(Icons.close_rounded),
-                  ),
-                  filled: true,
-                  fillColor: Colors.transparent,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    borderSide: BorderSide.none,
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    borderSide: BorderSide(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.6),
+      body: Builder(builder: (context) {
+        final safeTop = MediaQuery.paddingOf(context).top;
+        final headerBottom = safeTop + kToolbarHeight;
+        final contentTop = headerBottom + 8 + 64 + 54 +
+            (_loading ? 34 : 0) + (_quick != null ? 42 : 0) + 8;
+        final Widget scrollContent = query.isEmpty && _quick == null
+            ? _idle(theme, topInset: contentTop)
+            : _quick == 'offline'
+                ? _resultsList(theme, topInset: contentTop)
+                : query.isEmpty
+                    ? ListView(
+                        padding: EdgeInsets.fromLTRB(0, contentTop, 0, 132 + safeTop),
+                        children: [_resultsList(theme, shrink: true, topInset: 0)],
+                      )
+                    : _resultsList(theme, topInset: contentTop);
+
+        return Stack(
+          children: [
+            Positioned.fill(child: scrollContent),
+            Positioned(
+              top: headerBottom,
+              left: 0,
+              right: 0,
+              child: Material(
+                color: Colors.transparent,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                      child: SmokedGlassSurface(
+                        radius: BorderRadius.circular(20),
+                        child: SizedBox(
+                          height: 48,
+                          child: TextField(
+                            controller: _controller,
+                            textInputAction: TextInputAction.search,
+                            onSubmitted: (_) { _debounce?.cancel(); _scan(); },
+                            decoration: InputDecoration(
+                              hintText: 'Search across all drives and media...',
+                              prefixIcon: const Icon(Icons.search_rounded),
+                              suffixIcon: query.isEmpty ? null : IconButton(
+                                tooltip: 'Clear search',
+                                onPressed: () { _controller.clear(); setState(() => _quick = null); },
+                                icon: const Icon(Icons.close_rounded),
+                              ),
+                              filled: true,
+                              fillColor: Colors.transparent,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(20),
+                                borderSide: BorderSide.none,
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(20),
+                                borderSide: BorderSide.none,
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(20),
+                                borderSide: BorderSide(
+                                  color: theme.colorScheme.primary.withValues(alpha: 0.6),
+                                ),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                      child: Row(children: [
+                        Expanded(
+                          child: SmokedGlassPopoverMenu<String>(
+                            tooltip: 'Choose file type',
+                            items: [
+                              for (final category in categories)
+                                SmokedGlassPopoverMenuItem(
+                                  value: category,
+                                  label: category,
+                                  icon: switch (category) {
+                                    'Photos' => Icons.photo_library_rounded,
+                                    'Audio' => Icons.headphones_rounded,
+                                    'Videos' => Icons.video_library_rounded,
+                                    'Documents' => Icons.description_rounded,
+                                    'Files' => Icons.folder_rounded,
+                                    _ => Icons.apps_rounded,
+                                  },
+                                  trailing: _category == category
+                                      ? const Icon(Icons.check_rounded, size: 18)
+                                      : null,
+                                ),
+                            ],
+                            onSelected: (value) => setState(() => _category = value),
+                            child: SmokedGlassSurface(
+                              radius: BorderRadius.circular(16),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                                child: Row(children: [
+                                  const Icon(Icons.filter_list_rounded, size: 17),
+                                  const SizedBox(width: 6),
+                                  Expanded(child: Text('Type: $_category', maxLines: 1, overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700))),
+                                  const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+                                ]),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: SmokedGlassPopoverMenu<String>(
+                            tooltip: 'Choose storage drive',
+                            items: [
+                              const SmokedGlassPopoverMenuItem(value: '__all__', label: 'All Drives', icon: Icons.storage_rounded),
+                              const SmokedGlassPopoverMenuItem(value: 'internal', label: 'Internal storage', icon: Icons.phone_android_rounded),
+                              for (final volume in _volumes)
+                                SmokedGlassPopoverMenuItem(value: volume.id, label: volume.name, icon: Icons.usb_rounded),
+                            ],
+                            onSelected: (value) => _chooseScope(value == '__all__' ? null : value),
+                            child: SmokedGlassSurface(
+                              radius: BorderRadius.circular(16),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                                child: Row(children: [
+                                  const Icon(Icons.storage_rounded, size: 17),
+                                  const SizedBox(width: 6),
+                                  Expanded(child: Text(
+                                    _scope == null ? 'Drive: All Drives' : _scope == 'internal'
+                                        ? 'Drive: Internal' : 'Drive: ${_volumeLabel(_scope!)}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                                  )),
+                                  const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+                                ]),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ]),
+                    ),
+                    if (_loading) ...[
+                      const LinearProgressIndicator(minHeight: 2),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 5, 16, 2),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Searching storage · $_scannedFolders folders · ${_visible.length} matches found',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                    if (_quick != null)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: InputChip(
+                            selected: true,
+                            label: Text(switch (_quick) {
+                              'offline' => 'Offline cached',
+                              'large' => 'Large files · 100 MB+',
+                              'today' => 'Added / modified today',
+                              _ => 'Filter active',
+                            }),
+                            onDeleted: () => _chooseQuick(_quick!),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-          child: Row(children: [
-            Expanded(
-              child: SmokedGlassPopoverMenu<String>(
-                tooltip: 'Choose file type',
-                items: [
-                  for (final category in categories)
-                    SmokedGlassPopoverMenuItem(
-                      value: category,
-                      label: category,
-                      icon: switch (category) {
-                        'Photos' => Icons.photo_library_rounded,
-                        'Audio' => Icons.headphones_rounded,
-                        'Videos' => Icons.video_library_rounded,
-                        'Documents' => Icons.description_rounded,
-                        'Files' => Icons.folder_rounded,
-                        _ => Icons.apps_rounded,
-                      },
-                      trailing: _category == category
-                          ? const Icon(Icons.check_rounded, size: 18)
-                          : null,
-                    ),
-                ],
-                onSelected: (value) => setState(() => _category = value),
-                child: SmokedGlassSurface(
-                  radius: BorderRadius.circular(16),
+            if (!_loading && _scanTruncated && _quick != 'offline' && (query.isNotEmpty || _quick != null))
+              Positioned(
+                left: 12,
+                right: 12,
+                bottom: MediaQuery.paddingOf(context).bottom + 8,
+                child: Material(
+                  color: theme.colorScheme.surfaceContainer.withValues(alpha: 0.94),
+                  borderRadius: BorderRadius.circular(14),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                     child: Row(children: [
-                      const Icon(Icons.filter_list_rounded, size: 17),
-                      const SizedBox(width: 6),
-                      Expanded(child: Text('Type: $_category', maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700))),
-                      const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+                      Expanded(child: Text('${_visible.length} shown · $_scannedFolders folders scanned. More folders/files remain.',
+                        style: theme.textTheme.labelSmall)),
+                      TextButton(onPressed: () => _scan(continueExisting: true), child: const Text('Continue')),
                     ]),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: SmokedGlassPopoverMenu<String>(
-                tooltip: 'Choose storage drive',
-                items: [
-                  const SmokedGlassPopoverMenuItem(
-                    value: '__all__', label: 'All Drives', icon: Icons.storage_rounded,
-                  ),
-                  const SmokedGlassPopoverMenuItem(
-                    value: 'internal', label: 'Internal storage', icon: Icons.phone_android_rounded,
-                  ),
-                  for (final volume in _volumes)
-                    SmokedGlassPopoverMenuItem(
-                      value: volume.id, label: volume.name, icon: Icons.usb_rounded,
-                    ),
-                ],
-                onSelected: (value) => _chooseScope(value == '__all__' ? null : value),
-                child: SmokedGlassSurface(
-                  radius: BorderRadius.circular(16),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                    child: Row(children: [
-                      const Icon(Icons.storage_rounded, size: 17),
-                      const SizedBox(width: 6),
-                      Expanded(child: Text(
-                        _scope == null ? 'Drive: All Drives' : _scope == 'internal'
-                            ? 'Drive: Internal' : 'Drive: ${_volumeLabel(_scope!)}',
-                        maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+            if (_scanned && !_loading && (query.isNotEmpty || _quick != null))
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: MediaQuery.paddingOf(context).bottom + 2,
+                child: IgnorePointer(
+                  child: Center(
+                    child: Text('${_visible.length} results · $_scannedFolders folders scanned',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        backgroundColor: theme.colorScheme.surface.withValues(alpha: 0.82),
                       )),
-                      const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
-                    ]),
                   ),
                 ),
               ),
-            ),
-          ]),
-        ),
-        if (_loading) ...[
-          const LinearProgressIndicator(minHeight: 2),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 5, 16, 2),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Searching storage · $_scannedFolders folders · ${_visible.length} matches found',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ),
-          ),
-        ],
-        if (_quick != null) Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: InputChip(
-              selected: true,
-              label: Text(switch (_quick) {
-                'offline' => 'Offline cached',
-                'large' => 'Large files · 100 MB+',
-                'today' => 'Added / modified today',
-                _ => 'Filter active',
-              }),
-              onDeleted: () => _chooseQuick(_quick!),
-            ),
-          ),
-        ),
-        Expanded(child: query.isEmpty && _quick == null
-          ? _idle(theme)
-          : _quick == 'offline'
-            ? _resultsList(theme)
-            : query.isEmpty
-              ? ListView(padding: EdgeInsets.only(bottom: 96 + MediaQuery.paddingOf(context).bottom),
-                  children: [_resultsList(theme, shrink: true)])
-              : _resultsList(theme)),
-        if (!_loading && _scanTruncated && _quick != 'offline' && (query.isNotEmpty || _quick != null))
-          Padding(padding: const EdgeInsets.fromLTRB(12, 4, 12, 8), child: Row(
-            children: [
-              Expanded(child: Text('${_visible.length} shown · $_scannedFolders folders scanned. More folders/files remain.',
-                style: theme.textTheme.labelSmall)),
-              TextButton(onPressed: () => _scan(continueExisting: true), child: const Text('Continue')),
-            ],
-          )),
-        if (_scanned && !_loading && (query.isNotEmpty || _quick != null))
-          Padding(padding: const EdgeInsets.only(bottom: 6, top: 2),
-            child: Text('${_visible.length} results · $_scannedFolders folders scanned', style: theme.textTheme.labelSmall)),
-      ]),
+          ],
+        );
+      }),
+
     );
   }
 }
