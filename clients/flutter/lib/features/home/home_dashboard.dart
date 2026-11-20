@@ -742,6 +742,16 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
         : online
             ? (theme.brightness == Brightness.dark ? const Color(0xFF4ADE80) : const Color(0xFF059669))
             : (theme.brightness == Brightness.dark ? const Color(0xFFF59E0B) : const Color(0xFFB45309));
+    final latencyMs = _latency?.inMilliseconds;
+    final latencyColor = latencyMs == null
+        ? muted
+        : latencyMs <= 150
+            ? (theme.brightness == Brightness.dark ? const Color(0xFF4ADE80) : const Color(0xFF15803D))
+            : latencyMs <= 300
+                ? (theme.brightness == Brightness.dark ? const Color(0xFFFBBF24) : const Color(0xFFB45309))
+                : latencyMs <= 600
+                    ? (theme.brightness == Brightness.dark ? const Color(0xFFFB923C) : const Color(0xFFC2410C))
+                    : (theme.brightness == Brightness.dark ? const Color(0xFFF87171) : const Color(0xFFB91C1C));
     final cardColor = colors.surfaceContainerLow;
     final foreground = colors.onSurface;
     final muted = colors.onSurfaceVariant;
@@ -807,10 +817,21 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                 Container(width: 7, height: 7, decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle)),
                 const SizedBox(width: 7),
                 Expanded(
-                  child: Text(
-                    _checking ? 'Checking server' : online
-                        ? 'Online${_latency == null ? '' : ' • ${_latency!.inMilliseconds} ms'}'
-                        : 'Offline',
+                  child: Text.rich(
+                    _checking
+                        ? const TextSpan(text: 'Checking server')
+                        : !online
+                            ? const TextSpan(text: 'Offline')
+                            : TextSpan(
+                                children: [
+                                  const TextSpan(text: 'Online'),
+                                  if (latencyMs != null)
+                                    TextSpan(
+                                      text: ' • $latencyMs ms',
+                                      style: TextStyle(color: latencyColor),
+                                    ),
+                                ],
+                              ),
                     maxLines: 1,
                     overflow: TextOverflow.visible,
                     style: theme.textTheme.labelMedium?.copyWith(color: statusColor, fontWeight: FontWeight.w700),
@@ -868,8 +889,11 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text('LATENCY', style: theme.textTheme.labelSmall?.copyWith(color: muted, letterSpacing: 0.7)),
                   const SizedBox(height: 5),
-                  Text(_checking ? 'Checking' : (_latency == null ? '—' : '${_latency!.inMilliseconds} ms'),
-                    style: theme.textTheme.labelMedium?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
+                  Text(_checking ? 'Checking' : (latencyMs == null ? '—' : '$latencyMs ms'),
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: latencyMs == null ? muted : latencyColor,
+                      fontWeight: FontWeight.w700,
+                    )),
                 ])),
               ]),
               const SizedBox(height: 11),
@@ -1826,10 +1850,10 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
           : const SizedBox.shrink(),
       'quick': () => appSettings.showQuickActions
           ? Padding(
-              padding: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.only(bottom: 24),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 sectionTitle('Quick actions', action: 'Edit', onAction: _editQuickActions),
-                const SizedBox(height: 9),
+                const SizedBox(height: 14),
                 if (_quickActions.isEmpty)
                   OutlinedButton.icon(
                     onPressed: _editQuickActions,
@@ -1838,6 +1862,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                   )
                 else
                   GridView.count(
+                    padding: EdgeInsets.zero,
                     crossAxisCount: 4,
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -2074,7 +2099,16 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
         onRefresh: () => _refreshStatus(forceRefresh: true),
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: EdgeInsets.fromLTRB(18, MediaQuery.paddingOf(context).top + kToolbarHeight + 12, 18, 104 + MediaQuery.paddingOf(context).bottom),
+          padding: EdgeInsets.fromLTRB(
+            18,
+            MediaQuery.paddingOf(context).top + kToolbarHeight + 12,
+            18,
+            MediaQuery.paddingOf(context).bottom +
+                (appSettings.showMiniPlayer &&
+                        PersistentAudioPlayer.instance.shouldShowMiniPlayer
+                    ? 156
+                    : 96),
+          ),
           children: [
             _buildServerTelemetry(context, theme, colors),
             const SizedBox(height: 12),
