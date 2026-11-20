@@ -130,7 +130,8 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
         SmokedGlassPopoverMenu<PocketLinkAppBarAction>(
           tooltip: 'More actions',
           items: [
-            SmokedGlassPopoverMenuItem<PocketLinkAppBarAction>(
+            if (!actions.any((action) => action.label.toLowerCase().contains('home')))
+              SmokedGlassPopoverMenuItem<PocketLinkAppBarAction>(
               value: PocketLinkAppBarAction(
                 label: 'Return to Home',
                 icon: Icons.home_rounded,
