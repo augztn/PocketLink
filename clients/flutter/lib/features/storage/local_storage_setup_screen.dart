@@ -10,6 +10,7 @@ import 'widgets/storage_permission_row.dart';
 import 'widgets/host_media_metric.dart';
 import 'widgets/storage_volume_tile.dart';
 import 'widgets/host_service_status_row.dart';
+import 'widgets/host_section_destination.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
 import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
@@ -349,6 +350,16 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
     _sectionPageController.dispose();
     _channel.setMethodCallHandler(null);
     super.dispose();
+  }
+
+  void _selectHostSection(int index) {
+    if (_selectedSectionIndex == index) return;
+    setState(() => _selectedSectionIndex = index);
+    _sectionPageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   @override
@@ -1170,69 +1181,6 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
       children: sections,
     );
 
-    Widget hostDestination({
-      required int index,
-      required IconData icon,
-      required IconData selectedIcon,
-      required String label,
-    }) {
-      final selected = _selectedSectionIndex == index;
-      final foreground = selected ? colors.onSecondaryContainer : colors.onSurfaceVariant;
-      return Expanded(
-        child: Semantics(
-          button: true,
-          selected: selected,
-          label: label,
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(28),
-              onTap: () {
-                if (_selectedSectionIndex == index) return;
-                setState(() => _selectedSectionIndex = index);
-                _sectionPageController.animateToPage(
-                  index,
-                  duration: const Duration(milliseconds: 260),
-                  curve: Curves.easeOutCubic,
-                );
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeOutCubic,
-                margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 5),
-                decoration: BoxDecoration(
-                  color: selected ? colors.secondaryContainer : Colors.transparent,
-                  borderRadius: BorderRadius.circular(26),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 7),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(selected ? selectedIcon : icon, size: 21, color: foreground),
-                      const SizedBox(height: 2),
-                      Text(
-                        label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: foreground,
-                          fontSize: 11,
-                          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                          height: 1.1,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
     final activeMiniPlayer =
         LayoutInsetsScope.maybeOf(context)?.hasActiveMiniPlayer ?? false;
     final bottomSystemInset = MediaQuery.paddingOf(context).bottom;
@@ -1332,23 +1280,26 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                   radius: BorderRadius.circular(34),
                   child: Row(
                     children: [
-                      hostDestination(
-                        index: 0,
+                      HostSectionDestination(
                         icon: Icons.dashboard_outlined,
                         selectedIcon: Icons.dashboard_rounded,
                         label: 'Overview',
+                        selected: _selectedSectionIndex == 0,
+                        onTap: () => _selectHostSection(0),
                       ),
-                      hostDestination(
-                        index: 1,
+                      HostSectionDestination(
                         icon: Icons.devices_outlined,
                         selectedIcon: Icons.devices_rounded,
                         label: 'Device',
+                        selected: _selectedSectionIndex == 1,
+                        onTap: () => _selectHostSection(1),
                       ),
-                      hostDestination(
-                        index: 2,
+                      HostSectionDestination(
                         icon: Icons.lock_outline_rounded,
                         selectedIcon: Icons.lock_rounded,
                         label: 'Security',
+                        selected: _selectedSectionIndex == 2,
+                        onTap: () => _selectHostSection(2),
                       ),
                     ],
                   ),
