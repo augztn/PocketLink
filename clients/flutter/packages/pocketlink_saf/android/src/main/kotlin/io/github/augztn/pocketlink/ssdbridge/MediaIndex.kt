@@ -280,9 +280,19 @@ internal class MediaIndexScanner(
     private val running = AtomicBoolean(false)
     private val dirty = AtomicBoolean(false)
     @Volatile private var started = false
-    @Volatile private var lastAttemptStartedAt = reportPrefs.getLong("last_attempt_started_at", 0L)
-    @Volatile private var lastAttemptFinishedAt = reportPrefs.getLong("last_attempt_finished_at", 0L)
-    @Volatile private var lastSuccessfulAt = reportPrefs.getLong("last_successful_at", 0L)
+    @Volatile private var lastAttemptStartedAt = reportPrefs.getLong(
+        "last_attempt_started_at", readScanHistory().optJSONObject(0)?.optLong("started_at") ?: 0L
+    )
+    @Volatile private var lastAttemptFinishedAt = reportPrefs.getLong(
+        "last_attempt_finished_at", readScanHistory().optJSONObject(0)?.optLong("completed_at") ?: 0L
+    )
+    @Volatile private var lastSuccessfulAt = reportPrefs.getLong(
+        "last_successful_at",
+        (0 until readScanHistory().length()).mapNotNull { index ->
+            readScanHistory().optJSONObject(index)?.takeIf { it.optString("state") == "complete" }
+                ?.optLong("completed_at")?.takeIf { it > 0L }
+        }.maxOrNull() ?: 0L
+    )
     @Volatile private var scanned = readScanHistory().optJSONObject(0)?.optInt("scanned") ?: 0
     @Volatile private var scannedDirectories = 0
     @Volatile private var unchanged = 0
@@ -376,6 +386,17 @@ internal class MediaIndexScanner(
     fun runScheduledScanCheck() = maybeRunScheduledScan()
 
     fun onStorageChanged(connected: Boolean) {
+        if (!connected) {
+            // Never traverse a possibly detached SAF tree: some providers report
+            // an empty directory on removal, which could otherwise prune valid rows.
+            volumeReports.values.filter { it.optString("volume") != "internal" }.forEach { report ->
+                report.put("state", "unavailable")
+                    .put("stale", true)
+                    .put("error", "Storage volume disconnected; indexed content is retained")
+            }
+            dirty.set(true)
+            return
+        }
         dirty.set(true)
         if (automaticScanningEnabled() && reportPrefs.getBoolean("scan_on_storage_change", true)) {
             requestScan(force = true, trigger = "automatic")
@@ -580,6 +601,9 @@ internal class MediaIndexScanner(
 
         when (root) {
             is File -> {
+                if (!root.exists() || !root.isDirectory || !root.canRead()) {
+                    throw IllegalStateException("Internal storage is unavailable or unreadable")
+                }
                 val base = root.canonicalFile
                 val stack = ArrayDeque<Pair<File, Int>>()
                 stack.add(base to 0)
@@ -618,6 +642,9 @@ internal class MediaIndexScanner(
                 }
             }
             is DocumentFile -> {
+                if (!root.exists() || !root.isDirectory) {
+                    throw IllegalStateException("Storage volume is disconnected or unavailable")
+                }
                 val stack = ArrayDeque<Pair<Pair<DocumentFile, String>, Int>>()
                 stack.add((root to "") to 0)
                 while (stack.isNotEmpty()) {
