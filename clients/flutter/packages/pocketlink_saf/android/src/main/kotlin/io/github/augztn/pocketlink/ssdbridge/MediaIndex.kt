@@ -516,16 +516,24 @@ internal class MediaIndexScanner(
                         scanSource(id, root)
                         volumeReports[id] = org.json.JSONObject()
                             .put("volume", id)
-                            .put("state", if (skipped == skippedBefore) "complete" else "partial")
+                            .put("state", when {
+                                id in disconnectedVolumes -> "unavailable"
+                                skipped == skippedBefore -> "complete"
+                                else -> "partial"
+                            })
+                            .put("stale", id in disconnectedVolumes)
                             .put("started_at", startedAt)
                             .put("completed_at", System.currentTimeMillis())
                             .put("scanned", scanned - scannedBefore)
                             .put("skipped", skipped - skippedBefore)
+                            .put("error", if (id in disconnectedVolumes) "Storage disconnected during scan; previous index retained" else "")
                     } catch (error: Exception) {
                         volumeReports[id] = org.json.JSONObject()
-                            .put("volume", id).put("state", "failed")
+                            .put("volume", id)
+                            .put("state", if (id in disconnectedVolumes) "unavailable" else "failed")
+                            .put("stale", id in disconnectedVolumes)
                             .put("started_at", startedAt).put("completed_at", System.currentTimeMillis())
-                            .put("error", error.message ?: "Storage source could not be indexed")
+                            .put("error", if (id in disconnectedVolumes) "Storage disconnected during scan; previous index retained" else error.message ?: "Storage source could not be indexed")
                         skipped++
                         recordSkipped(id, "", error.message ?: "Storage source could not be indexed")
                         lastError = error.message ?: "One storage source could not be indexed"
