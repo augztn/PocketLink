@@ -9,6 +9,7 @@ import '../../core/widgets/shared/status_pill.dart';
 import 'widgets/storage_permission_row.dart';
 import 'widgets/host_media_metric.dart';
 import 'widgets/storage_volume_tile.dart';
+import 'widgets/host_service_status_row.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
 import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
@@ -384,57 +385,6 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
       return 'Updated ${date.day}/${date.month} · $hour:$minute $period';
     }
 
-    Widget hostStatusRow(
-      String label,
-      String value, {
-      required bool ready,
-      bool neutral = false,
-    }) {
-      final statusColor = ready
-          ? Colors.green
-          : neutral
-              ? colors.onSurfaceVariant
-              : colors.tertiary;
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 7),
-        child: Row(
-          children: [
-            Icon(
-              ready
-                  ? Icons.check_circle_rounded
-                  : neutral
-                      ? Icons.remove_circle_outline_rounded
-                      : Icons.info_outline_rounded,
-              size: 18,
-              color: statusColor,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                label,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                value,
-                textAlign: TextAlign.end,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: statusColor,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
     final hostSections = <Widget>[
       Container(
         padding: const EdgeInsets.all(18),
@@ -538,15 +488,15 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
             if (!_statusLoaded)
               const LinearProgressIndicator()
             else ...[
-              hostStatusRow(
-                'Storage service',
-                running ? 'Running' : 'Stopped',
+              HostServiceStatusRow(
+                label: 'Storage service',
+                value: running ? 'Running' : 'Stopped',
                 ready: running,
                 neutral: !running,
               ),
-              hostStatusRow(
-                'Native server API',
-                apiRunning
+              HostServiceStatusRow(
+                label: 'Native server API',
+                value: apiRunning
                     ? 'Running'
                     : _serverPasswordConfigured
                         ? 'Stopped'
@@ -554,20 +504,20 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                 ready: apiRunning,
                 neutral: !running && !_serverPasswordConfigured,
               ),
-              hostStatusRow(
-                'Android storage bridge',
-                bridgeRunning ? 'Running' : 'Stopped',
+              HostServiceStatusRow(
+                label: 'Android storage bridge',
+                value: bridgeRunning ? 'Running' : 'Stopped',
                 ready: bridgeRunning,
                 neutral: !running,
               ),
-              hostStatusRow(
-                'Internal storage',
-                internalGranted ? 'Access granted' : 'Needs access',
+              HostServiceStatusRow(
+                label: 'Internal storage',
+                value: internalGranted ? 'Access granted' : 'Needs access',
                 ready: internalGranted,
               ),
-              hostStatusRow(
-                'USB / external drives',
-                usbStatus,
+              HostServiceStatusRow(
+                label: 'USB / external drives',
+                value: usbStatus,
                 ready: selectedVolumeCount > 0,
                 neutral: detectedVolumeCount == 0,
               ),
