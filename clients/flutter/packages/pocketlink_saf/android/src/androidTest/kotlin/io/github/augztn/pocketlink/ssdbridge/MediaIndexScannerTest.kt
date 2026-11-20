@@ -16,6 +16,7 @@ class MediaIndexScannerTest {
     fun scansInternalFilesAndPrunesDeletedEntriesAfterACompleteRefresh() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         context.deleteDatabase("pocketlink_index.db")
+        context.getSharedPreferences("media-index-report", Context.MODE_PRIVATE).edit().clear().commit()
         val root = File(context.cacheDir, "media-index-test").apply {
             deleteRecursively()
             mkdirs()
@@ -72,6 +73,7 @@ class MediaIndexScannerTest {
             scanner.close()
             root.deleteRecursively()
             context.deleteDatabase("pocketlink_index.db")
+            context.getSharedPreferences("media-index-report", Context.MODE_PRIVATE).edit().clear().commit()
         }
     }
 
