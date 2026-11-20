@@ -1236,6 +1236,34 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
     return '${date.day} ${months[date.month - 1]} ${date.year} · $hour:$minute $period';
   }
 
+  Future<void> _shareMediaScanReport(MediaIndexStatus status) async {
+    final lines = <String>[
+      'PocketLink Media Library Scan Report',
+      'Status: ${status.state}',
+      'Trigger: ${status.scanTrigger}',
+      'Started: ${_formatScanTimestamp(status.lastScanStartedAt)}',
+      'Completed: ${_formatScanTimestamp(status.lastCompletedAt)}',
+      'Duration: ${(status.elapsedMs / 1000).toStringAsFixed(1)} seconds',
+      'Checked: ${status.scanned}',
+      'New files: ${status.newFiles}',
+      'Updated files: ${status.updatedFiles}',
+      'Skipped: ${status.skipped}',
+      'Indexed file size: ${_formatBytes(status.scannedBytes)}',
+      'Media: ${status.mediaCount} (Photos ${status.photoCount}, Videos ${status.videoCount}, Music ${status.musicCount})',
+      if (status.lastError?.isNotEmpty == true) 'Error: ${status.lastError}',
+      '',
+      'Storage sources:',
+      ...status.volumes.map((volume) => '${volume.volume}: ${volume.state}, ${volume.scanned} checked, ${volume.skipped} skipped'),
+      '',
+      'Recent scans:',
+      ...status.scanHistory.map((entry) => '${_formatScanTimestamp(entry.completedAt)} · ${entry.trigger} · ${entry.state} · ${entry.scanned} checked · ${entry.skipped} skipped'),
+      '',
+      'Skipped items:',
+      ...status.skippedItems.map((item) => '${item.volume}/${item.path}: ${item.reason}'),
+    ];
+    await SharePlus.instance.share(ShareParams(text: lines.join('\n')));
+  }
+
   Widget _buildHostMediaScanCard(ThemeData theme, ColorScheme colors) {
     final status = _mediaScanStatus;
     final scanning = status?.isScanning ?? false;
@@ -1312,6 +1340,13 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                   )),
                 if (volume.skipped > 0)
                   Text(' · ${volume.skipped} skipped', style: theme.textTheme.labelSmall?.copyWith(color: const Color(0xFFFBBF24))),
+              ]),
+            )),
+            ..._volumes.where((volume) => !volume.available).map((volume) => Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Row(children: [
+                Expanded(child: Text(volume.name, style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant))),
+                Text('Unavailable · index may be stale', style: theme.textTheme.labelSmall?.copyWith(color: const Color(0xFFFBBF24))),
               ]),
             )),
           ],
@@ -1399,6 +1434,21 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
             label: Text(scanning ? 'Scanning…' : _startingMediaScan ? 'Starting…' : 'Scan host now'),
           ),
         ),
+        if (status != null && status.lastScanStartedAt > 0)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () => _shareMediaScanReport(status),
+              icon: const Icon(Icons.ios_share_rounded, size: 16),
+              label: const Text('Share scan report'),
+              style: TextButton.styleFrom(
+                foregroundColor: colors.onSurfaceVariant,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+          ),
       ]),
     );
   }
