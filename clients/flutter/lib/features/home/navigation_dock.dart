@@ -283,6 +283,7 @@ class _MusicDockButtonState extends State<_MusicDockButton> {
           onHorizontalDragCancel: widget.preview ? null : _onDragCancel,
           child: LiquidGlassPill(
             radius: BorderRadius.circular(32),
+            refractive: true,
             child: Material(
               color: Colors.transparent,
               shape: const CircleBorder(),
