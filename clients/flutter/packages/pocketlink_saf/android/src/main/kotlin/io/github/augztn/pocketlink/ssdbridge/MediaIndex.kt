@@ -333,6 +333,20 @@ internal class MediaIndexScanner(
         }
     }
 
+    init {
+        disconnectedVolumes.forEach { volume ->
+            volumeReports[volume]?.let { report ->
+                report.put("state", "unavailable")
+                    .put("stale", true)
+                    .put("error", "Storage volume disconnected; indexed content is retained")
+            }
+        }
+        if (disconnectedVolumes.isNotEmpty() && volumeReports.isNotEmpty()) {
+            state = "partial"
+            lastError = "External storage disconnected; its indexed content is retained but may be stale."
+        }
+    }
+
     private fun recordSkipped(volume: String, path: String, reason: String) {
         synchronized(skippedItems) {
             if (skippedItems.size < MAX_REPORTED_SKIPPED_ITEMS) {
