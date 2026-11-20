@@ -624,6 +624,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                 ))
               else
                 Expanded(child: Align(alignment: Alignment.centerLeft, child: SmokedGlassPopoverMenu<int>(
+                  titleMenu: true,
                   tooltip: 'Choose photo view',
                   onOpenChanged: (open) => setState(() => _viewMenuOpen = open),
                   items: [
