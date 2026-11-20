@@ -61,25 +61,6 @@ jobs:
       - name: Run Flutter unit and widget test shard
         run: flutter test --total-shards=3 --shard-index=${{ matrix.shard }}
 
-  changes:
-    name: Detect native Android changes
-    runs-on: ubuntu-latest
-    outputs:
-      android_native: ${{ steps.manual.outputs.android_native || steps.filter.outputs.android_native }}
-    steps:
-      - uses: dorny/paths-filter@v3
-        id: filter
-        if: github.event_name != 'workflow_dispatch'
-        with:
-          filters: |
-            android_native:
-              - 'clients/flutter/packages/pocketlink_saf/android/**'
-              - 'clients/flutter/android/**'
-      - name: Run native integration tests on manual dispatch
-        id: manual
-        if: github.event_name == 'workflow_dispatch'
-        run: echo "android_native=true" >> "$GITHUB_OUTPUT"
-
   linux-appimage:
     name: Linux AppImage Build
     runs-on: ubuntu-22.04
@@ -160,7 +141,6 @@ jobs:
 
   android-apk:
     name: Android APK Build
-    needs: changes
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     defaults:
@@ -347,7 +327,6 @@ jobs:
       - name: Run native Android unit tests
         run: cd android && ./gradlew :pocketlink_saf:testDebugUnitTest
       - name: Enable KVM acceleration for Android emulator
-        if: needs.changes.outputs.android_native == 'true'
         run: |
           if [ ! -e /dev/kvm ]; then
             echo "::error::KVM device is unavailable on this runner"
@@ -357,7 +336,6 @@ jobs:
           test -r /dev/kvm && test -w /dev/kvm
           ls -l /dev/kvm
       - name: Run native Android integration tests
-        if: needs.changes.outputs.android_native == 'true'
         uses: ReactiveCircus/android-emulator-runner@v2
         with:
           api-level: 34
