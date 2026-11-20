@@ -7,6 +7,7 @@ class LayoutInsetsScope extends InheritedWidget {
     required this.bottomClearance,
     required this.hasFloatingNavBar,
     required this.hasActiveMiniPlayer,
+    required this.reportHeaderHeight,
     required super.child,
     super.key,
   });
@@ -15,6 +16,10 @@ class LayoutInsetsScope extends InheritedWidget {
   final double bottomClearance;
   final bool hasFloatingNavBar;
   final bool hasActiveMiniPlayer;
+  final ValueChanged<double> reportHeaderHeight;
+
+  static void reportRenderedHeader(BuildContext context, double height) =>
+      maybeOf(context)?.reportHeaderHeight(height);
 
   static LayoutInsetsScope? maybeOf(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<LayoutInsetsScope>();
@@ -89,6 +94,7 @@ class _PocketLinkScaffoldState extends State<PocketLinkScaffold> {
       bottomClearance: bottomClearance,
       hasFloatingNavBar: widget.hasFloatingNavBar,
       hasActiveMiniPlayer: widget.hasActiveMiniPlayer,
+      reportHeaderHeight: reportHeaderHeight,
       child: widget.child,
     );
   }
