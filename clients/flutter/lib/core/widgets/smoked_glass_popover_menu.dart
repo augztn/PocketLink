@@ -196,7 +196,7 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
           Positioned(
             top: top,
             left: titleMenu ? 16 : null,
-            right: right,
+            right: titleMenu ? null : right,
             child: FadeTransition(
               opacity: curved,
               child: SlideTransition(
