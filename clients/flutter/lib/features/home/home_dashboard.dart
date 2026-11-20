@@ -1396,7 +1396,9 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
         Text(
           scanning
               ? 'Scanning $sourceLabel · ${elapsed}s elapsed'
-              : 'Refresh the host device media and file index remotely.',
+              : status == null
+                  ? 'Refresh the host device media and file index remotely.'
+                  : '${status.regularFileCount} files · ${status.mediaCount} media · Last successful ${_formatScanTimestamp(status.lastSuccessfulAt, timezoneOffsetMinutes: status.timezoneOffsetMinutes)}',
           style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
         ),
         if (_mediaScanError != null) ...[
@@ -1404,6 +1406,15 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
           Text(_mediaScanError!, style: theme.textTheme.bodySmall?.copyWith(color: colors.error)),
         ],
         if (status != null) ...[
+          ExpansionTile(
+            tilePadding: EdgeInsets.zero,
+            childrenPadding: EdgeInsets.zero,
+            title: Text('Scan details', style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700)),
+            subtitle: Text(
+              '${status.regularFileCount} files · ${status.mediaCount} media · ${status.skipped} skipped',
+              style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
+            ),
+            children: [
           const SizedBox(height: 7),
           Text(
             '${status.regularFileCount} files · ${status.directoryCount} folders · ${status.mediaCount} media',
@@ -1545,8 +1556,6 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
             const SizedBox(height: 5),
             Text(status.lastError!, style: theme.textTheme.bodySmall?.copyWith(color: colors.error)),
           ],
-        ],
-        if (status != null) ...[
           const Divider(height: 18),
           Row(children: [
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -1622,6 +1631,9 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                 },
               ),
             ),
+
+            ],
+          ),
         ],
         if (scanning) ...[
           const SizedBox(height: 10),
