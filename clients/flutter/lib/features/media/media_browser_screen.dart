@@ -657,7 +657,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   Widget _buildVideoGrid(List<_MediaFile> items) {
     return GridView.builder(
       controller: _contentScrollController,
-      padding: EdgeInsets.fromLTRB(12, _isMusic ? MediaQuery.paddingOf(context).top + 64 : ((_searchExpanded && widget.showSearch) || _libraryView == 'folders') ? 8 : MediaQuery.paddingOf(context).top + kToolbarHeight + 8, 12, 104 + MediaQuery.paddingOf(context).bottom),
+      padding: EdgeInsets.fromLTRB(12, _isMusic ? 8 : ((_searchExpanded && widget.showSearch) || _libraryView == 'folders') ? 8 : MediaQuery.paddingOf(context).top + kToolbarHeight + 8, 12, 104 + MediaQuery.paddingOf(context).bottom),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 14,
         childAspectRatio: 0.88,
@@ -1511,9 +1511,12 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
           body: Stack(children: [
             Positioned.fill(
               child: _libraryView == 'folders'
-                  ? RefreshIndicator(
-                      onRefresh: _refreshMusic,
-                      child: _buildFolders(visible),
+                  ? Padding(
+                      padding: EdgeInsets.only(top: top + 64),
+                      child: RefreshIndicator(
+                        onRefresh: _refreshMusic,
+                        child: _buildFolders(visible),
+                      ),
                     )
                   : RefreshIndicator(
                       onRefresh: _refreshMusic,
