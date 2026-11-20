@@ -87,8 +87,10 @@ class _PocketLinkScaffoldState extends State<PocketLinkScaffold> {
             (_renderedHeaderHeight! - height).abs() < 0.5)) {
       return;
     }
+    final routeIdentity = widget.routeIdentity;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && (_renderedHeaderHeight == null ||
+      if (mounted && widget.routeIdentity == routeIdentity &&
+          (_renderedHeaderHeight == null ||
           (_renderedHeaderHeight! - height).abs() >= 0.5)) {
         setState(() => _renderedHeaderHeight = height);
       }
