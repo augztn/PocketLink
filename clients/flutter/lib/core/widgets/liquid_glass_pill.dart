@@ -35,7 +35,7 @@ class LiquidGlassSurface extends StatelessWidget {
         final decoration = useGlass
             ? BoxDecoration(
                 color: optical
-                    ? (!isDark && lightRefractive
+                    ? (!isDark
                         ? Colors.white.withValues(alpha: 0.56)
                         : const Color(0xFF16181F).withValues(alpha: 0.44))
                     : null,
