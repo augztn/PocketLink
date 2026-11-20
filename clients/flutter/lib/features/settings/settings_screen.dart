@@ -345,7 +345,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     icon: Icons.palette_rounded,
                     tint: const Color(0xFF8D72E8),
                     title: 'Appearance & Theme',
-                    subtitle: 'Light, dark, AMOLED and Liquid Glass surfaces',
+                    subtitle: 'Themes, Liquid Glass and Progressive Blur controls',
                     badge: _settings.themeMode == ThemeMode.dark
                         ? (_settings.amoled ? 'AMOLED' : 'Dark')
                         : _settings.themeMode == ThemeMode.light
