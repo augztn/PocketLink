@@ -44,11 +44,12 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
               ];
 
         return LayoutBuilder(
-          builder: (context, _) {
-            LayoutInsetsScope.reportRenderedHeader(context, headerHeight);
+          builder: (context, constraints) {
+            final renderedHeight = constraints.constrainHeight(headerHeight);
+            LayoutInsetsScope.reportRenderedHeader(context, renderedHeight);
             return SizedBox(
           width: double.infinity,
-          height: headerHeight,
+          height: renderedHeight,
           child: ClipRect(
             child: Stack(
               fit: StackFit.expand,
