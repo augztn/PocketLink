@@ -425,31 +425,35 @@ internal class MediaIndexScanner(
 
     fun runScheduledScanCheck() = maybeRunScheduledScan()
 
-    fun onStorageChanged(connected: Boolean) {
+    fun onStorageChanged(connected: Boolean, volumeId: String? = null) {
         if (!connected) {
             // Never traverse a possibly detached SAF tree: some providers report
             // an empty directory on removal, which could otherwise prune valid rows.
-            val externalIds = volumeReports.values.map { it.optString("volume") }
-                .filter { it.isNotBlank() && it != "internal" }.toMutableSet()
+            val externalIds = if (volumeId != null && volumeReports.containsKey(volumeId)) {
+                mutableSetOf(volumeId)
+            } else {
+                volumeReports.values.map { it.optString("volume") }
+                    .filter { it.isNotBlank() && it != "internal" }.toMutableSet()
+            }
             currentSource?.takeIf { it != "internal" }?.let { externalIds.add(it) }
             disconnectedVolumes.addAll(externalIds)
             reportPrefs.edit().putStringSet("disconnected_volumes", disconnectedVolumes.toSet()).apply()
-            val externalReports = volumeReports.values.filter { it.optString("volume") != "internal" }
-            externalReports.forEach { report ->
-                report.put("state", "unavailable")
-                    .put("stale", true)
-                    .put("error", "Storage volume disconnected; indexed content is retained")
+            externalIds.forEach { id ->
+                volumeReports[id]?.put("state", "unavailable")
+                    ?.put("stale", true)
+                    ?.put("error", "Storage volume disconnected; indexed content is retained")
             }
-            if (externalReports.isNotEmpty()) {
+            if (externalIds.isNotEmpty()) {
                 state = "partial"
                 lastError = "External storage disconnected; its indexed content is retained but may be stale."
             }
             dirty.set(true)
             return
         }
-        disconnectedVolumes.clear()
-        reportPrefs.edit().putStringSet("disconnected_volumes", emptySet()).apply()
-        volumeReports.values.filter { it.optString("volume") != "internal" }.forEach { report ->
+        if (volumeId == null) disconnectedVolumes.clear() else disconnectedVolumes.remove(volumeId)
+        reportPrefs.edit().putStringSet("disconnected_volumes", disconnectedVolumes.toSet()).apply()
+        val reconnecting = if (volumeId == null) volumeReports.values else listOfNotNull(volumeReports[volumeId])
+        reconnecting.filter { it.optString("volume") != "internal" }.forEach { report ->
             if (report.optString("state") == "unavailable") {
                 report.put("state", "stale").put("stale", true)
             }
