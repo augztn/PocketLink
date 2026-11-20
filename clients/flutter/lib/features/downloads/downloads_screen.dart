@@ -137,9 +137,37 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                       _DownloadFilter.completed => 'Completed',
                       _DownloadFilter.failed => 'Failed',
                     },
-                    icon: filter == _filter
-                        ? Icons.radio_button_checked_rounded
-                        : Icons.radio_button_unchecked_rounded,
+                    icon: switch (filter) {
+                      _DownloadFilter.all => Icons.download_rounded,
+                      _DownloadFilter.active => Icons.sync_rounded,
+                      _DownloadFilter.completed => Icons.check_circle_outline_rounded,
+                      _DownloadFilter.failed => Icons.error_outline_rounded,
+                    },
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '${switch (filter) {
+                            _DownloadFilter.all => _manager.tasks.length,
+                            _DownloadFilter.active => _manager.activeCount,
+                            _DownloadFilter.completed => _manager.tasks.where((task) => task.status == DownloadStatus.completed).length,
+                            _DownloadFilter.failed => _manager.tasks.where((task) => task.status == DownloadStatus.failed).length,
+                          }}',
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 12,
+                            color: Color(0xFFA1A7B3),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        SizedBox(
+                          width: 20,
+                          child: _filter == filter
+                              ? const Icon(Icons.check_rounded, size: 18)
+                              : null,
+                        ),
+                      ],
+                    ),
                   ),
               ],
               onSelected: (value) => setState(() => _filter = value),
