@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 
 import 'quick_actions_store.dart';
 import 'widgets/host_device_metrics_card.dart';
+import 'widgets/host_media_scan_card.dart';
 import 'widgets/server_telemetry_card.dart';
 import 'network_route_classifier.dart';
 import '../../core/settings/app_settings.dart';
@@ -943,328 +944,6 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
     await SharePlus.instance.share(ShareParams(text: lines.join('\n')));
   }
 
-  Widget _buildHostMediaScanCard(ThemeData theme, ColorScheme colors) {
-    final status = _mediaScanStatus;
-    final scanning = status?.isScanning ?? false;
-    final source = status?.currentSource;
-    final elapsed = ((status?.elapsedMs ?? 0) / 1000).floor();
-    final sourceLabel = source == 'internal'
-        ? 'Internal storage'
-        : source == null ? 'Preparing storage' : 'External storage';
-    return Container(
-      padding: const EdgeInsets.all(15),
-      decoration: _dashboardCardDecoration(theme),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Icon(Icons.manage_search_rounded, color: colors.primary, size: 20),
-          const SizedBox(width: 9),
-          Expanded(child: Text('Host media library', style: theme.textTheme.titleSmall?.copyWith(
-            color: colors.onSurface, fontWeight: FontWeight.w800,
-          ))),
-          Text(scanning ? 'Scanning' : _mediaScanError != null ? 'Unavailable' : status == null ? 'Checking' : status.state == 'failed' ? 'Failed' : status.state == 'interrupted' ? 'Interrupted' : status.state == 'partial' ? 'Partial' : status.state == 'complete' ? 'Up to date' : 'Ready',
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: scanning || _mediaScanError != null
-                  ? (theme.brightness == Brightness.dark ? const Color(0xFFFBBF24) : const Color(0xFFB45309))
-                  : colors.onSurfaceVariant,
-              fontWeight: FontWeight.w700,
-            )),
-        ]),
-        const SizedBox(height: 7),
-        Text(
-          scanning
-              ? 'Scanning $sourceLabel · ${elapsed}s elapsed'
-              : status == null
-                  ? 'Refresh the host device media and file index remotely.'
-                  : '${status.regularFileCount} files · ${status.mediaCount} media · Last successful ${_formatScanTimestamp(status.lastSuccessfulAt, timezoneOffsetMinutes: status.timezoneOffsetMinutes)}',
-          style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
-        ),
-        if (_mediaScanError != null) ...[
-          const SizedBox(height: 7),
-          Text(_mediaScanError!, style: theme.textTheme.bodySmall?.copyWith(color: colors.error)),
-        ],
-        if (status != null) ...[
-          ExpansionTile(
-            tilePadding: EdgeInsets.zero,
-            childrenPadding: EdgeInsets.zero,
-            title: Text('Scan details', style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700)),
-            subtitle: Text(
-              '${status.regularFileCount} files · ${status.mediaCount} media · ${status.skipped} skipped',
-              style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
-            ),
-            children: [
-          const SizedBox(height: 7),
-          Text(
-            '${status.regularFileCount} files · ${status.directoryCount} folders · ${status.mediaCount} media',
-            style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
-          ),
-          Text(
-            '${_formatBytes(status.indexedBytes)} indexed · ${_formatBytes(status.mediaBytes)} media',
-            style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
-          ),
-          Text(
-            'Photos ${status.photoCount} · Videos ${status.videoCount} · Music ${status.musicCount} · Other ${status.otherFileCount}',
-            style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
-          ),
-          if (status.averageDurationMs > 0)
-            Text(
-              'Average successful scan: ${(status.averageDurationMs / 1000).toStringAsFixed(1)}s',
-              style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
-            ),
-          if (status.durationTrendPercent != 0)
-            Text(
-              'Latest scan ${status.durationTrendPercent.abs()}% ${status.durationTrendPercent > 0 ? 'slower' : 'faster'} than recent baseline',
-              style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
-            ),
-          const SizedBox(height: 6),
-          const SizedBox(height: 6),
-          Text(
-            scanning || status.state == 'interrupted'
-                ? '${status.state == 'interrupted' ? 'Interrupted' : 'Started'} ${_formatScanTimestamp(status.lastAttemptStartedAt, timezoneOffsetMinutes: status.timezoneOffsetMinutes)} · ${status.scanTrigger == 'manual' ? 'Manual' : 'Automatic'}'
-                : 'Last attempt: ${_formatScanTimestamp(status.lastAttemptFinishedAt, timezoneOffsetMinutes: status.timezoneOffsetMinutes)} · ${status.scanTrigger == 'manual' ? 'Manual' : 'Automatic'}',
-            style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
-          ),
-          Text(
-            'Last successful: ${_formatScanTimestamp(status.lastSuccessfulAt, timezoneOffsetMinutes: status.timezoneOffsetMinutes)}',
-            style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
-          ),
-          if (status.lastAutomaticScanAt > 0)
-            Text(
-              'Last automatic: ${_formatScanTimestamp(status.lastAutomaticScanAt, timezoneOffsetMinutes: status.timezoneOffsetMinutes)}',
-              style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
-            ),
-          if (!scanning && status.lastCompletedAt > 0)
-            Text(
-              'Duration: ${(status.elapsedMs / 1000).toStringAsFixed(1)}s · ${status.newFiles} new · ${status.updatedFiles} updated',
-              style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
-            ),
-          if (status.scannedBytes > 0)
-            Text(
-              '${_formatBytes(status.scannedBytes)} traversed',
-              style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
-            ),
-          if (status.volumes.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text('STORAGE SOURCES', style: theme.textTheme.labelSmall?.copyWith(
-              color: colors.onSurfaceVariant, fontWeight: FontWeight.w800, letterSpacing: 0.5,
-            )),
-            ...status.volumes.map((volume) => Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Row(children: [
-                Expanded(child: Text(volume.volume == 'internal' ? 'Internal storage' : volume.volume,
-                  style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant))),
-                Text(volume.stale ? 'Unavailable · stale index' : volume.state == 'complete' ? 'Scanned' : volume.state == 'scanning' ? 'Scanning' : volume.state,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: volume.state == 'complete' ? colors.onSurfaceVariant : const Color(0xFFFBBF24),
-                  )),
-                if (volume.skipped > 0)
-                  Text(' · ${volume.skipped} skipped', style: theme.textTheme.labelSmall?.copyWith(color: const Color(0xFFFBBF24))),
-              ]),
-            )),
-            ..._volumes.where((volume) => !volume.available).map((volume) => Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Row(children: [
-                Expanded(child: Text(volume.name, style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant))),
-                Text('Unavailable · index may be stale', style: theme.textTheme.labelSmall?.copyWith(color: const Color(0xFFFBBF24))),
-              ]),
-            )),
-          ],
-          if (status.scanHistory.isNotEmpty) ...[
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton(
-                onPressed: () => _showMediaScanHistory(status),
-                child: Text('View all ${status.scanHistory.length} scans'),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text('RECENT SCANS', style: theme.textTheme.labelSmall?.copyWith(
-              color: colors.onSurfaceVariant, fontWeight: FontWeight.w800, letterSpacing: 0.5,
-            )),
-            ...status.scanHistory.take(3).map((entry) => Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Row(children: [
-                Expanded(child: Text(
-                  '${_formatScanTimestamp(entry.completedAt, timezoneOffsetMinutes: entry.timezoneOffsetMinutes)} · ${entry.trigger == 'manual' ? 'Manual' : 'Automatic'}',
-                  style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
-                )),
-                Text(entry.state == 'complete' ? 'Complete' : entry.state,
-                  style: theme.textTheme.labelSmall?.copyWith(color: entry.state == 'complete' ? colors.onSurfaceVariant : const Color(0xFFFBBF24))),
-              ]),
-            )),
-          ],
-          const SizedBox(height: 7),
-          Wrap(
-            spacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Text(
-                '${status.scanned} checked',
-                style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
-              ),
-              if (status.skipped > 0)
-                Material(
-                  color: const Color(0xFFF59E0B).withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(20),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(20),
-                    onTap: () => _showSkippedItemsInfo(status),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            '${status.skipped} skipped',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: const Color(0xFFFBBF24),
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(width: 2),
-                          const Icon(Icons.chevron_right_rounded, size: 15, color: Color(0xFFFBBF24)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          if (status.lastError != null && status.lastError!.isNotEmpty) ...[
-            const SizedBox(height: 5),
-            Text(status.lastError!, style: theme.textTheme.bodySmall?.copyWith(color: colors.error)),
-          ],
-          const Divider(height: 18),
-          Row(children: [
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Automatic scanning', style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700)),
-              Text(
-                status.automaticScanning.enabled
-                    ? 'Every ${_formatScanInterval(status.automaticScanning.intervalMinutes)} · startup and storage changes'
-                    : 'Disabled',
-                style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
-              ),
-              if (status.automaticScanning.enabled && status.automaticScanning.nextScanAt > 0)
-                Text('Next check: ${_formatScanTimestamp(status.automaticScanning.nextScanAt, timezoneOffsetMinutes: status.timezoneOffsetMinutes)}',
-                  style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant)),
-            ])),
-            Switch.adaptive(
-              value: status.automaticScanning.enabled,
-              onChanged: scanning || _savingMediaScanSettings ? null : (enabled) =>
-                  _updateAutomaticMediaScanning(
-                    enabled: enabled,
-                    intervalMinutes: status.automaticScanning.intervalMinutes,
-                    scanOnStartup: status.automaticScanning.scanOnStartup,
-                    scanOnStorageChange: status.automaticScanning.scanOnStorageChange,
-                  ),
-            ),
-          ]),
-          Wrap(
-            spacing: 6,
-            runSpacing: 2,
-            children: [
-              FilterChip(
-                label: const Text('On startup'),
-                selected: status.automaticScanning.scanOnStartup,
-                onSelected: scanning || _savingMediaScanSettings ? null : (selected) =>
-                    _updateAutomaticMediaScanning(
-                      enabled: status.automaticScanning.enabled,
-                      intervalMinutes: status.automaticScanning.intervalMinutes,
-                      scanOnStartup: selected,
-                      scanOnStorageChange: status.automaticScanning.scanOnStorageChange,
-                    ),
-              ),
-              FilterChip(
-                label: const Text('On storage connect'),
-                selected: status.automaticScanning.scanOnStorageChange,
-                onSelected: scanning || _savingMediaScanSettings ? null : (selected) =>
-                    _updateAutomaticMediaScanning(
-                      enabled: status.automaticScanning.enabled,
-                      intervalMinutes: status.automaticScanning.intervalMinutes,
-                      scanOnStartup: status.automaticScanning.scanOnStartup,
-                      scanOnStorageChange: selected,
-                    ),
-              ),
-            ],
-          ),
-          if (status.automaticScanning.enabled)
-            Align(
-              alignment: Alignment.centerRight,
-              child: DropdownButton<int>(
-                value: status.automaticScanning.intervalMinutes,
-                isDense: true,
-                underline: const SizedBox.shrink(),
-                items: const [15, 30, 60, 180, 360, 720, 1440]
-                    .map((minutes) => DropdownMenuItem<int>(
-                      value: minutes,
-                      child: Text('Every ${minutes < 60 ? '$minutes minutes' : minutes == 1440 ? '24 hours' : '${minutes ~/ 60} hours'}'),
-                    )).toList(),
-                onChanged: scanning || _savingMediaScanSettings ? null : (minutes) {
-                  if (minutes != null) _updateAutomaticMediaScanning(
-                    enabled: true,
-                    intervalMinutes: minutes,
-                    scanOnStartup: status.automaticScanning.scanOnStartup,
-                    scanOnStorageChange: status.automaticScanning.scanOnStorageChange,
-                  );
-                },
-              ),
-            ),
-
-            ],
-          ),
-        ],
-        if (scanning) ...[
-          const SizedBox(height: 10),
-          const LinearProgressIndicator(),
-        ],
-        const SizedBox(height: 10),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            onPressed: scanning || _startingMediaScan || _checking || _serverOnline != true
-                ? null
-                : _startHostMediaScan,
-            style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF8C9EFF),
-              backgroundColor: const Color(0xFF536DFE).withValues(alpha: 0.16),
-              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              shape: const StadiumBorder(),
-            ),
-            icon: _startingMediaScan || scanning
-                ? const SizedBox(width: 15, height: 15, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.refresh_rounded, size: 17),
-            label: Text(scanning ? 'Scanning…' : _startingMediaScan ? 'Starting…' : 'Scan host now'),
-          ),
-        ),
-        if (status != null && (status.state == 'partial' || status.state == 'failed' || status.state == 'interrupted' || status.skipped > 0))
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: scanning || _startingMediaScan || _serverOnline != true ? null : _retryFailedMediaScan,
-              icon: const Icon(Icons.replay_rounded, size: 16),
-              label: const Text('Retry failed scan'),
-            ),
-          ),
-        if (status != null && status.lastScanStartedAt > 0)
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: () => _shareMediaScanReport(status),
-              icon: const Icon(Icons.ios_share_rounded, size: 16),
-              label: const Text('Share scan report'),
-              style: TextButton.styleFrom(
-                foregroundColor: colors.onSurfaceVariant,
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-            ),
-          ),
-      ]),
-    );
-  }
-
   Future<void> _refreshMediaIndexStatus(int generation) async {
     try {
       final status = await widget.api.mediaIndexStatus();
@@ -1671,7 +1350,25 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
               formatBytes: _formatBytes,
             ),
             const SizedBox(height: 12),
-            _buildHostMediaScanCard(theme, colors),
+            HostMediaScanCard(
+              status: _mediaScanStatus,
+              scanError: _mediaScanError,
+              savingSettings: _savingMediaScanSettings,
+              startingScan: _startingMediaScan,
+              serverOnline: _serverOnline == true,
+              checking: _checking,
+              volumes: _volumes,
+              cardDecoration: _dashboardCardDecoration(theme),
+              formatTimestamp: _formatScanTimestamp,
+              formatInterval: _formatScanInterval,
+              formatBytes: _formatBytes,
+              onShowHistory: _showMediaScanHistory,
+              onShowSkippedItems: _showSkippedItemsInfo,
+              onUpdateAutomaticScanning: _updateAutomaticMediaScanning,
+              onStartScan: _startHostMediaScan,
+              onRetryScan: _retryFailedMediaScan,
+              onShareReport: _shareMediaScanReport,
+            ),
             const SizedBox(height: 18),
             for (final section in appSettings.homeSectionOrder)
               if (sectionBuilders.containsKey(section)) sectionBuilders[section]!(),
