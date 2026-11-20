@@ -443,6 +443,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       value: _settings.useLiquidGlass,
                       onChanged: _settings.setUseLiquidGlass,
                     ),
+                    const Divider(height: 1),
+                    SwitchListTile(
+                      secondary: const Icon(Icons.gradient_rounded),
+                      title: const Text('Progressive Blur'),
+                      subtitle: const Text(
+                        'Progressively blur scrolling content behind top headers',
+                      ),
+                      value: _settings.progressiveBlurEnabled,
+                      onChanged: (value) =>
+                          _settings.setProgressiveBlurOptions(enabled: value),
+                    ),
+                    const Divider(height: 1),
+                    SwitchListTile(
+                      secondary: const Icon(Icons.speed_rounded),
+                      title: const Text('Reduce dynamic blur'),
+                      subtitle: const Text(
+                        'Use a lightweight top fade without live backdrop blur',
+                      ),
+                      value: _settings.reduceDynamicBlur,
+                      onChanged: (value) => _settings.setProgressiveBlurOptions(
+                        reduceDynamicBlur: value,
+                      ),
+                    ),
                   ]),
                 if (widget.category == 'Dashboard & Shortcuts')
                   _section('Dashboard & Shortcuts', [
