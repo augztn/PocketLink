@@ -247,9 +247,9 @@ tooltip: 'Filter document types',
             Expanded(
               child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(mainAxisSize: MainAxisSize.min, children: [
-                  Flexible(child: Text('Documents', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800, color: titleColor))),
+                  Flexible(child: Text('Documents', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700, letterSpacing: -0.5, color: titleColor))),
                   const SizedBox(width: 6),
-                  AnimatedRotation(turns: _filterMenuOpen ? 0.5 : 0, duration: const Duration(milliseconds: 200), child: const Icon(Icons.keyboard_arrow_down_rounded)),
+                  AnimatedRotation(turns: _filterMenuOpen ? 0.5 : 0, duration: const Duration(milliseconds: 200), child: const Icon(Icons.keyboard_arrow_down_rounded, size: 20)),
                 ]),
                 Text('${filtered.length} ${filtered.length == 1 ? 'document' : 'documents'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10, fontFamily: 'monospace', color: Color(0xFFA1A7B3))),
               ]),
