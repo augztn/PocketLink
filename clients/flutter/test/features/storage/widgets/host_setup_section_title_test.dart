@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
-import 'package:pocketlink/features/storage/widgets/host_setup_section_title.dart';
+import 'package:pocketlink_client/features/storage/widgets/host_setup_section_title.dart';
 
 void main() {
   testWidgets('shows the supplied title and subtitle', (tester) async {
