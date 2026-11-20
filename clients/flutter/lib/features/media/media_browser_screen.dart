@@ -1307,7 +1307,7 @@ tooltip: 'Choose video view',
                 : Image.memory(snapshot.data!, fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.music_note_rounded, color: Colors.white70))),
           ),
-          if (playing) const ColoredBox(color: Color(0x66000000), child: Center(child: _MusicEqualizer())),
+          if (playing) const ColoredBox(color: Color(0x66000000), child: Center(child: MusicEqualizer())),
         ]),
       ),
     );
@@ -1869,28 +1869,4 @@ class MediaBrowserScreen extends StatefulWidget {
 
   @override
   State<MediaBrowserScreen> createState() => _MediaBrowserScreenState();
-}
-
-class _MusicEqualizer extends StatefulWidget {
-  const _MusicEqualizer();
-  @override
-  State<_MusicEqualizer> createState() => _MusicEqualizerState();
-}
-
-class _MusicEqualizerState extends State<_MusicEqualizer> with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 650))..repeat();
-  @override
-  void dispose() { _controller.dispose(); super.dispose(); }
-  @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: _controller,
-    builder: (context, _) => Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.end, children: [
-      for (var i = 0; i < 4; i++)
-        Container(
-          width: 3, height: 5 + 12 * (0.5 + 0.5 * math.sin((_controller.value * math.pi * 2) + i * 1.35)),
-          margin: const EdgeInsets.symmetric(horizontal: 1),
-          decoration: BoxDecoration(color: const Color(0xFF536DFE), borderRadius: BorderRadius.circular(3)),
-        ),
-    ]),
-  );
 }
