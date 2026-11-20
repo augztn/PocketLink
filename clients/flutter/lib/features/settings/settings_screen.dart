@@ -436,9 +436,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const Divider(height: 1),
                     SwitchListTile(
                       secondary: const Icon(Icons.blur_on_rounded),
-                      title: const Text('Optical Liquid Glass'),
+                      title: const Text('Liquid Glass UI'),
                       subtitle: const Text(
-                        'High-translucency optical glass on the mini-player and floating surfaces. Turn off to restore classic smoked glass where supported.',
+                        'Frosted blur, glass reflections and refined floating surfaces',
                       ),
                       value: _settings.useLiquidGlass,
                       onChanged: _settings.setUseLiquidGlass,
