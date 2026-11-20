@@ -31,7 +31,7 @@ class LiquidGlassSurface extends StatelessWidget {
         final useGlass = AppSettings.instance.useLiquidGlass || refractive;
         final isDark = Theme.of(context).brightness == Brightness.dark;
         final colors = Theme.of(context).colorScheme;
-        final optical = useGlass && refractive;
+        final optical = useGlass;
         final decoration = useGlass
             ? BoxDecoration(
                 color: optical
