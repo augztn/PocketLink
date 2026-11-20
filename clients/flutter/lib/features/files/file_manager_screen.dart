@@ -461,7 +461,12 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                     child: Text('Sort files', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
                   ),
                 ),
-                for (final option in options)
+                for (final option in options) ...[
+                  if (option.$1 == 'newest')
+                    const Padding(
+                      padding: EdgeInsets.only(left: 56, right: 16),
+                      child: Divider(height: 1, thickness: 1),
+                    ),
                   ListTile(
                     dense: true,
                     visualDensity: VisualDensity.compact,
@@ -472,6 +477,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                         : null,
                     onTap: () => Navigator.pop(sheetContext, option.$1),
                   ),
+                ],
               ],
             ),
           ),
