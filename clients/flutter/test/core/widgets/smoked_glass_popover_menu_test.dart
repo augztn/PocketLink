@@ -68,6 +68,41 @@ void main() {
     expect(find.text('Rename'), findsNothing);
   });
 
+  testWidgets('title dropdown stays 232px wide and 16px from the left edge', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Padding(
+            padding: const EdgeInsets.only(left: 16, top: 80),
+            child: TitleDropdownPopover<String>(
+              tooltip: 'Choose location',
+              items: const [
+                SmokedGlassPopoverMenuItem(
+                  value: 'internal',
+                  label: 'Internal storage',
+                  icon: Icons.phone_android_rounded,
+                ),
+              ],
+              onSelected: (_) {},
+              child: const Text('Files'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Files'));
+    await tester.pumpAndSettle();
+
+    final menuCard = find.ancestor(
+      of: find.text('Internal storage'),
+      matching: find.byType(ConstrainedBox),
+    ).first;
+    final rect = tester.getRect(menuCard);
+    expect(rect.left, 16);
+    expect(rect.width, 232);
+  });
+
   testWidgets('system back dismisses only the popover route', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
