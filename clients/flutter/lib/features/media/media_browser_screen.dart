@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/compact_search_field.dart';
 import '../../core/widgets/feathered_glass_header.dart';
+import '../../core/widgets/liquid_glass_pill.dart';
 import '../../core/widgets/smoked_glass_popover_menu.dart';
 
 import 'package:dio/dio.dart';
@@ -19,6 +20,7 @@ import 'now_playing_overlay_controller.dart';
 import '../transfers/transfer_manager_screen.dart';
 import '../downloads/download_manager_service.dart';
 import '../home/browser_state_store.dart';
+import '../settings/settings_screen.dart';
 
 enum MediaLibraryType { music, video }
 
@@ -78,6 +80,8 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   bool _openingMedia = false;
   bool _musicMenuOpen = false;
   bool _searchExpanded = false;
+  bool _selectionMode = false;
+  final Set<String> _selectedTrackKeys = <String>{};
 
   void _syncBackHandler() {
     final handler = _searchExpanded
@@ -1310,83 +1314,148 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     }
   }
 
+  void _toggleTrackSelection(_MediaFile media) {
+    final key = _favoriteKey(media);
+    setState(() {
+      if (!_selectedTrackKeys.add(key)) _selectedTrackKeys.remove(key);
+    });
+  }
+
+  String _musicDurationLabel(_MediaFile media) {
+    final player = PersistentAudioPlayer.instance;
+    final current = player.currentItem;
+    if (current == null || current.path != media.path || current.volume != media.volume || !player.isMusic) {
+      return '—:—';
+    }
+    final duration = player.player.state.duration;
+    return duration > Duration.zero ? _formatDuration(duration.inMilliseconds) : '—:—';
+  }
+
   Widget _musicTrackTile(_MediaFile media, List<_MediaFile> queueItems) {
-    final isPlaying = PersistentAudioPlayer.instance.currentItem?.path == media.path &&
-        PersistentAudioPlayer.instance.currentItem?.volume == media.volume &&
-        PersistentAudioPlayer.instance.isMusic &&
-        PersistentAudioPlayer.instance.isPlaying;
+    final player = PersistentAudioPlayer.instance;
+    final isPlaying = player.currentItem?.path == media.path &&
+        player.currentItem?.volume == media.volume &&
+        player.isMusic && player.isPlaying;
+    final selected = _selectedTrackKeys.contains(_favoriteKey(media));
     final favorite = _favoriteKeys.contains(_favoriteKey(media));
-    final dark = Theme.of(context).brightness == Brightness.dark;
     return Material(
-      color: isPlaying ? const Color(0x1F536DFE) : Colors.transparent,
-      borderRadius: BorderRadius.circular(16),
+      color: selected
+          ? const Color(0x22536DFE)
+          : isPlaying
+              ? Colors.white.withValues(alpha: 0.07)
+              : Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () => _openMedia(media, queueItems),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-          child: Row(children: [
-            _musicArtwork(media, playing: isPlaying),
-            const SizedBox(width: 12),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-              Text(_displayTitle(media), maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 4),
-              Text(_trackArtist(media), maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
-            ])),
-            const SizedBox(width: 8),
-            if (_fileExtension(media).isNotEmpty)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-                decoration: BoxDecoration(
-                  color: dark ? Colors.white.withValues(alpha: 0.07) : Colors.black.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(7),
-                  border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.45)),
+        onTap: () => _selectionMode
+            ? _toggleTrackSelection(media)
+            : _openMedia(media, queueItems),
+        onLongPress: () {
+          if (!_selectionMode) setState(() => _selectionMode = true);
+          _toggleTrackSelection(media);
+        },
+        child: SizedBox(
+          height: 64,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            child: Row(children: [
+              _musicArtwork(media, playing: isPlaying),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _displayTitle(media),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFFFFFFFF),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        height: 1.15,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      _trackArtist(media),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF8E939E),
+                        fontSize: 13,
+                        height: 1.1,
+                      ),
+                    ),
+                  ],
                 ),
-                child: Text(_fileExtension(media), style: const TextStyle(fontSize: 9, letterSpacing: 0.4, fontWeight: FontWeight.w700)),
               ),
-            SmokedGlassPopoverMenu<String>(
-              tooltip: 'Track actions',
-              items: [
-                const SmokedGlassPopoverMenuItem(value: 'next', label: 'Play next', icon: Icons.skip_next_rounded),
-                const SmokedGlassPopoverMenuItem(value: 'queue', label: 'Add to queue', icon: Icons.queue_music_rounded),
-                const SmokedGlassPopoverMenuItem(value: 'download', label: 'Download', icon: Icons.download_rounded, dividerBefore: true),
-                SmokedGlassPopoverMenuItem(value: 'favorite', label: favorite ? 'Remove favourite' : 'Add to favourites', icon: favorite ? Icons.favorite_rounded : Icons.favorite_border_rounded),
-              ],
-              onSelected: (action) async {
-                if (action == 'favorite') await _toggleFavorite(media);
-                if (action == 'next') await _queueTrack(media, playNext: true);
-                if (action == 'queue') await _queueTrack(media, playNext: false);
-                if (action == 'download') {
-                  try {
-                    await DownloadManagerService.instance.enqueueServerFile(
-                      api: widget.api,
-                      name: media.entry.name,
-                      sourcePath: media.path,
-                      volume: media.volume,
-                      size: media.entry.size,
-                    );
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Added to Downloads: ${media.entry.name}')),
-                      );
-                    }
-                  } catch (_) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Could not add this track to Downloads.')),
-                      );
-                    }
-                  }
-                }
-              },
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: Icon(Icons.more_vert_rounded, color: Theme.of(context).colorScheme.onSurfaceVariant),
+              const SizedBox(width: 8),
+              Text(
+                _musicDurationLabel(media),
+                style: const TextStyle(
+                  color: Color(0xFF8E939E),
+                  fontSize: 12.5,
+                  fontFamily: 'JetBrains Mono',
+                  fontFeatures: [ui.FontFeature.tabularFigures()],
+                ),
               ),
-            ),
-          ]),
+              if (_selectionMode)
+                SizedBox(
+                  width: 36,
+                  height: 36,
+                  child: Icon(
+                    selected ? Icons.check_circle_rounded : Icons.circle_outlined,
+                    size: 18,
+                    color: selected ? const Color(0xFF536DFE) : const Color(0xFF8E939E),
+                  ),
+                )
+              else
+                SmokedGlassPopoverMenu<String>(
+                  tooltip: 'Track actions',
+                  items: [
+                    const SmokedGlassPopoverMenuItem(value: 'next', label: 'Play next', icon: Icons.skip_next_rounded),
+                    const SmokedGlassPopoverMenuItem(value: 'queue', label: 'Add to queue', icon: Icons.queue_music_rounded),
+                    const SmokedGlassPopoverMenuItem(value: 'download', label: 'Download', icon: Icons.download_rounded, dividerBefore: true),
+                    SmokedGlassPopoverMenuItem(value: 'favorite', label: favorite ? 'Remove favourite' : 'Add to favourites', icon: favorite ? Icons.favorite_rounded : Icons.favorite_border_rounded),
+                  ],
+                  onSelected: (action) async {
+                    if (action == 'favorite') await _toggleFavorite(media);
+                    if (action == 'next') await _queueTrack(media, playNext: true);
+                    if (action == 'queue') await _queueTrack(media, playNext: false);
+                    if (action == 'download') {
+                      try {
+                        await DownloadManagerService.instance.enqueueServerFile(
+                          api: widget.api,
+                          name: media.entry.name,
+                          sourcePath: media.path,
+                          volume: media.volume,
+                          size: media.entry.size,
+                        );
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Added to Downloads: ${media.entry.name}')),
+                          );
+                        }
+                      } catch (_) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Could not add this track to Downloads.')),
+                          );
+                        }
+                      }
+                    }
+                  },
+                  child: const SizedBox(
+                    width: 28,
+                    height: 36,
+                    child: Center(
+                      child: Icon(Icons.more_vert_rounded, size: 18, color: Color(0xFF8E939E)),
+                    ),
+                  ),
+                ),
+            ]),
+          ),
         ),
       ),
     );
@@ -1403,22 +1472,34 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     final visible = _sortMedia(matches);
     final folderCount = _foldersAtCurrentLevel(_media).length;
     final favoriteCount = _media.where((m) => _favoriteKeys.contains(_favoriteKey(m))).length;
-    final viewTitle = switch (_libraryView) {
-      'folders' => 'Folders',
-      'favorites' => 'Favorites',
-      _ => 'Music',
-    };
     final top = MediaQuery.paddingOf(context).top;
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final foreground = dark ? Colors.white : const Color(0xFF0F172A);
+    final foreground = Colors.white;
+
+    Widget iconAction(IconData icon, String tooltip, VoidCallback onPressed) =>
+        SizedBox(
+          width: 36,
+          height: 36,
+          child: IconButton(
+            tooltip: tooltip,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+            onPressed: onPressed,
+            icon: Icon(icon, size: 18, color: foreground),
+          ),
+        );
 
     return PopScope(
       canPop: widget.onBackHandlerChanged != null ||
-          (!_searchExpanded && (_libraryView != 'folders' || _atFolderRoot)),
+          (!_searchExpanded && !_selectionMode && (_libraryView != 'folders' || _atFolderRoot)),
       onPopInvokedWithResult: (didPop, result) {
         if (didPop || widget.onBackHandlerChanged != null) return;
         if (_searchExpanded) {
           _setSearchExpanded(false);
+        } else if (_selectionMode) {
+          setState(() {
+            _selectionMode = false;
+            _selectedTrackKeys.clear();
+          });
         } else if (_libraryView == 'folders' && !_atFolderRoot) {
           _goUpFolder();
         }
@@ -1426,184 +1507,235 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       child: AnimatedBuilder(
         animation: PersistentAudioPlayer.instance,
         builder: (context, _) => Scaffold(
-        extendBodyBehindAppBar: true,
-        body: Stack(children: [
-          Positioned.fill(
-            child: _libraryView == 'folders'
-                ? Column(children: [
-                    SizedBox(height: top + 104),
-                    Expanded(
-                      child: RefreshIndicator(
-                        onRefresh: _refreshMusic,
-                        child: _buildFolders(visible),
-                      ),
+          extendBodyBehindAppBar: true,
+          body: Stack(children: [
+            Positioned.fill(
+              child: _libraryView == 'folders'
+                  ? RefreshIndicator(
+                      onRefresh: _refreshMusic,
+                      child: _buildFolders(visible),
+                    )
+                  : RefreshIndicator(
+                      onRefresh: _refreshMusic,
+                      displacement: 48,
+                      child: _error != null || (_loading && _media.isEmpty) || visible.isEmpty
+                          ? ListView(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              padding: EdgeInsets.fromLTRB(0, top + 64, 0, 112 + MediaQuery.paddingOf(context).bottom),
+                              children: [
+                                SizedBox(
+                                  height: MediaQuery.sizeOf(context).height * 0.55,
+                                  child: Center(
+                                    child: _error != null
+                                        ? FilledButton(onPressed: _scan, child: const Text('Retry scan'))
+                                        : Text(_loading && _media.isEmpty
+                                            ? 'Scanning music library…'
+                                            : _libraryView == 'favorites'
+                                                ? 'No favourite tracks yet.'
+                                                : 'No music found. Scan storage to find tracks.'),
+                                  ),
+                                ),
+                              ],
+                            )
+                          : ListView.separated(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              controller: _contentScrollController,
+                              padding: EdgeInsets.fromLTRB(0, top + 64, 0, 112 + MediaQuery.paddingOf(context).bottom),
+                              itemCount: visible.length,
+                              separatorBuilder: (_, __) => Container(
+                                height: 1,
+                                margin: const EdgeInsets.only(left: 76),
+                                color: Colors.white.withValues(alpha: 0.06),
+                              ),
+                              itemBuilder: (context, index) => _musicTrackTile(visible[index], visible),
+                            ),
                     ),
-                  ])
-                : RefreshIndicator(
-                    onRefresh: _refreshMusic,
-                    displacement: 48,
-                    child: _error != null || (_loading && _media.isEmpty) || visible.isEmpty
-                        ? ListView(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            padding: EdgeInsets.fromLTRB(12, top + 142 + (_searchExpanded ? 60 : 0), 12, 112 + MediaQuery.paddingOf(context).bottom),
-                            children: [
-                              SizedBox(
-                                height: MediaQuery.sizeOf(context).height * 0.55,
-                                child: Center(
-                                  child: _error != null
-                                      ? FilledButton(onPressed: _scan, child: const Text('Retry scan'))
-                                      : Text(_loading && _media.isEmpty
-                                          ? 'Scanning music library…'
-                                          : _libraryView == 'favorites'
-                                              ? 'No favourite tracks yet.'
-                                              : 'No music found. Scan storage to find tracks.'),
+            ),
+            if (_loading)
+              Positioned(
+                top: top + 60,
+                left: 16,
+                right: 16,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(2),
+                  child: const LinearProgressIndicator(minHeight: 2),
+                ),
+              ),
+            if (_error != null)
+              Positioned(
+                top: top + 68,
+                left: 16,
+                right: 16,
+                child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              ),
+            Positioned(
+              top: top + 8,
+              left: 16,
+              right: 16,
+              height: 44,
+              child: Row(children: [
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 260),
+                  curve: Curves.easeOutCubic,
+                  child: _searchExpanded
+                      ? SizedBox(
+                          width: MediaQuery.sizeOf(context).width - 32,
+                          height: 44,
+                          child: LiquidGlassSurface(
+                            radius: BorderRadius.circular(22),
+                            refractive: true,
+                            child: Row(children: [
+                              const SizedBox(width: 14),
+                              const Icon(Icons.search_rounded, size: 18, color: Colors.white70),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: TextField(
+                                  controller: _searchController,
+                                  autofocus: true,
+                                  onChanged: (value) => setState(() => _searchQuery = value),
+                                  textInputAction: TextInputAction.search,
+                                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                                  decoration: const InputDecoration(
+                                    hintText: 'Search songs or folders',
+                                    hintStyle: TextStyle(color: Color(0xFF8E939E), fontSize: 14),
+                                    border: InputBorder.none,
+                                    isDense: true,
+                                  ),
                                 ),
                               ),
-                            ],
-                          )
-                        : ListView.separated(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            controller: _contentScrollController,
-                            padding: EdgeInsets.fromLTRB(12, top + 142 + (_searchExpanded ? 60 : 0), 12, 112 + MediaQuery.paddingOf(context).bottom),
-                            itemCount: visible.length + 1,
-                            separatorBuilder: (_, index) => index == 0 ? const SizedBox(height: 10) : const SizedBox(height: 2),
-                            itemBuilder: (context, index) {
-                              if (index == 0) return Padding(
-                                padding: const EdgeInsets.fromLTRB(4, 0, 4, 2),
-                                child: Row(children: [
-                                  Expanded(child: _MusicActionPill(label: 'Play All', icon: Icons.play_arrow_rounded, primary: true,
-                                    onTap: () => _openMedia(visible.first, visible))),
-                                  const SizedBox(width: 10),
-                                  Expanded(child: _MusicActionPill(label: 'Shuffle', icon: Icons.shuffle_rounded, onTap: () {
-                                    final shuffled = List<_MediaFile>.of(visible)..shuffle(math.Random());
-                                    _openMedia(shuffled.first, shuffled);
-                                  })),
-                                ]),
-                              );
-                              return _musicTrackTile(visible[index - 1], visible);
-                            },
+                              IconButton(
+                                tooltip: 'Clear search',
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() => _searchQuery = '');
+                                },
+                                icon: const Icon(Icons.close_rounded, size: 18, color: Colors.white70),
+                              ),
+                            ]),
                           ),
-                  ),
-          ),
-          if (_searchExpanded)
-            Positioned(
-              top: top + 76,
-              left: 16,
-              right: 16,
-              child: TextField(
-                controller: _searchController,
-                autofocus: true,
-                onChanged: (value) => setState(() => _searchQuery = value),
-                decoration: InputDecoration(
-                  hintText: 'Search songs or folders',
-                  prefixIcon: const Icon(Icons.search_rounded),
-                  suffixIcon: IconButton(
-                    onPressed: () { _searchController.clear(); setState(() => _searchQuery = ''); },
-                    icon: const Icon(Icons.close_rounded),
-                  ),
-                  filled: true,
-                  fillColor: Theme.of(context).colorScheme.surfaceContainerLow.withValues(alpha: 0.90),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
+                        )
+                      : SmokedGlassPopoverMenu<String>(
+                          tooltip: 'Choose music view',
+                          onOpenChanged: (open) => setState(() => _musicMenuOpen = open),
+                          items: [
+                            SmokedGlassPopoverMenuItem(value: 'all', label: 'Songs', icon: Icons.music_note_rounded,
+                              trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                                Text('${_media.length}', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
+                                if (_libraryView == 'all') const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.check_rounded, size: 18)),
+                              ])),
+                            SmokedGlassPopoverMenuItem(value: 'folders', label: 'Folders', icon: Icons.folder_rounded,
+                              trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                                Text('$folderCount', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
+                                if (_libraryView == 'folders') const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.check_rounded, size: 18)),
+                              ])),
+                            SmokedGlassPopoverMenuItem(value: 'favorites', label: 'Favorites', icon: Icons.favorite_rounded,
+                              trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                                Text('$favoriteCount', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
+                                if (_libraryView == 'favorites') const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.check_rounded, size: 18)),
+                              ])),
+                          ],
+                          onSelected: (value) {
+                            setState(() {
+                              _libraryView = value;
+                              _currentFolderPath = value == 'folders' && _selectedVolume == 'internal' ? 'Music' : '';
+                            });
+                            _syncBackHandler();
+                            _pendingScrollOffset = 0;
+                            _saveState(folderPath: _currentFolderPath);
+                            if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0);
+                          },
+                          child: LiquidGlassSurface(
+                            radius: BorderRadius.circular(22),
+                            refractive: true,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                Text('Music', style: TextStyle(color: foreground, fontSize: 15, fontWeight: FontWeight.w700)),
+                                const SizedBox(width: 4),
+                                AnimatedRotation(
+                                  turns: _musicMenuOpen ? 0.5 : 0,
+                                  duration: const Duration(milliseconds: 200),
+                                  child: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white, size: 19),
+                                ),
+                              ]),
+                            ),
+                          ),
+                        ),
                 ),
-              ),
+                const Spacer(),
+                if (!_searchExpanded)
+                  LiquidGlassSurface(
+                    radius: BorderRadius.circular(22),
+                    refractive: true,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        iconAction(Icons.search_rounded, 'Search', () => _setSearchExpanded(true)),
+                        iconAction(Icons.tune_rounded, 'Sort and filter', _showMusicFilters),
+                        SmokedGlassPopoverMenu<String>(
+                          tooltip: 'More music actions',
+                          items: [
+                            const SmokedGlassPopoverMenuItem(value: 'shuffle', label: 'Shuffle all', icon: Icons.shuffle_rounded),
+                            const SmokedGlassPopoverMenuItem(value: 'select', label: 'Select tracks', icon: Icons.checklist_rounded),
+                            const SmokedGlassPopoverMenuItem(value: 'scan', label: 'Scan library', icon: Icons.refresh_rounded),
+                            const SmokedGlassPopoverMenuItem(value: 'settings', label: 'Settings', icon: Icons.settings_rounded, dividerBefore: true),
+                          ],
+                          onSelected: (value) {
+                            if (value == 'shuffle' && visible.isNotEmpty) {
+                              final shuffled = List<_MediaFile>.of(visible)..shuffle(math.Random());
+                              _openMedia(shuffled.first, shuffled);
+                            }
+                            if (value == 'select') {
+                              setState(() {
+                                _selectionMode = true;
+                                _selectedTrackKeys.clear();
+                              });
+                            }
+                            if (value == 'scan' && !_loading) _scan(refresh: true);
+                            if (value == 'settings') {
+                              Navigator.of(context).push(MaterialPageRoute<void>(
+                                builder: (_) => const SettingsScreen(),
+                              ));
+                            }
+                          },
+                          child: SizedBox(
+                            width: 36,
+                            height: 36,
+                            child: Center(child: Icon(Icons.more_horiz_rounded, size: 18, color: foreground)),
+                          ),
+                        ),
+                      ]),
+                    ),
+                  ),
+                if (_selectionMode)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: LiquidGlassSurface(
+                      radius: BorderRadius.circular(22),
+                      refractive: true,
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        Padding(
+                          padding: const EdgeInsets.only(left: 10),
+                          child: Text('${_selectedTrackKeys.length} selected', style: const TextStyle(color: Colors.white, fontSize: 12)),
+                        ),
+                        IconButton(
+                          tooltip: 'Done selecting',
+                          onPressed: () => setState(() {
+                            _selectionMode = false;
+                            _selectedTrackKeys.clear();
+                          }),
+                          icon: const Icon(Icons.close_rounded, size: 18, color: Colors.white),
+                        ),
+                      ]),
+                    ),
+                  ),
+              ]),
             ),
-          if (_loading)
-            Positioned(
-              top: top + 136,
-              left: 0,
-              right: 0,
-              child: const LinearProgressIndicator(minHeight: 2),
-            ),
-          if (_error != null)
-            Positioned(
-              top: top + 142,
-              left: 16,
-              right: 16,
-              child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
-            ),
-          Positioned(top: 0, left: 0, right: 0, height: top + 142,
-            child: const IgnorePointer(child: FeatheredGlassHeaderBackground())),
-          Positioned(top: top + 8, left: 16, right: 16, height: 56,
-            child: Row(children: [
-              Expanded(child: Align(alignment: Alignment.centerLeft, child: SmokedGlassPopoverMenu<String>(
-                tooltip: 'Choose music view',
-                onOpenChanged: (open) => setState(() => _musicMenuOpen = open),
-                items: [
-                  SmokedGlassPopoverMenuItem(value: 'all', label: 'Songs', icon: Icons.music_note_rounded,
-                    trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Text('${_media.length}', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
-                      if (_libraryView == 'all') const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.check_rounded, size: 18)),
-                    ])),
-                  SmokedGlassPopoverMenuItem(value: 'folders', label: 'Folders', icon: Icons.folder_rounded,
-                    trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Text('$folderCount', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
-                      if (_libraryView == 'folders') const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.check_rounded, size: 18)),
-                    ])),
-                  SmokedGlassPopoverMenuItem(value: 'favorites', label: 'Favorites', icon: Icons.favorite_rounded,
-                    trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Text('$favoriteCount', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
-                      if (_libraryView == 'favorites') const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.check_rounded, size: 18)),
-                    ])),
-                ],
-                onSelected: (value) {
-                  setState(() {
-                    _libraryView = value;
-                    _currentFolderPath = value == 'folders' && _selectedVolume == 'internal' ? 'Music' : '';
-                  });
-                  _syncBackHandler();
-                  _pendingScrollOffset = 0;
-                  _saveState(folderPath: _currentFolderPath);
-                  if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0);
-                },
-                child: Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Flexible(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                    Row(mainAxisSize: MainAxisSize.min, children: [
-                      Flexible(child: Text(viewTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: foreground, letterSpacing: -0.7))),
-                      const SizedBox(width: 6),
-                      AnimatedRotation(turns: _musicMenuOpen ? 0.5 : 0, duration: const Duration(milliseconds: 200), curve: Curves.easeOutCubic,
-                        child: Icon(Icons.keyboard_arrow_down_rounded, color: foreground, size: 26)),
-                    ]),
-                    Text('${_countLabel(visible.length, 'track', 'tracks')} • ${_selectedVolume == null ? 'All storage' : _volumeName(_selectedVolume)}',
-                      maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurfaceVariant, fontFamily: 'monospace')),
-                  ])),
-                ])),
-              ))),
-              SmokedGlassPopoverMenu<String>(
-                tooltip: 'More music actions',
-                items: [
-                  SmokedGlassPopoverMenuItem(value: 'search', label: _searchExpanded ? 'Close search' : 'Search music', icon: _searchExpanded ? Icons.close_rounded : Icons.search_rounded),
-                  SmokedGlassPopoverMenuItem(value: 'filter', label: 'Filter & sort', icon: Icons.tune_rounded),
-                  SmokedGlassPopoverMenuItem(value: 'shuffle', label: 'Shuffle all', icon: Icons.shuffle_rounded, dividerBefore: true),
-                  SmokedGlassPopoverMenuItem(value: 'scan', label: 'Scan library', icon: Icons.refresh_rounded),
-                  SmokedGlassPopoverMenuItem(value: 'transfers', label: 'Transfers', icon: Icons.swap_vert_rounded, dividerBefore: true),
-                ],
-                onSelected: (value) {
-                  if (value == 'search') _setSearchExpanded(!_searchExpanded);
-                  if (value == 'filter') _showMusicFilters();
-                  if (value == 'shuffle' && visible.isNotEmpty) {
-                    final shuffled = List<_MediaFile>.of(visible)..shuffle(math.Random());
-                    _openMedia(shuffled.first, shuffled);
-                  }
-                  if (value == 'scan' && !_loading) _scan(refresh: true);
-                  if (value == 'transfers') {
-                    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen()));
-                  }
-                },
-                child: const GlassCircleButton(
-                  tooltip: 'More music actions',
-                  onPressed: null,
-                  child: Icon(Icons.more_vert_rounded),
-                ),
-              ),
-            ]),
-          ),
-        ]),
-      ),
+          ]),
+        ),
       ),
     );
   }
-
 
   @override
   Widget build(BuildContext context) => _isMusic ? _musicScreen(context) : _buildVideoScreen(context);
