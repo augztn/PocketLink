@@ -278,6 +278,7 @@ internal class MediaIndexScanner(
     @Volatile private var lastCompletedAt: Long = readScanHistory().optJSONObject(0)?.optLong("completed_at") ?: 0L
     @Volatile private var lastScanStartedAt: Long = readScanHistory().optJSONObject(0)?.optLong("started_at") ?: 0L
     @Volatile private var scanTrigger: String = "automatic"
+    @Volatile private var queuedTrigger: String? = null
     @Volatile private var lastScanTrigger: String = reportPrefs.getString("last_trigger", "automatic") ?: "automatic"
     @Volatile private var newFiles = readScanHistory().optJSONObject(0)?.optInt("new_files") ?: 0
     @Volatile private var updatedFiles = readScanHistory().optJSONObject(0)?.optInt("updated_files") ?: 0
@@ -327,7 +328,10 @@ internal class MediaIndexScanner(
     fun requestScan(force: Boolean, trigger: String = "manual") {
         if (running.get()) {
             // Coalesce refreshes and mutations into one follow-up pass.
-            if (force) dirty.set(true)
+            if (force) {
+                dirty.set(true)
+                queuedTrigger = trigger
+            }
             return
         }
         if (started && !force && state == "complete") return
@@ -396,11 +400,14 @@ internal class MediaIndexScanner(
                 currentSource = null
                 currentPath = null
             } finally {
-                val scanAgain = synchronized(this) {
+                val nextTrigger = synchronized(this) {
                     running.set(false)
-                    dirty.getAndSet(false)
+                    val shouldRescan = dirty.getAndSet(false)
+                    val trigger = queuedTrigger ?: scanTrigger
+                    queuedTrigger = null
+                    shouldRescan to trigger
                 }
-                if (scanAgain) requestScan(force = true, trigger = scanTrigger)
+                if (nextTrigger.first) requestScan(force = true, trigger = nextTrigger.second)
             }
         }
     }
