@@ -269,12 +269,12 @@ internal class MediaIndexScanner(
     private val running = AtomicBoolean(false)
     private val dirty = AtomicBoolean(false)
     @Volatile private var started = false
-    @Volatile private var scanned = 0
+    @Volatile private var scanned = readScanHistory().optJSONObject(0)?.optInt("scanned") ?: 0
     @Volatile private var scannedDirectories = 0
     @Volatile private var unchanged = 0
-    @Volatile private var skipped = 0
+    @Volatile private var skipped = readScanHistory().optJSONObject(0)?.optInt("skipped") ?: 0
     @Volatile private var state = "idle"
-    @Volatile private var lastError: String? = null
+    @Volatile private var lastError: String? = readScanHistory().optJSONObject(0)?.optString("last_error")?.takeIf { it.isNotBlank() }
     @Volatile private var lastCompletedAt: Long = readScanHistory().optJSONObject(0)?.optLong("completed_at") ?: 0L
     @Volatile private var lastScanStartedAt: Long = readScanHistory().optJSONObject(0)?.optLong("started_at") ?: 0L
     @Volatile private var scanTrigger: String = "automatic"
@@ -282,10 +282,22 @@ internal class MediaIndexScanner(
     @Volatile private var newFiles = readScanHistory().optJSONObject(0)?.optInt("new_files") ?: 0
     @Volatile private var updatedFiles = readScanHistory().optJSONObject(0)?.optInt("updated_files") ?: 0
     @Volatile private var scannedBytes = readScanHistory().optJSONObject(0)?.optLong("scanned_bytes") ?: 0L
-    private val volumeReports = java.util.concurrent.ConcurrentHashMap<String, org.json.JSONObject>()
+    private val volumeReports = java.util.concurrent.ConcurrentHashMap<String, org.json.JSONObject>().apply {
+        val previous = readScanHistory().optJSONObject(0)?.optJSONArray("volumes")
+        if (previous != null) for (index in 0 until previous.length()) {
+            val item = previous.optJSONObject(index) ?: continue
+            put(item.optString("volume"), item)
+        }
+    }
     @Volatile private var currentSource: String? = null
     @Volatile private var currentPath: String? = null
-    private val skippedItems = mutableListOf<SkippedIndexItem>()
+    private val skippedItems = mutableListOf<SkippedIndexItem>().apply {
+        val previous = readScanHistory().optJSONObject(0)?.optJSONArray("skipped_items")
+        if (previous != null) for (index in 0 until previous.length()) {
+            val item = previous.optJSONObject(index) ?: continue
+            add(SkippedIndexItem(item.optString("volume"), item.optString("path"), item.optString("reason")))
+        }
+    }
 
     private fun recordSkipped(volume: String, path: String, reason: String) {
         synchronized(skippedItems) {
@@ -615,6 +627,13 @@ internal class MediaIndexScanner(
             .put("last_error", lastError)
             .put("volumes", org.json.JSONArray().also { items ->
                 volumeReports.values.sortedBy { it.optString("volume") }.forEach { items.put(it) }
+            })
+            .put("skipped_items", org.json.JSONArray().also { items ->
+                synchronized(skippedItems) {
+                    skippedItems.forEach { item ->
+                        items.put(org.json.JSONObject().put("volume", item.volume).put("path", item.path).put("reason", item.reason))
+                    }
+                }
             })
         val next = org.json.JSONArray().put(record)
         for (index in 0 until minOf(history.length(), 19)) {
