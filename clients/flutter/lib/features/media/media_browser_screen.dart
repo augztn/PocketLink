@@ -100,6 +100,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   Set<String> _favoriteKeys = <String>{};
   final Map<String, Future<Uint8List?>> _musicArtworkCache = {};
   final Map<String, Future<VideoMetadata?>> _videoMetadataCache = {};
+  final Map<String, Future<int>> _musicDurationRequests = {};
 
   bool get _isMusic => widget.type == MediaLibraryType.music;
   String get _title => _isMusic ? 'Music' : 'Videos';
@@ -1325,15 +1326,53 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     });
   }
 
-  String _musicDurationLabel(_MediaFile media) {
-    final player = PersistentAudioPlayer.instance;
-    final current = player.currentItem;
-    if (current == null || current.path != media.path || current.volume != media.volume || !player.isMusic) {
-      return '—:—';
+  String _musicDurationPreferenceKey(_MediaFile media) {
+    final identity = '$_stateKey|${_favoriteKey(media)}';
+    var hash = 0x811c9dc5;
+    for (final unit in identity.codeUnits) {
+      hash ^= unit;
+      hash = (hash * 0x01000193) & 0xffffffff;
     }
-    final duration = player.player.state.duration;
-    return duration > Duration.zero ? _formatDuration(duration.inMilliseconds) : '—:—';
+    return 'pocketlink.music.duration.${hash.toRadixString(16)}';
   }
+
+  Future<int> _musicDurationFor(_MediaFile media) =>
+      _musicDurationRequests.putIfAbsent(_favoriteKey(media), () async {
+        final preferences = await SharedPreferences.getInstance();
+        final preferenceKey = _musicDurationPreferenceKey(media);
+        final cached = preferences.getInt(preferenceKey);
+        if (cached != null && cached > 0) return cached;
+
+        // The native host resolves duration from Android media metadata for
+        // both internal files and SAF-backed USB/OTG documents.
+        final metadata = await widget.api.videoMetadata(
+          media.path,
+          volume: media.volume,
+        );
+        final durationMs = metadata?.durationMs ?? 0;
+        if (durationMs > 0) {
+          await preferences.setInt(preferenceKey, durationMs);
+        }
+        return durationMs;
+      });
+
+  Widget _musicDurationLabel(_MediaFile media) =>
+      FutureBuilder<int>(
+        future: _musicDurationFor(media),
+        builder: (context, snapshot) {
+          final durationMs = snapshot.data ?? 0;
+          if (durationMs <= 0) return const SizedBox.shrink();
+          return Text(
+            _formatDuration(durationMs),
+            style: const TextStyle(
+              color: Color(0xFF8E939E),
+              fontSize: 12.5,
+              fontFamily: 'JetBrains Mono',
+              fontFeatures: [ui.FontFeature.tabularFigures()],
+            ),
+          );
+        },
+      );
 
   Widget _musicTrackTile(_MediaFile media, List<_MediaFile> queueItems) {
     final player = PersistentAudioPlayer.instance;
@@ -1395,15 +1434,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              Text(
-                _musicDurationLabel(media),
-                style: const TextStyle(
-                  color: Color(0xFF8E939E),
-                  fontSize: 12.5,
-                  fontFamily: 'JetBrains Mono',
-                  fontFeatures: [ui.FontFeature.tabularFigures()],
-                ),
-              ),
+              _musicDurationLabel(media),
               if (_selectionMode)
                 SizedBox(
                   width: 36,
@@ -1669,6 +1700,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                         if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0);
                       },
                       child: SizedBox(
+                        width: double.infinity,
                         height: 44,
                         child: Align(
                           alignment: Alignment.centerLeft,
@@ -1689,17 +1721,12 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                                   ),
                                 ]),
                                 const SizedBox(height: 3),
-                                ConstrainedBox(
-                                  constraints: BoxConstraints(
-                                    maxWidth: MediaQuery.sizeOf(context).width - 180,
-                                  ),
-                                  child: Text(
-                                    '${visible.length} tracks • ${_selectedVolume == null ? 'All storage' : _volumeName(_selectedVolume)}',
-                                    maxLines: 1,
-                                    softWrap: false,
-                                    overflow: TextOverflow.fade,
-                                    style: TextStyle(color: foreground.withValues(alpha: 0.62), fontSize: 11, height: 1.0, fontWeight: FontWeight.w500),
-                                  ),
+                                Text(
+                                  '${visible.length} tracks • ${_selectedVolume == null ? 'All storage' : _volumeName(_selectedVolume)}',
+                                  maxLines: 1,
+                                  softWrap: false,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(color: foreground.withValues(alpha: 0.62), fontSize: 11, height: 1.0, fontWeight: FontWeight.w500),
                                 ),
                               ],
                             ),
@@ -1708,7 +1735,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                       ),
                     ),
                   ),
-                if (!_searchExpanded) const Spacer(),
+                if (!_searchExpanded) const SizedBox(width: 12),
                 if (!_searchExpanded && !_selectionMode)
                   SizedBox(
                     height: 44,
