@@ -21,6 +21,7 @@ import '../files/file_manager_screen.dart';
 import '../storage/storage_browser_screen.dart';
 import 'now_playing_scrubber.dart';
 import 'persistent_audio_player.dart';
+import 'widgets/media_info_row.dart';
 import 'track_options_sheet.dart';
 import '../downloads/download_manager_service.dart';
 
@@ -535,9 +536,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _InfoLine('Filename', fileName),
-              _InfoLine('Format', _formatTag),
-              _InfoLine(
+              MediaInfoRow('Filename', fileName),
+              MediaInfoRow('Format', _formatTag),
+              MediaInfoRow(
                 'Size',
                 snapshot.connectionState == ConnectionState.waiting
                     ? 'Reading…'
@@ -545,7 +546,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                         ? 'Unavailable'
                         : _formatBytes(snapshot.data!),
               ),
-              _InfoLine('Server path', _track.path),
+              MediaInfoRow('Server path', _track.path),
             ],
           ),
           actions: [
@@ -766,11 +767,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
 
                         return Column(
                           children: [
-                            _InfoLine('Codec', codec),
+                            MediaInfoRow('Codec', codec),
                             const Divider(height: 18, color: Colors.white12),
-                            _InfoLine('Bitrate', bitrate),
+                            MediaInfoRow('Bitrate', bitrate),
                             const Divider(height: 18, color: Colors.white12),
-                            _InfoLine('Sample rate', sampleRate),
+                            MediaInfoRow('Sample rate', sampleRate),
                           ],
                         );
                       },
@@ -1528,26 +1529,4 @@ class _TransportGlyphState extends State<_TransportGlyph> {
   ));
 }
 
-class _InfoLine extends StatelessWidget {
-  const _InfoLine(this.label, this.value);
 
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 5),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 78,
-          child: Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12)),
-        ),
-        Expanded(
-          child: Text(value, style: const TextStyle(color: Colors.white, fontSize: 12)),
-        ),
-      ],
-    ),
-  );
-}
