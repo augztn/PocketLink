@@ -8,6 +8,7 @@ import 'widgets/host_device_metrics_card.dart';
 import 'widgets/host_media_scan_card.dart';
 import 'widgets/home_activity_sections.dart';
 import 'widgets/home_active_transfers_preview.dart';
+import 'widgets/home_global_search_entry.dart';
 import 'widgets/home_quick_actions_section.dart';
 import 'widgets/server_telemetry_card.dart';
 import 'network_route_classifier.dart';
@@ -584,33 +585,6 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
     widget.onOpenFileLocation(recent.volume, path);
   }
 
-  Widget _buildGlobalSearchEntry(ThemeData theme, ColorScheme colors) {
-    return Container(
-      decoration: _dashboardCardDecoration(theme),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(18),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
-          builder: (_) => SearchScreen(api: widget.api),
-        )),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(children: [
-            Icon(Icons.search_rounded, color: colors.primary),
-            const SizedBox(width: 12),
-            Expanded(child: Text('Search files, folders and media',
-              style: theme.textTheme.bodyMedium?.copyWith(color: colors.onSurfaceVariant))),
-            Icon(Icons.arrow_forward_rounded, color: colors.onSurfaceVariant, size: 18),
-          ]),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildActiveTransfersPreview(ThemeData theme, ColorScheme colors) {
     final manager = TransferManager.instance;
     return AnimatedBuilder(
@@ -931,7 +905,12 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
       'search': () => appSettings.showGlobalSearch
           ? Padding(
               padding: const EdgeInsets.only(bottom: 16),
-              child: _buildGlobalSearchEntry(theme, colors),
+              child: HomeGlobalSearchEntry(
+                cardDecoration: _dashboardCardDecoration,
+                onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                  builder: (_) => SearchScreen(api: widget.api),
+                )),
+              ),
             )
           : const SizedBox.shrink(),
       'quick': () => appSettings.showQuickActions
