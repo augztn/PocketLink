@@ -1067,6 +1067,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
               ),
             ),
           ),
+        ),
         ],
       ),
     );
