@@ -306,13 +306,13 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
                                                       ),
                                                 ),
                                               ),
-                                              if (item.trailing != null) ...[
+                                              if (item.trailing != null || titleMenu) ...[
                                                 const SizedBox(width: 12),
                                                 SizedBox(
                                                   width: trailingWidth,
                                                   child: Align(
                                                     alignment: Alignment.centerRight,
-                                                    child: item.trailing!,
+                                                    child: item.trailing,
                                                   ),
                                                 ),
                                               ],
