@@ -1692,7 +1692,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                       ),
                     ),
                   ),
-                const Spacer(),
+                if (!_searchExpanded) const Spacer(),
                 if (!_searchExpanded && !_selectionMode)
                   SizedBox(
                     height: 44,
@@ -1706,6 +1706,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                         iconAction(Icons.tune_rounded, 'Sort and filter', _showMusicFilters),
                         SmokedGlassPopoverMenu<String>(
                           tooltip: 'More music actions',
+                          onOpenChanged: (open) => setState(() => _musicMenuOpen = open),
                           items: [
                             const SmokedGlassPopoverMenuItem(value: 'shuffle', label: 'Shuffle all', icon: Icons.shuffle_rounded),
                             const SmokedGlassPopoverMenuItem(value: 'select', label: 'Select tracks', icon: Icons.checklist_rounded),
