@@ -141,47 +141,55 @@ class GlassCircleButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final settings = AppSettings.instance;
+    final useBlur = settings.progressiveBlurEnabled &&
+        !settings.reduceDynamicBlur &&
+        !MediaQuery.of(context).disableAnimations;
     final foreground = isDark ? Colors.white : const Color(0xFF0F172A);
-    return RepaintBoundary(
-      child: ClipOval(
-        child: BackdropFilter(
-          filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: onPressed,
-              customBorder: const CircleBorder(),
-              splashColor: foreground.withValues(alpha: 0.08),
-              highlightColor: Colors.transparent,
-              child: Tooltip(
-                message: tooltip,
-                child: Container(
-                  width: size,
-                  height: size,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: isDark
-                        ? const Color(0xFF1C1E24).withValues(alpha: 0.58)
-                        : Colors.white.withValues(alpha: 0.58),
-                    border: Border.all(
-                      color: isDark
-                          ? Colors.white.withValues(alpha: 0.24)
-                          : const Color(0xFF94A3B8).withValues(alpha: 0.30),
-                      width: 1.0,
-                    ),
-                  ),
-                  child: Center(
-                    child: IconTheme(
-                      data: IconThemeData(color: foreground, size: 18),
-                      child: child,
-                    ),
-                  ),
-                ),
+    final button = Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        customBorder: const CircleBorder(),
+        splashColor: foreground.withValues(alpha: 0.08),
+        highlightColor: Colors.transparent,
+        child: Tooltip(
+          message: tooltip,
+          child: Container(
+            width: size,
+            height: size,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isDark
+                  ? const Color(0xFF1C1E24).withValues(alpha: 0.58)
+                  : Colors.white.withValues(alpha: 0.58),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.24)
+                    : const Color(0xFF94A3B8).withValues(alpha: 0.30),
+                width: 1.0,
+              ),
+            ),
+            child: Center(
+              child: IconTheme(
+                data: IconThemeData(color: foreground, size: 18),
+                child: child,
               ),
             ),
           ),
         ),
+      ),
+    );
+
+    return RepaintBoundary(
+      child: ClipOval(
+        child: useBlur
+            ? BackdropFilter(
+                filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                child: button,
+              )
+            : button,
       ),
     );
   }
