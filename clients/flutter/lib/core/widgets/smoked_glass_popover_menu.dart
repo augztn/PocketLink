@@ -31,6 +31,10 @@ class SmokedGlassPopoverMenu<T> extends StatelessWidget {
     this.tooltip,
     this.gap = 8,
     this.onOpenChanged,
+    this.itemHeight = 46,
+    this.menuVerticalPadding = 8,
+    this.itemHorizontalPadding = 16,
+    this.trailingWidth = 48,
     super.key,
   });
 
@@ -40,6 +44,10 @@ class SmokedGlassPopoverMenu<T> extends StatelessWidget {
   final String? tooltip;
   final double gap;
   final ValueChanged<bool>? onOpenChanged;
+  final double itemHeight;
+  final double menuVerticalPadding;
+  final double itemHorizontalPadding;
+  final double trailingWidth;
 
   Future<void> _open(BuildContext context) async {
     final renderObject = context.findRenderObject();
@@ -189,7 +197,7 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
                           child: SingleChildScrollView(
                             primary: false,
                             physics: const BouncingScrollPhysics(),
-                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            padding: EdgeInsets.symmetric(vertical: menuVerticalPadding),
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
@@ -206,7 +214,7 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
                                       ),
                                     ),
                                   SizedBox(
-                                    height: 46,
+                                    height: itemHeight,
                                     child: Material(
                                       color: Colors.transparent,
                                       child: InkWell(
@@ -215,8 +223,8 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
                                             : null,
                                         borderRadius: BorderRadius.circular(12),
                                         child: Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 16,
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: itemHorizontalPadding,
                                           ),
                                           child: Row(
                                             children: [
@@ -251,7 +259,7 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
                                               if (item.trailing != null) ...[
                                                 const SizedBox(width: 12),
                                                 SizedBox(
-                                                  width: 48,
+                                                  width: trailingWidth,
                                                   child: Align(
                                                     alignment: Alignment.centerRight,
                                                     child: item.trailing!,
