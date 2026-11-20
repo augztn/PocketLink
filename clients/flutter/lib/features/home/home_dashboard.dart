@@ -1974,12 +1974,15 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
         automaticallyImplyLeading: false,
         leadingWidth: 70,
         leading: Center(
-          child: SizedBox.square(
-            dimension: 38,
-            child: GlassCircleButton(
-              tooltip: 'Open navigation menu',
-              onPressed: widget.onOpenDrawer,
-              child: const Icon(Icons.menu_rounded, size: 18),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: SizedBox.square(
+              dimension: 38,
+              child: GlassCircleButton(
+                tooltip: 'Open navigation menu',
+                onPressed: widget.onOpenDrawer,
+                child: const Icon(Icons.menu_rounded, size: 18),
+              ),
             ),
           ),
         ),
@@ -2049,12 +2052,15 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                 _refreshStatus(forceRefresh: true);
               }
             },
-            child: const SizedBox.square(
-              dimension: 38,
-              child: GlassCircleButton(
-                tooltip: 'More actions',
-                onPressed: null,
-                child: Icon(Icons.more_vert_rounded, size: 18),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 4),
+              child: SizedBox.square(
+                dimension: 38,
+                child: GlassCircleButton(
+                  tooltip: 'More actions',
+                  onPressed: null,
+                  child: Icon(Icons.more_vert_rounded, size: 18),
+                ),
               ),
             ),
           ),
