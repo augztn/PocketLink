@@ -1327,7 +1327,8 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   }
 
   String _musicDurationPreferenceKey(_MediaFile media) {
-    final identity = '$_stateKey|${_favoriteKey(media)}';
+    final identity =
+        '$_stateKey|${_favoriteKey(media)}|${media.entry.size}|${media.entry.modified}';
     var hash = 0x811c9dc5;
     for (final unit in identity.codeUnits) {
       hash ^= unit;
