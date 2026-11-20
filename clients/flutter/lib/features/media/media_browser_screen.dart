@@ -1554,7 +1554,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
             Positioned.fill(
               child: _libraryView == 'folders'
                   ? Padding(
-                      padding: EdgeInsets.only(top: top + 64),
+                      padding: EdgeInsets.only(top: LayoutInsetsScope.of(context).topClearance),
                       child: RefreshIndicator(
                         onRefresh: _refreshMusic,
                         child: _buildFolders(visible),
@@ -1566,7 +1566,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                       child: _error != null || (_loading && _media.isEmpty) || visible.isEmpty
                           ? ListView(
                               physics: const AlwaysScrollableScrollPhysics(),
-                              padding: EdgeInsets.fromLTRB(0, top + 64, 0, 112 + MediaQuery.paddingOf(context).bottom),
+                              padding: EdgeInsets.fromLTRB(0, top + 64, 0, LayoutInsetsScope.of(context).bottomClearance),
                               children: [
                                 SizedBox(
                                   height: MediaQuery.sizeOf(context).height * 0.55,
@@ -1686,7 +1686,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                       items: [
                         SmokedGlassPopoverMenuItem(value: 'all', label: 'Songs', icon: Icons.music_note_rounded,
                           trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                            Text('${_media.length}', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
+                            Text('${visible.length}', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
                             const SizedBox(width: 8),
                             SizedBox(width: 20, child: _libraryView == 'all' ? const Icon(Icons.check_rounded, size: 18) : null),
                           ])),
