@@ -329,6 +329,7 @@ class MediaIndexStatus {
     this.lastAttemptStartedAt = 0, this.lastAttemptFinishedAt = 0, this.lastSuccessfulAt = 0,
     this.indexedBytes = 0, this.mediaBytes = 0, this.otherFileCount = 0,
     this.averageDurationMs = 0, this.durationTrendPercent = 0, this.scanRunId, this.timezoneId,
+    this.lastAutomaticScanAt = 0, this.lastManualScanAt = 0,
     this.automaticScanning = const AutomaticMediaScanSettings(),
   });
   final String state;
@@ -358,6 +359,7 @@ class MediaIndexStatus {
   final List<MediaScanHistoryEntry> scanHistory;
   final int lastAttemptStartedAt, lastAttemptFinishedAt, lastSuccessfulAt;
   final int indexedBytes, mediaBytes, otherFileCount, averageDurationMs, durationTrendPercent;
+  final int lastAutomaticScanAt, lastManualScanAt;
   final String? scanRunId, timezoneId;
   final AutomaticMediaScanSettings automaticScanning;
   bool get isScanning => state == 'scanning';
@@ -406,6 +408,8 @@ class MediaIndexStatus {
         otherFileCount: (json['other_file_count'] as num?)?.toInt() ?? 0,
         averageDurationMs: (json['duration_average_ms'] as num?)?.toInt() ?? 0,
         durationTrendPercent: (json['duration_trend_percent'] as num?)?.toInt() ?? 0,
+        lastAutomaticScanAt: (json['last_automatic_scan_at'] as num?)?.toInt() ?? 0,
+        lastManualScanAt: (json['last_manual_scan_at'] as num?)?.toInt() ?? 0,
         scanRunId: json['scan_run_id']?.toString(),
         timezoneId: json['timezone_id']?.toString(),
         automaticScanning: AutomaticMediaScanSettings.fromJson(
