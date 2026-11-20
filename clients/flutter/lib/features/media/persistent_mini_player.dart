@@ -24,6 +24,7 @@ class PersistentMiniPlayer extends StatelessWidget {
         final secondary = isLight ? const Color(0xFF475569) : Colors.white70;
         return SmokedGlassSurface(
           radius: BorderRadius.circular(18),
+          refractive: true,
           child: SafeArea(
             top: false,
             child: Padding(
