@@ -12,6 +12,7 @@ import 'widgets/host_service_status_row.dart';
 import 'widgets/host_section_destination.dart';
 import 'widgets/host_media_scan_card.dart';
 import 'widgets/host_server_password_card.dart';
+import 'widgets/host_backend_bridge_token_card.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
 import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
@@ -940,76 +941,14 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
             subtitle: 'Authentication for the Termux backend to access Android storage.',
           ),
           const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: colors.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.4)),
+          HostBackendBridgeTokenCard(
+            token: _token,
+            statusLoaded: _statusLoaded,
+            obscureToken: _obscureBridgeToken,
+            onToggleVisibility: () => setState(
+              () => _obscureBridgeToken = !_obscureBridgeToken,
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.key_outlined, color: colors.primary),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'Backend bridge token',
-                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                    PocketLinkStatusPill(
-                      label: _token != null ? 'Ready' : _statusLoaded ? 'Unavailable' : 'Loading',
-                      granted: _token != null,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Used by the Termux backend to authenticate with this phone’s Android USB storage bridge. It is separate from the native server password.',
-                  style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant, height: 1.4),
-                ),
-                const SizedBox(height: 12),
-                if (_token == null)
-                  Text(
-                    _statusLoaded ? 'The bridge token could not be loaded. Refresh the device status and try again.' : 'Loading bridge token…',
-                    style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
-                  )
-                else
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: colors.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.4)),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: SelectableText(
-                            _obscureBridgeToken ? '••••••••••••••••••••••••' : _token!,
-                            style: theme.textTheme.bodyMedium?.copyWith(fontFamily: 'monospace'),
-                          ),
-                        ),
-                        IconButton(
-                          tooltip: _obscureBridgeToken ? 'Show bridge token' : 'Hide bridge token',
-                          onPressed: () => setState(() => _obscureBridgeToken = !_obscureBridgeToken),
-                          icon: Icon(
-                            _obscureBridgeToken ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                          ),
-                        ),
-                        IconButton(
-                          tooltip: 'Copy bridge token',
-                          onPressed: _copyBridgeToken,
-                          icon: const Icon(Icons.copy_rounded),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
+            onCopy: _copyBridgeToken,
           ),
     ];
 
