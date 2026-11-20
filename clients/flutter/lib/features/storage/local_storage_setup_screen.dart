@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/shared/status_pill.dart';
 import 'widgets/storage_permission_row.dart';
+import 'widgets/host_media_metric.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
 import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
@@ -1030,22 +1031,22 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                   crossAxisSpacing: 8,
                   childAspectRatio: 2.7,
                   children: [
-                    _MediaMetric(
+                    HostMediaMetric(
                       label: 'Photos',
                       value: _mediaScanStatus['photo_count'] ?? 0,
                       icon: Icons.photo_outlined,
                     ),
-                    _MediaMetric(
+                    HostMediaMetric(
                       label: 'Videos',
                       value: _mediaScanStatus['video_count'] ?? 0,
                       icon: Icons.video_library_outlined,
                     ),
-                    _MediaMetric(
+                    HostMediaMetric(
                       label: 'Music',
                       value: _mediaScanStatus['music_count'] ?? 0,
                       icon: Icons.music_note_rounded,
                     ),
-                    _MediaMetric(
+                    HostMediaMetric(
                       label: 'Files',
                       value: _mediaScanStatus['file_count'] ?? 0,
                       icon: Icons.insert_drive_file_outlined,
@@ -1406,60 +1407,6 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
           ),
         ),
       ),
-      ),
-    );
-  }
-}
-
-class _MediaMetric extends StatelessWidget {
-  const _MediaMetric({
-    required this.label,
-    required this.value,
-    required this.icon,
-  });
-
-  final String label;
-  final dynamic value;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: colors.surfaceContainerHighest.withValues(alpha: 0.45),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 17, color: colors.onSurfaceVariant),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value.toString(),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: colors.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
