@@ -1281,7 +1281,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
     final activeMiniPlayer =
         LayoutInsetsScope.maybeOf(context)?.hasActiveMiniPlayer ?? false;
     return PocketLinkScaffold(
-      hasFloatingNavBar: false,
+      hasFloatingNavBar: true,
       hasActiveMiniPlayer: activeMiniPlayer,
       child: Scaffold(
       extendBody: true,
