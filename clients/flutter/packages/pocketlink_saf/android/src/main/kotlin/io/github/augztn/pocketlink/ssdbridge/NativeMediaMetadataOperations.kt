@@ -5,7 +5,6 @@ import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
 import fi.iki.elonen.NanoHTTPD
 import java.io.ByteArrayOutputStream
-import java.io.ByteArrayInputStream
 import java.io.File
 import java.util.Locale
 import org.json.JSONObject
