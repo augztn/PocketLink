@@ -78,7 +78,7 @@ class _SequenceAdapter implements HttpClientAdapter {
     final index = requests++;
     active++;
     if (active > maxActive) maxActive = active;
-    if (delay > Duration.zero) await Future<void>.delayed(delay);
+    await Future<void>.delayed(const Duration(milliseconds: 40));
     active--;
     final status = statuses[index.clamp(0, statuses.length - 1)];
     return ResponseBody.fromString(
@@ -92,11 +92,6 @@ class _SequenceAdapter implements HttpClientAdapter {
 }
 
 class _SharedReadAdapter implements HttpClientAdapter {
-  _SharedReadAdapter({
-    this.delay = const Duration(milliseconds: 40),
-  });
-
-  final Duration delay;
   int requests = 0;
 
   @override
