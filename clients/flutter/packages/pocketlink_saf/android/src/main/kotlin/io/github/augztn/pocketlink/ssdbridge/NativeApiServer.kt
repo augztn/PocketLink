@@ -9,6 +9,7 @@ import android.os.Environment
 import android.os.Build
 import android.os.StatFs
 import android.net.Uri
+import androidx.documentfile.provider.DocumentFile
 import fi.iki.elonen.NanoHTTPD
 import org.json.JSONArray
 import org.json.JSONObject
@@ -340,11 +341,6 @@ internal class NativeApiServer(
         return json(JSONObject().put("items", items))
     }
 
-    /**
-     * Reads real filesystem capacity for Android's external-storage document provider.
-     * Other SAF providers and Android versions without a public volume directory API
-     * intentionally return no capacity rather than estimating it from directory contents.
-     */
     private fun listExternal(volume: String?, relative: String): Response {
         val root = externalStorage.root(volume) ?: return notFound("Storage permission not granted")
         val directory = externalStorage.resolveDocument(root, relative) ?: return notFound("Folder not found")
