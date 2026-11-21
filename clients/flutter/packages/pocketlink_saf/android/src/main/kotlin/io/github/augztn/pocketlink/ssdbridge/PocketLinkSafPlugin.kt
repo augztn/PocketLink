@@ -238,6 +238,24 @@ class PocketLinkSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
                     result.error("START_FAILED", BridgeService.lastError, null)
                 }
             }
+            "getAutoStartOnBoot" -> result.success(
+                prefs.getBoolean(KEY_AUTO_START_ON_BOOT, false)
+            )
+            "setAutoStartOnBoot" -> {
+                val enabled = call.argument<Boolean>("enabled") ?: false
+                val saved = prefs.edit()
+                    .putBoolean(KEY_AUTO_START_ON_BOOT, enabled)
+                    .commit()
+                if (saved) {
+                    result.success(enabled)
+                } else {
+                    result.error(
+                        "AUTO_START_SAVE_FAILED",
+                        "Could not save the automatic startup preference.",
+                        null
+                    )
+                }
+            }
             "stop" -> {
                 context.stopService(Intent(context, BridgeService::class.java))
                 result.success(true)
@@ -398,5 +416,8 @@ class PocketLinkSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
         mediaChannel.setMethodCallHandler(null)
     }
 
-    companion object { private const val REQUEST_TREE = 8764 }
+    companion object {
+        private const val REQUEST_TREE = 8764
+        const val KEY_AUTO_START_ON_BOOT = "auto_start_on_boot"
+    }
 }
