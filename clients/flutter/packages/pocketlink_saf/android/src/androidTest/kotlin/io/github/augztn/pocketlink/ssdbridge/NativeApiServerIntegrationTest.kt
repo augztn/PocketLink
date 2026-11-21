@@ -12,6 +12,10 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.net.InetSocketAddress
 import java.net.Socket
+import java.io.File
+import java.util.UUID
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
 import android.util.Base64
 
 @RunWith(AndroidJUnit4::class)
@@ -79,19 +83,157 @@ class NativeApiServerIntegrationTest {
         }
     }
 
-    private fun request(port: Int, path: String, authorization: String? = null): Pair<Int, String> {
+    @Test
+    fun concurrentUploadsAndRenamesNeverReplaceAnExistingDestination() {
+        val appContext = ApplicationProvider.getApplicationContext<Context>()
+        val context = object : ContextWrapper(appContext) {
+            override fun getSharedPreferences(name: String, mode: Int): SharedPreferences =
+                appContext.getSharedPreferences("mutation-test-$name", mode)
+        }
+        val root = File(context.cacheDir, "mutation-test-${UUID.randomUUID()}").apply {
+            check(mkdirs())
+        }
+        val credentials = ServerCredentials(context)
+        val password = "mutation-test-password"
+        credentials.setPassword(password)
+        val authorization = "Basic " + Base64.encodeToString(
+            "admin:$password".toByteArray(), Base64.NO_WRAP
+        )
+        val server = NativeApiServer(context, credentials, 0, "0.0.0.0", root)
+        val executor = Executors.newFixedThreadPool(12)
+
+        server.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false)
+        try {
+            val port = server.listeningPort
+            val protectedUpload = File(root, "protected.txt").apply { writeText("original-upload") }
+            val rejectedUpload = request(
+                port,
+                "/api/files/upload?path=",
+                authorization,
+                method = "POST",
+                body = multipartBody("protected.txt", "replacement".toByteArray()),
+                contentType = "multipart/form-data; boundary=pocketlink-test-boundary"
+            )
+            assertEquals(409, rejectedUpload.first)
+            assertEquals("original-upload", protectedUpload.readText())
+
+            val payloads = (0 until 12).map { "upload-payload-$it".toByteArray() }
+            val uploadGate = CountDownLatch(1)
+            val uploadResponses = payloads.map { payload ->
+                executor.submit<Pair<Int, String>> {
+                    uploadGate.await()
+                    request(
+                        port,
+                        "/api/files/upload?path=",
+                        authorization,
+                        method = "POST",
+                        body = multipartBody("shared.txt", payload),
+                        contentType = "multipart/form-data; boundary=pocketlink-test-boundary"
+                    )
+                }
+            }
+            uploadGate.countDown()
+            val completedUploads = uploadResponses.map { it.get() }
+
+            assertEquals(1, completedUploads.count { it.first == 200 })
+            assertEquals(11, completedUploads.count { it.first == 409 })
+            assertTrue(
+                "The committed upload must match exactly one complete request body",
+                payloads.any { it.contentEquals(File(root, "shared.txt").readBytes()) }
+            )
+
+            val occupied = File(root, "occupied.txt").apply { writeText("original-rename-target") }
+            val blockedSource = File(root, "blocked-source.txt").apply { writeText("source-content") }
+            val rejectedRename = request(
+                port,
+                "/api/files/rename",
+                authorization,
+                method = "PATCH",
+                body = """{"path":"blocked-source.txt","new_name":"occupied.txt"}""".toByteArray(),
+                contentType = "application/json"
+            )
+            assertEquals(409, rejectedRename.first)
+            assertEquals("original-rename-target", occupied.readText())
+            assertEquals("source-content", blockedSource.readText())
+
+            val sourceContents = (0 until 12).associate { index ->
+                "source-$index.txt" to "rename-source-$index".toByteArray()
+            }
+            sourceContents.forEach { (name, bytes) -> File(root, name).writeBytes(bytes) }
+            val renameGate = CountDownLatch(1)
+            val renameResponses = sourceContents.keys.map { source ->
+                executor.submit<Pair<Int, String>> {
+                    renameGate.await()
+                    request(
+                        port,
+                        "/api/files/rename",
+                        authorization,
+                        method = "PATCH",
+                        body = """{"path":"$source","new_name":"renamed.txt"}""".toByteArray(),
+                        contentType = "application/json"
+                    )
+                }
+            }
+            renameGate.countDown()
+            val completedRenames = renameResponses.map { it.get() }
+
+            assertEquals(1, completedRenames.count { it.first == 200 })
+            assertEquals(11, completedRenames.count { it.first == 409 })
+            assertTrue(
+                "The committed rename must preserve one complete source file",
+                sourceContents.values.any { it.contentEquals(File(root, "renamed.txt").readBytes()) }
+            )
+            assertEquals(
+                "All losing rename sources must remain untouched",
+                11,
+                sourceContents.keys.count { File(root, it).exists() }
+            )
+        } finally {
+            executor.shutdownNow()
+            server.stop()
+            root.deleteRecursively()
+            context.getSharedPreferences("mutation-test-ssd-bridge", Context.MODE_PRIVATE)
+                .edit().clear().commit()
+            context.getSharedPreferences("mutation-test-pocketlink-auth", Context.MODE_PRIVATE)
+                .edit().clear().commit()
+        }
+    }
+
+    private fun multipartBody(name: String, content: ByteArray): ByteArray {
+        val prefix = (
+            "--pocketlink-test-boundary\r\n" +
+                "Content-Disposition: form-data; name=\"file\"; filename=\"$name\"\r\n" +
+                "Content-Type: application/octet-stream\r\n\r\n"
+            ).toByteArray(Charsets.UTF_8)
+        val suffix = "\r\n--pocketlink-test-boundary--\r\n".toByteArray(Charsets.UTF_8)
+        return prefix + content + suffix
+    }
+
+    private fun request(
+        port: Int,
+        path: String,
+        authorization: String? = null,
+        method: String = "GET",
+        body: ByteArray = byteArrayOf(),
+        contentType: String? = null
+    ): Pair<Int, String> {
         return Socket().use { socket ->
             socket.connect(InetSocketAddress("127.0.0.1", port), 5_000)
             socket.soTimeout = 15_000
             val headers = buildString {
-                append("GET $path HTTP/1.1\r\n")
+                append("$method $path HTTP/1.1\r\n")
                 append("Host: 127.0.0.1:$port\r\n")
                 append("Connection: close\r\n")
                 if (authorization != null) append("Authorization: $authorization\r\n")
+                if (contentType != null) append("Content-Type: $contentType\r\n")
+                if (body.isNotEmpty()) append("Content-Length: ${body.size}\r\n")
                 append("\r\n")
             }
-            socket.getOutputStream().write(headers.toByteArray(Charsets.US_ASCII))
-            socket.getOutputStream().flush()
+            socket.getOutputStream().apply {
+                write(headers.toByteArray(Charsets.US_ASCII))
+                if (body.isNotEmpty()) write(body)
+                flush()
+            }
 
             val input = socket.getInputStream().buffered()
             fun readHttpLine(): String {
@@ -115,14 +257,14 @@ class NativeApiServerIntegrationTest {
                     contentLength = header.substringAfter(":").trim().toIntOrNull() ?: 0
                 }
             }
-            val body = ByteArray(contentLength)
+            val responseBody = ByteArray(contentLength)
             var offset = 0
-            while (offset < body.size) {
-                val count = input.read(body, offset, body.size - offset)
+            while (offset < responseBody.size) {
+                val count = input.read(responseBody, offset, responseBody.size - offset)
                 if (count < 0) error("Native server closed before sending the full response body")
                 offset += count
             }
-            status to body.toString(Charsets.UTF_8)
+            status to responseBody.toString(Charsets.UTF_8)
         }
     }
 }
