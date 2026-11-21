@@ -276,14 +276,14 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       }
       return;
     } finally {
-      if (!authenticated) connectingApi?.close(force: true);
+      if (!authenticated) connectingApi.close(force: true);
     }
 
     if (!mounted) {
-      connectingApi?.close(force: true);
+      connectingApi.close(force: true);
       return;
     }
-    final api = connectingApi!;
+    final api = connectingApi;
     final id = _profileId(address, username);
     final profile = {
       'id': id,
