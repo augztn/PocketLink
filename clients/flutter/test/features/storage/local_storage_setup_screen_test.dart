@@ -25,6 +25,8 @@ void main() {
           };
         case 'token':
           return 'test-token';
+        case 'getAutoStartOnBoot':
+          return false;
         case 'mediaIndexStatus':
           return jsonEncode({'state': 'idle'});
         default:
@@ -36,6 +38,58 @@ void main() {
   tearDown(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, null);
+  });
+
+  testWidgets('auto-start preference can be enabled and saved', (tester) async {
+    var savedValue = false;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+      switch (call.method) {
+        case 'status':
+          return <String, Object?>{
+            'running': true,
+            'apiRunning': true,
+            'bridgeRunning': true,
+            'internalStorageGranted': true,
+            'backgroundAccessGranted': true,
+            'serverPasswordConfigured': false,
+            'discoveredVolumes': <Object?>[],
+          };
+        case 'token':
+          return 'test-token';
+        case 'mediaIndexStatus':
+          return jsonEncode({'state': 'idle'});
+        case 'getAutoStartOnBoot':
+          return savedValue;
+        case 'setAutoStartOnBoot':
+          savedValue = call.arguments['enabled'] as bool;
+          return savedValue;
+        default:
+          return null;
+      }
+    });
+
+    await tester.pumpWidget(
+      const MaterialApp(home: LocalStorageSetupScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Start server on device boot'), findsOneWidget);
+    final toggle = tester.widget<SwitchListTile>(
+      find.widgetWithText(SwitchListTile, 'Start server on device boot'),
+    );
+    expect(toggle.value, isFalse);
+
+    await tester.tap(find.text('Start server on device boot'));
+    await tester.pumpAndSettle();
+
+    expect(savedValue, isTrue);
+    expect(
+      tester.widget<SwitchListTile>(
+        find.widgetWithText(SwitchListTile, 'Start server on device boot'),
+      ).value,
+      isTrue,
+    );
   });
 
   testWidgets('shows detected removable storage and its access method', (tester) async {
