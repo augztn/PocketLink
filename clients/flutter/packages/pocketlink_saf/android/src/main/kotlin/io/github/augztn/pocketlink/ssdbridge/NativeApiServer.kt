@@ -49,6 +49,21 @@ internal class NativeApiServer(
     private val internalStorage by lazy(LazyThreadSafetyMode.NONE) {
         InternalStorageAccess(internalRoot, ::validName)
     }
+    private val internalOperations by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        InternalStorageOperations(
+            root = { internalRoot },
+            resolve = ::internalFile,
+            isValidName = ::validName,
+            parseMultipart = ::multipartFile,
+            parseJsonBody = ::jsonBody,
+            fileJson = ::fileJson,
+            fileResponse = ::fileResponse,
+            json = { value -> json(value) },
+            error = { status, message -> jsonError(status, message) },
+            markMediaIndexDirty = ::markMediaIndexDirty,
+            mutationLock = FILE_MUTATION_LOCK
+        )
+    }
     private val mediaIndexDelegate = lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
         MediaIndexScanner(
             context,
@@ -183,22 +198,10 @@ internal class NativeApiServer(
         return credentials.verify(decoded.substring(separator + 1).toCharArray())
     }
 
-    private fun listInternal(relative: String): Response {
-        val directory = internalFile(relative) ?: return notFound("Folder not found")
-        if (!directory.isDirectory) return bad("Not a directory")
-        val items = JSONArray()
-        (directory.listFiles() ?: emptyArray()).asSequence()
-            .filter { !it.name.startsWith(".") }
-            .sortedWith(compareBy<File>({ !it.isDirectory }, { it.name.lowercase(Locale.ROOT) }))
-            .forEach { items.put(fileJson(it)) }
-        return json(JSONObject().put("path", relative).put("items", items))
-    }
+    private fun listInternal(relative: String): Response = internalOperations.list(relative)
 
-    private fun serveInternalFile(relative: String, session: IHTTPSession, inline: Boolean): Response {
-        val file = internalFile(relative) ?: return notFound("File not found")
-        if (!file.isFile || !file.canRead()) return notFound("File not found")
-        return fileResponse(file, session, inline)
-    }
+    private fun serveInternalFile(relative: String, session: IHTTPSession, inline: Boolean): Response =
+        internalOperations.serveFile(relative, session, inline)
 
     private fun fileResponse(file: File, session: IHTTPSession, inline: Boolean): Response {
         val length = file.length()
@@ -231,78 +234,13 @@ internal class NativeApiServer(
         return response
     }
 
-    private fun uploadInternal(relative: String, session: IHTTPSession): Response {
-        val parent = internalFile(relative) ?: return notFound("Destination folder not found")
-        if (!parent.isDirectory || !parent.canWrite()) return bad("Destination is not writable")
-        val (name, temp) = multipartFile(session) ?: return bad("Multipart field 'file' is required")
-        if (!validName(name)) { temp.delete(); return bad("Invalid filename") }
-        val target = File(parent, name)
-        val staging = File(parent, ".pocketlink-upload-${UUID.randomUUID()}.part")
-        return try {
-            if (!temp.renameTo(staging)) temp.copyTo(staging, overwrite = false).also { temp.delete() }
-            synchronized(FILE_MUTATION_LOCK) {
-                when {
-                    target.exists() ->
-                        jsonError(Response.Status.CONFLICT, "An item with this name already exists")
-                    !staging.renameTo(target) ->
-                        if (target.exists()) {
-                            jsonError(Response.Status.CONFLICT, "An item with this name already exists")
-                        } else {
-                            jsonError(Response.Status.INTERNAL_ERROR, "Could not finalize uploaded file")
-                        }
-                    else -> json(JSONObject().put("ok", true).put("name", name))
-                        .also { markMediaIndexDirty() }
-                }
-            }
-        } finally {
-            temp.delete()
-            if (staging.exists()) staging.delete()
-        }
-    }
+    private fun uploadInternal(relative: String, session: IHTTPSession): Response =
+        internalOperations.upload(relative, session)
 
-    private fun mutateInternal(session: IHTTPSession, operation: String): Response {
-        val body = jsonBody(session) ?: return bad("Invalid JSON body")
-        val relative = body.optString("path")
-        val name = if (operation == "mkdir") body.optString("name") else body.optString("new_name")
-        if (!validName(name)) return bad("Invalid name")
+    private fun mutateInternal(session: IHTTPSession, operation: String): Response =
+        internalOperations.mutate(session, operation)
 
-        return synchronized(FILE_MUTATION_LOCK) {
-            if (operation == "mkdir") {
-                val parent = internalFile(relative) ?: return@synchronized notFound("Folder not found")
-                if (!parent.isDirectory) return@synchronized bad("Not a directory")
-                val target = File(parent, name)
-                if (target.exists()) return@synchronized jsonError(Response.Status.CONFLICT, "Name already exists")
-                return@synchronized if (target.mkdir()) {
-                    markMediaIndexDirty()
-                    json(JSONObject().put("ok", true).put("name", name))
-                } else jsonError(Response.Status.INTERNAL_ERROR, "Could not create folder")
-            }
-
-            val oldFile = internalFile(relative) ?: return@synchronized notFound("Item not found")
-            if (oldFile == internalRoot) return@synchronized bad("Cannot rename storage root")
-            val parent = oldFile.parentFile ?: return@synchronized bad("Invalid parent folder")
-            val target = File(parent, name)
-            if (target.exists()) return@synchronized jsonError(Response.Status.CONFLICT, "Name already exists")
-            if (oldFile.renameTo(target)) {
-                markMediaIndexDirty()
-                json(JSONObject().put("ok", true).put("name", name))
-            } else if (target.exists()) {
-                jsonError(Response.Status.CONFLICT, "Name already exists")
-            } else {
-                jsonError(Response.Status.INTERNAL_ERROR, "Rename failed")
-            }
-        }
-    }
-
-    private fun deleteInternal(relative: String): Response {
-        val file = internalFile(relative) ?: return notFound("Item not found")
-        if (file == internalRoot) return bad("Cannot delete storage root")
-        if (file.isDirectory && (file.list()?.isNotEmpty() == true)) return bad("Folder is not empty")
-        return if (file.delete()) {
-            markMediaIndexDirty()
-            json(JSONObject().put("ok", true))
-        } else jsonError(Response.Status.INTERNAL_ERROR, "Delete failed")
-    }
+    private fun deleteInternal(relative: String): Response = internalOperations.delete(relative)
 
     private fun listVolumes(): Response {
         val items = JSONArray()
