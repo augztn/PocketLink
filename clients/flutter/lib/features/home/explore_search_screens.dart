@@ -7,6 +7,7 @@ import '../files/file_manager_screen.dart';
 import '../files/documents_browser_screen.dart';
 import '../library/photo_gallery_screen.dart';
 import '../media/media_browser_screen.dart';
+import '../media/media_library_catalog.dart';
 import '../search/search_screen.dart';
 import '../downloads/download_manager_service.dart';
 import '../downloads/downloads_screen.dart';
