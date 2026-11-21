@@ -552,6 +552,7 @@ internal class MediaIndexScanner(
                         .put("volume", id).put("state", "scanning").put("started_at", startedAt)
                     try {
                         scanSource(id, root)
+                        if (closeRequested.get()) return@execute
                         volumeReports[id] = org.json.JSONObject()
                             .put("volume", id)
                             .put("state", when {
@@ -570,6 +571,7 @@ internal class MediaIndexScanner(
                                 }
                             }
                     } catch (error: Exception) {
+                        if (closeRequested.get()) return@execute
                         volumeReports[id] = org.json.JSONObject()
                             .put("volume", id)
                             .put("state", if (id in disconnectedVolumes) "unavailable" else "failed")
@@ -599,12 +601,14 @@ internal class MediaIndexScanner(
                 }
                 persistScanReport()
             } catch (error: Exception) {
-                state = "failed"
-                lastError = error.message ?: "Index scan failed"
-                lastCompletedAt = System.currentTimeMillis()
-                lastAttemptFinishedAt = lastCompletedAt
-                reportPrefs.edit().putLong("last_attempt_finished_at", lastAttemptFinishedAt).apply()
-                persistScanReport()
+                if (!closeRequested.get()) {
+                    state = "failed"
+                    lastError = error.message ?: "Index scan failed"
+                    lastCompletedAt = System.currentTimeMillis()
+                    lastAttemptFinishedAt = lastCompletedAt
+                    reportPrefs.edit().putLong("last_attempt_finished_at", lastAttemptFinishedAt).apply()
+                    persistScanReport()
+                }
                 currentSource = null
                 currentPath = null
             } finally {
@@ -623,7 +627,14 @@ internal class MediaIndexScanner(
         }
     }
 
+    private fun ensureScanActive() {
+        if (closeRequested.get() || Thread.currentThread().isInterrupted) {
+            throw InterruptedException("Media index scan cancelled during host shutdown")
+        }
+    }
+
     private fun scanSource(volume: String, root: Any) {
+        ensureScanActive()
         val scanId = UUID.randomUUID().toString()
         val fileSnapshot = database.fileSnapshot(volume)
         val mediaSnapshot = database.mediaSnapshot(volume)
@@ -710,6 +721,7 @@ internal class MediaIndexScanner(
                 val stack = ArrayDeque<Pair<File, Int>>()
                 stack.add(base to 0)
                 while (stack.isNotEmpty()) {
+                    ensureScanActive()
                     val (directory, depth) = stack.removeLast()
                     currentPath = runCatching {
                         if (directory == base) "" else directory.canonicalFile.relativeTo(base).invariantSeparatorsPath
@@ -750,6 +762,7 @@ internal class MediaIndexScanner(
                 val stack = ArrayDeque<Pair<Pair<DocumentFile, String>, Int>>()
                 stack.add((root to "") to 0)
                 while (stack.isNotEmpty()) {
+                    ensureScanActive()
                     val (entry, depth) = stack.removeLast()
                     val (directory, parentPath) = entry
                     currentPath = parentPath
@@ -788,7 +801,9 @@ internal class MediaIndexScanner(
                 }
             }
         }
+        ensureScanActive()
         flush()
+        ensureScanActive()
         if (volume in disconnectedVolumes) {
             complete = false
             skipped++
