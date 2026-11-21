@@ -158,7 +158,7 @@ internal class NativeFileResponseOperations(
         return BufferedInputStream(input, STREAM_BUFFER_SIZE)
     }
 
-    private fun mimeFor(name: String): String =
+    fun mimeFor(name: String): String =
         when (name.substringAfterLast('.', "").lowercase(java.util.Locale.ROOT)) {
             "jpg", "jpeg" -> "image/jpeg"; "png" -> "image/png"; "gif" -> "image/gif"; "webp" -> "image/webp"
             "mp3" -> "audio/mpeg"; "m4a" -> "audio/mp4"; "mp4" -> "video/mp4"; "aac" -> "audio/aac"
