@@ -84,6 +84,35 @@ class NativeApiServerIntegrationTest {
     }
 
     @Test
+    fun externalStorageAccessResolvesSafeDocumentPaths() {
+        val appContext = ApplicationProvider.getApplicationContext<Context>()
+        val root = File(appContext.cacheDir, "external-access-test-${UUID.randomUUID()}").apply {
+            check(mkdirs())
+        }
+        val nested = File(root, "nested").apply { check(mkdir()) }
+        File(nested, "inside.txt").writeText("safe")
+        val preferences = appContext.getSharedPreferences(
+            "external-access-test-${UUID.randomUUID()}", Context.MODE_PRIVATE
+        )
+        val access = ExternalStorageAccess(appContext, preferences) { name ->
+            name.isNotBlank() && name != "." && name != ".." &&
+                !name.startsWith(".") && !name.contains('/') && !name.contains('\\') &&
+                !name.any { it.code < 32 }
+        }
+
+        try {
+            val documentRoot = androidx.documentfile.provider.DocumentFile.fromFile(root)
+            assertTrue(access.resolveDocument(documentRoot, "nested/inside.txt")?.isFile == true)
+            assertTrue(access.resolveDocument(documentRoot, "../outside.txt") == null)
+            assertTrue(access.resolveDocument(documentRoot, "nested/../inside.txt") == null)
+            assertTrue(access.resolveDocument(documentRoot, ".hidden") == null)
+        } finally {
+            root.deleteRecursively()
+            preferences.edit().clear().commit()
+        }
+    }
+
+    @Test
     fun mediaIndexSettingsRoutesPreserveValidationAndConfigurationContract() {
         val appContext = ApplicationProvider.getApplicationContext<Context>()
         val context = object : ContextWrapper(appContext) {

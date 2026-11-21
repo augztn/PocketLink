@@ -8,8 +8,6 @@ import java.io.ByteArrayInputStream
 import android.os.Environment
 import android.os.Build
 import android.os.StatFs
-import android.os.storage.StorageManager
-import android.provider.DocumentsContract
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
 import fi.iki.elonen.NanoHTTPD
@@ -40,6 +38,7 @@ internal class NativeApiServer(
     internalRootOverride: File? = null
 ) : NanoHTTPD(bindHost, listenPort) {
     private val prefs = context.getSharedPreferences("ssd-bridge", Context.MODE_PRIVATE)
+    private val externalStorage = ExternalStorageAccess(context, prefs, ::validName)
     private val systemTelemetry by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
         SystemTelemetryReader(context)
     }
@@ -58,7 +57,7 @@ internal class NativeApiServer(
                 }
                 if (prefs.getString("usb1", null) != null) ids.add("usb1")
                 if (prefs.getString("usb2", null) != null) ids.add("usb2")
-                ids.mapNotNull { id -> externalRoot(id)?.let { root -> id to root } }
+                ids.mapNotNull { id -> externalStorage.root(id)?.let { root -> id to root } }
             }
         )
     }
@@ -310,9 +309,9 @@ internal class NativeApiServer(
         }
         if (prefs.getString("usb1", null) != null) ids.add("usb1")
         if (prefs.getString("usb2", null) != null) ids.add("usb2")
-        discoveredRemovableVolumes().forEach { (id, _) -> ids.add(id) }
+        externalStorage.discoveredRemovableVolumes().forEach { (id, _) -> ids.add(id) }
         ids.forEach { id ->
-            val root = externalRoot(id)
+            val root = externalStorage.root(id)
             val available = root?.exists() == true
             val legacyName = when (id) { "usb1" -> "USB Storage 1"; "usb2" -> "USB Storage 2"; else -> id }
             val item = JSONObject()
@@ -328,7 +327,7 @@ internal class NativeApiServer(
                         externalVolumeCapacity(stats.totalBytes, stats.availableBytes)
                     } catch (_: Exception) { null }
                 } else {
-                    readExternalVolumeCapacity(root.uri)
+                    externalStorage.readVolumeCapacity(root.uri)
                 }
                 capacity?.let {
                     item.put("total_bytes", it.totalBytes)
@@ -342,42 +341,9 @@ internal class NativeApiServer(
         return json(JSONObject().put("items", items))
     }
 
-    /**
-     * Reads real filesystem capacity for Android's external-storage document provider.
-     * Other SAF providers and Android versions without a public volume directory API
-     * intentionally return no capacity rather than estimating it from directory contents.
-     */
-    private fun readExternalVolumeCapacity(treeUri: Uri): ExternalVolumeCapacity? {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return null
-        if (treeUri.authority != "com.android.externalstorage.documents") return null
-
-        return try {
-            val documentId = DocumentsContract.getTreeDocumentId(treeUri)
-            val volumeId = externalStorageVolumeId(documentId) ?: return null
-            val storageManager = context.getSystemService(Context.STORAGE_SERVICE) as? StorageManager
-                ?: return null
-            val storageVolume = storageManager.storageVolumes.firstOrNull { volume ->
-                volume.isRemovable &&
-                    volume.uuid?.equals(volumeId, ignoreCase = true) == true &&
-                    volume.state in setOf(
-                        Environment.MEDIA_MOUNTED,
-                        Environment.MEDIA_MOUNTED_READ_ONLY
-                    )
-            } ?: return null
-            val directory = storageVolume.directory ?: return null
-            if (!directory.isDirectory) return null
-
-            val stats = StatFs(directory.absolutePath)
-            externalVolumeCapacity(stats.totalBytes, stats.availableBytes)
-        } catch (_: Exception) {
-            // Capacity is optional; a provider/stat failure must not break volume discovery.
-            null
-        }
-    }
-
     private fun listExternal(volume: String?, relative: String): Response {
-        val root = externalRoot(volume) ?: return notFound("Storage permission not granted")
-        val directory = resolveDocument(root, relative) ?: return notFound("Folder not found")
+        val root = externalStorage.root(volume) ?: return notFound("Storage permission not granted")
+        val directory = externalStorage.resolveDocument(root, relative) ?: return notFound("Folder not found")
         if (!directory.isDirectory) return bad("Not a directory")
         val items = JSONArray()
         directory.listFiles().filter { !it.name.orEmpty().startsWith(".") }
@@ -391,8 +357,8 @@ internal class NativeApiServer(
     }
 
     private fun serveExternalFile(volume: String?, relative: String, session: IHTTPSession): Response {
-        val root = externalRoot(volume) ?: return notFound("Storage permission not granted")
-        val item = resolveDocument(root, relative) ?: return notFound("File not found")
+        val root = externalStorage.root(volume) ?: return notFound("Storage permission not granted")
+        val item = externalStorage.resolveDocument(root, relative) ?: return notFound("File not found")
         if (!item.isFile) return bad("Not a file")
         val length = item.length()
         val mime = item.type?.takeIf { it.isNotBlank() } ?: mimeFor(item.name.orEmpty())
@@ -473,8 +439,8 @@ internal class NativeApiServer(
     }
 
     private fun uploadExternal(volume: String?, relative: String, session: IHTTPSession): Response {
-        val root = externalRoot(volume) ?: return notFound("Storage permission not granted")
-        val parent = resolveDocument(root, relative) ?: return notFound("Destination folder not found")
+        val root = externalStorage.root(volume) ?: return notFound("Storage permission not granted")
+        val parent = externalStorage.resolveDocument(root, relative) ?: return notFound("Destination folder not found")
         if (!parent.isDirectory) return bad("Destination is not a folder")
         val (name, temp) = multipartFile(session) ?: return bad("Multipart field 'file' is required")
         if (!validName(name)) { temp.delete(); return bad("Invalid filename") }
@@ -506,14 +472,14 @@ internal class NativeApiServer(
 
     private fun mutateExternal(session: IHTTPSession, operation: String): Response {
         val body = jsonBody(session) ?: return bad("Invalid JSON body")
-        val root = externalRoot(body.optString("volume")) ?: return notFound("Storage permission not granted")
+        val root = externalStorage.root(body.optString("volume")) ?: return notFound("Storage permission not granted")
         val relative = body.optString("path")
         val name = if (operation == "mkdir") body.optString("name") else body.optString("new_name")
         if (!validName(name)) return bad("Invalid name")
         return synchronized(FILE_MUTATION_LOCK) {
             val target: DocumentFile
             if (operation == "mkdir") {
-                val parent = resolveDocument(root, relative)
+                val parent = externalStorage.resolveDocument(root, relative)
                     ?: return@synchronized notFound("Folder not found")
                 if (parent.findFile(name) != null) {
                     return@synchronized jsonError(Response.Status.CONFLICT, "Name already exists")
@@ -521,7 +487,7 @@ internal class NativeApiServer(
                 target = parent.createDirectory(name)
                     ?: return@synchronized jsonError(Response.Status.INTERNAL_ERROR, "Could not create folder")
             } else {
-                target = resolveDocument(root, relative)
+                target = externalStorage.resolveDocument(root, relative)
                     ?: return@synchronized notFound("Item not found")
                 if (target.parentFile?.findFile(name) != null) {
                     return@synchronized jsonError(Response.Status.CONFLICT, "Name already exists")
@@ -540,9 +506,9 @@ internal class NativeApiServer(
     }
 
     private fun deleteExternal(volume: String?, relative: String): Response {
-        val root = externalRoot(volume) ?: return notFound("Storage permission not granted")
+        val root = externalStorage.root(volume) ?: return notFound("Storage permission not granted")
         if (relative.isBlank()) return bad("Cannot delete storage root")
-        val item = resolveDocument(root, relative) ?: return notFound("Item not found")
+        val item = externalStorage.resolveDocument(root, relative) ?: return notFound("Item not found")
         return if (item.delete()) {
             markMediaIndexDirty()
             json(JSONObject().put("ok", true))
@@ -564,8 +530,8 @@ internal class NativeApiServer(
                 if (!file.isFile || !file.canRead() || !supported) return bad("Not a readable media file")
                 retriever.setDataSource(file.absolutePath)
             } else {
-                val root = externalRoot(volume) ?: return notFound("Storage permission not granted")
-                val document = resolveDocument(root, relative) ?: return notFound("Media not found")
+                val root = externalStorage.root(volume) ?: return notFound("Storage permission not granted")
+                val document = externalStorage.resolveDocument(root, relative) ?: return notFound("Media not found")
                 val name = document.name.orEmpty()
                 val supported = isVideoFile(name) || (allowAudio && isAudioFile(name))
                 if (!document.isFile || !supported) return bad("Unsupported media file")
@@ -640,61 +606,6 @@ internal class NativeApiServer(
         val target = File(internalRoot, relative).canonicalFile
         val prefix = internalRoot.path + File.separator
         return if (target.path == internalRoot.path || target.path.startsWith(prefix)) target else null
-    }
-
-    private fun externalRoot(volume: String?): DocumentFile? {
-        val id = volume?.takeIf {
-            it == "usb1" || it == "usb2" ||
-                Regex("usb-(?:[a-f0-9]{16}|manual-[a-f0-9]{16})").matches(it)
-        } ?: return null
-        val raw = prefs.getString("volume_uri_$id", null)
-            ?: prefs.getString(id, null)
-        if (raw != null) {
-            DocumentFile.fromTreeUri(context, Uri.parse(raw))
-                ?.takeIf { it.exists() && it.canRead() }
-                ?.let { return it }
-        }
-
-        // StorageManager exposes mounted removable-volume paths to the Android
-        // app process. Termux cannot inherit this app's all-files permission, so
-        // all direct SD-card I/O stays inside this native server.
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R ||
-            !Environment.isExternalStorageManager()
-        ) return null
-        val volumeInfo = discoveredRemovableVolumes().firstOrNull { it.first == id } ?: return null
-        val directory = volumeInfo.second.directory ?: return null
-        if (!directory.isDirectory || !directory.canRead()) return null
-        return DocumentFile.fromFile(directory)
-    }
-
-    private fun discoveredRemovableVolumes(): List<Pair<String, android.os.storage.StorageVolume>> {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return emptyList()
-        val manager = context.getSystemService(Context.STORAGE_SERVICE) as? StorageManager
-            ?: return emptyList()
-        return manager.storageVolumes.mapNotNull { volume ->
-            if (!volume.isRemovable || volume.state !in setOf(
-                    Environment.MEDIA_MOUNTED,
-                    Environment.MEDIA_MOUNTED_READ_ONLY
-                )
-            ) return@mapNotNull null
-            val directory = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) volume.directory else null
-            val identity = externalVolumeIdentity(
-                volume.uuid,
-                directory?.absolutePath,
-                volume.getDescription(context).toString()
-            )
-            externalVolumeKey(identity) to volume
-        }
-    }
-
-    private fun resolveDocument(root: DocumentFile, relative: String): DocumentFile? {
-        var current = root
-        if (relative.isBlank()) return current
-        for (part in relative.split('/')) {
-            if (!validName(part)) return null
-            current = current.findFile(part) ?: return null
-        }
-        return current
     }
 
     private fun multipartFile(session: IHTTPSession): Pair<String, File>? {
