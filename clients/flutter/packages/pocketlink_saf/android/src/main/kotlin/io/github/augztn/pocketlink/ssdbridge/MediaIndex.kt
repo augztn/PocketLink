@@ -969,10 +969,11 @@ internal class MediaIndexScanner(
     /** Stop accepting scans and close SQLite only after the worker has exited. */
     fun close() {
         synchronized(this) {
-            if (!closeRequested.compareAndSet(false, true)) return
-            dirty.set(false)
-            queuedTrigger = null
-            executor.shutdownNow()
+            if (closeRequested.compareAndSet(false, true)) {
+                dirty.set(false)
+                queuedTrigger = null
+                executor.shutdownNow()
+            }
         }
         try {
             executor.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS)
