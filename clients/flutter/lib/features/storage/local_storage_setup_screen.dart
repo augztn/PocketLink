@@ -15,6 +15,7 @@ import 'widgets/host_storage_service_card.dart';
 import 'widgets/host_setup_section_title.dart';
 import 'widgets/host_device_permissions_card.dart';
 import 'widgets/host_status_card.dart';
+import 'widgets/host_quick_actions_card.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
 import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
@@ -465,56 +466,13 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
         onRefresh: _refreshDeviceStatus,
       ),
       const SizedBox(height: 14),
-      Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: colors.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.35)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Quick actions',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Jump directly to the controls you need.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colors.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: () => setState(() => _selectedSectionIndex = 1),
-                  icon: const Icon(Icons.storage_outlined, size: 18),
-                  label: const Text('Manage storage'),
-                ),
-                OutlinedButton.icon(
-                  onPressed: () => setState(() => _selectedSectionIndex = 2),
-                  icon: const Icon(Icons.lock_outline_rounded, size: 18),
-                  label: const Text('Security settings'),
-                ),
-                OutlinedButton.icon(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const DiagnosticsScreen(),
-                    ),
-                  ),
-                  icon: const Icon(Icons.article_outlined, size: 18),
-                  label: const Text('Diagnostics'),
-                ),
-              ],
-            ),
-          ],
+      HostQuickActionsCard(
+        onManageStorage: () => setState(() => _selectedSectionIndex = 1),
+        onSecuritySettings: () => setState(() => _selectedSectionIndex = 2),
+        onDiagnostics: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => const DiagnosticsScreen(),
+          ),
         ),
       ),
     ];
