@@ -36,15 +36,18 @@ internal class NativeApiServer(
     private val context: Context,
     private val credentials: ServerCredentials,
     listenPort: Int = PORT,
-    bindHost: String = "0.0.0.0"
+    bindHost: String = "0.0.0.0",
+    internalRootOverride: File? = null
 ) : NanoHTTPD(bindHost, listenPort) {
     private val prefs = context.getSharedPreferences("ssd-bridge", Context.MODE_PRIVATE)
+    // Serialize destination checks and commits across concurrent HTTP mutations.
+    private val fileMutationLock = Any()
     private val systemTelemetry by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
         SystemTelemetryReader(context)
     }
     // Keep server startup and health checks independent of external-storage availability.
     private val internalRoot by lazy(LazyThreadSafetyMode.NONE) {
-        Environment.getExternalStorageDirectory().canonicalFile
+        (internalRootOverride ?: Environment.getExternalStorageDirectory()).canonicalFile
     }
     private val mediaIndexDelegate = lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
         MediaIndexScanner(
@@ -297,14 +300,23 @@ internal class NativeApiServer(
         val (name, temp) = multipartFile(session) ?: return bad("Multipart field 'file' is required")
         if (!validName(name)) { temp.delete(); return bad("Invalid filename") }
         val target = File(parent, name)
-        if (target.exists()) { temp.delete(); return jsonError(Response.Status.CONFLICT, "An item with this name already exists") }
         val staging = File(parent, ".pocketlink-upload-${UUID.randomUUID()}.part")
         return try {
             if (!temp.renameTo(staging)) temp.copyTo(staging, overwrite = false).also { temp.delete() }
-            if (!staging.renameTo(target)) {
-                staging.delete()
-                jsonError(Response.Status.INTERNAL_ERROR, "Could not finalize uploaded file")
-            } else json(JSONObject().put("ok", true).put("name", name)).also { markMediaIndexDirty() }
+            synchronized(fileMutationLock) {
+                when {
+                    target.exists() ->
+                        jsonError(Response.Status.CONFLICT, "An item with this name already exists")
+                    !staging.renameTo(target) ->
+                        if (target.exists()) {
+                            jsonError(Response.Status.CONFLICT, "An item with this name already exists")
+                        } else {
+                            jsonError(Response.Status.INTERNAL_ERROR, "Could not finalize uploaded file")
+                        }
+                    else -> json(JSONObject().put("ok", true).put("name", name))
+                        .also { markMediaIndexDirty() }
+                }
+            }
         } finally {
             temp.delete()
             if (staging.exists()) staging.delete()
@@ -317,26 +329,32 @@ internal class NativeApiServer(
         val name = if (operation == "mkdir") body.optString("name") else body.optString("new_name")
         if (!validName(name)) return bad("Invalid name")
 
-        if (operation == "mkdir") {
-            val parent = internalFile(relative) ?: return notFound("Folder not found")
-            if (!parent.isDirectory) return bad("Not a directory")
+        return synchronized(fileMutationLock) {
+            if (operation == "mkdir") {
+                val parent = internalFile(relative) ?: return@synchronized notFound("Folder not found")
+                if (!parent.isDirectory) return@synchronized bad("Not a directory")
+                val target = File(parent, name)
+                if (target.exists()) return@synchronized jsonError(Response.Status.CONFLICT, "Name already exists")
+                return@synchronized if (target.mkdir()) {
+                    markMediaIndexDirty()
+                    json(JSONObject().put("ok", true).put("name", name))
+                } else jsonError(Response.Status.INTERNAL_ERROR, "Could not create folder")
+            }
+
+            val oldFile = internalFile(relative) ?: return@synchronized notFound("Item not found")
+            if (oldFile == internalRoot) return@synchronized bad("Cannot rename storage root")
+            val parent = oldFile.parentFile ?: return@synchronized bad("Invalid parent folder")
             val target = File(parent, name)
-            if (target.exists()) return jsonError(Response.Status.CONFLICT, "Name already exists")
-            return if (target.mkdir()) {
+            if (target.exists()) return@synchronized jsonError(Response.Status.CONFLICT, "Name already exists")
+            if (oldFile.renameTo(target)) {
                 markMediaIndexDirty()
                 json(JSONObject().put("ok", true).put("name", name))
-            } else jsonError(Response.Status.INTERNAL_ERROR, "Could not create folder")
+            } else if (target.exists()) {
+                jsonError(Response.Status.CONFLICT, "Name already exists")
+            } else {
+                jsonError(Response.Status.INTERNAL_ERROR, "Rename failed")
+            }
         }
-
-        val oldFile = internalFile(relative) ?: return notFound("Item not found")
-        if (oldFile == internalRoot) return bad("Cannot rename storage root")
-        val parent = oldFile.parentFile ?: return bad("Invalid parent folder")
-        val target = File(parent, name)
-        if (target.exists()) return jsonError(Response.Status.CONFLICT, "Name already exists")
-        return if (oldFile.renameTo(target)) {
-            markMediaIndexDirty()
-            json(JSONObject().put("ok", true).put("name", name))
-        } else jsonError(Response.Status.INTERNAL_ERROR, "Rename failed")
     }
 
     private fun deleteInternal(relative: String): Response {
@@ -525,15 +543,26 @@ internal class NativeApiServer(
         if (!parent.isDirectory) return bad("Destination is not a folder")
         val (name, temp) = multipartFile(session) ?: return bad("Multipart field 'file' is required")
         if (!validName(name)) { temp.delete(); return bad("Invalid filename") }
-        if (parent.findFile(name) != null) { temp.delete(); return jsonError(Response.Status.CONFLICT, "Name already exists") }
         val staged = parent.createFile(mimeFor(name), ".pocketlink-upload-${UUID.randomUUID()}.part")
             ?: run { temp.delete(); return jsonError(Response.Status.INTERNAL_ERROR, "Could not stage upload") }
         return try {
             context.contentResolver.openOutputStream(staged.uri, "wt")?.use { output ->
                 temp.inputStream().use { input -> input.copyTo(output) }
             } ?: return jsonError(Response.Status.INTERNAL_ERROR, "Cannot write file")
-            if (!staged.renameTo(name)) jsonError(Response.Status.INTERNAL_ERROR, "Could not finalize uploaded file")
-            else json(JSONObject().put("ok", true).put("name", name)).also { markMediaIndexDirty() }
+            synchronized(fileMutationLock) {
+                when {
+                    parent.findFile(name) != null ->
+                        jsonError(Response.Status.CONFLICT, "Name already exists")
+                    !staged.renameTo(name) ->
+                        if (parent.findFile(name) != null) {
+                            jsonError(Response.Status.CONFLICT, "Name already exists")
+                        } else {
+                            jsonError(Response.Status.INTERNAL_ERROR, "Could not finalize uploaded file")
+                        }
+                    else -> json(JSONObject().put("ok", true).put("name", name))
+                        .also { markMediaIndexDirty() }
+                }
+            }
         } finally {
             temp.delete()
             if (staged.exists()) staged.delete()
@@ -546,17 +575,33 @@ internal class NativeApiServer(
         val relative = body.optString("path")
         val name = if (operation == "mkdir") body.optString("name") else body.optString("new_name")
         if (!validName(name)) return bad("Invalid name")
-        val target: DocumentFile
-        if (operation == "mkdir") {
-            val parent = resolveDocument(root, relative) ?: return notFound("Folder not found")
-            if (parent.findFile(name) != null) return jsonError(Response.Status.CONFLICT, "Name already exists")
-            target = parent.createDirectory(name) ?: return jsonError(Response.Status.INTERNAL_ERROR, "Could not create folder")
-        } else {
-            target = resolveDocument(root, relative) ?: return notFound("Item not found")
-            if (target.parentFile?.findFile(name) != null) return jsonError(Response.Status.CONFLICT, "Name already exists")
-            if (!target.renameTo(name)) return jsonError(Response.Status.INTERNAL_ERROR, "Rename failed")
+        return synchronized(fileMutationLock) {
+            val target: DocumentFile
+            if (operation == "mkdir") {
+                val parent = resolveDocument(root, relative)
+                    ?: return@synchronized notFound("Folder not found")
+                if (parent.findFile(name) != null) {
+                    return@synchronized jsonError(Response.Status.CONFLICT, "Name already exists")
+                }
+                target = parent.createDirectory(name)
+                    ?: return@synchronized jsonError(Response.Status.INTERNAL_ERROR, "Could not create folder")
+            } else {
+                target = resolveDocument(root, relative)
+                    ?: return@synchronized notFound("Item not found")
+                if (target.parentFile?.findFile(name) != null) {
+                    return@synchronized jsonError(Response.Status.CONFLICT, "Name already exists")
+                }
+                if (!target.renameTo(name)) {
+                    return@synchronized if (target.parentFile?.findFile(name) != null) {
+                        jsonError(Response.Status.CONFLICT, "Name already exists")
+                    } else {
+                        jsonError(Response.Status.INTERNAL_ERROR, "Rename failed")
+                    }
+                }
+            }
+            json(JSONObject().put("ok", true).put("name", target.name ?: name))
+                .also { markMediaIndexDirty() }
         }
-        return json(JSONObject().put("ok", true).put("name", target.name ?: name)).also { markMediaIndexDirty() }
     }
 
     private fun deleteExternal(volume: String?, relative: String): Response {
