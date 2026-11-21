@@ -61,7 +61,7 @@ void main() {
     expect(find.text('USB / external drives'), findsOneWidget);
     expect(find.text('2 ready'), findsOneWidget);
     expect(find.text('Updated 21/11 · 6:30 AM'), findsOneWidget);
-    expect(find.text('Running'), findsNWidgets(2));
+    expect(find.text('Running'), findsNWidgets(3));
     expect(find.text('Stopped'), findsOneWidget);
   });
 
