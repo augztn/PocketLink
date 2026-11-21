@@ -142,9 +142,9 @@ internal class MediaIndexDatabase(context: Context) :
 
     fun queryMedia(category: String, query: String, limit: Int, offset: Int): List<IndexedFile> {
         val (extensions, allowedMime) = when (category) {
-            "music" -> AUDIO_EXTENSIONS to AUDIO_MIME_TYPES
-            "video" -> VIDEO_EXTENSIONS to VIDEO_MIME_TYPES
-            "photo" -> PHOTO_EXTENSIONS to PHOTO_MIME_TYPES
+            "music" -> MediaFileClassifier.AUDIO_EXTENSIONS to MediaFileClassifier.AUDIO_MIME_TYPES
+            "video" -> MediaFileClassifier.VIDEO_EXTENSIONS to MediaFileClassifier.VIDEO_MIME_TYPES
+            "photo" -> MediaFileClassifier.PHOTO_EXTENSIONS to MediaFileClassifier.PHOTO_MIME_TYPES
             else -> return emptyList()
         }
         val extensionClause = extensions.joinToString(" OR ") { "LOWER(name) LIKE ?" }
