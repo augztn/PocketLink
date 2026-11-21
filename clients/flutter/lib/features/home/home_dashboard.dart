@@ -4,11 +4,17 @@ import 'package:file_picker/file_picker.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'quick_actions_store.dart';
+import 'widgets/host_device_metrics_card.dart';
+import 'widgets/host_media_scan_card.dart';
+import 'widgets/home_activity_sections.dart';
+import 'widgets/home_active_transfers_preview.dart';
+import 'widgets/home_global_search_entry.dart';
+import 'widgets/home_quick_actions_section.dart';
+import 'widgets/server_telemetry_card.dart';
 import 'network_route_classifier.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/storage/home_activity_store.dart';
 import '../../core/widgets/feathered_glass_header.dart';
-import '../../core/widgets/liquid_glass_pill.dart';
 import '../../core/widgets/smoked_glass_popover_menu.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
 import 'explore_search_screens.dart';
@@ -469,471 +475,22 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
     return request;
   }
 
-  Widget _buildHostDeviceMetrics(ThemeData theme) {
-    final telemetry = _hostTelemetry;
-    final colors = theme.colorScheme;
-    final muted = colors.onSurfaceVariant;
-    final foreground = colors.onSurface;
-
-    String percentLabel(double? value) =>
-        value == null ? '—' : '${value.clamp(0, 100).toStringAsFixed(0)}%';
-
-    String cpuDetail() => telemetry?.cpuUsagePercent != null
-        ? 'Live device usage'
-        : 'Waiting for next sample';
-
-    Widget metric(
-      String label,
-      String value,
-      double? progress,
-      String detail,
-      IconData icon,
-    ) {
-      return Expanded(
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: colors.surfaceContainer,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.62)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(children: [
-                Icon(icon, size: 15, color: muted),
-                const SizedBox(width: 6),
-                Text(label, style: theme.textTheme.labelSmall?.copyWith(
-                  color: muted, letterSpacing: 0.55, fontWeight: FontWeight.w700,
-                )),
-              ]),
-              const SizedBox(height: 7),
-              Text(value, style: theme.textTheme.titleMedium?.copyWith(
-                color: foreground, fontWeight: FontWeight.w800,
-              )),
-              if (progress != null) ...[
-                const SizedBox(height: 7),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: (progress / 100).clamp(0.0, 1.0),
-                    minHeight: 4,
-                    backgroundColor: colors.surfaceContainerHighest,
-                    color: icon == Icons.battery_charging_full_rounded
-                        ? const Color(0xFF4ADE80)
-                        : const Color(0xFF60A5FA),
-                  ),
-                ),
-              ],
-              const SizedBox(height: 5),
-              Text(detail, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.labelSmall?.copyWith(color: muted)),
-            ],
-          ),
-        ),
-      );
-    }
-
-    final memoryDetail = telemetry?.memoryUsedBytes != null &&
-            telemetry?.memoryTotalBytes != null
-        ? '${_formatBytes(telemetry!.memoryUsedBytes!)} / ${_formatBytes(telemetry.memoryTotalBytes!)} used'
-        : '';
-    final storageDetail = telemetry?.storageUsedBytes != null &&
-            telemetry?.storageTotalBytes != null
-        ? '${_formatBytes(telemetry!.storageUsedBytes!)} / ${_formatBytes(telemetry.storageTotalBytes!)} used'
-        : '';
-    final batteryDetail = telemetry == null
-        ? 'Battery status unavailable'
-        : switch (telemetry.batteryStatus) {
-            'charging' => 'Charging',
-            'not_charging' => 'Not charging',
-            _ => 'Status unavailable',
-          };
-    final deviceName = [
-      telemetry?.manufacturer,
-      telemetry?.deviceModel,
-    ].whereType<String>().where((part) => part.isNotEmpty).join(' ');
-    final cpuName = telemetry?.cpuModel;
-    final hasCpu = telemetry?.cpuUsagePercent != null ||
-        telemetry?.cpuUsageStatus == 'sampling';
-    final hasMemory = telemetry?.memoryUsagePercent != null &&
-        memoryDetail.isNotEmpty;
-    final hasStorage = telemetry?.storageUsagePercent != null &&
-        storageDetail.isNotEmpty;
-    final hasBattery = telemetry?.batteryPercent != null;
-    final sampledAt = telemetry?.sampledAtMs == null
-        ? null
-        : DateTime.fromMillisecondsSinceEpoch(telemetry!.sampledAtMs!).toLocal();
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: _dashboardCardDecoration(theme, radius: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [
-            Icon(Icons.memory_rounded, size: 18, color: muted),
-            const SizedBox(width: 8),
-            Expanded(child: Text('HOST DEVICE HEALTH',
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: foreground, fontWeight: FontWeight.w800, letterSpacing: 0.65,
-              ))),
-            if (sampledAt != null)
-              Text(
-                '${_serverOnline == true ? 'Updated' : 'Last known'} ${sampledAt.hour.toString().padLeft(2, '0')}:${sampledAt.minute.toString().padLeft(2, '0')}',
-                style: theme.textTheme.labelSmall?.copyWith(color: muted),
-              ),
-          ]),
-          const SizedBox(height: 11),
-          if (telemetry == null)
-            Text(
-              _serverOnline != true
-                  ? 'System information appears when the host is connected.'
-                  : _telemetryError ?? 'Reading system information from the host…',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: _telemetryError == null ? muted : const Color(0xFFFBBF24),
-              ),
-            )
-          else ...[
-            if (hasCpu || hasMemory)
-              Row(children: [
-                if (hasCpu)
-                  metric(
-                    'CPU',
-                    telemetry.cpuUsagePercent == null
-                        ? 'Sampling'
-                        : percentLabel(telemetry.cpuUsagePercent),
-                    telemetry.cpuUsagePercent,
-                    cpuDetail(),
-                    Icons.speed_rounded,
-                  ),
-                if (hasCpu && hasMemory) const SizedBox(width: 9),
-                if (hasMemory)
-                  metric('MEMORY', percentLabel(telemetry.memoryUsagePercent),
-                      telemetry.memoryUsagePercent, memoryDetail, Icons.memory_rounded),
-              ]),
-            if (hasStorage || hasBattery) ...[
-              if (hasCpu || hasMemory) const SizedBox(height: 9),
-              Row(children: [
-                if (hasStorage)
-                  metric('STORAGE', percentLabel(telemetry.storageUsagePercent),
-                      telemetry.storageUsagePercent, storageDetail, Icons.storage_rounded),
-                if (hasStorage && hasBattery) const SizedBox(width: 9),
-                if (hasBattery)
-                  metric(
-                    'BATTERY',
-                    '${telemetry.batteryPercent}%',
-                    telemetry.batteryPercent!.toDouble(),
-                    batteryDetail,
-                    Icons.battery_charging_full_rounded,
-                  ),
-              ]),
-            ],
-            if (!hasCpu && !hasMemory && !hasStorage && !hasBattery)
-              Text(
-                'No system readings are currently available.',
-                style: theme.textTheme.bodySmall?.copyWith(color: muted),
-              ),
-            const SizedBox(height: 12),
-            if (deviceName.isNotEmpty)
-              _deviceDetailRow(theme, muted, Icons.phone_android_rounded,
-                  deviceName, telemetry.androidVersion == null
-                      ? null : 'Android ${telemetry.androidVersion}'),
-            if (cpuName != null || telemetry.cpuCores != null)
-              _deviceDetailRow(
-                theme, muted, Icons.memory_rounded,
-                cpuName ?? 'CPU',
-                telemetry.cpuCores == null ? null : '${telemetry.cpuCores} cores',
-              ),
-          ],
-          if (_volumes.isNotEmpty) ...[
-            const SizedBox(height: 5),
-            Text('EXTERNAL STORAGE', style: theme.textTheme.labelSmall?.copyWith(
-              color: muted, letterSpacing: 0.65, fontWeight: FontWeight.w800,
-            )),
-            const SizedBox(height: 7),
-            for (final volume in _volumes) ...[
-              Padding(
-                padding: const EdgeInsets.only(bottom: 9),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Row(children: [
-                    Icon(Icons.usb_rounded, size: 15, color: muted),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text(volume.name, maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: foreground, fontWeight: FontWeight.w700,
-                      ))),
-                    Text(
-                      !volume.available ? 'Disconnected' : volume.writable ? 'Writable' : 'Read only',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: !volume.available ? muted : volume.writable
-                            ? const Color(0xFF4ADE80) : const Color(0xFFFBBF24),
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ]),
-                  if (volume.available &&
-                      volume.totalBytes != null &&
-                      volume.usedBytes != null &&
-                      volume.availableBytes != null &&
-                      volume.usagePercent != null) ...[
-                    const SizedBox(height: 5),
-                    Row(children: [
-                      Expanded(child: Text(
-                        '${_formatBytes(volume.usedBytes!)} of ${_formatBytes(volume.totalBytes!)} used',
-                        style: theme.textTheme.labelSmall?.copyWith(color: muted),
-                      )),
-                      Text('${_formatBytes(volume.availableBytes!)} free',
-                        style: theme.textTheme.labelSmall?.copyWith(color: muted)),
-                    ]),
-                    const SizedBox(height: 5),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: (volume.usagePercent!.clamp(0, 100)) / 100,
-                        minHeight: 4,
-                        backgroundColor: colors.surfaceContainerHighest,
-                        color: const Color(0xFF60A5FA),
-                      ),
-                    ),
-                  ] else if (volume.available) ...[
-                    const SizedBox(height: 3),
-                    Text('Capacity unavailable on this Android version or storage provider',
-                      style: theme.textTheme.labelSmall?.copyWith(color: muted)),
-                  ],
-                ]),
-              ),
-            ],
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _deviceDetailRow(
-    ThemeData theme,
-    Color muted,
-    IconData icon,
-    String title,
-    String? trailing,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 7),
-      child: Row(children: [
-        Icon(icon, size: 15, color: muted),
-        const SizedBox(width: 8),
-        Expanded(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.labelMedium?.copyWith(color: muted))),
-        if (trailing != null)
-          Text(trailing, style: theme.textTheme.labelSmall?.copyWith(color: muted)),
-      ]),
-    );
-  }
-
-  Widget _buildServerTelemetry(BuildContext context, ThemeData theme, ColorScheme colors) {
-    final transfers = TransferManager.instance;
-    final base = Uri.tryParse(widget.api.baseUrl);
-    final host = base == null ? widget.api.baseUrl : '${base.host}:${base.hasPort ? base.port : (base.scheme == 'https' ? 443 : 80)}';
-    final displayName = (widget.serverName ?? '').trim().isNotEmpty ? widget.serverName!.trim() : host;
-    final route = _networkRouteLabel(base);
-    final online = _serverOnline == true;
-    final muted = colors.onSurfaceVariant;
-    final statusColor = _checking
-        ? (theme.brightness == Brightness.dark ? const Color(0xFFFBBF24) : const Color(0xFFB45309))
-        : online
-            ? (theme.brightness == Brightness.dark ? const Color(0xFF4ADE80) : const Color(0xFF059669))
-            : (theme.brightness == Brightness.dark ? const Color(0xFFF59E0B) : const Color(0xFFB45309));
-    final latencyMs = _latency?.inMilliseconds;
-    final latencyColor = latencyMs == null
-        ? muted
-        : latencyMs <= 150
-            ? (theme.brightness == Brightness.dark ? const Color(0xFF4ADE80) : const Color(0xFF15803D))
-            : latencyMs <= 300
-                ? (theme.brightness == Brightness.dark ? const Color(0xFFFBBF24) : const Color(0xFFB45309))
-                : latencyMs <= 600
-                    ? (theme.brightness == Brightness.dark ? const Color(0xFFFB923C) : const Color(0xFFC2410C))
-                    : (theme.brightness == Brightness.dark ? const Color(0xFFF87171) : const Color(0xFFB91C1C));
-    final cardColor = colors.surfaceContainerLow;
-    final foreground = colors.onSurface;
-    final mountedVolumes = _volumes.where((volume) => volume.available).toList(growable: false);
-    return AnimatedBuilder(
-      animation: transfers,
-      builder: (context, _) {
-        final activeTransfers = transfers.tasks.where((task) => task.status == TransferStatus.running).length;
-        return Container(
-          padding: const EdgeInsets.all(15),
-          decoration: BoxDecoration(
-            color: theme.brightness == Brightness.dark ? null : cardColor,
-            gradient: theme.brightness == Brightness.dark
-                ? const LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Color(0xFF1B1D24), Color(0xFF131419)],
-                  )
-                : null,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: online
-                  ? theme.brightness == Brightness.dark
-                      ? Colors.white.withValues(alpha: 0.07)
-                      : colors.outlineVariant.withValues(alpha: 0.62)
-                  : statusColor.withValues(alpha: 0.42),
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              InkWell(
-                borderRadius: BorderRadius.circular(14),
-                onTap: _showServerSwitcherSheet,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2),
-                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Icon(Icons.dns_rounded, color: colors.onSurfaceVariant, size: 19),
-                    ),
-                    const SizedBox(width: 9),
-                    Expanded(
-                      child: Text(
-                        displayName,
-                        softWrap: true,
-                        style: theme.textTheme.titleSmall?.copyWith(color: foreground, fontWeight: FontWeight.w800, height: 1.2),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                      decoration: BoxDecoration(color: colors.surfaceContainerHighest, borderRadius: BorderRadius.circular(20)),
-                      child: Text(route, style: theme.textTheme.labelSmall?.copyWith(color: foreground, fontWeight: FontWeight.w700)),
-                    ),
-                    const SizedBox(width: 2),
-                    Icon(Icons.expand_more_rounded, color: colors.onSurfaceVariant, size: 19),
-                  ]),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Row(children: [
-                Container(width: 7, height: 7, decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle)),
-                const SizedBox(width: 7),
-                Expanded(
-                  child: Text.rich(
-                    _checking
-                        ? const TextSpan(text: 'Checking server')
-                        : !online
-                            ? const TextSpan(text: 'Offline')
-                            : TextSpan(
-                                children: [
-                                  const TextSpan(text: 'Online'),
-                                  if (latencyMs != null)
-                                    TextSpan(
-                                      text: ' • $latencyMs ms',
-                                      style: TextStyle(color: latencyColor),
-                                    ),
-                                ],
-                              ),
-                    maxLines: 1,
-                    overflow: TextOverflow.visible,
-                    style: theme.textTheme.labelMedium?.copyWith(color: statusColor, fontWeight: FontWeight.w700),
-                  ),
-                ),
-                LiquidGlassPill(
-                  radius: BorderRadius.circular(13),
-                  child: IconButton(
-                    visualDensity: VisualDensity.compact,
-                    tooltip: 'Quick upload',
-                    onPressed: online ? _quickUpload : null,
-                    icon: Icon(Icons.arrow_upward_rounded, color: colors.onSurface, size: 18),
-                  ),
-                ),
-              ]),
-              if (_lastCheckedAt != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  'Last checked ${_lastCheckedAt!.hour.toString().padLeft(2, '0')}:${_lastCheckedAt!.minute.toString().padLeft(2, '0')}',
-                  style: theme.textTheme.labelSmall?.copyWith(color: muted),
-                ),
-              ],
-              if (!online && !_checking) ...[
-                const SizedBox(height: 8),
-                Row(children: [
-                  Expanded(child: Text('Server is unreachable. Check the network or server service.',
-                    style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant))),
-                  TextButton(onPressed: () => _refreshStatus(forceRefresh: true), child: const Text('Reconnect')),
-                  TextButton(onPressed: widget.onReturnToConnection, child: const Text('Switch')),
-                ]),
-              ],
-              const SizedBox(height: 13),
-              Row(children: [
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('STORAGE', style: theme.textTheme.labelSmall?.copyWith(color: muted, letterSpacing: 0.7)),
-                  const SizedBox(height: 5),
-                  Text(
-                    '${mountedVolumes.length + 1} volume${mountedVolumes.isEmpty ? '' : 's'} mounted',
-                    maxLines: 1,
-                    overflow: TextOverflow.visible,
-                    style: theme.textTheme.labelMedium?.copyWith(color: foreground, fontWeight: FontWeight.w600),
-                  ),
-                ])),
-                const SizedBox(width: 10),
-                Expanded(child: InkWell(
-                  borderRadius: BorderRadius.circular(10),
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen())),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('TRANSFERS', style: theme.textTheme.labelSmall?.copyWith(color: muted, letterSpacing: 0.7)),
-                    const SizedBox(height: 5),
-                    Text('$activeTransfers active', style: theme.textTheme.labelMedium?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
-                  ]),
-                )),
-                const SizedBox(width: 10),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('LATENCY', style: theme.textTheme.labelSmall?.copyWith(color: muted, letterSpacing: 0.7)),
-                  const SizedBox(height: 5),
-                  Text(_checking ? 'Checking' : (latencyMs == null ? '—' : '$latencyMs ms'),
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: latencyMs == null ? muted : latencyColor,
-                      fontWeight: FontWeight.w700,
-                    )),
-                ])),
-              ]),
-              const SizedBox(height: 11),
-              InkWell(
-                borderRadius: BorderRadius.circular(8),
-                onTap: widget.onOpenFiles,
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Row(children: [
-                    Text('MOUNTED PARTITIONS', style: theme.textTheme.labelSmall?.copyWith(color: muted, letterSpacing: 0.65)),
-                    const Spacer(),
-                    Text('${mountedVolumes.length + 1} mounted', style: theme.textTheme.labelSmall?.copyWith(color: foreground, fontWeight: FontWeight.w600)),
-                    const SizedBox(width: 3),
-                    Icon(Icons.chevron_right_rounded, color: colors.onSurfaceVariant, size: 17),
-                  ]),
-                  const SizedBox(height: 7),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(5),
-                    child: SizedBox(height: 5, child: Row(children: [
-                      Expanded(child: Container(color: const Color(0xFF60A5FA))),
-                      for (var i = 0; i < mountedVolumes.length; i++) ...[
-                        const SizedBox(width: 2),
-                        Expanded(child: Container(color: const Color(0xFF2DD4BF))),
-                      ],
-                    ])),
-                  ),
-                  const SizedBox(height: 5),
-                  Text('Internal storage${mountedVolumes.isEmpty ? '' : ' · ${mountedVolumes.map((volume) => volume.name).join(' · ')}'}',
-                    maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.labelSmall?.copyWith(color: muted)),
-                  if (_volumeError != null) ...[
-                    const SizedBox(height: 5),
-                    Text(_volumeError!, style: theme.textTheme.labelSmall?.copyWith(color: const Color(0xFFFBBF24))),
-                  ],
-                ]),
-              ),
-            ],
-          ),
-        );
-      },
+  Widget _buildServerTelemetry() {
+    return ServerTelemetryCard(
+      apiBaseUrl: widget.api.baseUrl,
+      serverName: widget.serverName,
+      routeLabel: _networkRouteLabel(Uri.tryParse(widget.api.baseUrl)),
+      checking: _checking,
+      serverOnline: _serverOnline == true,
+      latency: _latency,
+      lastCheckedAt: _lastCheckedAt,
+      volumes: _volumes,
+      volumeError: _volumeError,
+      onShowServerSwitcher: _showServerSwitcherSheet,
+      onQuickUpload: _quickUpload,
+      onRefresh: () => _refreshStatus(forceRefresh: true),
+      onReturnToConnection: widget.onReturnToConnection,
+      onOpenFiles: widget.onOpenFiles,
     );
   }
 
@@ -1007,133 +564,25 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
     );
   }
 
-  Widget _buildContinueStrip(BuildContext context, ThemeData theme, ColorScheme colors) {
-    final player = PersistentAudioPlayer.instance;
-    final items = HomeActivityStore.instance.itemsForServer(widget.api.baseUrl).take(8).toList();
-    if (items.isEmpty) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-        decoration: _dashboardCardDecoration(theme),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.history_rounded, color: colors.onSurfaceVariant, size: 22),
-            const SizedBox(height: 7),
-            Text(
-              'Your recent tracks, folders and files will appear here.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
-            ),
-            const SizedBox(height: 10),
-            TextButton.icon(
-              onPressed: () => widget.onOpenExplore(ExploreCategory.music),
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFF8C9EFF),
-                backgroundColor: const Color(0xFF536DFE).withValues(alpha: 0.16),
-                padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                shape: const StadiumBorder(),
-              ),
-              icon: const Icon(Icons.play_arrow_rounded, size: 17),
-              label: const Text('Browse media'),
-            ),
-          ],
-        ),
+  Future<void> _openHomeActivityItem(HomeActivityItem recent) async {
+    if (recent.kind == 'track') {
+      final queueItem = MediaQueueItem(
+        title: recent.title,
+        path: recent.path,
+        volume: recent.volume,
       );
+      await PersistentAudioPlayer.instance.openQueue(
+        api: widget.api,
+        queue: [queueItem],
+        initialIndex: 0,
+        isMusic: true,
+      );
+      NowPlayingOverlayController.open();
+      return;
     }
-    return SizedBox(
-      height: 92,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: items.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 10),
-        itemBuilder: (context, index) {
-          final recent = items[index];
-          final isTrack = recent.kind == 'track';
-          final isFolder = recent.kind == 'folder';
-          final icon = isTrack ? Icons.music_note_rounded : isFolder ? Icons.folder_rounded : Icons.insert_drive_file_rounded;
-          return SizedBox(
-            width: 250,
-            child: Container(
-              decoration: _dashboardCardDecoration(theme),
-              child: Material(
-                color: Colors.transparent,
-                borderRadius: BorderRadius.circular(18),
-                clipBehavior: Clip.antiAlias,
-                child: InkWell(
-                borderRadius: BorderRadius.circular(18),
-                onTap: () async {
-                  if (isTrack) {
-                    final queueItem = MediaQueueItem(
-                      title: recent.title,
-                      path: recent.path,
-                      volume: recent.volume,
-                    );
-                    await player.openQueue(
-                      api: widget.api,
-                      queue: [queueItem],
-                      initialIndex: 0,
-                      isMusic: true,
-                    );
-                    NowPlayingOverlayController.open();
-                  } else {
-                    final path = isFolder ? recent.path : recent.parentPath;
-                    widget.onOpenFileLocation(recent.volume, path);
-                  }
-                },
-                child: Padding(
-                  padding: const EdgeInsets.all(13),
-                  child: Row(children: [
-                    Container(width: 48, height: 48, decoration: BoxDecoration(
-                      color: colors.primaryContainer, borderRadius: BorderRadius.circular(14)),
-                      child: Icon(icon, color: colors.primary)),
-                    const SizedBox(width: 11),
-                    Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(isTrack ? 'Continue listening' : isFolder ? 'Recent folder' : 'Recent file',
-                        style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant)),
-                      const SizedBox(height: 3),
-                      Text(recent.title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-                    ])),
-                    Icon(isTrack ? Icons.play_arrow_rounded : Icons.chevron_right_rounded),
-                  ]),
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
 
-  Widget _buildGlobalSearchEntry(ThemeData theme, ColorScheme colors) {
-    return Container(
-      decoration: _dashboardCardDecoration(theme),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(18),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
-          builder: (_) => SearchScreen(api: widget.api),
-        )),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(children: [
-            Icon(Icons.search_rounded, color: colors.primary),
-            const SizedBox(width: 12),
-            Expanded(child: Text('Search files, folders and media',
-              style: theme.textTheme.bodyMedium?.copyWith(color: colors.onSurfaceVariant))),
-            Icon(Icons.arrow_forward_rounded, color: colors.onSurfaceVariant, size: 18),
-          ]),
-          ),
-        ),
-      ),
-    );
+    final path = recent.isFolder ? recent.path : recent.parentPath;
+    widget.onOpenFileLocation(recent.volume, path);
   }
 
   Widget _buildActiveTransfersPreview(ThemeData theme, ColorScheme colors) {
@@ -1145,54 +594,13 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
             .where((task) => task.status == TransferStatus.running)
             .take(2)
             .toList(growable: false);
-        if (active.isEmpty) return const SizedBox.shrink();
-        return Container(
-          decoration: _dashboardCardDecoration(theme),
-          child: Material(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(18),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(18),
-              onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                builder: (_) => const TransferManagerScreen(),
-              )),
-              child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  Expanded(child: Text('Active transfers',
-                    style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800))),
-                  Text('View all', style: theme.textTheme.labelMedium?.copyWith(color: colors.primary)),
-                ]),
-                const SizedBox(height: 10),
-                for (var index = 0; index < active.length; index++) ...[
-                  if (index > 0) const SizedBox(height: 12),
-                  Row(children: [
-                    Icon(active[index].direction == 'Upload'
-                        ? Icons.cloud_upload_outlined : Icons.download_rounded,
-                      color: colors.primary, size: 19),
-                    const SizedBox(width: 9),
-                    Expanded(child: Text(active[index].name, maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600))),
-                    Text(active[index].progress == null
-                        ? 'In progress'
-                        : '${(active[index].progress! * 100).round()}%',
-                      style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant)),
-                  ]),
-                  const SizedBox(height: 7),
-                  LinearProgressIndicator(value: active[index].progress, minHeight: 4),
-                  const SizedBox(height: 4),
-                  Text(active[index].total > 0
-                      ? '${_formatBytes(active[index].transferred)} of ${_formatBytes(active[index].total)}'
-                      : 'Transfer in progress',
-                    style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant)),
-                ],
-              ]),
-              ),
-            ),
-          ),
+        return HomeActiveTransfersPreview(
+          tasks: active,
+          formatBytes: _formatBytes,
+          cardDecoration: _dashboardCardDecoration,
+          onOpen: () => Navigator.of(context).push(MaterialPageRoute<void>(
+            builder: (_) => const TransferManagerScreen(),
+          )),
         );
       },
     );
@@ -1391,328 +799,6 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
     await SharePlus.instance.share(ShareParams(text: lines.join('\n')));
   }
 
-  Widget _buildHostMediaScanCard(ThemeData theme, ColorScheme colors) {
-    final status = _mediaScanStatus;
-    final scanning = status?.isScanning ?? false;
-    final source = status?.currentSource;
-    final elapsed = ((status?.elapsedMs ?? 0) / 1000).floor();
-    final sourceLabel = source == 'internal'
-        ? 'Internal storage'
-        : source == null ? 'Preparing storage' : 'External storage';
-    return Container(
-      padding: const EdgeInsets.all(15),
-      decoration: _dashboardCardDecoration(theme),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Icon(Icons.manage_search_rounded, color: colors.primary, size: 20),
-          const SizedBox(width: 9),
-          Expanded(child: Text('Host media library', style: theme.textTheme.titleSmall?.copyWith(
-            color: colors.onSurface, fontWeight: FontWeight.w800,
-          ))),
-          Text(scanning ? 'Scanning' : _mediaScanError != null ? 'Unavailable' : status == null ? 'Checking' : status.state == 'failed' ? 'Failed' : status.state == 'interrupted' ? 'Interrupted' : status.state == 'partial' ? 'Partial' : status.state == 'complete' ? 'Up to date' : 'Ready',
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: scanning || _mediaScanError != null
-                  ? (theme.brightness == Brightness.dark ? const Color(0xFFFBBF24) : const Color(0xFFB45309))
-                  : colors.onSurfaceVariant,
-              fontWeight: FontWeight.w700,
-            )),
-        ]),
-        const SizedBox(height: 7),
-        Text(
-          scanning
-              ? 'Scanning $sourceLabel · ${elapsed}s elapsed'
-              : status == null
-                  ? 'Refresh the host device media and file index remotely.'
-                  : '${status.regularFileCount} files · ${status.mediaCount} media · Last successful ${_formatScanTimestamp(status.lastSuccessfulAt, timezoneOffsetMinutes: status.timezoneOffsetMinutes)}',
-          style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
-        ),
-        if (_mediaScanError != null) ...[
-          const SizedBox(height: 7),
-          Text(_mediaScanError!, style: theme.textTheme.bodySmall?.copyWith(color: colors.error)),
-        ],
-        if (status != null) ...[
-          ExpansionTile(
-            tilePadding: EdgeInsets.zero,
-            childrenPadding: EdgeInsets.zero,
-            title: Text('Scan details', style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700)),
-            subtitle: Text(
-              '${status.regularFileCount} files · ${status.mediaCount} media · ${status.skipped} skipped',
-              style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
-            ),
-            children: [
-          const SizedBox(height: 7),
-          Text(
-            '${status.regularFileCount} files · ${status.directoryCount} folders · ${status.mediaCount} media',
-            style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
-          ),
-          Text(
-            '${_formatBytes(status.indexedBytes)} indexed · ${_formatBytes(status.mediaBytes)} media',
-            style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
-          ),
-          Text(
-            'Photos ${status.photoCount} · Videos ${status.videoCount} · Music ${status.musicCount} · Other ${status.otherFileCount}',
-            style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
-          ),
-          if (status.averageDurationMs > 0)
-            Text(
-              'Average successful scan: ${(status.averageDurationMs / 1000).toStringAsFixed(1)}s',
-              style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
-            ),
-          if (status.durationTrendPercent != 0)
-            Text(
-              'Latest scan ${status.durationTrendPercent.abs()}% ${status.durationTrendPercent > 0 ? 'slower' : 'faster'} than recent baseline',
-              style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
-            ),
-          const SizedBox(height: 6),
-          const SizedBox(height: 6),
-          Text(
-            scanning || status.state == 'interrupted'
-                ? '${status.state == 'interrupted' ? 'Interrupted' : 'Started'} ${_formatScanTimestamp(status.lastAttemptStartedAt, timezoneOffsetMinutes: status.timezoneOffsetMinutes)} · ${status.scanTrigger == 'manual' ? 'Manual' : 'Automatic'}'
-                : 'Last attempt: ${_formatScanTimestamp(status.lastAttemptFinishedAt, timezoneOffsetMinutes: status.timezoneOffsetMinutes)} · ${status.scanTrigger == 'manual' ? 'Manual' : 'Automatic'}',
-            style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
-          ),
-          Text(
-            'Last successful: ${_formatScanTimestamp(status.lastSuccessfulAt, timezoneOffsetMinutes: status.timezoneOffsetMinutes)}',
-            style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
-          ),
-          if (status.lastAutomaticScanAt > 0)
-            Text(
-              'Last automatic: ${_formatScanTimestamp(status.lastAutomaticScanAt, timezoneOffsetMinutes: status.timezoneOffsetMinutes)}',
-              style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
-            ),
-          if (!scanning && status.lastCompletedAt > 0)
-            Text(
-              'Duration: ${(status.elapsedMs / 1000).toStringAsFixed(1)}s · ${status.newFiles} new · ${status.updatedFiles} updated',
-              style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
-            ),
-          if (status.scannedBytes > 0)
-            Text(
-              '${_formatBytes(status.scannedBytes)} traversed',
-              style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
-            ),
-          if (status.volumes.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text('STORAGE SOURCES', style: theme.textTheme.labelSmall?.copyWith(
-              color: colors.onSurfaceVariant, fontWeight: FontWeight.w800, letterSpacing: 0.5,
-            )),
-            ...status.volumes.map((volume) => Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Row(children: [
-                Expanded(child: Text(volume.volume == 'internal' ? 'Internal storage' : volume.volume,
-                  style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant))),
-                Text(volume.stale ? 'Unavailable · stale index' : volume.state == 'complete' ? 'Scanned' : volume.state == 'scanning' ? 'Scanning' : volume.state,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: volume.state == 'complete' ? colors.onSurfaceVariant : const Color(0xFFFBBF24),
-                  )),
-                if (volume.skipped > 0)
-                  Text(' · ${volume.skipped} skipped', style: theme.textTheme.labelSmall?.copyWith(color: const Color(0xFFFBBF24))),
-              ]),
-            )),
-            ..._volumes.where((volume) => !volume.available).map((volume) => Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Row(children: [
-                Expanded(child: Text(volume.name, style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant))),
-                Text('Unavailable · index may be stale', style: theme.textTheme.labelSmall?.copyWith(color: const Color(0xFFFBBF24))),
-              ]),
-            )),
-          ],
-          if (status.scanHistory.isNotEmpty) ...[
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton(
-                onPressed: () => _showMediaScanHistory(status),
-                child: Text('View all ${status.scanHistory.length} scans'),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text('RECENT SCANS', style: theme.textTheme.labelSmall?.copyWith(
-              color: colors.onSurfaceVariant, fontWeight: FontWeight.w800, letterSpacing: 0.5,
-            )),
-            ...status.scanHistory.take(3).map((entry) => Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Row(children: [
-                Expanded(child: Text(
-                  '${_formatScanTimestamp(entry.completedAt, timezoneOffsetMinutes: entry.timezoneOffsetMinutes)} · ${entry.trigger == 'manual' ? 'Manual' : 'Automatic'}',
-                  style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
-                )),
-                Text(entry.state == 'complete' ? 'Complete' : entry.state,
-                  style: theme.textTheme.labelSmall?.copyWith(color: entry.state == 'complete' ? colors.onSurfaceVariant : const Color(0xFFFBBF24))),
-              ]),
-            )),
-          ],
-          const SizedBox(height: 7),
-          Wrap(
-            spacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Text(
-                '${status.scanned} checked',
-                style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
-              ),
-              if (status.skipped > 0)
-                Material(
-                  color: const Color(0xFFF59E0B).withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(20),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(20),
-                    onTap: () => _showSkippedItemsInfo(status),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            '${status.skipped} skipped',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: const Color(0xFFFBBF24),
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(width: 2),
-                          const Icon(Icons.chevron_right_rounded, size: 15, color: Color(0xFFFBBF24)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          if (status.lastError != null && status.lastError!.isNotEmpty) ...[
-            const SizedBox(height: 5),
-            Text(status.lastError!, style: theme.textTheme.bodySmall?.copyWith(color: colors.error)),
-          ],
-          const Divider(height: 18),
-          Row(children: [
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Automatic scanning', style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700)),
-              Text(
-                status.automaticScanning.enabled
-                    ? 'Every ${_formatScanInterval(status.automaticScanning.intervalMinutes)} · startup and storage changes'
-                    : 'Disabled',
-                style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
-              ),
-              if (status.automaticScanning.enabled && status.automaticScanning.nextScanAt > 0)
-                Text('Next check: ${_formatScanTimestamp(status.automaticScanning.nextScanAt, timezoneOffsetMinutes: status.timezoneOffsetMinutes)}',
-                  style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant)),
-            ])),
-            Switch.adaptive(
-              value: status.automaticScanning.enabled,
-              onChanged: scanning || _savingMediaScanSettings ? null : (enabled) =>
-                  _updateAutomaticMediaScanning(
-                    enabled: enabled,
-                    intervalMinutes: status.automaticScanning.intervalMinutes,
-                    scanOnStartup: status.automaticScanning.scanOnStartup,
-                    scanOnStorageChange: status.automaticScanning.scanOnStorageChange,
-                  ),
-            ),
-          ]),
-          Wrap(
-            spacing: 6,
-            runSpacing: 2,
-            children: [
-              FilterChip(
-                label: const Text('On startup'),
-                selected: status.automaticScanning.scanOnStartup,
-                onSelected: scanning || _savingMediaScanSettings ? null : (selected) =>
-                    _updateAutomaticMediaScanning(
-                      enabled: status.automaticScanning.enabled,
-                      intervalMinutes: status.automaticScanning.intervalMinutes,
-                      scanOnStartup: selected,
-                      scanOnStorageChange: status.automaticScanning.scanOnStorageChange,
-                    ),
-              ),
-              FilterChip(
-                label: const Text('On storage connect'),
-                selected: status.automaticScanning.scanOnStorageChange,
-                onSelected: scanning || _savingMediaScanSettings ? null : (selected) =>
-                    _updateAutomaticMediaScanning(
-                      enabled: status.automaticScanning.enabled,
-                      intervalMinutes: status.automaticScanning.intervalMinutes,
-                      scanOnStartup: status.automaticScanning.scanOnStartup,
-                      scanOnStorageChange: selected,
-                    ),
-              ),
-            ],
-          ),
-          if (status.automaticScanning.enabled)
-            Align(
-              alignment: Alignment.centerRight,
-              child: DropdownButton<int>(
-                value: status.automaticScanning.intervalMinutes,
-                isDense: true,
-                underline: const SizedBox.shrink(),
-                items: const [15, 30, 60, 180, 360, 720, 1440]
-                    .map((minutes) => DropdownMenuItem<int>(
-                      value: minutes,
-                      child: Text('Every ${minutes < 60 ? '$minutes minutes' : minutes == 1440 ? '24 hours' : '${minutes ~/ 60} hours'}'),
-                    )).toList(),
-                onChanged: scanning || _savingMediaScanSettings ? null : (minutes) {
-                  if (minutes != null) _updateAutomaticMediaScanning(
-                    enabled: true,
-                    intervalMinutes: minutes,
-                    scanOnStartup: status.automaticScanning.scanOnStartup,
-                    scanOnStorageChange: status.automaticScanning.scanOnStorageChange,
-                  );
-                },
-              ),
-            ),
-
-            ],
-          ),
-        ],
-        if (scanning) ...[
-          const SizedBox(height: 10),
-          const LinearProgressIndicator(),
-        ],
-        const SizedBox(height: 10),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            onPressed: scanning || _startingMediaScan || _checking || _serverOnline != true
-                ? null
-                : _startHostMediaScan,
-            style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF8C9EFF),
-              backgroundColor: const Color(0xFF536DFE).withValues(alpha: 0.16),
-              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              shape: const StadiumBorder(),
-            ),
-            icon: _startingMediaScan || scanning
-                ? const SizedBox(width: 15, height: 15, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.refresh_rounded, size: 17),
-            label: Text(scanning ? 'Scanning…' : _startingMediaScan ? 'Starting…' : 'Scan host now'),
-          ),
-        ),
-        if (status != null && (status.state == 'partial' || status.state == 'failed' || status.state == 'interrupted' || status.skipped > 0))
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: scanning || _startingMediaScan || _serverOnline != true ? null : _retryFailedMediaScan,
-              icon: const Icon(Icons.replay_rounded, size: 16),
-              label: const Text('Retry failed scan'),
-            ),
-          ),
-        if (status != null && status.lastScanStartedAt > 0)
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: () => _shareMediaScanReport(status),
-              icon: const Icon(Icons.ios_share_rounded, size: 16),
-              label: const Text('Share scan report'),
-              style: TextButton.styleFrom(
-                foregroundColor: colors.onSurfaceVariant,
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-            ),
-          ),
-      ]),
-    );
-  }
-
   Future<void> _refreshMediaIndexStatus(int generation) async {
     try {
       final status = await widget.api.mediaIndexStatus();
@@ -1815,67 +901,33 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
       );
     }
 
-    Widget quickAction(IconData icon, String label, VoidCallback onTap) {
-      return Container(
-        decoration: _dashboardCardDecoration(theme),
-        child: Material(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(18),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(18),
-            child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, size: 23, color: colors.primary),
-                const SizedBox(height: 8),
-                Text(label, maxLines: 1, overflow: TextOverflow.visible, softWrap: false,
-                  style: theme.textTheme.labelLarge?.copyWith(fontSize: 11.5, fontWeight: FontWeight.w600)),
-              ],
-            ),
-            ),
-          ),
-        ),
-      );
-    }
-
     final sectionBuilders = <String, Widget Function()>{
       'search': () => appSettings.showGlobalSearch
           ? Padding(
               padding: const EdgeInsets.only(bottom: 16),
-              child: _buildGlobalSearchEntry(theme, colors),
+              child: HomeGlobalSearchEntry(
+                cardDecoration: _dashboardCardDecoration,
+                onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                  builder: (_) => SearchScreen(api: widget.api),
+                )),
+              ),
             )
           : const SizedBox.shrink(),
       'quick': () => appSettings.showQuickActions
           ? Padding(
               padding: const EdgeInsets.only(bottom: 24),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                sectionTitle('Quick actions', action: 'Edit', onAction: _editQuickActions),
-                const SizedBox(height: 14),
-                if (_quickActions.isEmpty)
-                  OutlinedButton.icon(
-                    onPressed: _editQuickActions,
-                    icon: const Icon(Icons.add_rounded),
-                    label: const Text('Add quick actions'),
-                  )
-                else
-                  GridView.count(
-                    padding: EdgeInsets.zero,
-                    crossAxisCount: 4,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisSpacing: 9,
-                    mainAxisSpacing: 9,
-                    childAspectRatio: 0.88,
-                    children: _quickActions.map((id) {
-                      final detail = _quickActionDetails[id]!;
-                      return quickAction(detail.icon, detail.label, () => _runQuickAction(id));
-                    }).toList(),
-                  ),
-              ]),
+              child: HomeQuickActionsSection(
+                actions: _quickActions
+                    .map((id) => HomeQuickAction(
+                          id: id,
+                          label: _quickActionDetails[id]!.label,
+                          icon: _quickActionDetails[id]!.icon,
+                        ))
+                    .toList(growable: false),
+                cardDecoration: _dashboardCardDecoration,
+                onEdit: _editQuickActions,
+                onSelect: _runQuickAction,
+              ),
             )
           : const SizedBox.shrink(),
       'transfers': () => appSettings.showActiveTransfers
@@ -1892,7 +944,12 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
                 const SizedBox(height: 10),
                 AnimatedBuilder(
                   animation: HomeActivityStore.instance,
-                  builder: (context, _) => _buildContinueStrip(context, theme, colors),
+                  builder: (context, _) => HomeContinueSection(
+                    items: HomeActivityStore.instance.itemsForServer(widget.api.baseUrl).take(8).toList(),
+                    cardDecoration: _dashboardCardDecoration,
+                    onBrowseMedia: () => widget.onOpenExplore(ExploreCategory.music),
+                    onSelectItem: _openHomeActivityItem,
+                  ),
                 ),
               ]),
             )
@@ -1900,93 +957,26 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
       'recent': () => appSettings.showRecentFiles
           ? Padding(
               padding: const EdgeInsets.only(bottom: 18),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                sectionTitle(
-                  'Recent files',
-                  action: 'Browse',
-                  onAction: () => widget.onOpenExplore(ExploreCategory.files),
-                ),
-                const SizedBox(height: 10),
-                if (_recentFiles.isEmpty)
-                  Container(
-                    padding: const EdgeInsets.all(18),
-                    decoration: _dashboardCardDecoration(theme, radius: 20),
-                    child: Row(children: [
-                      Icon(Icons.history_rounded, color: colors.onSurfaceVariant),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          _recentFilesError ?? (_checking
-                              ? 'Checking your folders for recent files…'
-                              : 'No recent files found in the scanned folders.'),
-                          style: theme.textTheme.bodyMedium?.copyWith(color: colors.onSurfaceVariant),
-                        ),
-                      ),
-                    ]),
-                  )
-                else
-                  Container(
-                    decoration: _dashboardCardDecoration(theme, radius: 20),
-                    child: Material(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(20),
-                      clipBehavior: Clip.antiAlias,
-                      child: Column(children: [
-                      for (var index = 0; index < _recentFiles.take(8).length; index++) ...[
-                        if (index > 0) const Divider(height: 1, indent: 68),
-                        ListTile(
-                          dense: true,
-                          minVerticalPadding: 8,
-                          leading: Container(
-                            width: 42,
-                            height: 42,
-                            decoration: BoxDecoration(
-                              color: colors.secondaryContainer,
-                              borderRadius: BorderRadius.circular(13),
-                            ),
-                            child: Icon(_recentIcon(_recentFiles[index].file), color: colors.onSecondaryContainer),
-                          ),
-                          title: Text(
-                            _recentFiles[index].file.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-                          ),
-                          subtitle: Text(
-                            '${_formatBytes(_recentFiles[index].file.size)} · ${_relativeTime(_recentFiles[index].modifiedAt)} · ${_recentFiles[index].volumeName}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          trailing: SmokedGlassPopoverMenu<String>(
-                            tooltip: 'File actions',
-                            items: const [
-                              SmokedGlassPopoverMenuItem(value: 'download', label: 'Download', icon: Icons.download_rounded),
-                              SmokedGlassPopoverMenuItem(value: 'share', label: 'Share', icon: Icons.ios_share_rounded),
-                              SmokedGlassPopoverMenuItem(value: 'rename', label: 'Rename', icon: Icons.drive_file_rename_outline_rounded),
-                              SmokedGlassPopoverMenuItem(value: 'delete', label: 'Delete', icon: Icons.delete_outline_rounded, destructive: true, dividerBefore: true),
-                            ],
-                            onSelected: (action) => _handleRecentAction(_recentFiles[index], action),
-                            child: const Padding(
-                              padding: EdgeInsets.all(8),
-                              child: Icon(Icons.more_vert_rounded, size: 18),
-                            ),
-                          ),
-                          onTap: () {
-                            final recent = _recentFiles[index];
-                            HomeActivityStore.instance.recordFile(
-                              serverUrl: widget.api.baseUrl,
-                              title: recent.file.name,
-                              path: recent.path,
-                              volume: recent.volume,
-                            );
-                            widget.onOpenFileLocation(recent.volume, recent.parentPath);
-                          },
-                        ),
-                      ],
-                      ]),
-                    ),
-                  ),
-              ]),
+              child: HomeRecentFilesSection(
+                files: _recentFiles,
+                error: _recentFilesError,
+                checking: _checking,
+                cardDecoration: _dashboardCardDecoration,
+                formatBytes: _formatBytes,
+                relativeTime: _relativeTime,
+                iconForFile: _recentIcon,
+                onBrowse: () => widget.onOpenExplore(ExploreCategory.files),
+                onAction: _handleRecentAction,
+                onFileTap: (recent) {
+                  HomeActivityStore.instance.recordFile(
+                    serverUrl: widget.api.baseUrl,
+                    title: recent.file.name,
+                    path: recent.path,
+                    volume: recent.volume,
+                  );
+                  widget.onOpenFileLocation(recent.volume, recent.parentPath);
+                },
+              ),
             )
           : const SizedBox.shrink(),
     };
@@ -2108,11 +1098,36 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
             LayoutInsetsScope.of(context).bottomClearance,
           ),
           children: [
-            _buildServerTelemetry(context, theme, colors),
+            _buildServerTelemetry(),
             const SizedBox(height: 12),
-            _buildHostDeviceMetrics(theme),
+            HostDeviceMetricsCard(
+              telemetry: _hostTelemetry,
+              telemetryError: _telemetryError,
+              serverOnline: _serverOnline == true,
+              volumes: _volumes,
+              cardDecoration: _dashboardCardDecoration(theme, radius: 20),
+              formatBytes: _formatBytes,
+            ),
             const SizedBox(height: 12),
-            _buildHostMediaScanCard(theme, colors),
+            HostMediaScanCard(
+              status: _mediaScanStatus,
+              scanError: _mediaScanError,
+              savingSettings: _savingMediaScanSettings,
+              startingScan: _startingMediaScan,
+              serverOnline: _serverOnline == true,
+              checking: _checking,
+              volumes: _volumes,
+              cardDecoration: _dashboardCardDecoration(theme),
+              formatTimestamp: _formatScanTimestamp,
+              formatInterval: _formatScanInterval,
+              formatBytes: _formatBytes,
+              onShowHistory: _showMediaScanHistory,
+              onShowSkippedItems: _showSkippedItemsInfo,
+              onUpdateAutomaticScanning: _updateAutomaticMediaScanning,
+              onStartScan: _startHostMediaScan,
+              onRetryScan: _retryFailedMediaScan,
+              onShareReport: _shareMediaScanReport,
+            ),
             const SizedBox(height: 18),
             for (final section in appSettings.homeSectionOrder)
               if (sectionBuilders.containsKey(section)) sectionBuilders[section]!(),

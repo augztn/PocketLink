@@ -16,6 +16,10 @@ import 'package:provider/provider.dart';
 
 import '../../core/network/server_api.dart';
 import 'media_player_screen.dart';
+import 'widgets/music_equalizer.dart';
+import 'widgets/video_metadata_label.dart';
+import 'widgets/video_duration_badge.dart';
+import 'widgets/video_grid_card.dart';
 import 'persistent_audio_player.dart';
 import 'now_playing_overlay_controller.dart';
 import '../transfers/transfer_manager_screen.dart';
@@ -395,8 +399,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
               path: itemPath,
               volume: current.volume,
             ));
-          }
-        }
+          }        }
 
         if (mounted) {
           setState(() => _media = List.unmodifiable(found));
@@ -621,23 +624,10 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   Future<VideoMetadata?> _videoMetadataFor(_MediaFile media) =>
       _videoMetadataCache.putIfAbsent(_favoriteKey(media), () => widget.api.videoMetadata(media.path, volume: media.volume));
 
-  Widget _videoMetadataLabel(_MediaFile media) {
-    return FutureBuilder<VideoMetadata?>(
-      future: _videoMetadataFor(media),
-      builder: (context, snapshot) {
-        final metadata = snapshot.data;
-        if (metadata == null) return const SizedBox.shrink();
-        final parts = <String>[
-          if (metadata.resolution.isNotEmpty) metadata.resolution,
-          if (metadata.durationMs > 0) _formatDuration(metadata.durationMs),
-        ];
-        if (parts.isEmpty) return const SizedBox.shrink();
-        return Text(parts.join(' · '), maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.bodySmall);
-      },
-    );
-  }
+  Widget _videoMetadataLabel(_MediaFile media) => VideoMetadataLabel(
+        future: _videoMetadataFor(media),
+        formatDuration: _formatDuration,
+      );
 
   String _formatDuration(int milliseconds) {
     final totalSeconds = milliseconds ~/ 1000;
@@ -647,23 +637,26 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     final two = (int value) => value.toString().padLeft(2, '0');
     return hours > 0 ? '${hours}:${two(minutes)}:${two(seconds)}' : '${minutes}:${two(seconds)}';
   }
-  Widget _videoDurationBadge(_MediaFile media) {
-    return FutureBuilder<VideoMetadata?>(
-      future: _videoMetadataFor(media),
-      builder: (context, snapshot) {
-        final duration = snapshot.data?.durationMs ?? 0;
-        if (duration <= 0) return const SizedBox.shrink();
-        return _VideoTag(label: _formatDuration(duration));
-      },
-    );
-  }
+  Widget _videoDurationBadge(_MediaFile media) => VideoDurationBadge(
+        future: _videoMetadataFor(media),
+        formatDuration: _formatDuration,
+      );
 
   Widget _buildVideoGrid(List<_MediaFile> items) {
     return GridView.builder(
       controller: _contentScrollController,
-      padding: EdgeInsets.fromLTRB(12, ((_searchExpanded && widget.showSearch) || _libraryView == 'folders') ? 8 : LayoutInsetsScope.of(context).topClearance, 12, LayoutInsetsScope.of(context).bottomClearance),
+      padding: EdgeInsets.fromLTRB(
+        12,
+        ((_searchExpanded && widget.showSearch) || _libraryView == 'folders')
+            ? 8
+            : LayoutInsetsScope.of(context).topClearance,
+        12,
+        LayoutInsetsScope.of(context).bottomClearance,
+      ),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 14,
+        crossAxisCount: 2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 14,
         childAspectRatio: 0.88,
       ),
       itemCount: items.length,
@@ -671,89 +664,42 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         final media = items[index];
         final extension = media.entry.name.split('.').last.toUpperCase();
         final favorite = _favoriteKeys.contains(_favoriteKey(media));
-        final colors = Theme.of(context).colorScheme;
-        return Material(
-          color: colors.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(16),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(16),
-            onTap: () => _openMedia(media, items),
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.48)),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                Expanded(child: Stack(fit: StackFit.expand, children: [
-                  _buildVideoArtwork(media, fit: BoxFit.cover),
-                  Positioned(left: 8, bottom: 8, child: _VideoTag(label: extension)),
-                  Positioned(right: 8, bottom: 8, child: _videoDurationBadge(media)),
-                  Center(child: ClipOval(child: BackdropFilter(
-                    filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-                    child: Container(width: 44, height: 44,
-                      decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.42), shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.35))),
-                      child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 28),
-                    ),
-                  ))),
-                  Positioned(left: 8, top: 8, child: SmokedGlassPopoverMenu<String>(
-                    tooltip: 'Video actions',
-                    items: const [
-                      SmokedGlassPopoverMenuItem(value: 'download', label: 'Download', icon: Icons.download_rounded),
-                    ],
-                    onSelected: (action) async {
-                      if (action != 'download') return;
-                      try {
-                        await DownloadManagerService.instance.enqueueServerFile(
-                          api: widget.api,
-                          name: media.entry.name,
-                          sourcePath: media.path,
-                          volume: media.volume,
-                          size: media.entry.size,
-                        );
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Added to Downloads: ${media.entry.name}')),
-                          );
-                        }
-                      } catch (_) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Could not add this video to Downloads.')),
-                          );
-                        }
-                      }
-                    },
-                    child: const GlassCircleButton(
-                      tooltip: 'Open video actions',
-                      onPressed: null,
-                      size: 28,
-                      child: Icon(Icons.more_vert_rounded, size: 15),
-                    ),
-                  )),
-                  Positioned(right: 4, top: 4, child: IconButton(
-                    visualDensity: VisualDensity.compact,
-                    tooltip: favorite ? 'Remove favourite' : 'Add favourite',
-                    onPressed: () => _toggleFavorite(media),
-                    icon: Icon(favorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                      color: favorite ? const Color(0xFFFF6B8A) : Colors.white),
-                  )),
-                ])),
-                Padding(padding: const EdgeInsets.fromLTRB(10, 8, 10, 9), child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(media.entry.name, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 3),
-                    Row(children: [
-                      Expanded(child: _videoMetadataLabel(media)),
-                      Text(_formatBytes(media.entry.size), style: Theme.of(context).textTheme.bodySmall),
-                    ]),
-                  ],
-                )),
-              ]),
-            ),
-          ),
+        return VideoGridCard(
+          title: media.entry.name,
+          extension: extension,
+          sizeLabel: _formatBytes(media.entry.size),
+          favorite: favorite,
+          artwork: _buildVideoArtwork(media, fit: BoxFit.cover),
+          durationBadge: _videoDurationBadge(media),
+          metadataLabel: _videoMetadataLabel(media),
+          onOpen: () => _openMedia(media, items),
+          onToggleFavorite: () => _toggleFavorite(media),
+          onDownload: () async {
+            try {
+              await DownloadManagerService.instance.enqueueServerFile(
+                api: widget.api,
+                name: media.entry.name,
+                sourcePath: media.path,
+                volume: media.volume,
+                size: media.entry.size,
+              );
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Added to Downloads: ${media.entry.name}'),
+                  ),
+                );
+              }
+            } catch (_) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Could not add this video to Downloads.'),
+                  ),
+                );
+              }
+            }
+          },
         );
       },
     );
@@ -795,8 +741,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                   maxLines: 1, overflow: TextOverflow.ellipsis),
                 _videoMetadataLabel(media),
               ],
-            ),
-            trailing: Row(
+            ),            trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 SmokedGlassPopoverMenu<String>(
@@ -1195,8 +1140,7 @@ tooltip: 'Choose video view',
   Future<Uint8List?> _fetchTrackArtwork(_MediaFile media) async {
     final folder = media.path.contains('/')
         ? media.path.substring(0, media.path.lastIndexOf('/') + 1)
-        : '';
-    try {
+        : '';    try {
       final listing = media.volume == null
           ? await widget.api.listDirectory(folder)
           : await widget.api.listStorageDirectory(media.volume!, folder);
@@ -1306,7 +1250,7 @@ tooltip: 'Choose video view',
                 : Image.memory(snapshot.data!, fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.music_note_rounded, color: Colors.white70))),
           ),
-          if (playing) const ColoredBox(color: Color(0x66000000), child: Center(child: _MusicEqualizer())),
+          if (playing) const ColoredBox(color: Color(0x66000000), child: Center(child: MusicEqualizer())),
         ]),
       ),
     );
@@ -1595,8 +1539,7 @@ tooltip: 'Choose video view',
                             ),
                     ),
             ),
-            if (_loading)
-              Positioned(
+            if (_loading)              Positioned(
                 top: top + 60,
                 left: 16,
                 right: 16,
@@ -1850,31 +1793,6 @@ tooltip: 'Choose music view',
 
 }
 
-class _VideoTag extends StatelessWidget {
-  const _VideoTag({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) => DecoratedBox(
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.68),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-          child: Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-      );
-}
-
 class MediaBrowserScreen extends StatefulWidget {
   const MediaBrowserScreen({
     required this.api,
@@ -1893,28 +1811,4 @@ class MediaBrowserScreen extends StatefulWidget {
 
   @override
   State<MediaBrowserScreen> createState() => _MediaBrowserScreenState();
-}
-
-class _MusicEqualizer extends StatefulWidget {
-  const _MusicEqualizer();
-  @override
-  State<_MusicEqualizer> createState() => _MusicEqualizerState();
-}
-
-class _MusicEqualizerState extends State<_MusicEqualizer> with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 650))..repeat();
-  @override
-  void dispose() { _controller.dispose(); super.dispose(); }
-  @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: _controller,
-    builder: (context, _) => Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.end, children: [
-      for (var i = 0; i < 4; i++)
-        Container(
-          width: 3, height: 5 + 12 * (0.5 + 0.5 * math.sin((_controller.value * math.pi * 2) + i * 1.35)),
-          margin: const EdgeInsets.symmetric(horizontal: 1),
-          decoration: BoxDecoration(color: const Color(0xFF536DFE), borderRadius: BorderRadius.circular(3)),
-        ),
-    ]),
-  );
 }
