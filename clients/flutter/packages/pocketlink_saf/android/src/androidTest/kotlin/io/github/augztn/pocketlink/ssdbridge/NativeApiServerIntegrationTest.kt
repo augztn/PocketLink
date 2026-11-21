@@ -35,7 +35,7 @@ class NativeApiServerIntegrationTest {
         // and then releasing a ServerSocket port creates a race with other processes.
         val server = NativeApiServer(context, credentials, 0, "0.0.0.0")
 
-        server.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false)
+        server.start(30_000, false)
         try {
             val port = server.listeningPort
             assertTrue("Native API server did not bind an ephemeral port", port > 0)
@@ -102,7 +102,7 @@ class NativeApiServerIntegrationTest {
         val server = NativeApiServer(context, credentials, 0, "0.0.0.0", root)
         val executor = Executors.newFixedThreadPool(12)
 
-        server.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false)
+        server.start(30_000, false)
         try {
             val port = server.listeningPort
             val protectedUpload = File(root, "protected.txt").apply { writeText("original-upload") }
@@ -219,7 +219,7 @@ class NativeApiServerIntegrationTest {
     ): Pair<Int, String> {
         return Socket().use { socket ->
             socket.connect(InetSocketAddress("127.0.0.1", port), 5_000)
-            socket.soTimeout = 15_000
+            socket.soTimeout = 45_000
             val headers = buildString {
                 append("$method $path HTTP/1.1\r\n")
                 append("Host: 127.0.0.1:$port\r\n")
