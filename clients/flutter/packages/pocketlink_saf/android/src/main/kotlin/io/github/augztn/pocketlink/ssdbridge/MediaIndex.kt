@@ -736,6 +736,7 @@ internal class MediaIndexScanner(
                         continue
                     }
                     children.forEach { child ->
+                        ensureScanActive()
                         if (child.name.startsWith(".")) return@forEach
                         val canonical = try { child.canonicalFile } catch (_: Exception) { null }
                         if (canonical == null || !(canonical.path == base.path ||
@@ -783,6 +784,7 @@ internal class MediaIndexScanner(
                         continue
                     }
                     children.forEach { child ->
+                        ensureScanActive()
                         val name = child.name ?: run {
                             complete = false
                             skipped++
