@@ -12,7 +12,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.net.InetSocketAddress
 import java.net.Socket
+import java.io.File
 import java.util.UUID
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import android.util.Base64
 
@@ -98,14 +100,28 @@ class NativeApiServerIntegrationTest {
             "admin:$password".toByteArray(), Base64.NO_WRAP
         )
         val server = NativeApiServer(context, credentials, 0, "0.0.0.0", root)
-        val executor = Executors.newFixedThreadPool(8)
+        val executor = Executors.newFixedThreadPool(12)
 
         server.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false)
         try {
             val port = server.listeningPort
-            val payloads = (0 until 8).map { "upload-payload-$it".toByteArray() }
+            val protectedUpload = File(root, "protected.txt").apply { writeText("original-upload") }
+            val rejectedUpload = request(
+                port,
+                "/api/files/upload?path=",
+                authorization,
+                method = "POST",
+                body = multipartBody("protected.txt", "replacement".toByteArray()),
+                contentType = "multipart/form-data; boundary=pocketlink-test-boundary"
+            )
+            assertEquals(409, rejectedUpload.first)
+            assertEquals("original-upload", protectedUpload.readText())
+
+            val payloads = (0 until 12).map { "upload-payload-$it".toByteArray() }
+            val uploadGate = CountDownLatch(1)
             val uploadResponses = payloads.map { payload ->
                 executor.submit<Pair<Int, String>> {
+                    uploadGate.await()
                     request(
                         port,
                         "/api/files/upload?path=",
@@ -115,21 +131,39 @@ class NativeApiServerIntegrationTest {
                         contentType = "multipart/form-data; boundary=pocketlink-test-boundary"
                     )
                 }
-            }.map { it.get() }
+            }
+            uploadGate.countDown()
+            val completedUploads = uploadResponses.map { it.get() }
 
-            assertEquals(1, uploadResponses.count { it.first == 200 })
-            assertEquals(7, uploadResponses.count { it.first == 409 })
+            assertEquals(1, completedUploads.count { it.first == 200 })
+            assertEquals(11, completedUploads.count { it.first == 409 })
             assertTrue(
                 "The committed upload must match exactly one complete request body",
                 payloads.any { it.contentEquals(File(root, "shared.txt").readBytes()) }
             )
 
-            val sourceContents = (0 until 8).associate { index ->
+            val occupied = File(root, "occupied.txt").apply { writeText("original-rename-target") }
+            val blockedSource = File(root, "blocked-source.txt").apply { writeText("source-content") }
+            val rejectedRename = request(
+                port,
+                "/api/files/rename",
+                authorization,
+                method = "PATCH",
+                body = """{"path":"blocked-source.txt","new_name":"occupied.txt"}""".toByteArray(),
+                contentType = "application/json"
+            )
+            assertEquals(409, rejectedRename.first)
+            assertEquals("original-rename-target", occupied.readText())
+            assertEquals("source-content", blockedSource.readText())
+
+            val sourceContents = (0 until 12).associate { index ->
                 "source-$index.txt" to "rename-source-$index".toByteArray()
             }
             sourceContents.forEach { (name, bytes) -> File(root, name).writeBytes(bytes) }
+            val renameGate = CountDownLatch(1)
             val renameResponses = sourceContents.keys.map { source ->
                 executor.submit<Pair<Int, String>> {
+                    renameGate.await()
                     request(
                         port,
                         "/api/files/rename",
@@ -139,16 +173,18 @@ class NativeApiServerIntegrationTest {
                         contentType = "application/json"
                     )
                 }
-            }.map { it.get() }
+            }
+            renameGate.countDown()
+            val completedRenames = renameResponses.map { it.get() }
 
-            assertEquals(1, renameResponses.count { it.first == 200 })
-            assertEquals(7, renameResponses.count { it.first == 409 })
+            assertEquals(1, completedRenames.count { it.first == 200 })
+            assertEquals(11, completedRenames.count { it.first == 409 })
             assertTrue(
                 "The committed rename must preserve one complete source file",
                 sourceContents.values.any { it.contentEquals(File(root, "renamed.txt").readBytes()) }
             )
             assertEquals(
-                7,
+                11,
                 sourceContents.keys.count { File(root, it).exists() },
                 "All losing rename sources must remain untouched"
             )
