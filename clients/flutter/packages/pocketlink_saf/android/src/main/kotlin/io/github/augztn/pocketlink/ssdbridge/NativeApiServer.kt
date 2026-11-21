@@ -133,7 +133,9 @@ internal class NativeApiServer(
         return try {
             val query = session.parameters.mapValues { (_, values) -> values.firstOrNull().orEmpty() }
             val path = query["path"].orEmpty()
-            mediaIndexRoutes.serve(session, query)?.let { return it }
+            if (session.uri.startsWith("/api/index/")) {
+                mediaIndexRoutes.serve(session, query)?.let { return it }
+            }
             when {
                 session.uri == "/api/files/" && session.method == Method.GET ->
                     listInternal(path)
