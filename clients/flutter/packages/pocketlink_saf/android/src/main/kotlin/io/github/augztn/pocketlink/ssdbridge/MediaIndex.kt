@@ -761,7 +761,7 @@ internal class MediaIndexScanner(
                         recordSkipped(volume, parentPath, "Folder could not be read")
                         continue
                     }
-                    if (children.isEmpty() && hasIndexedDescendants(fileSnapshot.keys, parentPath)) {
+                    if (children.isEmpty() && hasIndexedDescendants(fileSnapshot.keys + mediaSnapshot.keys, parentPath)) {
                         // SAF providers may report an empty array on transient query failures.
                         // An empty listing cannot prove deletion when prior descendants exist.
                         complete = false
