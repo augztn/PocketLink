@@ -93,7 +93,7 @@ void main() {
       ),
     ));
 
-    expect(tester.widget<IconButton>(find.byTooltip('Refresh connected storage')).onPressed, isNull);
+    expect(tester.widgetList<IconButton>(find.byType(IconButton)).single.onPressed, isNull);
     expect(tester.widget<OutlinedButton>(find.widgetWithText(OutlinedButton, 'Choose storage folder')).onPressed, isNull);
   });
 }
