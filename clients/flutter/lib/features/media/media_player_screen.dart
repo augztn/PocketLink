@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import '../../core/widgets/pocketlink_app_bar.dart';
-import '../../core/widgets/liquid_glass_pill.dart';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:material_ui/material_ui.dart';
