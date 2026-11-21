@@ -1,10 +1,6 @@
 package io.github.augztn.pocketlink.ssdbridge
 
 import android.content.Context
-import android.media.MediaMetadataRetriever
-import android.graphics.Bitmap
-import java.io.ByteArrayOutputStream
-import java.io.ByteArrayInputStream
 import android.os.Environment
 import android.os.Build
 import android.os.StatFs
@@ -361,8 +357,6 @@ internal class NativeApiServer(
             context = context,
             externalStorage = externalStorage,
             internalFile = ::internalFile,
-            isVideoFile = ::isVideoFile,
-            isAudioFile = ::isAudioFile,
             bad = ::bad,
             notFound = ::notFound,
             error = ::jsonError,
