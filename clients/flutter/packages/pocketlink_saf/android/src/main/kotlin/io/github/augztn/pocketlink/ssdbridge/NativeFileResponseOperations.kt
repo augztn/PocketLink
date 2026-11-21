@@ -2,10 +2,8 @@ package io.github.augztn.pocketlink.ssdbridge
 
 import android.content.Context
 import android.net.Uri
-import androidx.documentfile.provider.DocumentFile
 import fi.iki.elonen.NanoHTTPD
 import java.io.BufferedInputStream
-import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.FilterInputStream
@@ -176,7 +174,7 @@ internal class NativeFileResponseOperations(
 
 internal fun parseByteRange(value: String, length: Long): Pair<Long, Long>? {
     if (length <= 0L) return null
-    val match = Regex("bytes=(\\\\d*)-(\\\\d*)").matchEntire(value) ?: return null
+    val match = Regex("bytes=(\\d*)-(\\d*)").matchEntire(value) ?: return null
     val first = match.groupValues[1]
     val last = match.groupValues[2]
     val start: Long
