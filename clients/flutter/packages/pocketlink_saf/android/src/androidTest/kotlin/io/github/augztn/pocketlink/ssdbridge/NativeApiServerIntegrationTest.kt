@@ -84,6 +84,61 @@ class NativeApiServerIntegrationTest {
     }
 
     @Test
+    fun mediaIndexSettingsRoutesPreserveValidationAndConfigurationContract() {
+        val appContext = ApplicationProvider.getApplicationContext<Context>()
+        val context = object : ContextWrapper(appContext) {
+            override fun getSharedPreferences(name: String, mode: Int): SharedPreferences =
+                appContext.getSharedPreferences("index-route-test-$name", mode)
+        }
+        val root = File(context.cacheDir, "index-route-test-${UUID.randomUUID()}").apply {
+            check(mkdirs())
+        }
+        val credentials = ServerCredentials(context)
+        val password = "index-route-test-password"
+        credentials.setPassword(password)
+        val authorization = "Basic " + Base64.encodeToString(
+            "admin:$password".toByteArray(), Base64.NO_WRAP
+        )
+        val server = NativeApiServer(context, credentials, 0, "0.0.0.0", root)
+        server.start(30_000, false)
+        try {
+            val port = server.listeningPort
+            val settings = request(port, "/api/index/settings", authorization)
+            assertEquals(200, settings.first)
+            assertTrue(settings.second.contains("\\\"interval_minutes\\\""))
+
+            val invalidInterval = request(
+                port,
+                "/api/index/settings?enabled=true&interval_minutes=10",
+                authorization,
+                method = "POST"
+            )
+            assertEquals(400, invalidInterval.first)
+            assertTrue(invalidInterval.second.contains("15 and 1440"))
+
+            val updated = request(
+                port,
+                "/api/index/settings?enabled=false&interval_minutes=60&scan_on_startup=false&scan_on_storage_change=false",
+                authorization,
+                method = "POST"
+            )
+            assertEquals(200, updated.first)
+            assertTrue(updated.second.contains("\\\"enabled\\\":false"))
+            assertTrue(updated.second.contains("\\\"interval_minutes\\\":60"))
+            assertTrue(updated.second.contains("\\\"scan_on_startup\\\":false"))
+            assertTrue(updated.second.contains("\\\"scan_on_storage_change\\\":false"))
+        } finally {
+            server.closeMediaIndex()
+            server.stop()
+            root.deleteRecursively()
+            context.getSharedPreferences("index-route-test-ssd-bridge", Context.MODE_PRIVATE)
+                .edit().clear().commit()
+            context.getSharedPreferences("index-route-test-pocketlink-auth", Context.MODE_PRIVATE)
+                .edit().clear().commit()
+        }
+    }
+
+    @Test
     fun concurrentUploadsAndRenamesNeverReplaceAnExistingDestination() {
         val appContext = ApplicationProvider.getApplicationContext<Context>()
         val context = object : ContextWrapper(appContext) {
