@@ -642,6 +642,7 @@ class ServerApi {
 
   final Dio _dio;
   final _RequestGate _requestGate;
+  bool _closed = false;
   static const _directoryCacheTtl = Duration(seconds: 20);
   static const _maxCachedDirectories = 512;
   final Map<String, _CacheEntry<DirectoryListing>> _directoryCache = {};
@@ -766,6 +767,15 @@ class ServerApi {
   }
 
   String get baseUrl => _dio.options.baseUrl;
+
+  /// Releases the underlying HTTP adapter and cached client state.
+  void close({bool force = true}) {
+    if (_closed) return;
+    _closed = true;
+    invalidateDirectoryCache();
+    clearMediaCache();
+    _dio.close(force: force);
+  }
 
   static String _normalizeBaseUrl(String value) {
     final trimmed = value.trim();
