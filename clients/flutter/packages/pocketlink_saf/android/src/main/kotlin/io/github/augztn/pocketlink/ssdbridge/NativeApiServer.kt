@@ -40,8 +40,6 @@ internal class NativeApiServer(
     internalRootOverride: File? = null
 ) : NanoHTTPD(bindHost, listenPort) {
     private val prefs = context.getSharedPreferences("ssd-bridge", Context.MODE_PRIVATE)
-    // Serialize destination checks and commits across concurrent HTTP mutations.
-    private val fileMutationLock = Any()
     private val systemTelemetry by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
         SystemTelemetryReader(context)
     }
@@ -303,7 +301,7 @@ internal class NativeApiServer(
         val staging = File(parent, ".pocketlink-upload-${UUID.randomUUID()}.part")
         return try {
             if (!temp.renameTo(staging)) temp.copyTo(staging, overwrite = false).also { temp.delete() }
-            synchronized(fileMutationLock) {
+            synchronized(FILE_MUTATION_LOCK) {
                 when {
                     target.exists() ->
                         jsonError(Response.Status.CONFLICT, "An item with this name already exists")
@@ -329,7 +327,7 @@ internal class NativeApiServer(
         val name = if (operation == "mkdir") body.optString("name") else body.optString("new_name")
         if (!validName(name)) return bad("Invalid name")
 
-        return synchronized(fileMutationLock) {
+        return synchronized(FILE_MUTATION_LOCK) {
             if (operation == "mkdir") {
                 val parent = internalFile(relative) ?: return@synchronized notFound("Folder not found")
                 if (!parent.isDirectory) return@synchronized bad("Not a directory")
@@ -549,7 +547,7 @@ internal class NativeApiServer(
             context.contentResolver.openOutputStream(staged.uri, "wt")?.use { output ->
                 temp.inputStream().use { input -> input.copyTo(output) }
             } ?: return jsonError(Response.Status.INTERNAL_ERROR, "Cannot write file")
-            synchronized(fileMutationLock) {
+            synchronized(FILE_MUTATION_LOCK) {
                 when {
                     parent.findFile(name) != null ->
                         jsonError(Response.Status.CONFLICT, "Name already exists")
@@ -575,7 +573,7 @@ internal class NativeApiServer(
         val relative = body.optString("path")
         val name = if (operation == "mkdir") body.optString("name") else body.optString("new_name")
         if (!validName(name)) return bad("Invalid name")
-        return synchronized(fileMutationLock) {
+        return synchronized(FILE_MUTATION_LOCK) {
             val target: DocumentFile
             if (operation == "mkdir") {
                 val parent = resolveDocument(root, relative)
@@ -852,5 +850,6 @@ internal class NativeApiServer(
         const val PORT = 8000
         const val USERNAME = "admin"
         private const val STREAM_BUFFER_SIZE = 64 * 1024
+        private val FILE_MUTATION_LOCK = Any()
     }
 }
