@@ -743,6 +743,7 @@ class ServerApi {
     request = load().then<T>((value) {
       if (generation != _cacheGeneration) {
         if (identical(requests[key], request)) requests.remove(key);
+        if (_closed) return value;
         return _cachedGet<T>(key, cache, requests, load);
       }
       if (cache.length >= _maxCachedDirectories && !cache.containsKey(key)) {
@@ -1071,6 +1072,7 @@ class ServerApi {
     }).then<List<StorageVolume>>((volumes) async {
       if (generation != _cacheGeneration) {
         if (identical(_volumesRequest, request)) _volumesRequest = null;
+        if (_closed) return volumes;
         return await listStorageVolumes();
       }
       _volumesCache = _CacheEntry(
