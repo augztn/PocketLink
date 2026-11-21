@@ -39,6 +39,24 @@ internal class NativeApiServer(
 ) : NanoHTTPD(bindHost, listenPort) {
     private val prefs = context.getSharedPreferences("ssd-bridge", Context.MODE_PRIVATE)
     private val externalStorage = ExternalStorageAccess(context, prefs, ::validName)
+    private val externalOperations by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        ExternalStorageOperations(
+            context = context,
+            prefs = prefs,
+            storage = externalStorage,
+            parseMultipart = ::multipartFile,
+            parseJsonBody = ::jsonBody,
+            isValidName = ::validName,
+            mimeFor = ::mimeFor,
+            formatDate = ::isoDate,
+            json = { value -> json(value) },
+            bad = ::bad,
+            notFound = ::notFound,
+            error = ::jsonError,
+            markMediaIndexDirty = ::markMediaIndexDirty,
+            mutationLock = FILE_MUTATION_LOCK
+        )
+    }
     private val systemTelemetry by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
         SystemTelemetryReader(context)
     }
@@ -242,60 +260,10 @@ internal class NativeApiServer(
 
     private fun deleteInternal(relative: String): Response = internalOperations.delete(relative)
 
-    private fun listVolumes(): Response {
-        val items = JSONArray()
-        val ids = linkedSetOf<String>()
-        prefs.all.keys.filter { it.startsWith("volume_uri_") }.forEach {
-            ids.add(it.removePrefix("volume_uri_"))
-        }
-        if (prefs.getString("usb1", null) != null) ids.add("usb1")
-        if (prefs.getString("usb2", null) != null) ids.add("usb2")
-        externalStorage.discoveredRemovableVolumes().forEach { (id, _) -> ids.add(id) }
-        ids.forEach { id ->
-            val root = externalStorage.root(id)
-            val available = root?.exists() == true
-            val legacyName = when (id) { "usb1" -> "USB Storage 1"; "usb2" -> "USB Storage 2"; else -> id }
-            val item = JSONObject()
-                .put("id", id)
-                .put("name", prefs.getString("volume_name_$id", null) ?: legacyName)
-                .put("available", available)
-                .put("writable", available && root?.canWrite() == true)
+    private fun listVolumes(): Response = externalOperations.listVolumes()
 
-            if (available && root != null) {
-                val capacity = if (root.uri.scheme == "file") {
-                    try {
-                        val stats = StatFs(root.uri.path ?: return@forEach)
-                        externalVolumeCapacity(stats.totalBytes, stats.availableBytes)
-                    } catch (_: Exception) { null }
-                } else {
-                    externalStorage.readVolumeCapacity(root.uri)
-                }
-                capacity?.let {
-                    item.put("total_bytes", it.totalBytes)
-                        .put("used_bytes", it.usedBytes)
-                        .put("available_bytes", it.availableBytes)
-                        .put("usage_percent", it.usagePercent)
-                }
-            }
-            items.put(item)
-        }
-        return json(JSONObject().put("items", items))
-    }
-
-    private fun listExternal(volume: String?, relative: String): Response {
-        val root = externalStorage.root(volume) ?: return notFound("Storage permission not granted")
-        val directory = externalStorage.resolveDocument(root, relative) ?: return notFound("Folder not found")
-        if (!directory.isDirectory) return bad("Not a directory")
-        val items = JSONArray()
-        directory.listFiles().filter { !it.name.orEmpty().startsWith(".") }
-            .sortedWith(compareBy<DocumentFile>({ !it.isDirectory }, { it.name.orEmpty().lowercase(Locale.ROOT) }))
-            .forEach { item ->
-                items.put(JSONObject().put("name", item.name ?: "")
-                    .put("type", if (item.isDirectory) "directory" else "file")
-                    .put("size", item.length()).put("modified", isoDate(item.lastModified())))
-            }
-        return json(JSONObject().put("path", relative).put("items", items))
-    }
+    private fun listExternal(volume: String?, relative: String): Response =
+        externalOperations.list(volume, relative)
 
     private fun serveExternalFile(volume: String?, relative: String, session: IHTTPSession): Response {
         val root = externalStorage.root(volume) ?: return notFound("Storage permission not granted")
@@ -379,82 +347,14 @@ internal class NativeApiServer(
         return BufferedInputStream(input, STREAM_BUFFER_SIZE)
     }
 
-    private fun uploadExternal(volume: String?, relative: String, session: IHTTPSession): Response {
-        val root = externalStorage.root(volume) ?: return notFound("Storage permission not granted")
-        val parent = externalStorage.resolveDocument(root, relative) ?: return notFound("Destination folder not found")
-        if (!parent.isDirectory) return bad("Destination is not a folder")
-        val (name, temp) = multipartFile(session) ?: return bad("Multipart field 'file' is required")
-        if (!validName(name)) { temp.delete(); return bad("Invalid filename") }
-        val staged = parent.createFile(mimeFor(name), ".pocketlink-upload-${UUID.randomUUID()}.part")
-            ?: run { temp.delete(); return jsonError(Response.Status.INTERNAL_ERROR, "Could not stage upload") }
-        return try {
-            context.contentResolver.openOutputStream(staged.uri, "wt")?.use { output ->
-                temp.inputStream().use { input -> input.copyTo(output) }
-            } ?: return jsonError(Response.Status.INTERNAL_ERROR, "Cannot write file")
-            synchronized(FILE_MUTATION_LOCK) {
-                when {
-                    parent.findFile(name) != null ->
-                        jsonError(Response.Status.CONFLICT, "Name already exists")
-                    !staged.renameTo(name) ->
-                        if (parent.findFile(name) != null) {
-                            jsonError(Response.Status.CONFLICT, "Name already exists")
-                        } else {
-                            jsonError(Response.Status.INTERNAL_ERROR, "Could not finalize uploaded file")
-                        }
-                    else -> json(JSONObject().put("ok", true).put("name", name))
-                        .also { markMediaIndexDirty() }
-                }
-            }
-        } finally {
-            temp.delete()
-            if (staged.exists()) staged.delete()
-        }
-    }
+    private fun uploadExternal(volume: String?, relative: String, session: IHTTPSession): Response =
+        externalOperations.upload(volume, relative, session)
 
-    private fun mutateExternal(session: IHTTPSession, operation: String): Response {
-        val body = jsonBody(session) ?: return bad("Invalid JSON body")
-        val root = externalStorage.root(body.optString("volume")) ?: return notFound("Storage permission not granted")
-        val relative = body.optString("path")
-        val name = if (operation == "mkdir") body.optString("name") else body.optString("new_name")
-        if (!validName(name)) return bad("Invalid name")
-        return synchronized(FILE_MUTATION_LOCK) {
-            val target: DocumentFile
-            if (operation == "mkdir") {
-                val parent = externalStorage.resolveDocument(root, relative)
-                    ?: return@synchronized notFound("Folder not found")
-                if (parent.findFile(name) != null) {
-                    return@synchronized jsonError(Response.Status.CONFLICT, "Name already exists")
-                }
-                target = parent.createDirectory(name)
-                    ?: return@synchronized jsonError(Response.Status.INTERNAL_ERROR, "Could not create folder")
-            } else {
-                target = externalStorage.resolveDocument(root, relative)
-                    ?: return@synchronized notFound("Item not found")
-                if (target.parentFile?.findFile(name) != null) {
-                    return@synchronized jsonError(Response.Status.CONFLICT, "Name already exists")
-                }
-                if (!target.renameTo(name)) {
-                    return@synchronized if (target.parentFile?.findFile(name) != null) {
-                        jsonError(Response.Status.CONFLICT, "Name already exists")
-                    } else {
-                        jsonError(Response.Status.INTERNAL_ERROR, "Rename failed")
-                    }
-                }
-            }
-            json(JSONObject().put("ok", true).put("name", target.name ?: name))
-                .also { markMediaIndexDirty() }
-        }
-    }
+    private fun mutateExternal(session: IHTTPSession, operation: String): Response =
+        externalOperations.mutate(session, operation)
 
-    private fun deleteExternal(volume: String?, relative: String): Response {
-        val root = externalStorage.root(volume) ?: return notFound("Storage permission not granted")
-        if (relative.isBlank()) return bad("Cannot delete storage root")
-        val item = externalStorage.resolveDocument(root, relative) ?: return notFound("Item not found")
-        return if (item.delete()) {
-            markMediaIndexDirty()
-            json(JSONObject().put("ok", true))
-        } else jsonError(Response.Status.INTERNAL_ERROR, "Delete failed")
-    }
+    private fun deleteExternal(volume: String?, relative: String): Response =
+        externalOperations.delete(volume, relative)
 
     private fun withMediaSource(
         volume: String?,
