@@ -50,10 +50,10 @@ class AppSettings extends ChangeNotifier {
   static const homeSectionDefaults = <String>['search', 'quick', 'transfers', 'continue', 'recent'];
   static const navigationDefaults = <String>['home', 'explore', 'files', 'browse'];
   static const musicButtonShortcutDefaults = <String>[
-    'photos', 'music', 'videos', 'documents', 'files', 'search',
+    'photos', 'music', 'videos', 'documents', 'files', 'search', 'drives',
   ];
   static const musicButtonShortcutDestinations = <String>{
-    'explore', 'files', 'music', 'videos', 'photos', 'documents', 'favorites', 'upload', 'search',
+    'explore', 'files', 'music', 'videos', 'photos', 'documents', 'favorites', 'upload', 'search', 'drives',
   };
 
   ThemeMode _themeMode = ThemeMode.system;
