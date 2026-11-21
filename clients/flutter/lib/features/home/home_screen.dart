@@ -16,6 +16,7 @@ import 'home_dashboard.dart';
 import '../media/media_player_screen.dart';
 import '../media/now_playing_overlay_controller.dart';
 import '../media/media_browser_screen.dart';
+import '../media/media_library_catalog.dart';
 import '../library/photo_gallery_screen.dart';
 import '../media/persistent_audio_player.dart';
 

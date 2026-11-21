@@ -16,6 +16,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/network/server_api.dart';
 import 'media_player_screen.dart';
+import 'media_library_catalog.dart';
 import 'widgets/music_equalizer.dart';
 import 'widgets/video_metadata_label.dart';
 import 'widgets/video_duration_badge.dart';
@@ -27,44 +28,11 @@ import '../downloads/download_manager_service.dart';
 import '../home/browser_state_store.dart';
 import '../settings/settings_screen.dart';
 
-enum MediaLibraryType { music, video }
-
-class _MediaFile {
-  const _MediaFile({required this.entry, required this.path, this.volume});
-
-  final FileEntry entry;
-  final String path;
-  final String? volume;
-}
-
-class _MediaFolder {
-  const _MediaFolder({required this.name, required this.path, required this.volume, required this.items});
-  final String name;
-  final String path;
-  final String? volume;
-  final List<_MediaFile> items;
-}
-
 class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
-  static const _audioExtensions = {
-    'mp3', 'flac', 'm4a', 'wav', 'ogg', 'aac', 'opus', 'wma',
-  };
-  static const _videoExtensions = {
-    'mp4', 'mkv', 'webm', 'mov', 'avi', 'm4v', '3gp', 'ts',
-  };
-  static const _audioMimeTypes = {
-    'audio/mpeg', 'audio/flac', 'audio/x-flac', 'audio/mp4', 'audio/x-m4a',
-    'audio/wav', 'audio/x-wav', 'audio/ogg', 'audio/aac', 'audio/opus',
-    'audio/x-ms-wma',
-  };
-  static const _videoMimeTypes = {
-    'video/mp4', 'video/x-m4v', 'video/x-matroska', 'video/webm',
-    'video/quicktime', 'video/x-msvideo', 'video/3gpp', 'video/mp2t',
-  };
   static const _maxDirectories = 10000;
   static const _maxDepth = 24;
 
-  List<_MediaFile> _media = const [];
+  List<MediaFileItem> _media = const [];
   bool _loading = true;
   String? _error;
   int _scannedDirectories = 0;
@@ -173,25 +141,13 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     return 'USB / OTG';
   }
 
-  bool _isMedia(FileEntry item, {String? mime}) {
-    final extension = item.name.contains('.')
-        ? item.name.split('.').last.toLowerCase()
-        : '';
-    final allowedExtension = (_isMusic ? _audioExtensions : _videoExtensions)
-        .contains(extension);
-    if (!allowedExtension) return false;
-    final normalizedMime = mime?.split(';').first.trim().toLowerCase() ?? '';
-    if (normalizedMime.isEmpty || normalizedMime == 'application/octet-stream') {
-      return true;
-    }
-    return (_isMusic ? _audioMimeTypes : _videoMimeTypes)
-        .contains(normalizedMime);
-  }
+  bool _isMedia(FileEntry item, {String? mime}) =>
+      MediaLibraryCatalog.isMedia(item, type: widget.type, mime: mime);
 
-  Future<({List<_MediaFile> items, MediaIndexStatus status})>
+  Future<({List<MediaFileItem> items, MediaIndexStatus status})>
       _readIndexedMedia() async {
     final category = _isMusic ? 'music' : 'video';
-    final found = <_MediaFile>[];
+    final found = <MediaFileItem>[];
     var offset = 0;
     late MediaIndexStatus status;
     do {
@@ -205,7 +161,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       if (!mounted) break;
       found.addAll(page.items
           .where((item) => _isMedia(item.toFileEntry(), mime: item.mime))
-          .map((item) => _MediaFile(
+          .map((item) => MediaFileItem(
                 entry: item.toFileEntry(),
                 path: item.path,
                 volume: item.volume == 'internal' ? null : item.volume,
@@ -328,7 +284,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       _scanLocation = '';
     });
 
-    final found = <_MediaFile>[];
+    final found = <MediaFileItem>[];
     final visited = <String>{};
     final pending = <({String path, int depth, String? volume})>[];
 
@@ -394,7 +350,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
               _skippedDirectories++;
             }
           } else if (_isMedia(item)) {
-            found.add(_MediaFile(
+            found.add(MediaFileItem(
               entry: item,
               path: itemPath,
               volume: current.volume,
@@ -430,7 +386,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     }
   }
 
-  Future<void> _openMedia(_MediaFile media, List<_MediaFile> queueItems) async {
+  Future<void> _openMedia(MediaFileItem media, List<MediaFileItem> queueItems) async {
     if (_openingMedia) return;
     _openingMedia = true;
     final queue = queueItems
@@ -482,15 +438,15 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
   }
 
-  String _sourceLabel(_MediaFile media) =>
+  String _sourceLabel(MediaFileItem media) =>
       media.volume == null ? 'Internal storage' : 'USB / OTG';
 
-  String _fileExtension(_MediaFile media) {
+  String _fileExtension(MediaFileItem media) {
     final dot = media.entry.name.lastIndexOf('.');
     return dot < 0 ? '' : media.entry.name.substring(dot + 1).toUpperCase();
   }
 
-  String _displayTitle(_MediaFile media) {
+  String _displayTitle(MediaFileItem media) {
     final dot = media.entry.name.lastIndexOf('.');
     final name = (dot > 0 ? media.entry.name.substring(0, dot) : media.entry.name)
         .replaceAll('_', ' ')
@@ -510,92 +466,23 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       '$count ${count == 1 ? singular : plural}';
 
 
-  List<_MediaFolder> _foldersAtCurrentLevel(List<_MediaFile> items) {
-    final grouped = <String, List<_MediaFile>>{};
-    final prefix = _currentFolderPath.isEmpty
-        ? <String>[]
-        : _currentFolderPath.split('/').where((part) => part.isNotEmpty).toList();
-    for (final media in items) {
-      final source = media.volume ?? 'internal';
-      if (_selectedVolume != null && source != _selectedVolume) continue;
-      final parts = media.path.split('/').where((part) => part.isNotEmpty).toList();
-      if (parts.length <= prefix.length + 1) continue;
-      var matches = true;
-      for (var i = 0; i < prefix.length; i++) {
-        if (parts[i] != prefix[i]) { matches = false; break; }
-      }
-      if (!matches) continue;
-      final folderPath = parts.take(prefix.length + 1).join('/');
-      final key = '$source::$folderPath';
-      grouped.putIfAbsent(key, () => <_MediaFile>[]).add(media);
-    }
-    final result = grouped.entries.map((entry) {
-      final separator = entry.key.indexOf('::');
-      final source = entry.key.substring(0, separator);
-      final path = entry.key.substring(separator + 2);
-      return _MediaFolder(
-        name: path.split('/').last,
-        path: path,
-        volume: source == 'internal' ? null : source,
-        items: entry.value,
+  MediaLibraryCatalog get _catalog => MediaLibraryCatalog(
+        type: widget.type,
+        selectedVolume: _selectedVolume,
+        currentFolderPath: _currentFolderPath,
+        sortBy: _sortBy,
       );
-    }).toList();
-    result.sort((a, b) {
-      if (_sortBy == 'largest') {
-        final aSize = a.items.fold<int>(0, (sum, item) => sum + item.entry.size);
-        final bSize = b.items.fold<int>(0, (sum, item) => sum + item.entry.size);
-        return bSize.compareTo(aSize);
-      }
-      if (_sortBy == 'newest') {
-        DateTime newest(_MediaFolder folder) {
-          return folder.items
-              .map((item) => DateTime.tryParse(item.entry.modified))
-              .whereType<DateTime>()
-              .fold<DateTime>(DateTime.fromMillisecondsSinceEpoch(0),
-                  (latest, date) => date.isAfter(latest) ? date : latest);
-        }
-        return newest(b).compareTo(newest(a));
-      }
-      return a.name.toLowerCase().compareTo(b.name.toLowerCase());
-    });
-    return result;
-  }
 
-  List<_MediaFile> _filesAtCurrentLevel(List<_MediaFile> items) {
-    final prefix = _currentFolderPath.isEmpty
-        ? <String>[]
-        : _currentFolderPath.split('/').where((part) => part.isNotEmpty).toList();
-    return items.where((media) {
-      final source = media.volume ?? 'internal';
-      if (_selectedVolume != null && source != _selectedVolume) return false;
-      final parts = media.path.split('/').where((part) => part.isNotEmpty).toList();
-      if (parts.length != prefix.length + 1) return false;
-      for (var i = 0; i < prefix.length; i++) {
-        if (parts[i] != prefix[i]) return false;
-      }
-      return true;
-    }).toList();
-  }
+  List<MediaFolderGroup> _foldersAtCurrentLevel(List<MediaFileItem> items) =>
+      _catalog.foldersAtCurrentLevel(items);
 
-  List<_MediaFile> _sortMedia(List<_MediaFile> items) {
-    final result = List<_MediaFile>.of(items);
-    if (_sortBy == 'largest') {
-      result.sort((a, b) => b.entry.size.compareTo(a.entry.size));
-    } else if (_sortBy == 'newest') {
-      result.sort((a, b) {
-        final aDate = DateTime.tryParse(a.entry.modified);
-        final bDate = DateTime.tryParse(b.entry.modified);
-        return (bDate?.millisecondsSinceEpoch ?? 0)
-            .compareTo(aDate?.millisecondsSinceEpoch ?? 0);
-      });
-    } else {
-      result.sort((a, b) =>
-          a.entry.name.toLowerCase().compareTo(b.entry.name.toLowerCase()));
-    }
-    return result;
-  }
+  List<MediaFileItem> _filesAtCurrentLevel(List<MediaFileItem> items) =>
+      _catalog.filesAtCurrentLevel(items);
 
-  Widget _buildVideoArtwork(_MediaFile media, {required BoxFit fit}) {
+  List<MediaFileItem> _sortMedia(List<MediaFileItem> items) =>
+      _catalog.sortMedia(items);
+
+  Widget _buildVideoArtwork(MediaFileItem media, {required BoxFit fit}) {
     return FutureBuilder<Uint8List?>(
       future: widget.api.videoThumbnail(media.path, volume: media.volume),
       builder: (context, snapshot) {
@@ -621,10 +508,10 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     );
   }
 
-  Future<VideoMetadata?> _videoMetadataFor(_MediaFile media) =>
+  Future<VideoMetadata?> _videoMetadataFor(MediaFileItem media) =>
       _videoMetadataCache.putIfAbsent(_favoriteKey(media), () => widget.api.videoMetadata(media.path, volume: media.volume));
 
-  Widget _videoMetadataLabel(_MediaFile media) => VideoMetadataLabel(
+  Widget _videoMetadataLabel(MediaFileItem media) => VideoMetadataLabel(
         future: _videoMetadataFor(media),
         formatDuration: _formatDuration,
       );
@@ -637,12 +524,12 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     final two = (int value) => value.toString().padLeft(2, '0');
     return hours > 0 ? '${hours}:${two(minutes)}:${two(seconds)}' : '${minutes}:${two(seconds)}';
   }
-  Widget _videoDurationBadge(_MediaFile media) => VideoDurationBadge(
+  Widget _videoDurationBadge(MediaFileItem media) => VideoDurationBadge(
         future: _videoMetadataFor(media),
         formatDuration: _formatDuration,
       );
 
-  Widget _buildVideoGrid(List<_MediaFile> items) {
+  Widget _buildVideoGrid(List<MediaFileItem> items) {
     return GridView.builder(
       controller: _contentScrollController,
       padding: EdgeInsets.fromLTRB(
@@ -705,7 +592,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     );
   }
 
-  Widget _buildVideoList(List<_MediaFile> items) {
+  Widget _buildVideoList(List<MediaFileItem> items) {
     return ListView.separated(
       controller: _contentScrollController,
       padding: EdgeInsets.fromLTRB(12, ((_searchExpanded && widget.showSearch) || _libraryView == 'folders') ? 8 : LayoutInsetsScope.of(context).topClearance, 12, LayoutInsetsScope.of(context).bottomClearance),
@@ -788,7 +675,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   }
 
 
-  Widget _buildFolders(List<_MediaFile> items) {
+  Widget _buildFolders(List<MediaFileItem> items) {
     final folders = _foldersAtCurrentLevel(items);
     final files = _sortMedia(_filesAtCurrentLevel(items));
     final parts = _currentFolderPath.split('/').where((part) => part.isNotEmpty).toList();
@@ -1112,7 +999,7 @@ tooltip: 'Choose video view',
 
   String get _favoritesPreferenceKey => 'pocketlink.media.favorites.$_stateKey.${widget.type.name}';
 
-  String _favoriteKey(_MediaFile media) => '${media.volume ?? 'internal'}:${media.path}';
+  String _favoriteKey(MediaFileItem media) => '${media.volume ?? 'internal'}:${media.path}';
 
   Future<void> _loadFavorites() async {
     final prefs = await SharedPreferences.getInstance();
@@ -1120,7 +1007,7 @@ tooltip: 'Choose video view',
     setState(() => _favoriteKeys = prefs.getStringList(_favoritesPreferenceKey)?.toSet() ?? <String>{});
   }
 
-  Future<void> _toggleFavorite(_MediaFile media) async {
+  Future<void> _toggleFavorite(MediaFileItem media) async {
     final key = _favoriteKey(media);
     final next = Set<String>.of(_favoriteKeys);
     if (!next.add(key)) next.remove(key);
@@ -1129,15 +1016,15 @@ tooltip: 'Choose video view',
     await prefs.setStringList(_favoritesPreferenceKey, next.toList()..sort());
   }
 
-  String _trackArtist(_MediaFile media) {
+  String _trackArtist(MediaFileItem media) {
     final parts = media.path.split('/')..removeLast();
     return parts.isEmpty ? _sourceLabel(media) : parts.last;
   }
 
-  Future<Uint8List?> _loadTrackArtwork(_MediaFile media) =>
+  Future<Uint8List?> _loadTrackArtwork(MediaFileItem media) =>
       _musicArtworkCache.putIfAbsent(_favoriteKey(media), () => _fetchTrackArtwork(media));
 
-  Future<Uint8List?> _fetchTrackArtwork(_MediaFile media) async {
+  Future<Uint8List?> _fetchTrackArtwork(MediaFileItem media) async {
     final folder = media.path.contains('/')
         ? media.path.substring(0, media.path.lastIndexOf('/') + 1)
         : '';    try {
@@ -1233,7 +1120,7 @@ tooltip: 'Choose video view',
     _syncBackHandler();
   }
 
-  Widget _musicArtwork(_MediaFile media, {bool playing = false}) {
+  Widget _musicArtwork(MediaFileItem media, {bool playing = false}) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(10),
       child: SizedBox(
@@ -1256,7 +1143,7 @@ tooltip: 'Choose video view',
     );
   }
 
-  Future<void> _queueTrack(_MediaFile media, {required bool playNext}) async {
+  Future<void> _queueTrack(MediaFileItem media, {required bool playNext}) async {
     final player = PersistentAudioPlayer.instance;
     final item = MediaQueueItem(title: media.entry.name, path: media.path, volume: media.volume, size: media.entry.size);
     if (player.isActive && player.isMusic) {
@@ -1266,14 +1153,14 @@ tooltip: 'Choose video view',
     }
   }
 
-  void _toggleTrackSelection(_MediaFile media) {
+  void _toggleTrackSelection(MediaFileItem media) {
     final key = _favoriteKey(media);
     setState(() {
       if (!_selectedTrackKeys.add(key)) _selectedTrackKeys.remove(key);
     });
   }
 
-  String _musicDurationPreferenceKey(_MediaFile media) {
+  String _musicDurationPreferenceKey(MediaFileItem media) {
     final identity =
         '$_stateKey|${_favoriteKey(media)}|${media.entry.size}|${media.entry.modified}';
     var hash = 0x811c9dc5;
@@ -1284,7 +1171,7 @@ tooltip: 'Choose video view',
     return 'pocketlink.music.duration.${hash.toRadixString(16)}';
   }
 
-  Future<int> _musicDurationFor(_MediaFile media) =>
+  Future<int> _musicDurationFor(MediaFileItem media) =>
       _musicDurationRequests.putIfAbsent(_favoriteKey(media), () async {
         final preferences = await SharedPreferences.getInstance();
         final preferenceKey = _musicDurationPreferenceKey(media);
@@ -1304,7 +1191,7 @@ tooltip: 'Choose video view',
         return durationMs;
       });
 
-  Widget _musicDurationLabel(_MediaFile media) =>
+  Widget _musicDurationLabel(MediaFileItem media) =>
       FutureBuilder<int>(
         future: _musicDurationFor(media),
         builder: (context, snapshot) {
@@ -1322,7 +1209,7 @@ tooltip: 'Choose video view',
         },
       );
 
-  Widget _musicTrackTile(_MediaFile media, List<_MediaFile> queueItems) {
+  Widget _musicTrackTile(MediaFileItem media, List<MediaFileItem> queueItems) {
     final player = PersistentAudioPlayer.instance;
     final isPlaying = player.currentItem?.path == media.path &&
         player.currentItem?.volume == media.volume &&
@@ -1728,7 +1615,7 @@ tooltip: 'Choose music view',
                           ],
                           onSelected: (value) {
                             if (value == 'shuffle' && visible.isNotEmpty) {
-                              final shuffled = List<_MediaFile>.of(visible)..shuffle(math.Random());
+                              final shuffled = List<MediaFileItem>.of(visible)..shuffle(math.Random());
                               _openMedia(shuffled.first, shuffled);
                             }
                             if (value == 'select') {
