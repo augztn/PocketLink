@@ -17,6 +17,7 @@ import 'widgets/host_device_permissions_card.dart';
 import 'widgets/host_status_card.dart';
 import 'widgets/host_quick_actions_card.dart';
 import 'widgets/host_device_intro_card.dart';
+import 'widgets/host_action_feedback_section.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
 import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
@@ -601,29 +602,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
           ),
     ];
     final feedbackSections = <Widget>[
-          const SizedBox(height: 12),
-          if (_busy) ...[
-            const LinearProgressIndicator(),
-            const SizedBox(height: 12),
-          ],
-          if (_error != null) ...[
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: colors.errorContainer.withValues(alpha: 0.55),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.info_outline_rounded, color: colors.error, size: 19),
-                  const SizedBox(width: 9),
-                  Expanded(child: Text(_error!, style: theme.textTheme.bodySmall?.copyWith(color: colors.onErrorContainer))),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-          ],
+      HostActionFeedbackSection(busy: _busy, error: _error),
     ];
     final tokenSections = <Widget>[
           const SizedBox(height: 24),
