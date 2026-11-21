@@ -2,16 +2,11 @@ package io.github.augztn.pocketlink.ssdbridge
 
 import android.content.Context
 import android.os.Environment
-import android.os.Build
 import fi.iki.elonen.NanoHTTPD
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayInputStream
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import java.util.TimeZone
 import java.util.UUID
 import android.util.Base64
 
@@ -29,7 +24,8 @@ internal class NativeApiServer(
     internalRootOverride: File? = null
 ) : NanoHTTPD(bindHost, listenPort) {
     private val prefs = context.getSharedPreferences("ssd-bridge", Context.MODE_PRIVATE)
-    private val externalStorage = ExternalStorageAccess(context, prefs, ::validName)
+    private val fileMetadata = NativeApiFileMetadata()
+    private val externalStorage = ExternalStorageAccess(context, prefs, fileMetadata::isValidName)
     private val externalOperations by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
         ExternalStorageOperations(
             context = context,
@@ -37,9 +33,9 @@ internal class NativeApiServer(
             storage = externalStorage,
             parseMultipart = ::multipartFile,
             parseJsonBody = ::jsonBody,
-            isValidName = ::validName,
+            isValidName = fileMetadata::isValidName,
             mimeFor = fileResponseOperations::mimeFor,
-            formatDate = ::isoDate,
+            formatDate = fileMetadata::formatDate,
             json = { value -> json(value) },
             bad = ::bad,
             notFound = ::notFound,
@@ -65,16 +61,16 @@ internal class NativeApiServer(
         (internalRootOverride ?: Environment.getExternalStorageDirectory()).canonicalFile
     }
     private val internalStorage by lazy(LazyThreadSafetyMode.NONE) {
-        InternalStorageAccess(internalRoot, ::validName)
+        InternalStorageAccess(internalRoot, fileMetadata::isValidName)
     }
     private val internalOperations by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
         InternalStorageOperations(
             root = { internalRoot },
             resolve = ::internalFile,
-            isValidName = ::validName,
+            isValidName = fileMetadata::isValidName,
             parseMultipart = ::multipartFile,
             parseJsonBody = ::jsonBody,
-            fileJson = ::fileJson,
+            fileJson = fileMetadata::fileJson,
             fileResponse = ::fileResponse,
             json = { value -> json(value) },
             error = { status, message -> jsonError(status, message) },
@@ -120,7 +116,7 @@ internal class NativeApiServer(
             mediaIndex,
             jsonResponse = { value -> json(value) },
             badRequest = { message -> bad(message) },
-            formatDate = { timestamp -> isoDate(timestamp) }
+            formatDate = { timestamp -> fileMetadata.formatDate(timestamp) }
         )
     }
 
@@ -306,39 +302,6 @@ internal class NativeApiServer(
                 ?: return null
         }
         return try { JSONObject(raw) } catch (_: Exception) { null }
-    }
-
-    private fun fileJson(file: File): JSONObject {
-        val value = JSONObject()
-            .put("name", file.name)
-            .put("type", if (file.isDirectory) "directory" else "file")
-            .put("size", if (file.isFile) file.length() else 0L)
-            .put("modified", isoDate(file.lastModified()))
-        // Filesystem birth time is not available on every Android filesystem.
-        // Only publish it when the provider supplies a valid value.
-        if (file.isFile && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            try {
-                val created = java.nio.file.Files.readAttributes(
-                    file.toPath(),
-                    java.nio.file.attribute.BasicFileAttributes::class.java
-                ).creationTime().toMillis()
-                if (created > 0L) value.put("created", isoDate(created))
-            } catch (_: Exception) {
-                // Some Android/FUSE filesystems do not expose birth time.
-            }
-        }
-        return value
-    }
-
-    private fun validName(value: String): Boolean =
-        value.isNotBlank() && value != "." && value != ".." &&
-            !value.startsWith(".") && !value.contains('/') && !value.contains('\\') &&
-            !value.any { it.code < 32 }
-
-    private fun isoDate(timestamp: Long): String {
-        val format = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
-        format.timeZone = TimeZone.getTimeZone("UTC")
-        return format.format(Date(timestamp))
     }
 
     private fun bad(message: String) = jsonError(Response.Status.BAD_REQUEST, message)
