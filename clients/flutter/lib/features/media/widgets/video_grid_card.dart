@@ -1,7 +1,10 @@
+import 'dart:ui';
+
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/widgets/liquid_glass_pill.dart';
 import '../../../core/widgets/smoked_glass_popover_menu.dart';
+import 'video_tag.dart';
 
 class VideoGridCard extends StatelessWidget {
   const VideoGridCard({
@@ -58,24 +61,7 @@ class VideoGridCard extends StatelessWidget {
                     Positioned(
                       left: 8,
                       bottom: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 7,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.68),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          extension,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
+                      child: VideoTag(label: extension),
                     ),
                     Positioned(right: 8, bottom: 8, child: durationBadge),
                     Center(
