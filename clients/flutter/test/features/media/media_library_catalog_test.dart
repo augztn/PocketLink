@@ -125,8 +125,8 @@ void main() {
 
   group('MediaLibraryCatalog sorting', () {
     final items = [
-      media('zeta.mp3', size: 10, modified: '2026-01-01T00:00:00Z'),
-      media('Alpha.mp3', size: 30, modified: '2026-03-01T00:00:00Z'),
+      media('zeta.mp3', size: 40, modified: '2026-01-01T00:00:00Z'),
+      media('Alpha.mp3', size: 10, modified: '2026-03-01T00:00:00Z'),
       media('beta.mp3', size: 20, modified: '2026-02-01T00:00:00Z'),
     ];
 
@@ -147,7 +147,7 @@ void main() {
           currentFolderPath: '',
           sortBy: 'largest',
         ).sortMedia(items).map((item) => item.entry.name),
-        ['Alpha.mp3', 'beta.mp3', 'zeta.mp3'],
+        ['zeta.mp3', 'beta.mp3', 'Alpha.mp3'],
       );
       expect(
         const MediaLibraryCatalog(
