@@ -131,7 +131,7 @@ class DownloadManagerService extends ChangeNotifier {
       );
       if (inUse) continue;
       _retiredServerApis.remove(api);
-      api.close(force: true);
+      api.close();
     }
   }
 
