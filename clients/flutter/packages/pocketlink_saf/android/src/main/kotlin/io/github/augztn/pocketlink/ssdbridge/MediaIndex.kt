@@ -818,10 +818,16 @@ internal class MediaIndexScanner(
             recordSkipped(volume, "", "Storage volume disconnected during scan")
             lastError = "A storage volume disconnected during scanning; its previous index was retained."
         }
-        // Each index is committed and pruned independently. A media-index
-        // failure must not invalidate the general file index, or vice versa.
-        if (complete && filesHealthy) database.finishFilesSource(volume, scanId)
-        if (complete && mediaHealthy) database.finishMediaSource(volume, scanId)
+        // Serialize final pruning with close(): shutdown either starts after this
+        // commit or prevents it entirely, so a cancelled traversal cannot prune rows.
+        synchronized(this) {
+            ensureScanActive()
+            // Each index is committed and pruned independently. A media-index
+            // failure must not invalidate the general file index, or vice versa.
+            if (complete && filesHealthy) database.finishFilesSource(volume, scanId)
+            ensureScanActive()
+            if (complete && mediaHealthy) database.finishMediaSource(volume, scanId)
+        }
     }
 
     fun status(): org.json.JSONObject {
