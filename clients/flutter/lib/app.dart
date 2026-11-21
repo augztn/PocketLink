@@ -7,6 +7,7 @@ import 'features/home/browser_state_store.dart';
 import 'core/settings/app_settings.dart';
 import 'core/logging/diagnostic_observer.dart';
 import 'core/navigation/pocketlink_navigation.dart';
+import 'core/navigation/pocketlink_page_transitions.dart';
 import 'features/media/global_media_overlay.dart';
 import 'features/connection/connection_screen.dart';
 
@@ -120,11 +121,11 @@ class _PocketLinkAppState extends State<PocketLinkApp> {
       useMaterial3: true,
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
-          TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
-          TargetPlatform.iOS: FadeUpwardsPageTransitionsBuilder(),
-          TargetPlatform.linux: FadeUpwardsPageTransitionsBuilder(),
-          TargetPlatform.macOS: FadeUpwardsPageTransitionsBuilder(),
-          TargetPlatform.windows: FadeUpwardsPageTransitionsBuilder(),
+          TargetPlatform.android: PocketLinkPageTransitionsBuilder(),
+          TargetPlatform.iOS: PocketLinkPageTransitionsBuilder(),
+          TargetPlatform.linux: PocketLinkPageTransitionsBuilder(),
+          TargetPlatform.macOS: PocketLinkPageTransitionsBuilder(),
+          TargetPlatform.windows: PocketLinkPageTransitionsBuilder(),
         },
       ),
       visualDensity: VisualDensity.standard,
