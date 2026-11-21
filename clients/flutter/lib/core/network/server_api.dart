@@ -769,7 +769,7 @@ class ServerApi {
   String get baseUrl => _dio.options.baseUrl;
 
   /// Releases the underlying HTTP adapter and cached client state.
-  void close({bool force = true}) {
+  void close({bool force = false}) {
     if (_closed) return;
     _closed = true;
     invalidateDirectoryCache();
