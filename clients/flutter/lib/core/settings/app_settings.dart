@@ -201,7 +201,7 @@ class AppSettings extends ChangeNotifier {
           final isLegacyDefault = values.length == legacyDefaults.length &&
               values.toSet().containsAll(legacyDefaults);
           final isPreviousDefault = values.length == previousMusicDefaults.length &&
-              values.toSet().containsAll(previousMusicDefaults);
+              values.join(',') == previousMusicDefaults.join(',');
           if (isLegacyDefault || isPreviousDefault) {
             _musicButtonShortcuts = List.of(musicButtonShortcutDefaults);
             if (isPreviousDefault && preferences.containsKey(_musicButtonShortcutsKey)) {
