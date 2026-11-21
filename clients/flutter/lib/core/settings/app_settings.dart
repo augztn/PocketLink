@@ -204,6 +204,12 @@ class AppSettings extends ChangeNotifier {
               values.toSet().containsAll(previousMusicDefaults);
           if (isLegacyDefault || isPreviousDefault) {
             _musicButtonShortcuts = List.of(musicButtonShortcutDefaults);
+            if (isPreviousDefault && preferences.containsKey(_musicButtonShortcutsKey)) {
+              await preferences.setString(
+                _musicButtonShortcutsKey,
+                jsonEncode(_musicButtonShortcuts),
+              );
+            }
           } else if (values.isNotEmpty && values.toSet().length == values.length) {
             _musicButtonShortcuts = values;
           }
