@@ -757,8 +757,8 @@ internal class MediaIndexScanner(
                 }
             }
             is DocumentFile -> {
-                if (!root.exists() || !root.isDirectory) {
-                    throw IllegalStateException("Storage volume is disconnected or unavailable")
+                if (!root.exists() || !root.isDirectory || !root.canRead()) {
+                    throw IllegalStateException("Storage volume is disconnected, unavailable, or unreadable")
                 }
                 val stack = ArrayDeque<Pair<Pair<DocumentFile, String>, Int>>()
                 stack.add((root to "") to 0)
@@ -768,6 +768,12 @@ internal class MediaIndexScanner(
                     val (directory, parentPath) = entry
                     currentPath = parentPath
                     scannedDirectories++
+                    if (!directory.canRead()) {
+                        complete = false
+                        skipped++
+                        recordSkipped(volume, parentPath, "Folder could not be read")
+                        continue
+                    }
                     val children = try { directory.listFiles() } catch (_: Exception) { null }
                     if (children == null) {
                         complete = false
