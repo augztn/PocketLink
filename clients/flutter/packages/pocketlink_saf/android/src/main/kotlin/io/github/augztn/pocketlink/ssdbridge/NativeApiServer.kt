@@ -63,6 +63,23 @@ internal class NativeApiServer(
         )
     }
     private val mediaIndex by mediaIndexDelegate
+    private val fileStorageRoutes by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        NativeFileStorageApiRoutes(
+            listInternal = ::listInternal,
+            serveInternalFile = ::serveInternalFile,
+            uploadInternal = ::uploadInternal,
+            mutateInternal = ::mutateInternal,
+            deleteInternal = ::deleteInternal,
+            listVolumes = ::listVolumes,
+            listExternal = ::listExternal,
+            serveExternalFile = ::serveExternalFile,
+            uploadExternal = ::uploadExternal,
+            mutateExternal = ::mutateExternal,
+            deleteExternal = ::deleteExternal,
+            videoMetadata = ::videoMetadata,
+            videoThumbnail = ::videoThumbnail
+        )
+    }
     private val mediaIndexRoutes by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
         MediaIndexApiRoutes(
             mediaIndex,
@@ -136,39 +153,10 @@ internal class NativeApiServer(
             if (session.uri.startsWith("/api/index/")) {
                 mediaIndexRoutes.serve(session, query)?.let { return it }
             }
+            fileStorageRoutes.serve(session, query, path)?.let { return it }
             when {
-                session.uri == "/api/files/" && session.method == Method.GET ->
-                    listInternal(path)
-                (session.uri == "/api/files/download" || session.uri == "/api/files/stream") &&
-                    session.method == Method.GET -> serveInternalFile(path, session, session.uri.endsWith("/stream"))
-                session.uri == "/api/files/upload" && session.method == Method.POST ->
-                    uploadInternal(path, session)
-                session.uri == "/api/files/mkdir" && session.method == Method.POST ->
-                    mutateInternal(session, "mkdir")
-                session.uri == "/api/files/rename" && session.method == Method.PATCH ->
-                    mutateInternal(session, "rename")
-                session.uri == "/api/files/item" && session.method == Method.DELETE ->
-                    deleteInternal(path)
-                session.uri == "/api/storage/volumes" && session.method == Method.GET ->
-                    listVolumes()
                 session.uri == "/api/system/telemetry" && session.method == Method.GET ->
                     json(systemTelemetry.snapshot())
-                session.uri == "/api/storage/list" && session.method == Method.GET ->
-                    listExternal(query["volume"], path)
-                session.uri == "/api/storage/download" && session.method == Method.GET ->
-                    serveExternalFile(query["volume"], path, session)
-                session.uri == "/api/storage/upload" && session.method == Method.POST ->
-                    uploadExternal(query["volume"], path, session)
-                session.uri == "/api/storage/mkdir" && session.method == Method.POST ->
-                    mutateExternal(session, "mkdir")
-                session.uri == "/api/storage/rename" && session.method == Method.POST ->
-                    mutateExternal(session, "rename")
-                session.uri == "/api/storage/item" && session.method == Method.DELETE ->
-                    deleteExternal(query["volume"], path)
-                session.uri == "/api/media/metadata" && session.method == Method.GET ->
-                    videoMetadata(query["volume"], path)
-                session.uri == "/api/media/thumbnail" && session.method == Method.GET ->
-                    videoThumbnail(query["volume"], path)
                 else -> jsonError(Response.Status.NOT_FOUND, "Endpoint not found")
             }
         } catch (error: SecurityException) {
