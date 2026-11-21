@@ -257,6 +257,9 @@ class _HomeScreenState extends State<HomeScreen> {
           _uploadRequest++;
         });
         break;
+      case 'drives':
+        _openExternalStorage();
+        break;
       case 'search':
         Navigator.of(context).push(MaterialPageRoute<void>(
           builder: (_) => SearchScreen(

@@ -4,7 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:pocketlink_client/features/home/music_shortcut_menu.dart';
 
 void main() {
-  testWidgets('Music shortcut menu filters removed legacy Drives destination', (tester) async {
+  testWidgets('Music shortcut menu displays and opens Drives destination', (tester) async {
     String? selected;
     await tester.pumpWidget(
       MaterialApp(
@@ -28,13 +28,11 @@ void main() {
     );
 
     for (final label in [
-      'Photos', 'Music', 'Videos', 'Documents', 'Files', 'Search',
+      'Photos', 'Music', 'Videos', 'Documents', 'Files', 'Search', 'Drives',
     ]) {
       expect(find.text(label), findsOneWidget);
     }
-    expect(find.text('Drives'), findsNothing);
-
-    await tester.tap(find.text('Photos'));
-    expect(selected, 'photos');
+    await tester.tap(find.text('Drives'));
+    expect(selected, 'drives');
   });
 }

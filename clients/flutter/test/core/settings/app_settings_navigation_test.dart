@@ -78,15 +78,32 @@ void main() {
     );
   });
 
+  test('existing default Music shortcuts migrate to include Drives', () async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(
+      'settings_music_button_shortcuts',
+      '["photos","music","videos","documents","files","search"]',
+    );
+
+    final settings = AppSettings.instance;
+    await settings.reloadPreferences();
+
+    expect(settings.musicButtonShortcuts, AppSettings.musicButtonShortcutDefaults);
+    expect(
+      preferences.getString('settings_music_button_shortcuts'),
+      '["photos","music","videos","documents","files","search","drives"]',
+    );
+  });
+
   test('Music button shortcuts persist, validate and reset', () async {
     final settings = AppSettings.instance;
-    const shortcuts = ['music', 'files', 'photos', 'upload'];
+    const shortcuts = ['music', 'files', 'photos', 'upload', 'drives'];
 
     await settings.setMusicButtonShortcuts(shortcuts);
     expect(settings.musicButtonShortcuts, shortcuts);
     final preferences = await SharedPreferences.getInstance();
     expect(preferences.getString('settings_music_button_shortcuts'),
-        '["music","files","photos","upload"]');
+        '["music","files","photos","upload","drives"]');
 
     await expectLater(
       settings.setMusicButtonShortcuts(const ['music', 'music']),

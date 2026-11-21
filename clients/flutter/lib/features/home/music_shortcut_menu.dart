@@ -24,6 +24,7 @@ class MusicShortcutMenu extends StatefulWidget {
     'favorites': (label: 'Favorites', icon: Icons.favorite_rounded, tint: Color(0xFFFBBF24)),
     'upload': (label: 'Upload', icon: Icons.cloud_upload_rounded, tint: Color(0xFF4ADE80)),
     'search': (label: 'Search', icon: Icons.search_rounded, tint: Color(0xFF60A5FA)),
+    'drives': (label: 'Drives', icon: Icons.usb_rounded, tint: Color(0xFF2DD4BF)),
   };
 
   @override
