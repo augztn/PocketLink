@@ -3,7 +3,6 @@ package io.github.augztn.pocketlink.ssdbridge
 import android.content.Context
 import android.os.Environment
 import android.os.Build
-import android.os.StatFs
 import fi.iki.elonen.NanoHTTPD
 import org.json.JSONArray
 import org.json.JSONObject
