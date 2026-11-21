@@ -210,15 +210,16 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     });
 
     final address = '$host:$port';
-    late final ServerApi api;
+    ServerApi? connectingApi;
+    var authenticated = false;
     final authenticationCancelToken = CancelToken();
     try {
-      api = ServerApi(
+      connectingApi = ServerApi(
         baseUrl: address,
         username: username,
         password: password,
       );
-      await api.authenticate(cancelToken: authenticationCancelToken).timeout(
+      await connectingApi.authenticate(cancelToken: authenticationCancelToken).timeout(
         const Duration(seconds: 55),
         onTimeout: () {
           authenticationCancelToken.cancel('Authentication deadline exceeded.');
@@ -226,6 +227,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
         },
       );
       await AppLogger.info('Server authentication succeeded', fields: {'host': host, 'port': port});
+      authenticated = true;
     } on DioException catch (error) {
       await AppLogger.warning('Server authentication failed', fields: {'host': host, 'port': port, 'type': error.type.name, 'status': error.response?.statusCode});
       if (!mounted) return;
@@ -273,9 +275,12 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
         });
       }
       return;
+    } finally {
+      if (!authenticated) connectingApi?.close(force: true);
     }
 
     if (!mounted) return;
+    final api = connectingApi!;
     final id = _profileId(address, username);
     final profile = {
       'id': id,
