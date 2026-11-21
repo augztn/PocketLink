@@ -1,36 +1,23 @@
-# PocketLink Android SSD Bridge
+# Legacy Android SSD bridge companion — archived
 
-A native Android companion for the PocketLink server phone. It uses Android Storage Access Framework (SAF), not raw mount paths or root access.
+**This directory is historical documentation only. It is not a buildable Android project and is not used by the current PocketLink app.** No Android SSD companion workflow or installable APK is produced from this directory.
 
-## Current scope
-- Requests persistent SAF tree access independently for USB Storage 1 and USB Storage 2.
-- Runs an authenticated HTTP bridge bound only to 127.0.0.1:8765.
-- Supports listing, reading/streaming, writing, creating folders, renaming and deleting documents through ContentResolver / DocumentFile.
-- Runs as a user-started foreground service with a persistent notification.
-- Stores the bridge bearer token in private app preferences.
+The current USB/SSD Storage Access Framework (SAF) implementation is part of the main PocketLink Android app:
 
-The bridge is intentionally loopback-only. Do not bind it to 0.0.0.0; only the FastAPI server on the same Android device should connect.
+- Flutter plugin: `clients/flutter/packages/pocketlink_saf`
+- Native host and SAF integration: `clients/flutter/packages/pocketlink_saf/android`
+- Current API contract: `docs/API_CONTRACT.md`
 
-## Install
-Build artifact: GitHub Actions workflow **Android SSD companion** → artifact **PocketLink-SSD-Bridge-Android**.
+Install the current PocketLink Android APK on the phone that holds the files and drives. Grant storage access from the app's **Host PocketLink on this phone** setup. Remote clients connect to the native host through Tailscale on port `8000`.
 
-Install the APK on the Android phone that physically hosts the SSDs. Open **PocketLink SSD Bridge**, select each USB partition separately using the Android folder picker, then start the local bridge. Keep the notification visible while PocketLink is running.
+The old companion design described below was a separate loopback-only bridge prototype. Its setup instructions and artifact references are retained only as historical context; do not follow them for a current PocketLink installation.
 
-Android/One UI must expose each partition through the system document picker. SAF support depends on the document provider and filesystem; verify both volumes before relying on write operations.
+## Historical prototype scope
 
-## Local bridge API
-All endpoints except GET /health require `Authorization: Bearer <bridge-token>`. The token is displayed in the companion app and must remain private.
+The prototype was intended to:
+- Request persistent SAF tree access independently for USB Storage 1 and USB Storage 2.
+- Run an authenticated bridge on `127.0.0.1:8765`.
+- Proxy listing, streaming, writing, folder creation, renaming and deletion through `DocumentFile`.
+- Run as a foreground service with a persistent notification.
 
-- GET /health
-- GET /v1/volumes
-- GET /v1/list?volume=usb1&path=
-- GET /v1/read?volume=usb1&path=folder/file.mp4
-- PUT /v1/write?volume=usb1&path=folder/file.bin (raw request body)
-- POST /v1/mkdir?volume=usb1&path=folder&name=new-folder
-- POST /v1/rename?volume=usb1&path=folder/old-name&name=new-name
-- DELETE /v1/item?volume=usb1&path=folder/file.bin
-
-Use usb2 for the second partition. Paths are relative to the selected SAF tree and cannot traverse above it.
-
-## Integration status
-This companion provides the Android SAF side only. The PocketLink FastAPI proxy and Flutter storage selector must be wired to this local API before SSDs appear in the remote client. Existing internal-storage routes and Tailscale networking remain unchanged.
+This prototype is superseded by the integrated `pocketlink_saf` plugin. Provider-specific write and seek support still depends on the Android device and SAF provider, so verify actual drives before relying on them.

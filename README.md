@@ -81,7 +81,7 @@ The Android storage and host integration is implemented in the local plugin at `
 | --- | --- |
 | `clients/flutter/lib` | Flutter UI, app state, networking, media and transfers |
 | `clients/flutter/packages/pocketlink_saf` | Native Android storage bridge and host implementation |
-| `server` | Server-side project components |
+| `server` | Legacy FastAPI/Termux SAF compatibility helpers; not used by the native Android host |
 | `docs` | API and implementation documentation |
 | `.github/workflows` | Continuous integration and build workflows |
 

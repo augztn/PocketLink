@@ -1,6 +1,12 @@
-# Android SAF storage integration
+# Legacy FastAPI/Termux SAF compatibility
 
-## Native Android server migration (in progress)
+**Current architecture:** PocketLink now hosts its API and SAF integration inside the main Android app. The native implementation lives in `clients/flutter/packages/pocketlink_saf` and is documented in `docs/API_CONTRACT.md`. A normal current installation does not require Termux, Python, a separate SSD companion APK, or the legacy port-`8765` bridge.
+
+This document is retained for users who still operate an older Termux/FastAPI deployment. The code under `server/app` is compatibility/proxy code for that legacy deployment; it is not part of the current native Android host.
+
+## Legacy migration notes (historical)
+
+
 
 The `feat/native-android-server` branch adds a native NanoHTTPD API listener on port `8000`. It is hosted by the Android foreground service and binds to `0.0.0.0` so a Tailscale peer can reach it. The API uses HTTP Basic authentication with username `admin`; the password is configured on the server phone and stored only as a salted PBKDF2 verifier in app-private preferences.
 
