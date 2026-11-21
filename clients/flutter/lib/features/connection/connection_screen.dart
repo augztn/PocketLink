@@ -210,16 +210,33 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     });
 
     final address = '$host:$port';
-    ServerApi? connectingApi;
-    var authenticated = false;
-    final authenticationCancelToken = CancelToken();
+    late final ServerApi api;
     try {
-      connectingApi = ServerApi(
+      api = ServerApi(
         baseUrl: address,
         username: username,
         password: password,
       );
-      await connectingApi.authenticate(cancelToken: authenticationCancelToken).timeout(
+    } on FormatException catch (error) {
+      await AppLogger.warning('Connection address validation failed');
+      if (mounted) setState(() {
+        _message = error.message;
+        _isConnecting = false;
+      });
+      return;
+    } catch (error, stack) {
+      await AppLogger.error('Connection client initialization failed', error: error, stackTrace: stack);
+      if (mounted) setState(() {
+        _message = 'Could not initialize the server connection. Check the address and try again.';
+        _isConnecting = false;
+      });
+      return;
+    }
+
+    var authenticated = false;
+    final authenticationCancelToken = CancelToken();
+    try {
+      await api.authenticate(cancelToken: authenticationCancelToken).timeout(
         const Duration(seconds: 55),
         onTimeout: () {
           authenticationCancelToken.cancel('Authentication deadline exceeded.');
@@ -259,13 +276,6 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
         });
       }
       return;
-    } on FormatException catch (error) {
-      await AppLogger.warning('Connection address validation failed');
-      if (mounted) setState(() {
-        _message = error.message;
-        _isConnecting = false;
-      });
-      return;
     } catch (error, stack) {
       await AppLogger.error('Connection initialization failed', error: error, stackTrace: stack);
       if (mounted) {
@@ -276,14 +286,13 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       }
       return;
     } finally {
-      if (!authenticated) connectingApi.close(force: true);
+      if (!authenticated) api.close(force: true);
     }
 
     if (!mounted) {
-      connectingApi.close(force: true);
+      api.close(force: true);
       return;
     }
-    final api = connectingApi;
     final id = _profileId(address, username);
     final profile = {
       'id': id,
