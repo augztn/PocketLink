@@ -46,6 +46,9 @@ internal class NativeApiServer(
     private val internalRoot by lazy(LazyThreadSafetyMode.NONE) {
         (internalRootOverride ?: Environment.getExternalStorageDirectory()).canonicalFile
     }
+    private val internalStorage by lazy(LazyThreadSafetyMode.NONE) {
+        InternalStorageAccess(internalRoot, ::validName)
+    }
     private val mediaIndexDelegate = lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
         MediaIndexScanner(
             context,
@@ -599,14 +602,7 @@ internal class NativeApiServer(
         name.substringAfterLast(".", "").lowercase(Locale.ROOT) in setOf(
             "mp3", "flac", "m4a", "wav", "ogg", "aac", "opus", "wma", "aiff", "alac", "amr"
         )
-    private fun internalFile(relative: String): File? {
-        if (relative.isBlank()) return internalRoot
-        val parts = relative.split('/')
-        if (parts.any { !validName(it) }) return null
-        val target = File(internalRoot, relative).canonicalFile
-        val prefix = internalRoot.path + File.separator
-        return if (target.path == internalRoot.path || target.path.startsWith(prefix)) target else null
-    }
+    private fun internalFile(relative: String): File? = internalStorage.resolve(relative)
 
     private fun multipartFile(session: IHTTPSession): Pair<String, File>? {
         val files = HashMap<String, String>()
