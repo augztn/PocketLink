@@ -13,6 +13,15 @@ import java.io.File
 @RunWith(AndroidJUnit4::class)
 class MediaIndexScannerTest {
     @Test
+    fun emptyProviderListingRetainsPreviouslyIndexedDescendants() {
+        val indexed = setOf("Music", "Music/track.mp3", "Music/Live/set.flac", "Pictures")
+        assertTrue(hasIndexedDescendants(indexed, ""))
+        assertTrue(hasIndexedDescendants(indexed, "Music"))
+        assertTrue(!hasIndexedDescendants(indexed, "Pictures"))
+        assertTrue(!hasIndexedDescendants(indexed, "Music/Live/set.flac"))
+    }
+
+    @Test
     fun scansInternalFilesAndPrunesDeletedEntriesAfterACompleteRefresh() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         context.deleteDatabase("pocketlink_index.db")
