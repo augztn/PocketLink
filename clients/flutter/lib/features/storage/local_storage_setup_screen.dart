@@ -16,6 +16,7 @@ import 'widgets/host_backend_bridge_token_card.dart';
 import 'widgets/host_storage_service_card.dart';
 import 'widgets/host_setup_section_title.dart';
 import 'widgets/host_device_permissions_card.dart';
+import 'widgets/host_status_card.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
 import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
@@ -450,103 +451,20 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
         ),
       ),
       const SizedBox(height: 14),
-      Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: colors.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.4)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Host status',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-                PocketLinkStatusPill(
-                  label: !_statusLoaded
-                      ? 'Checking'
-                      : running
-                          ? 'Running'
-                          : 'Stopped',
-                  granted: running,
-                ),
-                const SizedBox(width: 2),
-                IconButton(
-                  tooltip: 'Refresh host status',
-                  onPressed: _refreshingStatus || _busy
-                      ? null
-                      : _refreshDeviceStatus,
-                  icon: _refreshingStatus
-                      ? const SizedBox(
-                          width: 19,
-                          height: 19,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.refresh_rounded),
-                ),
-              ],
-            ),
-            Text(
-              'Live status reported by the Android host service.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colors.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 8),
-            if (!_statusLoaded)
-              const LinearProgressIndicator()
-            else ...[
-              HostServiceStatusRow(
-                label: 'Storage service',
-                value: running ? 'Running' : 'Stopped',
-                ready: running,
-                neutral: !running,
-              ),
-              HostServiceStatusRow(
-                label: 'Native server API',
-                value: apiRunning
-                    ? 'Running'
-                    : _serverPasswordConfigured
-                        ? 'Stopped'
-                        : 'Password not set',
-                ready: apiRunning,
-                neutral: !running && !_serverPasswordConfigured,
-              ),
-              HostServiceStatusRow(
-                label: 'Android storage bridge',
-                value: bridgeRunning ? 'Running' : 'Stopped',
-                ready: bridgeRunning,
-                neutral: !running,
-              ),
-              HostServiceStatusRow(
-                label: 'Internal storage',
-                value: internalGranted ? 'Access granted' : 'Needs access',
-                ready: internalGranted,
-              ),
-              HostServiceStatusRow(
-                label: 'USB / external drives',
-                value: usbStatus,
-                ready: selectedVolumeCount > 0,
-                neutral: detectedVolumeCount == 0,
-              ),
-            ],
-            const SizedBox(height: 6),
-            Text(
-              statusCheckedLabel(),
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: colors.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
+      HostStatusCard(
+        statusLoaded: _statusLoaded,
+        running: running,
+        apiRunning: apiRunning,
+        serverPasswordConfigured: _serverPasswordConfigured,
+        bridgeRunning: bridgeRunning,
+        internalGranted: internalGranted,
+        usbStatus: usbStatus,
+        selectedVolumeCount: selectedVolumeCount,
+        detectedVolumeCount: detectedVolumeCount,
+        refreshing: _refreshingStatus,
+        busy: _busy,
+        statusCheckedLabel: statusCheckedLabel(),
+        onRefresh: _refreshDeviceStatus,
       ),
       const SizedBox(height: 14),
       Container(
