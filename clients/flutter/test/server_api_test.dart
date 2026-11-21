@@ -149,7 +149,7 @@ void main() {
       api.close();
 
       expect(adapter.closeCalls, 1);
-      expect(adapter.force, isTrue);
+      expect(adapter.force, isFalse);
     });
 
     test('parses skipped media-index paths while remaining compatible with old hosts', () {
