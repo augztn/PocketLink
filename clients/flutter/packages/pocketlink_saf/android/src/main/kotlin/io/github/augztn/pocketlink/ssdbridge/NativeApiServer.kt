@@ -39,7 +39,7 @@ internal class NativeApiServer(
             parseMultipart = ::multipartFile,
             parseJsonBody = ::jsonBody,
             isValidName = ::validName,
-            mimeFor = ::mimeFor,
+            mimeFor = fileResponseOperations::mimeFor,
             formatDate = ::isoDate,
             json = { value -> json(value) },
             bad = ::bad,
