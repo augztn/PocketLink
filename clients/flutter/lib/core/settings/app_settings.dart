@@ -195,7 +195,14 @@ class AppSettings extends ChangeNotifier {
               .where(musicButtonShortcutDestinations.contains)
               .toList();
           const legacyDefaults = ['explore', 'music', 'files', 'videos', 'photos', 'documents'];
-          if (values.length == legacyDefaults.length && values.toSet().containsAll(legacyDefaults)) {
+          const previousMusicDefaults = [
+            'photos', 'music', 'videos', 'documents', 'files', 'search',
+          ];
+          final isLegacyDefault = values.length == legacyDefaults.length &&
+              values.toSet().containsAll(legacyDefaults);
+          final isPreviousDefault = values.length == previousMusicDefaults.length &&
+              values.toSet().containsAll(previousMusicDefaults);
+          if (isLegacyDefault || isPreviousDefault) {
             _musicButtonShortcuts = List.of(musicButtonShortcutDefaults);
           } else if (values.isNotEmpty && values.toSet().length == values.length) {
             _musicButtonShortcuts = values;
