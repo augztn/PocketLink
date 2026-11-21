@@ -91,6 +91,31 @@ class _SequenceAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+class _SharedReadAdapter implements HttpClientAdapter {
+  int requests = 0;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    requests++;
+    await Future<void>.delayed(const Duration(milliseconds: 40));
+    final body = options.uri.path == '/api/storage/volumes'
+        ? '{"items":[{"id":"usb1","name":"USB 1","available":true,"writable":false}]}'
+        : '{"path":"","items":[]}';
+    return ResponseBody.fromString(
+      body,
+      200,
+      headers: {Headers.contentTypeHeader: ['application/json']},
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
 void main() {
   group('ServerApi', () {
     test('parses skipped media-index paths while remaining compatible with old hosts', () {
@@ -217,6 +242,58 @@ void main() {
       api.invalidateDirectoryCache();
       await api.listDirectory('');
       expect(adapter.requests, 2);
+    });
+
+    test('coalesces identical directory reads across ServerApi instances', () async {
+      final firstAdapter = _SharedReadAdapter();
+      final secondAdapter = _SharedReadAdapter();
+      final firstApi = ServerApi(
+        baseUrl: 'http://127.0.0.1:8000',
+        username: 'admin',
+        password: 'secret',
+        httpClientAdapter: firstAdapter,
+      );
+      final secondApi = ServerApi(
+        baseUrl: 'http://127.0.0.1:8000',
+        username: 'admin',
+        password: 'secret',
+        httpClientAdapter: secondAdapter,
+      );
+
+      final results = await Future.wait([
+        firstApi.listDirectory(''),
+        secondApi.listDirectory(''),
+      ]);
+
+      expect(results, hasLength(2));
+      expect(firstAdapter.requests + secondAdapter.requests, 1);
+    });
+
+    test('coalesces storage-volume reads across ServerApi instances', () async {
+      final firstAdapter = _SharedReadAdapter();
+      final secondAdapter = _SharedReadAdapter();
+      final firstApi = ServerApi(
+        baseUrl: 'http://127.0.0.1:8000',
+        username: 'admin',
+        password: 'secret',
+        httpClientAdapter: firstAdapter,
+      );
+      final secondApi = ServerApi(
+        baseUrl: 'http://127.0.0.1:8000',
+        username: 'admin',
+        password: 'secret',
+        httpClientAdapter: secondAdapter,
+      );
+
+      final results = await Future.wait([
+        firstApi.listStorageVolumes(),
+        secondApi.listStorageVolumes(),
+      ]);
+
+      expect(results, hasLength(2));
+      expect(results.first.single.id, 'usb1');
+      expect(results.last.single.id, 'usb1');
+      expect(firstAdapter.requests + secondAdapter.requests, 1);
     });
 
     test('does not return a directory response invalidated while in flight', () async {
