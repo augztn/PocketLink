@@ -70,6 +70,10 @@ internal class NativeApiServer(
 
     fun ensureMediaIndexStarted() = mediaIndex.ensureStarted()
 
+    fun closeMediaIndex() {
+        if (mediaIndexDelegate.isInitialized()) mediaIndex.close()
+    }
+
     fun mediaIndexStatus(): String {
         mediaIndex.ensureStarted()
         return mediaIndex.status().toString()
