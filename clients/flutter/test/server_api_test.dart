@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
@@ -18,6 +19,27 @@ class _CloseTrackingAdapter implements HttpClientAdapter {
   @override
   void close({bool force = false}) {
     closeCalls++;
+    this.force = force;
+  }
+}
+
+class _DelayedReadAdapter implements HttpClientAdapter {
+  final started = Completer<void>();
+  final response = Completer<ResponseBody>();
+  bool? force;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) {
+    if (!started.isCompleted) started.complete();
+    return response.future;
+  }
+
+  @override
+  void close({bool force = false}) {
     this.force = force;
   }
 }
@@ -149,6 +171,28 @@ void main() {
       api.close();
 
       expect(adapter.closeCalls, 1);
+      expect(adapter.force, isFalse);
+    });
+
+    test('in-flight cached reads complete during graceful disposal', () async {
+      final adapter = _DelayedReadAdapter();
+      final api = ServerApi(
+        baseUrl: 'http://127.0.0.1:8119',
+        username: 'admin',
+        password: 'test',
+        httpClientAdapter: adapter,
+      );
+
+      final pending = api.listDirectory('');
+      await adapter.started.future;
+      api.close();
+      adapter.response.complete(ResponseBody.fromString(
+        '{"path":"","items":[]}',
+        200,
+        headers: {Headers.contentTypeHeader: ['application/json']},
+      ));
+
+      expect((await pending).items, isEmpty);
       expect(adapter.force, isFalse);
     });
 
