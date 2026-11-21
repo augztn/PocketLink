@@ -15,6 +15,7 @@ import 'widgets/host_server_password_card.dart';
 import 'widgets/host_backend_bridge_token_card.dart';
 import 'widgets/host_storage_service_card.dart';
 import 'widgets/host_setup_section_title.dart';
+import 'widgets/host_device_permissions_card.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
 import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
@@ -620,95 +621,18 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
       ),
     ];
     final permissionSections = <Widget>[
-          const SizedBox(height: 24),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: colors.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.4)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        color: colors.primaryContainer,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Icon(Icons.shield_outlined, color: colors.onPrimaryContainer),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Device permissions', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
-                          const SizedBox(height: 2),
-                          Text(
-                            !_statusLoaded
-                                ? 'Checking Android access…'
-                                : requiredAccessReady
-                                    ? 'Required access is ready'
-                                    : 'Internal storage access is not enabled',
-                            style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
-                          ),
-                        ],
-                      ),
-                    ),
-                    PocketLinkStatusPill(
-                      label: !_statusLoaded
-                          ? 'Checking'
-                          : requiredAccessReady
-                              ? 'Ready'
-                              : 'Needs access',
-                      granted: requiredAccessReady,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Divider(height: 1, color: colors.outlineVariant.withValues(alpha: 0.45)),
-                const SizedBox(height: 4),
-                StoragePermissionRow(
-                  icon: Icons.folder_open_rounded,
-                  title: 'All-files access',
-                  description: 'Direct access to shared and supported removable storage. Some drives may still need folder approval.',
-                  status: !_statusLoaded ? 'Checking' : internalGranted ? 'Enabled' : 'Needs access',
-                  granted: _statusLoaded && internalGranted,
-                  neutral: !_statusLoaded,
-                  onTap: !_statusLoaded || internalGranted || _busy ? null : _requestInternalStorageAccess,
-                ),
-                StoragePermissionRow(
-                  icon: Icons.battery_charging_full_rounded,
-                  title: 'Background activity',
-                  description: 'Battery exemption may reduce background restrictions',
-                  status: !_statusLoaded ? 'Checking' : backgroundGranted ? 'Exempt' : 'Recommended',
-                  granted: _statusLoaded && backgroundGranted,
-                  recommended: _statusLoaded && !backgroundGranted,
-                  onTap: !_statusLoaded || backgroundGranted || _busy ? null : _requestBackgroundAccess,
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: TextButton.icon(
-                    onPressed: _busy || _refreshingStatus ? null : _refreshDeviceStatus,
-                    icon: _refreshingStatus
-                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                        : const Icon(Icons.refresh_rounded, size: 18),
-                    label: Text(_refreshingStatus ? 'Checking permissions…' : 'Refresh permission status'),
-                    style: TextButton.styleFrom(
-                      minimumSize: const Size.fromHeight(42),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+      const SizedBox(height: 24),
+      HostDevicePermissionsCard(
+        statusLoaded: _statusLoaded,
+        requiredAccessReady: requiredAccessReady,
+        internalGranted: internalGranted,
+        backgroundGranted: backgroundGranted,
+        busy: _busy,
+        refreshingStatus: _refreshingStatus,
+        onRequestInternalStorageAccess: _requestInternalStorageAccess,
+        onRequestBackgroundAccess: _requestBackgroundAccess,
+        onRefresh: _refreshDeviceStatus,
+      ),
     ];
     final usbSections = <Widget>[
           const SizedBox(height: 24),
