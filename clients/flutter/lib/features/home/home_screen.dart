@@ -120,6 +120,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    DownloadManagerService.instance.releaseServerApi(widget.api);
     AppSettings.instance.removeListener(_navigationSettingsChanged);
     PocketLinkNavigation.drawerOpen.value = false;
     PocketLinkNavigation.quickShortcutsOpen.value = false;

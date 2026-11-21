@@ -30,6 +30,8 @@ class DownloadManagerService extends ChangeNotifier {
   final Map<String, bool> _removeAfterStop = {};
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   ServerApi? _serverApi;
+  final Map<String, ServerApi> _activeServerApis = {};
+  final Set<ServerApi> _retiredServerApis = {};
   Future<void> _writeQueue = Future<void>.value();
   bool _initialized = false;
   Future<void>? _initialization;
@@ -106,8 +108,31 @@ class DownloadManagerService extends ChangeNotifier {
   }
 
   void bindServerApi(ServerApi api) {
+    final previous = _serverApi;
     _serverApi = api;
+    if (previous != null && !identical(previous, api)) {
+      _retiredServerApis.add(previous);
+      _closeRetiredServerApis();
+    }
     _pumpQueue();
+  }
+
+  /// Releases a screen-owned API client after its active downloads finish.
+  void releaseServerApi(ServerApi api) {
+    if (identical(_serverApi, api)) _serverApi = null;
+    _retiredServerApis.add(api);
+    _closeRetiredServerApis();
+  }
+
+  void _closeRetiredServerApis() {
+    for (final api in _retiredServerApis.toList(growable: false)) {
+      final inUse = _activeServerApis.values.any(
+        (activeApi) => identical(activeApi, api),
+      );
+      if (inUse) continue;
+      _retiredServerApis.remove(api);
+      api.close();
+    }
   }
 
   void _handleSettingsChanged() {
@@ -348,23 +373,26 @@ class DownloadManagerService extends ChangeNotifier {
     final maximum = AppSettings.instance.downloadConcurrency;
     while (_activeWorkers < maximum) {
       DownloadTask? next;
+      final apiForQueue = _serverApi;
       for (final task in _tasks) {
         if (task.status != DownloadStatus.queued) continue;
         if (task.isServerFile &&
-            (_serverApi == null ||
-                _serverApi!.baseUrl != task.serverBaseUrl)) {
+            (apiForQueue == null ||
+                apiForQueue.baseUrl != task.serverBaseUrl)) {
           continue;
         }
         next = task;
         break;
       }
       if (next == null) break;
+      final apiForTask = next.isServerFile ? apiForQueue : null;
+      if (apiForTask != null) _activeServerApis[next.id] = apiForTask;
       _activeWorkers++;
-      unawaited(_run(next));
+      unawaited(_run(next, serverApi: apiForTask));
     }
   }
 
-  Future<void> _run(DownloadTask task) async {
+  Future<void> _run(DownloadTask task, {ServerApi? serverApi}) async {
     final token = CancelToken();
     _tokens[task.id] = token;
     task.status = DownloadStatus.downloading;
@@ -405,7 +433,7 @@ class DownloadManagerService extends ChangeNotifier {
       }
 
       final response = task.isServerFile
-          ? await _serverApi!.openDownloadStream(
+          ? await serverApi!.openDownloadStream(
               path: task.serverPath!,
               volume: task.volume,
               offset: offset,
@@ -503,6 +531,8 @@ class DownloadManagerService extends ChangeNotifier {
         await output?.close();
       } catch (_) {}
       _tokens.remove(task.id);
+      _activeServerApis.remove(task.id);
+      _closeRetiredServerApis();
       final deleteFinalFile = _removeAfterStop.remove(task.id);
       if (deleteFinalFile != null) {
         try {

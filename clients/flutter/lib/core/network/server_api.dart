@@ -642,6 +642,7 @@ class ServerApi {
 
   final Dio _dio;
   final _RequestGate _requestGate;
+  bool _closed = false;
   static const _directoryCacheTtl = Duration(seconds: 20);
   static const _maxCachedDirectories = 512;
   final Map<String, _CacheEntry<DirectoryListing>> _directoryCache = {};
@@ -742,6 +743,7 @@ class ServerApi {
     request = load().then<T>((value) {
       if (generation != _cacheGeneration) {
         if (identical(requests[key], request)) requests.remove(key);
+        if (_closed) return value;
         return _cachedGet<T>(key, cache, requests, load);
       }
       if (cache.length >= _maxCachedDirectories && !cache.containsKey(key)) {
@@ -766,6 +768,15 @@ class ServerApi {
   }
 
   String get baseUrl => _dio.options.baseUrl;
+
+  /// Releases the underlying HTTP adapter and cached client state.
+  void close({bool force = false}) {
+    if (_closed) return;
+    _closed = true;
+    invalidateDirectoryCache();
+    clearMediaCache();
+    _dio.close(force: force);
+  }
 
   static String _normalizeBaseUrl(String value) {
     final trimmed = value.trim();
@@ -1061,6 +1072,7 @@ class ServerApi {
     }).then<List<StorageVolume>>((volumes) async {
       if (generation != _cacheGeneration) {
         if (identical(_volumesRequest, request)) _volumesRequest = null;
+        if (_closed) return volumes;
         return await listStorageVolumes();
       }
       _volumesCache = _CacheEntry(

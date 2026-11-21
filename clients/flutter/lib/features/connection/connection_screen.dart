@@ -211,13 +211,31 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
 
     final address = '$host:$port';
     late final ServerApi api;
-    final authenticationCancelToken = CancelToken();
     try {
       api = ServerApi(
         baseUrl: address,
         username: username,
         password: password,
       );
+    } on FormatException catch (error) {
+      await AppLogger.warning('Connection address validation failed');
+      if (mounted) setState(() {
+        _message = error.message;
+        _isConnecting = false;
+      });
+      return;
+    } catch (error, stack) {
+      await AppLogger.error('Connection client initialization failed', error: error, stackTrace: stack);
+      if (mounted) setState(() {
+        _message = 'Could not initialize the server connection. Check the address and try again.';
+        _isConnecting = false;
+      });
+      return;
+    }
+
+    var authenticated = false;
+    final authenticationCancelToken = CancelToken();
+    try {
       await api.authenticate(cancelToken: authenticationCancelToken).timeout(
         const Duration(seconds: 55),
         onTimeout: () {
@@ -226,6 +244,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
         },
       );
       await AppLogger.info('Server authentication succeeded', fields: {'host': host, 'port': port});
+      authenticated = true;
     } on DioException catch (error) {
       await AppLogger.warning('Server authentication failed', fields: {'host': host, 'port': port, 'type': error.type.name, 'status': error.response?.statusCode});
       if (!mounted) return;
@@ -257,13 +276,6 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
         });
       }
       return;
-    } on FormatException catch (error) {
-      await AppLogger.warning('Connection address validation failed');
-      if (mounted) setState(() {
-        _message = error.message;
-        _isConnecting = false;
-      });
-      return;
     } catch (error, stack) {
       await AppLogger.error('Connection initialization failed', error: error, stackTrace: stack);
       if (mounted) {
@@ -273,9 +285,14 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
         });
       }
       return;
+    } finally {
+      if (!authenticated) api.close();
     }
 
-    if (!mounted) return;
+    if (!mounted) {
+      api.close();
+      return;
+    }
     final id = _profileId(address, username);
     final profile = {
       'id': id,
@@ -314,7 +331,10 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       }
     }
 
-    if (!mounted) return;
+    if (!mounted) {
+      api.close();
+      return;
+    }
     setState(() {});
     try {
       await Navigator.of(context).push(
