@@ -101,7 +101,7 @@ class _SharedReadAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     requests++;
-    if (delay > Duration.zero) await Future<void>.delayed(delay);
+    await Future<void>.delayed(const Duration(milliseconds: 40));
     final body = options.uri.path == '/api/storage/volumes'
         ? '{"items":[{"id":"usb1","name":"USB 1","available":true,"writable":false}]}'
         : '{"path":"","items":[]}';
