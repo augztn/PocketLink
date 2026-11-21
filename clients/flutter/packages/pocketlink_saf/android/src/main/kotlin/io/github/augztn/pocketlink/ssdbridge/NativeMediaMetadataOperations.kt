@@ -3,7 +3,6 @@ package io.github.augztn.pocketlink.ssdbridge
 import android.content.Context
 import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
-import androidx.documentfile.provider.DocumentFile
 import fi.iki.elonen.NanoHTTPD
 import java.io.ByteArrayOutputStream
 import java.io.ByteArrayInputStream
@@ -16,8 +15,6 @@ internal class NativeMediaMetadataOperations(
     private val context: Context,
     private val externalStorage: ExternalStorageAccess,
     private val internalFile: (String) -> File?,
-    private val isVideoFile: (String) -> Boolean,
-    private val isAudioFile: (String) -> Boolean,
     private val bad: (String) -> NanoHTTPD.Response,
     private val notFound: (String) -> NanoHTTPD.Response,
     private val error: (NanoHTTPD.Response.Status, String) -> NanoHTTPD.Response,
