@@ -80,13 +80,13 @@ void main() {
 
   test('Music button shortcuts persist, validate and reset', () async {
     final settings = AppSettings.instance;
-    const shortcuts = ['music', 'files', 'photos', 'upload'];
+    const shortcuts = ['music', 'files', 'photos', 'upload', 'drives'];
 
     await settings.setMusicButtonShortcuts(shortcuts);
     expect(settings.musicButtonShortcuts, shortcuts);
     final preferences = await SharedPreferences.getInstance();
     expect(preferences.getString('settings_music_button_shortcuts'),
-        '["music","files","photos","upload"]');
+        '["music","files","photos","upload","drives"]');
 
     await expectLater(
       settings.setMusicButtonShortcuts(const ['music', 'music']),
