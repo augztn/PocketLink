@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../../core/widgets/liquid_glass_pill.dart';
 import 'persistent_audio_player.dart';
 
 /// Compact, app-wide music controls shown above the navigation dock.
