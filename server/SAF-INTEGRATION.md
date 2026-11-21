@@ -1,87 +1,70 @@
-# Legacy FastAPI/Termux SAF compatibility
+# Legacy FastAPI/Termux SAF proxy (optional compatibility)
 
-**Current architecture:** PocketLink now hosts its API and SAF integration inside the main Android app. The native implementation lives in `clients/flutter/packages/pocketlink_saf` and is documented in `docs/API_CONTRACT.md`. A normal current installation does not require Termux, Python, a separate SSD companion APK, or the legacy port-`8765` bridge.
+**This guide is only for older PocketLink deployments that still run the FastAPI server in Termux/Ubuntu.** It is not part of the current native Android host setup.
 
-This document is retained for users who still operate an older Termux/FastAPI deployment. The code under `server/app` is compatibility/proxy code for that legacy deployment; it is not part of the current native Android host.
+## Current PocketLink architecture
 
-## Legacy migration notes (historical)
+The current app hosts its authenticated API and Android Storage Access Framework (SAF) integration inside the main Android app:
 
+- Native Android host and SAF plugin: `clients/flutter/packages/pocketlink_saf`
+- Current API contract: `docs/API_CONTRACT.md`
+- Repository overview: `README.md`
 
+A current installation does not need a separate Android SSD companion APK, Python proxy, or Termux server. Keep reading only if you intentionally maintain an older FastAPI/Termux backend.
 
-The `feat/native-android-server` branch adds a native NanoHTTPD API listener on port `8000`. It is hosted by the Android foreground service and binds to `0.0.0.0` so a Tailscale peer can reach it. The API uses HTTP Basic authentication with username `admin`; the password is configured on the server phone and stored only as a salted PBKDF2 verifier in app-private preferences.
+## Legacy compatibility components
 
-The native API currently implements the Flutter file and USB storage routes:
+The legacy proxy in `server/app` forwards FastAPI storage routes to a same-device SAF bridge at `127.0.0.1:8765`.
 
-- Internal shared storage: list, download, byte-range stream, upload, create folder, rename, delete
-- USB/SSD SAF roots: volume status, list, download with byte ranges, upload, create folder, rename, delete
-- Public `GET /health`
+- `server/app/services/saf_bridge.py` — authenticated HTTP client for the local bridge.
+- `server/app/api/storage.py` — authenticated FastAPI routes for USB volumes.
+- `server/requirements-saf.txt` — additional Python dependency for the proxy.
 
-Server-phone setup is available directly from the connection screen via **Set up this phone as a PocketLink**. Grant all-files access for internal shared storage, set the native server password, select USB roots as needed, then start the service. The client connects to the server phone's Tailscale IP on port `8000`, username `admin`, and the password configured in the app.
+The bridge must be running on the same Android device as the legacy FastAPI process. It must remain loopback-only and must never be exposed directly to the LAN or Tailscale.
 
-This is a migration build, not yet a verified plug-and-play release. Keep the existing Termux backend installed until the APK is built, installed on the server phone, and internal + USB read/write/stream operations have been tested on the actual devices. The legacy port-8765 SAF bridge remains optional compatibility code in this branch.
+## Configure an existing FastAPI deployment
 
-
-USB access is built into the main PocketLink Android app through the local `pocketlink_saf` Flutter plugin. Install the same PocketLink APK on the Android phone that runs Termux and has the SSD attached. The remote Flutter client can remain on your second phone.
-
-## Setup on the server phone
-
-1. Install and open the main PocketLink Android APK.
-2. Connect the SSD and open **PocketLink → Set up USB storage on this device**.
-3. Select **USB Storage 1** and choose its root folder in Android's system picker.
-4. Repeat for **USB Storage 2**.
-5. Tap **Start local storage service**. Android shows an ongoing PocketLink notification while the service is running.
-6. Copy the private bridge token shown on this screen.
-
-The app uses Android's Storage Access Framework and persists the read/write grants. It does not mount, format, repartition, or require root access to the SSD. Actual write support depends on the Android document provider and the filesystem; verify each partition with a small test file before relying on it.
-
-## Configure the existing Termux/Ubuntu backend
-
-1. Copy `app/services/saf_bridge.py` and `app/api/storage.py` into the deployed backend at the matching paths.
-2. Install the additional dependency in the existing virtual environment:
+1. Copy `app/services/saf_bridge.py` and `app/api/storage.py` into the existing backend at the matching paths.
+2. Install the additional dependency in the backend virtual environment:
 
    ```sh
    .venv/bin/pip install -r requirements-saf.txt
    ```
 
-3. In the existing `app/main.py`, after the current files/music router registrations, add:
+3. In the existing `app/main.py`, register the router after the existing file/music routers:
 
    ```python
    from app.api.storage import router as storage_router
    app.include_router(storage_router)
    ```
 
-4. Store the token copied from the main PocketLink app in a private file:
+4. Configure the bridge token. Prefer the environment variable `POCKETLINK_SAF_BRIDGE_TOKEN`, or store the token in a private file:
 
    ```sh
-   printf '%s' 'PASTE_TOKEN_FROM_HOMESERVER_APP' > /opt/pocketlink/ssd-bridge-token.txt
+   printf '%s' 'PASTE_PRIVATE_BRIDGE_TOKEN' > /opt/pocketlink/ssd-bridge-token.txt
    chmod 600 /opt/pocketlink/ssd-bridge-token.txt
    ```
 
-5. Restart the existing PocketLink FastAPI process.
+   The proxy also recognizes the legacy `HOMESERVER_SAF_BRIDGE_*` environment variables and `/opt/homeserver/ssd-bridge-token.txt` for backward compatibility.
 
-## API
+5. Restart the existing FastAPI process and verify `GET /api/storage/volumes` before using USB operations.
 
-All routes use the existing HTTP Basic authentication dependency:
+## Legacy FastAPI routes
+
+All routes use the existing FastAPI `authenticate` dependency:
 
 - GET `/api/storage/volumes`
-- GET `/api/storage/usb1/?path=`
-- GET `/api/storage/usb2/?path=`
+- GET `/api/storage/{usb1|usb2}/?path=`
 - PUT `/api/storage/{usb1|usb2}/upload?path=relative/file.ext` (multipart field: `file`)
 - GET `/api/storage/{usb1|usb2}/download?path=relative/file.ext` (forwards byte ranges)
 - POST `/api/storage/{usb1|usb2}/mkdir?path=parent&name=folder`
 - POST `/api/storage/{usb1|usb2}/rename?path=old/path&name=new-name`
 - DELETE `/api/storage/{usb1|usb2}/item?path=relative/item`
 
-The native bridge listens only on `127.0.0.1:8765` and accepts a bearer token. It is not exposed directly to Tailscale or the LAN; remote clients continue using the existing authenticated FastAPI server. The bridge rejects volume IDs other than `usb1` and `usb2` and resolves paths relative to the SAF-granted tree.
+## Limitations and security
 
-## Security and limitations
-
-- Never commit or share the bridge token.
-- Android may revoke a persisted grant; reselect the partition in the PocketLink app if that happens.
-- Keep the PocketLink app installed on the SSD host phone and start the local service after reboot if Android has stopped it.
-- SAF providers vary. Listing, reading, writing, renaming, and deleting must be verified on the actual SSD partitions before declaring full support.
-
-
-### Legacy backend compatibility
-
-Existing deployments that still use `/opt/homeserver/ssd-bridge-token.txt` or the `HOMESERVER_SAF_BRIDGE_*` environment variables continue to work. New deployments should use `/opt/pocketlink/ssd-bridge-token.txt` and the corresponding `POCKETLINK_SAF_BRIDGE_*` variables.
+- Keep the bridge bound to `127.0.0.1:8765`; remote clients must connect to the authenticated FastAPI server, not the bridge.
+- Never commit, log, or share the bridge bearer token.
+- Android may revoke a persisted SAF grant; reselect the storage tree if the bridge reports it unavailable.
+- SAF providers differ in write, rename, delete, and seek support. Verify those operations on the actual drive and Android device.
+- This legacy proxy is maintained for compatibility only. New development should target the native Android API documented in `docs/API_CONTRACT.md`.
