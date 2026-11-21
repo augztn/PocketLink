@@ -4,6 +4,24 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pocketlink_client/core/network/server_api.dart';
 
+class _CloseTrackingAdapter implements HttpClientAdapter {
+  int closeCalls = 0;
+  bool? force;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async => ResponseBody.fromString('', 200);
+
+  @override
+  void close({bool force = false}) {
+    closeCalls++;
+    this.force = force;
+  }
+}
+
 class _NetworkHandoffAdapter implements HttpClientAdapter {
   int requests = 0;
   bool retryUsedFreshConnection = false;
@@ -118,6 +136,22 @@ class _SharedReadAdapter implements HttpClientAdapter {
 
 void main() {
   group('ServerApi', () {
+    test('close releases the HTTP adapter exactly once', () {
+      final adapter = _CloseTrackingAdapter();
+      final api = ServerApi(
+        baseUrl: 'http://127.0.0.1:8000',
+        username: 'admin',
+        password: 'test',
+        httpClientAdapter: adapter,
+      );
+
+      api.close();
+      api.close();
+
+      expect(adapter.closeCalls, 1);
+      expect(adapter.force, isTrue);
+    });
+
     test('parses skipped media-index paths while remaining compatible with old hosts', () {
       final status = MediaIndexStatus.fromJson({
         'state': 'partial',
