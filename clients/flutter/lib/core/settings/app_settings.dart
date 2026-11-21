@@ -15,18 +15,27 @@ class AppSettings extends ChangeNotifier {
   static const _libraryKey = 'settings_home_library';
   static const _recentKey = 'settings_home_recent';
   static const _liquidGlassKey = 'settings_use_liquid_glass';
+  static const _progressiveBlurKey = 'settings_progressive_blur';
+  static const _progressiveBlurStrengthKey = 'settings_progressive_blur_strength';
   static const _navigationOrderKey = 'settings_navigation_order';
   static const _navigationVisibilityKey = 'settings_navigation_visibility';
   static const _homeSearchKey = 'settings_home_search';
   static const _homeTransfersKey = 'settings_home_transfers';
   static const _homeSectionOrderKey = 'settings_home_section_order';
-  static const _floatingShortcutEnabledKey = 'settings_floating_shortcut_enabled';
-  static const _floatingShortcutsKey = 'settings_floating_shortcuts';
-  static const _floatingShortcutTapActionKey = 'settings_floating_shortcut_tap_action';
-  static const _floatingShortcutLongPressKey = 'settings_floating_shortcut_long_press';
+  static const _musicButtonShortcutsKey = 'settings_music_button_shortcuts';
+  static const _legacyFloatingShortcutsKey = 'settings_floating_shortcuts';
+  static const _musicButtonSwipeEnabledKey = 'settings_music_button_swipe_enabled';
+  static const _musicButtonSwipeLeftActionKey = 'settings_music_button_swipe_left_action';
+  static const _musicButtonSwipeRightActionKey = 'settings_music_button_swipe_right_action';
+  static const _musicButtonLongPressEnabledKey = 'settings_music_button_long_press_enabled';
   static const _nowPlayingMiniPlayerKey = 'settings_now_playing_mini_player';
   static const _nowPlayingGesturesKey = 'settings_now_playing_gestures';
   static const _nowPlayingStatsForNerdsKey = 'settings_now_playing_stats_for_nerds';
+  static const _nowPlayingScrubberStyleKey = 'settings_now_playing_scrubber_style';
+  static const _nowPlayingThemeKey = 'settings_now_playing_theme';
+  static const _downloadConcurrencyKey = 'settings_download_concurrency';
+  static const _downloadWifiOnlyKey = 'settings_download_wifi_only';
+  static const _downloadAutoResumeKey = 'settings_download_auto_resume';
   static const _videoControlsTimeoutKey = 'settings_video_controls_timeout';
   static const _videoSeekSecondsKey = 'settings_video_seek_seconds';
   static const _videoDefaultSpeedKey = 'settings_video_default_speed';
@@ -40,11 +49,11 @@ class AppSettings extends ChangeNotifier {
   static const _videoFullscreenOrientationKey = 'settings_video_fullscreen_orientation';
   static const homeSectionDefaults = <String>['search', 'quick', 'transfers', 'continue', 'recent'];
   static const navigationDefaults = <String>['home', 'explore', 'files', 'browse'];
-  static const floatingShortcutDefaults = <String>[
-    'explore', 'music', 'files', 'videos', 'photos', 'documents',
+  static const musicButtonShortcutDefaults = <String>[
+    'photos', 'music', 'videos', 'documents', 'files', 'search',
   ];
-  static const floatingShortcutDestinations = <String>{
-    'explore', 'files', 'music', 'videos', 'photos', 'documents', 'favorites', 'upload',
+  static const musicButtonShortcutDestinations = <String>{
+    'explore', 'files', 'music', 'videos', 'photos', 'documents', 'favorites', 'upload', 'search',
   };
 
   ThemeMode _themeMode = ThemeMode.system;
@@ -57,19 +66,28 @@ class AppSettings extends ChangeNotifier {
   bool _showActiveTransfers = true;
   List<String> _homeSectionOrder = List.of(homeSectionDefaults);
   bool _useLiquidGlass = false;
+  bool _progressiveBlurEnabled = false;
+  double _progressiveBlurStrength = 55;
+  Future<void> _progressiveBlurWrite = Future<void>.value();
   bool _loaded = false;
   List<String> _navigationOrder = List.of(navigationDefaults);
   Set<String> _visibleNavigationItems = Set.of(navigationDefaults);
   Future<void> _navigationWrite = Future<void>.value();
-  bool _floatingShortcutEnabled = false;
-  String _floatingShortcutTapAction = 'menu';
-  bool _floatingShortcutLongPressEnabled = true;
-  List<String> _floatingShortcuts = List.of(floatingShortcutDefaults);
-  Future<void> _floatingShortcutsWrite = Future<void>.value();
+  bool _musicButtonSwipeEnabled = true;
+  String _musicButtonSwipeLeftAction = 'next';
+  String _musicButtonSwipeRightAction = 'previous';
+  bool _musicButtonLongPressEnabled = true;
+  List<String> _musicButtonShortcuts = List.of(musicButtonShortcutDefaults);
+  Future<void> _musicButtonShortcutsWrite = Future<void>.value();
   bool _showMiniPlayer = true;
   bool _enableNowPlayingGestures = true;
   bool _showStatsForNerds = true;
-  int _videoControlsTimeoutSeconds = 4;
+  String _nowPlayingScrubberStyle = 'apple';
+  String _nowPlayingTheme = 'apple';
+  int _downloadConcurrency = 2;
+  bool _downloadWifiOnly = false;
+  bool _downloadAutoResume = true;
+  double _videoControlsTimeoutSeconds = 3.5;
   int _videoSeekSeconds = 10;
   double _videoDefaultSpeed = 1.0;
   String _videoFitMode = 'contain';
@@ -91,17 +109,25 @@ class AppSettings extends ChangeNotifier {
   bool get showActiveTransfers => _showActiveTransfers;
   List<String> get homeSectionOrder => List.unmodifiable(_homeSectionOrder);
   bool get useLiquidGlass => _useLiquidGlass;
+  bool get progressiveBlurEnabled => _progressiveBlurEnabled;
+  double get progressiveBlurStrength => _progressiveBlurStrength;
   List<String> get navigationOrder => List.unmodifiable(_navigationOrder);
   Set<String> get visibleNavigationItems => Set.unmodifiable(_visibleNavigationItems);
   bool get navigationLayoutIsDefault => _navigationOrder.join(',') == navigationDefaults.join(',') && _visibleNavigationItems.length == navigationDefaults.length;
-  bool get floatingShortcutEnabled => _floatingShortcutEnabled;
-  String get floatingShortcutTapAction => _floatingShortcutTapAction;
-  bool get floatingShortcutLongPressEnabled => _floatingShortcutLongPressEnabled;
-  List<String> get floatingShortcuts => List.unmodifiable(_floatingShortcuts);
+  List<String> get musicButtonShortcuts => List.unmodifiable(_musicButtonShortcuts);
+  bool get musicButtonSwipeEnabled => _musicButtonSwipeEnabled;
+  String get musicButtonSwipeLeftAction => _musicButtonSwipeLeftAction;
+  String get musicButtonSwipeRightAction => _musicButtonSwipeRightAction;
+  bool get musicButtonLongPressEnabled => _musicButtonLongPressEnabled;
   bool get showMiniPlayer => _showMiniPlayer;
   bool get enableNowPlayingGestures => _enableNowPlayingGestures;
   bool get showStatsForNerds => _showStatsForNerds;
-  int get videoControlsTimeoutSeconds => _videoControlsTimeoutSeconds;
+  String get nowPlayingScrubberStyle => _nowPlayingScrubberStyle;
+  String get nowPlayingTheme => _nowPlayingTheme;
+  int get downloadConcurrency => _downloadConcurrency;
+  bool get downloadWifiOnly => _downloadWifiOnly;
+  bool get downloadAutoResume => _downloadAutoResume;
+  double get videoControlsTimeoutSeconds => _videoControlsTimeoutSeconds;
   int get videoSeekSeconds => _videoSeekSeconds;
   double get videoDefaultSpeed => _videoDefaultSpeed;
   String get videoFitMode => _videoFitMode;
@@ -113,15 +139,39 @@ class AppSettings extends ChangeNotifier {
   bool get videoAutoFullscreen => _videoAutoFullscreen;
   String get videoFullscreenOrientation => _videoFullscreenOrientation;
 
+  Future<void> reloadPreferences() async {
+    _loaded = false;
+    await load();
+  }
+
   Future<void> load() async {
     if (_loaded) return;
     try {
       final preferences = await SharedPreferences.getInstance();
       _useLiquidGlass = preferences.getBool(_liquidGlassKey) ?? false;
+      _progressiveBlurEnabled = preferences.getBool(_progressiveBlurKey) ?? false;
+      final storedBlurStrength = preferences.get(_progressiveBlurStrengthKey);
+      _progressiveBlurStrength = storedBlurStrength is num
+          ? storedBlurStrength.toDouble().clamp(0, 100).toDouble()
+          : 55;
       _showMiniPlayer = preferences.getBool(_nowPlayingMiniPlayerKey) ?? true;
       _enableNowPlayingGestures = preferences.getBool(_nowPlayingGesturesKey) ?? true;
       _showStatsForNerds = preferences.getBool(_nowPlayingStatsForNerdsKey) ?? true;
-      _videoControlsTimeoutSeconds = preferences.getInt(_videoControlsTimeoutKey) ?? 4;
+      _nowPlayingTheme = const {'apple', 'blur', 'blurCard', 'gradient'}
+          .contains(preferences.getString(_nowPlayingThemeKey))
+          ? preferences.getString(_nowPlayingThemeKey)!
+          : 'apple';
+      _downloadConcurrency = const {1, 2, 3, 5}.contains(preferences.getInt(_downloadConcurrencyKey))
+          ? preferences.getInt(_downloadConcurrencyKey)!
+          : 2;
+      _downloadWifiOnly = preferences.getBool(_downloadWifiOnlyKey) ?? false;
+      _downloadAutoResume = preferences.getBool(_downloadAutoResumeKey) ?? true;
+      _nowPlayingScrubberStyle = const {'apple', 'wavy', 'classic', 'waveform'}
+          .contains(preferences.getString(_nowPlayingScrubberStyleKey))
+          ? preferences.getString(_nowPlayingScrubberStyleKey)!
+          : 'apple';
+      final controlsTimeout = preferences.get(_videoControlsTimeoutKey);
+      _videoControlsTimeoutSeconds = controlsTimeout is num ? controlsTimeout.toDouble() : 3.5;
       _videoSeekSeconds = preferences.getInt(_videoSeekSecondsKey) ?? 10;
       _videoDefaultSpeed = preferences.getDouble(_videoDefaultSpeedKey) ?? 1.0;
       _videoFitMode = preferences.getString(_videoFitModeKey) ?? 'contain';
@@ -132,22 +182,40 @@ class AppSettings extends ChangeNotifier {
       _videoSubtitleBackground = preferences.getBool(_videoSubtitleBackgroundKey) ?? true;
       _videoAutoFullscreen = preferences.getBool(_videoAutoFullscreenKey) ?? false;
       _videoFullscreenOrientation = preferences.getString(_videoFullscreenOrientationKey) ?? 'landscape';
-      _floatingShortcutEnabled = preferences.getBool(_floatingShortcutEnabledKey) ?? false;
-      final tapAction = preferences.getString(_floatingShortcutTapActionKey);
-      _floatingShortcutTapAction = tapAction == 'primary' ? 'primary' : 'menu';
-      _floatingShortcutLongPressEnabled = preferences.getBool(_floatingShortcutLongPressKey) ?? true;
-      final rawFloatingShortcuts = preferences.getString(_floatingShortcutsKey);
-      if (rawFloatingShortcuts != null) {
-        final decoded = jsonDecode(rawFloatingShortcuts);
+      _musicButtonSwipeEnabled = preferences.getBool(_musicButtonSwipeEnabledKey) ?? true;
+      _musicButtonSwipeLeftAction = _validMusicSwipeAction(preferences.getString(_musicButtonSwipeLeftActionKey), 'next');
+      _musicButtonSwipeRightAction = _validMusicSwipeAction(preferences.getString(_musicButtonSwipeRightActionKey), 'previous');
+      _musicButtonLongPressEnabled = preferences.getBool(_musicButtonLongPressEnabledKey) ?? true;
+      final rawMusicButtonShortcuts = preferences.getString(_musicButtonShortcutsKey) ??
+          preferences.getString(_legacyFloatingShortcutsKey);
+      if (rawMusicButtonShortcuts != null) {
+        final decoded = jsonDecode(rawMusicButtonShortcuts);
         if (decoded is List) {
-          final values = decoded.whereType<String>().toList();
-          if (values.isNotEmpty && values.length == decoded.length &&
-              values.toSet().length == values.length &&
-              values.every(floatingShortcutDestinations.contains)) {
-            _floatingShortcuts = values;
+          final values = decoded.whereType<String>()
+              .where(musicButtonShortcutDestinations.contains)
+              .toList();
+          const legacyDefaults = ['explore', 'music', 'files', 'videos', 'photos', 'documents'];
+          if (values.length == legacyDefaults.length && values.toSet().containsAll(legacyDefaults)) {
+            _musicButtonShortcuts = List.of(musicButtonShortcutDefaults);
+          } else if (values.isNotEmpty && values.toSet().length == values.length) {
+            _musicButtonShortcuts = values;
           }
         }
       }
+      if (preferences.containsKey(_legacyFloatingShortcutsKey)) {
+        await Future.wait([
+          preferences.setString(
+            _musicButtonShortcutsKey,
+            jsonEncode(_musicButtonShortcuts),
+          ),
+          preferences.remove(_legacyFloatingShortcutsKey),
+        ]);
+      }
+      await Future.wait([
+        preferences.remove('settings_floating_shortcut_enabled'),
+        preferences.remove('settings_floating_shortcut_tap_action'),
+        preferences.remove('settings_floating_shortcut_long_press'),
+      ]);
       _showGlobalSearch = preferences.getBool(_homeSearchKey) ?? true;
       _showActiveTransfers = preferences.getBool(_homeTransfersKey) ?? true;
       final rawSectionOrder = preferences.getString(_homeSectionOrderKey);
@@ -259,61 +327,34 @@ class AppSettings extends ChangeNotifier {
     await write;
   }
 
-  Future<void> setFloatingShortcutEnabled(bool enabled) async {
-    _floatingShortcutEnabled = enabled;
-    notifyListeners();
-    final write = _floatingShortcutsWrite.catchError((_) {}).then((_) async {
-      final preferences = await SharedPreferences.getInstance();
-      await preferences.setBool(_floatingShortcutEnabledKey, enabled);
-    });
-    _floatingShortcutsWrite = write;
-    await write;
-  }
-
-  Future<void> setFloatingShortcutTapAction(String action) async {
-    if (action != 'primary' && action != 'menu') {
-      throw ArgumentError.value(action, 'action', 'Unsupported floating shortcut tap action');
-    }
-    _floatingShortcutTapAction = action;
-    notifyListeners();
-    final preferences = await SharedPreferences.getInstance();
-    await preferences.setString(_floatingShortcutTapActionKey, action);
-  }
-
-  Future<void> setFloatingShortcutLongPressEnabled(bool enabled) async {
-    _floatingShortcutLongPressEnabled = enabled;
-    notifyListeners();
-    final preferences = await SharedPreferences.getInstance();
-    await preferences.setBool(_floatingShortcutLongPressKey, enabled);
-  }
-
-  Future<void> setFloatingShortcuts(List<String> shortcuts) async {
+  Future<void> setMusicButtonShortcuts(List<String> shortcuts) async {
     if (shortcuts.isEmpty ||
         shortcuts.toSet().length != shortcuts.length ||
-        !shortcuts.every(floatingShortcutDestinations.contains)) {
-      throw ArgumentError('Invalid floating shortcuts');
+        !shortcuts.every(musicButtonShortcutDestinations.contains)) {
+      throw ArgumentError('Invalid Music button shortcuts');
     }
-    _floatingShortcuts = List.of(shortcuts);
+    _musicButtonShortcuts = List.of(shortcuts);
     notifyListeners();
-    final snapshot = List<String>.of(_floatingShortcuts);
-    final write = _floatingShortcutsWrite.catchError((_) {}).then((_) async {
+    final snapshot = List<String>.of(_musicButtonShortcuts);
+    final write = _musicButtonShortcutsWrite.catchError((_) {}).then((_) async {
       final preferences = await SharedPreferences.getInstance();
-      await preferences.setString(_floatingShortcutsKey, jsonEncode(snapshot));
+      await preferences.setString(_musicButtonShortcutsKey, jsonEncode(snapshot));
     });
-    _floatingShortcutsWrite = write;
+    _musicButtonShortcutsWrite = write;
     await write;
   }
 
-  Future<void> resetFloatingShortcuts() async {
-    _floatingShortcuts = List.of(floatingShortcutDefaults);
+  Future<void> resetMusicButtonShortcuts() async {
+    _musicButtonShortcuts = List.of(musicButtonShortcutDefaults);
     notifyListeners();
-    final write = _floatingShortcutsWrite.catchError((_) {}).then((_) async {
+    final write = _musicButtonShortcutsWrite.catchError((_) {}).then((_) async {
       final preferences = await SharedPreferences.getInstance();
       await Future.wait([
-        preferences.remove(_floatingShortcutsKey),
+        preferences.remove(_musicButtonShortcutsKey),
+        preferences.remove(_legacyFloatingShortcutsKey),
       ]);
     });
-    _floatingShortcutsWrite = write;
+    _musicButtonShortcutsWrite = write;
     await write;
   }
 
@@ -345,6 +386,52 @@ class AppSettings extends ChangeNotifier {
     }
   }
 
+  static String _validMusicSwipeAction(String? action, String fallback) =>
+      const {'next', 'previous', 'none'}.contains(action) ? action! : fallback;
+
+  Future<void> setMusicButtonOptions({
+    bool? swipeEnabled,
+    String? swipeLeftAction,
+    String? swipeRightAction,
+    bool? longPressEnabled,
+  }) async {
+    if (swipeLeftAction != null &&
+        !const {'next', 'previous', 'none'}.contains(swipeLeftAction)) {
+      throw ArgumentError.value(swipeLeftAction, 'swipeLeftAction');
+    }
+    if (swipeRightAction != null &&
+        !const {'next', 'previous', 'none'}.contains(swipeRightAction)) {
+      throw ArgumentError.value(swipeRightAction, 'swipeRightAction');
+    }
+    if (swipeEnabled != null) _musicButtonSwipeEnabled = swipeEnabled;
+    if (swipeLeftAction != null) _musicButtonSwipeLeftAction = swipeLeftAction;
+    if (swipeRightAction != null) _musicButtonSwipeRightAction = swipeRightAction;
+    if (longPressEnabled != null) _musicButtonLongPressEnabled = longPressEnabled;
+    notifyListeners();
+    final preferences = await SharedPreferences.getInstance();
+    await Future.wait([
+      if (swipeEnabled != null) preferences.setBool(_musicButtonSwipeEnabledKey, swipeEnabled),
+      if (swipeLeftAction != null) preferences.setString(_musicButtonSwipeLeftActionKey, swipeLeftAction),
+      if (swipeRightAction != null) preferences.setString(_musicButtonSwipeRightActionKey, swipeRightAction),
+      if (longPressEnabled != null) preferences.setBool(_musicButtonLongPressEnabledKey, longPressEnabled),
+    ]);
+  }
+
+  Future<void> resetMusicButtonOptions() async {
+    _musicButtonSwipeEnabled = true;
+    _musicButtonSwipeLeftAction = 'next';
+    _musicButtonSwipeRightAction = 'previous';
+    _musicButtonLongPressEnabled = true;
+    notifyListeners();
+    final preferences = await SharedPreferences.getInstance();
+    await Future.wait([
+      preferences.remove(_musicButtonSwipeEnabledKey),
+      preferences.remove(_musicButtonSwipeLeftActionKey),
+      preferences.remove(_musicButtonSwipeRightActionKey),
+      preferences.remove(_musicButtonLongPressEnabledKey),
+    ]);
+  }
+
   Future<void> setNowPlayingOptions({
     bool? miniPlayer,
     bool? gestures,
@@ -362,27 +449,73 @@ class AppSettings extends ChangeNotifier {
     ]);
   }
 
+  Future<void> setNowPlayingScrubberStyle(String style) async {
+    if (!const {'apple', 'wavy', 'classic', 'waveform'}.contains(style)) {
+      throw ArgumentError.value(style, 'style');
+    }
+    if (_nowPlayingScrubberStyle == style) return;
+    _nowPlayingScrubberStyle = style;
+    notifyListeners();
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(_nowPlayingScrubberStyleKey, style);
+  }
+
+  Future<void> setNowPlayingTheme(String theme) async {
+    if (!const {'apple', 'blur', 'blurCard', 'gradient'}.contains(theme)) {
+      throw ArgumentError.value(theme, 'theme');
+    }
+    if (_nowPlayingTheme == theme) return;
+    _nowPlayingTheme = theme;
+    notifyListeners();
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(_nowPlayingThemeKey, theme);
+  }
+
+  Future<void> setDownloadOptions({
+    int? concurrency,
+    bool? wifiOnly,
+    bool? autoResume,
+  }) async {
+    if (concurrency != null && !const {1, 2, 3, 5}.contains(concurrency)) {
+      throw ArgumentError.value(concurrency, 'concurrency');
+    }
+    if (concurrency != null) _downloadConcurrency = concurrency;
+    if (wifiOnly != null) _downloadWifiOnly = wifiOnly;
+    if (autoResume != null) _downloadAutoResume = autoResume;
+    notifyListeners();
+    final preferences = await SharedPreferences.getInstance();
+    await Future.wait([
+      if (concurrency != null) preferences.setInt(_downloadConcurrencyKey, concurrency),
+      if (wifiOnly != null) preferences.setBool(_downloadWifiOnlyKey, wifiOnly),
+      if (autoResume != null) preferences.setBool(_downloadAutoResumeKey, autoResume),
+    ]);
+  }
+
   Future<void> resetNowPlayingOptions() async {
     _showMiniPlayer = true;
     _enableNowPlayingGestures = true;
     _showStatsForNerds = true;
+    _nowPlayingScrubberStyle = 'apple';
+    _nowPlayingTheme = 'apple';
     notifyListeners();
     final preferences = await SharedPreferences.getInstance();
     await Future.wait([
       preferences.remove(_nowPlayingMiniPlayerKey),
       preferences.remove(_nowPlayingGesturesKey),
       preferences.remove(_nowPlayingStatsForNerdsKey),
+      preferences.remove(_nowPlayingScrubberStyleKey),
+      preferences.remove(_nowPlayingThemeKey),
     ]);
   }
 
   Future<void> setVideoPlayerOptions({
-    int? controlsTimeoutSeconds, int? seekSeconds, double? defaultSpeed,
+    double? controlsTimeoutSeconds, int? seekSeconds, double? defaultSpeed,
     String? fitMode, bool? gesturesEnabled, bool? pinchZoomEnabled, bool? tapToTogglePlayback,
     double? subtitleFontSize, bool? subtitleBackground, bool? autoFullscreen,
     String? fullscreenOrientation,
   }) async {
     const speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 3.0, 4.0];
-    if (controlsTimeoutSeconds != null && ![0, 3, 4, 5, 8, 12].contains(controlsTimeoutSeconds)) throw ArgumentError.value(controlsTimeoutSeconds, 'controlsTimeoutSeconds');
+    if (controlsTimeoutSeconds != null && ![0.0, 2.0, 3.0, 3.5, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0].contains(controlsTimeoutSeconds)) throw ArgumentError.value(controlsTimeoutSeconds, 'controlsTimeoutSeconds');
     if (seekSeconds != null && ![5, 10, 15, 30].contains(seekSeconds)) throw ArgumentError.value(seekSeconds, 'seekSeconds');
     if (defaultSpeed != null && !speeds.contains(defaultSpeed)) throw ArgumentError.value(defaultSpeed, 'defaultSpeed');
     if (fitMode != null && !['contain', 'cover', 'fill'].contains(fitMode)) throw ArgumentError.value(fitMode, 'fitMode');
@@ -402,7 +535,7 @@ class AppSettings extends ChangeNotifier {
     notifyListeners();
     final preferences = await SharedPreferences.getInstance();
     await Future.wait([
-      if (controlsTimeoutSeconds != null) preferences.setInt(_videoControlsTimeoutKey, controlsTimeoutSeconds),
+      if (controlsTimeoutSeconds != null) preferences.setDouble(_videoControlsTimeoutKey, controlsTimeoutSeconds),
       if (seekSeconds != null) preferences.setInt(_videoSeekSecondsKey, seekSeconds),
       if (defaultSpeed != null) preferences.setDouble(_videoDefaultSpeedKey, defaultSpeed),
       if (fitMode != null) preferences.setString(_videoFitModeKey, fitMode),
@@ -417,7 +550,7 @@ class AppSettings extends ChangeNotifier {
   }
 
   Future<void> resetVideoPlayerOptions() async {
-    _videoControlsTimeoutSeconds = 4;
+    _videoControlsTimeoutSeconds = 3.5;
     _videoSeekSeconds = 10;
     _videoDefaultSpeed = 1.0;
     _videoFitMode = 'contain';
@@ -444,6 +577,34 @@ class AppSettings extends ChangeNotifier {
     notifyListeners();
     final preferences = await SharedPreferences.getInstance();
     await preferences.setBool(_liquidGlassKey, value);
+  }
+
+  Future<void> setProgressiveBlurEnabled(bool value) async {
+    _progressiveBlurEnabled = value;
+    notifyListeners();
+    final snapshot = value;
+    final write = _progressiveBlurWrite.catchError((_) {}).then((_) async {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setBool(_progressiveBlurKey, snapshot);
+    });
+    _progressiveBlurWrite = write;
+    await write;
+  }
+
+  Future<void> setProgressiveBlurStrength(double value) async {
+    if (!value.isFinite || value < 0 || value > 100) {
+      throw ArgumentError.value(value, 'value', 'Must be between 0 and 100');
+    }
+    if (_progressiveBlurStrength == value) return;
+    _progressiveBlurStrength = value;
+    notifyListeners();
+    final snapshot = value;
+    final write = _progressiveBlurWrite.catchError((_) {}).then((_) async {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setDouble(_progressiveBlurStrengthKey, snapshot);
+    });
+    _progressiveBlurWrite = write;
+    await write;
   }
 
   Future<void> setHomeSectionOrder(List<String> order) async {

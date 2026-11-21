@@ -3,17 +3,21 @@ import 'package:file_picker/file_picker.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
+import '../../core/widgets/pocketlink_scaffold.dart';
+import '../../core/widgets/feathered_glass_header.dart';
+import '../../core/widgets/pocketlink_file_icon.dart';
+import '../../core/widgets/smoked_glass_popover_menu.dart';
+import '../../core/widgets/liquid_glass_pill.dart';
 
 import '../../core/network/server_api.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/storage/home_activity_store.dart';
 import '../home/browser_state_store.dart';
-import '../../core/settings/app_settings.dart';
 import '../transfers/transfer_manager.dart';
+import '../downloads/download_manager_service.dart';
 import '../transfers/transfer_manager_screen.dart';
-import '../search/search_screen.dart';
-import '../media/now_playing_screen.dart';
 import '../media/persistent_audio_player.dart';
+import '../media/now_playing_overlay_controller.dart';
 
 class FileManagerScreen extends StatefulWidget {
   const FileManagerScreen({
@@ -30,6 +34,7 @@ class FileManagerScreen extends StatefulWidget {
     this.isActive = false,
     this.onBackAtRoot,
     this.onCanNavigateBackChanged,
+    this.onBackHandlerChanged,
     super.key,
   });
 
@@ -46,6 +51,7 @@ class FileManagerScreen extends StatefulWidget {
   final bool isActive;
   final VoidCallback? onBackAtRoot;
   final ValueChanged<bool>? onCanNavigateBackChanged;
+  final ValueChanged<VoidCallback?>? onBackHandlerChanged;
 
   @override
   State<FileManagerScreen> createState() => _FileManagerScreenState();
@@ -68,6 +74,9 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
 
   late String _category = widget.initialCategory;
   bool _gridView = false;
+  bool _searchExpanded = false;
+  bool _storageMenuOpen = false;
+  final TextEditingController _searchController = TextEditingController();
 
   static const Map<String, Set<String>> _categoryExtensions = {
     'Images': {'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'heic', 'heif', 'avif'},
@@ -86,24 +95,27 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     return _categoryExtensions[_category]?.contains(_extension(item)) ?? false;
   }
 
-  IconData _iconFor(FileEntry item) {
-    if (item.isDirectory) return Icons.folder_rounded;
-    final extension = _extension(item);
-    if (_categoryExtensions['Images']!.contains(extension)) {
-      return Icons.image_outlined;
-    }
-    if (_categoryExtensions['Videos']!.contains(extension)) {
-      return Icons.video_file_outlined;
-    }
-    if (_audioExtensions.contains(extension)) return Icons.audio_file_rounded;
-    if (_categoryExtensions['Music']!.contains(extension)) {
-      return Icons.audio_file_outlined;
-    }
-    if (_categoryExtensions['Documents']!.contains(extension)) {
-      return Icons.description_outlined;
-    }
-    return Icons.insert_drive_file_outlined;
+  int _categoryCount(List<FileEntry> entries, String category) {
+    if (category == 'All') return entries.where((item) => !item.isDirectory).length;
+    final extensions = _categoryExtensions[category];
+    if (extensions == null) return 0;
+    return entries
+        .where((item) => !item.isDirectory && extensions.contains(_extension(item)))
+        .length;
   }
+
+  PocketLinkFileVisual _fileVisual(FileEntry item, ColorScheme colors) =>
+      PocketLinkFileVisuals.resolve(
+        name: item.name,
+        isDirectory: item.isDirectory,
+        colors: colors,
+      );
+
+  IconData _iconFor(FileEntry item) =>
+      _fileVisual(item, Theme.of(context).colorScheme).icon;
+
+  Color _iconColorFor(FileEntry item, ColorScheme colors) =>
+      _fileVisual(item, colors).color;
 
   @override
   void didUpdateWidget(covariant FileManagerScreen oldWidget) {
@@ -339,10 +351,44 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     return result.trim();
   }
 
-  void _openSearch() {
-    Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => SearchScreen(api: widget.api),
-    ));
+
+  Future<void> _showRecentLocations() async {
+    await HomeActivityStore.instance.load();
+    if (!mounted) return;
+    final recent = HomeActivityStore.instance.itemsForServer(widget.api.baseUrl);
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Container(
+          decoration: BoxDecoration(
+            color: Theme.of(sheetContext).colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: recent.isEmpty
+            ? const Padding(padding: EdgeInsets.all(28), child: Center(child: Text('No recent files or folders yet')))
+            : ListView.separated(
+                shrinkWrap: true,
+                itemCount: recent.length,
+                separatorBuilder: (_, __) => const Divider(height: 1, indent: 56),
+                itemBuilder: (context, index) {
+                  final item = recent[index];
+                  return ListTile(
+                    leading: Icon(item.isFolder ? Icons.folder_rounded : Icons.history_rounded),
+                    title: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    subtitle: Text(item.path.isEmpty ? 'Storage root' : item.path, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    onTap: () {
+                      Navigator.pop(sheetContext);
+                      final parent = item.isFolder ? item.path : item.parentPath;
+                      _selectPartition(item.volume).then((_) => _load(parent));
+                    },
+                  );
+                },
+              ),
+        ),
+      ),
+    );
   }
 
   Future<void> _uploadFile() async {
@@ -371,28 +417,76 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   }
 
   Future<void> _downloadFile(FileEntry item) async {
-    final completed = await TransferManager.instance.run(
-      name: item.name,
-      direction: 'Download',
-      location: _path.isEmpty ? 'Internal storage' : _path,
-      operation: (token, progress) async {
-        final bytes = _selectedVolume == null
-          ? await widget.api.downloadFile(_itemPath(item.name), cancelToken: token, onReceiveProgress: progress)
-          : await widget.api.downloadStorageFile(_selectedVolume!, _itemPath(item.name), cancelToken: token, onReceiveProgress: progress);
-        if (token.isCancelled) return;
-        final savedPath = await FilePicker.saveFile(
-          dialogTitle: 'Save ${item.name}',
-          fileName: item.name,
-          initialDirectory: AppSettings.instance.downloadDirectory,
-          bytes: bytes,
+    try {
+      await DownloadManagerService.instance.enqueueServerFile(
+        api: widget.api,
+        name: item.name,
+        sourcePath: _itemPath(item.name),
+        volume: _selectedVolume,
+        size: item.size,
+      );
+      if (mounted) _showError('Added to Downloads: ${item.name}');
+    } catch (_) {
+      if (mounted) _showError('Could not add ${item.name} to Downloads.');
+    }
+  }
+
+
+  Future<void> _showSortOptions() async {
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        final sheetColors = Theme.of(sheetContext).colorScheme;
+        const options = [
+          ('name', 'Name', Icons.sort_by_alpha_rounded),
+          ('newest', 'Newest', Icons.schedule_rounded),
+          ('largest', 'Largest', Icons.storage_rounded),
+        ];
+        return SafeArea(
+          child: Container(
+            decoration: BoxDecoration(
+              color: sheetColors.surface,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(20, 4, 20, 12),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text('Sort files', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                  ),
+                ),
+                for (final option in options) ...[
+                  if (option.$1 == 'newest')
+                    const Padding(
+                      padding: EdgeInsets.only(left: 56, right: 16),
+                      child: Divider(height: 1, thickness: 1),
+                    ),
+                  ListTile(
+                    dense: true,
+                    visualDensity: VisualDensity.compact,
+                    leading: Icon(option.$3),
+                    title: Text(option.$2),
+                    trailing: _sortBy == option.$1
+                        ? const Icon(Icons.check_rounded, size: 18)
+                        : null,
+                    onTap: () => Navigator.pop(sheetContext, option.$1),
+                  ),
+                ],
+              ],
+            ),
+          ),
         );
-        if (savedPath == null) token.cancel('Save cancelled by user');
       },
     );
-    if (!mounted) return;
-    _showError(completed
-        ? 'Download complete: ${item.name}'
-        : 'Download did not complete. Check Transfers for details.');
+    if (selected == null || !mounted || selected == _sortBy) return;
+    setState(() => _sortBy = selected);
+    _saveState();
   }
 
   void _openTransfers() {
@@ -417,21 +511,20 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
       'extension': _extension(item),
     });
     try {
-      await Navigator.of(context, rootNavigator: true).push(
-        MaterialPageRoute<void>(
-          builder: (_) => NowPlayingScreen(
-            api: widget.api,
-            queue: [
-              MediaQueueItem(
-                title: item.name,
-                path: path,
-                volume: volume,
-                size: item.size,
-              ),
-            ],
+      await PersistentAudioPlayer.instance.openQueue(
+        api: widget.api,
+        queue: [
+          MediaQueueItem(
+            title: item.name,
+            path: path,
+            volume: volume,
+            size: item.size,
           ),
-        ),
+        ],
+        initialIndex: 0,
+        isMusic: true,
       );
+      NowPlayingOverlayController.open();
     } catch (error, stackTrace) {
       await AppLogger.error('Could not open Now Playing screen', error: error, stackTrace: stackTrace);
       _showError('Could not open the music player. Check diagnostics for details.');
@@ -569,11 +662,25 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     return '${size.toStringAsFixed(1)} ${units[index]}';
   }
 
+  void _syncBackHandler() {
+    widget.onBackHandlerChanged?.call(_searchExpanded
+        ? () => _setSearchExpanded(false)
+        : null);
+  }
+
+  void _setSearchExpanded(bool expanded) {
+    if (_searchExpanded == expanded) return;
+    setState(() => _searchExpanded = expanded);
+    _syncBackHandler();
+  }
+
   @override
   void dispose() {
+    widget.onBackHandlerChanged?.call(null);
     _saveState();
     _scrollController.removeListener(_saveScrollOffset);
     _scrollController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -584,7 +691,9 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     final allItems = _listing?.items ?? const <FileEntry>[];
     final fileCount = allItems.where((item) => !item.isDirectory).length;
     final folderCount = allItems.where((item) => item.isDirectory).length;
-    final items = allItems.where(_matchesCategory).toList();
+    final query = _searchController.text.trim().toLowerCase();
+    final items = allItems.where((item) => _matchesCategory(item) &&
+      (query.isEmpty || item.name.toLowerCase().contains(query))).toList();
     items.sort((a, b) {
       if (a.isDirectory != b.isDirectory) return a.isDirectory ? -1 : 1;
       if (_sortBy == 'largest') return b.size.compareTo(a.size);
@@ -596,13 +705,13 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     });
 
     Widget fileIcon(FileEntry item, {double size = 24}) {
-      final color = item.isDirectory ? colors.primary : colors.secondary;
+      final color = _iconColorFor(item, colors);
       return Container(
-        width: 48,
-        height: 48,
+        width: 42,
+        height: 42,
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Icon(_iconFor(item), color: color, size: size),
       );
@@ -613,9 +722,11 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
         margin: EdgeInsets.zero,
         elevation: 0,
         color: colors.surfaceContainerLow,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14), side: BorderSide(color: colors.outlineVariant.withValues(alpha: 0.22))),
+        child: SizedBox(height: 60, child: ListTile(
+          dense: true,
+          visualDensity: VisualDensity.compact,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
           leading: fileIcon(item),
           title: Text(item.name, maxLines: 1, overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontWeight: FontWeight.w600)),
@@ -625,28 +736,33 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
               ? () => _load(_itemPath(item.name))
               : _isAudio(item) ? () => _openAudio(item)
               : _isImage(item) ? () => _previewImage(item) : null,
-          trailing: PopupMenuButton<String>(
+          trailing: SmokedGlassPopoverMenu<String>(
             tooltip: 'More actions',
+            items: [
+              if (!item.isDirectory)
+                const SmokedGlassPopoverMenuItem(value: 'download', label: 'Download', icon: Icons.download_rounded),
+              const SmokedGlassPopoverMenuItem(value: 'rename', label: 'Rename', icon: Icons.drive_file_rename_outline_rounded),
+              const SmokedGlassPopoverMenuItem(value: 'delete', label: 'Delete', icon: Icons.delete_outline_rounded, destructive: true, dividerBefore: true),
+            ],
             onSelected: (action) {
               if (action == 'download' && !item.isDirectory) _downloadFile(item);
               if (action == 'rename') _rename(item);
               if (action == 'delete') _delete(item);
             },
-            itemBuilder: (_) => [
-              if (!item.isDirectory)
-                const PopupMenuItem(value: 'download', child: Text('Download')),
-              const PopupMenuItem(value: 'rename', child: Text('Rename')),
-              const PopupMenuItem(value: 'delete', child: Text('Delete')),
-            ],
+            child: const Padding(
+              padding: EdgeInsets.all(8),
+              child: Icon(Icons.more_vert_rounded),
+            ),
           ),
-        ),
+        )),
       );
     }
 
     return PopScope(
-      canPop: !widget.isActive && _path.isEmpty,
+      canPop: (_searchExpanded && widget.onBackHandlerChanged != null) ||
+          (!_searchExpanded && !widget.isActive && _path.isEmpty),
       onPopInvokedWithResult: (didPop, result) {
-        if (didPop) return;
+        if (didPop || (_searchExpanded && widget.onBackHandlerChanged != null)) return;
         if (_path.isNotEmpty) {
           _goUp();
         } else if (widget.isActive) {
@@ -654,277 +770,194 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
         }
       },
       child: Scaffold(
+        extendBodyBehindAppBar: true,
         appBar: PocketLinkAppBar(
-          title: const Text('Files', style: TextStyle(fontWeight: FontWeight.w800)),
-          onHome: () => _load(''),
-          actionsBeforeHome: widget.showSearch ? [
-            IconButton(
-              tooltip: 'Search files',
-              onPressed: _openSearch,
-              icon: const Icon(Icons.search_rounded),
-            ),
-          ] : const [],
-          actions: [
-            PocketLinkAppBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded, onPressed: _openTransfers),
-            PocketLinkAppBarAction(label: 'Upload file', icon: Icons.cloud_upload_outlined, onPressed: _uploadFile),
-            PocketLinkAppBarAction(label: 'New folder', icon: Icons.create_new_folder_outlined, onPressed: _createFolder),
-            PocketLinkAppBarAction(label: 'Refresh', icon: Icons.refresh_rounded, onPressed: _loading ? null : _refreshDirectory),
-          ],
-        ),
-        body: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-              child: Material(
-                color: colors.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(18),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 34,
-                        height: 34,
-                        decoration: BoxDecoration(
-                          color: colors.primary.withValues(alpha: 0.14),
-                          borderRadius: BorderRadius.circular(11),
-                        ),
-                        child: Icon(Icons.folder_copy_rounded, color: colors.primary, size: 20),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(10),
-                          onTap: () => showModalBottomSheet<void>(
-                            context: context, backgroundColor: colors.surfaceContainerLow, showDragHandle: true,
-                            builder: (sheetContext) => SafeArea(child: Column(mainAxisSize: MainAxisSize.min, children: [
-                              ListTile(leading: const Icon(Icons.phone_android_rounded), title: const Text('Internal storage'),
-                                trailing: _selectedVolume == null ? const Icon(Icons.check_rounded) : null,
-                                onTap: () { Navigator.pop(sheetContext); _selectPartition(null); }),
-                              for (final volume in _volumes) ListTile(leading: const Icon(Icons.usb_rounded),
-                                title: Text(volume.name, maxLines: 1, overflow: TextOverflow.ellipsis), subtitle: Text(volume.id),
-                                trailing: _selectedVolume == volume.id ? const Icon(Icons.check_rounded) : null,
-                                onTap: () { Navigator.pop(sheetContext); _selectPartition(volume.id); }),
-                              if (_volumes.isEmpty) const Padding(padding: EdgeInsets.all(16), child: Text('No mounted external drives')),
-                            ])),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 2),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Flexible(
-                                      child: Text(
-                                        _path.isEmpty ? (_selectedVolume == null ? 'Internal storage' : _volumeName(_selectedVolume!)) : _path.split('/').last,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-                                      ),
-                                    ),
-                                    const Icon(Icons.keyboard_arrow_down_rounded, size: 21),
-                                  ],
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  '$folderCount ${folderCount == 1 ? 'folder' : 'folders'} • $fileCount ${fileCount == 1 ? 'file' : 'files'}',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Material(
-                        color: colors.secondaryContainer,
-                        shape: const CircleBorder(),
-                        child: IconButton(
-                          tooltip: 'Go to parent folder',
-                          visualDensity: VisualDensity.compact,
-                          onPressed: _path.isEmpty ? null : _goUp,
-                          icon: Icon(Icons.arrow_upward_rounded, color: colors.onSecondaryContainer, size: 19),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            if (_path.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-                child: SizedBox(
-                  height: 30,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: [
-                      TextButton(
-                        style: TextButton.styleFrom(
-                          visualDensity: VisualDensity.compact,
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          minimumSize: const Size(0, 28),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        onPressed: () => _load(''),
-                        child: Text(
-                          _selectedVolume == null ? 'Internal storage' : _volumeName(_selectedVolume!),
-                          style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant),
-                        ),
-                      ),
-                      for (var i = 0; i < _path.split('/').where((part) => part.isNotEmpty).length; i++) ...[
-                        const Center(child: Icon(Icons.chevron_right_rounded, size: 15)),
-                        TextButton(
-                          style: TextButton.styleFrom(
-                            visualDensity: VisualDensity.compact,
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            minimumSize: const Size(0, 28),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          onPressed: i == _path.split('/').where((part) => part.isNotEmpty).length - 1
-                              ? null
-                              : () => _load(_path.split('/').where((part) => part.isNotEmpty).take(i + 1).join('/')),
-                          child: Text(
-                            _path.split('/').where((part) => part.isNotEmpty).elementAt(i),
-                            style: theme.textTheme.labelSmall,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-            const SizedBox(height: 8),
-
-            SizedBox(
-              height: 40,
-              child: Row(children: [
-                Expanded(
-                  child: ClipRect(
-                    child: ShaderMask(
-                      blendMode: BlendMode.dstIn,
-                      shaderCallback: (bounds) => const LinearGradient(
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                        colors: [Colors.white, Colors.white, Colors.transparent],
-                        stops: [0, 0.86, 1],
-                      ).createShader(bounds),
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            for (final category in const ['All', 'Images', 'Videos', 'Music', 'Documents'])
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 4),
-                                child: ChoiceChip(
-                                  label: Text(category),
-                                  selected: _category == category,
-                                  onSelected: (_) { setState(() => _category = category); _saveState(); },
-                                  showCheckmark: false,
-                                ),
-                              ),
-                          ],
-                        ),
+          feathered: true,
+          showHome: false,
+          automaticallyImplyLeading: false,
+          leading: _path.isEmpty
+              ? null
+              : Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 16, top: 4, bottom: 4),
+                    child: SizedBox.square(
+                      dimension: 38,
+                      child: GlassCircleButton(
+                        tooltip: 'Back',
+                        onPressed: _goUp,
+                        child: const Icon(Icons.arrow_back_rounded, size: 18),
                       ),
                     ),
                   ),
                 ),
-                PopupMenuButton<String>(
-                  tooltip: 'Sort files',
-                  onSelected: (value) { setState(() => _sortBy = value); _saveState(); },
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(value: 'name', child: Text('Name')),
-                    PopupMenuItem(value: 'newest', child: Text('Newest')),
-                    PopupMenuItem(value: 'largest', child: Text('Largest')),
-                  ],
-                  icon: const Icon(Icons.sort_rounded),
-                ),
-                IconButton(
-                  tooltip: _gridView ? 'List view' : 'Grid view',
-                  onPressed: () { setState(() => _gridView = !_gridView); _saveState(); },
-                  icon: Icon(_gridView ? Icons.view_list_rounded : Icons.grid_view_rounded),
-                ),
-                const SizedBox(width: 8),
-              ]),
-            ),
-            if (_loading) const LinearProgressIndicator(minHeight: 2),
-            if (_error != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-                child: Material(
-                  color: colors.errorContainer,
-                  borderRadius: BorderRadius.circular(14),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Row(children: [
-                      Icon(Icons.error_outline_rounded, color: colors.onErrorContainer),
-                      const SizedBox(width: 8),
-                      Expanded(child: Text(_error!, style: TextStyle(color: colors.onErrorContainer))),
-                    ]),
-                  ),
+          leadingWidth: _path.isEmpty ? 0 : 62,
+          titleSpacing: _path.isEmpty ? 16 : 8,
+          title: TitleDropdownPopover<String>(
+tooltip: 'Choose storage location',
+            onOpenChanged: (open) => setState(() => _storageMenuOpen = open),
+            items: [
+              SmokedGlassPopoverMenuItem(
+                value: 'internal',
+                label: 'Internal storage',
+                icon: Icons.phone_android_rounded,
+                trailing: SizedBox(
+                  width: 20,
+                  child: _selectedVolume == null
+                      ? const Icon(Icons.check_rounded, size: 18)
+                      : null,
                 ),
               ),
-            Expanded(
-              child: _error != null
-                  ? Center(child: FilledButton.icon(onPressed: _refreshDirectory,
-                      icon: const Icon(Icons.refresh), label: const Text('Try again')))
-                  : _loading && _listing == null
-                      ? const SizedBox.shrink()
-                      : items.isEmpty
-                          ? RefreshIndicator(
-                              onRefresh: _refreshDirectory,
-                              child: ListView(physics: const AlwaysScrollableScrollPhysics(),
-                                children: [SizedBox(height: 150, child: Center(child: Text(
-                                  allItems.isEmpty ? 'This folder is empty' : 'No matching files',
-                                  style: theme.textTheme.bodyLarge?.copyWith(color: colors.onSurfaceVariant),
-                                )))],
-                              ),
-                            )
-                          : RefreshIndicator(
-                              onRefresh: _refreshDirectory,
-                              child: _gridView
-                                  ? GridView.builder(
-                                      controller: _scrollController,
-                                      physics: const AlwaysScrollableScrollPhysics(),
-                                      padding: EdgeInsets.fromLTRB(16, 12, 16, 104 + MediaQuery.paddingOf(context).bottom),
-                                      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                                        maxCrossAxisExtent: 190, mainAxisExtent: 156,
-                                        crossAxisSpacing: 10, mainAxisSpacing: 10,
-                                      ),
-                                      itemCount: items.length,
-                                      itemBuilder: (context, index) {
-                                        final item = items[index];
-                                        return InkWell(
-                                          borderRadius: BorderRadius.circular(20),
-                                          onTap: item.isDirectory ? () => _load(_itemPath(item.name))
-                                              : _isAudio(item) ? () => _openAudio(item)
-                                              : _isImage(item) ? () => _previewImage(item) : null,
-                                          child: Container(
-                                            padding: const EdgeInsets.all(14),
-                                            decoration: BoxDecoration(
-                                              color: colors.surfaceContainerLow,
-                                              borderRadius: BorderRadius.circular(20),
-                                            ),
-                                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              for (final volume in _volumes)
+                SmokedGlassPopoverMenuItem(
+                  value: volume.id,
+                  label: volume.name,
+                  icon: Icons.usb_rounded,
+                  trailing: SizedBox(
+                    width: 20,
+                    child: _selectedVolume == volume.id
+                        ? const Icon(Icons.check_rounded, size: 18)
+                        : null,
+                  ),
+                ),
+              const SmokedGlassPopoverMenuItem(
+                value: 'downloads',
+                label: 'Downloads',
+                icon: Icons.download_rounded,
+                dividerBefore: true,
+              ),
+              const SmokedGlassPopoverMenuItem(
+                value: 'recent',
+                label: 'Recent',
+                icon: Icons.history_rounded,
+              ),
+            ],
+            onSelected: (value) {
+              if (value == 'recent') { _showRecentLocations(); return; }
+              if (value == 'internal') { _selectPartition(null); return; }
+              if (value == 'downloads') { _selectPartition(null).then((_) => _load('Downloads')); return; }
+              _selectPartition(value);
+            },
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Flexible(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(mainAxisSize: MainAxisSize.min, children: [
+                  Flexible(child: Text(_path.isEmpty ? 'Files' : _path.split('/').last,
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w700, letterSpacing: -0.5))),
+                  const SizedBox(width: 6),
+                  AnimatedRotation(turns: _storageMenuOpen ? 0.5 : 0, duration: const Duration(milliseconds: 200),
+                    child: const Icon(Icons.keyboard_arrow_down_rounded, size: 20)),
+                ]),
+                Text('${folderCount == 1 ? '1 folder' : '$folderCount folders'} • ${fileCount == 1 ? '1 file' : '$fileCount files'}',
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 10, fontFamily: 'monospace', color: Color(0xFFA1A7B3))),
+              ])),
+            ]),
+          ),
+          actions: [
+            if (widget.showSearch) PocketLinkAppBarAction(label: _searchExpanded ? 'Close search' : 'Search files', icon: _searchExpanded ? Icons.close_rounded : Icons.search_rounded, onPressed: () => _setSearchExpanded(!_searchExpanded)),
+            PocketLinkAppBarAction(label: 'Upload file', icon: Icons.upload_rounded, onPressed: _uploadFile),
+            PocketLinkAppBarAction(label: 'New folder', icon: Icons.create_new_folder_outlined, onPressed: _createFolder),
+            PocketLinkAppBarAction(label: 'Sort by...', icon: Icons.sort_rounded,
+              onPressed: _showSortOptions, dividerBefore: true),
+            PocketLinkAppBarAction(label: _gridView ? 'Switch to list view' : 'Switch to grid view',
+              icon: _gridView ? Icons.view_list_rounded : Icons.grid_view_rounded,
+              onPressed: () { setState(() => _gridView = !_gridView); _saveState(); }),
+            PocketLinkAppBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded, onPressed: _openTransfers, dividerBefore: true),
+            PocketLinkAppBarAction(label: 'Refresh', icon: Icons.refresh_rounded, onPressed: _loading ? null : _refreshDirectory),
+          ],
+        ),
+        body: Stack(
+          children: [
+            Positioned.fill(
+              child: Builder(builder: (context) {
+                final topInset = LayoutInsetsScope.of(context).topClearance +
+                    (_searchExpanded ? 64 : 0) +
+                    (_path.isNotEmpty ? 38 : 0) +
+                    34; // Filter row follows the shared measured header.
+                Widget emptyList(String message, {Widget? action}) => ListView(
+                  controller: _scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.fromLTRB(16, topInset + 12, 16, LayoutInsetsScope.of(context).bottomClearance),
+                  children: [
+                    SizedBox(
+                      height: 150,
+                      child: Center(
+                        child: Column(mainAxisSize: MainAxisSize.min, children: [
+                          Text(message, style: theme.textTheme.bodyLarge?.copyWith(color: colors.onSurfaceVariant)),
+                          if (action != null) ...[const SizedBox(height: 12), action],
+                        ]),
+                      ),
+                    ),
+                  ],
+                );
+
+                final Widget content = _error != null
+                    ? emptyList(
+                        _error!,
+                        action: FilledButton.icon(
+                          onPressed: _refreshDirectory,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Try again'),
+                        ),
+                      )
+                    : _loading && _listing == null
+                        ? const SizedBox.shrink()
+                        : items.isEmpty
+                            ? emptyList(allItems.isEmpty ? 'This folder is empty' : 'No matching files')
+                            : _gridView
+                                ? GridView.builder(
+                                    controller: _scrollController,
+                                    physics: const AlwaysScrollableScrollPhysics(),
+                                    padding: EdgeInsets.fromLTRB(16, topInset + 12, 16, LayoutInsetsScope.of(context).bottomClearance),
+                                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                                      maxCrossAxisExtent: 190,
+                                      mainAxisExtent: 156,
+                                      crossAxisSpacing: 10,
+                                      mainAxisSpacing: 10,
+                                    ),
+                                    itemCount: items.length,
+                                    itemBuilder: (context, index) {
+                                      final item = items[index];
+                                      return InkWell(
+                                        borderRadius: BorderRadius.circular(20),
+                                        onTap: item.isDirectory
+                                            ? () => _load(_itemPath(item.name))
+                                            : _isAudio(item)
+                                                ? () => _openAudio(item)
+                                                : _isImage(item)
+                                                    ? () => _previewImage(item)
+                                                    : null,
+                                        child: Container(
+                                          padding: const EdgeInsets.all(14),
+                                          decoration: BoxDecoration(
+                                            color: colors.surfaceContainerLow,
+                                            borderRadius: BorderRadius.circular(20),
+                                            border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.32)),
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
                                               Row(children: [
                                                 fileIcon(item, size: 26),
                                                 const Spacer(),
-                                                PopupMenuButton<String>(
-                                                  padding: EdgeInsets.zero,
+                                                SmokedGlassPopoverMenu<String>(
+                                                  tooltip: 'More actions',
+                                                  items: [
+                                                    if (!item.isDirectory)
+                                                      const SmokedGlassPopoverMenuItem(value: 'download', label: 'Download', icon: Icons.download_rounded),
+                                                    const SmokedGlassPopoverMenuItem(value: 'rename', label: 'Rename', icon: Icons.drive_file_rename_outline_rounded),
+                                                    const SmokedGlassPopoverMenuItem(value: 'delete', label: 'Delete', icon: Icons.delete_outline_rounded, destructive: true, dividerBefore: true),
+                                                  ],
                                                   onSelected: (action) {
                                                     if (action == 'download' && !item.isDirectory) _downloadFile(item);
                                                     if (action == 'rename') _rename(item);
                                                     if (action == 'delete') _delete(item);
                                                   },
-                                                  itemBuilder: (_) => [
-                                                    if (!item.isDirectory) const PopupMenuItem(value: 'download', child: Text('Download')),
-                                                    const PopupMenuItem(value: 'rename', child: Text('Rename')),
-                                                    const PopupMenuItem(value: 'delete', child: Text('Delete')),
-                                                  ],
+                                                  child: const Padding(
+                                                    padding: EdgeInsets.all(6),
+                                                    child: Icon(Icons.more_vert_rounded),
+                                                  ),
                                                 ),
                                               ]),
                                               const Spacer(),
@@ -933,23 +966,167 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                                               const SizedBox(height: 3),
                                               Text(item.isDirectory ? 'Folder' : _formatSize(item.size),
                                                 style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
-                                            ]),
+                                            ],
                                           ),
-                                        );
-                                      },
-                                    )
-                                  : ListView.separated(
-                                      controller: _scrollController,
-                                      physics: const AlwaysScrollableScrollPhysics(),
-                                      padding: EdgeInsets.fromLTRB(16, 12, 16, 104 + MediaQuery.paddingOf(context).bottom),
-                                      itemCount: items.length,
-                                      separatorBuilder: (_, __) => const SizedBox(height: 8),
-                                      itemBuilder: (context, index) => fileTile(items[index]),
-                                    ),
+                                        ),
+                                      );
+                                    },
+                                  )
+                                : ListView.separated(
+                                    controller: _scrollController,
+                                    physics: const AlwaysScrollableScrollPhysics(),
+                                    padding: EdgeInsets.fromLTRB(16, topInset + 12, 16, LayoutInsetsScope.of(context).bottomClearance),
+                                    itemCount: items.length,
+                                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                                    itemBuilder: (context, index) => fileTile(items[index]),
+                                  );
+                return RefreshIndicator(
+                  onRefresh: _refreshDirectory,
+                  child: content,
+                );
+              }),
+            ),
+            Positioned(
+              top: LayoutInsetsScope.of(context).topClearance - 10,
+              left: 0,
+              right: 0,
+              child: Material(
+                color: Colors.transparent,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_searchExpanded)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                        child: TextField(
+                          controller: _searchController,
+                          autofocus: true,
+                          onChanged: (_) => setState(() {}),
+                          decoration: InputDecoration(
+                            hintText: 'Search this folder',
+                            prefixIcon: const Icon(Icons.search_rounded),
+                            suffixIcon: IconButton(
+                              onPressed: () { _searchController.clear(); setState(() {}); },
+                              icon: const Icon(Icons.close_rounded),
                             ),
+                            filled: true,
+                            fillColor: colors.surfaceContainerLow.withValues(alpha: 0.92),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                          ),
+                        ),
+                      ),
+                    if (_path.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 2),
+                        child: SizedBox(
+                          height: 30,
+                          child: ListView(
+                            scrollDirection: Axis.horizontal,
+                            padding: EdgeInsets.zero,
+                            children: [
+                              TextButton(
+                                style: TextButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 4), minimumSize: const Size(0, 28), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                                onPressed: () => _load(''),
+                                child: Text(_selectedVolume == null ? 'Internal storage' : _volumeName(_selectedVolume!),
+                                  style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant)),
+                              ),
+                              for (var i = 0; i < _path.split('/').where((part) => part.isNotEmpty).length; i++) ...[
+                                const Center(child: Icon(Icons.chevron_right_rounded, size: 15)),
+                                TextButton(
+                                  style: TextButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 4), minimumSize: const Size(0, 28), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                                  onPressed: i == _path.split('/').where((part) => part.isNotEmpty).length - 1
+                                      ? null
+                                      : () => _load(_path.split('/').where((part) => part.isNotEmpty).take(i + 1).join('/')),
+                                  child: Text(_path.split('/').where((part) => part.isNotEmpty).elementAt(i), style: theme.textTheme.labelSmall),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: SmokedGlassPopoverMenu<String>(
+                          tooltip: 'Filter file types',
+                          itemHeight: 44,
+                          menuVerticalPadding: 6,
+                          itemHorizontalPadding: 14,
+                          trailingWidth: 52,
+                          items: [
+                            for (final category in const ['All', 'Images', 'Videos', 'Music', 'Documents'])
+                              SmokedGlassPopoverMenuItem(
+                                value: category,
+                                label: category,
+                                icon: switch (category) {
+                                  'Images' => Icons.image_outlined,
+                                  'Videos' => Icons.movie_outlined,
+                                  'Music' => Icons.music_note_outlined,
+                                  'Documents' => Icons.description_outlined,
+                                  _ => Icons.apps_rounded,
+                                },
+                                trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                                  Text(
+                                    '${_categoryCount(allItems, category)}',
+                                    style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3)),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  SizedBox(
+                                    width: 20,
+                                    child: Align(
+                                      alignment: Alignment.centerRight,
+                                      child: _category == category
+                                          ? const Icon(Icons.check_rounded, size: 16)
+                                          : const SizedBox.shrink(),
+                                    ),
+                                  ),
+                                ]),
+                              ),
+                          ],
+                          onSelected: (category) {
+                            setState(() => _category = category);
+                            _saveState();
+                          },
+                          child: SmokedGlassSurface(
+                            radius: BorderRadius.circular(18),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                const Icon(Icons.filter_list_rounded, size: 17),
+                                const SizedBox(width: 7),
+                                Text('Filter: $_category', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                                const SizedBox(width: 4),
+                                const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+                              ]),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (_loading) const LinearProgressIndicator(minHeight: 2),
+                    if (_error != null)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                        child: Material(
+                          color: colors.errorContainer,
+                          borderRadius: BorderRadius.circular(14),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Row(children: [
+                              Icon(Icons.error_outline_rounded, color: colors.onErrorContainer),
+                              const SizedBox(width: 8),
+                              Expanded(child: Text(_error!, style: TextStyle(color: colors.onErrorContainer))),
+                            ]),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ),
           ],
-        ),
+        )
       ),
     );
   }

@@ -1,5 +1,6 @@
 import 'dart:io';
 import '../../core/widgets/pocketlink_app_bar.dart';
+import '../../core/widgets/pocketlink_scaffold.dart';
 
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
@@ -10,8 +11,8 @@ import 'package:path_provider/path_provider.dart';
 import '../../core/network/server_api.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/settings/app_settings.dart';
-import '../media/now_playing_screen.dart';
 import '../media/persistent_audio_player.dart';
+import '../media/now_playing_overlay_controller.dart';
 import '../transfers/transfer_manager.dart';
 import '../transfers/transfer_manager_screen.dart';
 
@@ -203,21 +204,20 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
       'source': 'external',
       'extension': item.name.contains('.') ? item.name.split('.').last.toLowerCase() : 'unknown',
     });
-    await Navigator.of(context, rootNavigator: true).push(
-      MaterialPageRoute<void>(
-        builder: (_) => NowPlayingScreen(
-          api: widget.api,
-          queue: [
-            MediaQueueItem(
-              title: item.name,
-              path: _itemPath(item.name),
-              volume: volume,
-              size: item.size,
-            ),
-          ],
+    await PersistentAudioPlayer.instance.openQueue(
+      api: widget.api,
+      queue: [
+        MediaQueueItem(
+          title: item.name,
+          path: _itemPath(item.name),
+          volume: volume,
+          size: item.size,
         ),
-      ),
+      ],
+      initialIndex: 0,
+      isMusic: true,
     );
+    NowPlayingOverlayController.open();
   }
 
   Future<void> _openFile(FileEntry item) async {
@@ -329,6 +329,9 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
     super.dispose();
   }
 
+  String _pluralCount(int count, String singular, String plural) =>
+      '$count ${count == 1 ? singular : plural}';
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -375,8 +378,9 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
         if (!didPop && _path.isNotEmpty) _goUp();
       },
       child: Scaffold(
+        extendBodyBehindAppBar: true,
         appBar: PocketLinkAppBar(
-          title: const Text('External storage', style: TextStyle(fontWeight: FontWeight.w800)),
+          title: const Text('External storage', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700, letterSpacing: -0.5)),
           actions: [
             PocketLinkAppBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded, onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen()))),
             PocketLinkAppBarAction(label: 'Upload', icon: Icons.cloud_upload_outlined, onPressed: _volume == null ? null : _upload),
@@ -386,13 +390,18 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
         ),
         body: Column(children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+            padding: EdgeInsets.fromLTRB(
+              16,
+              LayoutInsetsScope.of(context).topClearance + 0,
+              16,
+              10,
+            ),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
-                color: const Color(0xFF1C1C1E),
+                color: Theme.of(context).colorScheme.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.62)),
               ),
               child: Row(
                 children: [
@@ -400,10 +409,10 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
                     width: 42,
                     height: 42,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF161618),
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(13),
                     ),
-                    child: const Icon(Icons.usb_rounded, size: 23, color: Colors.white70),
+                    child: Icon(Icons.usb_rounded, size: 23, color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -451,8 +460,8 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
                             ),
                             const SizedBox(height: 3),
                             Text(
-                              '${allItems.where((item) => item.isDirectory).length} folders • '
-                              '${allItems.where((item) => !item.isDirectory).length} files • '
+                              '${_pluralCount(allItems.where((item) => item.isDirectory).length, 'folder', 'folders')} • '
+                              '${_pluralCount(allItems.where((item) => !item.isDirectory).length, 'file', 'files')} • '
                               '${selected?.writable == true ? 'Read & write' : 'Read only'}',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -525,6 +534,7 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
                         ? RefreshIndicator(
                             onRefresh: _refreshDirectory,
                             child: ListView(physics: const AlwaysScrollableScrollPhysics(),
+                              padding: EdgeInsets.zero,
                               children: [SizedBox(height: 140, child: Center(child: Text(
                                 allItems.isEmpty ? 'This folder is empty' : 'No matching files',
                                 style: TextStyle(color: colors.onSurfaceVariant))))]))
@@ -533,7 +543,7 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
                             child: _gridView
                                 ? GridView.builder(
                                     physics: const AlwaysScrollableScrollPhysics(),
-                                    padding: EdgeInsets.fromLTRB(16, 10, 16, 104 + MediaQuery.paddingOf(context).bottom),
+                                    padding: EdgeInsets.fromLTRB(16, 10, 16, LayoutInsetsScope.of(context).bottomClearance),
                                     gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                                       maxCrossAxisExtent: 190, mainAxisExtent: 158,
                                       crossAxisSpacing: 10, mainAxisSpacing: 10),
@@ -562,7 +572,7 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
                                   )
                                 : ListView.separated(
                                     physics: const AlwaysScrollableScrollPhysics(),
-                                    padding: EdgeInsets.fromLTRB(16, 10, 16, 104 + MediaQuery.paddingOf(context).bottom),
+                                    padding: EdgeInsets.fromLTRB(16, 10, 16, LayoutInsetsScope.of(context).bottomClearance),
                                     itemCount: items.length,
                                     separatorBuilder: (_, __) => const SizedBox(height: 8),
                                     itemBuilder: (context, index) {

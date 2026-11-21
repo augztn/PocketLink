@@ -5,7 +5,7 @@ import '../../core/widgets/pocketlink_app_bar.dart';
 
 class VideoPlayerSettingsScreen extends StatelessWidget {
   const VideoPlayerSettingsScreen({super.key});
-  static const _timeouts = [0, 3, 4, 5, 8, 12];
+  static const List<double> _timeouts = [2.0, 3.0, 3.5, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0, 0.0];
   static const _seeks = [5, 10, 15, 30];
   static const _speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 3.0, 4.0];
 
@@ -16,7 +16,7 @@ class VideoPlayerSettingsScreen extends StatelessWidget {
       appBar: PocketLinkAppBar(title: const Text('Video player')),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 32), children: [
         _group('Playback & controls', [
-          _choice<int>(icon: Icons.timer_outlined, title: 'Controls auto-hide', value: settings.videoControlsTimeoutSeconds, options: _timeouts, label: (v) => v == 0 ? 'Never' : '$v seconds', onChanged: (v) => settings.setVideoPlayerOptions(controlsTimeoutSeconds: v)),
+          _choice<double>(icon: Icons.timer_outlined, title: 'Controls auto-hide', value: settings.videoControlsTimeoutSeconds, options: _timeouts, label: (v) => v == 0 ? 'Never' : '${v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toString()} seconds', onChanged: (v) => settings.setVideoPlayerOptions(controlsTimeoutSeconds: v)),
           const Divider(height: 1),
           _choice<int>(icon: Icons.fast_forward_rounded, title: 'Double-tap seek', value: settings.videoSeekSeconds, options: _seeks, label: (v) => '$v seconds', onChanged: (v) => settings.setVideoPlayerOptions(seekSeconds: v)),
           const Divider(height: 1),

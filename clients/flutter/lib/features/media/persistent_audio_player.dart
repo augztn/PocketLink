@@ -36,7 +36,8 @@ class PersistentAudioPlayer extends ChangeNotifier {
       notifyListeners();
       unawaited(_syncMediaSession());
     });
-    _playingSubscription = player.stream.playing.listen((_) {
+    _playingSubscription = player.stream.playing.listen((playing) {
+      if (playing) _miniPlayerDismissed = false;
       notifyListeners();
       unawaited(_syncMediaSession());
     });
@@ -70,14 +71,18 @@ class PersistentAudioPlayer extends ChangeNotifier {
   int _currentIndex = 0;
   bool _active = false;
   bool _music = false;
-  bool _fullScreen = false;
+  bool _miniPlayerDismissed = false;
+  int? _pendingTrackDirection;
+  DateTime? _pendingTrackDirectionAt;
 
   List<MediaQueueItem> get queue => _queue;
   ServerApi? get api => _api;
   int get currentIndex => _currentIndex;
   bool get isActive => _active;
   bool get isMusic => _music;
-  bool get isFullScreen => _fullScreen;
+  bool get isMiniPlayerDismissed => _miniPlayerDismissed;
+  bool get shouldShowMiniPlayer =>
+      _music && _active && currentItem != null && !_miniPlayerDismissed;
   bool get isPlaying => player.state.playing;
   bool get hasSleepTimer => _sleepTimer?.isActive ?? false;
 
@@ -98,9 +103,8 @@ class PersistentAudioPlayer extends ChangeNotifier {
   MediaQueueItem? get currentItem =>
       _queue.isEmpty ? null : _queue[_currentIndex.clamp(0, _queue.length - 1).toInt()];
 
-  /// Legacy mini-player widget is intentionally kept hidden; Home uses a FAB.
+  /// Legacy widget compatibility; the app-level overlay owns the live bar.
   bool get showMiniPlayer => false;
-
 
   Future<void> openQueue({
     required ServerApi api,
@@ -114,7 +118,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
     _currentIndex = initialIndex.clamp(0, _queue.length - 1).toInt();
     _music = isMusic;
     _active = true;
-    _fullScreen = true;
+    _miniPlayerDismissed = false;
     notifyListeners();
 
     final tracks = _queue.map((item) => Media(
@@ -152,17 +156,16 @@ class PersistentAudioPlayer extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setFullScreen(bool value) {
-    _fullScreen = value;
+  void dismissMiniPlayer() {
+    if (player.state.playing || _miniPlayerDismissed) return;
+    _miniPlayerDismissed = true;
     notifyListeners();
   }
 
   Future<void> closePlayerScreen({required bool isVideo}) async {
-    // Keep the queue and position so HomeScreen can reopen the current session.
+    // Keep the queue and position when a player surface closes.
     // Pause video when its surface closes; audio continues in the background.
     if (isVideo && player.state.playing) await player.pause();
-    _fullScreen = false;
-    notifyListeners();
   }
 
   Future<void> togglePlayback() async {
@@ -174,8 +177,33 @@ class PersistentAudioPlayer extends ChangeNotifier {
     notifyListeners();
   }
 
+  void _recordTrackChangeDirection(int direction) {
+    _pendingTrackDirection = direction;
+    _pendingTrackDirectionAt = DateTime.now();
+  }
+
+  /// Returns the direction of a recent explicit skip request, if any.
+  /// Used by the UI's track-change animation; it does not affect playback.
+  int? takePendingTrackDirection() {
+    final direction = _pendingTrackDirection;
+    final requestedAt = _pendingTrackDirectionAt;
+    _pendingTrackDirection = null;
+    _pendingTrackDirectionAt = null;
+    if (requestedAt == null ||
+        DateTime.now().difference(requestedAt) > const Duration(seconds: 2)) {
+      return null;
+    }
+    return direction;
+  }
+
   Future<void> skipToNext() async {
+    _recordTrackChangeDirection(1);
     await player.next();
+  }
+
+  Future<void> skipToPrevious() async {
+    _recordTrackChangeDirection(-1);
+    await player.previous();
   }
 
   Future<void> dismiss() async {
@@ -193,7 +221,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
     _nativeSessionStarted = false;
     _active = false;
     _music = false;
-    _fullScreen = false;
+    _miniPlayerDismissed = false;
     _queue = const [];
     _currentIndex = 0;
     _api = null;
@@ -213,10 +241,10 @@ class PersistentAudioPlayer extends ChangeNotifier {
         await player.pause();
         break;
       case 'io.github.augztn.pocketlink.media.NEXT':
-        await player.next();
+        await skipToNext();
         break;
       case 'io.github.augztn.pocketlink.media.PREVIOUS':
-        await player.previous();
+        await skipToPrevious();
         break;
       case 'io.github.augztn.pocketlink.media.SEEK':
         final position = args['position'];

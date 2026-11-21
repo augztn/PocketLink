@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:material_ui/material_ui.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
+import '../../core/widgets/pocketlink_scaffold.dart';
 
 import '../../core/network/server_api.dart';
 
@@ -295,6 +296,7 @@ class _LibraryBrowserScreenState extends State<LibraryBrowserScreen> {
                             textAlign: TextAlign.center,
                           ))
                         : ListView.separated(
+                            padding: EdgeInsets.only(bottom: LayoutInsetsScope.of(context).bottomClearance),
                             itemCount: files.length,
                             separatorBuilder: (_, __) =>
                                 const Divider(height: 1, indent: 72),

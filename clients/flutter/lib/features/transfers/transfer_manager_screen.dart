@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
+import '../../core/widgets/pocketlink_scaffold.dart';
 
 import 'transfer_manager.dart';
 
@@ -33,7 +34,9 @@ class TransferManagerScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final manager = TransferManager.instance;
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: PocketLinkAppBar(
+        feathered: true,
         title: const Text('Transfers'),
         actions: [
           PocketLinkAppBarAction(label: 'Clear history', icon: Icons.delete_sweep_outlined, onPressed: manager.clearFinished),
@@ -44,8 +47,12 @@ class TransferManagerScreen extends StatelessWidget {
         builder: (context, _) {
           final tasks = manager.tasks;
           if (tasks.isEmpty) {
-            return const Center(
-              child: Column(
+            return Padding(
+              padding: EdgeInsets.only(
+                top: LayoutInsetsScope.of(context).topClearance - 10,
+              ),
+              child: const Center(
+                child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.swap_vert_rounded, size: 52),
@@ -54,11 +61,17 @@ class TransferManagerScreen extends StatelessWidget {
                   SizedBox(height: 4),
                   Text('Uploads and downloads will appear here.'),
                 ],
+                ),
               ),
             );
           }
           return ListView.separated(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.fromLTRB(
+              16,
+              LayoutInsetsScope.of(context).topClearance - 10 + 16,
+              16,
+              LayoutInsetsScope.of(context).bottomClearance,
+            ),
             itemCount: tasks.length,
             separatorBuilder: (_, __) => const SizedBox(height: 10),
             itemBuilder: (context, index) {

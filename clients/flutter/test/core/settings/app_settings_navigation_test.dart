@@ -78,54 +78,32 @@ void main() {
     );
   });
 
-  test('floating shortcuts persist, validate and reset', () async {
+  test('Music button shortcuts persist, validate and reset', () async {
     final settings = AppSettings.instance;
     const shortcuts = ['music', 'files', 'photos', 'upload'];
 
-    expect(settings.floatingShortcutEnabled, isFalse);
-    expect(settings.floatingShortcutTapAction, 'menu');
-    expect(settings.floatingShortcutLongPressEnabled, isTrue);
-
-    await settings.setFloatingShortcutEnabled(true);
-    await settings.setFloatingShortcutTapAction('menu');
-    await settings.setFloatingShortcutLongPressEnabled(false);
-    await settings.setFloatingShortcuts(shortcuts);
-
-    expect(settings.floatingShortcutEnabled, isTrue);
-    expect(settings.floatingShortcutTapAction, 'menu');
-    expect(settings.floatingShortcutLongPressEnabled, isFalse);
-    expect(settings.floatingShortcuts, shortcuts);
+    await settings.setMusicButtonShortcuts(shortcuts);
+    expect(settings.musicButtonShortcuts, shortcuts);
     final preferences = await SharedPreferences.getInstance();
-    expect(preferences.getBool('settings_floating_shortcut_enabled'), isTrue);
-    expect(preferences.getString('settings_floating_shortcut_tap_action'), 'menu');
-    expect(preferences.getBool('settings_floating_shortcut_long_press'), isFalse);
-    expect(preferences.getString('settings_floating_shortcuts'),
+    expect(preferences.getString('settings_music_button_shortcuts'),
         '["music","files","photos","upload"]');
 
     await expectLater(
-      settings.setFloatingShortcuts(const ['music', 'music']),
+      settings.setMusicButtonShortcuts(const ['music', 'music']),
       throwsArgumentError,
     );
     await expectLater(
-      settings.setFloatingShortcuts(const ['unknown']),
+      settings.setMusicButtonShortcuts(const ['unknown']),
       throwsArgumentError,
     );
     await expectLater(
-      settings.setFloatingShortcutTapAction('invalid'),
-      throwsArgumentError,
-    );
-    await expectLater(
-      settings.setFloatingShortcuts(const []),
+      settings.setMusicButtonShortcuts(const []),
       throwsArgumentError,
     );
 
-    await settings.resetFloatingShortcuts();
-    expect(settings.floatingShortcutEnabled, isTrue);
-    expect(settings.floatingShortcutTapAction, 'menu');
-    expect(settings.floatingShortcutLongPressEnabled, isFalse);
-    expect(settings.floatingShortcuts, AppSettings.floatingShortcutDefaults);
-    expect(preferences.getBool('settings_floating_shortcut_enabled'), isTrue);
-    expect(preferences.getString('settings_floating_shortcuts'), isNull);
+    await settings.resetMusicButtonShortcuts();
+    expect(settings.musicButtonShortcuts, AppSettings.musicButtonShortcutDefaults);
+    expect(preferences.getString('settings_music_button_shortcuts'), isNull);
   });
 
   test('stats for nerds setting persists, can be disabled and resets enabled', () async {
@@ -149,4 +127,56 @@ void main() {
       isNull,
     );
   });
+  test('Music button swipe and hold preferences validate and persist', () async {
+    final settings = AppSettings.instance;
+
+    await settings.setMusicButtonOptions(
+      swipeEnabled: true,
+      swipeLeftAction: 'next',
+      swipeRightAction: 'previous',
+      longPressEnabled: true,
+    );
+
+    expect(settings.musicButtonSwipeEnabled, isTrue);
+    expect(settings.musicButtonSwipeLeftAction, 'next');
+    expect(settings.musicButtonSwipeRightAction, 'previous');
+    expect(settings.musicButtonLongPressEnabled, isTrue);
+
+    final preferences = await SharedPreferences.getInstance();
+    expect(preferences.getBool('settings_music_button_swipe_enabled'), isTrue);
+    expect(preferences.getString('settings_music_button_swipe_left_action'), 'next');
+    expect(preferences.getString('settings_music_button_swipe_right_action'), 'previous');
+    expect(preferences.getBool('settings_music_button_long_press_enabled'), isTrue);
+
+    await expectLater(
+      settings.setMusicButtonOptions(swipeLeftAction: 'invalid'),
+      throwsArgumentError,
+    );
+    await expectLater(
+      settings.setMusicButtonOptions(swipeRightAction: 'invalid'),
+      throwsArgumentError,
+    );
+
+    await settings.setMusicButtonOptions(
+      swipeEnabled: false,
+      swipeLeftAction: 'none',
+      swipeRightAction: 'none',
+      longPressEnabled: false,
+    );
+    expect(settings.musicButtonSwipeEnabled, isFalse);
+    expect(settings.musicButtonSwipeLeftAction, 'none');
+    expect(settings.musicButtonSwipeRightAction, 'none');
+    expect(settings.musicButtonLongPressEnabled, isFalse);
+
+    await settings.resetMusicButtonOptions();
+    expect(settings.musicButtonSwipeEnabled, isTrue);
+    expect(settings.musicButtonSwipeLeftAction, 'next');
+    expect(settings.musicButtonSwipeRightAction, 'previous');
+    expect(settings.musicButtonLongPressEnabled, isTrue);
+    expect(preferences.getBool('settings_music_button_swipe_enabled'), isNull);
+    expect(preferences.getString('settings_music_button_swipe_left_action'), isNull);
+    expect(preferences.getString('settings_music_button_swipe_right_action'), isNull);
+    expect(preferences.getBool('settings_music_button_long_press_enabled'), isNull);
+  });
+
 }

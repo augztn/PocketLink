@@ -2,6 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import '../../core/widgets/pocketlink_app_bar.dart';
+import '../../core/widgets/pocketlink_scaffold.dart';
+import '../../core/widgets/pocketlink_file_icon.dart';
+import '../../core/widgets/liquid_glass_pill.dart';
+import '../../core/widgets/smoked_glass_popover_menu.dart';
 
 import 'package:cross_file/cross_file.dart';
 import 'package:dio/dio.dart';
@@ -16,9 +20,11 @@ import '../../core/network/offline_file_cache.dart';
 import 'dart:io';
 import '../files/file_manager_screen.dart';
 import '../media/media_player_screen.dart';
-import '../media/now_playing_screen.dart';
 import '../media/persistent_audio_player.dart';
+import '../media/now_playing_overlay_controller.dart';
 import '../storage/storage_browser_screen.dart';
+import '../downloads/downloads_screen.dart';
+import '../settings/settings_screen.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({required this.api, this.onHome, super.key});
@@ -38,9 +44,9 @@ class _Result {
 }
 
 class _SearchScreenState extends State<SearchScreen> {
-  static const _audio = {'mp3','m4a','aac','wav','flac','ogg','opus','wma','aiff','alac'};
-  static const _video = {'mp4','m4v','mov','mkv','webm','avi','wmv','mpeg','mpg','3gp','ts','m2ts','mts','flv','ogv'};
-  static const _photo = {'jpg','jpeg','png','webp','gif','bmp','heic','heif','avif'};
+  static const _audio = {'mp3','m4a','aac','wav','flac','ogg','opus','wma','aiff','alac','amr','ape','wv','dsf','dff','mid','midi','mka'};
+  static const _video = {'mp4','m4v','mov','mkv','webm','avi','wmv','mpeg','mpg','3gp','ts','m2ts','mts','flv','ogv','f4v','3g2','m2v','vob','rmvb','h264','h265','hevc'};
+  static const _photo = {'jpg','jpeg','png','webp','gif','bmp','heic','heif','avif','tif','tiff','jxl','dng','cr2','nef','arw','orf','rw2'};
   static const _docs = {'pdf','doc','docx','xls','xlsx','ppt','pptx','txt','rtf','odt','ods','csv','md'};
   static const _historyKey = 'pocketlink_recent_searches';
   static const _legacyHistoryKey = 'homeserver_recent_searches';
@@ -107,6 +113,23 @@ class _SearchScreenState extends State<SearchScreen> {
     final values = _history.where((v) => v != query).toList();
     setState(() => _history = values);
     try { await _secure.write(key: _historyKey, value: jsonEncode(values)); } catch (_) {}
+  }
+
+  Future<void> _clearSearchHistory() async {
+    setState(() => _history = []);
+    try {
+      await _secure.delete(key: _historyKey);
+      await _secure.delete(key: _legacyHistoryKey);
+    } catch (_) {
+      if (mounted) _message('Could not clear search history.');
+    }
+  }
+
+  String _volumeLabel(String id) {
+    for (final volume in _volumes) {
+      if (volume.id == id) return volume.name;
+    }
+    return 'USB / OTG';
   }
 
   Future<void> _loadVolumes() async {
@@ -391,15 +414,6 @@ class _SearchScreenState extends State<SearchScreen> {
     return '${date.day}/${date.month}/${date.year}';
   }
 
-  IconData _icon(_Result r) {
-    final e = _ext(r.file.name);
-    if (_audio.contains(e)) return Icons.audio_file_rounded;
-    if (_video.contains(e)) return Icons.video_file_rounded;
-    if (_photo.contains(e)) return Icons.image_rounded;
-    if (_docs.contains(e)) return Icons.description_rounded;
-    return Icons.insert_drive_file_outlined;
-  }
-
   TextSpan _highlight(String name, String query, TextStyle? style) {
     final i = name.toLowerCase().indexOf(query.toLowerCase());
     if (query.isEmpty || i < 0) return TextSpan(text: name, style: style);
@@ -431,11 +445,29 @@ class _SearchScreenState extends State<SearchScreen> {
         : _visible.where((v) => audio ? _audio.contains(_ext(v.file.name)) : _video.contains(_ext(v.file.name)))
           .map((v) => MediaQueueItem(title: v.file.name, path: v.path, volume: v.volume, localPath: v.localPath, size: v.file.size)).toList(growable: false);
       final index = queue.indexWhere((v) => v.path == r.path && v.volume == r.volume);
-      await Navigator.push(context, MaterialPageRoute<void>(builder: (_) => audio
-        ? NowPlayingScreen(api: widget.api, queue: queue, initialIndex: index < 0 ? 0 : index)
-        : MediaPlayerScreen(
-            api: widget.api, title: r.file.name, path: r.path, volume: r.volume,
-            isVideo: true, queue: queue, initialIndex: index < 0 ? 0 : index)));
+      if (audio) {
+        await PersistentAudioPlayer.instance.openQueue(
+          api: widget.api,
+          queue: queue,
+          initialIndex: index < 0 ? 0 : index,
+          isMusic: true,
+        );
+        NowPlayingOverlayController.open();
+      } else {
+        await Navigator.of(context, rootNavigator: true).push<void>(
+          MaterialPageRoute<void>(
+            builder: (_) => MediaPlayerScreen(
+              api: widget.api,
+              title: r.file.name,
+              path: r.path,
+              volume: r.volume,
+              isVideo: true,
+              queue: queue,
+              initialIndex: index < 0 ? 0 : index,
+            ),
+          ),
+        );
+      }
     } else if (_photo.contains(e)) {
       await Navigator.push(context, MaterialPageRoute<void>(builder: (_) => Scaffold(
         appBar: PocketLinkAppBar(title: Text(r.file.name)),
@@ -560,7 +592,7 @@ class _SearchScreenState extends State<SearchScreen> {
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(value)));
   }
 
-  Widget _resultsList(ThemeData theme, {bool shrink = false}) {
+  Widget _resultsList(ThemeData theme, {bool shrink = false, double topInset = 8}) {
     final list = _visible;
     final q = _controller.text.trim();
     if (_error != null) return Padding(padding: const EdgeInsets.all(24), child: Text(_error!, textAlign: TextAlign.center));
@@ -598,7 +630,7 @@ class _SearchScreenState extends State<SearchScreen> {
     return ListView.separated(
       shrinkWrap: shrink,
       physics: shrink ? const NeverScrollableScrollPhysics() : const AlwaysScrollableScrollPhysics(),
-      padding: EdgeInsets.fromLTRB(12, 8, 12, 96 + MediaQuery.paddingOf(context).bottom),
+      padding: EdgeInsets.fromLTRB(12, topInset, 12, shrink ? 0 : LayoutInsetsScope.of(context).bottomClearance),
       itemCount: list.length,
       separatorBuilder: (_, __) => const Divider(height: 1, indent: 62),
       itemBuilder: (ctx, i) {
@@ -606,9 +638,11 @@ class _SearchScreenState extends State<SearchScreen> {
         final breadcrumb = '${r.volumeName}  ›  ${r.path.replaceAll('/', '  ›  ')}';
         return ListTile(
           contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
-          leading: Container(width: 44, height: 44, decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(14)),
-            child: Icon(_icon(r), color: theme.colorScheme.primary)),
+          leading: PocketLinkFileIcon(
+            name: r.file.name,
+            isDirectory: r.file.isDirectory,
+            size: 44,
+          ),
           title: RichText(maxLines: 1, overflow: TextOverflow.ellipsis,
             text: _highlight(r.file.name, q, theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700))),
           subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -643,23 +677,44 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _quickChip(String label, String value, IconData icon) => Padding(
-    padding: const EdgeInsets.only(right: 8),
-    child: FilterChip(
-      selected: _quick == value,
-      avatar: Icon(icon, size: 16),
-      label: Text(label),
-      onSelected: (_) => _chooseQuick(value)));
+    padding: const EdgeInsets.only(right: 8, bottom: 8),
+    child: SmokedGlassSurface(
+      radius: BorderRadius.circular(18),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: () => _chooseQuick(value),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(icon, size: 16, color: _quick == value
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.onSurfaceVariant),
+              const SizedBox(width: 7),
+              Text(label, style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.onSurface,
+              )),
+              if (_quick == value) ...[
+                const SizedBox(width: 5),
+                const Icon(Icons.check_rounded, size: 14),
+              ],
+            ]),
+          ),
+        ),
+      ),
+    ),
+  );
 
-  Widget _idle(ThemeData theme) => ListView(
-    padding: EdgeInsets.fromLTRB(16, 20, 16, 96 + MediaQuery.paddingOf(context).bottom),
+  Widget _idle(ThemeData theme, {double topInset = 20}) => ListView(
+    padding: EdgeInsets.fromLTRB(16, topInset, 16, LayoutInsetsScope.of(context).bottomClearance),
     children: [
       if (_history.isNotEmpty) ...[
         Row(children: [
           Expanded(child: Text('Recent searches', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800))),
-          TextButton(onPressed: () async {
-            setState(() => _history = []);
-            try { await _secure.delete(key: _historyKey); } catch (_) {}
-          }, child: const Text('Clear')),
+          TextButton(onPressed: _clearSearchHistory, child: const Text('Clear')),
         ]),
         Wrap(spacing: 8, children: [for (final item in _history)
           InputChip(label: Text(item), onPressed: () { _controller.text = item; _scan(); },
@@ -687,106 +742,249 @@ class _SearchScreenState extends State<SearchScreen> {
     final theme = Theme.of(context);
     final query = _controller.text.trim();
     final categories = const ['All','Files','Photos','Audio','Videos','Documents'];
-    final scopes = <DropdownMenuItem<String?>>[
-      const DropdownMenuItem(value: null, child: Text('All Drives')),
-      const DropdownMenuItem(value: 'internal', child: Text('Internal storage')),
-      for (final v in _volumes) DropdownMenuItem(value: v.id, child: Text(v.name, overflow: TextOverflow.ellipsis)),
-    ];
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: PocketLinkAppBar(
+        feathered: true,
+        showHome: false,
+        automaticallyImplyLeading: false,
         title: const Text('Search'),
-        onHome: widget.onHome,
-        leading: widget.onHome == null ? null : IconButton(
-          tooltip: 'Back to Dashboard',
-          onPressed: widget.onHome,
-          icon: const Icon(Icons.arrow_back_rounded),
-        ),
+        actions: [
+          PocketLinkAppBarAction(
+            label: 'Clear search history',
+            icon: Icons.history_rounded,
+            onPressed: _clearSearchHistory,
+          ),
+          PocketLinkAppBarAction(
+            label: 'Download manager',
+            icon: Icons.download_rounded,
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+              builder: (_) => DownloadsScreen(api: widget.api),
+            )),
+            dividerBefore: true,
+          ),
+          PocketLinkAppBarAction(
+            label: 'Settings',
+            icon: Icons.settings_rounded,
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+              builder: (_) => const SettingsScreen(),
+            )),
+          ),
+        ],
       ),
-      body: Column(children: [
-        Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 8), child: TextField(
-          controller: _controller,
-          textInputAction: TextInputAction.search,
-          onSubmitted: (_) { _debounce?.cancel(); _scan(); },
-          decoration: InputDecoration(
-            hintText: 'Search across all drives and media...',
-            prefixIcon: const Icon(Icons.search_rounded),
-            suffixIcon: query.isEmpty ? null : IconButton(
-              tooltip: 'Clear search', onPressed: () { _controller.clear(); setState(() => _quick = null); },
-              icon: const Icon(Icons.close_rounded)),
-            filled: true, fillColor: theme.colorScheme.surfaceContainerLow,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20),
-              borderSide: BorderSide(color: theme.colorScheme.primary.withValues(alpha: 0.6))),
-          ))),
-        SizedBox(height: 44, child: ListView(scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 14), children: [
-            for (final item in categories) Padding(padding: const EdgeInsets.only(right: 7),
-              child: ChoiceChip(label: Text(item), selected: _category == item, onSelected: (_) => setState(() => _category = item))),
-          ])),
-        Padding(padding: const EdgeInsets.fromLTRB(16, 4, 16, 10), child: Row(children: [
-          Icon(Icons.storage_rounded, size: 18, color: theme.colorScheme.onSurfaceVariant),
-          const SizedBox(width: 8),
-          Text('Search in', style: theme.textTheme.labelLarge),
-          const SizedBox(width: 10),
-          Expanded(child: DropdownButtonFormField<String?>(
-            initialValue: _scope, isDense: true, items: scopes, onChanged: _chooseScope,
-            decoration: InputDecoration(contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-              filled: true, fillColor: theme.colorScheme.surfaceContainerLow,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none)),
-          )),
-        ])),
-        if (_loading) ...[
-          const LinearProgressIndicator(minHeight: 2),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 5, 16, 2),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Searching storage · $_scannedFolders folders · ${_visible.length} matches found',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+      body: Builder(builder: (context) {
+        final headerBottom = LayoutInsetsScope.of(context).topClearance - 10;
+        final contentTop = headerBottom + 8 + 64 + 54 +
+            (_loading ? 34 : 0) + (_quick != null ? 42 : 0) + 8;
+        final Widget scrollContent = query.isEmpty && _quick == null
+            ? _idle(theme, topInset: contentTop)
+            : _quick == 'offline'
+                ? _resultsList(theme, topInset: contentTop)
+                : query.isEmpty
+                    ? ListView(
+                        padding: EdgeInsets.fromLTRB(0, contentTop, 0, LayoutInsetsScope.of(context).bottomClearance),
+                        children: [_resultsList(theme, shrink: true, topInset: 0)],
+                      )
+                    : _resultsList(theme, topInset: contentTop);
+
+        return Stack(
+          children: [
+            Positioned.fill(child: scrollContent),
+            Positioned(
+              top: headerBottom,
+              left: 0,
+              right: 0,
+              child: Material(
+                color: Colors.transparent,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                      child: SmokedGlassSurface(
+                        radius: BorderRadius.circular(20),
+                        child: SizedBox(
+                          height: 48,
+                          child: TextField(
+                            controller: _controller,
+                            textInputAction: TextInputAction.search,
+                            onSubmitted: (_) { _debounce?.cancel(); _scan(); },
+                            decoration: InputDecoration(
+                              hintText: 'Search across all drives and media...',
+                              prefixIcon: const Icon(Icons.search_rounded),
+                              suffixIcon: query.isEmpty ? null : IconButton(
+                                tooltip: 'Clear search',
+                                onPressed: () { _controller.clear(); setState(() => _quick = null); },
+                                icon: const Icon(Icons.close_rounded),
+                              ),
+                              filled: true,
+                              fillColor: Colors.transparent,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(20),
+                                borderSide: BorderSide.none,
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(20),
+                                borderSide: BorderSide.none,
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(20),
+                                borderSide: BorderSide(
+                                  color: theme.colorScheme.primary.withValues(alpha: 0.6),
+                                ),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                      child: Row(children: [
+                        Expanded(
+                          child: SmokedGlassPopoverMenu<String>(
+                            tooltip: 'Choose file type',
+                            items: [
+                              for (final category in categories)
+                                SmokedGlassPopoverMenuItem(
+                                  value: category,
+                                  label: category,
+                                  icon: switch (category) {
+                                    'Photos' => Icons.photo_library_rounded,
+                                    'Audio' => Icons.headphones_rounded,
+                                    'Videos' => Icons.video_library_rounded,
+                                    'Documents' => Icons.description_rounded,
+                                    'Files' => Icons.folder_rounded,
+                                    _ => Icons.apps_rounded,
+                                  },
+                                  trailing: _category == category
+                                      ? const Icon(Icons.check_rounded, size: 18)
+                                      : null,
+                                ),
+                            ],
+                            onSelected: (value) => setState(() => _category = value),
+                            child: SmokedGlassSurface(
+                              radius: BorderRadius.circular(16),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                                child: Row(children: [
+                                  const Icon(Icons.filter_list_rounded, size: 17),
+                                  const SizedBox(width: 6),
+                                  Expanded(child: Text('Type: $_category', maxLines: 1, overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700))),
+                                  const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+                                ]),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: SmokedGlassPopoverMenu<String>(
+                            tooltip: 'Choose storage drive',
+                            items: [
+                              const SmokedGlassPopoverMenuItem(value: '__all__', label: 'All Drives', icon: Icons.storage_rounded),
+                              const SmokedGlassPopoverMenuItem(value: 'internal', label: 'Internal storage', icon: Icons.phone_android_rounded),
+                              for (final volume in _volumes)
+                                SmokedGlassPopoverMenuItem(value: volume.id, label: volume.name, icon: Icons.usb_rounded),
+                            ],
+                            onSelected: (value) => _chooseScope(value == '__all__' ? null : value),
+                            child: SmokedGlassSurface(
+                              radius: BorderRadius.circular(16),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                                child: Row(children: [
+                                  const Icon(Icons.storage_rounded, size: 17),
+                                  const SizedBox(width: 6),
+                                  Expanded(child: Text(
+                                    _scope == null ? 'Drive: All Drives' : _scope == 'internal'
+                                        ? 'Drive: Internal' : 'Drive: ${_volumeLabel(_scope!)}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                                  )),
+                                  const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+                                ]),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ]),
+                    ),
+                    if (_loading) ...[
+                      const LinearProgressIndicator(minHeight: 2),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 5, 16, 2),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Searching storage · $_scannedFolders folders · ${_visible.length} matches found',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                    if (_quick != null)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: InputChip(
+                            selected: true,
+                            label: Text(switch (_quick) {
+                              'offline' => 'Offline cached',
+                              'large' => 'Large files · 100 MB+',
+                              'today' => 'Added / modified today',
+                              _ => 'Filter active',
+                            }),
+                            onDeleted: () => _chooseQuick(_quick!),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ),
-          ),
-        ],
-        if (_quick != null) Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: InputChip(
-              selected: true,
-              label: Text(switch (_quick) {
-                'offline' => 'Offline cached',
-                'large' => 'Large files · 100 MB+',
-                'today' => 'Added / modified today',
-                _ => 'Filter active',
-              }),
-              onDeleted: () => _chooseQuick(_quick!),
-            ),
-          ),
-        ),
-        Expanded(child: query.isEmpty && _quick == null
-          ? _idle(theme)
-          : _quick == 'offline'
-            ? _resultsList(theme)
-            : query.isEmpty
-              ? ListView(padding: EdgeInsets.only(bottom: 96 + MediaQuery.paddingOf(context).bottom),
-                  children: [_resultsList(theme, shrink: true)])
-              : _resultsList(theme)),
-        if (!_loading && _scanTruncated && _quick != 'offline' && (query.isNotEmpty || _quick != null))
-          Padding(padding: const EdgeInsets.fromLTRB(12, 4, 12, 8), child: Row(
-            children: [
-              Expanded(child: Text('${_visible.length} shown · $_scannedFolders folders scanned. More folders/files remain.',
-                style: theme.textTheme.labelSmall)),
-              TextButton(onPressed: () => _scan(continueExisting: true), child: const Text('Continue')),
-            ],
-          )),
-        if (_scanned && !_loading && (query.isNotEmpty || _quick != null))
-          Padding(padding: const EdgeInsets.only(bottom: 6, top: 2),
-            child: Text('${_visible.length} results · $_scannedFolders folders scanned', style: theme.textTheme.labelSmall)),
-      ]),
+            if (!_loading && _scanTruncated && _quick != 'offline' && (query.isNotEmpty || _quick != null))
+              Positioned(
+                left: 12,
+                right: 12,
+                bottom: LayoutInsetsScope.of(context).bottomClearance,
+                child: Material(
+                  color: theme.colorScheme.surfaceContainer.withValues(alpha: 0.94),
+                  borderRadius: BorderRadius.circular(14),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    child: Row(children: [
+                      Expanded(child: Text('${_visible.length} shown · $_scannedFolders folders scanned. More folders/files remain.',
+                        style: theme.textTheme.labelSmall)),
+                      TextButton(onPressed: () => _scan(continueExisting: true), child: const Text('Continue')),
+                    ]),
+                  ),
+                ),
+              ),
+            if (_scanned && !_loading && (query.isNotEmpty || _quick != null))
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: LayoutInsetsScope.of(context).bottomClearance - 2,
+                child: IgnorePointer(
+                  child: Center(
+                    child: Text('${_visible.length} results · $_scannedFolders folders scanned',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        backgroundColor: theme.colorScheme.surface.withValues(alpha: 0.82),
+                      )),
+                  ),
+                ),
+              ),
+          ],
+        );
+      }),
+
     );
   }
 }

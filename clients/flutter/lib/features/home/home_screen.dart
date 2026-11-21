@@ -1,13 +1,20 @@
+import 'dart:async';
+import 'dart:ui' as ui;
+
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/settings/app_settings.dart';
+import '../../core/widgets/pocketlink_scaffold.dart';
+import '../../core/navigation/pocketlink_navigation.dart';
 import 'navigation_dock.dart';
-import 'floating_quick_shortcut.dart';
+import 'music_shortcut_menu.dart';
+import 'home_navigation_drawer.dart';
+import 'network_route_classifier.dart';
 import 'explore_search_screens.dart';
 import 'home_dashboard.dart';
 import '../media/media_player_screen.dart';
-import '../media/now_playing_screen.dart';
+import '../media/now_playing_overlay_controller.dart';
 import '../media/media_browser_screen.dart';
 import '../library/photo_gallery_screen.dart';
 import '../media/persistent_audio_player.dart';
@@ -16,6 +23,11 @@ import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
 import '../files/documents_browser_screen.dart';
 import '../storage/local_storage_setup_screen.dart';
+import '../search/search_screen.dart';
+import '../settings/settings_screen.dart';
+import '../transfers/transfer_manager_screen.dart';
+import '../downloads/download_manager_service.dart';
+import '../downloads/downloads_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({required this.api, this.serverName, this.onReturnToConnection, super.key});
@@ -29,6 +41,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final GlobalKey<ScaffoldState> _rootScaffoldKey = GlobalKey<ScaffoldState>();
   int _selectedIndex = 0;
   bool _hostSetupOpen = false;
   bool _hostSetupInitialized = false;
@@ -38,52 +51,50 @@ class _HomeScreenState extends State<HomeScreen> {
   int _externalDriveRequest = 0;
   int _fileLocationRequest = 0;
   int _uploadRequest = 0;
-  bool _quickShortcutsExpanded = false;
+  bool _musicShortcutsExpanded = false;
   bool _filesCanNavigateBack = false;
-  bool _miniPlayerDismissed = false;
-  bool _nowPlayingRouteOpen = false;
-  late bool _lastPlayerPlaying;
+  bool _openingNowPlaying = false;
+  bool _libraryOpen = false;
+  VoidCallback? _libraryBackHandler;
+  VoidCallback? _tabBackHandler;
+  Widget? _libraryPage;
   String? _requestedVolume;
   String _requestedPath = '';
 
   @override
   void initState() {
     super.initState();
-    _lastPlayerPlaying = PersistentAudioPlayer.instance.isPlaying;
-    PersistentAudioPlayer.instance.addListener(_playerStateChanged);
+    unawaited(DownloadManagerService.instance.initialize());
+    DownloadManagerService.instance.bindServerApi(widget.api);
+    PocketLinkNavigation.drawerOpen.value = false;
+    PocketLinkNavigation.quickShortcutsOpen.value = false;
     AppSettings.instance.addListener(_navigationSettingsChanged);
-  }
-
-  void _playerStateChanged() {
-    final isPlaying = PersistentAudioPlayer.instance.isPlaying;
-    if (isPlaying && !_lastPlayerPlaying && _miniPlayerDismissed && mounted) {
-      setState(() => _miniPlayerDismissed = false);
-    }
-    _lastPlayerPlaying = isPlaying;
-  }
-
-  void _dismissMiniPlayer() {
-    if (PersistentAudioPlayer.instance.isPlaying || _miniPlayerDismissed) return;
-    setState(() => _miniPlayerDismissed = true);
   }
 
   void _openHostSetup() {
     setState(() {
+      _libraryOpen = false;
       _hostSetupInitialized = true;
       _hostSetupOpen = true;
-      _quickShortcutsExpanded = false;
+      _musicShortcutsExpanded = false;
+      PocketLinkNavigation.quickShortcutsOpen.value = false;
     });
   }
 
   void _closeHostSetup() {
     if (!_hostSetupOpen) return;
-    setState(() => _hostSetupOpen = false);
+    setState(() {
+      _hostSetupOpen = false;
+      _musicShortcutsExpanded = false;
+      PocketLinkNavigation.quickShortcutsOpen.value = false;
+    });
   }
 
   void _navigationSettingsChanged() {
     final settings = AppSettings.instance;
-    if (!settings.floatingShortcutEnabled && _quickShortcutsExpanded) {
-      _quickShortcutsExpanded = false;
+    if (!settings.musicButtonLongPressEnabled && _musicShortcutsExpanded) {
+      setState(() => _musicShortcutsExpanded = false);
+      PocketLinkNavigation.quickShortcutsOpen.value = false;
     }
     final selectedId = switch (_selectedIndex) {
       0 => 'home',
@@ -110,19 +121,42 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     AppSettings.instance.removeListener(_navigationSettingsChanged);
-    PersistentAudioPlayer.instance.removeListener(_playerStateChanged);
+    PocketLinkNavigation.drawerOpen.value = false;
+    PocketLinkNavigation.quickShortcutsOpen.value = false;
     super.dispose();
   }
 
-  void _openTab(int index) => setState(() {
-    _hostSetupOpen = false;
-    _initializedTabs.add(index);
-    _selectedIndex = index;
-  });
+  void _openTab(int index) {
+    _libraryBackHandler?.call();
+    _tabBackHandler?.call();
+    setState(() {
+      _libraryBackHandler = null;
+      _tabBackHandler = null;
+      _libraryOpen = false;
+      _hostSetupOpen = false;
+      _musicShortcutsExpanded = false;
+      PocketLinkNavigation.quickShortcutsOpen.value = false;
+      _initializedTabs.add(index);
+      _selectedIndex = index;
+    });
+  }
+
+  void _onLibraryBackHandlerChanged(VoidCallback? handler) {
+    if (!mounted || identical(_libraryBackHandler, handler)) return;
+    setState(() => _libraryBackHandler = handler);
+  }
+
+  void _onTabBackHandlerChanged(VoidCallback? handler) {
+    if (!mounted || identical(_tabBackHandler, handler)) return;
+    setState(() => _tabBackHandler = handler);
+  }
 
   void _openFileLocation(String? volume, String path) {
     setState(() {
+      _libraryOpen = false;
       _hostSetupOpen = false;
+      _musicShortcutsExpanded = false;
+      PocketLinkNavigation.quickShortcutsOpen.value = false;
       _initializedTabs.add(2);
       _selectedIndex = 2;
       _requestedVolume = volume;
@@ -133,7 +167,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _openExternalStorage() {
     setState(() {
+      _libraryOpen = false;
       _hostSetupOpen = false;
+      _musicShortcutsExpanded = false;
+      PocketLinkNavigation.quickShortcutsOpen.value = false;
       _initializedTabs.add(2);
       _selectedIndex = 2;
       _externalDriveRequest++;
@@ -142,13 +179,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _openExplore(ExploreCategory category, {String? fileCategory}) {
     if (fileCategory == 'Documents') {
-      Navigator.of(context).push(MaterialPageRoute<void>(
-        builder: (_) => DocumentsBrowserScreen(api: widget.api),
-      ));
+      _openLibrary('documents');
       return;
     }
     setState(() {
+      _libraryOpen = false;
       _hostSetupOpen = false;
+      _musicShortcutsExpanded = false;
+      PocketLinkNavigation.quickShortcutsOpen.value = false;
       _initializedTabs.add(1);
       _exploreCategory = category;
       _fileCategory = fileCategory ?? 'All';
@@ -157,9 +195,45 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
 
-  void _openFloatingShortcut(String id) {
-    if (_quickShortcutsExpanded) {
-      setState(() => _quickShortcutsExpanded = false);
+  void _openLibrary(String id) {
+    _libraryBackHandler?.call();
+    _tabBackHandler?.call();
+    _libraryBackHandler = null;
+    _tabBackHandler = null;
+    final page = switch (id) {
+      'music' => MediaBrowserScreen(api: widget.api, type: MediaLibraryType.music, onHome: _closeLibrary, onBackHandlerChanged: _onLibraryBackHandlerChanged),
+      'videos' => MediaBrowserScreen(api: widget.api, type: MediaLibraryType.video, onHome: _closeLibrary, onBackHandlerChanged: _onLibraryBackHandlerChanged),
+      'photos' => PhotoGalleryScreen(api: widget.api, onBackHandlerChanged: _onLibraryBackHandlerChanged),
+      'favorites' => PhotoGalleryScreen(api: widget.api, initialTab: 2, onBackHandlerChanged: _onLibraryBackHandlerChanged),
+      'documents' => DocumentsBrowserScreen(api: widget.api),
+      'downloads' => DownloadsScreen(api: widget.api),
+      _ => null,
+    };
+    if (page == null) return;
+    setState(() {
+      _hostSetupOpen = false;
+      _musicShortcutsExpanded = false;
+      PocketLinkNavigation.quickShortcutsOpen.value = false;
+      _libraryPage = page;
+      _libraryOpen = true;
+    });
+  }
+
+  void _closeLibrary() {
+    if (!_libraryOpen) return;
+    _libraryBackHandler?.call();
+    setState(() {
+      _libraryBackHandler = null;
+      _libraryOpen = false;
+    });
+  }
+
+  void _openMusicShortcut(String id) {
+    if (_musicShortcutsExpanded) {
+      setState(() {
+          _musicShortcutsExpanded = false;
+          PocketLinkNavigation.quickShortcutsOpen.value = false;
+        });
     }
     switch (id) {
       case 'explore':
@@ -169,81 +243,102 @@ class _HomeScreenState extends State<HomeScreen> {
         _openTab(2);
         break;
       case 'music':
-        Navigator.of(context).push(MaterialPageRoute<void>(
-          builder: (_) => MediaBrowserScreen(
-            api: widget.api,
-            type: MediaLibraryType.music,
-            onHome: () => Navigator.of(context).maybePop(),
-          ),
-        ));
-        break;
       case 'videos':
-        Navigator.of(context).push(MaterialPageRoute<void>(
-          builder: (_) => MediaBrowserScreen(
-            api: widget.api,
-            type: MediaLibraryType.video,
-            onHome: () => Navigator.of(context).maybePop(),
-          ),
-        ));
-        break;
       case 'photos':
-        Navigator.of(context).push(MaterialPageRoute<void>(
-          builder: (_) => PhotoGalleryScreen(api: widget.api),
-        ));
-        break;
       case 'documents':
-        Navigator.of(context).push(MaterialPageRoute<void>(
-          builder: (_) => DocumentsBrowserScreen(api: widget.api),
-        ));
-        break;
       case 'favorites':
-        Navigator.of(context).push(MaterialPageRoute<void>(
-          builder: (_) => PhotoGalleryScreen(api: widget.api, initialTab: 2),
-        ));
+        _openLibrary(id);
         break;
       case 'upload':
         setState(() {
+          _libraryOpen = false;
           _initializedTabs.add(2);
           _selectedIndex = 2;
           _uploadRequest++;
         });
         break;
+      case 'search':
+        Navigator.of(context).push(MaterialPageRoute<void>(
+          builder: (_) => SearchScreen(
+            api: widget.api,
+            onHome: () => Navigator.of(context).maybePop(),
+          ),
+        ));
+        break;
     }
   }
 
-  void _expandFloatingShortcuts() {
+  void _expandMusicShortcuts() {
+    if (!AppSettings.instance.musicButtonLongPressEnabled) return;
     HapticFeedback.lightImpact();
-    setState(() => _quickShortcutsExpanded = true);
+    setState(() => _musicShortcutsExpanded = true);
+    PocketLinkNavigation.quickShortcutsOpen.value = true;
+  }
+
+  void _handleMusicButtonSwipe({required bool left}) {
+    final settings = AppSettings.instance;
+    if (!settings.musicButtonSwipeEnabled) return;
+    final action = left
+        ? settings.musicButtonSwipeLeftAction
+        : settings.musicButtonSwipeRightAction;
+    switch (action) {
+      case 'next':
+        PersistentAudioPlayer.instance.skipToNext();
+        break;
+      case 'previous':
+        PersistentAudioPlayer.instance.skipToPrevious();
+        break;
+    }
   }
 
   Future<void> _openNowPlaying(PersistentAudioPlayer player) async {
-    if (_nowPlayingRouteOpen) return;
+    if (player.isMusic &&
+        player.isActive &&
+        player.currentItem != null &&
+        player.api != null) {
+      NowPlayingOverlayController.open();
+      return;
+    }
+    if (_openingNowPlaying) return;
     final item = player.currentItem;
     final api = player.api;
     if (player.isActive && item != null && api != null) {
-      setState(() => _nowPlayingRouteOpen = true);
+      final originRect = PocketLinkNavigation.resolveMediaOriginRect(
+        preferMiniPlayer: AppSettings.instance.showMiniPlayer &&
+            player.shouldShowMiniPlayer,
+      );
+      _openingNowPlaying = true;
       try {
-        await Navigator.of(context).push<void>(MaterialPageRoute<void>(
-          builder: (_) => player.isMusic
-              ? NowPlayingScreen(
-                  api: api,
-                  queue: player.queue,
-                  initialIndex: player.currentIndex,
-                  resumeExisting: true,
-                )
-              : MediaPlayerScreen(
-                  api: api,
-                  title: item.title,
-                  path: item.path,
-                  volume: item.volume,
-                  isVideo: true,
-                  queue: player.queue,
-                  initialIndex: player.currentIndex,
-                  resumeExisting: true,
-                ),
-        ));
+        await Navigator.of(context, rootNavigator: true).push<void>(
+          PageRouteBuilder<void>(
+            opaque: true,
+            barrierColor: Colors.transparent,
+            settings: const RouteSettings(
+              name: PocketLinkRouteNames.nowPlaying,
+            ),
+            transitionDuration: const Duration(milliseconds: 420),
+            reverseTransitionDuration: const Duration(milliseconds: 320),
+            pageBuilder: (_, __, ___) => MediaPlayerScreen(
+              api: api,
+              title: item.title,
+              path: item.path,
+              volume: item.volume,
+              isVideo: true,
+              queue: player.queue,
+              initialIndex: player.currentIndex,
+              resumeExisting: true,
+            ),
+            transitionsBuilder: (context, animation, __, child) =>
+                PocketLinkNavigation.mediaContainerTransformTransition(
+              context: context,
+              animation: animation,
+              child: child,
+              originRect: originRect,
+            ),
+          ),
+        );
       } finally {
-        if (mounted) setState(() => _nowPlayingRouteOpen = false);
+        _openingNowPlaying = false;
       }
     } else {
       _openExplore(ExploreCategory.music);
@@ -253,16 +348,26 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final player = PersistentAudioPlayer.instance;
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
+    final parsedServerHost = Uri.tryParse(widget.api.baseUrl)?.host;
+    final serverHost = parsedServerHost == null || parsedServerHost.isEmpty
+        ? widget.api.baseUrl
+        : parsedServerHost;
+    final drawerServerName = widget.serverName?.trim().isNotEmpty == true
+        ? widget.serverName!.trim()
+        : serverHost;
     final pages = [
       HomeDashboard(
         api: widget.api,
         serverName: widget.serverName,
         onOpenExplore: _openExplore,
+        onOpenLibrary: _openLibrary,
         onOpenFiles: () => _openTab(2),
         onOpenExternalStorage: _openExternalStorage,
         onOpenHostSetup: _openHostSetup,
         onOpenFileLocation: _openFileLocation,
         onReturnToConnection: widget.onReturnToConnection,
+        onOpenDrawer: () => _rootScaffoldKey.currentState?.openDrawer(),
       ),
       if (_initializedTabs.contains(1))
         ExploreScreen(
@@ -272,7 +377,7 @@ class _HomeScreenState extends State<HomeScreen> {
           fileCategory: _fileCategory,
           onBackAtRoot: () => _openTab(0),
           onOpenFiles: () => _openTab(2),
-          onOpenExternalStorage: _openExternalStorage,
+          onOpenLibrary: _openLibrary,
           onCategoryChanged: (category) => setState(() {
             _exploreCategory = category;
             if (category == ExploreCategory.files) _fileCategory = 'All';
@@ -291,6 +396,7 @@ class _HomeScreenState extends State<HomeScreen> {
               setState(() => _filesCanNavigateBack = canNavigateBack);
             }
           },
+          onBackHandlerChanged: _onTabBackHandlerChanged,
           externalDriveRequest: _externalDriveRequest,
           locationRequest: _fileLocationRequest,
           uploadRequest: _uploadRequest,
@@ -306,13 +412,26 @@ class _HomeScreenState extends State<HomeScreen> {
     ];
 
     return PopScope(
-      canPop: !_hostSetupOpen && _selectedIndex == 0 && !_quickShortcutsExpanded,
+      canPop: !_libraryOpen && !_hostSetupOpen && _selectedIndex == 0 &&
+          !_musicShortcutsExpanded && _libraryBackHandler == null &&
+          _tabBackHandler == null && !PocketLinkNavigation.drawerOpen.value,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
-        if (_hostSetupOpen) {
+        if (PocketLinkNavigation.drawerOpen.value) {
+          _rootScaffoldKey.currentState?.closeDrawer();
+        } else if (_tabBackHandler != null) {
+          _tabBackHandler!.call();
+        } else if (_libraryBackHandler != null) {
+          _libraryBackHandler!.call();
+        } else if (_libraryOpen) {
+          _closeLibrary();
+        } else if (_hostSetupOpen) {
           _closeHostSetup();
-        } else if (_quickShortcutsExpanded) {
-          setState(() => _quickShortcutsExpanded = false);
+        } else if (_musicShortcutsExpanded) {
+          setState(() {
+            _musicShortcutsExpanded = false;
+            PocketLinkNavigation.quickShortcutsOpen.value = false;
+          });
         } else if (_selectedIndex == 2 && _filesCanNavigateBack) {
           // FileManagerScreen handles folder-level back navigation.
         } else if (_selectedIndex != 0) {
@@ -324,6 +443,37 @@ class _HomeScreenState extends State<HomeScreen> {
         builder: (context, __) => AnimatedBuilder(
         animation: player,
         builder: (context, _) => Scaffold(
+          key: _rootScaffoldKey,
+          drawerScrimColor: Colors.black.withValues(alpha: 0.58),
+          drawer: PocketLinkHomeDrawer(
+            serverName: drawerServerName,
+            routeLabel: networkRouteLabel(serverHost),
+            onOpenLibrary: _openMusicShortcut,
+            onOpenFiles: () => _openTab(2),
+            onConnectDrive: _openHostSetup,
+            onOpenTransfers: () => Navigator.of(context).push<void>(
+              MaterialPageRoute<void>(
+                builder: (_) => const TransferManagerScreen(),
+              ),
+            ),
+            onOpenDownloads: () => _openLibrary('downloads'),
+            onOpenSettings: () => Navigator.of(context).push<void>(
+              MaterialPageRoute<void>(
+                builder: (_) => SettingsScreen(
+                  onOpenSavedServers: widget.onReturnToConnection,
+                ),
+              ),
+            ),
+            onSwitchServer: widget.onReturnToConnection,
+          ),
+          onDrawerChanged: (opened) {
+            PocketLinkNavigation.drawerOpen.value = opened;
+            if (mounted) setState(() {});
+            if (opened && _musicShortcutsExpanded) {
+              setState(() => _musicShortcutsExpanded = false);
+              PocketLinkNavigation.quickShortcutsOpen.value = false;
+            }
+          },
           extendBody: !_hostSetupOpen,
           body: Stack(
             fit: StackFit.expand,
@@ -351,72 +501,93 @@ class _HomeScreenState extends State<HomeScreen> {
                   final nextIndex = visibleTabs[nextPosition];
                   if (nextIndex != _selectedIndex) _openTab(nextIndex);
                 },
-                child: IndexedStack(index: _hostSetupOpen ? 3 : _selectedIndex, children: pages),
-              ),
-              if (!_hostSetupOpen && AppSettings.instance.floatingShortcutEnabled && _quickShortcutsExpanded)
-                Positioned.fill(
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => setState(() => _quickShortcutsExpanded = false),
-                    child: const SizedBox.expand(),
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween<double>(
+                    end: _musicShortcutsExpanded ? 16 : 0,
+                  ),
+                  duration: reduceMotion
+                      ? Duration.zero
+                      : Duration(milliseconds: _musicShortcutsExpanded ? 360 : 220),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, blurSigma, child) => ImageFiltered(
+                    imageFilter: ui.ImageFilter.blur(
+                      sigmaX: blurSigma,
+                      sigmaY: blurSigma,
+                    ),
+                    enabled: blurSigma > 0.1,
+                    child: child!,
+                  ),
+                  child: IndexedStack(
+                    index: _hostSetupOpen ? 3 : (_libraryOpen ? pages.length : _selectedIndex),
+                    children: [...pages, _libraryPage ?? const SizedBox.shrink()],
                   ),
                 ),
-              if (!_hostSetupOpen && AppSettings.instance.floatingShortcutEnabled)
+              ),
+              if (!_hostSetupOpen)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    ignoring: !_musicShortcutsExpanded,
+                    child: AnimatedOpacity(
+                      opacity: _musicShortcutsExpanded ? 0.36 : 0,
+                      duration: reduceMotion
+                          ? Duration.zero
+                          : Duration(milliseconds: _musicShortcutsExpanded ? 360 : 220),
+                      curve: Curves.easeOutCubic,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => setState(
+                          () {
+                            _musicShortcutsExpanded = false;
+                            PocketLinkNavigation.quickShortcutsOpen.value = false;
+                          },
+                        ),
+                        child: const ColoredBox(color: Colors.black),
+                      ),
+                    ),
+                  ),
+                ),
+              if (!_hostSetupOpen && _musicShortcutsExpanded)
                 Positioned(
-                  right: 16,
-                  bottom: 90 + MediaQuery.paddingOf(context).bottom,
-                  child: FloatingQuickShortcut(
-                    shortcuts: AppSettings.instance.floatingShortcuts,
-                    expanded: _quickShortcutsExpanded,
-                    useLiquidGlass: AppSettings.instance.useLiquidGlass,
-                    onTap: () {
-                      final settings = AppSettings.instance;
-                      if (settings.floatingShortcutTapAction == 'menu') {
-                        _expandFloatingShortcuts();
-                      } else {
-                        _openFloatingShortcut(settings.floatingShortcuts.first);
+                  left: 14,
+                  right: 14,
+                  bottom: LayoutInsetsScope.of(context).bottomClearance + 8,
+                  child: MusicShortcutMenu(
+                    shortcuts: AppSettings.instance.musicButtonShortcuts,
+                    expanded: true,
+                    onSelect: _openMusicShortcut,
+                  ),
+                ),
+              if (!_hostSetupOpen)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: FloatingNavigationDock(
+                    order: AppSettings.instance.navigationOrder,
+                    visibleItems: AppSettings.instance.visibleNavigationItems,
+                    selectedIndex: _selectedIndex,
+                    isPlaying: player.isMusic && player.isPlaying,
+                    hasMedia: player.isActive && player.currentItem != null,
+                    isVideo: player.isActive && !player.isMusic,
+                    onSelect: _openTab,
+                    musicShortcutsExpanded: _musicShortcutsExpanded,
+                    onMusicShortcutDismissed: () {
+                      if (_musicShortcutsExpanded) {
+                        setState(() {
+                          _musicShortcutsExpanded = false;
+                          PocketLinkNavigation.quickShortcutsOpen.value = false;
+                        });
                       }
                     },
-                    onLongPress: _expandFloatingShortcuts,
-                    longPressEnabled: AppSettings.instance.floatingShortcutLongPressEnabled,
-                    onSelect: _openFloatingShortcut,
+                    onMusicShortcutLongPress: _expandMusicShortcuts,
+                    onBrowseSwipeLeft: () => _handleMusicButtonSwipe(left: true),
+                    onBrowseSwipeRight: () => _handleMusicButtonSwipe(left: false),
+                    onBrowsePressed: () {
+                      _closeHostSetup();
+                      _openNowPlaying(player);
+                    },
                   ),
                 ),
-            ],
-          ),
-          bottomNavigationBar: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AnimatedSize(
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeInOutCubic,
-                alignment: Alignment.bottomCenter,
-                child: AppSettings.instance.showMiniPlayer &&
-                        player.isMusic &&
-                        player.isActive &&
-                        player.currentItem != null &&
-                        !_miniPlayerDismissed &&
-                        !_nowPlayingRouteOpen
-                    ? _MiniPlayerBar(
-                        player: player,
-                        onOpen: () => _openNowPlaying(player),
-                        onDismiss: _dismissMiniPlayer,
-                      )
-                    : const SizedBox(width: double.infinity, height: 0),
-              ),
-                FloatingNavigationDock(
-                order: AppSettings.instance.navigationOrder,
-                visibleItems: AppSettings.instance.visibleNavigationItems,
-                selectedIndex: _selectedIndex,
-                isPlaying: player.isMusic && player.isPlaying,
-                hasMedia: player.isActive && player.currentItem != null,
-                isVideo: player.isActive && !player.isMusic,
-                onSelect: _openTab,
-                onBrowsePressed: () {
-                  _closeHostSetup();
-                  _openNowPlaying(player);
-                },
-              ),
             ],
           ),
         ),
@@ -428,69 +599,3 @@ class _HomeScreenState extends State<HomeScreen> {
 
 
 
-class _MiniPlayerBar extends StatelessWidget {
-  const _MiniPlayerBar({required this.player, required this.onOpen, required this.onDismiss});
-
-  final PersistentAudioPlayer player;
-  final VoidCallback onOpen;
-  final VoidCallback onDismiss;
-
-  @override
-  Widget build(BuildContext context) {
-    final item = player.currentItem!;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
-      child: Material(
-        color: Theme.of(context).colorScheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(16),
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onVerticalDragEnd: (details) {
-            final velocity = details.primaryVelocity ?? 0;
-            if (!player.isPlaying && velocity > 300) onDismiss();
-          },
-          child: InkWell(
-            borderRadius: BorderRadius.circular(16),
-            onTap: onOpen,
-            child: SizedBox(
-            height: 58,
-            child: Row(
-              children: [
-                const SizedBox(width: 14),
-                Icon(Icons.music_note_rounded, color: Theme.of(context).colorScheme.primary),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w700)),
-                      const Text('NOW PLAYING', style: TextStyle(fontSize: 9, letterSpacing: 1.1)),
-                    ],
-                  ),
-                ),
-                StreamBuilder<bool>(
-                  stream: player.player.stream.playing,
-                  initialData: player.player.state.playing,
-                  builder: (context, snapshot) => IconButton(
-                    tooltip: (snapshot.data ?? false) ? 'Pause' : 'Play',
-                    onPressed: player.togglePlayback,
-                    icon: Icon((snapshot.data ?? false) ? Icons.pause_rounded : Icons.play_arrow_rounded),
-                  ),
-                ),
-                IconButton(
-                  tooltip: 'Next track',
-                  onPressed: player.skipToNext,
-                  icon: const Icon(Icons.skip_next_rounded),
-                ),
-                const SizedBox(width: 4),
-              ],
-            ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}

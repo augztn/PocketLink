@@ -5,14 +5,41 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.IntentFilter
 import android.app.PendingIntent
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.os.IBinder
+import androidx.core.content.ContextCompat
 import androidx.core.app.NotificationCompat
 
 class BridgeService : Service() {
     private var bridgeServer: SafHttpServer? = null
     private var apiServer: NativeApiServer? = null
+    private var storageReceiverRegistered = false
+    private val scanHandler = Handler(Looper.getMainLooper())
+    private val scanCheck = object : Runnable {
+        override fun run() {
+            apiServer?.runScheduledMediaScanCheck()
+            scanHandler.postDelayed(this, SCAN_CHECK_INTERVAL_MS)
+        }
+    }
+    private val storageReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val connected = intent.action == Intent.ACTION_MEDIA_MOUNTED
+            if (intent.action in STORAGE_ACTIONS) {
+                val volumeId = intent.data?.path
+                    ?.trimEnd('/')
+                    ?.substringAfterLast('/')
+                    ?.takeIf { it.contains('-') && !it.equals("emulated", ignoreCase = true) }
+                    ?.let { externalVolumeKey(externalVolumeIdentity(it, null, it)) }
+                apiServer?.onStorageChanged(connected, volumeId)
+            }
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -61,6 +88,18 @@ class BridgeService : Service() {
                     it.ensureMediaIndexStarted()
                 }
                 apiRunning = true
+                val filter = IntentFilter().apply {
+                    addAction(Intent.ACTION_MEDIA_MOUNTED)
+                    addAction(Intent.ACTION_MEDIA_UNMOUNTED)
+                    addAction(Intent.ACTION_MEDIA_EJECT)
+                    addAction(Intent.ACTION_MEDIA_REMOVED)
+                    addDataScheme("file")
+                }
+                ContextCompat.registerReceiver(
+                    this, storageReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED
+                )
+                storageReceiverRegistered = true
+                scanHandler.postDelayed(scanCheck, SCAN_CHECK_INTERVAL_MS)
             }
 
             check(bridgeRunning || apiRunning) {
@@ -81,6 +120,11 @@ class BridgeService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
 
     override fun onDestroy() {
+        scanHandler.removeCallbacks(scanCheck)
+        if (storageReceiverRegistered) {
+            runCatching { unregisterReceiver(storageReceiver) }
+            storageReceiverRegistered = false
+        }
         stopServers()
         super.onDestroy()
     }
@@ -104,6 +148,13 @@ class BridgeService : Service() {
         @Volatile var bridgeRunning: Boolean = false
         @Volatile var lastError: String? = null
         @Volatile private var activeApiServer: NativeApiServer? = null
+        private const val SCAN_CHECK_INTERVAL_MS = 60_000L
+        private val STORAGE_ACTIONS = setOf(
+            Intent.ACTION_MEDIA_MOUNTED,
+            Intent.ACTION_MEDIA_UNMOUNTED,
+            Intent.ACTION_MEDIA_EJECT,
+            Intent.ACTION_MEDIA_REMOVED
+        )
 
         fun mediaIndexStatus(): String? = activeApiServer?.mediaIndexStatus()
 

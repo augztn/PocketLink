@@ -1,0 +1,476 @@
+import 'package:material_ui/material_ui.dart';
+import '../../core/widgets/shared/status_pill.dart';
+
+import '../../core/settings/app_settings.dart';
+import '../../core/widgets/liquid_glass_pill.dart';
+import '../downloads/download_manager_service.dart';
+
+/// Navigation drawer owned by HomeScreen's outer Scaffold so its scrim covers
+/// the bottom navigation dock and the app-level media overlay.
+class PocketLinkHomeDrawer extends StatelessWidget {
+  const PocketLinkHomeDrawer({
+    required this.serverName,
+    required this.routeLabel,
+    required this.onOpenLibrary,
+    required this.onOpenFiles,
+    required this.onConnectDrive,
+    required this.onOpenTransfers,
+    required this.onOpenDownloads,
+    required this.onOpenSettings,
+    this.onSwitchServer,
+    super.key,
+  });
+
+  final String serverName;
+  final String routeLabel;
+  final ValueChanged<String> onOpenLibrary;
+  final VoidCallback onOpenFiles;
+  final VoidCallback onConnectDrive;
+  final VoidCallback onOpenTransfers;
+  final VoidCallback onOpenDownloads;
+  final VoidCallback onOpenSettings;
+  final VoidCallback? onSwitchServer;
+
+  void _closeThen(BuildContext context, VoidCallback action) {
+    Navigator.of(context).pop();
+    action();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final isLight = theme.brightness == Brightness.light;
+    final compactServerName = serverName.trim().isEmpty
+        ? 'Connected server'
+        : serverName.trim();
+
+    return Drawer(
+      width: MediaQuery.sizeOf(context).width * 0.88,
+      elevation: 0,
+      backgroundColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      child: Container(
+        margin: EdgeInsets.fromLTRB(12, MediaQuery.paddingOf(context).top + 8, 0, MediaQuery.paddingOf(context).bottom + 12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: isLight ? const Color(0x1A0F172A) : Colors.white.withValues(alpha: 0.13)),
+        ),
+        foregroundDecoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(27),
+          border: Border(top: BorderSide(
+            color: isLight ? Colors.white.withValues(alpha: 0.9) : Colors.white.withValues(alpha: 0.24),
+            width: 1,
+          )),
+        ),
+        child: SmokedGlassSurface(
+          radius: BorderRadius.circular(27),
+          child: SafeArea(
+                top: false,
+                bottom: false,
+                child: ListView(
+          padding: EdgeInsets.fromLTRB(
+            14, 14, 14, MediaQuery.paddingOf(context).bottom + 16,
+          ),
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(2, 0, 2, 12),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: colors.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: colors.outlineVariant.withValues(alpha: 0.7),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: colors.primaryContainer,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Icon(
+                            Icons.cloud_rounded,
+                            color: colors.onPrimaryContainer,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'PocketLink',
+                                style: theme.textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              Text(
+                                compactServerName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: colors.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Wrap(
+                      spacing: 7,
+                      runSpacing: 7,
+                      children: [
+                        const PocketLinkStatusPill(
+                          label: 'Connected',
+                          icon: Icons.check_circle_rounded,
+                          foreground: Color(0xFF16865B),
+                          background: Color(0x2210B981),
+                          padding: EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+                          radius: 20,
+                          textStyle: TextStyle(
+                            color: Color(0xFF16865B),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        PocketLinkStatusPill(
+                          label: routeLabel,
+                          icon: routeLabel == 'Tailscale'
+                              ? Icons.shield_rounded
+                              : Icons.route_rounded,
+                          foreground: colors.primary,
+                          background: colors.primary.withValues(alpha: 0.10),
+                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+                          radius: 20,
+                          textStyle: TextStyle(
+                            color: colors.primary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+                  _sectionLabel(context, 'QUICK LIBRARIES'),
+                  const SizedBox(height: 9),
+                  Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _DrawerLibraryTile(
+                              label: 'Music',
+                              icon: Icons.music_note_rounded,
+                              tint: const Color(0xFF9B7CFF),
+                              onTap: () => _closeThen(context, () => onOpenLibrary('music')),
+                            ),
+                          ),
+                          const SizedBox(width: 9),
+                          Expanded(
+                            child: _DrawerLibraryTile(
+                              label: 'Videos',
+                              icon: Icons.movie_rounded,
+                              tint: const Color(0xFF2FAFC1),
+                              onTap: () => _closeThen(context, () => onOpenLibrary('videos')),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 9),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _DrawerLibraryTile(
+                              label: 'Photos',
+                              icon: Icons.photo_library_rounded,
+                              tint: const Color(0xFFEA8B62),
+                              onTap: () => _closeThen(context, () => onOpenLibrary('photos')),
+                            ),
+                          ),
+                          const SizedBox(width: 9),
+                          Expanded(
+                            child: _DrawerLibraryTile(
+                              label: 'Documents',
+                              icon: Icons.description_rounded,
+                              tint: const Color(0xFF5D8FEF),
+                              onTap: () => _closeThen(context, () => onOpenLibrary('documents')),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _sectionLabel(context, 'STORAGE & HOST'),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    minTileHeight: 42,
+                    minVerticalPadding: 0,
+                    leading: _drawerIcon(context, Icons.folder_open_rounded),
+                    title: const Text('Files'),
+                    onTap: () => _closeThen(context, onOpenFiles),
+                  ),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: _drawerIcon(context, Icons.add_to_drive_rounded),
+                    minTileHeight: 42,
+                    minVerticalPadding: 0,
+                    title: const Text('Connect a drive'),
+                    onTap: () => _closeThen(context, onConnectDrive),
+                  ),
+                  const SizedBox(height: 12),
+                  const Divider(height: 13),
+                  _sectionLabel(context, 'TOOLS'),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    minTileHeight: 42,
+                    minVerticalPadding: 0,
+                    leading: _drawerIcon(context, Icons.swap_vert_rounded),
+                    title: const Text('Transfers'),
+                    onTap: () => _closeThen(context, onOpenTransfers),
+                  ),
+                  AnimatedBuilder(
+                    animation: DownloadManagerService.instance,
+                    builder: (context, _) {
+                      final active = DownloadManagerService.instance.activeCount;
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        minTileHeight: 42,
+                    minVerticalPadding: 0,
+                        leading: _drawerIcon(context, Icons.download_rounded),
+                        title: Row(
+                          children: [
+                            const Expanded(child: Text('Downloads')),
+                            if (active > 0)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.16),
+                                  borderRadius: BorderRadius.circular(99),
+                                ),
+                                child: Text(
+                                  '$active active',
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.primary,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        onTap: () => _closeThen(context, onOpenDownloads),
+                      );
+                    },
+                  ),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    minTileHeight: 42,
+                    minVerticalPadding: 0,
+                    leading: _drawerIcon(context, Icons.settings_rounded),
+                    title: const Text('Settings'),
+                    onTap: () => _closeThen(context, onOpenSettings),
+                  ),
+                  if (onSwitchServer != null)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      minTileHeight: 42,
+                    minVerticalPadding: 0,
+                      leading: _drawerIcon(context, Icons.switch_account_rounded),
+                      title: const Text('Switch server'),
+                      onTap: () => _closeThen(context, onSwitchServer!),
+                    ),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8),
+                    child: Divider(height: 1),
+                  ),
+                  AnimatedBuilder(
+                    animation: AppSettings.instance,
+                    builder: (context, _) {
+                      final settings = AppSettings.instance;
+                      final isDark = settings.themeMode == ThemeMode.dark;
+                      return Padding(
+                        padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'APPEARANCE',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: colors.onSurfaceVariant,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                            const SizedBox(height: 9),
+                            Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.18),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: Colors.white.withValues(alpha: 0.09)),
+                              ),
+                              child: Row(
+                                children: [
+                                  _ThemeSegment(label: 'Light', selected: settings.themeMode == ThemeMode.light,
+                                    onTap: () => settings.setThemeMode(ThemeMode.light)),
+                                  _ThemeSegment(label: 'Dark', selected: isDark && !settings.amoled,
+                                    onTap: () => settings.setThemeMode(ThemeMode.dark)),
+                                  _ThemeSegment(label: 'AMOLED', selected: settings.amoled,
+                                    onTap: () => settings.setAmoled(true)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+          ],
+        ),
+      ),
+    ),
+  ),
+);
+  }
+
+  Widget _drawerIcon(BuildContext context, IconData icon) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(11),
+      ),
+      child: Icon(icon, size: 19, color: colors.onSurfaceVariant),
+    );
+  }
+
+  Widget _sectionLabel(BuildContext context, String label) => Padding(
+        padding: const EdgeInsets.only(left: 2, bottom: 3),
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.05,
+              ),
+        ),
+      );
+}
+
+class _DrawerLibraryTile extends StatelessWidget {
+  const _DrawerLibraryTile({
+    required this.label,
+    required this.icon,
+    required this.tint,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final Color tint;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = Theme.of(context).colorScheme;
+    return Material(
+      color: isDark ? Colors.white.withValues(alpha: 0.045) : const Color(0xFFF1F5F9),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.07) : const Color(0x1A0F172A)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: tint.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: tint, size: 18),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+              Text(
+                'Open library',
+                maxLines: 1,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: colors.onSurfaceVariant,
+                  fontSize: 11.5,
+                  height: 1.25,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ThemeSegment extends StatelessWidget {
+  const _ThemeSegment({required this.label, required this.selected, required this.onTap});
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final colors = Theme.of(context).colorScheme;
+    return Expanded(
+    child: Material(
+      color: selected
+          ? (isLight ? colors.primary.withValues(alpha: 0.12) : Colors.white.withValues(alpha: 0.16))
+          : Colors.transparent,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Text(label, textAlign: TextAlign.center,
+            style: TextStyle(
+              color: selected ? colors.primary : colors.onSurfaceVariant,
+              fontSize: 12, fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+}

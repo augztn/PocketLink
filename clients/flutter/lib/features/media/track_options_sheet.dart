@@ -23,6 +23,7 @@ class TrackOptionsSheet {
   }) {
     return showGeneralDialog<void>(
       context: context,
+      useRootNavigator: true,
       barrierLabel: 'Track options',
       barrierDismissible: true,
       barrierColor: Colors.black.withValues(alpha: 0.64),

@@ -1,9 +1,12 @@
 name: Flutter CI
+run-name: PocketLink CI • ${{ github.event_name }} • ${{ github.ref_name }}
 
 on:
   push:
     branches:
       - main
+    tags:
+      - "v*"
     paths:
       - "clients/flutter/**"
       - ".github/workflows/flutter.yml"
@@ -11,19 +14,22 @@ on:
     paths:
       - "clients/flutter/**"
       - ".github/workflows/flutter.yml"
+  workflow_dispatch:
 
 permissions:
   contents: read
+  pull-requests: read
 
-# Feature branches are validated by pull_request; main is validated by push. Keep checks required.
-# Cancel superseded runs for the same ref instead of wasting runner time.
+# Keep only the newest validation for a branch/PR; stale runs waste hosted minutes.
 concurrency:
   group: flutter-ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  analyze-and-test:
+  analyze:
+    name: Flutter Code Analysis
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: clients/flutter
@@ -35,10 +41,32 @@ jobs:
           cache: true
       - run: flutter pub get
       - run: flutter analyze --no-fatal-infos
-      - run: flutter test
+
+  test:
+    name: Flutter Tests (shard ${{ matrix.shard }}/${{ strategy.job-total }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2]
+    defaults:
+      run:
+        working-directory: clients/flutter
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Run Flutter unit and widget test shard
+        run: flutter test --total-shards=3 --shard-index=${{ matrix.shard }}
 
   linux-appimage:
+    name: Linux AppImage Build
     runs-on: ubuntu-22.04
+    timeout-minutes: 45
     defaults:
       run:
         working-directory: clients/flutter
@@ -114,7 +142,9 @@ jobs:
           retention-days: 14
 
   android-apk:
+    name: Android APK Build
     runs-on: ubuntu-22.04
+    timeout-minutes: 60
     defaults:
       run:
         working-directory: clients/flutter
@@ -260,8 +290,8 @@ jobs:
                       continue
                   content = gradle.read_text()
                   updated, count = re.subn(
-                      r"(?m)^(\\s*compileSdk(?:Version)?\\s*(?:=\\s*)?)(?:flutter\\.compileSdkVersion|\\d+)",
-                      r"\\g<1>36",
+                      r"(?m)^(\s*compileSdk(?:Version)?\s*(?:=\s*)?)(?:flutter\.compileSdkVersion|\d+)",
+                      r"\g<1>36",
                       content,
                       count=1,
                   )
@@ -270,22 +300,32 @@ jobs:
                       patched.append(str(gradle))
           print("Checked Android plugin compile SDK; updated: " + (", ".join(patched) if patched else "no overrides needed"))
           PY
-      - name: Build Android APK with SDK download retry
+      - name: Build Android APK (retry only transient NDK setup failures)
         run: |
           set -euo pipefail
           SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:?Android SDK path is not configured}}"
-          for attempt in 1 2 3; do
-            if flutter build apk --release; then
+          for attempt in 1 2; do
+            set +e
+            flutter build apk --release 2>&1 | tee /tmp/pocketlink-apk-build.log
+            build_status=${PIPESTATUS[0]}
+            set -e
+            if [ "$build_status" -eq 0 ]; then
               exit 0
             fi
-            if [ "$attempt" -lt 3 ]; then
-              echo "Android build failed on attempt $attempt; clearing incomplete NDK downloads and retrying."
+            if [ "$attempt" -eq 1 ] && grep -Eiq 'NDK at .*did not have a source\\.properties|failed to install.*NDK|NDK.*(download|install).*(failed|error)' /tmp/pocketlink-apk-build.log; then
+              echo "Detected an incomplete NDK installation; clearing it and retrying once."
               rm -rf "$SDK_ROOT/ndk/28.2.13676358" "$SDK_ROOT/.temp"
-              sleep $((attempt * 10))
+              continue
             fi
+            echo "::error::Android APK build failed; not retrying a non-transient build error."
+            exit "$build_status"
           done
-          echo "::error::Android APK build failed after three attempts."
-          exit 1
+      - uses: actions/upload-artifact@v7
+        with:
+          name: PocketLink-Android-APK
+          path: clients/flutter/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 14
       - name: Run native Android unit tests
         run: cd android && ./gradlew :pocketlink_saf:testDebugUnitTest
       - name: Enable KVM acceleration for Android emulator
@@ -313,9 +353,3 @@ jobs:
             adb shell settings put global transition_animation_scale 0
             adb shell settings put global animator_duration_scale 0
             cd clients/flutter/android && ./gradlew --no-daemon --stacktrace :pocketlink_saf:connectedDebugAndroidTest
-      - uses: actions/upload-artifact@v7
-        with:
-          name: PocketLink-Android-APK
-          path: clients/flutter/build/app/outputs/flutter-apk/app-release.apk
-          if-no-files-found: error
-          retention-days: 14

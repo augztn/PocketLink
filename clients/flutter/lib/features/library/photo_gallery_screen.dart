@@ -1,8 +1,12 @@
 import 'package:material_ui/material_ui.dart';
 import '../../core/network/server_api.dart';
 import 'photo_favorites_store.dart';
-import '../transfers/transfer_manager_screen.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
+import '../../core/widgets/feathered_glass_header.dart';
+import '../../core/widgets/pocketlink_scaffold.dart';
+import '../../core/widgets/smoked_glass_popover_menu.dart';
+import '../downloads/download_manager_service.dart';
+import '../transfers/transfer_manager_screen.dart';
 
 class _Photo {
   const _Photo(this.file, this.path, this.volume);
@@ -24,10 +28,11 @@ class _Photo {
 }
 
 class PhotoGalleryScreen extends StatefulWidget {
-  const PhotoGalleryScreen({required this.api, this.showSearch = true, this.initialTab = 0, super.key});
+  const PhotoGalleryScreen({required this.api, this.showSearch = true, this.initialTab = 0, this.onBackHandlerChanged, super.key});
   final ServerApi api;
   final bool showSearch;
   final int initialTab;
+  final ValueChanged<VoidCallback?>? onBackHandlerChanged;
   @override
   State<PhotoGalleryScreen> createState() => _PhotoGalleryScreenState();
 }
@@ -47,6 +52,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
   int tab = 0;
   int dateMode = 0;
   int gridColumns = 3;
+  bool _viewMenuOpen = false;
 
   @override
   void initState() { super.initState(); tab = widget.initialTab.clamp(0, 2).toInt(); _initialize(); }
@@ -86,8 +92,24 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     _persistFavorites();
   }
 
+  void _syncBackHandler() {
+    widget.onBackHandlerChanged?.call(searchOpen
+        ? () => _setSearchOpen(false)
+        : null);
+  }
+
+  void _setSearchOpen(bool open) {
+    if (searchOpen == open) return;
+    setState(() => searchOpen = open);
+    _syncBackHandler();
+  }
+
   @override
-  void dispose() { search.dispose(); super.dispose(); }
+  void dispose() {
+    widget.onBackHandlerChanged?.call(null);
+    search.dispose();
+    super.dispose();
+  }
 
   Future<List<_Photo>> _readIndexedPhotos() async {
     final found = <_Photo>[];
@@ -253,7 +275,8 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     shrinkWrap: shrinkWrap,
     physics: shrinkWrap ? const NeverScrollableScrollPhysics() : null,
     padding: EdgeInsets.fromLTRB(
-      2, 2, 2, shrinkWrap ? 0 : 104 + MediaQuery.paddingOf(context).bottom,
+      2, shrinkWrap || searchOpen ? 2 : LayoutInsetsScope.of(context).topClearance,
+      2, shrinkWrap ? 0 : LayoutInsetsScope.of(context).bottomClearance,
     ),
     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
       crossAxisCount: gridColumns.clamp(2, 5), crossAxisSpacing: 2, mainAxisSpacing: 2),
@@ -282,7 +305,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     if (dateMode == 3) return grid(items);
     final groups = <String,List<_Photo>>{};
     for (final p in items) { groups.putIfAbsent(group(p), () => []).add(p); }
-    return ListView(padding: EdgeInsets.only(bottom: 104 + MediaQuery.paddingOf(context).bottom), children: [
+    return ListView(padding: EdgeInsets.fromLTRB(0, searchOpen ? 0 : LayoutInsetsScope.of(context).topClearance, 0, LayoutInsetsScope.of(context).bottomClearance), children: [
       for (final entry in groups.entries) ...[
         Padding(padding: const EdgeInsets.fromLTRB(16,18,16,8),
           child: Row(children: [
@@ -299,7 +322,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     final albums = groupByAlbum(items).entries.toList()..sort((a,b)=>a.key.compareTo(b.key));
     if (albums.isEmpty) return empty('Albums will appear when photos are found.');
     return GridView.builder(
-      padding: EdgeInsets.fromLTRB(12, 12, 12, 104 + MediaQuery.paddingOf(context).bottom),
+      padding: EdgeInsets.fromLTRB(12, searchOpen ? 12 : LayoutInsetsScope.of(context).topClearance, 12, LayoutInsetsScope.of(context).bottomClearance),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount:2,crossAxisSpacing:12,mainAxisSpacing:16,childAspectRatio:.92),
       itemCount: albums.length,
@@ -328,13 +351,13 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     }
     final featured=memories.entries.take(8).toList();
     final albums=groupByAlbum(items);
-    return ListView(padding:EdgeInsets.fromLTRB(16,16,16,104 + MediaQuery.paddingOf(context).bottom),children:[
+    return ListView(padding:EdgeInsets.fromLTRB(16, searchOpen ? 16 : LayoutInsetsScope.of(context).topClearance, 16, LayoutInsetsScope.of(context).bottomClearance),children:[
       Text('Memories',style:Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight:FontWeight.w800)),
       const SizedBox(height:4),
       Text('Moments grouped by the dates stored with your photos.',style:Theme.of(context).textTheme.bodySmall),
       const SizedBox(height:14),
       SizedBox(height:190,child:featured.isEmpty?empty('Your memories will appear here.'):ListView.separated(
-        scrollDirection:Axis.horizontal,itemCount:featured.length,separatorBuilder:(_,__)=>const SizedBox(width:12),
+        scrollDirection:Axis.horizontal,padding:EdgeInsets.zero,itemCount:featured.length,separatorBuilder:(_,__)=>const SizedBox(width:12),
         itemBuilder:(_,i){
           final m=featured[i];
           return SizedBox(width:260,child:InkWell(
@@ -416,34 +439,13 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     await _persistFavorites();
   }
 
-  Widget _photoTabPill(String label, int value) {
-    final selectedTab = tab == value;
-    return Expanded(
-      child: Material(
-        color: selectedTab ? const Color(0xFF343438) : Colors.transparent,
-        borderRadius: BorderRadius.circular(18),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(18),
-          onTap: () => setState(() => tab = value),
-          child: SizedBox(
-            height: 34,
-            child: Center(
-              child: Text(label, style: TextStyle(
-                color: selectedTab ? Colors.white : Colors.white60,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              )),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Future<void> _showFilters() async {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
     await showModalBottomSheet<void>(
       context: context,
-      backgroundColor: const Color(0xFF1C1C1E),
+      useRootNavigator: true,
+      backgroundColor: colors.surfaceContainerLow,
       isScrollControlled: true,
       builder: (sheetContext) => StatefulBuilder(
         builder: (context, setSheetState) => SafeArea(
@@ -453,11 +455,11 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Photo view', style: TextStyle(
-                  color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700,
+                Text('Photo view', style: theme.textTheme.titleLarge?.copyWith(
+                  color: colors.onSurface, fontWeight: FontWeight.w800,
                 )),
                 const SizedBox(height: 16),
-                const Text('Grouping', style: TextStyle(color: Colors.white70)),
+                Text('Grouping', style: theme.textTheme.titleSmall?.copyWith(color: colors.onSurfaceVariant)),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
@@ -470,11 +472,13 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                           setState(() => dateMode = option.$1);
                           setSheetState(() {});
                         },
-                        backgroundColor: const Color(0xFF161618),
-                        selectedColor: const Color(0xFF343438),
-                        side: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+                        backgroundColor: colors.surfaceContainer,
+                        selectedColor: colors.primaryContainer,
+                        side: BorderSide(color: colors.outlineVariant.withValues(alpha: 0.68)),
                         labelStyle: TextStyle(
-                          color: dateMode == option.$1 ? Colors.white : Colors.white70,
+                          color: dateMode == option.$1
+                              ? colors.onPrimaryContainer
+                              : colors.onSurfaceVariant,
                         ),
                       ),
                   ],
@@ -482,8 +486,8 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                 const SizedBox(height: 18),
                 Row(
                   children: [
-                    const Expanded(child: Text('Grid density', style: TextStyle(color: Colors.white70))),
-                    Text('$gridColumns columns', style: const TextStyle(color: Colors.white)),
+                    Expanded(child: Text('Grid density', style: theme.textTheme.bodyMedium?.copyWith(color: colors.onSurfaceVariant))),
+                    Text('$gridColumns columns', style: theme.textTheme.labelLarge?.copyWith(color: colors.onSurface)),
                   ],
                 ),
                 Slider(
@@ -497,19 +501,19 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                   },
                 ),
                 const SizedBox(height: 12),
-                const Text('Storage source', style: TextStyle(color: Colors.white70)),
+                Text('Storage source', style: theme.textTheme.bodyMedium?.copyWith(color: colors.onSurfaceVariant)),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
                   initialValue: source ?? 'all',
                   decoration: InputDecoration(
                     filled: true,
-                    fillColor: const Color(0xFF161618),
+                    fillColor: colors.surfaceContainer,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+                      borderSide: BorderSide(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.68)),
                     ),
                   ),
-                  dropdownColor: const Color(0xFF1C1C1E),
+                  dropdownColor: colors.surfaceContainerHigh,
                   items: [
                     const DropdownMenuItem(value: 'all', child: Text('All storage')),
                     const DropdownMenuItem(value: 'internal', child: Text('Internal storage')),
@@ -544,140 +548,182 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
   Widget build(BuildContext context) {
     final items = visible;
     final selecting = selected.isNotEmpty;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final foreground = isDark ? Colors.white : const Color(0xFF0F172A);
+    final title = selecting ? '${selected.length} selected' : const ['Photos', 'Albums', 'Favorites'][tab];
+    final albumCount = groupByAlbum(photos).length;
+    final favoriteCount = photos.where((p) => favorites.contains(p.id)).length;
+    final counts = [photos.length, albumCount, favoriteCount];
+    final headerTop = MediaQuery.paddingOf(context).top;
+    final contentTop = LayoutInsetsScope.of(context).topClearance;
+
     return Scaffold(
-      appBar: PocketLinkAppBar(
-        title: Text(selecting ? '${selected.length} selected' : 'Photos'),
-        leading: selecting
-            ? IconButton(
-                onPressed: () => setState(selected.clear),
-                icon: const Icon(Icons.close),
-              )
-            : null,
-        actions: [
-          PocketLinkAppBarAction(
-            label: 'Transfers', icon: Icons.swap_vert_rounded,
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
-              builder: (_) => const TransferManagerScreen(),
-            )),
-          ),
-          if (!selecting && widget.showSearch)
-            PocketLinkAppBarAction(
-              label: searchOpen ? 'Close search' : 'Search',
-              icon: searchOpen ? Icons.close : Icons.search,
-              onPressed: () => setState(() => searchOpen = !searchOpen),
-            ),
-          PocketLinkAppBarAction(
-            label: 'Scan again', icon: Icons.refresh_rounded,
-            onPressed: loading ? null : () => scan(refresh: true),
-          ),
-        ],
-      ),
-      body: Column(
+      extendBodyBehindAppBar: true,
+      body: Stack(
+        fit: StackFit.expand,
         children: [
-          if (widget.showSearch && searchOpen)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-              child: TextField(
-                controller: search,
-                autofocus: true,
-                onChanged: (_) => setState(() {}),
-                decoration: InputDecoration(
-                  hintText: 'Search photos, folders or dates',
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: IconButton(
-                    onPressed: () { search.clear(); setState(() {}); },
-                    icon: const Icon(Icons.clear),
-                  ),
-                  filled: true,
-                  fillColor: const Color(0xFF1C1C1E),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(18),
-                    borderSide: BorderSide.none,
+          Column(children: [
+            if (widget.showSearch && searchOpen) SizedBox(height: contentTop),
+            if (widget.showSearch && searchOpen)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                child: TextField(
+                  controller: search,
+                  autofocus: true,
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(
+                    hintText: 'Search photos, folders or dates',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: IconButton(
+                      onPressed: () { search.clear(); setState(() {}); },
+                      icon: const Icon(Icons.clear),
+                    ),
+                    filled: true,
+                    fillColor: theme.colorScheme.surfaceContainerLow,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
                   ),
                 ),
               ),
+            if (loading) const LinearProgressIndicator(minHeight: 2),
+            if (error != null)
+              Padding(padding: const EdgeInsets.all(12),
+                child: Text(error!, style: TextStyle(color: theme.colorScheme.error))),
+            Expanded(
+              child: error != null
+                  ? Center(child: FilledButton(onPressed: scan, child: const Text('Retry scan')))
+                  : loading && photos.isEmpty
+                      ? const Center(child: Text('Scanning photos…'))
+                      : AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 220),
+                          switchInCurve: Curves.easeOutCubic,
+                          switchOutCurve: Curves.easeOutCubic,
+                          transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
+                          child: KeyedSubtree(
+                            key: ValueKey<int>(tab),
+                            child: tab == 1
+                                ? albumsTab(items)
+                                : items.isEmpty
+                                    ? empty(tab == 2 ? 'No favourite photos yet.' : 'No photos found in internal or connected USB storage.')
+                                    : photosTab(items),
+                          ),
+                        ),
             ),
-          if (!selecting)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      height: 42,
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1C1C1E),
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+          ]),
+          Positioned(
+            top: 0, left: 0, right: 0, height: headerTop + 88,
+            child: const IgnorePointer(child: FeatheredGlassHeaderBackground(contentHeight: 52)),
+          ),
+          Positioned(
+            top: headerTop + 8, left: 16, right: 16, height: 52,
+            child: Row(children: [
+              if (selecting)
+                Expanded(child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: foreground, fontSize: 26, fontWeight: FontWeight.w700, letterSpacing: -0.5)),
+                ))
+              else
+                Expanded(child: Align(alignment: Alignment.centerLeft, child: TitleDropdownPopover<int>(
+tooltip: 'Choose photo view',
+                  onOpenChanged: (open) => setState(() => _viewMenuOpen = open),
+                  items: [
+                    for (var index = 0; index < 3; index++)
+                      SmokedGlassPopoverMenuItem(
+                        value: index,
+                        label: const ['Photos', 'Albums', 'Favorites'][index],
+                        icon: [Icons.photo_library_rounded, Icons.photo_album_rounded, Icons.favorite_rounded][index],
+                        trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Text('${counts[index]}', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
+                          const SizedBox(width: 8),
+                          SizedBox(width: 20, child: tab == index ? const Icon(Icons.check_rounded, size: 18) : null),
+                        ]),
                       ),
-                      child: Row(
-                        children: [
-                          _photoTabPill('Photos', 0),
-                          _photoTabPill('Albums', 1),
-                          _photoTabPill('Favorites', 2),
-                        ],
+                  ],
+                  onSelected: (value) => setState(() { tab = value; selected.clear(); }),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Flexible(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(
+                        color: foreground, fontSize: 26, fontWeight: FontWeight.w700, letterSpacing: -0.5,
+                      ))),
+                      const SizedBox(width: 6),
+                      AnimatedRotation(
+                        turns: _viewMenuOpen ? 0.5 : 0,
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeOutCubic,
+                        child: Icon(Icons.keyboard_arrow_down_rounded, color: foreground, size: 20),
                       ),
-                    ),
+                    ]),
                   ),
-                  const SizedBox(width: 8),
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1C1C1E),
-                      borderRadius: BorderRadius.circular(21),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-                    ),
-                    child: IconButton(
-                      tooltip: 'Photo filters and layout',
-                      onPressed: _showFilters,
-                      icon: const Icon(Icons.tune_rounded, size: 20),
-                    ),
+                ))),
+              const SizedBox(width: 8),
+              SmokedGlassPopoverMenu<String>(
+                tooltip: 'More photo actions',
+                items: [
+                  if (widget.showSearch) SmokedGlassPopoverMenuItem(value: 'search', label: searchOpen ? 'Close search' : 'Search photos', icon: searchOpen ? Icons.close_rounded : Icons.search_rounded),
+                  const SmokedGlassPopoverMenuItem(
+                    value: 'filter',
+                    label: 'Filter & layout',
+                    icon: Icons.tune_rounded,
+                  ),
+                  const SmokedGlassPopoverMenuItem(
+                    value: 'select',
+                    label: 'Select all / clear',
+                    icon: Icons.checklist_rounded,
+                    dividerBefore: true,
+                  ),
+                  SmokedGlassPopoverMenuItem(
+                    value: 'scan',
+                    label: 'Scan again',
+                    icon: Icons.refresh_rounded,
+                    enabled: !loading,
+                  ),
+                  const SmokedGlassPopoverMenuItem(
+                    value: 'transfers',
+                    label: 'Transfers',
+                    icon: Icons.swap_vert_rounded,
+                    dividerBefore: true,
+                  ),
+                  const SmokedGlassPopoverMenuItem(
+                    value: 'home',
+                    label: 'Return to Home',
+                    icon: Icons.home_rounded,
                   ),
                 ],
+                onSelected: (value) {
+                  if (value == 'search') _setSearchOpen(!searchOpen);
+                  if (value == 'filter') _showFilters();
+                  if (value == 'scan') scan(refresh: true);
+                  if (value == 'transfers') {
+                    Navigator.of(context).push(MaterialPageRoute<void>(
+                      builder: (_) => const TransferManagerScreen(),
+                    ));
+                  }
+                  if (value == 'home') PocketLinkAppBar.goToDashboard(context);
+                  if (value == 'select') setState(() {
+                    if (selected.isEmpty) selected.addAll(items.map((p) => p.id));
+                    else selected.clear();
+                  });
+                },
+                child: GlassCircleButton(tooltip: 'Open more photo actions', onPressed: null,
+                  child: const Icon(Icons.more_vert_rounded)),
               ),
-            ),
-          if (loading) const LinearProgressIndicator(minHeight: 2),
-          if (error != null)
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Text(error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
-            ),
-          Expanded(
-            child: error != null
-                ? Center(child: FilledButton(onPressed: scan, child: const Text('Retry scan')))
-                : loading && photos.isEmpty
-                    ? const Center(child: Text('Scanning photos…'))
-                    : tab == 1
-                        ? albumsTab(items)
-                        : items.isEmpty
-                            ? empty(tab == 2 ? 'No favourite photos yet.' : 'No photos found in internal or connected USB storage.')
-                            : photosTab(items),
+            ]),
           ),
         ],
       ),
       bottomNavigationBar: selecting
-          ? SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(10),
-                child: Row(
-                  children: [
-                    Expanded(child: OutlinedButton.icon(
-                      onPressed: favoriteSelected,
-                      icon: const Icon(Icons.favorite_border),
-                      label: const Text('Favourite'),
-                    )),
-                    const SizedBox(width: 8),
-                    Expanded(child: FilledButton.icon(
-                      onPressed: deleteSelected,
-                      icon: const Icon(Icons.delete_outline),
-                      label: const Text('Delete'),
-                    )),
-                  ],
-                ),
-              ),
-            )
+          ? SafeArea(child: Padding(
+              padding: const EdgeInsets.all(10),
+              child: Row(children: [
+                Expanded(child: OutlinedButton.icon(onPressed: favoriteSelected,
+                  icon: const Icon(Icons.favorite_border), label: const Text('Favourite'))),
+                const SizedBox(width: 8),
+                Expanded(child: FilledButton.icon(onPressed: deleteSelected,
+                  icon: const Icon(Icons.delete_outline), label: const Text('Delete'))),
+              ]),
+            ))
           : null,
     );
   }
@@ -733,6 +779,32 @@ class _PhotoViewerState extends State<_PhotoViewer>{
             icon: widget.favorite(p) ? Icons.favorite : Icons.favorite_border,
             onPressed: () => setState(() => widget.onFavorite(p)),
           ),
+          PocketLinkAppBarAction(
+            label: 'Download photo',
+            icon: Icons.download_rounded,
+            onPressed: () async {
+              try {
+                await DownloadManagerService.instance.enqueueServerFile(
+                  api: widget.api,
+                  name: p.file.name,
+                  sourcePath: p.path,
+                  volume: p.volume,
+                  size: p.file.size,
+                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Added to Downloads: ${p.file.name}')),
+                  );
+                }
+              } catch (_) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Could not add this photo to Downloads.')),
+                  );
+                }
+              }
+            },
+          ),
         ],
       ):null,
       body:GestureDetector(
@@ -748,7 +820,7 @@ class _PhotoViewerState extends State<_PhotoViewer>{
           ));},
         ),
       ),
-      bottomNavigationBar:controls?SafeArea(child:Padding(padding:const EdgeInsets.all(12),child:Text(
+      bottomNavigationBar:controls?SafeArea(bottom:false,child:Padding(padding:EdgeInsets.fromLTRB(12,12,12,LayoutInsetsScope.of(context).bottomClearance),child:Text(
         '${p.album} · ${p.date.day}/${p.date.month}/${p.date.year} · ${p.file.size} bytes',
         textAlign:TextAlign.center,style:const TextStyle(color:Colors.white70,fontSize:12),
       ))):null,

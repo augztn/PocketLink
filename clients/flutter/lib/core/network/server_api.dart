@@ -79,10 +79,33 @@ class VideoMetadata {
   final int height;
 
   factory VideoMetadata.fromJson(Map<String, dynamic> json) => VideoMetadata(
-        durationMs: (json['duration_ms'] as num?)?.toInt() ?? 0,
+        durationMs: _durationMilliseconds(json),
         width: (json['width'] as num?)?.toInt() ?? 0,
         height: (json['height'] as num?)?.toInt() ?? 0,
       );
+
+  static int _durationMilliseconds(Map<String, dynamic> json) {
+    final milliseconds = json['duration_ms'] ?? json['durationMs'];
+    if (milliseconds is num) return milliseconds.toInt().clamp(0, 1 << 62).toInt();
+
+    final seconds = json['duration_seconds'] ?? json['durationSeconds'];
+    if (seconds is num) {
+      return (seconds * 1000).round().clamp(0, 1 << 62).toInt();
+    }
+
+    // Some compatible hosts expose a generic duration field. Values below
+    // 100,000 are treated as seconds; larger values are milliseconds.
+    final duration = json['duration'];
+    if (duration is num) {
+      final value = duration <= 0
+          ? 0
+          : duration < 100000
+              ? (duration * 1000).round()
+              : duration.toInt();
+      return value.clamp(0, 1 << 62).toInt();
+    }
+    return 0;
+  }
 
   String get resolution => width > 0 && height > 0 ? '${width}×${height}' : '';
 }
@@ -240,23 +263,147 @@ class IndexedFile {
   );
 }
 
+class SkippedMediaIndexItem {
+  const SkippedMediaIndexItem({required this.volume, required this.path, required this.reason});
+  final String volume;
+  final String path;
+  final String reason;
+
+  factory SkippedMediaIndexItem.fromJson(Map<String, dynamic> json) => SkippedMediaIndexItem(
+    volume: json['volume']?.toString() ?? 'internal',
+    path: json['path']?.toString() ?? '',
+    reason: json['reason']?.toString() ?? 'Could not index this location',
+  );
+}
+
+class MediaScanVolumeStatus {
+  const MediaScanVolumeStatus({required this.volume, required this.state, this.startedAt = 0, this.completedAt = 0, this.lastScannedAt = 0, this.scanned = 0, this.skipped = 0, this.stale = false, this.error});
+  final String volume;
+  final String state;
+  final int startedAt, completedAt, lastScannedAt, scanned, skipped;
+  final bool stale;
+  final String? error;
+  factory MediaScanVolumeStatus.fromJson(Map<String, dynamic> json) => MediaScanVolumeStatus(
+    volume: json['volume']?.toString() ?? 'unknown',
+    state: json['state']?.toString() ?? 'unknown',
+    startedAt: (json['started_at'] as num?)?.toInt() ?? 0,
+    completedAt: (json['completed_at'] as num?)?.toInt() ?? 0,
+    lastScannedAt: (json['last_scanned_at'] as num?)?.toInt() ?? 0,
+    scanned: (json['scanned'] as num?)?.toInt() ?? 0,
+    skipped: (json['skipped'] as num?)?.toInt() ?? 0,
+    stale: json['stale'] == true || json['state'] == 'unavailable',
+    error: json['error']?.toString(),
+  );
+}
+
+class MediaScanHistoryEntry {
+  const MediaScanHistoryEntry({
+    required this.startedAt, required this.completedAt, required this.durationMs,
+    required this.trigger, required this.state, required this.scanned, required this.skipped,
+    required this.newFiles, required this.updatedFiles, required this.scannedBytes,
+    this.runId, this.lastError, this.timezoneOffsetMinutes,
+    this.volumes = const [], this.skippedItems = const [],
+  });
+  final int startedAt, completedAt, durationMs, scanned, skipped, newFiles, updatedFiles, scannedBytes;
+  final String trigger, state;
+  final String? runId, lastError;
+  final int? timezoneOffsetMinutes;
+  final List<MediaScanVolumeStatus> volumes;
+  final List<SkippedMediaIndexItem> skippedItems;
+  factory MediaScanHistoryEntry.fromJson(Map<String, dynamic> json) => MediaScanHistoryEntry(
+    startedAt: (json['started_at'] as num?)?.toInt() ?? 0,
+    completedAt: (json['completed_at'] as num?)?.toInt() ?? 0,
+    durationMs: (json['duration_ms'] as num?)?.toInt() ?? 0,
+    trigger: json['trigger']?.toString() ?? 'automatic',
+    state: json['state']?.toString() ?? 'unknown',
+    scanned: (json['scanned'] as num?)?.toInt() ?? 0,
+    skipped: (json['skipped'] as num?)?.toInt() ?? 0,
+    newFiles: (json['new_files'] as num?)?.toInt() ?? 0,
+    updatedFiles: (json['updated_files'] as num?)?.toInt() ?? 0,
+    scannedBytes: (json['scanned_bytes'] as num?)?.toInt() ?? 0,
+    runId: json['run_id']?.toString(),
+    lastError: json['last_error']?.toString(),
+    timezoneOffsetMinutes: (json['timezone_offset_minutes'] as num?)?.toInt() ?? 0,
+    volumes: (json['volumes'] as List<dynamic>? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(MediaScanVolumeStatus.fromJson).toList(growable: false),
+    skippedItems: (json['skipped_items'] as List<dynamic>? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(SkippedMediaIndexItem.fromJson).toList(growable: false),
+  );
+}
+
+class AutomaticMediaScanSettings {
+  const AutomaticMediaScanSettings({
+    this.enabled = true,
+    this.scanOnStartup = true,
+    this.scanOnStorageChange = true,
+    this.intervalMinutes = 60,
+    this.nextScanAt = 0,
+  });
+
+  final bool enabled, scanOnStartup, scanOnStorageChange;
+  final int intervalMinutes, nextScanAt;
+
+  factory AutomaticMediaScanSettings.fromJson(Map<String, dynamic> json) =>
+      AutomaticMediaScanSettings(
+        enabled: json['enabled'] != false,
+        scanOnStartup: json['scan_on_startup'] != false,
+        scanOnStorageChange: json['scan_on_storage_change'] != false,
+        intervalMinutes: (json['interval_minutes'] as num?)?.toInt() ?? 60,
+        nextScanAt: (json['next_scan_at'] as num?)?.toInt() ?? 0,
+      );
+}
+
 class MediaIndexStatus {
   const MediaIndexStatus({
     required this.state, required this.scanned, required this.skipped,
     required this.lastCompletedAt, required this.fileCount,
     required this.mediaCount, this.lastError,
     this.lastScanStartedAt = 0, this.elapsedMs = 0, this.currentSource,
+    this.currentPath, this.scannedDirectories = 0, this.unchangedCount = 0,
+    this.indexedCount = 0, this.directoryCount = 0, this.regularFileCount = 0,
+    this.photoCount = 0, this.videoCount = 0, this.musicCount = 0,
+    this.skippedItems = const [], this.scanTrigger = "automatic", this.newFiles = 0,
+    this.updatedFiles = 0, this.scannedBytes = 0, this.volumes = const [], this.scanHistory = const [],
+    this.lastAttemptStartedAt = 0, this.lastAttemptFinishedAt = 0, this.lastSuccessfulAt = 0,
+    this.indexedBytes = 0, this.mediaBytes = 0, this.otherFileCount = 0,
+    this.averageDurationMs = 0, this.durationTrendPercent = 0, this.scanRunId, this.timezoneId,
+    this.timezoneOffsetMinutes,
+    this.lastAutomaticScanAt = 0, this.lastManualScanAt = 0,
+    this.automaticScanning = const AutomaticMediaScanSettings(),
   });
   final String state;
   final int scanned;
   final int skipped;
   final int lastCompletedAt;
+  /// Total indexed entries, including directories (kept for API compatibility).
   final int fileCount;
   final int mediaCount;
   final String? lastError;
   final int lastScanStartedAt;
   final int elapsedMs;
   final String? currentSource;
+  final String? currentPath;
+  final int scannedDirectories;
+  final int unchangedCount;
+  final int indexedCount;
+  final int directoryCount;
+  final int regularFileCount;
+  final int photoCount;
+  final int videoCount;
+  final int musicCount;
+  final List<SkippedMediaIndexItem> skippedItems;
+  final String scanTrigger;
+  final int newFiles, updatedFiles, scannedBytes;
+  final List<MediaScanVolumeStatus> volumes;
+  final List<MediaScanHistoryEntry> scanHistory;
+  final int lastAttemptStartedAt, lastAttemptFinishedAt, lastSuccessfulAt;
+  final int indexedBytes, mediaBytes, otherFileCount, averageDurationMs, durationTrendPercent;
+  final int lastAutomaticScanAt, lastManualScanAt;
+  final int? timezoneOffsetMinutes;
+  final String? scanRunId, timezoneId;
+  final AutomaticMediaScanSettings automaticScanning;
   bool get isScanning => state == 'scanning';
   bool get isUsable => state == 'complete' || state == 'partial';
 
@@ -272,6 +419,45 @@ class MediaIndexStatus {
         lastScanStartedAt: (json['last_scan_started_at'] as num?)?.toInt() ?? 0,
         elapsedMs: (json['elapsed_ms'] as num?)?.toInt() ?? 0,
         currentSource: json['current_source']?.toString(),
+        currentPath: json['current_path']?.toString(),
+        scannedDirectories: (json['scanned_directories'] as num?)?.toInt() ?? 0,
+        unchangedCount: (json['unchanged_count'] as num?)?.toInt() ?? 0,
+        indexedCount: (json['indexed_count'] as num?)?.toInt() ?? 0,
+        directoryCount: (json['directory_count'] as num?)?.toInt() ?? 0,
+        regularFileCount: (json['regular_file_count'] as num?)?.toInt() ?? 0,
+        photoCount: (json['photo_count'] as num?)?.toInt() ?? 0,
+        videoCount: (json['video_count'] as num?)?.toInt() ?? 0,
+        musicCount: (json['music_count'] as num?)?.toInt() ?? 0,
+        skippedItems: (json['skipped_items'] as List<dynamic>? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(SkippedMediaIndexItem.fromJson)
+            .toList(growable: false),
+        scanTrigger: json['scan_trigger']?.toString() ?? 'automatic',
+        newFiles: (json['new_files'] as num?)?.toInt() ?? 0,
+        updatedFiles: (json['updated_files'] as num?)?.toInt() ?? 0,
+        scannedBytes: (json['scanned_bytes'] as num?)?.toInt() ?? 0,
+        volumes: (json['volumes'] as List<dynamic>? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(MediaScanVolumeStatus.fromJson).toList(growable: false),
+        scanHistory: (json['scan_history'] as List<dynamic>? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(MediaScanHistoryEntry.fromJson).toList(growable: false),
+        lastAttemptStartedAt: (json['last_attempt_started_at'] as num?)?.toInt() ?? 0,
+        lastAttemptFinishedAt: (json['last_attempt_finished_at'] as num?)?.toInt() ?? 0,
+        lastSuccessfulAt: (json['last_successful_at'] as num?)?.toInt() ?? 0,
+        indexedBytes: (json['indexed_bytes'] as num?)?.toInt() ?? 0,
+        mediaBytes: (json['media_bytes'] as num?)?.toInt() ?? 0,
+        otherFileCount: (json['other_file_count'] as num?)?.toInt() ?? 0,
+        averageDurationMs: (json['duration_average_ms'] as num?)?.toInt() ?? 0,
+        durationTrendPercent: (json['duration_trend_percent'] as num?)?.toInt() ?? 0,
+        lastAutomaticScanAt: (json['last_automatic_scan_at'] as num?)?.toInt() ?? 0,
+        lastManualScanAt: (json['last_manual_scan_at'] as num?)?.toInt() ?? 0,
+        scanRunId: json['scan_run_id']?.toString(),
+        timezoneId: json['timezone_id']?.toString(),
+        timezoneOffsetMinutes: (json['timezone_offset_minutes'] as num?)?.toInt() ?? 0,
+        automaticScanning: AutomaticMediaScanSettings.fromJson(
+          json['automatic_scanning'] as Map<String, dynamic>? ?? const {},
+        ),
       );
 }
 
@@ -477,6 +663,12 @@ class ServerApi {
       hash ^= unit;
       hash = (hash * 0x01000193) & 0xffffffff;
     }
+    final requestIdentity = '${options.uri.path}?$encoded';
+    hash = 0x811c9dc5;
+    for (final unit in requestIdentity.codeUnits) {
+      hash ^= unit;
+      hash = (hash * 0x01000193) & 0xffffffff;
+    }
     return hash.toRadixString(16).padLeft(8, '0');
   }
 
@@ -610,6 +802,24 @@ class ServerApi {
         .resolve(endpoint)
         .replace(queryParameters: query)
         .toString();
+  }
+
+  /// Opens an authenticated file stream and requests a byte range when resuming.
+  Future<Response<ResponseBody>> openDownloadStream({
+    required String path,
+    String? volume,
+    int offset = 0,
+    CancelToken? cancelToken,
+  }) {
+    return _dio.get<ResponseBody>(
+      volume == null ? '/api/files/stream' : '/api/storage/download',
+      queryParameters: {'path': path, if (volume != null) 'volume': volume},
+      options: Options(
+        responseType: ResponseType.stream,
+        headers: offset > 0 ? {'Range': 'bytes=$offset-'} : null,
+      ),
+      cancelToken: cancelToken,
+    );
   }
 
   /// Headers required by the native media player for authenticated requests.
@@ -878,6 +1088,29 @@ class ServerApi {
   Future<MediaIndexStatus> startMediaIndexScan() async {
     final response = await _dio.post<Map<String, dynamic>>('/api/index/scan');
     return MediaIndexStatus.fromJson(response.data ?? const {});
+  }
+
+  Future<MediaIndexStatus> retryFailedMediaScan() async {
+    final response = await _dio.post<Map<String, dynamic>>('/api/index/retry');
+    return MediaIndexStatus.fromJson(response.data ?? const {});
+  }
+
+  Future<AutomaticMediaScanSettings> updateAutomaticMediaScanning({
+    required bool enabled,
+    required int intervalMinutes,
+    required bool scanOnStartup,
+    required bool scanOnStorageChange,
+  }) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/api/index/settings',
+      queryParameters: {
+        'enabled': enabled,
+        'interval_minutes': intervalMinutes,
+        'scan_on_startup': scanOnStartup,
+        'scan_on_storage_change': scanOnStorageChange,
+      },
+    );
+    return AutomaticMediaScanSettings.fromJson(response.data ?? const {});
   }
 
   Future<IndexedMediaPage> indexedMedia(

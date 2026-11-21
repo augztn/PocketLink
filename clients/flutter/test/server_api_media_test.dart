@@ -3,6 +3,16 @@ import 'package:pocketlink_client/core/network/server_api.dart';
 
 void main() {
   group('ServerApi media streaming', () {
+    test('normalizes media durations reported in seconds or milliseconds', () {
+      expect(VideoMetadata.fromJson({'duration_ms': 245000}).durationMs, 245000);
+      expect(VideoMetadata.fromJson({'durationMs': 245000}).durationMs, 245000);
+      expect(VideoMetadata.fromJson({'duration_seconds': 245}).durationMs, 245000);
+      expect(VideoMetadata.fromJson({'durationSeconds': 245}).durationMs, 245000);
+      expect(VideoMetadata.fromJson({'duration': 245}).durationMs, 245000);
+      expect(VideoMetadata.fromJson({'duration_ms': 0}).durationMs, 0);
+      expect(VideoMetadata.fromJson({}).durationMs, 0);
+    });
+
     test('builds a safely encoded stream URL', () {
       final api = ServerApi(
         baseUrl: 'http://127.0.0.1:8000',
@@ -63,6 +73,93 @@ void main() {
       expect(status.lastScanStartedAt, 0);
       expect(status.elapsedMs, 0);
       expect(status.currentSource, isNull);
+    });
+
+    test('parses scan trigger, counters, volume status and history', () {
+      final status = MediaIndexStatus.fromJson({
+        'state': 'complete',
+        'scanned': 12,
+        'skipped': 1,
+        'last_completed_at': 1794900005000,
+        'last_scan_started_at': 1794900000000,
+        'elapsed_ms': 5000,
+        'file_count': 10,
+        'media_count': 4,
+        'scan_trigger': 'manual',
+        'new_files': 2,
+        'updated_files': 1,
+        'scanned_bytes': 4096,
+        'last_attempt_started_at': 1794900000000,
+        'last_attempt_finished_at': 1794900005000,
+        'last_successful_at': 1794800000000,
+        'indexed_bytes': 8192,
+        'media_bytes': 4096,
+        'other_file_count': 6,
+        'duration_average_ms': 3500,
+        'duration_trend_percent': 15,
+        'last_automatic_scan_at': 1794700000000,
+        'last_manual_scan_at': 1794900005000,
+        'scan_run_id': 'scan-run-123',
+        'timezone_id': 'Asia/Kolkata',
+        'timezone_offset_minutes': 330,
+        'automatic_scanning': {
+          'enabled': true,
+          'scan_on_startup': true,
+          'scan_on_storage_change': true,
+          'interval_minutes': 180,
+          'next_scan_at': 1794910800000,
+        },
+        'volumes': [
+          {'volume': 'internal', 'state': 'partial', 'started_at': 1794900000000, 'completed_at': 1794900005000, 'scanned': 12, 'skipped': 1},
+          {'volume': 'usb1', 'state': 'unavailable', 'last_scanned_at': 1794800000000, 'stale': true}
+        ],
+        'scan_history': [
+          {
+            'run_id': 'history-run-1',
+            'timezone_offset_minutes': 330,
+            'started_at': 1794900000000,
+            'completed_at': 1794900005000,
+            'duration_ms': 5000,
+            'trigger': 'manual',
+            'state': 'partial',
+            'scanned': 12,
+            'skipped': 1,
+            'new_files': 2,
+            'updated_files': 1,
+            'scanned_bytes': 4096,
+            'volumes': [{'volume': 'usb1', 'state': 'failed', 'error': 'Permission denied'}],
+            'skipped_items': [{'volume': 'usb1', 'path': 'Movies/clip.mp4', 'reason': 'Permission denied'}],
+          }
+        ],
+      });
+
+      expect(status.scanTrigger, 'manual');
+      expect(status.newFiles, 2);
+      expect(status.updatedFiles, 1);
+      expect(status.scannedBytes, 4096);
+      expect(status.volumes.first.state, 'partial');
+      expect(status.scanHistory.single.trigger, 'manual');
+      expect(status.scanHistory.single.durationMs, 5000);
+      expect(status.scanHistory.single.runId, 'history-run-1');
+      expect(status.scanHistory.single.volumes.single.error, 'Permission denied');
+      expect(status.scanHistory.single.skippedItems.single.path, 'Movies/clip.mp4');
+      expect(status.lastAttemptStartedAt, 1794900000000);
+      expect(status.lastAttemptFinishedAt, 1794900005000);
+      expect(status.lastSuccessfulAt, 1794800000000);
+      expect(status.indexedBytes, 8192);
+      expect(status.mediaBytes, 4096);
+      expect(status.otherFileCount, 6);
+      expect(status.averageDurationMs, 3500);
+      expect(status.durationTrendPercent, 15);
+      expect(status.lastAutomaticScanAt, 1794700000000);
+      expect(status.lastManualScanAt, 1794900005000);
+      expect(status.scanRunId, 'scan-run-123');
+      expect(status.timezoneId, 'Asia/Kolkata');
+      expect(status.timezoneOffsetMinutes, 330);
+      expect(status.scanHistory.single.timezoneOffsetMinutes, 330);
+      expect(status.automaticScanning.intervalMinutes, 180);
+      expect(status.automaticScanning.nextScanAt, 1794910800000);
+      expect(status.volumes.last.stale, isTrue);
     });
 
     test('parses remote host scan progress details', () {

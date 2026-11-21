@@ -7,7 +7,7 @@ class QuickActionsStore {
       : _storage = storage ?? const FlutterSecureStorage();
 
   static const storageKey = 'home_quick_actions';
-  static const defaults = ['upload', 'drives', 'favorites', 'transfers'];
+  static const defaults = ['upload', 'drives', 'favorites', 'photos'];
   static const available = [
     'files',
     'upload',
@@ -31,8 +31,10 @@ class QuickActionsStore {
       final saved = decoded.whereType<String>()
           .where(available.contains).toSet().toList();
       const previousDefaults = ['files', 'photos', 'music', 'drives'];
-      if (saved.isEmpty || (saved.length == previousDefaults.length &&
-          previousDefaults.every(saved.contains))) {
+      const legacyDefaults = ['upload', 'drives', 'favorites', 'transfers'];
+      if (saved.isEmpty ||
+          (saved.length == previousDefaults.length && previousDefaults.every(saved.contains)) ||
+          (saved.length == legacyDefaults.length && legacyDefaults.every(saved.contains))) {
         return List.of(defaults);
       }
       return saved;

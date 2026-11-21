@@ -61,13 +61,16 @@ Mutation and upload success responses return `{"ok":true,"name":"..."}` (delete 
 
 ## Persistent indexing and fallback
 
-- The Android host maintains a SQLite file index and a separate media index for music, videos, and photos.
+- The Android host maintains a persistent SQLite file index and a separate media index for music, videos, and photos.
 - The first authenticated index request starts a background scan of internal storage and granted USB/SSD SAF volumes. Requests read persisted rows while a refresh runs.
-- Explicit refresh requests a new scan. Complete source scans prune deleted entries; partial or failed scans retain previous rows.
+- Explicit refresh requests a new scan; if one is already running, the request is coalesced into one follow-up scan. Complete source scans prune deleted entries; partial or failed scans retain previous rows.
+- Scan status includes entries visited, directories visited, unchanged and newly indexed entries, current source/path, skipped-item details, and separate directory/file/media counts.
+- SAF providers that report no modification timestamp use size and media category as a best-effort unchanged fingerprint. Same-size content changes cannot be detected on providers that never expose a timestamp; a full re-index can still be requested.
 - File and media tables are written and pruned independently. A failure in one index does not invalidate the other.
 - Flutter media and search screens fall back to their existing directory-walk implementations when index endpoints are unavailable or the index cannot provide results.
 - SAF providers can expose incomplete directory listings or unreliable timestamps. Partial scans are reported and do not remove older indexed entries.
 - The index stores metadata and paths only. It never copies, resizes, transcodes, compresses, or modifies original files.
+- Indexed MIME metadata covers common audio, video, image, document, archive, and source-code formats; Android's MIME map is used as a fallback before `application/octet-stream`.
 
 ## Upload and download behavior
 

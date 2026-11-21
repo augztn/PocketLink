@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../../core/widgets/liquid_glass_pill.dart';
 import 'media_player_screen.dart';
 import 'persistent_audio_player.dart';
 
@@ -18,16 +19,19 @@ class PersistentMiniPlayer extends StatelessWidget {
           return const SizedBox.shrink();
         }
 
-        return Material(
-          color: const Color(0xFF211A35),
-          elevation: 12,
+        final isLight = Theme.of(context).brightness == Brightness.light;
+        final foreground = isLight ? const Color(0xFF0F172A) : Colors.white;
+        final secondary = isLight ? const Color(0xFF475569) : Colors.white70;
+        return SmokedGlassSurface(
+          radius: BorderRadius.circular(18),
+          refractive: true,
           child: SafeArea(
             top: false,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
               child: Row(
                 children: [
-                  const Icon(Icons.album_rounded, color: Color(0xFFD8C9FF), size: 34),
+                  Icon(Icons.album_rounded, color: Theme.of(context).colorScheme.primary, size: 34),
                   const SizedBox(width: 12),
                   Expanded(
                     child: InkWell(
@@ -56,15 +60,15 @@ class PersistentMiniPlayer extends StatelessWidget {
                               track.title.replaceAll(RegExp(r'\\.[^.]+$'), ''),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Colors.white,
+                              style: TextStyle(
+                                color: foreground,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
                             Text(
                               'PocketLink • Now playing',
                               style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.6),
+                                color: secondary,
                                 fontSize: 11,
                               ),
                             ),
@@ -78,13 +82,13 @@ class PersistentMiniPlayer extends StatelessWidget {
                     onPressed: playback.queue.length > 1
                         ? playback.player.previous
                         : null,
-                    color: Colors.white70,
+                    color: secondary,
                     icon: const Icon(Icons.skip_previous_rounded),
                   ),
                   IconButton(
                     tooltip: playback.isPlaying ? 'Pause' : 'Play',
                     onPressed: playback.togglePlayback,
-                    color: const Color(0xFFD8C9FF),
+                    color: foreground,
                     icon: Icon(
                       playback.isPlaying
                           ? Icons.pause_rounded
@@ -102,7 +106,7 @@ class PersistentMiniPlayer extends StatelessWidget {
                   IconButton(
                     tooltip: 'Close player',
                     onPressed: playback.dismiss,
-                    color: Colors.white54,
+                    color: secondary.withValues(alpha: 0.7),
                     icon: const Icon(Icons.close_rounded, size: 20),
                   ),
                 ],

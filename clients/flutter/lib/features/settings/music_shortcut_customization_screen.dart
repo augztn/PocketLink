@@ -4,21 +4,19 @@ import 'package:flutter/services.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
 
-class FloatingShortcutCustomizationScreen extends StatefulWidget {
-  const FloatingShortcutCustomizationScreen({super.key});
+class MusicShortcutCustomizationScreen extends StatefulWidget {
+  const MusicShortcutCustomizationScreen({super.key});
 
   @override
-  State<FloatingShortcutCustomizationScreen> createState() =>
-      _FloatingShortcutCustomizationScreenState();
+  State<MusicShortcutCustomizationScreen> createState() =>
+      _MusicShortcutCustomizationScreenState();
 }
 
-class _FloatingShortcutCustomizationScreenState
-    extends State<FloatingShortcutCustomizationScreen> {
+class _MusicShortcutCustomizationScreenState
+    extends State<MusicShortcutCustomizationScreen> {
   final _settings = AppSettings.instance;
-  late List<String> _shortcuts = List.of(_settings.floatingShortcuts);
+  late List<String> _shortcuts = List.of(_settings.musicButtonShortcuts);
   bool _saving = false;
-  late String _tapAction = _settings.floatingShortcutTapAction;
-  late bool _longPressEnabled = _settings.floatingShortcutLongPressEnabled;
 
   static const _details = <String, ({String label, String description, IconData icon})>{
     'explore': (label: 'Explore', description: 'Browse all destinations', icon: Icons.explore_rounded),
@@ -29,6 +27,7 @@ class _FloatingShortcutCustomizationScreenState
     'documents': (label: 'Documents', description: 'Browse PDFs and documents', icon: Icons.description_rounded),
     'favorites': (label: 'Favorites', description: 'Open favourite photos', icon: Icons.favorite_rounded),
     'upload': (label: 'Upload', description: 'Choose a file to upload', icon: Icons.cloud_upload_rounded),
+    'search': (label: 'Search', description: 'Search across your server files', icon: Icons.search_rounded),
   };
 
   void _toggle(String id, bool enabled) {
@@ -53,18 +52,16 @@ class _FloatingShortcutCustomizationScreenState
     if (_saving) return;
     setState(() => _saving = true);
     try {
-      await _settings.setFloatingShortcuts(_shortcuts);
-      await _settings.setFloatingShortcutTapAction(_tapAction);
-      await _settings.setFloatingShortcutLongPressEnabled(_longPressEnabled);
+      await _settings.setMusicButtonShortcuts(_shortcuts);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Floating shortcuts saved')),
+        const SnackBar(content: Text('Music shortcuts saved')),
       );
       Navigator.of(context).pop();
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not save floating shortcuts')),
+          const SnackBar(content: Text('Could not save Music shortcuts')),
         );
       }
     } finally {
@@ -74,22 +71,16 @@ class _FloatingShortcutCustomizationScreenState
 
   Future<void> _reset() async {
     try {
-      await _settings.resetFloatingShortcuts();
-      await _settings.setFloatingShortcutTapAction('menu');
-      await _settings.setFloatingShortcutLongPressEnabled(true);
+      await _settings.resetMusicButtonShortcuts();
       if (!mounted) return;
-      setState(() {
-        _shortcuts = List.of(AppSettings.floatingShortcutDefaults);
-        _tapAction = 'menu';
-        _longPressEnabled = true;
-      });
+      setState(() => _shortcuts = List.of(AppSettings.musicButtonShortcutDefaults));
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Floating button reset to defaults')),
+        const SnackBar(content: Text('Music shortcuts reset to defaults')),
       );
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not reset floating shortcuts')),
+          const SnackBar(content: Text('Could not reset Music shortcuts')),
         );
       }
     }
@@ -101,7 +92,7 @@ class _FloatingShortcutCustomizationScreenState
     final colors = theme.colorScheme;
     return Scaffold(
       appBar: PocketLinkAppBar(
-        title: const Text('Customize Floating Shortcuts'),
+        title: const Text('Music Shortcut Destinations'),
         actionsBeforeHome: [
           IconButton(
             tooltip: 'Save shortcuts',
@@ -115,10 +106,10 @@ class _FloatingShortcutCustomizationScreenState
       body: ListView(
         padding: EdgeInsets.fromLTRB(16, 12, 16, 28 + MediaQuery.paddingOf(context).bottom),
         children: [
-          Text('Pinned destinations', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+          Text('Destinations', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
           const SizedBox(height: 5),
           Text(
-            'Choose which destinations appear when the button expands. The first shortcut is used only in Open primary mode.',
+            'Choose and reorder the destinations shown when you hold the Music button.',
             style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
           ),
           const SizedBox(height: 12),
@@ -135,7 +126,7 @@ class _FloatingShortcutCustomizationScreenState
                 key: ValueKey(id),
                 leading: Icon(detail.icon, color: colors.primary),
                 title: Text(detail.label, style: const TextStyle(fontWeight: FontWeight.w700)),
-                subtitle: Text(index == 0 ? 'Primary · ${detail.description}' : detail.description),
+                subtitle: Text(index == 0 ? 'First in shortcut list · ${detail.description}' : detail.description),
                 trailing: ReorderableDelayedDragStartListener(
                   index: index,
                   child: const Padding(
@@ -145,26 +136,6 @@ class _FloatingShortcutCustomizationScreenState
                 ),
               );
             },
-          ),
-          const Divider(height: 24),
-          Text('Button behavior', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
-          const SizedBox(height: 8),
-          Text('Choose what a single tap does.', style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
-          const SizedBox(height: 8),
-          SegmentedButton<String>(
-            segments: const [
-              ButtonSegment(value: 'primary', label: Text('Open primary'), icon: Icon(Icons.open_in_new_rounded)),
-              ButtonSegment(value: 'menu', label: Text('Open all options'), icon: Icon(Icons.apps_rounded)),
-            ],
-            selected: {_tapAction},
-            onSelectionChanged: (value) => setState(() => _tapAction = value.first),
-          ),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Long-press shortcut menu'),
-            subtitle: const Text('Hold the button to expand pinned destinations'),
-            value: _longPressEnabled,
-            onChanged: (value) => setState(() => _longPressEnabled = value),
           ),
           const Divider(height: 24),
           Text('Available destinations', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
@@ -183,7 +154,7 @@ class _FloatingShortcutCustomizationScreenState
           OutlinedButton.icon(
             onPressed: _reset,
             icon: const Icon(Icons.restart_alt_rounded),
-            label: const Text('Reset FAB customization'),
+            label: const Text('Reset destinations'),
           ),
           const SizedBox(height: 8),
           FilledButton(

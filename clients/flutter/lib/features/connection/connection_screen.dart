@@ -339,23 +339,33 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     }
   }
 
-  InputDecoration _inputDecoration({required String hint, required IconData icon, Widget? suffixIcon}) {
-    const background = Color(0xFF161618);
+  InputDecoration _inputDecoration({
+    required String hint,
+    required IconData? icon,
+    Widget? suffixIcon,
+  }) {
+    final colors = Theme.of(context).colorScheme;
     final border = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
-      borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+      borderRadius: BorderRadius.circular(18),
+      borderSide: BorderSide(
+        color: colors.outlineVariant.withValues(alpha: 0.58),
+        width: 1,
+      ),
     );
     return InputDecoration(
       hintText: hint,
-      prefixIcon: Icon(icon, color: Colors.white60),
+      prefixIcon: icon == null
+          ? null
+          : Icon(icon, size: 19, color: colors.onSurfaceVariant),
+      prefixIconConstraints: const BoxConstraints(minWidth: 42, minHeight: 48),
       suffixIcon: suffixIcon,
       filled: true,
-      fillColor: background,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      fillColor: colors.surfaceContainerLow.withValues(alpha: 0.76),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
       border: border,
       enabledBorder: border,
       focusedBorder: border.copyWith(
-        borderSide: BorderSide(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.75)),
+        borderSide: const BorderSide(color: Color(0xFF536DFE), width: 1.2),
       ),
     );
   }
@@ -375,8 +385,13 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     final colors = Theme.of(context).colorScheme;
     final theme = Theme.of(context);
 
+    final media = MediaQuery.of(context);
+
     return Scaffold(
+      resizeToAvoidBottomInset: true,
+      extendBodyBehindAppBar: true,
       appBar: PocketLinkAppBar(
+        feathered: true,
         title: const Text('PocketLink'),
         showHome: false,
         actions: [
@@ -389,12 +404,19 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
           ),
         ],
       ),
-      body: SafeArea(
+      body: SingleChildScrollView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        padding: EdgeInsets.fromLTRB(
+          20,
+          media.padding.top + kToolbarHeight + 16,
+          20,
+          media.padding.bottom + 24,
+        ),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 520),
-            child: ListView(
-              padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (_profiles.isNotEmpty) ...[
                   Row(
@@ -434,7 +456,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                           decoration: BoxDecoration(
                             color: colors.surfaceContainerHighest,
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                            border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.62)),
                           ),
                           child: Text(_networkLabel(profile['address']!),
                             style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant)),
@@ -445,7 +467,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                         if (_connectingProfileId == profile['id'])
                           const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                         else
-                          const Icon(Icons.chevron_right_rounded, color: Colors.white54),
+                          Icon(Icons.chevron_right_rounded, color: colors.onSurfaceVariant),
                         PopupMenuButton<String>(
                           onSelected: (value) {
                             if (value == 'edit') _editProfile(profile);
@@ -491,18 +513,37 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(flex: 7, child: TextField(
-                      controller: _addressController,
-                      keyboardType: TextInputType.url,
-                      autocorrect: false,
-                      decoration: _inputDecoration(hint: 'Server address', icon: Icons.language),
-                    )),
+                    Expanded(
+                      child: TextField(
+                        controller: _addressController,
+                        keyboardType: TextInputType.url,
+                        autocorrect: false,
+                        decoration: _inputDecoration(
+                          hint: 'Server address',
+                          icon: Icons.language,
+                        ),
+                      ),
+                    ),
                     const SizedBox(width: 10),
-                    Expanded(flex: 3, child: TextField(
-                      controller: _portController,
-                      keyboardType: TextInputType.number,
-                      decoration: _inputDecoration(hint: 'Port', icon: Icons.settings_ethernet),
-                    )),
+                    SizedBox(
+                      width: 112,
+                      child: TextField(
+                        controller: _portController,
+                        keyboardType: TextInputType.number,
+                        textAlign: TextAlign.start,
+                        maxLength: 5,
+                        buildCounter: (
+                          context, {
+                          required currentLength,
+                          required isFocused,
+                          required maxLength,
+                        }) => null,
+                        decoration: _inputDecoration(
+                          hint: 'Port',
+                          icon: null,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -555,11 +596,12 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                 Card(
                   clipBehavior: Clip.antiAlias,
                   margin: EdgeInsets.zero,
-                  color: colors.surfaceContainerLow,
+                  color: colors.surfaceContainerLow.withValues(alpha: 0.76),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(18),
                     side: BorderSide(
-                      color: colors.outlineVariant.withValues(alpha: 0.45),
+                      color: colors.outlineVariant.withValues(alpha: 0.52),
+                      width: 1,
                     ),
                   ),
                   child: InkWell(

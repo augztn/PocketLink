@@ -13,6 +13,7 @@ import '../../core/network/server_api.dart';
 import '../../core/settings/app_settings.dart';
 import '../settings/video_player_settings_screen.dart';
 import 'persistent_audio_player.dart';
+import 'widgets/video_transport_button.dart';
 
 class MediaPlayerScreen extends StatefulWidget {
   const MediaPlayerScreen({
@@ -55,6 +56,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
   Timer? _sleepTimer;
   Timer? _videoControlsTimer;
   bool _showVideoControls = true;
+  bool _userExplicitlyHidVideoControls = false;
   bool _isVideoFullscreen = false;
   Uint8List? _coverBytes;
   String? _coverForTrack;
@@ -80,7 +82,6 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
         ? _persistent.currentIndex
         : widget.initialIndex.clamp(0, _queue.length - 1).toInt();
     if (widget.isVideo) _playbackRate = AppSettings.instance.videoDefaultSpeed;
-    _persistent.setFullScreen(true);
     _playlistSubscription = _player.stream.playlist.listen((playlist) {
       if (mounted && _queue.isNotEmpty) {
         final index = playlist.index.clamp(0, _queue.length - 1).toInt();
@@ -104,7 +105,9 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
         _scheduleVideoControlsHide();
       } else if (mounted && widget.isVideo) {
         _videoControlsTimer?.cancel();
-        if (!_showVideoControls) setState(() => _showVideoControls = true);
+        if (!_userExplicitlyHidVideoControls && !_showVideoControls) {
+          setState(() => _showVideoControls = true);
+        }
       }
     });
     unawaited(_loadArtwork(_queue[_currentIndex]));
@@ -544,16 +547,28 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
     if (!_player.state.playing || !_showVideoControls || !widget.isVideo) return;
     final timeout = AppSettings.instance.videoControlsTimeoutSeconds;
     if (timeout <= 0) return;
-    _videoControlsTimer = Timer(Duration(seconds: timeout), () {
-      if (mounted && _player.state.playing) {
-        setState(() => _showVideoControls = false);
-      }
-    });
+    _videoControlsTimer = Timer(
+      Duration(milliseconds: (timeout * 1000).round()),
+      () {
+        if (mounted && _player.state.playing && _showVideoControls) {
+          setState(() => _showVideoControls = false);
+        }
+      },
+    );
   }
 
   void _revealVideoControls() {
+    _userExplicitlyHidVideoControls = false;
     if (!_showVideoControls) setState(() => _showVideoControls = true);
     _scheduleVideoControlsHide();
+  }
+
+  void _toggleVideoControls() {
+    final show = !_showVideoControls;
+    _videoControlsTimer?.cancel();
+    _userExplicitlyHidVideoControls = !show;
+    setState(() => _showVideoControls = show);
+    if (show) _scheduleVideoControlsHide();
   }
 
   Future<void> _seekRelative(Duration offset) async {
@@ -684,7 +699,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
           InteractiveViewer(
             transformationController: _videoTransformController,
             minScale: 1,
-            maxScale: 4,
+            maxScale: 3,
             scaleEnabled: AppSettings.instance.videoPinchZoomEnabled,
             panEnabled: AppSettings.instance.videoPinchZoomEnabled,
             child: SizedBox.expand(
@@ -719,7 +734,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                         if (AppSettings.instance.videoTapToTogglePlayback) {
                           unawaited(_player.playOrPause());
                         }
-                        _revealVideoControls();
+                        _toggleVideoControls();
                       },
                       onDoubleTapDown: AppSettings.instance.videoGesturesEnabled
                           ? (details) {
@@ -800,10 +815,17 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                 ),
               ),
             ),
-          if (_showVideoControls)
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
+          Positioned.fill(
+            child: IgnorePointer(
+              ignoring: !_showVideoControls,
+              child: AnimatedOpacity(
+                opacity: _showVideoControls ? 1 : 0,
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+                child: Listener(
+                  onPointerDown: (_) => _scheduleVideoControlsHide(),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
@@ -941,17 +963,19 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                         return Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            IconButton(
+                            VideoTransportButton(
                               tooltip: 'Previous video',
+                              icon: Icons.skip_previous_rounded,
                               onPressed: _queue.length > 1 ? _player.previous : null,
-                              icon: const Icon(Icons.skip_previous_rounded, color: Colors.white, size: 32),
                             ),
-                            IconButton(
+                            const SizedBox(width: 16),
+                            VideoTransportButton(
                               tooltip: 'Back 10 seconds',
+                              icon: Icons.replay_10_rounded,
+                              iconSize: 28,
                               onPressed: () => _seekRelative(Duration(seconds: -AppSettings.instance.videoSeekSeconds)),
-                              icon: const Icon(Icons.replay_10_rounded, color: Colors.white, size: 38),
                             ),
-                            const SizedBox(width: 10),
+                            const SizedBox(width: 16),
                             IconButton.filled(
                               tooltip: playing ? 'Pause' : 'Play',
                               onPressed: () async {
@@ -966,16 +990,18 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                               iconSize: 36,
                               icon: Icon(playing ? Icons.pause_rounded : Icons.play_arrow_rounded),
                             ),
-                            const SizedBox(width: 10),
-                            IconButton(
+                            const SizedBox(width: 16),
+                            VideoTransportButton(
                               tooltip: 'Forward 10 seconds',
+                              icon: Icons.forward_10_rounded,
+                              iconSize: 28,
                               onPressed: () => _seekRelative(Duration(seconds: AppSettings.instance.videoSeekSeconds)),
-                              icon: const Icon(Icons.forward_10_rounded, color: Colors.white, size: 38),
                             ),
-                            IconButton(
+                            const SizedBox(width: 16),
+                            VideoTransportButton(
                               tooltip: 'Next video',
+                              icon: Icons.skip_next_rounded,
                               onPressed: _queue.length > 1 ? _player.next : null,
-                              icon: const Icon(Icons.skip_next_rounded, color: Colors.white, size: 32),
                             ),
                           ],
                         );
@@ -1011,9 +1037,14 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                                       min: 0,
                                       max: maximum,
                                       value: current,
+                                      onChangeStart: (_) => _revealVideoControls(),
                                       onChanged: duration > Duration.zero
-                                          ? (value) => _player.seek(Duration(milliseconds: value.round()))
+                                          ? (value) {
+                                              _revealVideoControls();
+                                              _player.seek(Duration(milliseconds: value.round()));
+                                            }
                                           : null,
+                                      onChangeEnd: (_) => _revealVideoControls(),
                                     ),
                                   ),
                                   Row(
@@ -1031,9 +1062,12 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                       },
                     ),
                   ],
+                  ),
                 ),
               ),
             ),
+          ),
+        ),
         ],
       ),
     );

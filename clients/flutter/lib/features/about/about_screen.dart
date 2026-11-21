@@ -71,6 +71,7 @@ class _AboutScreenState extends State<AboutScreen> {
             : Platform.operatingSystem;
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: const PocketLinkAppBar(title: Text('About PocketLink')),
       body: FutureBuilder<PackageInfo>(
         future: _packageInfo,
@@ -85,7 +86,10 @@ class _AboutScreenState extends State<AboutScreen> {
 
           return ListView(
             padding: EdgeInsets.fromLTRB(
-              18, 20, 18, 32 + MediaQuery.paddingOf(context).bottom,
+              18,
+              MediaQuery.paddingOf(context).top + kToolbarHeight + 20,
+              18,
+              32 + MediaQuery.paddingOf(context).bottom,
             ),
             children: [
               Container(

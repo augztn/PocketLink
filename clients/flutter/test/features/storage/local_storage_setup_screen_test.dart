@@ -107,7 +107,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.text('Overview'), findsOneWidget);
+    expect(find.text('Device'), findsOneWidget);
+    expect(find.text('Security'), findsOneWidget);
     expect(find.text('Host PocketLink on this device'), findsOneWidget);
     expect(find.text('Host status'), findsOneWidget);
     expect(find.text('Android storage bridge'), findsOneWidget);
@@ -137,5 +139,39 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('test-token'), findsOneWidget);
     expect(find.text('Device permissions'), findsNothing);
+  });
+
+  testWidgets('Host glass dock stays bottom anchored and Home is in the menu',
+      (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: LocalStorageSetupScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    final dock = find.byKey(const ValueKey<String>('host-section-dock'));
+    expect(dock, findsOneWidget);
+    expect(find.byTooltip('Back'), findsOneWidget);
+    expect(find.byTooltip('Home'), findsNothing);
+
+    final scaffold = tester.widget<Scaffold>(find.byType(Scaffold).first);
+    expect(scaffold.extendBody, isTrue);
+    expect(scaffold.bottomNavigationBar, isNotNull);
+
+    final dockRect = tester.getRect(dock);
+    final scaffoldRect = tester.getRect(find.byWidget(scaffold));
+    final bottomNavigationBar =
+        tester.getRect(find.byWidget(scaffold.bottomNavigationBar!));
+    // Assert the navigation slot reaches the Scaffold's bottom edge and the
+    // dock respects its configured bottom inset. Avoid assuming a particular
+    // test viewport size or platform system-bar inset.
+    expect(scaffoldRect.bottom - bottomNavigationBar.bottom, closeTo(0, 1));
+    expect(
+      bottomNavigationBar.bottom - dockRect.bottom,
+      closeTo(MediaQuery.paddingOf(tester.element(dock)).bottom + 12, 1),
+    );
+
+    await tester.tap(find.byTooltip('More actions'));
+    await tester.pumpAndSettle();
+    expect(find.text('Return to Client / Home'), findsOneWidget);
   });
 }
