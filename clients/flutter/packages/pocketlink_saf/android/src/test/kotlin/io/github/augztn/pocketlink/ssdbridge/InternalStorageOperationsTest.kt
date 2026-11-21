@@ -93,6 +93,6 @@ class InternalStorageOperationsTest {
 
     private fun isValidName(value: String): Boolean =
         value.isNotBlank() && value != "." && value != ".." &&
-            !value.startsWith(".") && !value.contains('/') && !value.contains('\\\\') &&
+            !value.startsWith(".") && !value.contains('/') && !value.contains('\\') &&
             !value.any { it.code < 32 }
 }
