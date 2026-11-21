@@ -78,7 +78,7 @@ class _SequenceAdapter implements HttpClientAdapter {
     final index = requests++;
     active++;
     if (active > maxActive) maxActive = active;
-    await Future<void>.delayed(const Duration(milliseconds: 40));
+    if (delay > Duration.zero) await Future<void>.delayed(delay);
     active--;
     final status = statuses[index.clamp(0, statuses.length - 1)];
     return ResponseBody.fromString(
