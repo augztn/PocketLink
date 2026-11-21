@@ -88,9 +88,7 @@ void main() {
     ));
 
     expect(find.text('Password not set'), findsOneWidget);
-    expect(tester.widget<IconButton>(
-      find.byTooltip('Refresh host status'),
-    ).onPressed, isNull);
+    expect(tester.widgetList<IconButton>(find.byType(IconButton)).single.onPressed, isNull);
     await tester.tap(find.byTooltip('Refresh host status'));
     expect(refreshCalls, 0);
   });
