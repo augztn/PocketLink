@@ -8,7 +8,6 @@ import '../../core/navigation/pocketlink_navigation.dart';
 import '../../core/network/server_api.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
-import '../../core/widgets/liquid_glass_pill.dart';
 import 'global_mini_player_bar.dart';
 import 'now_playing_screen.dart';
 import 'persistent_audio_player.dart';
