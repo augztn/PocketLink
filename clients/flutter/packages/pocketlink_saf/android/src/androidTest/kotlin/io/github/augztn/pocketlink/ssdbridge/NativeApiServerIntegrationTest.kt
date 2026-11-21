@@ -162,6 +162,11 @@ class NativeApiServerIntegrationTest {
         server.start(30_000, false)
         try {
             val port = server.listeningPort
+            File(root, "listed.txt").writeText("route-dispatch-check")
+            val listing = request(port, "/api/files/", authorization)
+            assertEquals(200, listing.first)
+            assertTrue("Internal file listing route was not dispatched", listing.second.contains("listed.txt"))
+
             val protectedUpload = File(root, "protected.txt").apply { writeText("original-upload") }
             val rejectedUpload = request(
                 port,
