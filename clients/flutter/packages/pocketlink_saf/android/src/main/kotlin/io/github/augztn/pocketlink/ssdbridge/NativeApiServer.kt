@@ -63,6 +63,14 @@ internal class NativeApiServer(
         )
     }
     private val mediaIndex by mediaIndexDelegate
+    private val mediaIndexRoutes by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        MediaIndexApiRoutes(
+            mediaIndex,
+            jsonResponse = { value -> json(value) },
+            badRequest = { message -> bad(message) },
+            formatDate = { timestamp -> isoDate(timestamp) }
+        )
+    }
 
     private fun markMediaIndexDirty() {
         if (mediaIndexDelegate.isInitialized()) mediaIndex.markDirty()
@@ -125,6 +133,9 @@ internal class NativeApiServer(
         return try {
             val query = session.parameters.mapValues { (_, values) -> values.firstOrNull().orEmpty() }
             val path = query["path"].orEmpty()
+            if (session.uri.startsWith("/api/index/")) {
+                mediaIndexRoutes.serve(session, query)?.let { return it }
+            }
             when {
                 session.uri == "/api/files/" && session.method == Method.GET ->
                     listInternal(path)
@@ -154,72 +165,6 @@ internal class NativeApiServer(
                     mutateExternal(session, "rename")
                 session.uri == "/api/storage/item" && session.method == Method.DELETE ->
                     deleteExternal(query["volume"], path)
-                session.uri == "/api/index/status" && session.method == Method.GET -> {
-                    mediaIndex.ensureStarted()
-                    json(mediaIndex.status())
-                }
-                session.uri == "/api/index/settings" && session.method == Method.GET ->
-                    json(org.json.JSONObject(mediaIndex.automaticSettings().toString()))
-                session.uri == "/api/index/settings" && session.method == Method.POST -> {
-                    val enabled = query["enabled"]?.toBooleanStrictOrNull()
-                        ?: return bad("A valid automatic scanning enabled value is required")
-                    val interval = query["interval_minutes"]?.toIntOrNull()
-                        ?: return bad("A valid scan interval is required")
-                    if (interval !in 15..1440) return bad("Scan interval must be between 15 and 1440 minutes")
-                    val current = mediaIndex.automaticSettings()
-                    val scanOnStartup = query["scan_on_startup"]?.toBooleanStrictOrNull()
-                        ?: current.optBoolean("scan_on_startup", true)
-                    val scanOnStorageChange = query["scan_on_storage_change"]?.toBooleanStrictOrNull()
-                        ?: current.optBoolean("scan_on_storage_change", true)
-                    json(org.json.JSONObject(mediaIndex.configureAutomaticScanning(
-                        enabled, interval, scanOnStartup, scanOnStorageChange
-                    ).toString()))
-                }
-                session.uri == "/api/index/retry" && session.method == Method.POST -> {
-                    mediaIndex.retryFailedScan()
-                    json(mediaIndex.status())
-                }
-                session.uri == "/api/index/scan" && session.method == Method.POST -> {
-                    mediaIndex.requestScan(force = true, trigger = "manual")
-                    json(mediaIndex.status())
-                }
-                session.uri == "/api/index/media" && session.method == Method.GET -> {
-                    mediaIndex.ensureStarted()
-                    val category = query["category"]?.takeIf { it in setOf("music", "video", "photo") }
-                        ?: return bad("Invalid media category")
-                    val limit = query["limit"]?.toIntOrNull()?.coerceIn(1, 500) ?: 100
-                    val offset = query["offset"]?.toIntOrNull()?.coerceAtLeast(0) ?: 0
-                    val items = JSONArray()
-                    mediaIndex.media(category, query["q"].orEmpty(), limit, offset).forEach { item ->
-                        items.put(JSONObject()
-                            .put("volume", item.volume)
-                            .put("path", item.path)
-                            .put("name", item.name)
-                            .put("type", item.type)
-                            .put("size", item.size)
-                            .put("modified", isoDate(item.modified))
-                            .put("mime", item.mime)
-                            .put("category", item.category))
-                    }
-                    json(JSONObject().put("items", items).put("status", mediaIndex.status()))
-                }
-                session.uri == "/api/index/files" && session.method == Method.GET -> {
-                    mediaIndex.ensureStarted()
-                    val limit = query["limit"]?.toIntOrNull()?.coerceIn(1, 500) ?: 100
-                    val offset = query["offset"]?.toIntOrNull()?.coerceAtLeast(0) ?: 0
-                    val items = JSONArray()
-                    mediaIndex.files(query["q"].orEmpty(), limit, offset).forEach { item ->
-                        items.put(JSONObject()
-                            .put("volume", item.volume)
-                            .put("path", item.path)
-                            .put("name", item.name)
-                            .put("type", item.type)
-                            .put("size", item.size)
-                            .put("modified", isoDate(item.modified))
-                            .put("mime", item.mime))
-                    }
-                    json(JSONObject().put("items", items).put("status", mediaIndex.status()))
-                }
                 session.uri == "/api/media/metadata" && session.method == Method.GET ->
                     videoMetadata(query["volume"], path)
                 session.uri == "/api/media/thumbnail" && session.method == Method.GET ->
