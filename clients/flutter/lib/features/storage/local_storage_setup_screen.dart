@@ -41,6 +41,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
   String? _token;
   final _serverPasswordController = TextEditingController();
   bool _serverPasswordConfigured = false;
+  bool _autoStartOnBoot = false;
   bool _obscureServerPassword = true;
   bool _obscureBridgeToken = true;
   bool _refreshingStatus = false;
@@ -85,6 +86,8 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
     try {
       final status = await _channel.invokeMapMethod<String, dynamic>('status');
       final token = await _channel.invokeMethod<String>('token');
+      final autoStartOnBoot =
+          await _channel.invokeMethod<bool>('getAutoStartOnBoot') ?? false;
       final scanStatusRaw = await _channel.invokeMethod<String>('mediaIndexStatus');
       final scanStatus = scanStatusRaw == null
           ? const <String, dynamic>{}
@@ -97,6 +100,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
         _discoveredVolumes = (status?['discoveredVolumes'] as List<dynamic>? ?? const [])
             .whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList();
         _token = token;
+        _autoStartOnBoot = autoStartOnBoot;
         _mediaScanStatus = scanStatus;
         _scanningMedia = scanStatus['state'] == 'scanning';
         _serverPasswordConfigured = status?['serverPasswordConfigured'] == true;
@@ -263,6 +267,30 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
     );
   }
 
+  Future<void> _setAutoStartOnBoot(bool enabled) async {
+    final previous = _autoStartOnBoot;
+    setState(() {
+      _autoStartOnBoot = enabled;
+      _error = null;
+    });
+    try {
+      await _channel.invokeMethod<bool>(
+        'setAutoStartOnBoot',
+        {'enabled': enabled},
+      );
+    } on PlatformException catch (error) {
+      if (mounted) {
+        setState(() {
+          _autoStartOnBoot = previous;
+          _error = error.message ??
+              'Could not save the automatic startup preference.';
+        });
+      }
+    } finally {
+      if (mounted) setState(() {});
+    }
+  }
+
   Future<void> _requestBackgroundAccess() async {
     setState(() { _busy = true; _error = null; });
     try {
@@ -421,6 +449,27 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
         busy: _busy,
         statusCheckedLabel: statusCheckedLabel(),
         onRefresh: _refreshDeviceStatus,
+      ),
+      const SizedBox(height: 14),
+      Material(
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(
+            color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.35),
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: SwitchListTile(
+          secondary: const Icon(Icons.restart_alt_rounded),
+          title: const Text('Start server on device boot'),
+          subtitle: const Text(
+            'Automatically start PocketLink after this phone restarts. '
+            'Android or device battery settings may restrict background startup.',
+          ),
+          value: _autoStartOnBoot,
+          onChanged: _statusLoaded && !_busy ? _setAutoStartOnBoot : null,
+        ),
       ),
       const SizedBox(height: 14),
       HostQuickActionsCard(
