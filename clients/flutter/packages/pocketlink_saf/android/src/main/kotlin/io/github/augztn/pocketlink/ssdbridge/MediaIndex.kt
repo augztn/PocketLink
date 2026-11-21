@@ -968,19 +968,15 @@ internal class MediaIndexScanner(
 
     /** Stop accepting scans and close SQLite only after the worker has exited. */
     fun close() {
-        synchronized(this) {
-            if (closeRequested.compareAndSet(false, true)) {
-                dirty.set(false)
-                queuedTrigger = null
-                executor.shutdownNow()
-            }
+        val pendingTasks = synchronized(this) {
+            if (!closeRequested.compareAndSet(false, true)) return
+            dirty.set(false)
+            queuedTrigger = null
+            executor.shutdownNow()
         }
-        try {
-            executor.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS)
-        } catch (_: InterruptedException) {
-            Thread.currentThread().interrupt()
-        }
-        if (executor.isTerminated) closeDatabase()
+        // A queued scan never started, so no worker can run its finally block.
+        // An active scan closes the database itself when its cancellation check exits.
+        if (pendingTasks.isNotEmpty() || !running.get()) closeDatabase()
     }
 
     private fun closeDatabase() {
