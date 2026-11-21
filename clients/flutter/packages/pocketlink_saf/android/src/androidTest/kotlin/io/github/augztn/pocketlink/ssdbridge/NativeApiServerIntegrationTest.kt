@@ -96,7 +96,7 @@ class NativeApiServerIntegrationTest {
         )
         val access = ExternalStorageAccess(appContext, preferences) { name ->
             name.isNotBlank() && name != "." && name != ".." &&
-                !name.startsWith(".") && !name.contains('/') && !name.contains('\\\\') &&
+                !name.startsWith(".") && !name.contains('/') && !name.contains('\\') &&
                 !name.any { it.code < 32 }
         }
 
