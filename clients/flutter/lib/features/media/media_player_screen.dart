@@ -14,6 +14,7 @@ import '../../core/network/server_api.dart';
 import '../../core/settings/app_settings.dart';
 import '../settings/video_player_settings_screen.dart';
 import 'persistent_audio_player.dart';
+import 'widgets/video_transport_button.dart';
 
 class MediaPlayerScreen extends StatefulWidget {
   const MediaPlayerScreen({
@@ -963,13 +964,13 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                         return Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            _videoTransportButton(
+                            VideoTransportButton(
                               tooltip: 'Previous video',
                               icon: Icons.skip_previous_rounded,
                               onPressed: _queue.length > 1 ? _player.previous : null,
                             ),
                             const SizedBox(width: 16),
-                            _videoTransportButton(
+                            VideoTransportButton(
                               tooltip: 'Back 10 seconds',
                               icon: Icons.replay_10_rounded,
                               iconSize: 28,
@@ -991,14 +992,14 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                               icon: Icon(playing ? Icons.pause_rounded : Icons.play_arrow_rounded),
                             ),
                             const SizedBox(width: 16),
-                            _videoTransportButton(
+                            VideoTransportButton(
                               tooltip: 'Forward 10 seconds',
                               icon: Icons.forward_10_rounded,
                               iconSize: 28,
                               onPressed: () => _seekRelative(Duration(seconds: AppSettings.instance.videoSeekSeconds)),
                             ),
                             const SizedBox(width: 16),
-                            _videoTransportButton(
+                            VideoTransportButton(
                               tooltip: 'Next video',
                               icon: Icons.skip_next_rounded,
                               onPressed: _queue.length > 1 ? _player.next : null,
@@ -1076,29 +1077,6 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
     return ClipRRect(
       borderRadius: BorderRadius.circular(18),
       child: AspectRatio(aspectRatio: 16 / 9, child: surface),
-    );
-  }
-
-  Widget _videoTransportButton({
-    required String tooltip,
-    required IconData icon,
-    required VoidCallback? onPressed,
-    double iconSize = 26,
-  }) {
-    return SizedBox.square(
-      dimension: 44,
-      child: SmokedGlassSurface(
-        radius: BorderRadius.circular(22),
-        child: IconButton(
-          tooltip: tooltip,
-          onPressed: onPressed,
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints.tightFor(width: 44, height: 44),
-          iconSize: iconSize,
-          color: Colors.white,
-          icon: Icon(icon),
-        ),
-      ),
     );
   }
 
