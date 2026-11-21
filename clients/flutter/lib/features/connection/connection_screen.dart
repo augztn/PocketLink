@@ -279,7 +279,10 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       if (!authenticated) connectingApi?.close(force: true);
     }
 
-    if (!mounted) return;
+    if (!mounted) {
+      connectingApi?.close(force: true);
+      return;
+    }
     final api = connectingApi!;
     final id = _profileId(address, username);
     final profile = {
@@ -319,7 +322,10 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       }
     }
 
-    if (!mounted) return;
+    if (!mounted) {
+      api.close(force: true);
+      return;
+    }
     setState(() {});
     try {
       await Navigator.of(context).push(
