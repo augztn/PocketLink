@@ -68,6 +68,7 @@ void main() {
   group('MediaLibraryCatalog path and volume selection', () {
     final items = [
       media('Music/Albums/One/a.mp3'),
+      media('Music/Albums/readme.mp3'),
       media('Music/Albums/Two/b.mp3'),
       media('Music/Albums/One/c.mp3', volume: 'usb1'),
       media('Music/Albums/One/nested/d.mp3'),
@@ -83,7 +84,7 @@ void main() {
 
       expect(
         catalog.filesAtCurrentLevel(items).map((item) => item.path),
-        isEmpty,
+        ['Music/Albums/readme.mp3'],
       );
       expect(
         catalog.foldersAtCurrentLevel(items).map((folder) => folder.name),
