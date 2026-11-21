@@ -131,6 +131,7 @@ class BridgeService : Service() {
 
     private fun stopServers() {
         try { apiServer?.stop() } catch (_: Exception) { }
+        try { apiServer?.closeMediaIndex() } catch (_: Exception) { }
         try { bridgeServer?.stop() } catch (_: Exception) { }
         apiServer?.let { if (activeApiServer === it) activeApiServer = null }
         apiServer = null
