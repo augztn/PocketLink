@@ -2,6 +2,7 @@ package io.github.augztn.pocketlink.ssdbridge
 
 import android.content.Context
 import android.os.SystemClock
+import androidx.documentfile.provider.DocumentFile
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
@@ -12,6 +13,58 @@ import java.io.File
 
 @RunWith(AndroidJUnit4::class)
 class MediaIndexScannerTest {
+    @Test
+    fun emptyExternalDirectoryListingRetainsPreviouslyIndexedMedia() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        context.deleteDatabase("pocketlink_index.db")
+        context.getSharedPreferences("media-index-report", Context.MODE_PRIVATE).edit()
+            .clear()
+            .putBoolean("automatic_scanning_enabled", false)
+            .putBoolean("scan_on_startup", false)
+            .putBoolean("scan_on_storage_change", false)
+            .commit()
+        val internalRoot = File(context.cacheDir, "media-index-empty-internal").apply {
+            deleteRecursively()
+            mkdirs()
+        }
+        val externalRoot = File(context.cacheDir, "media-index-empty-external").apply {
+            deleteRecursively()
+            mkdirs()
+        }
+        val music = File(externalRoot, "Music").apply { mkdirs() }
+        val track = File(music, "track.mp3").apply { writeBytes(byteArrayOf(1, 2, 3)) }
+        val scanner = MediaIndexScanner(
+            context,
+            { internalRoot },
+            { listOf("usb-test" to DocumentFile.fromFile(externalRoot)) }
+        )
+        try {
+            scanner.requestScan(force = true)
+            val first = awaitFinished(scanner)
+            assertEquals("complete", first.getString("state"))
+            assertEquals(1, first.getInt("music_count"))
+
+            assertTrue(track.delete())
+            SystemClock.sleep(5)
+            scanner.requestScan(force = true)
+            val second = awaitFinished(scanner, first.getLong("last_scan_started_at"))
+            assertEquals("partial", second.getString("state"))
+            assertEquals("Previously indexed media must not be pruned after an empty SAF listing", 1, second.getInt("music_count"))
+            assertTrue(
+                (0 until second.getJSONArray("skipped_items").length()).any { index ->
+                    second.getJSONArray("skipped_items").getJSONObject(index)
+                        .getString("reason").contains("empty listing")
+                }
+            )
+        } finally {
+            scanner.close()
+            internalRoot.deleteRecursively()
+            externalRoot.deleteRecursively()
+            context.deleteDatabase("pocketlink_index.db")
+            context.getSharedPreferences("media-index-report", Context.MODE_PRIVATE).edit().clear().commit()
+        }
+    }
+
     @Test
     fun emptyProviderListingRetainsPreviouslyIndexedDescendants() {
         val indexed = setOf("Music", "Music/track.mp3", "Music/Live/set.flac", "Pictures")
