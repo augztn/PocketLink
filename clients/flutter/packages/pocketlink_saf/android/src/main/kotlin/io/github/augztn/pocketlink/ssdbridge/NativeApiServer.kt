@@ -63,7 +63,7 @@ internal class NativeApiServer(
         )
     }
     private val mediaIndex by mediaIndexDelegate
-    private val mediaIndexRoutes by lazy(LazyThreadSafetyMode.NONE) {
+    private val mediaIndexRoutes by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
         MediaIndexApiRoutes(
             mediaIndex,
             jsonResponse = { value -> json(value) },
