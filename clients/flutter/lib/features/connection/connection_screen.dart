@@ -286,11 +286,11 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       }
       return;
     } finally {
-      if (!authenticated) api.close(force: true);
+      if (!authenticated) api.close();
     }
 
     if (!mounted) {
-      api.close(force: true);
+      api.close();
       return;
     }
     final id = _profileId(address, username);
@@ -332,7 +332,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     }
 
     if (!mounted) {
-      api.close(force: true);
+      api.close();
       return;
     }
     setState(() {});
