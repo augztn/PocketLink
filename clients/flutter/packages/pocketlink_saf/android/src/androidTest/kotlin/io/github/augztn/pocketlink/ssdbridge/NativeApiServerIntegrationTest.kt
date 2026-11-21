@@ -105,7 +105,7 @@ class NativeApiServerIntegrationTest {
             val port = server.listeningPort
             val settings = request(port, "/api/index/settings", authorization)
             assertEquals(200, settings.first)
-            assertTrue(settings.second.contains("\\\"interval_minutes\\\""))
+            assertTrue(settings.second.contains("\"interval_minutes\""))
 
             val invalidInterval = request(
                 port,
@@ -123,10 +123,10 @@ class NativeApiServerIntegrationTest {
                 method = "POST"
             )
             assertEquals(200, updated.first)
-            assertTrue(updated.second.contains("\\\"enabled\\\":false"))
-            assertTrue(updated.second.contains("\\\"interval_minutes\\\":60"))
-            assertTrue(updated.second.contains("\\\"scan_on_startup\\\":false"))
-            assertTrue(updated.second.contains("\\\"scan_on_storage_change\\\":false"))
+            assertTrue(updated.second.contains("\"enabled\":false"))
+            assertTrue(updated.second.contains("\"interval_minutes\":60"))
+            assertTrue(updated.second.contains("\"scan_on_startup\":false"))
+            assertTrue(updated.second.contains("\"scan_on_storage_change\":false"))
         } finally {
             server.closeMediaIndex()
             server.stop()
@@ -134,6 +134,8 @@ class NativeApiServerIntegrationTest {
             context.getSharedPreferences("index-route-test-ssd-bridge", Context.MODE_PRIVATE)
                 .edit().clear().commit()
             context.getSharedPreferences("index-route-test-pocketlink-auth", Context.MODE_PRIVATE)
+                .edit().clear().commit()
+            context.getSharedPreferences("index-route-test-media-index-report", Context.MODE_PRIVATE)
                 .edit().clear().commit()
         }
     }
