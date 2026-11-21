@@ -8,7 +8,7 @@ import '../../core/navigation/pocketlink_navigation.dart';
 import '../../core/network/server_api.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
-import '../../core/widgets/liquid_glass_pill.dart';
+import 'global_mini_player_bar.dart';
 import 'now_playing_screen.dart';
 import 'persistent_audio_player.dart';
 import 'now_playing_overlay_controller.dart';
@@ -727,109 +727,30 @@ class _GlobalMiniPlayerBar extends StatelessWidget {
     final item = player.currentItem;
     if (item == null) return const SizedBox.shrink();
 
-    final colors = Theme.of(context).colorScheme;
-    final isLight = Theme.of(context).brightness == Brightness.light;
-    final foreground = isLight ? const Color(0xFF0F172A) : colors.onSurface;
-    final secondaryForeground = isLight ? const Color(0xFF475569) : colors.onSurfaceVariant;
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Padding(
-        // Same horizontal footprint as the Home / Explore / Files capsule.
-        padding: const EdgeInsets.fromLTRB(14, 4, 88, 0),
-        child: SmokedGlassSurface(
-          key: PocketLinkNavigation.miniPlayerKey,
-          radius: BorderRadius.circular(22),
-          child: AnimatedOpacity(
-            opacity: visible ? 1 : 0,
-            duration: reduceMotion
-                ? Duration.zero
-                : const Duration(milliseconds: 220),
-            curve: Curves.easeOut,
-            child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onVerticalDragEnd: (details) {
-              final velocity = details.primaryVelocity ?? 0;
-              if (!player.isPlaying && velocity > 300) onDismiss();
-            },
-            child: Material(
-              type: MaterialType.transparency,
-              borderRadius: BorderRadius.circular(22),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(22),
-                onTap: onOpen,
-                child: SizedBox(
-                height: 58,
-                child: Row(
-                  children: [
-                    const SizedBox(width: 12),
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: colors.primary.withValues(alpha: 0.14),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        Icons.graphic_eq_rounded,
-                        color: colors.primary,
-                        size: 21,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            item.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                                  color: foreground,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                          ),
-                          Text(
-                            'NOW PLAYING',
-                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                  fontSize: 8,
-                                  letterSpacing: 1.0,
-                                  color: secondaryForeground,
-                                ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    StreamBuilder<bool>(
-                      stream: player.player.stream.playing,
-                      initialData: player.player.state.playing,
-                      builder: (context, snapshot) => IconButton(
-                        tooltip: (snapshot.data ?? false) ? 'Pause' : 'Play',
-                        visualDensity: VisualDensity.compact,
-                        onPressed: player.togglePlayback,
-                        color: foreground,
-                        icon: Icon(
-                          (snapshot.data ?? false)
-                              ? Icons.pause_rounded
-                              : Icons.play_arrow_rounded,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: 'Next track',
-                      visualDensity: VisualDensity.compact,
-                      onPressed: player.skipToNext,
-                      color: foreground,
-                      icon: const Icon(Icons.skip_next_rounded),
-                    ),
-                    const SizedBox(width: 4),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          ),
+    return StreamBuilder<bool>(
+      stream: player.player.stream.playing,
+      initialData: player.player.state.playing,
+      builder: (context, playingSnapshot) => StreamBuilder<Duration>(
+        stream: player.player.stream.position,
+        initialData: player.player.state.position,
+        builder: (context, positionSnapshot) => StreamBuilder<Duration>(
+          stream: player.player.stream.duration,
+          initialData: player.player.state.duration,
+          builder: (context, durationSnapshot) => GlobalMiniPlayerBar(
+            item: item,
+            visible: visible,
+            reduceMotion: reduceMotion,
+            isPlaying: playingSnapshot.data ?? false,
+            position: positionSnapshot.data ?? Duration.zero,
+            duration: durationSnapshot.data ?? Duration.zero,
+            canSkipPrevious: player.queue.length > 1,
+            canSkipNext: player.queue.length > 1,
+            onOpen: onOpen,
+            onDismiss: onDismiss,
+            onTogglePlayback: player.togglePlayback,
+            onSkipPrevious: player.skipToPrevious,
+            onSkipNext: player.skipToNext,
+            surfaceKey: PocketLinkNavigation.miniPlayerKey,
           ),
         ),
       ),
