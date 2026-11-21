@@ -111,11 +111,19 @@ void main() {
     );
 
     expect(
-      tester.widget<IconButton>(find.byTooltip('Previous track')).onPressed,
+      tester.widget<IconButton>(
+        find.byWidgetPredicate(
+          (widget) => widget is IconButton && widget.tooltip == 'Previous track',
+        ),
+      ).onPressed,
       isNull,
     );
     expect(
-      tester.widget<IconButton>(find.byTooltip('Next track')).onPressed,
+      tester.widget<IconButton>(
+        find.byWidgetPredicate(
+          (widget) => widget is IconButton && widget.tooltip == 'Next track',
+        ),
+      ).onPressed,
       isNull,
     );
 
