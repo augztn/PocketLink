@@ -24,6 +24,12 @@ internal data class IndexStamp(val size: Long, val modified: Long, val category:
 
 internal data class SkippedIndexItem(val volume: String, val path: String, val reason: String)
 
+/** True when a previously indexed descendant would be lost by accepting an empty listing. */
+internal fun hasIndexedDescendants(indexedPaths: Set<String>, parentPath: String): Boolean {
+    val prefix = if (parentPath.isEmpty()) "" else "$parentPath/"
+    return indexedPaths.any { it.startsWith(prefix) && it != parentPath }
+}
+
 private val AUDIO_EXTENSIONS = setOf("mp3", "flac", "m4a", "wav", "ogg", "aac", "opus", "wma")
 private val VIDEO_EXTENSIONS = setOf("mp4", "mkv", "webm", "mov", "avi", "m4v", "3gp", "ts")
 private val PHOTO_EXTENSIONS = setOf("jpg", "jpeg", "png", "webp", "gif", "bmp", "heic", "heif", "tif", "tiff", "avif")
@@ -279,6 +285,8 @@ internal class MediaIndexScanner(
     }
     private val running = AtomicBoolean(false)
     private val dirty = AtomicBoolean(false)
+    private val closeRequested = AtomicBoolean(false)
+    private val databaseClosed = AtomicBoolean(false)
     @Volatile private var started = false
     @Volatile private var lastAttemptStartedAt = reportPrefs.getLong(
         "last_attempt_started_at", readScanHistory().optJSONObject(0)?.optLong("started_at") ?: 0L
@@ -322,7 +330,7 @@ internal class MediaIndexScanner(
         val previous = readScanHistory().optJSONObject(0)?.optJSONArray("volumes")
         if (previous != null) for (index in 0 until previous.length()) {
             val item = previous.optJSONObject(index) ?: continue
-            put(item.optString("volume"), item)
+            put(item.optString("volume"), org.json.JSONObject(item.toString()))
         }
     }
     @Volatile private var currentSource: String? = null
@@ -337,8 +345,9 @@ internal class MediaIndexScanner(
 
     init {
         disconnectedVolumes.forEach { volume ->
-            volumeReports[volume]?.let { report ->
-                report.put("state", "unavailable")
+            volumeReports[volume]?.let { previous ->
+                volumeReports[volume] = org.json.JSONObject(previous.toString())
+                    .put("state", "unavailable")
                     .put("stale", true)
                     .put("error", "Storage volume disconnected; indexed content is retained")
             }
@@ -362,6 +371,7 @@ internal class MediaIndexScanner(
     }
 
     fun ensureStarted() {
+        if (closeRequested.get()) return
         if (!started) {
             started = true
             if (automaticScanningEnabled() && reportPrefs.getBoolean("scan_on_startup", true)) {
@@ -441,9 +451,12 @@ internal class MediaIndexScanner(
             disconnectedVolumes.addAll(externalIds)
             reportPrefs.edit().putStringSet("disconnected_volumes", disconnectedVolumes.toSet()).apply()
             externalIds.forEach { id ->
-                volumeReports[id]?.put("state", "unavailable")
-                    ?.put("stale", true)
-                    ?.put("error", "Storage volume disconnected; indexed content is retained")
+                volumeReports[id]?.let { previous ->
+                    volumeReports[id] = org.json.JSONObject(previous.toString())
+                        .put("state", "unavailable")
+                        .put("stale", true)
+                        .put("error", "Storage volume disconnected; indexed content is retained")
+                }
             }
             if (externalIds.isNotEmpty()) {
                 state = "partial"
@@ -454,10 +467,13 @@ internal class MediaIndexScanner(
         }
         if (volumeId == null) disconnectedVolumes.clear() else disconnectedVolumes.remove(volumeId)
         reportPrefs.edit().putStringSet("disconnected_volumes", disconnectedVolumes.toSet()).apply()
-        val reconnecting = if (volumeId == null) volumeReports.values else listOfNotNull(volumeReports[volumeId])
-        reconnecting.filter { it.optString("volume") != "internal" }.forEach { report ->
-            if (report.optString("state") == "unavailable") {
-                report.put("state", "stale").put("stale", true)
+        val reconnectingIds = if (volumeId == null) volumeReports.keys.toList() else listOf(volumeId)
+        reconnectingIds.forEach { id ->
+            volumeReports[id]?.let { previous ->
+                if (previous.optString("volume") != "internal" && previous.optString("state") == "unavailable") {
+                    volumeReports[id] = org.json.JSONObject(previous.toString())
+                        .put("state", "stale").put("stale", true)
+                }
             }
         }
         dirty.set(true)
@@ -473,6 +489,7 @@ internal class MediaIndexScanner(
 
     @Synchronized
     fun requestScan(force: Boolean, trigger: String = "manual") {
+        if (closeRequested.get()) return
         if (running.get()) {
             // Coalesce refreshes and mutations into one follow-up pass.
             if (force) {
@@ -535,6 +552,7 @@ internal class MediaIndexScanner(
                         .put("volume", id).put("state", "scanning").put("started_at", startedAt)
                     try {
                         scanSource(id, root)
+                        if (closeRequested.get()) return@execute
                         volumeReports[id] = org.json.JSONObject()
                             .put("volume", id)
                             .put("state", when {
@@ -553,6 +571,7 @@ internal class MediaIndexScanner(
                                 }
                             }
                     } catch (error: Exception) {
+                        if (closeRequested.get()) return@execute
                         volumeReports[id] = org.json.JSONObject()
                             .put("volume", id)
                             .put("state", if (id in disconnectedVolumes) "unavailable" else "failed")
@@ -582,28 +601,40 @@ internal class MediaIndexScanner(
                 }
                 persistScanReport()
             } catch (error: Exception) {
-                state = "failed"
-                lastError = error.message ?: "Index scan failed"
-                lastCompletedAt = System.currentTimeMillis()
-                lastAttemptFinishedAt = lastCompletedAt
-                reportPrefs.edit().putLong("last_attempt_finished_at", lastAttemptFinishedAt).apply()
-                persistScanReport()
+                if (!closeRequested.get()) {
+                    state = "failed"
+                    lastError = error.message ?: "Index scan failed"
+                    lastCompletedAt = System.currentTimeMillis()
+                    lastAttemptFinishedAt = lastCompletedAt
+                    reportPrefs.edit().putLong("last_attempt_finished_at", lastAttemptFinishedAt).apply()
+                    persistScanReport()
+                }
                 currentSource = null
                 currentPath = null
             } finally {
                 val nextTrigger = synchronized(this) {
                     running.set(false)
-                    val shouldRescan = dirty.getAndSet(false)
+                    val shouldRescan = !closeRequested.get() && dirty.getAndSet(false)
                     val trigger = queuedTrigger ?: scanTrigger
                     queuedTrigger = null
                     shouldRescan to trigger
                 }
-                if (nextTrigger.first) requestScan(force = true, trigger = nextTrigger.second)
+                if (nextTrigger.first && !closeRequested.get()) {
+                    requestScan(force = true, trigger = nextTrigger.second)
+                }
+                if (closeRequested.get()) closeDatabase()
             }
         }
     }
 
+    private fun ensureScanActive() {
+        if (closeRequested.get() || Thread.currentThread().isInterrupted) {
+            throw InterruptedException("Media index scan cancelled during host shutdown")
+        }
+    }
+
     private fun scanSource(volume: String, root: Any) {
+        ensureScanActive()
         val scanId = UUID.randomUUID().toString()
         val fileSnapshot = database.fileSnapshot(volume)
         val mediaSnapshot = database.mediaSnapshot(volume)
@@ -690,6 +721,7 @@ internal class MediaIndexScanner(
                 val stack = ArrayDeque<Pair<File, Int>>()
                 stack.add(base to 0)
                 while (stack.isNotEmpty()) {
+                    ensureScanActive()
                     val (directory, depth) = stack.removeLast()
                     currentPath = runCatching {
                         if (directory == base) "" else directory.canonicalFile.relativeTo(base).invariantSeparatorsPath
@@ -704,6 +736,7 @@ internal class MediaIndexScanner(
                         continue
                     }
                     children.forEach { child ->
+                        ensureScanActive()
                         if (child.name.startsWith(".")) return@forEach
                         val canonical = try { child.canonicalFile } catch (_: Exception) { null }
                         if (canonical == null || !(canonical.path == base.path ||
@@ -724,16 +757,23 @@ internal class MediaIndexScanner(
                 }
             }
             is DocumentFile -> {
-                if (!root.exists() || !root.isDirectory) {
-                    throw IllegalStateException("Storage volume is disconnected or unavailable")
+                if (!root.exists() || !root.isDirectory || !root.canRead()) {
+                    throw IllegalStateException("Storage volume is disconnected, unavailable, or unreadable")
                 }
                 val stack = ArrayDeque<Pair<Pair<DocumentFile, String>, Int>>()
                 stack.add((root to "") to 0)
                 while (stack.isNotEmpty()) {
+                    ensureScanActive()
                     val (entry, depth) = stack.removeLast()
                     val (directory, parentPath) = entry
                     currentPath = parentPath
                     scannedDirectories++
+                    if (!directory.canRead()) {
+                        complete = false
+                        skipped++
+                        recordSkipped(volume, parentPath, "Folder could not be read")
+                        continue
+                    }
                     val children = try { directory.listFiles() } catch (_: Exception) { null }
                     if (children == null) {
                         complete = false
@@ -741,7 +781,16 @@ internal class MediaIndexScanner(
                         recordSkipped(volume, parentPath, "Folder could not be read")
                         continue
                     }
+                    if (children.isEmpty() && hasIndexedDescendants(fileSnapshot.keys + mediaSnapshot.keys, parentPath)) {
+                        // SAF providers may report an empty array on transient query failures.
+                        // An empty listing cannot prove deletion when prior descendants exist.
+                        complete = false
+                        skipped++
+                        recordSkipped(volume, parentPath, "Storage provider returned an empty listing; previous entries were retained")
+                        continue
+                    }
                     children.forEach { child ->
+                        ensureScanActive()
                         val name = child.name ?: run {
                             complete = false
                             skipped++
@@ -760,17 +809,25 @@ internal class MediaIndexScanner(
                 }
             }
         }
+        ensureScanActive()
         flush()
+        ensureScanActive()
         if (volume in disconnectedVolumes) {
             complete = false
             skipped++
             recordSkipped(volume, "", "Storage volume disconnected during scan")
             lastError = "A storage volume disconnected during scanning; its previous index was retained."
         }
-        // Each index is committed and pruned independently. A media-index
-        // failure must not invalidate the general file index, or vice versa.
-        if (complete && filesHealthy) database.finishFilesSource(volume, scanId)
-        if (complete && mediaHealthy) database.finishMediaSource(volume, scanId)
+        // Serialize final pruning with close(): shutdown either starts after this
+        // commit or prevents it entirely, so a cancelled traversal cannot prune rows.
+        synchronized(this) {
+            ensureScanActive()
+            // Each index is committed and pruned independently. A media-index
+            // failure must not invalidate the general file index, or vice versa.
+            if (complete && filesHealthy) database.finishFilesSource(volume, scanId)
+            ensureScanActive()
+            if (complete && mediaHealthy) database.finishMediaSource(volume, scanId)
+        }
     }
 
     fun status(): org.json.JSONObject {
@@ -797,7 +854,8 @@ internal class MediaIndexScanner(
             .put("updated_files", updatedFiles)
             .put("scanned_bytes", scannedBytes)
             .put("volumes", org.json.JSONArray().also { items ->
-                volumeReports.values.sortedBy { it.optString("volume") }.forEach { items.put(it) }
+                volumeReports.values.sortedBy { it.optString("volume") }
+                    .forEach { items.put(org.json.JSONObject(it.toString())) }
             })
             .put("scan_history", readScanHistory())
             .put("elapsed_ms", when (state) {
@@ -886,7 +944,8 @@ internal class MediaIndexScanner(
             .put("scanned_bytes", scannedBytes)
             .put("last_error", lastError)
             .put("volumes", org.json.JSONArray().also { items ->
-                volumeReports.values.sortedBy { it.optString("volume") }.forEach { items.put(it) }
+                volumeReports.values.sortedBy { it.optString("volume") }
+                    .forEach { items.put(org.json.JSONObject(it.toString())) }
             })
             .put("skipped_items", org.json.JSONArray().also { items ->
                 synchronized(skippedItems) {
@@ -913,15 +972,21 @@ internal class MediaIndexScanner(
     fun files(query: String, limit: Int, offset: Int) =
         database.searchFiles(query, limit, offset)
 
-    /** Release scanner resources after a completed scan (primarily for tests). */
+    /** Stop accepting scans and close SQLite only after the worker has exited. */
     fun close() {
-        executor.shutdown()
-        try {
-            executor.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS)
-        } catch (_: InterruptedException) {
-            Thread.currentThread().interrupt()
+        val pendingTasks = synchronized(this) {
+            if (!closeRequested.compareAndSet(false, true)) return
+            dirty.set(false)
+            queuedTrigger = null
+            executor.shutdownNow()
         }
-        database.close()
+        // A queued scan never started, so no worker can run its finally block.
+        // An active scan closes the database itself when its cancellation check exits.
+        if (pendingTasks.isNotEmpty() || !running.get()) closeDatabase()
+    }
+
+    private fun closeDatabase() {
+        if (databaseClosed.compareAndSet(false, true)) database.close()
     }
 
     companion object {
