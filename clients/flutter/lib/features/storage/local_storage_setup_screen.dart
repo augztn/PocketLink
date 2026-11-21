@@ -5,8 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/widgets/pocketlink_app_bar.dart';
-import 'widgets/storage_permission_row.dart';
-import 'widgets/storage_volume_tile.dart';
 import 'widgets/host_section_destination.dart';
 import 'widgets/host_media_scan_card.dart';
 import 'widgets/host_server_password_card.dart';
@@ -18,6 +16,7 @@ import 'widgets/host_status_card.dart';
 import 'widgets/host_quick_actions_card.dart';
 import 'widgets/host_device_intro_card.dart';
 import 'widgets/host_action_feedback_section.dart';
+import 'widgets/host_external_storage_section.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
 import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
@@ -308,6 +307,10 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
     }
   }
 
+  Future<void> _chooseStorageFolder() => _select(
+        'usb-manual-${DateTime.now().microsecondsSinceEpoch.toRadixString(16).padLeft(16, '0').substring(0, 16)}',
+      );
+
   Future<void> _start() async {
     setState(() { _busy = true; _error = null; });
     try {
@@ -371,8 +374,6 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
     final legacySelected = (_status['usb1'] != null && _status['usb1'] != 'Not selected') ||
         (_status['usb2'] != null && _status['usb2'] != 'Not selected');
     final running = _status['running'] == true;
@@ -463,118 +464,6 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
         onRequestBackgroundAccess: _requestBackgroundAccess,
         onRefresh: _refreshDeviceStatus,
       ),
-    ];
-    final usbSections = <Widget>[
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              const Expanded(
-                child: HostSetupSectionTitle(
-                  title: 'USB / External Storage',
-                  subtitle: 'PocketLink detects mounted SD cards and USB drives automatically. Direct access is preferred; folder approval is the fallback.',
-                ),
-              ),
-              IconButton(
-                tooltip: 'Refresh connected storage',
-                onPressed: _busy || _refreshingStorage ? null : _refreshStorage,
-                icon: _refreshingStorage
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Icon(Icons.refresh_rounded),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-            decoration: BoxDecoration(
-              color: colors.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.35)),
-            ),
-            child: StoragePermissionRow(
-              icon: Icons.usb_rounded,
-              title: 'USB folder access',
-              description: selectedVolumeCount > 0
-                  ? '$selectedVolumeCount drive permission(s) saved'
-                  : _discoveredVolumes.isEmpty
-                      ? 'Connect a drive or choose a folder manually'
-                      : '${_discoveredVolumes.length} drive(s) detected · approve access to use',
-              status: selectedVolumeCount > 0
-                  ? 'Granted'
-                  : _discoveredVolumes.isEmpty
-                      ? 'Not connected'
-                      : 'Needs approval',
-              granted: selectedVolumeCount > 0,
-              neutral: _discoveredVolumes.isEmpty,
-              onTap: null,
-            ),
-          ),
-          const SizedBox(height: 10),
-          if (_discoveredVolumes.isEmpty)
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: colors.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.35)),
-              ),
-              child: Column(
-                children: [
-                  Icon(Icons.usb_rounded, size: 34, color: colors.onSurfaceVariant),
-                  const SizedBox(height: 10),
-                  Text('No removable drive detected', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Connect or reconnect your USB drive. You can also choose its folder manually.',
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant, height: 1.4),
-                  ),
-                  const SizedBox(height: 14),
-                  OutlinedButton.icon(
-                    onPressed: _busy ? null : () => _select(
-                      'usb-manual-${DateTime.now().microsecondsSinceEpoch.toRadixString(16).padLeft(16, '0').substring(0, 16)}',
-                    ),
-                    icon: const Icon(Icons.folder_open_rounded, size: 18),
-                    label: const Text('Choose storage folder'),
-                  ),
-                ],
-              ),
-            ),
-          ..._discoveredVolumes.map((volume) {
-            final selected = volume['selected'] == true;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: StorageVolumeTile(
-                title: volume['name']?.toString() ?? 'USB storage',
-                value: volume['access'] == 'direct'
-                    ? (volume['writable'] == true ? 'Direct access · read and write' : 'Direct access · read-only')
-                    : volume['access'] == 'saf'
-                        ? 'Folder permission saved · ready to use'
-                        : 'Detected · tap to approve folder access',
-                selected: selected,
-                onTap: _busy || selected ? null : () => _select(volume['id'].toString()),
-                accessType: volume['access']?.toString() ?? 'not_granted',
-              ),
-            );
-          }),
-          if (_discoveredVolumes.isNotEmpty) ...[
-            const SizedBox(height: 2),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: _busy ? null : () => _select(
-                  'usb-manual-${DateTime.now().microsecondsSinceEpoch.toRadixString(16).padLeft(16, '0').substring(0, 16)}',
-                ),
-                icon: const Icon(Icons.folder_open_rounded, size: 18),
-                label: const Text('Choose a folder manually'),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Use this if Android does not expose the drive directly or you need to select a specific folder.',
-              style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant, height: 1.35),
-            ),
-          ],
     ];
     final serviceSections = <Widget>[
       HostStorageServiceCard(
@@ -705,7 +594,16 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
           ]),
           sectionList(layoutContext, 'host-storage', [
             ...permissionSections,
-            ...usbSections,
+            HostExternalStorageSection(
+              volumes: _discoveredVolumes,
+              selectedVolumeCount: selectedVolumeCount,
+              detectedVolumeCount: detectedVolumeCount,
+              busy: _busy,
+              refreshing: _refreshingStorage,
+              onRefresh: _refreshStorage,
+              onChooseFolder: _chooseStorageFolder,
+              onSelectVolume: _select,
+            ),
             ...mediaSections,
             ...feedbackSections,
           ]),
