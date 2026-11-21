@@ -184,9 +184,9 @@ class NativeApiServerIntegrationTest {
                 sourceContents.values.any { it.contentEquals(File(root, "renamed.txt").readBytes()) }
             )
             assertEquals(
+                "All losing rename sources must remain untouched",
                 11,
-                sourceContents.keys.count { File(root, it).exists() },
-                "All losing rename sources must remain untouched"
+                sourceContents.keys.count { File(root, it).exists() }
             )
         } finally {
             executor.shutdownNow()
