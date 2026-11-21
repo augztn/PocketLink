@@ -130,7 +130,7 @@ void main() {
     expect(next, 0);
   });
 
-  testWidgets('paused mini-player can be dismissed with an upward swipe only', (tester) async {
+  testWidgets('paused mini-player can be dismissed with a downward swipe only', (tester) async {
     var dismissed = 0;
     await pumpMiniPlayer(
       tester,
