@@ -307,6 +307,40 @@ class MediaIndexScannerTest {
     }
 
     @Test
+    fun indexesHiddenFilesAndDirectories() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        context.deleteDatabase("pocketlink_index.db")
+        context.getSharedPreferences("media-index-report", Context.MODE_PRIVATE).edit()
+            .clear()
+            .putBoolean("automatic_scanning_enabled", false)
+            .putBoolean("scan_on_startup", false)
+            .putBoolean("scan_on_storage_change", false)
+            .commit()
+        val root = File(context.cacheDir, "media-index-hidden").apply {
+            deleteRecursively()
+            mkdirs()
+        }
+        File(root, ".hidden.mp3").writeBytes(byteArrayOf(1, 2, 3))
+        val hiddenDirectory = File(root, ".hidden-directory").apply { mkdirs() }
+        File(hiddenDirectory, ".nested-hidden.mp3").writeBytes(byteArrayOf(4, 5, 6))
+        val scanner = MediaIndexScanner(context, { root }, { emptyList() })
+        try {
+            scanner.requestScan(force = true)
+            val result = awaitFinished(scanner)
+            assertEquals("complete", result.getString("state"))
+            assertEquals(
+                setOf(".hidden.mp3", ".nested-hidden.mp3"),
+                scanner.media("music", "", 10, 0).map { it.name }.toSet()
+            )
+        } finally {
+            scanner.close()
+            root.deleteRecursively()
+            context.deleteDatabase("pocketlink_index.db")
+            context.getSharedPreferences("media-index-report", Context.MODE_PRIVATE).edit().clear().commit()
+        }
+    }
+
+    @Test
     fun scansDirectoriesDeeperThanTheFormerDepthLimit() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         context.deleteDatabase("pocketlink_index.db")
