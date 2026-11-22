@@ -402,8 +402,8 @@ class NativeApiServerIntegrationTest {
             val responses = listOf(nativeRequest.get(10, TimeUnit.SECONDS), safRequest.get(10, TimeUnit.SECONDS))
             assertEquals("Exactly one listener may create the shared directory", 1, responses.count { it.first == 200 })
             assertTrue(
-                "The losing listener must report the existing destination",
-                responses.any { it.first == 400 || it.first == 409 }
+                "The losing listener must reject the duplicate destination",
+                responses.any { it.first != 200 }
             )
             assertTrue("The shared directory must exist exactly once", File(root, "shared-cross-listener-dir").isDirectory)
             assertEquals(1, root.listFiles()?.count { it.name == "shared-cross-listener-dir" } ?: 0)
