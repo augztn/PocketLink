@@ -534,17 +534,17 @@ class MediaIndexScannerTest {
             """.trimIndent())
             legacy.execSQL(
                 "INSERT INTO files VALUES(?,?,?,?,?,?,?,?)",
-                arrayOf("internal", "Resume", "Resume", "directory", 0, 1,
+                arrayOf<Any?>("internal", "Resume", "Resume", "directory", 0, 1,
                     "application/octet-stream", scanId)
             )
             legacy.execSQL(
                 "INSERT INTO files VALUES(?,?,?,?,?,?,?,?)",
-                arrayOf("internal", "stale.txt", "stale.txt", "file", 1, 1,
+                arrayOf<Any?>("internal", "stale.txt", "stale.txt", "file", 1, 1,
                     "text/plain", "older-scan")
             )
             legacy.execSQL(
                 "INSERT INTO media VALUES(?,?,?,?,?,?,?,?)",
-                arrayOf("internal", "stale.mp3", "stale.mp3", "music", 1, 1,
+                arrayOf<Any?>("internal", "stale.mp3", "stale.mp3", "music", 1, 1,
                     "audio/mpeg", "older-scan")
             )
             val checkpoint = org.json.JSONObject()
@@ -555,7 +555,7 @@ class MediaIndexScannerTest {
                 .put("media_healthy", true)
             legacy.execSQL(
                 "INSERT INTO scan_checkpoints(volume,root_id,scan_id,state) VALUES(?,?,?,?)",
-                arrayOf("internal", root.canonicalPath, scanId, checkpoint.toString())
+                arrayOf<Any?>("internal", root.canonicalPath, scanId, checkpoint.toString())
             )
             legacy.version = 2
         } finally {
