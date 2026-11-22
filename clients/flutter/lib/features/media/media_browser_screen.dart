@@ -910,7 +910,7 @@ tooltip: 'Choose video view',
           if ((_searchExpanded && widget.showSearch) || isFolderView)
             SizedBox(height: LayoutInsetsScope.of(context).topClearance - 6),
           if (_searchExpanded && widget.showSearch)
-            Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            Padding(padding: PocketLinkHorizontalGutter.padding(context).copyWith(bottom: 8),
               child: CompactSearchField(controller: _searchController,
                 hintText: 'Search videos or folders',
                 onChanged: (value) => setState(() => _searchQuery = value))),
