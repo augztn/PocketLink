@@ -540,8 +540,8 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         12,
         LayoutInsetsScope.of(context).bottomClearance,
       ),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: PocketLinkResponsiveLayout.gridColumns(context),
         crossAxisSpacing: 12,
         mainAxisSpacing: 14,
         childAspectRatio: 0.88,
