@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../core/navigation/pocketlink_navigation.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
+import '../../core/widgets/pocketlink_scaffold.dart';
 
 class FloatingNavigationDock extends StatelessWidget {
   const FloatingNavigationDock({
