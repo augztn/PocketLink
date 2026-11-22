@@ -174,6 +174,109 @@ class MediaIndexScannerTest {
 
 
     @Test
+    fun resumesAnExistingVolumeCheckpointAndPrunesOnlyAfterCompletion() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        context.deleteDatabase("pocketlink_index.db")
+        context.getSharedPreferences("media-index-report", Context.MODE_PRIVATE).edit()
+            .clear()
+            .putBoolean("automatic_scanning_enabled", false)
+            .putBoolean("scan_on_startup", false)
+            .putBoolean("scan_on_storage_change", false)
+            .commit()
+        val root = File(context.cacheDir, "media-index-resume").apply { deleteRecursively(); mkdirs() }
+        val resumeDirectory = File(root, "Resume").apply { mkdirs() }
+        File(resumeDirectory, "track.mp3").writeBytes(byteArrayOf(1, 2, 3))
+        val database = MediaIndexDatabase(context)
+        val rootId = root.canonicalPath
+        val checkpoint = org.json.JSONObject()
+            .put("pending", org.json.JSONArray().put("Resume"))
+            .put("visited", org.json.JSONArray().put(rootId))
+            .put("complete", true)
+            .put("files_healthy", true)
+            .put("media_healthy", true)
+        try {
+            database.upsertFiles(listOf(
+                IndexedFile("internal", "deleted.txt", "deleted.txt", "file", 1, 1, "text/plain", null)
+            ), "previous-scan")
+            database.saveScanCheckpoint("internal", rootId, "resumed-scan-id", checkpoint.toString())
+        } finally {
+            database.close()
+        }
+
+        val scanner = MediaIndexScanner(context, { root }, { emptyList() })
+        try {
+            scanner.requestScan(force = true)
+            val result = awaitFinished(scanner)
+            assertEquals("complete", result.getString("state"))
+            assertEquals("track.mp3", scanner.media("music", "", 10, 0).single().name)
+            assertTrue(scanner.files("deleted.txt", 10, 0).isEmpty())
+            assertEquals(1, result.getInt("scanned_directories"))
+            assertTrue(result.getInt("file_count") >= 2)
+        } finally {
+            scanner.close()
+            root.deleteRecursively()
+            context.deleteDatabase("pocketlink_index.db")
+            context.getSharedPreferences("media-index-report", Context.MODE_PRIVATE).edit().clear().commit()
+        }
+    }
+
+    @Test
+    fun scansDirectoriesDeeperThanTheFormerDepthLimit() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        context.deleteDatabase("pocketlink_index.db")
+        context.getSharedPreferences("media-index-report", Context.MODE_PRIVATE).edit()
+            .clear()
+            .putBoolean("automatic_scanning_enabled", false)
+            .putBoolean("scan_on_startup", false)
+            .putBoolean("scan_on_storage_change", false)
+            .commit()
+        val root = File(context.cacheDir, "media-index-deep").apply { deleteRecursively(); mkdirs() }
+        var deepest = root
+        repeat(70) { deepest = File(deepest, "d").apply { mkdirs() } }
+        File(deepest, "deep-track.mp3").writeBytes(byteArrayOf(1, 2, 3))
+        val scanner = MediaIndexScanner(context, { root }, { emptyList() })
+        try {
+            scanner.requestScan(force = true)
+            val result = awaitFinished(scanner)
+            assertEquals("complete", result.getString("state"))
+            assertEquals(71, result.getInt("scanned_directories"))
+            assertEquals("deep-track.mp3", scanner.media("music", "", 10, 0).single().name)
+        } finally {
+            scanner.close()
+            root.deleteRecursively()
+            context.deleteDatabase("pocketlink_index.db")
+            context.getSharedPreferences("media-index-report", Context.MODE_PRIVATE).edit().clear().commit()
+        }
+    }
+
+    @Test
+    fun automaticallyContinuesAfterTenThousandDirectories() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        context.deleteDatabase("pocketlink_index.db")
+        context.getSharedPreferences("media-index-report", Context.MODE_PRIVATE).edit()
+            .clear()
+            .putBoolean("automatic_scanning_enabled", false)
+            .putBoolean("scan_on_startup", false)
+            .putBoolean("scan_on_storage_change", false)
+            .commit()
+        val root = File(context.cacheDir, "media-index-batch").apply { deleteRecursively(); mkdirs() }
+        repeat(10_001) { index -> File(root, "dir-$index").mkdirs() }
+        val scanner = MediaIndexScanner(context, { root }, { emptyList() })
+        try {
+            scanner.requestScan(force = true)
+            val result = awaitFinished(scanner, timeoutMs = 60_000L)
+            assertEquals("complete", result.getString("state"))
+            assertEquals(10_002, result.getInt("scanned_directories"))
+            assertEquals(10_001, result.getInt("directory_count"))
+        } finally {
+            scanner.close()
+            root.deleteRecursively()
+            context.deleteDatabase("pocketlink_index.db")
+            context.getSharedPreferences("media-index-report", Context.MODE_PRIVATE).edit().clear().commit()
+        }
+    }
+
+    @Test
     fun mediaQueriesRejectWrongExtensionsAndMismatchedMimeTypes() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         context.deleteDatabase("pocketlink_index.db")
@@ -195,9 +298,10 @@ class MediaIndexScannerTest {
 
     private fun awaitFinished(
         scanner: MediaIndexScanner,
-        afterStartedAt: Long = 0L
+        afterStartedAt: Long = 0L,
+        timeoutMs: Long = 15_000L
     ): org.json.JSONObject {
-        val deadline = SystemClock.elapsedRealtime() + 15_000L
+        val deadline = SystemClock.elapsedRealtime() + timeoutMs
         while (SystemClock.elapsedRealtime() < deadline) {
             val status = scanner.status()
             val scanRunId = status.optString("scan_run_id")
