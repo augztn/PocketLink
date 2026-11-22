@@ -42,13 +42,16 @@ internal class MediaIndexScanner(
     private val dirty = AtomicBoolean(false)
     private val closeRequested = AtomicBoolean(false)
     private val databaseClosed = AtomicBoolean(false)
+    private val statusLock = Any()
     @Volatile private var started = false
     @Volatile private var lastAttemptStartedAt = reportPrefs.getLong(
         "last_attempt_started_at", readScanHistory().optJSONObject(0)?.optLong("started_at") ?: 0L
     )
+        set(value) { synchronized(statusLock) { field = value } }
     @Volatile private var lastAttemptFinishedAt = reportPrefs.getLong(
         "last_attempt_finished_at", readScanHistory().optJSONObject(0)?.optLong("completed_at") ?: 0L
     )
+        set(value) { synchronized(statusLock) { field = value } }
     @Volatile private var lastSuccessfulAt = reportPrefs.getLong(
         "last_successful_at",
         (0 until readScanHistory().length()).mapNotNull { index ->
@@ -56,26 +59,41 @@ internal class MediaIndexScanner(
                 ?.optLong("completed_at")?.takeIf { it > 0L }
         }.maxOrNull() ?: 0L
     )
+        set(value) { synchronized(statusLock) { field = value } }
     @Volatile private var scanned = readScanHistory().optJSONObject(0)?.optInt("scanned") ?: 0
+        set(value) { synchronized(statusLock) { field = value } }
     @Volatile private var scannedDirectories = 0
+        set(value) { synchronized(statusLock) { field = value } }
     @Volatile private var unchanged = 0
+        set(value) { synchronized(statusLock) { field = value } }
     @Volatile private var skipped = readScanHistory().optJSONObject(0)?.optInt("skipped") ?: 0
+        set(value) { synchronized(statusLock) { field = value } }
     @Volatile private var state = if (lastAttemptStartedAt > lastAttemptFinishedAt) "interrupted" else
         (readScanHistory().optJSONObject(0)?.optString("state") ?: "idle")
+        set(value) { synchronized(statusLock) { field = value } }
     @Volatile private var lastError: String? = readScanHistory().optJSONObject(0)?.optString("last_error")?.takeIf { it.isNotBlank() }
+        set(value) { synchronized(statusLock) { field = value } }
     @Volatile private var lastCompletedAt: Long = readScanHistory().optJSONObject(0)?.optLong("completed_at") ?: 0L
+        set(value) { synchronized(statusLock) { field = value } }
     @Volatile private var lastScanStartedAt: Long = reportPrefs.getLong(
         "last_attempt_started_at", readScanHistory().optJSONObject(0)?.optLong("started_at") ?: 0L
     )
+        set(value) { synchronized(statusLock) { field = value } }
     @Volatile private var scanRunId: String = reportPrefs.getString(
         "last_attempt_run_id", readScanHistory().optJSONObject(0)?.optString("run_id").orEmpty()
     ) ?: ""
+        set(value) { synchronized(statusLock) { field = value } }
     @Volatile private var scanTrigger: String = reportPrefs.getString("last_attempt_trigger", "automatic") ?: "automatic"
+        set(value) { synchronized(statusLock) { field = value } }
     @Volatile private var queuedTrigger: String? = null
     @Volatile private var lastScanTrigger: String = reportPrefs.getString("last_trigger", "automatic") ?: "automatic"
+        set(value) { synchronized(statusLock) { field = value } }
     @Volatile private var newFiles = readScanHistory().optJSONObject(0)?.optInt("new_files") ?: 0
+        set(value) { synchronized(statusLock) { field = value } }
     @Volatile private var updatedFiles = readScanHistory().optJSONObject(0)?.optInt("updated_files") ?: 0
+        set(value) { synchronized(statusLock) { field = value } }
     @Volatile private var scannedBytes = readScanHistory().optJSONObject(0)?.optLong("scanned_bytes") ?: 0L
+        set(value) { synchronized(statusLock) { field = value } }
     private val disconnectedVolumes = java.util.Collections.newSetFromMap(
         java.util.concurrent.ConcurrentHashMap<String, Boolean>()
     ).apply {
@@ -89,7 +107,9 @@ internal class MediaIndexScanner(
         }
     }
     @Volatile private var currentSource: String? = null
+        set(value) { synchronized(statusLock) { field = value } }
     @Volatile private var currentPath: String? = null
+        set(value) { synchronized(statusLock) { field = value } }
     private val skippedItems = mutableListOf<SkippedIndexItem>().apply {
         val previous = readScanHistory().optJSONObject(0)?.optJSONArray("skipped_items")
         if (previous != null) for (index in 0 until previous.length()) {
@@ -674,6 +694,7 @@ internal class MediaIndexScanner(
                     if (baseline <= 0.0) 0 else (((completed.first() - baseline) / baseline) * 100.0).toInt()
                 }
             })
+        }
     }
 
     private fun readScanHistory(): org.json.JSONArray = try {
