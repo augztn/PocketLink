@@ -25,52 +25,75 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
         final settings = AppSettings.instance;
         final isDark = Theme.of(context).brightness == Brightness.dark;
         final useHeaderBlur = settings.progressiveBlurEnabled;
-        final headerHeight = media.padding.top + contentHeight + 16;
+        // The AppBar includes a 32dp bottom fade extension. Keep the
+        // filter bounded to that full region, then mask its lower edge to
+        // transparent so the clip itself is never visible.
+        const fadeExtension = 32.0;
+        final headerHeight = media.padding.top + contentHeight + 16 + fadeExtension;
 
-        final baseTint = isDark
-            ? (darkTint ??
-                const [
-                  Color(0x66000000),
-                  Color(0x40000000),
-                  Colors.transparent,
-                ])
+        final scrimColors = isDark
+            ? const [
+                Color(0xBF000000), // status bar
+                Color(0x59000000), // title
+                Color(0x1A000000),
+                Colors.transparent,
+              ]
             : const [
-                Color(0x80FFFFFF),
-                Color(0x4DFFFFFF),
+                Color(0xBFFFFFFF),
+                Color(0x59FFFFFF),
+                Color(0x1AFFFFFF),
                 Colors.transparent,
               ];
 
         return LayoutBuilder(
-          builder: (context, _) {
+          builder: (context, constraints) {
             if (TickerMode.of(context)) {
               LayoutInsetsScope.reportRenderedHeader(context, headerHeight);
             }
-            return SizedBox(
-              width: double.infinity,
-              height: headerHeight,
-              child: ClipRect(
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    if (useHeaderBlur)
-                      Positioned.fill(
-                        child: BackdropFilter(
-                          filter: ui.ImageFilter.blur(sigmaX: 22, sigmaY: 22),
-                          child: const ColoredBox(color: Colors.transparent),
+
+            return IgnorePointer(
+              child: SizedBox(
+                width: double.infinity,
+                height: headerHeight,
+                child: ClipRect(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      if (useHeaderBlur)
+                        ShaderMask(
+                          blendMode: BlendMode.dstIn,
+                          shaderCallback: (bounds) => const LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.white,
+                              Colors.white,
+                              Colors.transparent,
+                            ],
+                            stops: [0.0, 0.68, 1.0],
+                          ).createShader(bounds),
+                          child: BackdropFilter(
+                            filter: ui.ImageFilter.blur(
+                              sigmaX: 22,
+                              sigmaY: 22,
+                            ),
+                            child: const ColoredBox(
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: scrimColors,
+                            stops: const [0.0, 0.34, 0.72, 1.0],
+                          ),
                         ),
                       ),
-                    // Transparency is permanent; the preference controls blur only.
-                    DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: baseTint,
-                          stops: const [0.0, 0.82, 1.0],
-                        ),
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             );
