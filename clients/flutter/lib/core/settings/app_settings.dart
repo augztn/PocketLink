@@ -156,6 +156,9 @@ class AppSettings extends ChangeNotifier {
 
   Future<void> load() async {
     if (_loaded) return;
+    _homeSectionOrder = List.of(homeSectionDefaults);
+    _navigationOrder = List.of(navigationDefaults);
+    _visibleNavigationItems = Set.of(navigationDefaults);
     try {
       final preferences = await SharedPreferences.getInstance();
       _useLiquidGlass = preferences.getBool(_liquidGlassKey) ?? false;
