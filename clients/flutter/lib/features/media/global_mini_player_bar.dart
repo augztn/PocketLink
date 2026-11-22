@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/widgets/liquid_glass_pill.dart';
+import '../../core/widgets/pocketlink_scaffold.dart';
 import 'persistent_audio_player.dart';
 
 /// Compact, app-wide music controls shown above the navigation dock.
@@ -65,8 +66,8 @@ class GlobalMiniPlayerBar extends StatelessWidget {
     return Align(
       alignment: Alignment.centerLeft,
       child: Padding(
-        // Match the Home / Explore / Files capsule and leave Music outside it.
-        padding: const EdgeInsets.fromLTRB(14, 4, 88, 0),
+        // Match the full outer width of the 3+1 navigation dock.
+        padding: PocketLinkHorizontalGutter.padding(context).copyWith(top: 4),
         child: SmokedGlassSurface(
           key: surfaceKey,
           radius: BorderRadius.circular(22),
