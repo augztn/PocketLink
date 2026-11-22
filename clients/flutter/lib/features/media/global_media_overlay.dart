@@ -339,7 +339,9 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
                 Positioned(
                   left: 0,
                   right: 0,
-                  bottom: bottomInset + (dockVisible ? PocketLinkLayoutMetrics.dockHeight : 0),
+                  bottom: bottomInset + (dockVisible
+                      ? PocketLinkLayoutMetrics.dockHeight + PocketLinkLayoutMetrics.miniPlayerGap
+                      : 0),
                   child: AnimatedSlide(
                     offset: Offset.zero,
                     duration: reduceMotion || drawerOpen
