@@ -129,6 +129,12 @@ class PocketLinkTopBar extends StatelessWidget implements PreferredSizeWidget {
       flexibleSpace: const FeatheredGlassHeaderBackground(
         contentHeight: PocketLinkLayoutMetrics.topBarHeight,
       ),
+      // Extends the header's progressive blur/scrim below the toolbar.
+      // The fade reaches zero alpha at this boundary, so no seam is visible.
+      bottom: const PreferredSize(
+        preferredSize: Size.fromHeight(32),
+        child: IgnorePointer(child: SizedBox.expand()),
+      ),
       foregroundColor: foregroundColor,
       elevation: elevation ?? 0,
       scrolledUnderElevation: 0,
@@ -199,7 +205,7 @@ class PocketLinkTopBar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   @override
-  Size get preferredSize => const Size.fromHeight(PocketLinkLayoutMetrics.topBarHeight);
+  Size get preferredSize => const Size.fromHeight(PocketLinkLayoutMetrics.topBarHeight + 32);
 }
 
 
