@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../core/settings/app_settings.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
+import '../../core/widgets/pocketlink_scaffold.dart';
 
 class MusicShortcutCustomizationScreen extends StatefulWidget {
   const MusicShortcutCustomizationScreen({super.key});
