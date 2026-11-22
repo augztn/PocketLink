@@ -115,6 +115,38 @@ void main() {
     expect(find.byType(BackdropFilter), findsNWidgets(2));
   });
 
+  testWidgets('header blur is independent of the Liquid Glass UI toggle', (tester) async {
+    await tester.runAsync(() async {
+      await AppSettings.instance.setUseLiquidGlass(false);
+      await AppSettings.instance.setProgressiveBlurEnabled(true);
+    });
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: Column(
+            children: [
+              FeatheredGlassHeaderBackground(),
+              SmokedGlassSurface(
+                radius: BorderRadius.all(Radius.circular(16)),
+                child: Text('Mini player'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(BackdropFilter), findsOneWidget);
+
+    await tester.runAsync(
+      () => AppSettings.instance.setUseLiquidGlass(true),
+    );
+    await tester.pump();
+
+    expect(find.byType(BackdropFilter), findsNWidgets(2));
+  });
+
   testWidgets('transparent header applies frosted blur when enabled', (tester) async {
     await tester.runAsync(
       () => AppSettings.instance.setProgressiveBlurEnabled(true),
