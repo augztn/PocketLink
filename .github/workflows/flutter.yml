@@ -40,16 +40,6 @@ jobs:
           flutter-version: "3.50.0"
           cache: true
       - run: flutter pub get
-      - name: Export generated lockfile for repository bootstrap
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import base64
-
-          encoded = base64.b64encode(Path("pubspec.lock").read_bytes()).decode()
-          for index in range(0, len(encoded), 1800):
-              print(f"POCKETLINK_LOCKFILE:{index // 1800}:{encoded[index:index + 1800]}")
-          PY
       - run: flutter analyze --no-fatal-infos
 
   test:
