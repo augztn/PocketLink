@@ -213,6 +213,14 @@ class AppLogger {
             r'(?<![0-9A-Fa-f:])(?=[0-9A-Fa-f:]*[A-Fa-f]|[0-9A-Fa-f:]*::)(?:[0-9A-Fa-f]{0,4}:){2,7}[0-9A-Fa-f]{0,4}(?![0-9A-Fa-f:])',
           ),
           '[REDACTED_HOST]',
+        )
+        .replaceAll(
+          RegExp(r'(?<![:\w])/(?:data|storage|sdcard|mnt|home|users|private|var|tmp|opt)/[^\s,;)}\]]+', caseSensitive: false),
+          '[REDACTED_PATH]',
+        )
+        .replaceAll(
+          RegExp(r'[A-Za-z]:\\(?:[^\\\s]+\\)*[^\\\s]*'),
+          '[REDACTED_PATH]',
         );
   }
 
