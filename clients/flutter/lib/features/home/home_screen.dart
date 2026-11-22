@@ -61,6 +61,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget? _libraryPage;
   String? _requestedVolume;
   String _requestedPath = '';
+  double? _horizontalDragStartX;
+  double _horizontalDragDeltaX = 0;
 
   @override
   void initState() {
@@ -464,6 +466,7 @@ class _HomeScreenState extends State<HomeScreen> {
         builder: (context, _) => Scaffold(
           key: _rootScaffoldKey,
           drawerScrimColor: Colors.black.withValues(alpha: 0.58),
+          drawerEnableOpenDragGesture: false,
           drawer: PocketLinkHomeDrawer(
             serverName: drawerServerName,
             routeLabel: networkRouteLabel(serverHost),
@@ -499,8 +502,35 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               GestureDetector(
                 behavior: HitTestBehavior.deferToChild,
+                onHorizontalDragStart: (details) {
+                  _horizontalDragStartX = details.localPosition.dx;
+                  _horizontalDragDeltaX = 0;
+                },
+                onHorizontalDragUpdate: (details) {
+                  _horizontalDragDeltaX += details.delta.dx;
+                },
                 onHorizontalDragEnd: (details) {
+                  final startX = _horizontalDragStartX;
+                  final dragDeltaX = _horizontalDragDeltaX;
+                  _horizontalDragStartX = null;
+                  _horizontalDragDeltaX = 0;
                   if (_hostSetupOpen) return;
+
+                  final isHomeRoot = _selectedIndex == 0 &&
+                      !_libraryOpen &&
+                      !_hostSetupOpen &&
+                      !_musicShortcutsExpanded &&
+                      !PocketLinkNavigation.drawerOpen.value;
+                  if (startX != null &&
+                      PocketLinkNavigation.shouldOpenDrawerFromEdgeSwipe(
+                        startX: startX,
+                        deltaX: dragDeltaX,
+                        isHome: isHomeRoot,
+                      )) {
+                    _rootScaffoldKey.currentState?.openDrawer();
+                    return;
+                  }
+
                   final velocity = details.primaryVelocity ?? 0;
                   if (velocity.abs() < 300) return;
                   final settings = AppSettings.instance;
