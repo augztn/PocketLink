@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -16,6 +17,13 @@ class AppLogger {
   static int _eventSequence = 0;
   static String? _sessionId;
   static bool _initialized = false;
+  static int _writeFailures = 0;
+  static int _droppedEvents = 0;
+
+  static Map<String, int> get health => {
+        'write_failures': _writeFailures,
+        'dropped_events': _droppedEvents,
+      };
 
   static String nextEventId([String prefix = 'evt']) =>
       '$prefix-${++_eventSequence}';
@@ -51,58 +59,115 @@ class AppLogger {
     }
   }
 
-  static Future<void> info(String message, {Map<String, Object?> fields = const {}}) =>
-      _write('INFO', message, fields: fields);
+  static Future<void> info(
+    String message, {
+    String category = 'app',
+    String? component,
+    String? correlationId,
+    Map<String, Object?> fields = const {},
+  }) => _write('INFO', message, category: category, component: component,
+      correlationId: correlationId, fields: fields);
 
-  static Future<void> warning(String message, {Map<String, Object?> fields = const {}}) =>
-      _write('WARN', message, fields: fields);
+  static Future<void> warning(
+    String message, {
+    String category = 'app',
+    String? component,
+    String? correlationId,
+    Map<String, Object?> fields = const {},
+  }) => _write('WARN', message, category: category, component: component,
+      correlationId: correlationId, fields: fields);
 
   static Future<void> error(
     String message, {
     Object? error,
     StackTrace? stackTrace,
+    String category = 'error',
+    String? component,
+    String? correlationId,
     Map<String, Object?> fields = const {},
-  }) => _write('ERROR', message, error: error, stackTrace: stackTrace, fields: fields);
+  }) => _write('ERROR', message, error: error, stackTrace: stackTrace,
+      category: category, component: component, correlationId: correlationId,
+      fields: fields);
 
   static Future<void> _write(
     String level,
     String message, {
     Object? error,
     StackTrace? stackTrace,
+    String category = 'app',
+    String? component,
+    String? correlationId,
     Map<String, Object?> fields = const {},
-  }) async {
+  }) {
     final file = _logFile;
     if (file == null) {
-      debugPrint('[$level] ${_redact(message)}');
-      return;
+      _droppedEvents++;
+      debugPrint('[' + level + '] ' + _redact(message));
+      return Future<void>.value();
     }
-    final safeFields = <String, Object?>{
-      ...fields,
-      'session': _sessionId ?? 'uninitialized',
-    }.map((key, value) => MapEntry(
-      key,
-      RegExp(r'password|passwd|authorization|token|secret|api[_-]?key|username|user|login|cookie|host|hostname|address|server', caseSensitive: false).hasMatch(key)
-          ? '[REDACTED]'
-          : _redact(value.toString()),
-    ));
-    final line = StringBuffer()
-      ..write(DateTime.now().toUtc().toIso8601String())
-      ..write(' [$level] ')
-      ..write(_redact(message));
-    if (safeFields.isNotEmpty) line.write(' | $safeFields');
-    if (error != null) line.write(' | error: ${_redact(error.toString())}');
-    if (stackTrace != null) line.write('\n${_redact(stackTrace.toString())}');
-    line.write('\n');
-
+    final timestamp = DateTime.now().toUtc();
+    final record = <String, Object?>{
+      'event_id': nextEventId(),
+      'session_id': _sessionId ?? 'uninitialized',
+      'timestamp': timestamp.toIso8601String(),
+      'level': level,
+      'category': _redact(category),
+      if (component != null) 'component': _redact(component),
+      if (correlationId != null) 'correlation_id': _redact(correlationId),
+      'message': _redact(message),
+      'fields': _sanitizeFields(fields),
+      if (error != null) 'error': _redact(error.toString()),
+      if (stackTrace != null) 'stack_trace': _redact(stackTrace.toString()),
+    };
+    final line = timestamp.toIso8601String() + ' [' + level + '] ' +
+        jsonEncode(record) + '\n';
     _writeQueue = _writeQueue.then((_) async {
       try {
         await _rotateIfNeeded();
-        await file.writeAsString(line.toString(), mode: FileMode.append, flush: true);
+        await file.writeAsString(line, mode: FileMode.append, flush: true);
       } catch (writeError) {
-        debugPrint('PocketLink log write failed: ${_redact(writeError.toString())}');
+        _writeFailures++;
+        _droppedEvents++;
+        debugPrint('PocketLink log write failed: ' + _redact(writeError.toString()));
       }
     });
+    return _writeQueue;
   }
+
+  static Map<String, Object?> _sanitizeFields(Map<String, Object?> fields) {
+    return fields.map((key, value) {
+      if (RegExp(r'password|passwd|authorization|token|secret|api[_-]?key|username|user|login|cookie|host|hostname|address|server', caseSensitive: false).hasMatch(key)) {
+        return MapEntry(key, '[REDACTED]');
+      }
+      if (RegExp(r'(^|[_-])(path|filename|file_name|directory|folder|uri|document_uri)([_-]|$)', caseSensitive: false).hasMatch(key)) {
+        return MapEntry(key, '[REDACTED_PATH]');
+      }
+      return MapEntry(key, _sanitizeValue(value));
+    });
+  }
+
+  static Object? _sanitizeValue(Object? value) {
+    if (value == null || value is bool || value is num) return value;
+    if (value is String) return _redact(value);
+    if (value is Map) {
+      return value.map((key, nestedValue) {
+        final name = key.toString();
+        if (RegExp(r'password|passwd|authorization|token|secret|api[_-]?key|username|user|login|cookie|host|hostname|address|server', caseSensitive: false).hasMatch(name)) {
+          return MapEntry(name, '[REDACTED]');
+        }
+        if (RegExp(r'(^|[_-])(path|filename|file_name|directory|folder|uri|document_uri)([_-]|$)', caseSensitive: false).hasMatch(name)) {
+          return MapEntry(name, '[REDACTED_PATH]');
+        }
+        return MapEntry(name, _sanitizeValue(nestedValue));
+      });
+    }
+    if (value is Iterable) return value.map(_sanitizeValue).toList();
+    return _redact(value.toString());
+  }
+
+  @visibleForTesting
+  static Map<String, Object?> sanitizeDiagnosticFields(Map<String, Object?> fields) =>
+      _sanitizeFields(fields);
 
   @visibleForTesting
   static String sanitizeDiagnosticContent(String value) => _redact(value);
@@ -187,7 +252,8 @@ class AppLogger {
     var includeEvent = false;
     for (final line in logs.split('\n')) {
       if (RegExp(r'^\d{4}-\d{2}-\d{2}T').hasMatch(line)) {
-        includeEvent = line.contains('session: $sessionId');
+        includeEvent = line.contains('"session_id":"' + sessionId + '"') ||
+            line.contains('session: ' + sessionId);
       }
       if (includeEvent) result.add(line);
     }
@@ -208,6 +274,8 @@ class AppLogger {
       'OS version: ${Platform.operatingSystemVersion}',
       'Dart: ${Platform.version.split(' ').first}',
       'CPU cores: ${Platform.numberOfProcessors}',
+      'Logger write failures: $_writeFailures',
+      'Logger dropped events: $_droppedEvents',
     ];
     try {
       lines.add('Process RSS: ${(ProcessInfo.currentRss / (1024 * 1024)).toStringAsFixed(1)} MB');
