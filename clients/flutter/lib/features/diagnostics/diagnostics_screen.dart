@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import '../../core/widgets/pocketlink_scaffold.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
 
@@ -89,11 +90,9 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
       extendBodyBehindAppBar: true,
       appBar: const PocketLinkAppBar(title: Text('Diagnostics & logs')),
       body: ListView(
-        padding: EdgeInsets.fromLTRB(
-          20,
-          MediaQuery.paddingOf(context).top + kToolbarHeight + 20,
-          20,
-          20 + MediaQuery.paddingOf(context).bottom,
+        padding: PocketLinkHorizontalGutter.padding(context).copyWith(
+          top: MediaQuery.paddingOf(context).top + kToolbarHeight + 20,
+          bottom: 20 + MediaQuery.paddingOf(context).bottom,
         ),
         children: [
           Card(
