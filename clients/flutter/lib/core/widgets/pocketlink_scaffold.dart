@@ -44,7 +44,9 @@ class PocketLinkScrollOffsetScope extends InheritedNotifier<ValueNotifier<double
     super.key,
   }) : super(notifier: offset);
 
+  static const double collapseThreshold = 72;
   static final ValueNotifier<double> currentOffset = ValueNotifier<double>(0);
+  static final ValueNotifier<bool> dockCollapsed = ValueNotifier<bool>(false);
 
   static ValueListenable<double> listenableOf(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<PocketLinkScrollOffsetScope>()?.notifier ??
@@ -63,10 +65,13 @@ abstract final class PocketLinkLayoutMetrics {
     required double bottomInset,
     required bool hasDock,
     required bool hasMiniPlayer,
+    bool collapsed = false,
   }) =>
       bottomInset +
-      (hasDock ? dockHeight : 0) +
-      (hasMiniPlayer ? miniPlayerHeight + miniPlayerGap : 0) +
+      (collapsed
+          ? (hasDock ? dockHeight : (hasMiniPlayer ? miniPlayerHeight : 0))
+          : (hasDock ? dockHeight : 0) +
+              (hasMiniPlayer ? miniPlayerHeight + miniPlayerGap : 0)) +
       bottomClearance;
 }
 
@@ -180,12 +185,14 @@ class _PocketLinkScaffoldState extends State<PocketLinkScaffold> {
     if (oldWidget.routeIdentity != widget.routeIdentity) {
       _renderedHeaderHeight = null;
       PocketLinkScrollOffsetScope.currentOffset.value = 0;
+      PocketLinkScrollOffsetScope.dockCollapsed.value = false;
     }
   }
 
   @override
   void dispose() {
     PocketLinkScrollOffsetScope.currentOffset.value = 0;
+    PocketLinkScrollOffsetScope.dockCollapsed.value = false;
     super.dispose();
   }
 
@@ -195,6 +202,10 @@ class _PocketLinkScaffoldState extends State<PocketLinkScaffold> {
     final offset = PocketLinkScrollOffsetScope.currentOffset;
     if ((offset.value - next).abs() >= 0.5) {
       offset.value = next;
+    }
+    final collapsed = next >= PocketLinkScrollOffsetScope.collapseThreshold;
+    if (PocketLinkScrollOffsetScope.dockCollapsed.value != collapsed) {
+      PocketLinkScrollOffsetScope.dockCollapsed.value = collapsed;
     }
     return false;
   }
@@ -233,19 +244,33 @@ class _PocketLinkScaffoldState extends State<PocketLinkScaffold> {
       hasMiniPlayer: widget.hasActiveMiniPlayer,
     );
 
-    return LayoutInsetsScope(
-      topClearance: topClearance,
-      bottomClearance: bottomClearance,
-      hasFloatingNavBar: widget.hasFloatingNavBar,
-      hasActiveMiniPlayer: widget.hasActiveMiniPlayer,
-      reportHeaderHeight: reportHeaderHeight,
-      child: NotificationListener<ScrollNotification>(
-        onNotification: _handleScrollNotification,
-        child: PocketLinkScrollOffsetScope(
-          offset: PocketLinkScrollOffsetScope.currentOffset,
-          child: widget.child,
-        ),
-      ),
+    return ValueListenableBuilder<bool>(
+      valueListenable: PocketLinkScrollOffsetScope.dockCollapsed,
+      builder: (context, isCollapsed, _) {
+        final collapsed = widget.hasFloatingNavBar &&
+            widget.hasActiveMiniPlayer &&
+            isCollapsed;
+        final bottomClearance = PocketLinkLayoutMetrics.bottomOverlayHeight(
+          bottomInset: media.viewPadding.bottom,
+          hasDock: widget.hasFloatingNavBar,
+          hasMiniPlayer: widget.hasActiveMiniPlayer,
+          collapsed: collapsed,
+        );
+        return LayoutInsetsScope(
+          topClearance: topClearance,
+          bottomClearance: bottomClearance,
+          hasFloatingNavBar: widget.hasFloatingNavBar,
+          hasActiveMiniPlayer: widget.hasActiveMiniPlayer,
+          reportHeaderHeight: reportHeaderHeight,
+          child: NotificationListener<ScrollNotification>(
+            onNotification: _handleScrollNotification,
+            child: PocketLinkScrollOffsetScope(
+              offset: PocketLinkScrollOffsetScope.currentOffset,
+              child: widget.child,
+            ),
+          ),
+        );
+      },
     );
   }
 }
