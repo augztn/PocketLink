@@ -2,6 +2,13 @@ import 'dart:ffi' show Abi;
 import 'dart:io' show Platform;
 
 import 'package:material_ui/material_ui.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../../core/widgets/pocketlink_app_bar.dart';
+import '../../core/widgets/pocketlink_scaffold.dart';
+
+import 'package:material_ui/material_ui.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
