@@ -2,7 +2,8 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
-import 'features/home/browser_state_store.dart';
+import 'features/files/file_browser_state_store.dart';
+import 'features/media/media_browser_state_store.dart';
 
 import 'core/settings/app_settings.dart';
 import 'core/logging/diagnostic_observer.dart';
@@ -169,7 +170,8 @@ class _PocketLinkAppState extends State<PocketLinkApp> {
     final mode = _settings.themeMode;
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => BrowserStateStore()),
+        ChangeNotifierProvider(create: (_) => FileBrowserStateStore()),
+        ChangeNotifierProvider(create: (_) => MediaBrowserStateStore()),
         ChangeNotifierProvider<AppSettings>.value(value: _settings),
       ],
       child: MaterialApp(

@@ -25,7 +25,7 @@ import 'persistent_audio_player.dart';
 import 'now_playing_overlay_controller.dart';
 import '../transfers/transfer_manager_screen.dart';
 import '../downloads/download_manager_service.dart';
-import '../home/browser_state_store.dart';
+import 'media_browser_state_store.dart';
 import '../settings/settings_screen.dart';
 
 class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
@@ -47,7 +47,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   String _sortBy = 'name';
   String _currentFolderPath = '';
   late final String _stateKey;
-  late final BrowserStateStore _browserState;
+  late final MediaBrowserStateStore _browserState;
   final ScrollController _contentScrollController = ScrollController();
   double _pendingScrollOffset = 0;
   bool _openingMedia = false;
@@ -83,8 +83,8 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   void initState() {
     super.initState();
     _stateKey = widget.api.baseUrl;
-    _browserState = Provider.of<BrowserStateStore>(context, listen: false);
-    final saved = _browserState.mediaState(_stateKey, widget.type.name);
+    _browserState = Provider.of<MediaBrowserStateStore>(context, listen: false);
+    final saved = _browserState.stateFor(_stateKey, widget.type.name);
     _selectedVolume = saved.selectedVolume;
     _libraryView = saved.view;
     _layoutMode = saved.layoutMode;
@@ -106,8 +106,8 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   }
 
   void _saveState({String? folderPath, bool clearVolume = false}) {
-    final current = _browserState.mediaState(_stateKey, widget.type.name);
-    _browserState.updateMedia(_stateKey, widget.type.name, current.copyWith(
+    final current = _browserState.stateFor(_stateKey, widget.type.name);
+    _browserState.update(_stateKey, widget.type.name, current.copyWith(
       folderPath: folderPath ?? _currentFolderPath,
       selectedVolume: _selectedVolume,
       clearSelectedVolume: clearVolume || _selectedVolume == null,
