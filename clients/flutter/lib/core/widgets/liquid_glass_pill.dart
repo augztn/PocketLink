@@ -15,6 +15,7 @@ class LiquidGlassSurface extends StatelessWidget {
     required this.radius,
     this.refractive = false,
     this.lightRefractive = false,
+    this.intensity = 1,
     super.key,
   });
 
@@ -22,12 +23,15 @@ class LiquidGlassSurface extends StatelessWidget {
   final BorderRadius radius;
   final bool refractive;
   final bool lightRefractive;
+  final double intensity;
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: AppSettings.instance,
       builder: (context, _) {
+        final level = intensity.clamp(0.0, 1.0).toDouble();
+        if (level == 0) return const SizedBox.shrink();
         final useGlass = AppSettings.instance.useLiquidGlass;
         final useRefraction = useGlass && refractive;
         final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -37,16 +41,16 @@ class LiquidGlassSurface extends StatelessWidget {
             ? BoxDecoration(
                 color: useRefraction
                     ? (!isDark && lightRefractive
-                        ? Colors.white.withValues(alpha: 0.58)
-                        : const Color(0xFF14151A).withValues(alpha: 0.55))
+                        ? Colors.white.withValues(alpha: 0.58 * level)
+                        : const Color(0xFF14151A).withValues(alpha: 0.55 * level))
                     : null,
                 gradient: useRefraction ? null : LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: isDark
                       ? [
-                          Colors.white.withValues(alpha: 0.14),
-                          Colors.white.withValues(alpha: 0.08),
+                          Colors.white.withValues(alpha: 0.14 * level),
+                          Colors.white.withValues(alpha: 0.08 * level),
                         ]
                       : [
                           Colors.white.withValues(alpha: 0.85),
@@ -56,8 +60,8 @@ class LiquidGlassSurface extends StatelessWidget {
                 borderRadius: radius,
                 border: Border.all(
                   color: isDark
-                      ? Colors.white.withValues(alpha: 0.22)
-                      : const Color(0xFF94A3B8).withValues(alpha: 0.30),
+                      ? Colors.white.withValues(alpha: 0.22 * level)
+                      : const Color(0xFF94A3B8).withValues(alpha: 0.30 * level),
                   width: 1,
                 ),
               )
@@ -96,20 +100,24 @@ class LiquidGlassSurface extends StatelessWidget {
           child: useGlass
               ? BackdropFilter(
                   filter: ui.ImageFilter.blur(
-                    sigmaX: useRefraction ? 28 : 22,
-                    sigmaY: useRefraction ? 28 : 22,
+                    sigmaX: (useRefraction ? 16 : 14) * level,
+                    sigmaY: (useRefraction ? 16 : 14) * level,
                   ),
                   child: themedSurface,
                 )
               : themedSurface,
         );
 
-        return useRefraction
-            ? CustomPaint(
-                foregroundPainter: _RefractiveGlassRimPainter(radius: radius),
-                child: clippedSurface,
-              )
-            : RepaintBoundary(child: clippedSurface);
+        return CustomPaint(
+          painter: _LiquidGlassShadowPainter(
+            radius: radius,
+            intensity: level,
+          ),
+          foregroundPainter: useRefraction
+              ? _RefractiveGlassRimPainter(radius: radius, intensity: level)
+              : null,
+          child: clippedSurface,
+        );
       },
     );
   }
@@ -122,18 +130,22 @@ class SmokedGlassSurface extends StatelessWidget {
     required this.child,
     required this.radius,
     this.refractive = false,
+    this.intensity = 1,
     super.key,
   });
 
   final Widget child;
   final BorderRadius radius;
   final bool refractive;
+  final double intensity;
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: AppSettings.instance,
       builder: (context, _) {
+        final level = intensity.clamp(0.0, 1.0).toDouble();
+        if (level == 0) return const SizedBox.shrink();
         final enabled = AppSettings.instance.useLiquidGlass;
         final isLight = Theme.of(context).brightness == Brightness.light;
         final borderColor = isLight
@@ -178,27 +190,21 @@ class SmokedGlassSurface extends StatelessWidget {
           child: enabled
               ? BackdropFilter(
                   filter: ui.ImageFilter.blur(
-                    sigmaX: refractive ? 28 : 24,
-                    sigmaY: refractive ? 28 : 24,
+                    sigmaX: (refractive ? 16 : 14) * level,
+                    sigmaY: (refractive ? 16 : 14) * level,
                   ),
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       color: refractive
-                          ? const Color(0xFF14151A).withValues(alpha: 0.55)
+                          ? const Color(0xFF14151A).withValues(alpha: 0.55 * level)
                           : isLight
-                              ? Colors.white.withValues(alpha: 0.78)
-                              : const Color(0xFF1C1E24).withValues(alpha: 0.68),
+                              ? Colors.white.withValues(alpha: 0.78 * level)
+                              : const Color(0xFF1C1E24).withValues(alpha: 0.68 * level),
                       borderRadius: radius,
-                      border: Border.all(color: borderColor, width: 1),
-                      boxShadow: isLight
-                          ? const [
-                              BoxShadow(
-                                color: Color(0x140F172A),
-                                blurRadius: 18,
-                                offset: Offset(0, 5),
-                              ),
-                            ]
-                          : const [],
+                      border: Border.all(
+                        color: borderColor.withValues(alpha: borderColor.a * level),
+                        width: 1,
+                      ),
                     ),
                     child: content,
                   ),
@@ -214,21 +220,29 @@ class SmokedGlassSurface extends StatelessWidget {
                   child: child,
                 ),
         );
-        return enabled && refractive
-            ? CustomPaint(
-                foregroundPainter: _RefractiveGlassRimPainter(radius: radius),
-                child: surface,
-              )
-            : surface;
+        return CustomPaint(
+          painter: _LiquidGlassShadowPainter(
+            radius: radius,
+            intensity: enabled ? level : 0,
+          ),
+          foregroundPainter: enabled && refractive
+              ? _RefractiveGlassRimPainter(radius: radius, intensity: level)
+              : null,
+          child: surface,
+        );
       },
     );
   }
 }
 
 class _RefractiveGlassRimPainter extends CustomPainter {
-  const _RefractiveGlassRimPainter({required this.radius});
+  const _RefractiveGlassRimPainter({
+    required this.radius,
+    this.intensity = 1,
+  });
 
   final BorderRadius radius;
+  final double intensity;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -237,15 +251,16 @@ class _RefractiveGlassRimPainter extends CustomPainter {
     final paint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.2
-      ..shader = const LinearGradient(
+      ..color = Colors.white.withValues(alpha: intensity)
+      ..shader = LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          Color(0x73FFFFFF),
-          Color(0x16FFFFFF),
-          Color(0x52FFFFFF),
+          Colors.white.withValues(alpha: 0.45 * intensity),
+          Colors.white.withValues(alpha: 0.08 * intensity),
+          Colors.white.withValues(alpha: 0.32 * intensity),
         ],
-        stops: [0, 0.52, 1],
+        stops: const [0, 0.52, 1],
       ).createShader(rect);
     canvas.drawRRect(rrect, paint);
   }
@@ -261,17 +276,20 @@ class LiquidGlassPill extends StatelessWidget {
     required this.child,
     required this.radius,
     this.refractive = false,
+    this.intensity = 1,
     super.key,
   });
 
   final Widget child;
   final BorderRadius radius;
   final bool refractive;
+  final double intensity;
 
   @override
   Widget build(BuildContext context) => LiquidGlassSurface(
         radius: radius,
         refractive: refractive,
+        intensity: intensity,
         child: child,
       );
 }
