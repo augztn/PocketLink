@@ -320,7 +320,7 @@ class NativeApiServerIntegrationTest {
                 port,
                 "/api/files/stream?path=sample.txt",
                 authorization,
-                headers = mapOf("Range" to "bytes=2-5")
+                extraHeaders = mapOf("Range" to "bytes=2-5")
             )
             assertEquals(206, partial.first)
             assertEquals("2345", partial.second)
@@ -351,7 +351,7 @@ class NativeApiServerIntegrationTest {
         method: String = "GET",
         body: ByteArray = byteArrayOf(),
         contentType: String? = null,
-        headers: Map<String, String> = emptyMap()
+        extraHeaders: Map<String, String> = emptyMap()
     ): Pair<Int, String> {
         return Socket().use { socket ->
             socket.connect(InetSocketAddress("127.0.0.1", port), 5_000)
@@ -362,7 +362,7 @@ class NativeApiServerIntegrationTest {
                 append("Connection: close\r\n")
                 if (authorization != null) append("Authorization: $authorization\r\n")
                 if (contentType != null) append("Content-Type: $contentType\r\n")
-                headers.forEach { (name, value) -> append("$name: $value\r\n") }
+                extraHeaders.forEach { (name, value) -> append("$name: $value\r\n") }
                 if (body.isNotEmpty()) append("Content-Length: ${body.size}\r\n")
                 append("\r\n")
             }
