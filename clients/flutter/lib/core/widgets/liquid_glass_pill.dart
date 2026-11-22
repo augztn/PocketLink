@@ -244,7 +244,7 @@ class SmokedGlassSurface extends StatelessWidget {
                       color: Theme.of(context).colorScheme.outlineVariant,
                     ),
                   ),
-                  child: child,
+                  child: glassChild,
                 ),
         );
         final shadowedSurface = PhysicalShape(
