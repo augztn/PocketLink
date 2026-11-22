@@ -227,6 +227,7 @@ internal class MediaIndexDatabase(context: Context) :
         )
     }
 
+    // Hold one monitor across both aggregate queries; every write path uses this monitor too.
     @Synchronized fun statsSnapshot(): IndexDatabaseStats = IndexDatabaseStats(
         counts = Collections.unmodifiableMap(counts()),
         sizes = Collections.unmodifiableMap(sizeTotals())
