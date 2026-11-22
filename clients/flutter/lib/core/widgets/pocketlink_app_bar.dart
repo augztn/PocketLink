@@ -116,7 +116,7 @@ class PocketLinkTopBar extends StatelessWidget implements PreferredSizeWidget {
           );
     final effectiveLeadingWidth = effectiveLeading == null
         ? null
-        : (leadingWidth ?? kToolbarHeight) + safeLeft + (leading == null ? 16 : 0);
+        : (leadingWidth ?? kToolbarHeight) + safeLeft;
     return AppBar(
       title: title,
       leading: alignedLeading,
