@@ -1,8 +1,7 @@
-import 'dart:ui' as ui;
-
 import 'package:material_ui/material_ui.dart';
 
 import '../settings/app_settings.dart';
+import 'liquid_glass_pill.dart';
 
 class SmokedGlassPopoverMenuItem<T> {
   const SmokedGlassPopoverMenuItem({
@@ -211,47 +210,45 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
             top: top,
             left: titleMenu ? 16 : null,
             right: titleMenu ? null : right,
-            child: FadeTransition(
-              opacity: curved,
-              child: SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0, -0.04),
-                  end: Offset.zero,
-                ).animate(curved),
-                child: ScaleTransition(
-                  alignment: titleMenu ? Alignment.topLeft : Alignment.topRight,
-                  scale: Tween<double>(begin: 0.84, end: 1).animate(curved),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minWidth: menuWidth,
-                      maxWidth: menuWidth,
-                      maxHeight: mathMin(
-                        media.size.height * 0.55,
-                        media.size.height - top - media.padding.bottom - 8,
-                      ),
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, -0.04),
+                end: Offset.zero,
+              ).animate(curved),
+              child: ScaleTransition(
+                alignment: titleMenu ? Alignment.topLeft : Alignment.topRight,
+                scale: Tween<double>(begin: 0.84, end: 1).animate(curved),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minWidth: menuWidth,
+                    maxWidth: menuWidth,
+                    maxHeight: mathMin(
+                      media.size.height * 0.55,
+                      media.size.height - top - media.padding.bottom - 8,
                     ),
-                    child: ClipRRect(
-                borderRadius: BorderRadius.circular(22),
-                child: useGlass
-                    ? BackdropFilter(
-                        filter: ui.ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+                  ),
+                  child: AnimatedBuilder(
+                    animation: curved,
+                    builder: (context, _) {
+                      final card = FadeTransition(
+                        opacity: curved,
                         child: _buildMenuCard(
                           context: context,
                           isDark: isDark,
-                          useGlass: true,
+                          useGlass: useGlass,
                           foreground: foreground,
                           iconColor: iconColor,
                         ),
-                      )
-                    : _buildMenuCard(
-                        context: context,
-                        isDark: isDark,
-                        useGlass: false,
-                        foreground: foreground,
-                        iconColor: iconColor,
-                      ),
-              ),
-                    ),
+                      );
+                      if (!useGlass) return card;
+                      return SmokedGlassSurface(
+                        radius: BorderRadius.circular(22),
+                        refractive: true,
+                        intensity: curved.value,
+                        tintOpacity: 0.72,
+                        child: card,
+                      );
+                    },
                   ),
                 ),
               ),
@@ -272,26 +269,28 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
       children: [
         DecoratedBox(
           decoration: BoxDecoration(
-            color: isDark
-                ? (useGlass
-                    ? const Color(0xFF14151A).withValues(alpha: 0.72)
-                    : const Color(0xFF1E2025))
-                : (useGlass
-                    ? Colors.white.withValues(alpha: 0.82)
-                    : Colors.white),
+            color: useGlass
+                ? Colors.transparent
+                : isDark
+                    ? const Color(0xFF1E2025)
+                    : Colors.white,
             borderRadius: BorderRadius.circular(22),
             border: Border.all(
-              color: isDark
-                  ? Colors.white.withValues(alpha: useGlass ? 0.20 : 0.12)
-                  : const Color(0xFF94A3B8).withValues(alpha: 0.34),
+              color: useGlass
+                  ? Colors.transparent
+                  : isDark
+                      ? Colors.white.withValues(alpha: 0.12)
+                      : const Color(0xFF94A3B8).withValues(alpha: 0.34),
             ),
-            boxShadow: const [
-              BoxShadow(
-                color: Colors.black26,
-                blurRadius: 24,
-                offset: Offset(0, 10),
-              ),
-            ],
+            boxShadow: useGlass
+                ? const []
+                : const [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 24,
+                      offset: Offset(0, 10),
+                    ),
+                  ],
           ),
           child: Material(
                           color: Colors.transparent,
