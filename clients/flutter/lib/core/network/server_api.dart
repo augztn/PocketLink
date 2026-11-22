@@ -31,7 +31,9 @@ class ServerApi {
         );
 
   final _ServerApiTransport _transport;
-  Dio get _dio => _transport.client;  bool _closed = false;
+  Dio get _dio => _transport.client;
+
+  bool _closed = false;
   static const _directoryCacheTtl = Duration(seconds: 20);
   static const _maxCachedDirectories = 512;
   final Map<String, _CacheEntry<DirectoryListing>> _directoryCache = {};
