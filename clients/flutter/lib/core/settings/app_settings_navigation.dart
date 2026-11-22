@@ -5,26 +5,26 @@ extension AppSettingsNavigation on AppSettings {
     required List<String> order,
     required Set<String> visibleItems,
   }) async {
-    if (order.length != navigationDefaults.length ||
-        order.toSet().length != navigationDefaults.length ||
-        !order.toSet().containsAll(navigationDefaults) ||
+    if (order.length != AppSettings.navigationDefaults.length ||
+        order.toSet().length != AppSettings.navigationDefaults.length ||
+        !order.toSet().containsAll(AppSettings.navigationDefaults) ||
         !visibleItems.contains('home') ||
         visibleItems.length < 2 ||
-        !visibleItems.every(navigationDefaults.contains)) {
+        !visibleItems.every(AppSettings.navigationDefaults.contains)) {
       throw ArgumentError('Invalid navigation layout');
     }
     _navigationOrder = List.of(order);
     _visibleNavigationItems = Set.of(visibleItems);
     _notifySettingsChanged();
     final orderSnapshot = List<String>.of(_navigationOrder);
-    final visibilitySnapshot = navigationDefaults
+    final visibilitySnapshot = AppSettings.navigationDefaults
         .where(_visibleNavigationItems.contains)
         .toList(growable: false);
     final write = _navigationWrite.catchError((_) {}).then((_) async {
       final preferences = await SharedPreferences.getInstance();
       await Future.wait([
-        preferences.setString(_navigationOrderKey, jsonEncode(orderSnapshot)),
-        preferences.setString(_navigationVisibilityKey, jsonEncode(visibilitySnapshot)),
+        preferences.setString(AppSettings._navigationOrderKey, jsonEncode(orderSnapshot)),
+        preferences.setString(AppSettings._navigationVisibilityKey, jsonEncode(visibilitySnapshot)),
       ]);
     });
     _navigationWrite = write;
@@ -32,14 +32,14 @@ extension AppSettingsNavigation on AppSettings {
   }
 
   Future<void> resetNavigationLayout() async {
-    _navigationOrder = List.of(navigationDefaults);
-    _visibleNavigationItems = Set.of(navigationDefaults);
+    _navigationOrder = List.of(AppSettings.navigationDefaults);
+    _visibleNavigationItems = Set.of(AppSettings.navigationDefaults);
     _notifySettingsChanged();
     final write = _navigationWrite.catchError((_) {}).then((_) async {
       final preferences = await SharedPreferences.getInstance();
       await Future.wait([
-        preferences.remove(_navigationOrderKey),
-        preferences.remove(_navigationVisibilityKey),
+        preferences.remove(AppSettings._navigationOrderKey),
+        preferences.remove(AppSettings._navigationVisibilityKey),
       ]);
     });
     _navigationWrite = write;
@@ -49,7 +49,7 @@ extension AppSettingsNavigation on AppSettings {
   Future<void> setMusicButtonShortcuts(List<String> shortcuts) async {
     if (shortcuts.isEmpty ||
         shortcuts.toSet().length != shortcuts.length ||
-        !shortcuts.every(musicButtonShortcutDestinations.contains)) {
+        !shortcuts.every(AppSettings.musicButtonShortcutDestinations.contains)) {
       throw ArgumentError('Invalid Music button shortcuts');
     }
     _musicButtonShortcuts = List.of(shortcuts);
@@ -57,20 +57,20 @@ extension AppSettingsNavigation on AppSettings {
     final snapshot = List<String>.of(_musicButtonShortcuts);
     final write = _musicButtonShortcutsWrite.catchError((_) {}).then((_) async {
       final preferences = await SharedPreferences.getInstance();
-      await preferences.setString(_musicButtonShortcutsKey, jsonEncode(snapshot));
+      await preferences.setString(AppSettings._musicButtonShortcutsKey, jsonEncode(snapshot));
     });
     _musicButtonShortcutsWrite = write;
     await write;
   }
 
   Future<void> resetMusicButtonShortcuts() async {
-    _musicButtonShortcuts = List.of(musicButtonShortcutDefaults);
+    _musicButtonShortcuts = List.of(AppSettings.musicButtonShortcutDefaults);
     _notifySettingsChanged();
     final write = _musicButtonShortcutsWrite.catchError((_) {}).then((_) async {
       final preferences = await SharedPreferences.getInstance();
       await Future.wait([
-        preferences.remove(_musicButtonShortcutsKey),
-        preferences.remove(_legacyFloatingShortcutsKey),
+        preferences.remove(AppSettings._musicButtonShortcutsKey),
+        preferences.remove(AppSettings._legacyFloatingShortcutsKey),
       ]);
     });
     _musicButtonShortcutsWrite = write;
@@ -78,15 +78,15 @@ extension AppSettingsNavigation on AppSettings {
   }
 
   Future<void> setHomeSectionOrder(List<String> order) async {
-    if (order.length != homeSectionDefaults.length ||
-        order.toSet().length != homeSectionDefaults.length ||
-        !order.toSet().containsAll(homeSectionDefaults)) {
+    if (order.length != AppSettings.homeSectionDefaults.length ||
+        order.toSet().length != AppSettings.homeSectionDefaults.length ||
+        !order.toSet().containsAll(AppSettings.homeSectionDefaults)) {
       throw ArgumentError('Invalid Home section order');
     }
     _homeSectionOrder = List.of(order);
     _notifySettingsChanged();
     final preferences = await SharedPreferences.getInstance();
-    await preferences.setString(_homeSectionOrderKey, jsonEncode(_homeSectionOrder));
+    await preferences.setString(AppSettings._homeSectionOrderKey, jsonEncode(_homeSectionOrder));
   }
 
   Future<void> setHomeSections({
@@ -103,14 +103,14 @@ extension AppSettingsNavigation on AppSettings {
     if (activeTransfers != null) _showActiveTransfers = activeTransfers;
     _notifySettingsChanged();
     await Future.wait([
-      if (quickActions != null) _storage.write(key: _quickActionsKey, value: '$quickActions'),
-      if (library != null) _storage.write(key: _libraryKey, value: '$library'),
-      if (recentFiles != null) _storage.write(key: _recentKey, value: '$recentFiles'),
+      if (quickActions != null) AppSettings._storage.write(key: AppSettings._quickActionsKey, value: '$quickActions'),
+      if (library != null) AppSettings._storage.write(key: AppSettings._libraryKey, value: '$library'),
+      if (recentFiles != null) AppSettings._storage.write(key: AppSettings._recentKey, value: '$recentFiles'),
     ]);
     final preferences = await SharedPreferences.getInstance();
     await Future.wait([
-      if (globalSearch != null) preferences.setBool(_homeSearchKey, globalSearch),
-      if (activeTransfers != null) preferences.setBool(_homeTransfersKey, activeTransfers),
+      if (globalSearch != null) preferences.setBool(AppSettings._homeSearchKey, globalSearch),
+      if (activeTransfers != null) preferences.setBool(AppSettings._homeTransfersKey, activeTransfers),
     ]);
   }
 }
