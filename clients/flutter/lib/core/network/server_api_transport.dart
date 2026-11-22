@@ -246,7 +246,7 @@ void _releaseRequestSlot(RequestOptions options) {
     }
   }
 
-static String _normalizeBaseUrl(String value) {
+  static String _normalizeBaseUrl(String value) {
     final trimmed = value.trim();
     final withScheme = trimmed.startsWith('http://') ||
             trimmed.startsWith('https://')
