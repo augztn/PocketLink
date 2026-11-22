@@ -309,7 +309,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     for (final p in items) { groups.putIfAbsent(group(p), () => []).add(p); }
     return ListView(padding: PocketLinkHorizontalGutter.padding(context).copyWith(top: searchOpen ? 0 : LayoutInsetsScope.of(context).topClearance, bottom: LayoutInsetsScope.of(context).bottomClearance), children: [
       for (final entry in groups.entries) ...[
-        Padding(padding: const EdgeInsets.fromLTRB(16,18,16,8),
+        Padding(padding: const EdgeInsets.fromLTRB(0,18,0,8),
           child: Row(children: [
             Expanded(child: Text(entry.key,style:Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight:FontWeight.w700))),
             Text('${entry.value.length}'),
