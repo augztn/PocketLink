@@ -570,8 +570,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   right: 0,
                   bottom: 0,
                   child: PocketLinkBottomScrim(
-                    height: bottomSystemInset + 84 +
-                        (miniPlayerVisible ? 74 : 0) + 24,
+                    height: PocketLinkLayoutMetrics.bottomOverlayHeight(
+                      bottomInset: bottomSystemInset,
+                      hasDock: true,
+                      hasMiniPlayer: miniPlayerVisible,
+                    ),
                   ),
                 ),
               if (!_hostSetupOpen)
