@@ -417,11 +417,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             return Stack(
               children: [
                 ListView(
-          padding: EdgeInsets.fromLTRB(
-            16,
-            LayoutInsetsScope.of(bodyContext).topClearance,
-            16,
-            bottomClearance,
+          padding: PocketLinkHorizontalGutter.padding(bodyContext).copyWith(
+            top: LayoutInsetsScope.of(bodyContext).topClearance,
+            bottom: bottomClearance,
           ),
           children: widget.category == null
               ? [
@@ -522,7 +520,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onTap: _exportingSettings || _importingSettings ? null : _importSettingsBackup,
                     ),
                     const Padding(
-                      padding: EdgeInsets.fromLTRB(16, 8, 16, 16),
+                      padding: PocketLinkHorizontalGutter.padding(context).copyWith(top: 8, bottom: 16),
                       child: Text(
                         'Backups include supported app preferences only. Theme and download location stay unchanged; server profiles, credentials, storage permissions, downloads and personal files are excluded.',
                       ),
