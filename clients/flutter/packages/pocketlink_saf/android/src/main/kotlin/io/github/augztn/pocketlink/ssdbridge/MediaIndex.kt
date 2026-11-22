@@ -401,7 +401,9 @@ internal class MediaIndexScanner(
         val resume = saved != null &&
             saved.optString("root_id") == rootId &&
             saved.optString("scan_id").isNotBlank() &&
-            savedState != null
+            savedState != null &&
+            (savedState.optBoolean("normalized", false) ||
+                (savedState.has("pending") && savedState.has("visited")))
         val scanId = if (resume) saved!!.optString("scan_id") else UUID.randomUUID().toString()
         var complete = savedState?.optBoolean("complete", true) ?: true
         var filesHealthy = savedState?.optBoolean("files_healthy", true) ?: true
