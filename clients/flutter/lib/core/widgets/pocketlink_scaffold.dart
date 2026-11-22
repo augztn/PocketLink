@@ -53,7 +53,7 @@ class LayoutInsetsScope extends InheritedWidget {
     final safeBottom = media?.padding.bottom ?? 0.0;
     return LayoutInsetsScope(
       topClearance: safeTop + kToolbarHeight + 10,
-      bottomClearance: safeBottom + 12,
+      bottomClearance: safeBottom + 12 + 24,
       hasFloatingNavBar: false,
       hasActiveMiniPlayer: false,
       reportHeaderHeight: (_) {},
@@ -132,7 +132,8 @@ class _PocketLinkScaffoldState extends State<PocketLinkScaffold> {
     final topClearance = statusBarHeight + headerContentHeight + 10;
     final bottomClearance = media.padding.bottom +
         (widget.hasFloatingNavBar ? 84.0 : 12.0) +
-        (widget.hasActiveMiniPlayer ? 74.0 : 0.0);
+        (widget.hasActiveMiniPlayer ? 74.0 : 0.0) +
+        24.0;
 
     return LayoutInsetsScope(
       topClearance: topClearance,
