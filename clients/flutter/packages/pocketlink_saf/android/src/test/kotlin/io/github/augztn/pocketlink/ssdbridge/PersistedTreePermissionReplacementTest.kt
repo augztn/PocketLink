@@ -14,7 +14,7 @@ class PersistedTreePermissionReplacementTest {
             selectedUri = "content://new/tree",
             otherReferencedUris = emptySet(),
             takeSelectedPermission = { events += "take-new" },
-            saveSelection = { events += "save-new"; true },
+            saveSelection = { events += "save-new"; SelectionSaveResult.SAVED },
             releasePermission = { events += "release-$it" }
         )
 
@@ -33,7 +33,7 @@ class PersistedTreePermissionReplacementTest {
             selectedUri = "content://same/tree",
             otherReferencedUris = emptySet(),
             takeSelectedPermission = {},
-            saveSelection = { true },
+            saveSelection = { SelectionSaveResult.SAVED },
             releasePermission = { released += it }
         )
 
@@ -49,14 +49,14 @@ class PersistedTreePermissionReplacementTest {
             selectedUri = "content://replacement/tree",
             otherReferencedUris = setOf("content://shared/tree"),
             takeSelectedPermission = {},
-            saveSelection = { true },
+            saveSelection = { SelectionSaveResult.SAVED },
             releasePermission = { released += it }
         )
 
         assertTrue(released.isEmpty())
     }
 
-    @Test fun failedPreferenceSavePreservesOldGrantAndReleasesUnreferencedNewGrant() {
+    @Test fun failedSaveWithSuccessfulRollbackReleasesUnreferencedNewGrant() {
         val released = mutableListOf<String>()
 
         val saved = PersistedTreePermissionReplacement.replace(
@@ -64,7 +64,7 @@ class PersistedTreePermissionReplacementTest {
             selectedUri = "content://new/tree",
             otherReferencedUris = emptySet(),
             takeSelectedPermission = {},
-            saveSelection = { false },
+            saveSelection = { SelectionSaveResult.FAILED_ROLLED_BACK },
             releasePermission = { released += it }
         )
 
@@ -72,7 +72,7 @@ class PersistedTreePermissionReplacementTest {
         assertEquals(listOf("content://new/tree"), released)
     }
 
-    @Test fun failedSaveDoesNotReleaseNewGrantReferencedByAnotherVolume() {
+    @Test fun failedSaveDoesNotReleaseNewGrantStillReferencedByAnotherVolume() {
         val released = mutableListOf<String>()
 
         val saved = PersistedTreePermissionReplacement.replace(
@@ -80,7 +80,23 @@ class PersistedTreePermissionReplacementTest {
             selectedUri = "content://shared-new/tree",
             otherReferencedUris = setOf("content://shared-new/tree"),
             takeSelectedPermission = {},
-            saveSelection = { false },
+            saveSelection = { SelectionSaveResult.FAILED_ROLLED_BACK },
+            releasePermission = { released += it }
+        )
+
+        assertFalse(saved)
+        assertTrue(released.isEmpty())
+    }
+
+    @Test fun uncertainSaveFailureRetainsNewGrantToProtectPossiblePreferenceReference() {
+        val released = mutableListOf<String>()
+
+        val saved = PersistedTreePermissionReplacement.replace(
+            previousUri = "content://old/tree",
+            selectedUri = "content://new/tree",
+            otherReferencedUris = emptySet(),
+            takeSelectedPermission = {},
+            saveSelection = { SelectionSaveResult.FAILED_STATE_UNCERTAIN },
             releasePermission = { released += it }
         )
 
@@ -89,7 +105,7 @@ class PersistedTreePermissionReplacementTest {
     }
 
     @Test fun failedGrantAcquisitionDoesNotSaveOrReleaseAnything() {
-        var saved = false
+        var saveResultRequested = false
         val released = mutableListOf<String>()
 
         try {
@@ -98,14 +114,14 @@ class PersistedTreePermissionReplacementTest {
                 selectedUri = "content://new/tree",
                 otherReferencedUris = emptySet(),
                 takeSelectedPermission = { throw SecurityException("grant denied") },
-                saveSelection = { saved = true; true },
+                saveSelection = { saveResultRequested = true; SelectionSaveResult.SAVED },
                 releasePermission = { released += it }
             )
         } catch (_: SecurityException) {
             // The picker grant failed; the old preference and grant remain intact.
         }
 
-        assertFalse(saved)
+        assertFalse(saveResultRequested)
         assertTrue(released.isEmpty())
     }
 }
