@@ -30,7 +30,7 @@ void main() {
     );
 
     expect(insets.topClearance, 90);
-    expect(insets.bottomClearance, 216);
+    expect(insets.bottomClearance, 210);
     expect(insets.hasFloatingNavBar, isTrue);
     expect(insets.hasActiveMiniPlayer, isTrue);
   });
@@ -58,7 +58,7 @@ void main() {
       ),
     );
 
-    expect(insets.bottomClearance, 70);
+    expect(insets.bottomClearance, 58);
   });
 
   testWidgets('reserves mini-player space without a floating dock', (tester) async {
@@ -84,7 +84,7 @@ void main() {
       ),
     );
 
-    expect(insets.bottomClearance, 144);
+    expect(insets.bottomClearance, 130);
   });
 
   testWidgets('horizontal gutter includes the 16dp base and system safe insets', (tester) async {
