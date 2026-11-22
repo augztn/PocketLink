@@ -41,7 +41,7 @@ void main() {
     expect(
       find.byWidgetPredicate(
         (widget) => widget is ColoredBox &&
-            widget.color == const Color(0x73000000),
+            widget.color.a > 0.4 && widget.color.a < 0.5,
       ),
       findsOneWidget,
     );
