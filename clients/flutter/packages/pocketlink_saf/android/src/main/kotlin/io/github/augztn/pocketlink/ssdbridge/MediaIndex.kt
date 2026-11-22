@@ -586,8 +586,9 @@ internal class MediaIndexScanner(
     }
 
     fun status(): org.json.JSONObject {
-        val counts = database.counts()
-        val sizes = database.sizeTotals()
+        val stats = database.statsSnapshot()
+        val counts = stats.counts
+        val sizes = stats.sizes
         val history = readScanHistory()
         return org.json.JSONObject()
             .put("state", state)
