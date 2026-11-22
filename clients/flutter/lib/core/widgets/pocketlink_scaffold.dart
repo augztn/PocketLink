@@ -190,7 +190,7 @@ class _PocketLinkScaffoldState extends State<PocketLinkScaffold> {
   }
 
   bool _handleScrollNotification(ScrollNotification notification) {
-    if (notification.depth != 0) return false;
+    if (notification.depth != 0 || notification.metrics.axis != Axis.vertical) return false;
     final next = notification.metrics.pixels.clamp(0.0, double.infinity).toDouble();
     if ((_scrollOffset.value - next).abs() >= 0.5) {
       _scrollOffset.value = next;
