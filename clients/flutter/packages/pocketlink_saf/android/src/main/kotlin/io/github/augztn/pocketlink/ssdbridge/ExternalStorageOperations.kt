@@ -152,11 +152,13 @@ internal class ExternalStorageOperations(
         }
     }
 
-    fun delete(volume: String?, relative: String): NanoHTTPD.Response {
-        val root = storage.root(volume) ?: return notFound("Storage permission not granted")
-        if (relative.isBlank()) return bad("Cannot delete storage root")
-        val item = storage.resolveDocument(root, relative) ?: return notFound("Item not found")
-        return if (item.delete()) {
+    fun delete(volume: String?, relative: String): NanoHTTPD.Response = synchronized(mutationLock) {
+        val root = storage.root(volume)
+            ?: return@synchronized notFound("Storage permission not granted")
+        if (relative.isBlank()) return@synchronized bad("Cannot delete storage root")
+        val item = storage.resolveDocument(root, relative)
+            ?: return@synchronized notFound("Item not found")
+        if (item.delete()) {
             markMediaIndexDirty()
             json(JSONObject().put("ok", true))
         } else error(NanoHTTPD.Response.Status.INTERNAL_ERROR, "Delete failed")
