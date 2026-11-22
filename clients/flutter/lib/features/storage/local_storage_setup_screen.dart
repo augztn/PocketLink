@@ -562,11 +562,9 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
 
     Widget sectionList(BuildContext layoutContext, String storageKey, List<Widget> sections) => ListView(
       key: PageStorageKey<String>(storageKey),
-      padding: EdgeInsets.fromLTRB(
-        18,
-        12,
-        18,
-        LayoutInsetsScope.of(layoutContext).bottomClearance,
+      padding: PocketLinkHorizontalGutter.padding(layoutContext).copyWith(
+        top: 12,
+        bottom: LayoutInsetsScope.of(layoutContext).bottomClearance,
       ),
       children: sections,
     );
@@ -667,11 +665,9 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
       bottomNavigationBar: SizedBox(
         height: 64 + bottomSystemInset + 12,
         child: Padding(
-          padding: EdgeInsets.fromLTRB(20, 0, 20, bottomSystemInset + 12),
+          padding: PocketLinkHorizontalGutter.padding(context).copyWith(bottom: bottomSystemInset + 12),
           child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 380),
-              child: SizedBox(
+            child: SizedBox(
                 key: const ValueKey<String>('host-section-dock'),
                 height: 64,
                 width: double.infinity,
@@ -703,7 +699,6 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
                     ],
                   ),
                 ),
-              ),
             ),
           ),
         ),
