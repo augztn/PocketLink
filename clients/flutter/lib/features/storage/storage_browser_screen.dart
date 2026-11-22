@@ -379,13 +379,13 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
       },
       child: Scaffold(
         extendBodyBehindAppBar: true,
-        appBar: PocketLinkAppBar(
+        appBar: PocketLinkTopBar(
           title: const Text('External storage', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700, letterSpacing: -0.5)),
           actions: [
-            PocketLinkAppBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded, onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen()))),
-            PocketLinkAppBarAction(label: 'Upload', icon: Icons.cloud_upload_outlined, onPressed: _volume == null ? null : _upload),
-            PocketLinkAppBarAction(label: 'New folder', icon: Icons.create_new_folder_outlined, onPressed: _volume == null ? null : _createFolder),
-            PocketLinkAppBarAction(label: 'Refresh', icon: Icons.refresh_rounded, onPressed: _loading ? null : _refreshVolumes),
+            PocketLinkTopBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded, onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen()))),
+            PocketLinkTopBarAction(label: 'Upload', icon: Icons.cloud_upload_outlined, onPressed: _volume == null ? null : _upload),
+            PocketLinkTopBarAction(label: 'New folder', icon: Icons.create_new_folder_outlined, onPressed: _volume == null ? null : _createFolder),
+            PocketLinkTopBarAction(label: 'Refresh', icon: Icons.refresh_rounded, onPressed: _loading ? null : _refreshVolumes),
           ],
         ),
         body: Column(children: [
