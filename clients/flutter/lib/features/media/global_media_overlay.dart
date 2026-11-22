@@ -281,7 +281,6 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
         PocketLinkNavigation.drawerOpen,
         PocketLinkNavigation.quickShortcutsOpen,
         PocketLinkNavigation.bottomDockVisible,
-        PocketLinkScrollOffsetScope.dockCollapsed,
         _nowPlayingController,
       ]),
       builder: (context, _) => ValueListenableBuilder<List<Route<dynamic>>>(
@@ -297,9 +296,6 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
               _nowPlayingController.value <= 0.0;
           final onDashboard = observer.isDashboardVisible;
           final dockVisible = onDashboard && PocketLinkNavigation.bottomDockVisible.value;
-          final compactDock = dockVisible &&
-              visible &&
-              PocketLinkScrollOffsetScope.dockCollapsed.value;
           final showTrackPopup = _trackPopup != null &&
               _trackPopupOffset != null &&
               onDashboard &&
@@ -345,15 +341,10 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
                       ? Duration.zero
                       : const Duration(milliseconds: 240),
                   curve: Curves.easeInOutCubic,
-                  left: compactDock
-                      ? PocketLinkHorizontalGutter.padding(context).left + 76
-                      : 0,
-                  right: compactDock
-                      ? PocketLinkHorizontalGutter.padding(context).right + 76
-                      : 0,
-                  bottom: bottomInset + (compactDock
-                      ? 12
-                      : dockVisible
+                  left: 0,
+                  right: 0,
+                  bottom: bottomInset +
+                      (dockVisible
                           ? PocketLinkLayoutMetrics.dockHeight +
                               PocketLinkLayoutMetrics.miniPlayerGap
                           : 0),
@@ -366,7 +357,6 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
                     child: _GlobalMiniPlayerBar(
                       visible: true,
                       reduceMotion: reduceMotion,
-                      compact: compactDock,
                       player: player,
                       onOpen: _openNowPlaying,
                       onDismiss: player.dismissMiniPlayer,
@@ -768,7 +758,6 @@ class _GlobalMiniPlayerBar extends StatelessWidget {
             item: item,
             visible: visible,
             reduceMotion: reduceMotion,
-            compact: compact,
             isPlaying: playingSnapshot.data ?? false,
             position: positionSnapshot.data ?? Duration.zero,
             duration: durationSnapshot.data ?? Duration.zero,
