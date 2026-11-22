@@ -108,12 +108,12 @@ class FloatingNavigationDock extends StatelessWidget {
                                     selectedPosition >= 0 &&
                                     lensInThisGroup)
                                   Positioned(
-                                    key: const ValueKey<String>('navigation-active-lens'),
                                     left: pageOffset * tabWidth,
                                     width: tabWidth,
                                     top: 0,
                                     bottom: 0,
                                     child: Container(
+                                      key: const ValueKey<String>('navigation-active-lens'),
                                       margin: const EdgeInsets.symmetric(
                                         horizontal: 4,
                                         vertical: 2,
