@@ -7,7 +7,6 @@ import 'package:material_ui/material_ui.dart';
 import '../../core/navigation/pocketlink_navigation.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
-import '../../core/widgets/pocketlink_scaffold.dart';
 
 class FloatingNavigationDock extends StatelessWidget {
   const FloatingNavigationDock({
@@ -23,7 +22,6 @@ class FloatingNavigationDock extends StatelessWidget {
     this.pageController,
     this.pageIndices = const <int, int>{},
     this.musicShortcutsExpanded = false,
-    this.collapsed = false,
     this.onMusicShortcutLongPress,
     this.onMusicShortcutDismissed,
     this.onBrowseSwipeLeft,
@@ -43,7 +41,6 @@ class FloatingNavigationDock extends StatelessWidget {
   final PageController? pageController;
   final Map<int, int> pageIndices;
   final bool musicShortcutsExpanded;
-  final bool collapsed;
   final VoidCallback? onMusicShortcutLongPress;
   final VoidCallback? onMusicShortcutDismissed;
   final VoidCallback? onBrowseSwipeLeft;
@@ -79,31 +76,11 @@ class FloatingNavigationDock extends StatelessWidget {
         ),
       );
 
-  Widget _wrapDockContent(
-    BuildContext context,
-    Widget content, {
-    required bool collapsed,
-  }) {
-    final reduceMotion = MediaQuery.of(context).disableAnimations;
-    final animatedContent = AnimatedSwitcher(
-      duration: reduceMotion
-          ? Duration.zero
-          : const Duration(milliseconds: 240),
-      switchInCurve: Curves.easeOutCubic,
-      switchOutCurve: Curves.easeInCubic,
-      transitionBuilder: (child, animation) => ScaleTransition(
-        scale: Tween<double>(begin: 0.96, end: 1).animate(animation),
-        child: child,
-      ),
-      child: KeyedSubtree(
-        key: ValueKey<bool>(collapsed),
-        child: content,
-      ),
-    );
+  Widget _wrapDockContent(BuildContext context, Widget content) {
     if (preview) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-        child: animatedContent,
+        child: content,
       );
     }
     return SafeArea(
@@ -115,7 +92,7 @@ class FloatingNavigationDock extends StatelessWidget {
           top: 8,
           bottom: 12,
         ),
-        child: animatedContent,
+        child: content,
       ),
     );
   }
@@ -123,37 +100,6 @@ class FloatingNavigationDock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final activeItems = order.where(visibleItems.contains).toList(growable: false);
-    if (collapsed) {
-      final tabs = activeItems.where((id) => id != 'browse').toList();
-      final selectedId = tabs.isEmpty
-          ? null
-          : tabs.firstWhere(
-              (id) => _indices[id] == selectedIndex,
-              orElse: () => tabs.first,
-            );
-      final collapsedContent = Row(
-        children: [
-          if (selectedId != null)
-            _CollapsedDockTab(
-              icon: switch (selectedId) {
-                'home' => Icons.home_rounded,
-                'explore' => Icons.explore_rounded,
-                _ => Icons.folder_rounded,
-              },
-              label: _labels[selectedId]!,
-              onTap: () => onSelect(_indices[selectedId]!),
-            ),
-          const Spacer(),
-          if (activeItems.contains('browse')) _buildMusicButton(),
-        ],
-      );
-      return _wrapDockContent(
-        context,
-        collapsedContent,
-        collapsed: true,
-      );
-    }
-
     final segments = <Widget>[];
     var tabGroup = <String>[];
 
@@ -308,11 +254,7 @@ class FloatingNavigationDock extends StatelessWidget {
       ],
     );
 
-    return _wrapDockContent(
-      context,
-      content,
-      collapsed: false,
-    );
+    return _wrapDockContent(context, content);
   }
 }
 
@@ -426,47 +368,6 @@ class _DockLensDragSurfaceState extends State<_DockLensDragSurface> {
         onHorizontalDragEnd: widget.enabled ? _onDragEnd : null,
         onHorizontalDragCancel: widget.enabled ? _onDragCancel : null,
         child: widget.child,
-      );
-}
-
-class _CollapsedDockTab extends StatelessWidget {
-  const _CollapsedDockTab({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => Semantics(
-        button: true,
-        label: '$label tab',
-        child: SizedBox(
-          width: 64,
-          height: 64,
-          child: LiquidGlassPill(
-            radius: BorderRadius.circular(32),
-            refractive: true,
-            child: Material(
-              color: Colors.transparent,
-              shape: const CircleBorder(),
-              child: InkWell(
-                customBorder: const CircleBorder(),
-                onTap: onTap,
-                child: Center(
-                  child: Icon(
-                    icon,
-                    color: Theme.of(context).colorScheme.primary,
-                    size: 25,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
       );
 }
 
