@@ -80,6 +80,9 @@ internal class MediaIndexDatabase(context: Context) :
         writableDatabase.delete("scan_checkpoints", "volume=?", arrayOf(volume))
     }
 
+    @Synchronized fun hasScanCheckpoints(): Boolean =
+        readableDatabase.rawQuery("SELECT 1 FROM scan_checkpoints LIMIT 1", null).use { it.moveToFirst() }
+
     @Synchronized fun upsertFiles(batch: List<IndexedFile>, scanId: String) {
         if (batch.isEmpty()) return
         val db = writableDatabase
