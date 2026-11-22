@@ -322,7 +322,12 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
 
   Widget albumsTab(List<_Photo> items) {
     final albums = groupByAlbum(items).entries.toList()..sort((a,b)=>a.key.compareTo(b.key));
-    if (albums.isEmpty) return empty('Albums will appear when photos are found.');
+    if (albums.isEmpty) {
+      return Padding(
+        padding: EdgeInsets.only(bottom: LayoutInsetsScope.of(context).bottomClearance),
+        child: empty('Albums will appear when photos are found.'),
+      );
+    }
     return GridView.builder(
       padding: PocketLinkHorizontalGutter.padding(context).copyWith(top: searchOpen ? 12 : 8, bottom: LayoutInsetsScope.of(context).bottomClearance),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
