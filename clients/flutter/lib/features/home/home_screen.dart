@@ -702,13 +702,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   left: 0,
                   right: 0,
                   bottom: 0,
-                  child: PocketLinkBottomScrim(
-                    height: PocketLinkLayoutMetrics.bottomOverlayHeight(
-                      bottomInset: bottomSystemInset,
-                      hasDock: true,
-                      hasMiniPlayer: miniPlayerVisible,
-                      collapsed: miniPlayerVisible &&
-                          PocketLinkScrollOffsetScope.dockCollapsed.value,
+                  child: ValueListenableBuilder<bool>(
+                    valueListenable: PocketLinkScrollOffsetScope.dockCollapsed,
+                    builder: (context, collapsed, _) => PocketLinkBottomScrim(
+                      height: PocketLinkLayoutMetrics.bottomOverlayHeight(
+                        bottomInset: bottomSystemInset,
+                        hasDock: true,
+                        hasMiniPlayer: miniPlayerVisible,
+                        collapsed: miniPlayerVisible && collapsed,
+                      ),
                     ),
                   ),
                 ),
