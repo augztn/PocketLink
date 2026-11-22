@@ -326,7 +326,11 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
                   right: 0,
                   bottom: 0,
                   child: PocketLinkBottomScrim(
-                    height: bottomInset + _miniPlayerHeight + 10 + 24,
+                    height: PocketLinkLayoutMetrics.bottomOverlayHeight(
+                      bottomInset: bottomInset,
+                      hasDock: false,
+                      hasMiniPlayer: true,
+                    ),
                   ),
                 ),
               if (visible)
