@@ -3,11 +3,8 @@ package io.github.augztn.pocketlink.ssdbridge
 import android.content.Context
 import android.os.Environment
 import fi.iki.elonen.NanoHTTPD
-import org.json.JSONArray
-import org.json.JSONObject
 import java.io.ByteArrayInputStream
 import java.io.File
-import java.util.UUID
 
 /**
  * Native replacement for the Termux FastAPI file/storage routes.
@@ -23,6 +20,7 @@ internal class NativeApiServer(
     internalRootOverride: File? = null
 ) : NanoHTTPD(bindHost, listenPort) {
     private val prefs = context.getSharedPreferences("ssd-bridge", Context.MODE_PRIVATE)
+    private val requestBodyParser = NativeApiRequestBodyParser()
     private val apiAuthentication = NativeApiAuthentication(USERNAME, credentials::verify)
     private val fileMetadata = NativeApiFileMetadata()
     private val externalStorage = ExternalStorageAccess(context, prefs, fileMetadata::isValidName)
@@ -31,8 +29,8 @@ internal class NativeApiServer(
             context = context,
             prefs = prefs,
             storage = externalStorage,
-            parseMultipart = ::multipartFile,
-            parseJsonBody = ::jsonBody,
+            parseMultipart = requestBodyParser::multipartFile,
+            parseJsonBody = requestBodyParser::jsonBody,
             isValidName = fileMetadata::isValidName,
             mimeFor = fileResponseOperations::mimeFor,
             formatDate = fileMetadata::formatDate,
@@ -254,41 +252,6 @@ internal class NativeApiServer(
 
     private fun internalFile(relative: String): File? = internalStorage.resolve(relative)
 
-    private fun multipartFile(session: IHTTPSession): Pair<String, File>? {
-        val files = HashMap<String, String>()
-        session.parseBody(files)
-        val tempPath = files["file"] ?: files["content"] ?: return null
-        val name = session.parameters["file"]?.firstOrNull()
-            ?: session.parameters["filename"]?.firstOrNull()
-            ?: return null
-        return name to File(tempPath)
-    }
-
-    private fun jsonBody(session: IHTTPSession): JSONObject? {
-        val raw = if (session.method == Method.PATCH) {
-            // NanoHTTPD's parseBody consumes PATCH payloads but only exposes parsed
-            // content for POST and PUT. Read the bounded JSON body directly instead.
-            val contentLength = session.headers["content-length"]?.toLongOrNull()
-                ?: return null
-            if (contentLength <= 0 || contentLength > MAX_JSON_BODY_BYTES) return null
-            val bytes = ByteArray(contentLength.toInt())
-            var offset = 0
-            while (offset < bytes.size) {
-                val count = session.inputStream.read(bytes, offset, bytes.size - offset)
-                if (count < 0) return null
-                offset += count
-            }
-            bytes.toString(Charsets.UTF_8)
-        } else {
-            val files = HashMap<String, String>()
-            session.parseBody(files)
-            files["postData"]?.let { File(it).readText() }
-                ?: files["content"]?.let { File(it).readText() }
-                ?: return null
-        }
-        return try { JSONObject(raw) } catch (_: Exception) { null }
-    }
-
     private fun bad(message: String) = jsonError(Response.Status.BAD_REQUEST, message)
     private fun notFound(message: String) = jsonError(Response.Status.NOT_FOUND, message)
     private fun jsonError(status: Response.Status, message: String) =
@@ -297,7 +260,6 @@ internal class NativeApiServer(
         newFixedLengthResponse(status, "application/json; charset=utf-8", value.toString())
 
     companion object {
-        private const val MAX_JSON_BODY_BYTES = 1024 * 1024
         const val PORT = 8000
         const val USERNAME = "admin"
         private const val STREAM_BUFFER_SIZE = 64 * 1024
