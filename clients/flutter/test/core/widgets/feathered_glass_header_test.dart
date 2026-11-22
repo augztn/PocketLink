@@ -19,11 +19,11 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  test('background blur is disabled by default', () {
+  test('progressive header blur is disabled by default', () {
     expect(AppSettings.instance.progressiveBlurEnabled, isFalse);
   });
 
-  test('background blur preference persists when toggled', () async {
+  test('progressive header blur preference persists when toggled', () async {
     await AppSettings.instance.setProgressiveBlurEnabled(true);
     expect(AppSettings.instance.progressiveBlurEnabled, isTrue);
     expect(
@@ -66,7 +66,7 @@ void main() {
     );
   });
 
-  testWidgets('Background Blur off keeps translucent glass without backdrop blur', (tester) async {
+  testWidgets('Progressive Blur off does not change original Liquid Glass surfaces', (tester) async {
     await tester.runAsync(() async {
       await AppSettings.instance.setUseLiquidGlass(true);
       await AppSettings.instance.setProgressiveBlurEnabled(false);
@@ -84,19 +84,10 @@ void main() {
       ),
     );
 
-    expect(find.byType(BackdropFilter), findsNothing);
-    expect(
-      find.byWidgetPredicate(
-        (widget) =>
-            widget is DecoratedBox &&
-            widget.decoration is BoxDecoration &&
-            (widget.decoration as BoxDecoration).color != null,
-      ),
-      findsOneWidget,
-    );
+    expect(find.byType(BackdropFilter), findsOneWidget);
   });
 
-  testWidgets('Background Blur on blurs both dock and mini-player glass', (tester) async {
+  testWidgets('Liquid Glass continues blurring dock and mini-player independently', (tester) async {
     await tester.runAsync(() async {
       await AppSettings.instance.setUseLiquidGlass(true);
       await AppSettings.instance.setProgressiveBlurEnabled(true);
@@ -140,7 +131,7 @@ void main() {
     expect(find.byType(BackdropFilter), findsOneWidget);
   });
 
-  testWidgets('scroll-responsive blur remains active when reduced motion is enabled', (tester) async {
+  testWidgets('scroll-responsive header blur remains active when reduced motion is enabled', (tester) async {
     await tester.runAsync(
       () => AppSettings.instance.setProgressiveBlurEnabled(true),
     );
@@ -159,7 +150,7 @@ void main() {
     expect(find.byType(BackdropFilter), findsOneWidget);
   });
 
-  testWidgets('custom dark tint is retained when background blur is disabled', (tester) async {
+  testWidgets('custom dark tint is retained when progressive header blur is disabled', (tester) async {
     await tester.runAsync(
       () => AppSettings.instance.setProgressiveBlurEnabled(false),
     );
@@ -197,7 +188,7 @@ void main() {
     );
   });
 
-  testWidgets('background blur off removes header filters immediately', (tester) async {
+  testWidgets('progressive blur off removes header filters immediately', (tester) async {
     await tester.runAsync(
       () => AppSettings.instance.setProgressiveBlurEnabled(true),
     );
@@ -219,7 +210,7 @@ void main() {
     expect(find.byType(BackdropFilter), findsNothing);
   });
 
-  testWidgets('glass header buttons follow the background blur toggle', (tester) async {
+  testWidgets('glass header buttons follow the progressive blur toggle', (tester) async {
     await tester.runAsync(
       () => AppSettings.instance.setProgressiveBlurEnabled(false),
     );
@@ -245,4 +236,44 @@ void main() {
 
     expect(find.byType(BackdropFilter), findsOneWidget);
   });
+  test('progressive blur strength is restored and persisted', () async {
+    await AppSettings.instance.setProgressiveBlurStrength(72);
+    expect(AppSettings.instance.progressiveBlurStrength, 72);
+    expect(
+      (await SharedPreferences.getInstance())
+          .getDouble('settings_progressive_blur_strength'),
+      72,
+    );
+    await AppSettings.instance.setProgressiveBlurStrength(0);
+    expect(AppSettings.instance.progressiveBlurStrength, 0);
+  });
+
+  testWidgets('Progressive Blur off affects only the header, not Liquid Glass surfaces', (tester) async {
+    await tester.runAsync(() async {
+      await AppSettings.instance.setUseLiquidGlass(true);
+      await AppSettings.instance.setProgressiveBlurEnabled(false);
+    });
+
+    await tester.pumpWidget(
+      _withScrolledHeader(
+        const MaterialApp(
+          home: Scaffold(
+            body: Column(
+              children: [
+                FeatheredGlassHeaderBackground(),
+                LiquidGlassSurface(
+                  radius: BorderRadius.all(Radius.circular(16)),
+                  child: Text('Dock'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    // The dock keeps its original Liquid Glass blur; the header contributes none.
+    expect(find.byType(BackdropFilter), findsOneWidget);
+  });
+
 }
