@@ -8,7 +8,6 @@ import org.json.JSONObject
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.util.UUID
-import android.util.Base64
 
 /**
  * Native replacement for the Termux FastAPI file/storage routes.
@@ -24,6 +23,7 @@ internal class NativeApiServer(
     internalRootOverride: File? = null
 ) : NanoHTTPD(bindHost, listenPort) {
     private val prefs = context.getSharedPreferences("ssd-bridge", Context.MODE_PRIVATE)
+    private val apiAuthentication = NativeApiAuthentication(USERNAME, credentials::verify)
     private val fileMetadata = NativeApiFileMetadata()
     private val externalStorage = ExternalStorageAccess(context, prefs, fileMetadata::isValidName)
     private val externalOperations by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
@@ -173,7 +173,7 @@ internal class NativeApiServer(
         if (session.uri == "/health" && session.method == Method.GET) {
             return json(JSONObject().put("status", "ok").put("service", "pocketlink-native"))
         }
-        if (!authorized(session)) {
+        if (!apiAuthentication.isAuthorized(session.headers)) {
             return jsonError(Response.Status.UNAUTHORIZED, "Unauthorized")
                 .apply { addHeader("WWW-Authenticate", "Basic realm=\"PocketLink\"") }
         }
@@ -195,21 +195,6 @@ internal class NativeApiServer(
         } catch (error: Exception) {
             jsonError(Response.Status.INTERNAL_ERROR, error.message ?: "Storage operation failed")
         }
-    }
-
-    private fun authorized(session: IHTTPSession): Boolean {
-        val header = session.headers["authorization"] ?: return false
-        if (!header.startsWith("Basic ", ignoreCase = true)) return false
-        val decoded = try {
-            String(Base64.decode(header.substringAfter(' ').trim(), Base64.DEFAULT), Charsets.UTF_8)
-        } catch (_: IllegalArgumentException) {
-            return false
-        }
-        val separator = decoded.indexOf(':')
-        if (separator <= 0) return false
-        val username = decoded.substring(0, separator)
-        if (username != USERNAME) return false
-        return credentials.verify(decoded.substring(separator + 1).toCharArray())
     }
 
     private fun listInternal(relative: String): Response = internalOperations.list(relative)
