@@ -98,7 +98,7 @@ internal class MediaIndexScanner(
         }
     }
 
-    private val scanScheduler by lazy(LazyThreadSafetyMode.NONE) {
+    private val scanScheduler by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
         MediaIndexScanScheduler(
             preferences = reportPrefs,
             isScanning = { state == "scanning" },
