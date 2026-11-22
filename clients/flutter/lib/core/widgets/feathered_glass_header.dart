@@ -27,64 +27,55 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
         final useHeaderBlur = settings.progressiveBlurEnabled;
         final headerHeight = media.padding.top + contentHeight + 16;
 
-        return ValueListenableBuilder<double>(
-          valueListenable: PocketLinkScrollOffsetScope.listenableOf(context),
-          builder: (context, scrollOffset, _) {
-            final baseTint = isDark
-                ? (darkTint ??
-                    const [
-                      Color(0x66000000),
-                      Color(0x40000000),
-                      Colors.transparent,
-                    ])
-                : const [
-                    Color(0x80FFFFFF),
-                    Color(0x4DFFFFFF),
-                    Colors.transparent,
-                  ];
-            final tint = baseTint;
+        final baseTint = isDark
+            ? (darkTint ??
+                const [
+                  Color(0x66000000),
+                  Color(0x40000000),
+                  Colors.transparent,
+                ])
+            : const [
+                Color(0x80FFFFFF),
+                Color(0x4DFFFFFF),
+                Colors.transparent,
+              ];
 
-            return LayoutBuilder(
-              builder: (context, _) {
-                if (TickerMode.of(context)) {
-                  LayoutInsetsScope.reportRenderedHeader(context, headerHeight);
-                }
-                return SizedBox(
-                  width: double.infinity,
-                  height: headerHeight,
-                  child: ClipRect(
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        if (useHeaderBlur)
-                          Positioned.fill(
-                            child: BackdropFilter(
-                              filter: ui.ImageFilter.blur(
-                                sigmaX: 22,
-                                sigmaY: 22,
-                              ),
-                              child: const ColoredBox(color: Colors.transparent),
-                            ),
-                          ),
-                        DecoratedBox(
-                          decoration: useHeaderBlur
-                              ? BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: tint,
-                                    stops: const [0.0, 0.82, 1.0],
-                                  ),
-                                )
-                              : BoxDecoration(
-                                  color: isDark ? Colors.black : Colors.white,
-                                ),
+        return LayoutBuilder(
+          builder: (context, _) {
+            if (TickerMode.of(context)) {
+              LayoutInsetsScope.reportRenderedHeader(context, headerHeight);
+            }
+            return SizedBox(
+              width: double.infinity,
+              height: headerHeight,
+              child: ClipRect(
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    if (useHeaderBlur)
+                      Positioned.fill(
+                        child: BackdropFilter(
+                          filter: ui.ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+                          child: const ColoredBox(color: Colors.transparent),
                         ),
-                      ],
+                      ),
+                    DecoratedBox(
+                      decoration: useHeaderBlur
+                          ? BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: baseTint,
+                                stops: const [0.0, 0.82, 1.0],
+                              ),
+                            )
+                          : BoxDecoration(
+                              color: isDark ? Colors.black : Colors.white,
+                            ),
                     ),
-                  ),
-                );
-              },
+                  ],
+                ),
+              ),
             );
           },
         );
