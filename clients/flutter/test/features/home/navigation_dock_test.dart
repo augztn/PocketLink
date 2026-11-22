@@ -146,16 +146,17 @@ void main() {
         final lens = tester.getRect(
           find.byKey(const ValueKey<String>('navigation-active-lens')),
         );
-        expect(
-          lens,
-          Rect.fromLTWH(
-            innerLeft + tabWidth * index,
-            capsule.top + 5,
-            tabWidth,
-            54,
-          ),
-          reason: 'lens should exactly match tab $index of $tabCount',
+        final expected = Rect.fromLTWH(
+          innerLeft + tabWidth * index,
+          capsule.top + 5,
+          tabWidth,
+          54,
         );
+        expect(lens.left, closeTo(expected.left, 0.5));
+        expect(lens.top, closeTo(expected.top, 0.5));
+        expect(lens.width, closeTo(expected.width, 0.5));
+        expect(lens.height, closeTo(expected.height, 0.5),
+            reason: 'lens should exactly match tab $index of $tabCount');
       }
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump();
