@@ -236,6 +236,7 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
                     ? BackdropFilter(
                         filter: ui.ImageFilter.blur(sigmaX: 30, sigmaY: 30),
                         child: _buildMenuCard(
+                          context: context,
                           isDark: isDark,
                           useGlass: true,
                           foreground: foreground,
@@ -243,6 +244,7 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
                         ),
                       )
                     : _buildMenuCard(
+                        context: context,
                         isDark: isDark,
                         useGlass: false,
                         foreground: foreground,
@@ -260,6 +262,7 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
   }
 
   Widget _buildMenuCard({
+    required BuildContext context,
     required bool isDark,
     required bool useGlass,
     required Color foreground,
