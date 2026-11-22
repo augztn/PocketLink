@@ -78,7 +78,7 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
                           stops: [0.0, 0.68, 1.0],
                         ).createShader(bounds),
                         child: BackdropFilter(
-                          filter: ui.ImageFilter.blur(sigmaX: 24 * blurScale, sigmaY: 24 * blurScale),
+                          filter: ui.ImageFilter.blur(sigmaX: 24 * blurScale * scrollProgress, sigmaY: 24 * blurScale * scrollProgress),
                           child: const ColoredBox(color: Colors.transparent),
                         ),
                       ),
@@ -99,7 +99,7 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
                           stops: [0.0, 0.55, 1.0],
                         ).createShader(bounds),
                         child: BackdropFilter(
-                          filter: ui.ImageFilter.blur(sigmaX: 10 * blurScale, sigmaY: 10 * blurScale),
+                          filter: ui.ImageFilter.blur(sigmaX: 10 * blurScale * scrollProgress, sigmaY: 10 * blurScale * scrollProgress),
                           child: const ColoredBox(color: Colors.transparent),
                         ),
                       ),
