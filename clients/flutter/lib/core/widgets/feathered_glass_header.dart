@@ -29,7 +29,7 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
         // filter bounded to that full region, then mask its lower edge to
         // transparent so the clip itself is never visible.
         const fadeExtension = 32.0;
-        final headerHeight = media.padding.top + contentHeight + 16 + fadeExtension;
+        final headerHeight = media.padding.top + contentHeight + fadeExtension;
 
         final scrimColors = isDark
             ? const [
