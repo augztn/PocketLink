@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/widgets/liquid_glass_pill.dart';
+import '../../core/widgets/pocketlink_scaffold.dart';
 import 'media_player_screen.dart';
 import 'persistent_audio_player.dart';
 
@@ -22,14 +23,18 @@ class PersistentMiniPlayer extends StatelessWidget {
         final isLight = Theme.of(context).brightness == Brightness.light;
         final foreground = isLight ? const Color(0xFF0F172A) : Colors.white;
         final secondary = isLight ? const Color(0xFF475569) : Colors.white70;
-        return SmokedGlassSurface(
-          radius: BorderRadius.circular(18),
-          refractive: true,
-          child: SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
-              child: Row(
+        return SafeArea(
+          top: false,
+          left: false,
+          right: false,
+          child: Padding(
+            padding: PocketLinkHorizontalGutter.padding(context).copyWith(top: 4),
+            child: SmokedGlassSurface(
+              radius: BorderRadius.circular(18),
+              refractive: true,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+                child: Row(
                 children: [
                   Icon(Icons.album_rounded, color: Theme.of(context).colorScheme.primary, size: 34),
                   const SizedBox(width: 12),
@@ -110,6 +115,7 @@ class PersistentMiniPlayer extends StatelessWidget {
                     icon: const Icon(Icons.close_rounded, size: 20),
                   ),
                 ],
+                ),
               ),
             ),
           ),
