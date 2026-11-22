@@ -5,6 +5,12 @@ import 'package:pocketlink_client/core/settings/app_settings.dart';
 import 'package:pocketlink_client/core/widgets/smoked_glass_popover_menu.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   testWidgets('Liquid Glass ON blurs and dims the floating menu', (tester) async {
     await tester.runAsync(
       () => AppSettings.instance.setUseLiquidGlass(true),
