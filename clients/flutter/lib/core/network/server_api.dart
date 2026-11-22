@@ -206,7 +206,7 @@ class ServerApi {
 
           // A cancellable caller owns its request; only non-cancellable reads are shared.
           return cancelToken == null
-              ? _transport.sharedRead('files:$path', load)
+              ? _transport._sharedRead('files:$path', load)
               : load();
         },
       );
@@ -460,7 +460,7 @@ class ServerApi {
         'storage:$volume:$path',
         _directoryCache,
         _directoryRequests,
-        () => _transport.sharedRead('storage:$volume:$path', () async {
+        () => _transport._sharedRead('storage:$volume:$path', () async {
           final response = await _dio.get<Map<String, dynamic>>(
             '/api/storage/list',
             queryParameters: {'volume': volume, 'path': path},
