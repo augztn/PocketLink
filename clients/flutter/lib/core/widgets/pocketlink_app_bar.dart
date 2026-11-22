@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../navigation/pocketlink_navigation.dart';
 import 'feathered_glass_header.dart';
+import 'pocketlink_scaffold.dart';
 import 'smoked_glass_popover_menu.dart';
 
 class PocketLinkAppBarAction {
