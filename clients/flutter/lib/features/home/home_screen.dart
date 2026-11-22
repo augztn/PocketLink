@@ -69,6 +69,7 @@ class _HomeScreenState extends State<HomeScreen> {
     DownloadManagerService.instance.bindServerApi(widget.api);
     PocketLinkNavigation.drawerOpen.value = false;
     PocketLinkNavigation.quickShortcutsOpen.value = false;
+    PocketLinkNavigation.bottomDockVisible.value = true;
     AppSettings.instance.addListener(_navigationSettingsChanged);
   }
 
@@ -77,6 +78,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _libraryOpen = false;
       _hostSetupInitialized = true;
       _hostSetupOpen = true;
+      PocketLinkNavigation.bottomDockVisible.value = false;
       _musicShortcutsExpanded = false;
       PocketLinkNavigation.quickShortcutsOpen.value = false;
     });
@@ -86,6 +88,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!_hostSetupOpen) return;
     setState(() {
       _hostSetupOpen = false;
+      PocketLinkNavigation.bottomDockVisible.value = true;
       _musicShortcutsExpanded = false;
       PocketLinkNavigation.quickShortcutsOpen.value = false;
     });
@@ -125,6 +128,7 @@ class _HomeScreenState extends State<HomeScreen> {
     AppSettings.instance.removeListener(_navigationSettingsChanged);
     PocketLinkNavigation.drawerOpen.value = false;
     PocketLinkNavigation.quickShortcutsOpen.value = false;
+    PocketLinkNavigation.bottomDockVisible.value = false;
     super.dispose();
   }
 
@@ -136,6 +140,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _tabBackHandler = null;
       _libraryOpen = false;
       _hostSetupOpen = false;
+      PocketLinkNavigation.bottomDockVisible.value = true;
       _musicShortcutsExpanded = false;
       PocketLinkNavigation.quickShortcutsOpen.value = false;
       _initializedTabs.add(index);
@@ -157,6 +162,7 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _libraryOpen = false;
       _hostSetupOpen = false;
+      PocketLinkNavigation.bottomDockVisible.value = true;
       _musicShortcutsExpanded = false;
       PocketLinkNavigation.quickShortcutsOpen.value = false;
       _initializedTabs.add(2);
