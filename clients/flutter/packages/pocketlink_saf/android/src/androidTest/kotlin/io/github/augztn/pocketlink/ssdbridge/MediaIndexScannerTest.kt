@@ -195,9 +195,14 @@ class MediaIndexScannerTest {
             .put("files_healthy", true)
             .put("media_healthy", true)
         try {
+            // Model the first batch having indexed the root and queued Resume.
+            // Its directory row already belongs to the resumed scan and must survive pruning.
             database.upsertFiles(listOf(
                 IndexedFile("internal", "deleted.txt", "deleted.txt", "file", 1, 1, "text/plain", null)
             ), "previous-scan")
+            database.upsertFiles(listOf(
+                IndexedFile("internal", "Resume", "Resume", "directory", 0, 1, "application/octet-stream", null)
+            ), "resumed-scan-id")
             database.saveScanCheckpoint("internal", rootId, "resumed-scan-id", checkpoint.toString())
         } finally {
             database.close()
