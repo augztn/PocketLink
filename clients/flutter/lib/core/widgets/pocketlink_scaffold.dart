@@ -226,7 +226,7 @@ class _PocketLinkScaffoldState extends State<PocketLinkScaffold> {
                 PocketLinkLayoutMetrics.topBarHeight,
                 200.0,
               ).toDouble();
-    final topClearance = statusBarHeight + headerContentHeight + 10;
+    final topClearance = statusBarHeight + headerContentHeight + 8;
     final bottomClearance = PocketLinkLayoutMetrics.bottomOverlayHeight(
       bottomInset: media.viewPadding.bottom,
       hasDock: widget.hasFloatingNavBar,
