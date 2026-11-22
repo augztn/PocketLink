@@ -7,10 +7,7 @@ import 'package:pocketlink_client/core/widgets/feathered_glass_header.dart';
 import 'package:pocketlink_client/core/widgets/liquid_glass_pill.dart';
 import 'package:pocketlink_client/core/widgets/pocketlink_scaffold.dart';
 
-Widget _withScrolledHeader(Widget child) => PocketLinkScrollOffsetScope(
-      offset: ValueNotifier<double>(24),
-      child: child,
-    );
+Widget _withHeader(Widget child) => child;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -174,7 +171,7 @@ void main() {
     );
 
     await tester.pumpWidget(
-      _withScrolledHeader(
+      _withHeader(
         const MaterialApp(
           home: Scaffold(body: FeatheredGlassHeaderBackground()),
         ),
