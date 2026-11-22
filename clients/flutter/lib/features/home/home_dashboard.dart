@@ -988,12 +988,13 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
       extendBodyBehindAppBar: true,
       appBar: PocketLinkAppBar(
         automaticallyImplyLeading: false,
-        leadingWidth: 54,
+        leadingWidth: 56,
         leading: Padding(
           padding: const EdgeInsets.only(left: 16),
           child: SizedBox.square(
-            dimension: 38,
+            dimension: 40,
             child: GlassCircleButton(
+              size: 40,
               tooltip: 'Open navigation menu',
               onPressed: widget.onOpenDrawer,
               child: const Icon(Icons.menu_rounded, size: 18),
@@ -1066,8 +1067,9 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
             child: const Padding(
               padding: EdgeInsets.symmetric(vertical: 4),
               child: SizedBox.square(
-                dimension: 38,
+                dimension: 40,
                 child: GlassCircleButton(
+                  size: 40,
                   tooltip: 'Open more actions',
                   onPressed: null,
                   child: Icon(Icons.more_vert_rounded, size: 18),
