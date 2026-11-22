@@ -531,7 +531,10 @@ internal class MediaIndexScanner(
                             recordSkipped(volume, relativePath, "Directory path could not be safely resolved")
                             continue
                         }
-                        if (!directory.exists() || !directory.isDirectory || !directory.canRead()) {
+                        // A directory removed after its parent was listed is a normal
+                        // deletion; an existing but unreadable directory is retryable.
+                        if (!directory.exists() || !directory.isDirectory) continue
+                        if (!directory.canRead()) {
                             deferredDirectories = true
                             deferredIds.add(pendingItem.id)
                             skipped++
