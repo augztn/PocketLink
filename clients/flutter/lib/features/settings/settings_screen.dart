@@ -570,12 +570,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const Divider(height: 1),
                   ]),
                 if (widget.category == 'Appearance')
-                  _section('Glass & Visual Effects', [
+                  _section('Header & Visual Effects', [
                     SwitchListTile(
                       secondary: const Icon(Icons.blur_on_rounded),
-                      title: const Text('Transparent Header'),
+                      title: const Text('Header Blur'),
                       subtitle: const Text(
-                        'Show a translucent, softly blurred header over scrolling content',
+                        'Toggle background blur behind the always-transparent header',
                       ),
                       value: _settings.progressiveBlurEnabled,
                       onChanged: _settings.setProgressiveBlurEnabled,
