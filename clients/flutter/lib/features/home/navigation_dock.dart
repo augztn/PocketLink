@@ -169,7 +169,8 @@ class FloatingNavigationDock extends StatelessWidget {
                                 ? (pageController!.page ?? fallbackPage)
                                 : fallbackPage;
                             final pageOffset = (page - groupStartPage)
-                                .clamp(0.0, ids.length - 1.0);
+                                .clamp(0.0, ids.length - 1.0)
+                                .toDouble();
                             final travelProgress = math
                                 .sin((page - page.roundToDouble()).abs() * math.pi)
                                 .clamp(0.0, 1.0)
