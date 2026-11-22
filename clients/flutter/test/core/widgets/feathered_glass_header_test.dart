@@ -150,40 +150,24 @@ void main() {
     expect(find.byType(BackdropFilter), findsOneWidget);
   });
 
-  testWidgets('custom dark tint is retained when progressive header blur is disabled', (tester) async {
+  testWidgets('disabled transparent header uses a solid dark fallback', (tester) async {
     await tester.runAsync(
       () => AppSettings.instance.setProgressiveBlurEnabled(false),
     );
 
     await tester.pumpWidget(
-      _withScrolledHeader(
-        MaterialApp(
-          theme: ThemeData(brightness: Brightness.dark),
-          home: Scaffold(
-            body: FeatheredGlassHeaderBackground(
-              darkTint: [
-                Color(0xD9000000),
-                Color(0x66000000),
-                Colors.transparent,
-              ],
-            ),
-          ),
-        ),
+      const MaterialApp(
+        theme: ThemeData(brightness: Brightness.dark),
+        home: Scaffold(body: FeatheredGlassHeaderBackground()),
       ),
     );
 
-    final gradients = tester
+    final decorations = tester
         .widgetList<DecoratedBox>(find.byType(DecoratedBox))
         .map((box) => box.decoration)
-        .whereType<BoxDecoration>()
-        .map((decoration) => decoration.gradient)
-        .whereType<LinearGradient>();
+        .whereType<BoxDecoration>();
     expect(
-      gradients.any((gradient) =>
-          gradient.colors.length == 3 &&
-          gradient.colors[0] == const Color(0xD9000000) &&
-          gradient.colors[1] == const Color(0x66000000) &&
-          gradient.colors[2] == Colors.transparent),
+      decorations.any((decoration) => decoration.color == Colors.black),
       isTrue,
     );
   });
