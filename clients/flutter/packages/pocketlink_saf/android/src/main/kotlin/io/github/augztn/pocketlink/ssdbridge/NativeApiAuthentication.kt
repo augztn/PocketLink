@@ -1,6 +1,6 @@
 package io.github.augztn.pocketlink.ssdbridge
 
-import java.util.Base64
+import android.util.Base64
 
 /**
  * Validates the HTTP Basic credential envelope before delegating password
@@ -8,7 +8,8 @@ import java.util.Base64
  */
 internal class NativeApiAuthentication(
     private val username: String,
-    private val verifyPassword: (CharArray) -> Boolean
+    private val verifyPassword: (CharArray) -> Boolean,
+    private val decodeBase64: (String) -> ByteArray = { Base64.decode(it, Base64.DEFAULT) }
 ) {
     fun isAuthorized(headers: Map<String, String>): Boolean {
         val header = headers["authorization"] ?: return false
@@ -16,8 +17,8 @@ internal class NativeApiAuthentication(
 
         val decoded = try {
             val encoded = header.substringAfter(' ').trim()
-                .filterNot(Char::isWhitespace)
-            String(Base64.getDecoder().decode(encoded), Charsets.UTF_8)
+                .filterNot { it.isWhitespace() }
+            String(decodeBase64(encoded), Charsets.UTF_8)
         } catch (_: IllegalArgumentException) {
             return false
         }
