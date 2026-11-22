@@ -328,7 +328,10 @@ class _ExploreGridState extends State<_ExploreGrid>
         ],
       ),
       body: GridView.count(
-        padding: EdgeInsets.fromLTRB(16, LayoutInsetsScope.of(context).topClearance + 2, 16, LayoutInsetsScope.of(context).bottomClearance),
+        padding: PocketLinkHorizontalGutter.padding(context).copyWith(
+          top: LayoutInsetsScope.of(context).topClearance + 2,
+          bottom: LayoutInsetsScope.of(context).bottomClearance,
+        ),
         crossAxisCount: 2,
         crossAxisSpacing: 14,
         mainAxisSpacing: 14,
