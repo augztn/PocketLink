@@ -143,7 +143,9 @@ class GlassCircleButton extends StatelessWidget {
     return AnimatedBuilder(
       animation: settings,
       builder: (context, _) {
-        final useBlur = settings.progressiveBlurEnabled &&
+        // The header has its own blur preference. Floating action controls
+        // follow the independent Liquid Glass setting.
+        final useBlur = settings.useLiquidGlass &&
             !MediaQuery.of(context).disableAnimations;
         return RepaintBoundary(
           child: ClipOval(
