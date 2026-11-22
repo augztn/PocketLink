@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../core/settings/app_settings.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
+import '../../core/widgets/pocketlink_scaffold.dart';
 
 class VideoPlayerSettingsScreen extends StatelessWidget {
   const VideoPlayerSettingsScreen({super.key});
