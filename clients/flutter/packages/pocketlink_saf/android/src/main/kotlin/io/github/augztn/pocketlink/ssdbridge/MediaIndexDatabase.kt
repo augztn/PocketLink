@@ -3,6 +3,7 @@ package io.github.augztn.pocketlink.ssdbridge
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
+import java.util.Collections
 
 internal data class IndexDatabaseStats(
     val counts: Map<String, Int>,
@@ -227,8 +228,8 @@ internal class MediaIndexDatabase(context: Context) :
     }
 
     @Synchronized fun statsSnapshot(): IndexDatabaseStats = IndexDatabaseStats(
-        counts = counts().toMap(),
-        sizes = sizeTotals().toMap()
+        counts = Collections.unmodifiableMap(counts()),
+        sizes = Collections.unmodifiableMap(sizeTotals())
     )
 
     @Synchronized fun sizeTotals(): Map<String, Long> {
