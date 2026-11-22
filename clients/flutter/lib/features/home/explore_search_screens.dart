@@ -332,7 +332,7 @@ class _ExploreGridState extends State<_ExploreGrid>
           top: LayoutInsetsScope.of(context).topClearance + 2,
           bottom: LayoutInsetsScope.of(context).bottomClearance,
         ),
-        crossAxisCount: 2,
+        crossAxisCount: PocketLinkResponsiveLayout.gridColumns(context),
         crossAxisSpacing: 14,
         mainAxisSpacing: 14,
         childAspectRatio: 1.15,
