@@ -111,7 +111,7 @@ class PocketLinkTopBar extends StatelessWidget implements PreferredSizeWidget {
     final alignedLeading = effectiveLeading == null
         ? null
         : Padding(
-            padding: EdgeInsets.only(left: safeLeft + (leading == null ? 16 : 0)),
+            padding: EdgeInsets.only(left: safeLeft + 16),
             child: effectiveLeading,
           );
     final effectiveLeadingWidth = effectiveLeading == null
@@ -121,7 +121,7 @@ class PocketLinkTopBar extends StatelessWidget implements PreferredSizeWidget {
       title: title,
       leading: alignedLeading,
       leadingWidth: effectiveLeadingWidth,
-      titleSpacing: titleSpacing,
+      titleSpacing: effectiveLeading == null ? (titleSpacing ?? 16) + safeLeft : titleSpacing,
       automaticallyImplyLeading: false,
       centerTitle: centerTitle,
       backgroundColor: backgroundColor ?? Colors.transparent,
