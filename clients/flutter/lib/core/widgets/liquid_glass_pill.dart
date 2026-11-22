@@ -53,8 +53,8 @@ class LiquidGlassSurface extends StatelessWidget {
                           Colors.white.withValues(alpha: 0.08 * level),
                         ]
                       : [
-                          Colors.white.withValues(alpha: 0.85),
-                          Colors.white.withValues(alpha: 0.72),
+                          Colors.white.withValues(alpha: 0.85 * level),
+                          Colors.white.withValues(alpha: 0.72 * level),
                         ],
                 ),
                 borderRadius: radius,
