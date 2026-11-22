@@ -122,7 +122,7 @@ class MediaIndexScanSchedulerTest {
             lastScanStartedAt = { lastScanStartedAt },
             lastCompletedAt = { lastCompletedAt },
             lastAttemptStartedAt = { lastAttemptStartedAt },
-            requestScan = { force, trigger -> requests += force to trigger },
+            requestScan = { force, trigger -> requests.add(force to trigger) },
             nowMillis = { now }
         )
     }
