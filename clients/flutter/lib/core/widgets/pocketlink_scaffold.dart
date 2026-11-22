@@ -238,12 +238,6 @@ class _PocketLinkScaffoldState extends State<PocketLinkScaffold> {
                 200.0,
               ).toDouble();
     final topClearance = statusBarHeight + headerContentHeight + 8;
-    final bottomClearance = PocketLinkLayoutMetrics.bottomOverlayHeight(
-      bottomInset: media.viewPadding.bottom,
-      hasDock: widget.hasFloatingNavBar,
-      hasMiniPlayer: widget.hasActiveMiniPlayer,
-    );
-
     return ValueListenableBuilder<bool>(
       valueListenable: PocketLinkScrollOffsetScope.dockCollapsed,
       builder: (context, isCollapsed, _) {
