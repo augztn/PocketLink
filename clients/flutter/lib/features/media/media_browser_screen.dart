@@ -17,6 +17,7 @@ import 'package:provider/provider.dart';
 import '../../core/network/server_api.dart';
 import 'media_player_screen.dart';
 import 'media_library_catalog.dart';
+import 'data/media_library_repository.dart';
 import 'widgets/music_equalizer.dart';
 import 'widgets/video_metadata_label.dart';
 import 'widgets/video_duration_badge.dart';
@@ -144,35 +145,14 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   bool _isMedia(FileEntry item, {String? mime}) =>
       MediaLibraryCatalog.isMedia(item, type: widget.type, mime: mime);
 
-  Future<({List<MediaFileItem> items, MediaIndexStatus status})>
-      _readIndexedMedia() async {
-    final category = _isMusic ? 'music' : 'video';
-    final found = <MediaFileItem>[];
-    var offset = 0;
-    late MediaIndexStatus status;
-    do {
-      final page = await widget.api.indexedMedia(
-        category,
+  Future<MediaLibraryResult> _readIndexedMedia() =>
+      MediaLibraryRepository(
+        api: widget.api,
+        type: widget.type,
+      ).readIndexedMedia(
         query: _searchQuery,
-        limit: 500,
-        offset: offset,
+        shouldContinue: () => mounted,
       );
-      status = page.status;
-      if (!mounted) break;
-      found.addAll(page.items
-          .where((item) => _isMedia(item.toFileEntry(), mime: item.mime))
-          .map((item) => MediaFileItem(
-                entry: item.toFileEntry(),
-                path: item.path,
-                volume: item.volume == 'internal' ? null : item.volume,
-              )));
-      offset += page.items.length;
-      if (page.items.length < 500) break;
-    } while (true);
-    found.sort((a, b) =>
-        a.entry.name.toLowerCase().compareTo(b.entry.name.toLowerCase()));
-    return (items: found, status: status);
-  }
 
   Future<void> _refreshMusic() async {
     if (_loading) return;
