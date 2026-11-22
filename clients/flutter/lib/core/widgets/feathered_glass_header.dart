@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:material_ui/material_ui.dart';
 
 import '../settings/app_settings.dart';
+import 'liquid_glass_pill.dart';
 import 'pocketlink_scaffold.dart';
 
 /// Shared top-edge blur and legibility surface for edge-to-edge screens.
@@ -125,116 +126,32 @@ class GlassCircleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final settings = AppSettings.instance;
-    return AnimatedBuilder(
-      animation: settings,
-      builder: (context, _) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        final useGlass = settings.useLiquidGlass;
-        final useBlur = useGlass && !MediaQuery.of(context).disableAnimations;
-        final foreground = isDark ? Colors.white : const Color(0xFF0F172A);
-        final button = CustomPaint(
-          foregroundPainter:
-              useGlass ? _GlassCircleRimPainter(isDark: isDark) : null,
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: onPressed,
-              customBorder: const CircleBorder(),
-              splashColor: Colors.transparent,
-              highlightColor: Colors.transparent,
-              child: Tooltip(
-                message: tooltip,
-                child: Container(
-                  width: size,
-                  height: size,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: useGlass
-                        ? (isDark
-                            ? const Color(0xFF1C1E24).withValues(alpha: 0.58)
-                            : Colors.white.withValues(alpha: 0.58))
-                        : Theme.of(context).colorScheme.surfaceContainerLow,
-                    border: Border.all(
-                      color: useGlass
-                          ? (isDark
-                              ? Colors.white.withValues(alpha: 0.24)
-                              : const Color(0xFF94A3B8).withValues(alpha: 0.30))
-                          : Theme.of(context).colorScheme.outlineVariant,
-                      width: 1,
-                    ),
-                  ),
-                  child: Center(
-                    child: IconTheme(
-                      data: IconThemeData(color: foreground, size: 18),
-                      child: child,
-                    ),
-                  ),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final foreground = isDark ? Colors.white : const Color(0xFF0F172A);
+    return LiquidGlassSurface(
+      radius: BorderRadius.circular(size / 2),
+      refractive: true,
+      lightRefractive: true,
+      child: Material(
+        color: Colors.transparent,
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onPressed,
+          child: Tooltip(
+            message: tooltip,
+            child: SizedBox(
+              width: size,
+              height: size,
+              child: Center(
+                child: IconTheme(
+                  data: IconThemeData(color: foreground, size: 18),
+                  child: child,
                 ),
               ),
             ),
           ),
-        );
-        final noSplashTheme = Theme.of(context).copyWith(
-          splashFactory: NoSplash.splashFactory,
-          highlightColor: Colors.transparent,
-          hoverColor: Colors.transparent,
-          focusColor: Colors.transparent,
-        );
-        final themedButton = Theme(data: noSplashTheme, child: button);
-        return ClipOval(
-          child: useBlur
-              ? BackdropFilter(
-                  filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-                  child: themedButton,
-                )
-              : themedButton,
-        );
-      },
+        ),
+      ),
     );
   }
-}
-
-
-class _GlassCircleRimPainter extends CustomPainter {
-  const _GlassCircleRimPainter({required this.isDark});
-
-  final bool isDark;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final diameter = size.shortestSide;
-    if (diameter <= 1) return;
-    final rect = Offset.zero & size;
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1
-      ..isAntiAlias = true
-      ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: isDark
-            ? const [
-                Color(0x99FFFFFF),
-                Color(0x38FFFFFF),
-                Color(0x08FFFFFF),
-              ]
-            : const [
-                Color(0xAFFFFFFF),
-                Color(0x54FFFFFF),
-                Color(0x12FFFFFF),
-              ],
-        stops: const [0, 0.52, 1],
-      ).createShader(rect);
-    canvas.drawCircle(
-      Offset(size.width / 2, size.height / 2),
-      diameter / 2 - 0.6,
-      paint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _GlassCircleRimPainter oldDelegate) =>
-      oldDelegate.isDark != isDark;
-}
