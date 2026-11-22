@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:material_ui/material_ui.dart';
 
 /// Shared 16dp content gutter plus the current horizontal system safe area.
@@ -35,24 +34,6 @@ class PocketLinkResponsiveLayout {
   }
 }
 
-/// Scroll position shared by the active route tree so every top bar reacts
-/// consistently to the same scroll activity.
-class PocketLinkScrollOffsetScope extends InheritedNotifier<ValueNotifier<double>> {
-  const PocketLinkScrollOffsetScope({
-    required ValueNotifier<double> offset,
-    required super.child,
-    super.key,
-  }) : super(notifier: offset);
-
-  static const double collapseThreshold = 72;
-  static final ValueNotifier<double> currentOffset = ValueNotifier<double>(0);
-  static final ValueNotifier<bool> dockCollapsed = ValueNotifier<bool>(false);
-
-  static ValueListenable<double> listenableOf(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<PocketLinkScrollOffsetScope>()?.notifier ??
-      currentOffset;
-}
-
 /// Single source of truth for the floating dock and mini-player geometry.
 abstract final class PocketLinkLayoutMetrics {
   static const double topBarHeight = 64;
@@ -65,13 +46,10 @@ abstract final class PocketLinkLayoutMetrics {
     required double bottomInset,
     required bool hasDock,
     required bool hasMiniPlayer,
-    bool collapsed = false,
   }) =>
       bottomInset +
-      (collapsed
-          ? (hasDock ? dockHeight : (hasMiniPlayer ? miniPlayerHeight : 0))
-          : (hasDock ? dockHeight : 0) +
-              (hasMiniPlayer ? miniPlayerHeight + miniPlayerGap : 0)) +
+      (hasDock ? dockHeight : 0) +
+      (hasMiniPlayer ? miniPlayerHeight + miniPlayerGap : 0) +
       bottomClearance;
 }
 
@@ -184,41 +162,7 @@ class _PocketLinkScaffoldState extends State<PocketLinkScaffold> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.routeIdentity != widget.routeIdentity) {
       _renderedHeaderHeight = null;
-      PocketLinkScrollOffsetScope.currentOffset.value = 0;
-      PocketLinkScrollOffsetScope.dockCollapsed.value = false;
     }
-  }
-
-  @override
-  void dispose() {
-    PocketLinkScrollOffsetScope.currentOffset.value = 0;
-    PocketLinkScrollOffsetScope.dockCollapsed.value = false;
-    super.dispose();
-  }
-
-  bool _handleScrollNotification(ScrollNotification notification) {
-    // Main vertical lists sit one level below the horizontal root PageView.
-    if (notification.depth > 1 || notification.metrics.axis != Axis.vertical) {
-      return false;
-    }
-    final next = notification.metrics.pixels.clamp(0.0, double.infinity).toDouble();
-    final offset = PocketLinkScrollOffsetScope.currentOffset;
-    final previous = offset.value;
-    if ((previous - next).abs() >= 0.5) {
-      offset.value = next;
-    }
-    final scrollingDown = next > previous + 0.5;
-    final scrollingUp = next < previous - 0.5;
-    final collapsed = scrollingDown
-        ? next >= PocketLinkScrollOffsetScope.collapseThreshold
-        : scrollingUp
-            ? false
-            : PocketLinkScrollOffsetScope.dockCollapsed.value;
-    if (next < PocketLinkScrollOffsetScope.collapseThreshold ||
-        PocketLinkScrollOffsetScope.dockCollapsed.value != collapsed) {
-      PocketLinkScrollOffsetScope.dockCollapsed.value = collapsed;
-    }
-    return false;
   }
 
   void reportHeaderHeight(double height) {
@@ -249,33 +193,18 @@ class _PocketLinkScaffoldState extends State<PocketLinkScaffold> {
                 200.0,
               ).toDouble();
     final topClearance = statusBarHeight + headerContentHeight + 8;
-    return ValueListenableBuilder<bool>(
-      valueListenable: PocketLinkScrollOffsetScope.dockCollapsed,
-      builder: (context, isCollapsed, _) {
-        final collapsed = widget.hasFloatingNavBar &&
-            widget.hasActiveMiniPlayer &&
-            isCollapsed;
-        final bottomClearance = PocketLinkLayoutMetrics.bottomOverlayHeight(
-          bottomInset: media.viewPadding.bottom,
-          hasDock: widget.hasFloatingNavBar,
-          hasMiniPlayer: widget.hasActiveMiniPlayer,
-          collapsed: collapsed,
-        );
-        return LayoutInsetsScope(
-          topClearance: topClearance,
-          bottomClearance: bottomClearance,
-          hasFloatingNavBar: widget.hasFloatingNavBar,
-          hasActiveMiniPlayer: widget.hasActiveMiniPlayer,
-          reportHeaderHeight: reportHeaderHeight,
-          child: NotificationListener<ScrollNotification>(
-            onNotification: _handleScrollNotification,
-            child: PocketLinkScrollOffsetScope(
-              offset: PocketLinkScrollOffsetScope.currentOffset,
-              child: widget.child,
-            ),
-          ),
-        );
-      },
+    final bottomClearance = PocketLinkLayoutMetrics.bottomOverlayHeight(
+      bottomInset: media.viewPadding.bottom,
+      hasDock: widget.hasFloatingNavBar,
+      hasMiniPlayer: widget.hasActiveMiniPlayer,
+    );
+    return LayoutInsetsScope(
+      topClearance: topClearance,
+      bottomClearance: bottomClearance,
+      hasFloatingNavBar: widget.hasFloatingNavBar,
+      hasActiveMiniPlayer: widget.hasActiveMiniPlayer,
+      reportHeaderHeight: reportHeaderHeight,
+      child: widget.child,
     );
   }
 }
