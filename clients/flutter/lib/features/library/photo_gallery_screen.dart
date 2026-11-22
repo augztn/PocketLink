@@ -277,7 +277,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     padding: (shrinkWrap
         ? EdgeInsets.zero
         : PocketLinkHorizontalGutter.padding(context)).copyWith(
-      top: shrinkWrap || searchOpen ? 2 : LayoutInsetsScope.of(context).topClearance,
+      top: shrinkWrap || searchOpen ? 2 : 8,
       bottom: shrinkWrap ? 0 : LayoutInsetsScope.of(context).bottomClearance,
     ),
     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -307,7 +307,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     if (dateMode == 3) return grid(items);
     final groups = <String,List<_Photo>>{};
     for (final p in items) { groups.putIfAbsent(group(p), () => []).add(p); }
-    return ListView(padding: PocketLinkHorizontalGutter.padding(context).copyWith(top: searchOpen ? 0 : LayoutInsetsScope.of(context).topClearance, bottom: LayoutInsetsScope.of(context).bottomClearance), children: [
+    return ListView(padding: PocketLinkHorizontalGutter.padding(context).copyWith(top: searchOpen ? 0 : 8, bottom: LayoutInsetsScope.of(context).bottomClearance), children: [
       for (final entry in groups.entries) ...[
         Padding(padding: const EdgeInsets.fromLTRB(0,18,0,8),
           child: Row(children: [
@@ -324,7 +324,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     final albums = groupByAlbum(items).entries.toList()..sort((a,b)=>a.key.compareTo(b.key));
     if (albums.isEmpty) return empty('Albums will appear when photos are found.');
     return GridView.builder(
-      padding: PocketLinkHorizontalGutter.padding(context).copyWith(top: searchOpen ? 12 : LayoutInsetsScope.of(context).topClearance, bottom: LayoutInsetsScope.of(context).bottomClearance),
+      padding: PocketLinkHorizontalGutter.padding(context).copyWith(top: searchOpen ? 12 : 8, bottom: LayoutInsetsScope.of(context).bottomClearance),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: PocketLinkResponsiveLayout.gridColumns(context),
         crossAxisSpacing: 12,
@@ -357,7 +357,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     }
     final featured=memories.entries.take(8).toList();
     final albums=groupByAlbum(items);
-    return ListView(padding: PocketLinkHorizontalGutter.padding(context).copyWith(top: searchOpen ? 16 : LayoutInsetsScope.of(context).topClearance, bottom: LayoutInsetsScope.of(context).bottomClearance),children:[
+    return ListView(padding: PocketLinkHorizontalGutter.padding(context).copyWith(top: searchOpen ? 16 : 8, bottom: LayoutInsetsScope.of(context).bottomClearance),children:[
       Text('Memories',style:Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight:FontWeight.w800)),
       const SizedBox(height:4),
       Text('Moments grouped by the dates stored with your photos.',style:Theme.of(context).textTheme.bodySmall),
@@ -565,160 +565,197 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     final contentTop = LayoutInsetsScope.of(context).topClearance;
 
     return Scaffold(
-      extendBodyBehindAppBar: true,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          Column(children: [
-            if (widget.showSearch && searchOpen) SizedBox(height: contentTop),
-            if (widget.showSearch && searchOpen)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                child: TextField(
-                  controller: search,
-                  autofocus: true,
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    hintText: 'Search photos, folders or dates',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: IconButton(
-                      onPressed: () { search.clear(); setState(() {}); },
-                      icon: const Icon(Icons.clear),
+      appBar: PocketLinkAppBar(
+        showMoreMenu: false,
+        title: selecting
+            ? Text(title, maxLines: 1, overflow: TextOverflow.ellipsis)
+            : TitleDropdownPopover<int>(
+                tooltip: 'Choose photo view',
+                onOpenChanged: (open) => setState(() => _viewMenuOpen = open),
+                items: [
+                  for (var index = 0; index < 3; index++)
+                    SmokedGlassPopoverMenuItem(
+                      value: index,
+                      label: const ['Photos', 'Albums', 'Favorites'][index],
+                      icon: [
+                        Icons.photo_library_rounded,
+                        Icons.photo_album_rounded,
+                        Icons.favorite_rounded,
+                      ][index],
+                      trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                        Text('${counts[index]}',
+                          style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
+                        const SizedBox(width: 8),
+                        SizedBox(width: 20,
+                          child: tab == index ? const Icon(Icons.check_rounded, size: 18) : null),
+                      ]),
                     ),
-                    filled: true,
-                    fillColor: theme.colorScheme.surfaceContainerLow,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
-                  ),
+                ],
+                onSelected: (value) => setState(() {
+                  tab = value;
+                  selected.clear();
+                }),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Flexible(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: foreground, fontSize: 26,
+                        fontWeight: FontWeight.w700, letterSpacing: -0.5))),
+                    const SizedBox(width: 6),
+                    AnimatedRotation(
+                      turns: _viewMenuOpen ? 0.5 : 0,
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOutCubic,
+                      child: Icon(Icons.keyboard_arrow_down_rounded, color: foreground, size: 20),
+                    ),
+                  ]),
                 ),
               ),
-            if (loading) const LinearProgressIndicator(minHeight: 2),
-            if (error != null)
-              Padding(padding: const EdgeInsets.all(12),
-                child: Text(error!, style: TextStyle(color: theme.colorScheme.error))),
-            Expanded(
-              child: error != null
-                  ? Center(child: FilledButton(onPressed: scan, child: const Text('Retry scan')))
-                  : loading && photos.isEmpty
-                      ? const Center(child: Text('Scanning photos…'))
-                      : AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 220),
-                          switchInCurve: Curves.easeOutCubic,
-                          switchOutCurve: Curves.easeOutCubic,
-                          transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
-                          child: KeyedSubtree(
-                            key: ValueKey<int>(tab),
-                            child: tab == 1
-                                ? albumsTab(items)
-                                : items.isEmpty
-                                    ? empty(tab == 2 ? 'No favourite photos yet.' : 'No photos found in internal or connected USB storage.')
-                                    : photosTab(items),
-                          ),
-                        ),
-            ),
-          ]),
-          Positioned(
-            top: 0, left: 0, right: 0, height: headerTop + 88,
-            child: const IgnorePointer(child: FeatheredGlassHeaderBackground(contentHeight: 52)),
-          ),
-          Positioned(
-            top: headerTop + 8, left: 16, right: 16, height: 52,
-            child: Row(children: [
-              if (selecting)
-                Expanded(child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: foreground, fontSize: 26, fontWeight: FontWeight.w700, letterSpacing: -0.5)),
-                ))
-              else
-                Expanded(child: Align(alignment: Alignment.centerLeft, child: TitleDropdownPopover<int>(
-tooltip: 'Choose photo view',
-                  onOpenChanged: (open) => setState(() => _viewMenuOpen = open),
-                  items: [
-                    for (var index = 0; index < 3; index++)
-                      SmokedGlassPopoverMenuItem(
-                        value: index,
-                        label: const ['Photos', 'Albums', 'Favorites'][index],
-                        icon: [Icons.photo_library_rounded, Icons.photo_album_rounded, Icons.favorite_rounded][index],
-                        trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                          Text('${counts[index]}', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
-                          const SizedBox(width: 8),
-                          SizedBox(width: 20, child: tab == index ? const Icon(Icons.check_rounded, size: 18) : null),
-                        ]),
-                      ),
-                  ],
-                  onSelected: (value) => setState(() { tab = value; selected.clear(); }),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Flexible(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(
-                        color: foreground, fontSize: 26, fontWeight: FontWeight.w700, letterSpacing: -0.5,
-                      ))),
-                      const SizedBox(width: 6),
-                      AnimatedRotation(
-                        turns: _viewMenuOpen ? 0.5 : 0,
-                        duration: const Duration(milliseconds: 200),
-                        curve: Curves.easeOutCubic,
-                        child: Icon(Icons.keyboard_arrow_down_rounded, color: foreground, size: 20),
-                      ),
-                    ]),
-                  ),
-                ))),
-              const SizedBox(width: 8),
-              SmokedGlassPopoverMenu<String>(
-                tooltip: 'More photo actions',
-                items: [
-                  if (widget.showSearch) SmokedGlassPopoverMenuItem(value: 'search', label: searchOpen ? 'Close search' : 'Search photos', icon: searchOpen ? Icons.close_rounded : Icons.search_rounded),
-                  const SmokedGlassPopoverMenuItem(
-                    value: 'filter',
-                    label: 'Filter & layout',
-                    icon: Icons.tune_rounded,
-                  ),
-                  const SmokedGlassPopoverMenuItem(
-                    value: 'select',
-                    label: 'Select all / clear',
-                    icon: Icons.checklist_rounded,
-                    dividerBefore: true,
-                  ),
-                  SmokedGlassPopoverMenuItem(
-                    value: 'scan',
-                    label: 'Scan again',
-                    icon: Icons.refresh_rounded,
-                    enabled: !loading,
-                  ),
-                  const SmokedGlassPopoverMenuItem(
-                    value: 'transfers',
-                    label: 'Transfers',
-                    icon: Icons.swap_vert_rounded,
-                    dividerBefore: true,
-                  ),
-                  const SmokedGlassPopoverMenuItem(
-                    value: 'home',
-                    label: 'Return to Home',
-                    icon: Icons.home_rounded,
-                  ),
-                ],
-                onSelected: (value) {
-                  if (value == 'search') _setSearchOpen(!searchOpen);
-                  if (value == 'filter') _showFilters();
-                  if (value == 'scan') scan(refresh: true);
-                  if (value == 'transfers') {
-                    Navigator.of(context).push(MaterialPageRoute<void>(
-                      builder: (_) => const TransferManagerScreen(),
-                    ));
-                  }
-                  if (value == 'home') PocketLinkAppBar.goToDashboard(context);
-                  if (value == 'select') setState(() {
-                    if (selected.isEmpty) selected.addAll(items.map((p) => p.id));
-                    else selected.clear();
-                  });
-                },
-                child: GlassCircleButton(tooltip: 'Open more photo actions', onPressed: null,
-                  child: const Icon(Icons.more_vert_rounded)),
+        actionsBeforeHome: [
+          SmokedGlassPopoverMenu<String>(
+            tooltip: 'More photo actions',
+            items: [
+              if (widget.showSearch)
+                SmokedGlassPopoverMenuItem(
+                  value: 'search',
+                  label: searchOpen ? 'Close search' : 'Search photos',
+                  icon: searchOpen ? Icons.close_rounded : Icons.search_rounded,
+                ),
+              const SmokedGlassPopoverMenuItem(
+                value: 'filter', label: 'Filter & layout', icon: Icons.tune_rounded,
               ),
-            ]),
+              const SmokedGlassPopoverMenuItem(
+                value: 'select', label: 'Select all / clear',
+                icon: Icons.checklist_rounded, dividerBefore: true,
+              ),
+              SmokedGlassPopoverMenuItem(
+                value: 'scan', label: 'Scan again', icon: Icons.refresh_rounded,
+                enabled: !loading,
+              ),
+              const SmokedGlassPopoverMenuItem(
+                value: 'transfers', label: 'Transfers',
+                icon: Icons.swap_vert_rounded, dividerBefore: true,
+              ),
+              const SmokedGlassPopoverMenuItem(
+                value: 'home', label: 'Return to Home', icon: Icons.home_rounded,
+              ),
+            ],
+            onSelected: (value) {
+              if (value == 'search') _setSearchOpen(!searchOpen);
+              if (value == 'filter') _showFilters();
+              if (value == 'scan') scan(refresh: true);
+              if (value == 'transfers') {
+                Navigator.of(context).push(MaterialPageRoute<void>(
+                  builder: (_) => const TransferManagerScreen(),
+                ));
+              }
+              if (value == 'home') PocketLinkAppBar.goToDashboard(context);
+              if (value == 'select') setState(() {
+                if (selected.isEmpty) selected.addAll(items.map((p) => p.id));
+                else selected.clear();
+              });
+            },
+            child: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 4),
+              child: SizedBox.square(
+                dimension: 38,
+                child: GlassCircleButton(
+                  tooltip: 'Open more photo actions',
+                  onPressed: null,
+                  child: Icon(Icons.more_vert_rounded),
+                ),
+              ),
+            ),
           ),
         ],
       ),
+      body: Column(children: [
+        if (widget.showSearch && searchOpen)
+          Padding(
+            padding: PocketLinkHorizontalGutter.padding(context).copyWith(top: 4, bottom: 8),
+            child: TextField(
+              controller: search,
+              autofocus: true,
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                hintText: 'Search photos, folders or dates',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: IconButton(
+                  onPressed: () { search.clear(); setState(() {}); },
+                  icon: const Icon(Icons.clear),
+                ),
+                filled: true,
+                fillColor: theme.colorScheme.surfaceContainerLow,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(18),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+          ),
+        if (loading) const LinearProgressIndicator(minHeight: 2),
+        if (error != null)
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Text(error!, style: TextStyle(color: theme.colorScheme.error)),
+          ),
+        Expanded(
+          child: error != null
+              ? Padding(
+                  padding: EdgeInsets.only(bottom: LayoutInsetsScope.of(context).bottomClearance),
+                  child: Center(child: FilledButton(onPressed: scan, child: const Text('Retry scan'))),
+                )
+              : loading && photos.isEmpty
+                  ? Padding(
+                      padding: EdgeInsets.only(
+                        top: 8,
+                        bottom: LayoutInsetsScope.of(context).bottomClearance,
+                      ),
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                              width: 28,
+                              height: 28,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: theme.colorScheme.primary,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Text('Scanning photos…',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              )),
+                          ],
+                        ),
+                      ),
+                    )
+                  : AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 220),
+                      switchInCurve: Curves.easeOutCubic,
+                      switchOutCurve: Curves.easeOutCubic,
+                      transitionBuilder: (child, animation) =>
+                          FadeTransition(opacity: animation, child: child),
+                      child: KeyedSubtree(
+                        key: ValueKey<int>(tab),
+                        child: tab == 1
+                            ? albumsTab(items)
+                            : items.isEmpty
+                                ? Padding(
+                                    padding: EdgeInsets.only(
+                                      bottom: LayoutInsetsScope.of(context).bottomClearance,
+                                    ),
+                                    child: empty(tab == 2
+                                        ? 'No favourite photos yet.'
+                                        : 'No photos found in internal or connected USB storage.'),
+                                  )
+                                : photosTab(items),
+                      ),
+                    ),
+        ),
+      ]),
       bottomNavigationBar: selecting
           ? SafeArea(child: Padding(
               padding: const EdgeInsets.all(10),
