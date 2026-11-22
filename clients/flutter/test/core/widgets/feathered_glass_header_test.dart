@@ -147,6 +147,27 @@ void main() {
     expect(find.byType(BackdropFilter), findsNWidgets(2));
   });
 
+  testWidgets('header blur fades progressively below the toolbar without a clip', (tester) async {
+    await tester.runAsync(
+      () => AppSettings.instance.setProgressiveBlurEnabled(true),
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: FeatheredGlassHeaderBackground(contentHeight: 64),
+        ),
+      ),
+    );
+
+    expect(find.byType(ShaderMask), findsOneWidget);
+    expect(find.byType(ClipRect), findsNothing);
+    expect(find.byType(BackdropFilter), findsOneWidget);
+
+    final mask = tester.widget<ShaderMask>(find.byType(ShaderMask));
+    expect(mask.blendMode, BlendMode.dstIn);
+  });
+
   testWidgets('header applies frosted blur when enabled', (tester) async {
     await tester.runAsync(
       () => AppSettings.instance.setProgressiveBlurEnabled(true),
