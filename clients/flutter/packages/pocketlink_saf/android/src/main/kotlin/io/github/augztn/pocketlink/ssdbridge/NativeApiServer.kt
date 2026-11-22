@@ -40,7 +40,7 @@ internal class NativeApiServer(
             notFound = ::notFound,
             error = ::jsonError,
             markMediaIndexDirty = ::markMediaIndexDirty,
-            mutationLock = FILE_MUTATION_LOCK
+            mutationLock = StorageMutationCoordinator.lock
         )
     }
     private val fileResponseOperations by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
@@ -74,7 +74,7 @@ internal class NativeApiServer(
             json = { value -> json(value) },
             error = { status, message -> jsonError(status, message) },
             markMediaIndexDirty = ::markMediaIndexDirty,
-            mutationLock = FILE_MUTATION_LOCK
+            mutationLock = StorageMutationCoordinator.lock
         )
     }
     private val mediaIndexDelegate = lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
@@ -264,6 +264,5 @@ internal class NativeApiServer(
         const val PORT = 8000
         const val USERNAME = "admin"
         private const val STREAM_BUFFER_SIZE = 64 * 1024
-        private val FILE_MUTATION_LOCK = Any()
     }
 }
