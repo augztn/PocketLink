@@ -532,13 +532,11 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   Widget _buildVideoGrid(List<MediaFileItem> items) {
     return GridView.builder(
       controller: _contentScrollController,
-      padding: EdgeInsets.fromLTRB(
-        12,
-        ((_searchExpanded && widget.showSearch) || _libraryView == 'folders')
+      padding: PocketLinkHorizontalGutter.padding(context).copyWith(
+        top: ((_searchExpanded && widget.showSearch) || _libraryView == 'folders')
             ? 8
             : LayoutInsetsScope.of(context).topClearance,
-        12,
-        LayoutInsetsScope.of(context).bottomClearance,
+        bottom: LayoutInsetsScope.of(context).bottomClearance,
       ),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: PocketLinkResponsiveLayout.gridColumns(context),
