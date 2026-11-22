@@ -377,7 +377,7 @@ class _ExploreGridState extends State<_ExploreGrid>
           ),
           card(
             index: 5,
-            title: 'Search', subtitle: 'Find files across storage',
+            title: 'Search', subtitle: 'Search all files & media',
             icon: Icons.search_rounded, tint: const Color(0xFF6C9DCE),
             onTap: () => onOpen(SearchScreen(api: api, onHome: () => Navigator.of(context).maybePop())),
           ),
