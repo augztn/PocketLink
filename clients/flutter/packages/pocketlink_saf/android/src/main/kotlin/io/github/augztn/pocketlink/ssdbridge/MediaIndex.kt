@@ -706,7 +706,7 @@ internal class MediaIndexScanner(
             .put("scanned_bytes", scannedBytes)
             .put("last_error", lastError)
             .put("volumes", org.json.JSONArray().also { items ->
-                volumeReports.values.sortedBy { it.optString("volume") }
+                volumeReportSnapshot().sortedBy { it.optString("volume") }
                     .forEach { items.put(org.json.JSONObject(it.toString())) }
             })
             .put("skipped_items", org.json.JSONArray().also { items ->
