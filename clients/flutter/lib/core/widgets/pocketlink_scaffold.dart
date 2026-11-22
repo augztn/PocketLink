@@ -128,7 +128,7 @@ class LayoutInsetsScope extends InheritedWidget {
     final safeTop = media?.padding.top ?? 0.0;
     final safeBottom = media?.viewPadding.bottom ?? 0.0;
     return LayoutInsetsScope(
-      topClearance: safeTop + PocketLinkLayoutMetrics.topBarHeight + 10,
+      topClearance: safeTop + PocketLinkLayoutMetrics.topBarHeight + 8,
       bottomClearance: PocketLinkLayoutMetrics.bottomOverlayHeight(
         bottomInset: safeBottom,
         hasDock: false,
