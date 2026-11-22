@@ -292,34 +292,34 @@ class _ExploreGridState extends State<_ExploreGrid>
 
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: PocketLinkAppBar(
+      appBar: PocketLinkTopBar(
         feathered: true,
         showHome: false,
         automaticallyImplyLeading: false,
         title: const Text('Explore'),
         actions: [
-          PocketLinkAppBarAction(
+          PocketLinkTopBarAction(
             label: 'Download manager',
             icon: Icons.download_rounded,
             onPressed: () => onOpen(DownloadsScreen(api: api)),
           ),
-          PocketLinkAppBarAction(
+          PocketLinkTopBarAction(
             label: 'Transfers',
             icon: Icons.swap_vert_rounded,
             onPressed: () => onOpen(const TransferManagerScreen()),
           ),
-          PocketLinkAppBarAction(
+          PocketLinkTopBarAction(
             label: 'Drives & storage',
             icon: Icons.storage_rounded,
             onPressed: () => onOpen(StorageBrowserScreen(api: api)),
           ),
-          PocketLinkAppBarAction(
+          PocketLinkTopBarAction(
             label: 'Scan all libraries',
             icon: Icons.refresh_rounded,
             onPressed: _scanAllLibraries,
             dividerBefore: true,
           ),
-          PocketLinkAppBarAction(
+          PocketLinkTopBarAction(
             label: 'Settings',
             icon: Icons.settings_rounded,
             onPressed: () => onOpen(const SettingsScreen()),
