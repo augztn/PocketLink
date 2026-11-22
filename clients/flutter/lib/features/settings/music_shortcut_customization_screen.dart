@@ -105,7 +105,7 @@ class _MusicShortcutCustomizationScreenState
         ],
       ),
       body: ListView(
-        padding: EdgeInsets.fromLTRB(16, 12, 16, 28 + MediaQuery.paddingOf(context).bottom),
+        padding: PocketLinkHorizontalGutter.padding(context).copyWith(top: 12, bottom: 28 + MediaQuery.paddingOf(context).bottom),
         children: [
           Text('Destinations', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
           const SizedBox(height: 5),
