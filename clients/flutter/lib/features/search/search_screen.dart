@@ -630,7 +630,10 @@ class _SearchScreenState extends State<SearchScreen> {
     return ListView.separated(
       shrinkWrap: shrink,
       physics: shrink ? const NeverScrollableScrollPhysics() : const AlwaysScrollableScrollPhysics(),
-      padding: EdgeInsets.fromLTRB(12, topInset, 12, shrink ? 0 : LayoutInsetsScope.of(context).bottomClearance),
+      padding: (shrink ? EdgeInsets.zero : PocketLinkHorizontalGutter.padding(context)).copyWith(
+        top: topInset,
+        bottom: shrink ? 0 : LayoutInsetsScope.of(context).bottomClearance,
+      ),
       itemCount: list.length,
       separatorBuilder: (_, __) => const Divider(height: 1, indent: 62),
       itemBuilder: (ctx, i) {
@@ -709,7 +712,10 @@ class _SearchScreenState extends State<SearchScreen> {
   );
 
   Widget _idle(ThemeData theme, {double topInset = 20}) => ListView(
-    padding: EdgeInsets.fromLTRB(16, topInset, 16, LayoutInsetsScope.of(context).bottomClearance),
+    padding: PocketLinkHorizontalGutter.padding(context).copyWith(
+      top: topInset,
+      bottom: LayoutInsetsScope.of(context).bottomClearance,
+    ),
     children: [
       if (_history.isNotEmpty) ...[
         Row(children: [
@@ -782,7 +788,10 @@ class _SearchScreenState extends State<SearchScreen> {
                 ? _resultsList(theme, topInset: contentTop)
                 : query.isEmpty
                     ? ListView(
-                        padding: EdgeInsets.fromLTRB(0, contentTop, 0, LayoutInsetsScope.of(context).bottomClearance),
+                        padding: PocketLinkHorizontalGutter.padding(context).copyWith(
+                          top: contentTop,
+                          bottom: LayoutInsetsScope.of(context).bottomClearance,
+                        ),
                         children: [_resultsList(theme, shrink: true, topInset: 0)],
                       )
                     : _resultsList(theme, topInset: contentTop);
