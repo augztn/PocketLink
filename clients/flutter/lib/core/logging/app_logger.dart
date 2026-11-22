@@ -107,7 +107,7 @@ class AppLogger {
     }
     final timestamp = DateTime.now().toUtc();
     final record = <String, Object?>{
-      'event_id': nextEventId(),
+      'event_id': (_sessionId ?? 'uninitialized') + '-' + nextEventId(),
       'session_id': _sessionId ?? 'uninitialized',
       'timestamp': timestamp.toIso8601String(),
       'level': level,
@@ -232,11 +232,16 @@ class AppLogger {
     if (await backup.exists()) await backup.delete();
     await file.rename(backup.path);
     await file.create();
-    if (await backup.length() > _maxBackupBytes) {
-      await backup.writeAsBytes(await backup.openRead(0, _maxBackupBytes).fold<List<int>>(
+    final backupLength = await backup.length();
+    if (backupLength > _maxBackupBytes) {
+      final start = backupLength - _maxBackupBytes;
+      final tail = await backup.openRead(start).fold<List<int>>(
         <int>[],
         (bytes, chunk) => bytes..addAll(chunk),
-      ), flush: true);
+      );
+      final firstLineBreak = tail.indexOf(10);
+      final retained = firstLineBreak < 0 ? tail : tail.sublist(firstLineBreak + 1);
+      await backup.writeAsBytes(retained, flush: true);
     }
   }
 
