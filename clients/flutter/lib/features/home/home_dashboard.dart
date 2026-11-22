@@ -990,16 +990,13 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
       appBar: PocketLinkTopBar(
         automaticallyImplyLeading: false,
         leadingWidth: 56,
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 16),
-          child: SizedBox.square(
-            dimension: 40,
-            child: GlassCircleButton(
-              size: 40,
-              tooltip: 'Open navigation menu',
-              onPressed: widget.onOpenDrawer,
-              child: const Icon(Icons.menu_rounded, size: 18),
-            ),
+        leading: SizedBox.square(
+          dimension: 40,
+          child: GlassCircleButton(
+            size: 40,
+            tooltip: 'Open navigation menu',
+            onPressed: widget.onOpenDrawer,
+            child: const Icon(Icons.menu_rounded, size: 18),
           ),
         ),
         titleSpacing: 8,
