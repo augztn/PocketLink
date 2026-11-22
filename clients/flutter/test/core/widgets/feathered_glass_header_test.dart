@@ -224,7 +224,7 @@ void main() {
         .whereType<LinearGradient>();
     expect(
       gradients.any((gradient) =>
-          gradient.colors.first == const Color(0x66000000) &&
+          gradient.colors.first == const Color(0xBF000000) &&
           gradient.colors.last == Colors.transparent),
       isTrue,
     );
