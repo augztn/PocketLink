@@ -170,6 +170,11 @@ class FloatingNavigationDock extends StatelessWidget {
                                 : fallbackPage;
                             final pageOffset = (page - groupStartPage)
                                 .clamp(0.0, ids.length - 1.0);
+                            final travelProgress = math
+                                .sin((page - page.roundToDouble()).abs() * math.pi)
+                                .clamp(0.0, 1.0)
+                                .toDouble();
+                            final lensStretch = travelProgress * 0.14;
                             final lensInThisGroup =
                                 page >= groupStartPage - 0.5 &&
                                 page <= groupStartPage + ids.length - 0.5;
@@ -180,10 +185,11 @@ class FloatingNavigationDock extends StatelessWidget {
                                     selectedPosition >= 0 &&
                                     lensInThisGroup)
                                   Positioned(
-                                    left: pageOffset * tabWidth,
-                                    width: tabWidth,
-                                    top: 0,
-                                    bottom: 0,
+                                    left: pageOffset * tabWidth -
+                                        (tabWidth * lensStretch / 2),
+                                    width: tabWidth * (1 + lensStretch),
+                                    top: -4 * travelProgress,
+                                    bottom: -4 * travelProgress,
                                     child: Container(
                                       key: const ValueKey<String>('navigation-active-lens'),
                                       margin: const EdgeInsets.symmetric(
@@ -195,13 +201,19 @@ class FloatingNavigationDock extends StatelessWidget {
                                           begin: Alignment.topCenter,
                                           end: Alignment.bottomCenter,
                                           colors: [
-                                            Colors.white.withValues(alpha: 0.18),
-                                            Colors.white.withValues(alpha: 0.08),
+                                            Colors.white.withValues(
+                                              alpha: 0.18 + 0.08 * travelProgress,
+                                            ),
+                                            Colors.white.withValues(
+                                              alpha: 0.08 + 0.05 * travelProgress,
+                                            ),
                                           ],
                                         ),
                                         borderRadius: BorderRadius.circular(25),
                                         border: Border.all(
-                                          color: Colors.white.withValues(alpha: 0.22),
+                                          color: Colors.white.withValues(
+                                            alpha: 0.22 + 0.18 * travelProgress,
+                                          ),
                                         ),
                                       ),
                                     ),
