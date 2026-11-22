@@ -214,7 +214,10 @@ internal class MediaIndexScanner(
             }
         }
         dirty.set(true)
-        if (scanScheduler.automaticScanningEnabled() && scanScheduler.scanOnStorageChangeEnabled()) {
+        if (database.hasScanCheckpoints()) {
+            // A disconnected volume keeps its last safe checkpoint and resumes on reconnection.
+            requestScan(force = true, trigger = scanTrigger)
+        } else if (scanScheduler.automaticScanningEnabled() && scanScheduler.scanOnStorageChangeEnabled()) {
             requestScan(force = true, trigger = "automatic")
         }
     }
@@ -373,6 +376,12 @@ internal class MediaIndexScanner(
         }
     }
 
+    private fun ensureVolumeConnected(volume: String) {
+        if (volume in disconnectedVolumes) {
+            throw IllegalStateException("Storage volume disconnected during scan; checkpoint retained")
+        }
+    }
+
     private fun scanSource(volume: String, root: Any): Boolean {
         ensureScanActive()
         val rootId = when (root) {
@@ -514,6 +523,7 @@ internal class MediaIndexScanner(
             var directoriesInBatch = 0
             while (pending.isNotEmpty() && directoriesInBatch < MAX_DIRECTORIES_PER_BATCH) {
                 ensureScanActive()
+                ensureVolumeConnected(volume)
                 val relativePath = pending.removeAt(pending.lastIndex)
                 currentPath = relativePath
                 val identity: String
@@ -576,6 +586,7 @@ internal class MediaIndexScanner(
                 directoriesInBatch++
                 children.forEach { child ->
                     ensureScanActive()
+                    ensureVolumeConnected(volume)
                     when (child) {
                         is File -> {
                             if (child.name.startsWith(".")) return@forEach
@@ -615,17 +626,14 @@ internal class MediaIndexScanner(
         }
 
         ensureScanActive()
+        ensureVolumeConnected(volume)
         flush()
-        if (volume in disconnectedVolumes) {
-            complete = false
-            skipped++
-            recordSkipped(volume, "", "Storage volume disconnected during scan")
-            lastError = "A storage volume disconnected during scanning; its previous index was retained."
-        }
         synchronized(this) {
             ensureScanActive()
+            ensureVolumeConnected(volume)
             if (complete && filesHealthy) database.finishFilesSource(volume, scanId)
             ensureScanActive()
+            ensureVolumeConnected(volume)
             if (complete && mediaHealthy) database.finishMediaSource(volume, scanId)
             database.clearScanCheckpoint(volume)
         }
