@@ -26,7 +26,7 @@ class GlobalMediaOverlay extends StatefulWidget {
 class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     with TickerProviderStateMixin, WidgetsBindingObserver {
   static const double _miniPlayerHeight = 62;
-  static const double _homeDockHeight = 82;
+  static const double _homeDockHeight = 84;
   static const Duration _trackPopupDuration = Duration(milliseconds: 2300);
 
   bool _openingNowPlaying = false;
