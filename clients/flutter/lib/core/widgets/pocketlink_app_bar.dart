@@ -111,7 +111,9 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
         fontWeight: FontWeight.w700,
         letterSpacing: -0.5,
       ),
-      actionsPadding: const EdgeInsets.only(right: 16),
+      actionsPadding: EdgeInsets.only(
+        right: PocketLinkHorizontalGutter.padding(context).right,
+      ),
       actions: [
       ...actionsBeforeHome,
       if (showHome)
