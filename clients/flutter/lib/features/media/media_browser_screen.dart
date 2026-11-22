@@ -595,7 +595,12 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   Widget _buildVideoList(List<MediaFileItem> items) {
     return ListView.separated(
       controller: _contentScrollController,
-      padding: EdgeInsets.fromLTRB(12, ((_searchExpanded && widget.showSearch) || _libraryView == 'folders') ? 8 : LayoutInsetsScope.of(context).topClearance, 12, LayoutInsetsScope.of(context).bottomClearance),
+      padding: PocketLinkHorizontalGutter.padding(context).copyWith(
+            top: ((_searchExpanded && widget.showSearch) || _libraryView == 'folders')
+                ? 8
+                : LayoutInsetsScope.of(context).topClearance,
+            bottom: LayoutInsetsScope.of(context).bottomClearance,
+          ),
       itemCount: items.length,
       separatorBuilder: (_, __) => const SizedBox(height: 4),
       itemBuilder: (context, index) {
@@ -730,7 +735,14 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
           child: ListView(
             physics: _isMusic ? const AlwaysScrollableScrollPhysics() : null,
             controller: _contentScrollController,
-            padding: EdgeInsets.fromLTRB(12, _isMusic ? 8 : ((_searchExpanded && widget.showSearch) || _libraryView == 'folders') ? 8 : LayoutInsetsScope.of(context).topClearance, 12, LayoutInsetsScope.of(context).bottomClearance),
+            padding: PocketLinkHorizontalGutter.padding(context).copyWith(
+            top: _isMusic
+                ? 8
+                : ((_searchExpanded && widget.showSearch) || _libraryView == 'folders')
+                    ? 8
+                    : LayoutInsetsScope.of(context).topClearance,
+            bottom: LayoutInsetsScope.of(context).bottomClearance,
+          ),
             children: [
               for (final folder in folders)
                 Card(
@@ -963,7 +975,12 @@ tooltip: 'Choose video view',
                                     ? _buildVideoList(visibleMedia)
                                     : ListView.builder(
                                         controller: _contentScrollController,
-                                        padding: EdgeInsets.fromLTRB(12, ((_searchExpanded && widget.showSearch) || _libraryView == 'folders') ? 8 : LayoutInsetsScope.of(context).topClearance, 12, LayoutInsetsScope.of(context).bottomClearance),
+                                        padding: PocketLinkHorizontalGutter.padding(context).copyWith(
+            top: ((_searchExpanded && widget.showSearch) || _libraryView == 'folders')
+                ? 8
+                : LayoutInsetsScope.of(context).topClearance,
+            bottom: LayoutInsetsScope.of(context).bottomClearance,
+          ),
                                         itemCount: visibleMedia.length,
                                         itemBuilder: (context, index) {
                                           final media = visibleMedia[index];
@@ -1396,7 +1413,10 @@ tooltip: 'Choose video view',
                       child: _error != null || (_loading && _media.isEmpty) || visible.isEmpty
                           ? ListView(
                               physics: const AlwaysScrollableScrollPhysics(),
-                              padding: EdgeInsets.fromLTRB(0, LayoutInsetsScope.of(context).topClearance, 0, LayoutInsetsScope.of(context).bottomClearance),
+                              padding: PocketLinkHorizontalGutter.padding(context).copyWith(
+            top: LayoutInsetsScope.of(context).topClearance,
+            bottom: LayoutInsetsScope.of(context).bottomClearance,
+          ),
                               children: [
                                 SizedBox(
                                   height: MediaQuery.sizeOf(context).height * 0.55,
@@ -1415,7 +1435,10 @@ tooltip: 'Choose video view',
                           : ListView.separated(
                               physics: const AlwaysScrollableScrollPhysics(),
                               controller: _contentScrollController,
-                              padding: EdgeInsets.fromLTRB(0, LayoutInsetsScope.of(context).topClearance, 0, LayoutInsetsScope.of(context).bottomClearance),
+                              padding: PocketLinkHorizontalGutter.padding(context).copyWith(
+            top: LayoutInsetsScope.of(context).topClearance,
+            bottom: LayoutInsetsScope.of(context).bottomClearance,
+          ),
                               itemCount: visible.length,
                               separatorBuilder: (_, __) => Container(
                                 height: 1,
