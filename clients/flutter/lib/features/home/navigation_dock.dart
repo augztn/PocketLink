@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../core/navigation/pocketlink_navigation.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
+import '../../core/widgets/pocketlink_scaffold.dart';
 
 class FloatingNavigationDock extends StatelessWidget {
   const FloatingNavigationDock({
@@ -139,7 +140,7 @@ class FloatingNavigationDock extends StatelessWidget {
     final content = Row(
       children: [
         for (var index = 0; index < segments.length; index++) ...[
-          if (index > 0) const SizedBox(width: 10),
+          if (index > 0) const SizedBox(width: 12),
           segments[index],
         ],
       ],
@@ -153,8 +154,13 @@ class FloatingNavigationDock extends StatelessWidget {
     }
     return SafeArea(
       top: false,
+      left: false,
+      right: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
+        padding: PocketLinkHorizontalGutter.padding(context).copyWith(
+          top: 8,
+          bottom: 10,
+        ),
         child: content,
       ),
     );
