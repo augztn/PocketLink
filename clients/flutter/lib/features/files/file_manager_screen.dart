@@ -771,7 +771,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
       },
       child: Scaffold(
         extendBodyBehindAppBar: true,
-        appBar: PocketLinkAppBar(
+        appBar: PocketLinkTopBar(
           feathered: true,
           showHome: false,
           automaticallyImplyLeading: false,
@@ -855,16 +855,16 @@ tooltip: 'Choose storage location',
             ]),
           ),
           actions: [
-            if (widget.showSearch) PocketLinkAppBarAction(label: _searchExpanded ? 'Close search' : 'Search files', icon: _searchExpanded ? Icons.close_rounded : Icons.search_rounded, onPressed: () => _setSearchExpanded(!_searchExpanded)),
-            PocketLinkAppBarAction(label: 'Upload file', icon: Icons.upload_rounded, onPressed: _uploadFile),
-            PocketLinkAppBarAction(label: 'New folder', icon: Icons.create_new_folder_outlined, onPressed: _createFolder),
-            PocketLinkAppBarAction(label: 'Sort by...', icon: Icons.sort_rounded,
+            if (widget.showSearch) PocketLinkTopBarAction(label: _searchExpanded ? 'Close search' : 'Search files', icon: _searchExpanded ? Icons.close_rounded : Icons.search_rounded, onPressed: () => _setSearchExpanded(!_searchExpanded)),
+            PocketLinkTopBarAction(label: 'Upload file', icon: Icons.upload_rounded, onPressed: _uploadFile),
+            PocketLinkTopBarAction(label: 'New folder', icon: Icons.create_new_folder_outlined, onPressed: _createFolder),
+            PocketLinkTopBarAction(label: 'Sort by...', icon: Icons.sort_rounded,
               onPressed: _showSortOptions, dividerBefore: true),
-            PocketLinkAppBarAction(label: _gridView ? 'Switch to list view' : 'Switch to grid view',
+            PocketLinkTopBarAction(label: _gridView ? 'Switch to list view' : 'Switch to grid view',
               icon: _gridView ? Icons.view_list_rounded : Icons.grid_view_rounded,
               onPressed: () { setState(() => _gridView = !_gridView); _saveState(); }),
-            PocketLinkAppBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded, onPressed: _openTransfers, dividerBefore: true),
-            PocketLinkAppBarAction(label: 'Refresh', icon: Icons.refresh_rounded, onPressed: _loading ? null : _refreshDirectory),
+            PocketLinkTopBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded, onPressed: _openTransfers, dividerBefore: true),
+            PocketLinkTopBarAction(label: 'Refresh', icon: Icons.refresh_rounded, onPressed: _loading ? null : _refreshDirectory),
           ],
         ),
         body: Stack(
