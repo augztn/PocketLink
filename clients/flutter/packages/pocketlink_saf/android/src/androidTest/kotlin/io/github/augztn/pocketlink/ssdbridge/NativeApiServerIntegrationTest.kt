@@ -16,6 +16,7 @@ import java.io.File
 import java.util.UUID
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import android.util.Base64
 
 @RunWith(AndroidJUnit4::class)
@@ -337,6 +338,81 @@ class NativeApiServerIntegrationTest {
             context.getSharedPreferences("delete-mutation-test-ssd-bridge", Context.MODE_PRIVATE)
                 .edit().clear().commit()
             context.getSharedPreferences("delete-mutation-test-pocketlink-auth", Context.MODE_PRIVATE)
+                .edit().clear().commit()
+        }
+    }
+
+    @Test
+    fun nativeAndSafListenersSerializeMutationsAgainstTheSameDirectory() {
+        val appContext = ApplicationProvider.getApplicationContext<Context>()
+        val context = object : ContextWrapper(appContext) {
+            override fun getSharedPreferences(name: String, mode: Int): SharedPreferences =
+                appContext.getSharedPreferences("cross-listener-mutation-$name", mode)
+        }
+        val root = File(context.cacheDir, "cross-listener-mutation-" + UUID.randomUUID()).apply {
+            check(mkdirs())
+        }
+        val credentials = ServerCredentials(context)
+        val password = "cross-listener-mutation-password"
+        credentials.setPassword(password)
+        val basicAuthorization = "Basic " + Base64.encodeToString(
+            "admin:$password".toByteArray(), Base64.NO_WRAP
+        )
+        val token = "cross-listener-mutation-token"
+        val nativeServer = NativeApiServer(context, credentials, 0, "0.0.0.0", root)
+        val safServer = SafHttpServer(
+            context,
+            token,
+            0
+        ) { volume -> if (volume == "usb1") androidx.documentfile.provider.DocumentFile.fromFile(root) else null }
+        val executor = Executors.newFixedThreadPool(2)
+        nativeServer.start(30_000, false)
+        safServer.start(30_000, false)
+
+        try {
+            val started = CountDownLatch(2)
+            val nativeRequest = executor.submit<Pair<Int, String>> {
+                started.countDown()
+                request(
+                    nativeServer.listeningPort,
+                    "/api/files/mkdir",
+                    basicAuthorization,
+                    method = "POST",
+                    body = "{\"path\":\"\",\"name\":\"shared-cross-listener-dir\"}".toByteArray(),
+                    contentType = "application/json"
+                )
+            }
+            val safRequest = executor.submit<Pair<Int, String>> {
+                started.countDown()
+                request(
+                    safServer.listeningPort,
+                    "/v1/mkdir?volume=usb1&path=&name=shared-cross-listener-dir",
+                    "Bearer $token",
+                    method = "POST"
+                )
+            }
+
+            synchronized(StorageMutationCoordinator.lock) {
+                assertTrue("Both listener requests must start", started.await(5, TimeUnit.SECONDS))
+                Thread.sleep(300)
+                assertTrue("Native API mutation bypassed the shared coordinator", !nativeRequest.isDone)
+                assertTrue("SAF bridge mutation bypassed the shared coordinator", !safRequest.isDone)
+            }
+
+            val responses = listOf(nativeRequest.get(10, TimeUnit.SECONDS), safRequest.get(10, TimeUnit.SECONDS))
+            assertEquals("Exactly one listener may create the shared directory", 1, responses.count { it.first == 200 })
+            assertTrue(
+                "The losing listener must reject the duplicate destination",
+                responses.any { it.first != 200 }
+            )
+            assertTrue("The shared directory must exist exactly once", File(root, "shared-cross-listener-dir").isDirectory)
+            assertEquals(1, root.listFiles()?.count { it.name == "shared-cross-listener-dir" } ?: 0)
+        } finally {
+            executor.shutdownNow()
+            safServer.stop()
+            nativeServer.stop()
+            root.deleteRecursively()
+            context.getSharedPreferences("cross-listener-mutation-pocketlink-auth", Context.MODE_PRIVATE)
                 .edit().clear().commit()
         }
     }

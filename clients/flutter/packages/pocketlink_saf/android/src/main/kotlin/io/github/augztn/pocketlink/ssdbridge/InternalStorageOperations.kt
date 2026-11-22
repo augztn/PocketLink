@@ -48,38 +48,41 @@ internal class InternalStorageOperations(
     }
 
     fun upload(relative: String, session: NanoHTTPD.IHTTPSession): NanoHTTPD.Response {
-        val parent = resolve(relative)
-            ?: return error(NanoHTTPD.Response.Status.NOT_FOUND, "Destination folder not found")
-        if (!parent.isDirectory || !parent.canWrite()) {
-            return error(NanoHTTPD.Response.Status.BAD_REQUEST, "Destination is not writable")
-        }
         val (name, temp) = parseMultipart(session)
             ?: return error(NanoHTTPD.Response.Status.BAD_REQUEST, "Multipart field 'file' is required")
         if (!isValidName(name)) {
             temp.delete()
             return error(NanoHTTPD.Response.Status.BAD_REQUEST, "Invalid filename")
         }
-        val target = File(parent, name)
-        val staging = File(parent, ".pocketlink-upload-${UUID.randomUUID()}.part")
         return try {
-            if (!temp.renameTo(staging)) temp.copyTo(staging, overwrite = false).also { temp.delete() }
             synchronized(mutationLock) {
-                when {
-                    target.exists() ->
-                        error(NanoHTTPD.Response.Status.CONFLICT, "An item with this name already exists")
-                    !staging.renameTo(target) ->
-                        if (target.exists()) {
+                val parent = resolve(relative)
+                    ?: return@synchronized error(NanoHTTPD.Response.Status.NOT_FOUND, "Destination folder not found")
+                if (!parent.isDirectory || !parent.canWrite()) {
+                    return@synchronized error(NanoHTTPD.Response.Status.BAD_REQUEST, "Destination is not writable")
+                }
+                val target = File(parent, name)
+                val staging = File(parent, ".pocketlink-upload-${UUID.randomUUID()}.part")
+                try {
+                    if (!temp.renameTo(staging)) temp.copyTo(staging, overwrite = false).also { temp.delete() }
+                    when {
+                        target.exists() ->
                             error(NanoHTTPD.Response.Status.CONFLICT, "An item with this name already exists")
-                        } else {
-                            error(NanoHTTPD.Response.Status.INTERNAL_ERROR, "Could not finalize uploaded file")
-                        }
-                    else -> json(JSONObject().put("ok", true).put("name", name))
-                        .also { markMediaIndexDirty() }
+                        !staging.renameTo(target) ->
+                            if (target.exists()) {
+                                error(NanoHTTPD.Response.Status.CONFLICT, "An item with this name already exists")
+                            } else {
+                                error(NanoHTTPD.Response.Status.INTERNAL_ERROR, "Could not finalize uploaded file")
+                            }
+                        else -> json(JSONObject().put("ok", true).put("name", name))
+                            .also { markMediaIndexDirty() }
+                    }
+                } finally {
+                    if (staging.exists()) staging.delete()
                 }
             }
         } finally {
             temp.delete()
-            if (staging.exists()) staging.delete()
         }
     }
 

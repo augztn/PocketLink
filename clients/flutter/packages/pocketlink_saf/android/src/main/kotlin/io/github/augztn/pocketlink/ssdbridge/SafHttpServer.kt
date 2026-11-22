@@ -8,7 +8,12 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.security.MessageDigest
 
-class SafHttpServer(private val context: Context, private val token: String) : NanoHTTPD("127.0.0.1", 8765) {
+class SafHttpServer(
+    private val context: Context,
+    private val token: String,
+    listenPort: Int = 8765,
+    private val rootResolver: ((String) -> DocumentFile?)? = null
+) : NanoHTTPD("127.0.0.1", listenPort) {
     private val prefs = context.getSharedPreferences("ssd-bridge", Context.MODE_PRIVATE)
 
     override fun serve(session: IHTTPSession): Response {
@@ -68,7 +73,7 @@ class SafHttpServer(private val context: Context, private val token: String) : N
                     return newFixedLengthResponse(Response.Status.PARTIAL_CONTENT, file.type ?: "application/octet-stream", input, end - start + 1)
                         .apply { addHeader("Accept-Ranges", "bytes"); addHeader("Content-Range", "bytes $start-$end/$length") }
                 }
-                session.uri == "/v1/write" && session.method == Method.PUT -> {
+                session.uri == "/v1/write" && session.method == Method.PUT -> synchronized(StorageMutationCoordinator.lock) {
                     val name = path.substringAfterLast('/')
                     if (!validName(name)) return bad("Invalid filename")
                     val parentPath = path.substringBeforeLast('/', "")
@@ -98,7 +103,7 @@ class SafHttpServer(private val context: Context, private val token: String) : N
                     }
                     json(JSONObject().put("ok", true).put("name", name))
                 }
-                session.uri == "/v1/mkdir" && session.method == Method.POST -> {
+                session.uri == "/v1/mkdir" && session.method == Method.POST -> synchronized(StorageMutationCoordinator.lock) {
                     val name = q["name"] ?: return bad("name is required")
                     if (!validName(name)) return bad("Invalid folder name")
                     val parent = resolve(root, path) ?: return jsonError(Response.Status.NOT_FOUND, "Parent folder not found")
@@ -106,7 +111,7 @@ class SafHttpServer(private val context: Context, private val token: String) : N
                     val created = parent.createDirectory(name) ?: return jsonError(Response.Status.INTERNAL_ERROR, "Could not create folder")
                     json(JSONObject().put("ok", true).put("name", created.name))
                 }
-                session.uri == "/v1/rename" && session.method == Method.POST -> {
+                session.uri == "/v1/rename" && session.method == Method.POST -> synchronized(StorageMutationCoordinator.lock) {
                     if (path.isBlank()) return bad("Cannot rename a storage root")
                     val name = q["name"] ?: return bad("name is required")
                     if (!validName(name)) return bad("Invalid name")
@@ -114,7 +119,7 @@ class SafHttpServer(private val context: Context, private val token: String) : N
                     if (!item.renameTo(name)) return jsonError(Response.Status.INTERNAL_ERROR, "Rename failed")
                     json(JSONObject().put("ok", true).put("name", name))
                 }
-                session.uri == "/v1/item" && session.method == Method.DELETE -> {
+                session.uri == "/v1/item" && session.method == Method.DELETE -> synchronized(StorageMutationCoordinator.lock) {
                     if (path.isBlank()) return bad("Cannot delete a storage root")
                     val item = resolve(root, path) ?: return jsonError(Response.Status.NOT_FOUND, "Item not found")
                     if (!item.delete()) return jsonError(Response.Status.INTERNAL_ERROR, "Delete failed")
@@ -130,6 +135,7 @@ class SafHttpServer(private val context: Context, private val token: String) : N
     }
 
     private fun rootFor(id: String): DocumentFile? {
+        rootResolver?.invoke(id)?.let { return it }
         val key = when (id) { "usb1" -> "usb1"; "usb2" -> "usb2"; else -> return null }
         val value = prefs.getString(key, null) ?: return null
         return DocumentFile.fromTreeUri(context, Uri.parse(value))
