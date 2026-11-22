@@ -23,6 +23,7 @@ class FloatingNavigationDock extends StatelessWidget {
     this.pageController,
     this.pageIndices = const <int, int>{},
     this.musicShortcutsExpanded = false,
+    this.collapsed = false,
     this.onMusicShortcutLongPress,
     this.onMusicShortcutDismissed,
     this.onBrowseSwipeLeft,
@@ -42,6 +43,7 @@ class FloatingNavigationDock extends StatelessWidget {
   final PageController? pageController;
   final Map<int, int> pageIndices;
   final bool musicShortcutsExpanded;
+  final bool collapsed;
   final VoidCallback? onMusicShortcutLongPress;
   final VoidCallback? onMusicShortcutDismissed;
   final VoidCallback? onBrowseSwipeLeft;
@@ -58,9 +60,72 @@ class FloatingNavigationDock extends StatelessWidget {
     'files': 2,
   };
 
+  Widget _buildMusicButton() => SizedBox(
+        key: preview ? null : PocketLinkNavigation.musicButtonKey,
+        width: 64,
+        height: 64,
+        child: _MusicDockButton(
+          preview: preview,
+          isPlaying: isPlaying,
+          hasMedia: hasMedia,
+          isVideo: isVideo,
+          expanded: musicShortcutsExpanded,
+          onTap: musicShortcutsExpanded
+              ? (onMusicShortcutDismissed ?? () {})
+              : onBrowsePressed,
+          onLongPress: onMusicShortcutLongPress,
+          onSwipeNext: onBrowseSwipeLeft,
+          onSwipePrevious: onBrowseSwipeRight,
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
     final activeItems = order.where(visibleItems.contains).toList(growable: false);
+    if (collapsed) {
+      final tabs = activeItems.where((id) => id != 'browse').toList();
+      final selectedId = tabs.isEmpty
+          ? null
+          : tabs.firstWhere(
+              (id) => _indices[id] == selectedIndex,
+              orElse: () => tabs.first,
+            );
+      final collapsedContent = Row(
+        children: [
+          if (selectedId != null)
+            _CollapsedDockTab(
+              icon: switch (selectedId) {
+                'home' => Icons.home_rounded,
+                'explore' => Icons.explore_rounded,
+                _ => Icons.folder_rounded,
+              },
+              label: _labels[selectedId]!,
+              onTap: () => onSelect(_indices[selectedId]!),
+            ),
+          const Spacer(),
+          if (activeItems.contains('browse')) _buildMusicButton(),
+        ],
+      );
+      if (preview) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+          child: collapsedContent,
+        );
+      }
+      return SafeArea(
+        top: false,
+        left: false,
+        right: false,
+        child: Padding(
+          padding: PocketLinkHorizontalGutter.padding(context).copyWith(
+            top: 8,
+            bottom: 12,
+          ),
+          child: collapsedContent,
+        ),
+      );
+    }
+
     final segments = <Widget>[];
     var tabGroup = <String>[];
 
@@ -185,33 +250,7 @@ class FloatingNavigationDock extends StatelessWidget {
     for (final id in activeItems) {
       if (id == 'browse') {
         addTabGroup();
-        segments.add(
-          SizedBox(
-            key: preview ? null : PocketLinkNavigation.musicButtonKey,
-            width: 64,
-            height: 64,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                 Positioned.fill(
-                  child: _MusicDockButton(
-                    preview: preview,
-                    isPlaying: isPlaying,
-                    hasMedia: hasMedia,
-                    isVideo: isVideo,
-                    expanded: musicShortcutsExpanded,
-                    onTap: musicShortcutsExpanded
-                        ? (onMusicShortcutDismissed ?? () {})
-                        : onBrowsePressed,
-                    onLongPress: onMusicShortcutLongPress,
-                    onSwipeNext: onBrowseSwipeLeft,
-                    onSwipePrevious: onBrowseSwipeRight,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
+        segments.add(_buildMusicButton());
       } else {
         tabGroup.add(id);
       }
@@ -358,6 +397,47 @@ class _DockLensDragSurfaceState extends State<_DockLensDragSurface> {
         onHorizontalDragEnd: widget.enabled ? _onDragEnd : null,
         onHorizontalDragCancel: widget.enabled ? _onDragCancel : null,
         child: widget.child,
+      );
+}
+
+class _CollapsedDockTab extends StatelessWidget {
+  const _CollapsedDockTab({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+        button: true,
+        label: '$label tab',
+        child: SizedBox(
+          width: 64,
+          height: 64,
+          child: LiquidGlassPill(
+            radius: BorderRadius.circular(32),
+            refractive: true,
+            child: Material(
+              color: Colors.transparent,
+              shape: const CircleBorder(),
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: onTap,
+                child: Center(
+                  child: Icon(
+                    icon,
+                    color: Theme.of(context).colorScheme.primary,
+                    size: 25,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
       );
 }
 
