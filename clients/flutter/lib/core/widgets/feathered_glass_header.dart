@@ -24,33 +24,25 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
         final media = MediaQuery.of(context);
         final settings = AppSettings.instance;
         final isDark = Theme.of(context).brightness == Brightness.dark;
-        final useProgressiveBlur =
-            settings.progressiveBlurEnabled && settings.progressiveBlurStrength > 0;
-        final blurScale = settings.progressiveBlurStrength / 55;
+        final useHeaderBlur = settings.progressiveBlurEnabled;
         final headerHeight = media.padding.top + contentHeight + 16;
 
         return ValueListenableBuilder<double>(
           valueListenable: PocketLinkScrollOffsetScope.listenableOf(context),
           builder: (context, scrollOffset, _) {
-            final scrollProgress =
-                (scrollOffset / 24).clamp(0.0, 1.0).toDouble();
             final baseTint = isDark
                 ? (darkTint ??
                     const [
-                      Color(0xEB000000),
-                      Color(0xD9000000),
+                      Color(0x66000000),
+                      Color(0x40000000),
                       Colors.transparent,
                     ])
                 : const [
-                    Color(0xEBFFFFFF),
-                    Color(0xD9FFFFFF),
+                    Color(0x80FFFFFF),
+                    Color(0x4DFFFFFF),
                     Colors.transparent,
                   ];
-            final tint = baseTint
-                .map((color) => color.withValues(
-                      alpha: color.alpha / 255 * scrollProgress,
-                    ))
-                .toList(growable: false);
+            final tint = baseTint;
 
             return LayoutBuilder(
               builder: (context, _) {
@@ -64,12 +56,12 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
-                        if (useProgressiveBlur && scrollProgress > 0)
+                        if (useHeaderBlur)
                           Positioned.fill(
                             child: BackdropFilter(
                               filter: ui.ImageFilter.blur(
-                                sigmaX: 12 * blurScale * scrollProgress,
-                                sigmaY: 12 * blurScale * scrollProgress,
+                                sigmaX: 22,
+                                sigmaY: 22,
                               ),
                               child: const ColoredBox(color: Colors.transparent),
                             ),
@@ -160,16 +152,14 @@ class GlassCircleButton extends StatelessWidget {
       animation: settings,
       builder: (context, _) {
         final useBlur = settings.progressiveBlurEnabled &&
-            settings.progressiveBlurStrength > 0 &&
             !MediaQuery.of(context).disableAnimations;
-        final blurScale = settings.progressiveBlurStrength / 55;
         return RepaintBoundary(
           child: ClipOval(
             child: useBlur
                 ? BackdropFilter(
                     filter: ui.ImageFilter.blur(
-                      sigmaX: 24 * blurScale,
-                      sigmaY: 24 * blurScale,
+                      sigmaX: 22,
+                      sigmaY: 22,
                     ),
                     child: button,
                   )
