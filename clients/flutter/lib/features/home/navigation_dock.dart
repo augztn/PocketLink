@@ -79,6 +79,47 @@ class FloatingNavigationDock extends StatelessWidget {
         ),
       );
 
+  Widget _wrapDockContent(
+    BuildContext context,
+    Widget content, {
+    required bool collapsed,
+  }) {
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
+    final animatedContent = AnimatedSwitcher(
+      duration: reduceMotion
+          ? Duration.zero
+          : const Duration(milliseconds: 240),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      transitionBuilder: (child, animation) => ScaleTransition(
+        scale: Tween<double>(begin: 0.96, end: 1).animate(animation),
+        child: child,
+      ),
+      child: KeyedSubtree(
+        key: ValueKey<bool>(collapsed),
+        child: content,
+      ),
+    );
+    if (preview) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+        child: animatedContent,
+      );
+    }
+    return SafeArea(
+      top: false,
+      left: false,
+      right: false,
+      child: Padding(
+        padding: PocketLinkHorizontalGutter.padding(context).copyWith(
+          top: 8,
+          bottom: 12,
+        ),
+        child: animatedContent,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final activeItems = order.where(visibleItems.contains).toList(growable: false);
@@ -106,23 +147,10 @@ class FloatingNavigationDock extends StatelessWidget {
           if (activeItems.contains('browse')) _buildMusicButton(),
         ],
       );
-      if (preview) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-          child: collapsedContent,
-        );
-      }
-      return SafeArea(
-        top: false,
-        left: false,
-        right: false,
-        child: Padding(
-          padding: PocketLinkHorizontalGutter.padding(context).copyWith(
-            top: 8,
-            bottom: 12,
-          ),
-          child: collapsedContent,
-        ),
+      return _wrapDockContent(
+        context,
+        collapsedContent,
+        collapsed: true,
       );
     }
 
@@ -280,23 +308,10 @@ class FloatingNavigationDock extends StatelessWidget {
       ],
     );
 
-    if (preview) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-        child: content,
-      );
-    }
-    return SafeArea(
-      top: false,
-      left: false,
-      right: false,
-      child: Padding(
-        padding: PocketLinkHorizontalGutter.padding(context).copyWith(
-          top: 8,
-          bottom: 12,
-        ),
-        child: content,
-      ),
+    return _wrapDockContent(
+      context,
+      content,
+      collapsed: false,
     );
   }
 }
