@@ -354,6 +354,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final player = PersistentAudioPlayer.instance;
     final reduceMotion = MediaQuery.of(context).disableAnimations;
+    final miniPlayerVisible = AppSettings.instance.showMiniPlayer && player.shouldShowMiniPlayer;
+    final bottomSystemInset = MediaQuery.paddingOf(context).bottom;
     final parsedServerHost = Uri.tryParse(widget.api.baseUrl)?.host;
     final serverHost = parsedServerHost == null || parsedServerHost.isEmpty
         ? widget.api.baseUrl
@@ -560,6 +562,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     shortcuts: AppSettings.instance.musicButtonShortcuts,
                     expanded: true,
                     onSelect: _openMusicShortcut,
+                  ),
+                ),
+              if (!_hostSetupOpen)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: PocketLinkBottomScrim(
+                    height: bottomSystemInset + 84 +
+                        (miniPlayerVisible ? 74 : 0) + 24,
                   ),
                 ),
               if (!_hostSetupOpen)
