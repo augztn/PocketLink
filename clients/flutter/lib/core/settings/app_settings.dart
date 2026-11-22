@@ -10,7 +10,10 @@ List<String>? _decodeStoredStringList(String? raw) {
   if (raw == null) return null;
   try {
     final decoded = jsonDecode(raw);
-    return decoded is List ? decoded.whereType<String>().toList() : null;
+    if (decoded is! List || decoded.any((value) => value is! String)) {
+      return null;
+    }
+    return List<String>.from(decoded);
   } on FormatException {
     return null;
   }
