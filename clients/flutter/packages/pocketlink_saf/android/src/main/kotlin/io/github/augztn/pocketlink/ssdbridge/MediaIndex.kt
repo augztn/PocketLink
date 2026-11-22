@@ -585,6 +585,13 @@ internal class MediaIndexScanner(
         }
     }
 
+    /**
+     * ConcurrentHashMap's Kotlin collection adapters can observe a stale size
+     * while another scan updates the map. Use the Java snapshot API instead.
+     */
+    private fun volumeReportSnapshot(): List<org.json.JSONObject> =
+        volumeReports.values.toArray().mapNotNull { it as? org.json.JSONObject }
+
     fun status(): org.json.JSONObject {
         val counts = database.counts()
         val sizes = database.sizeTotals()
@@ -609,7 +616,7 @@ internal class MediaIndexScanner(
             .put("updated_files", updatedFiles)
             .put("scanned_bytes", scannedBytes)
             .put("volumes", org.json.JSONArray().also { items ->
-                volumeReports.values.sortedBy { it.optString("volume") }
+                volumeReportSnapshot().sortedBy { it.optString("volume") }
                     .forEach { items.put(org.json.JSONObject(it.toString())) }
             })
             .put("scan_history", readScanHistory())
