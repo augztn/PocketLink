@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../core/settings/app_settings.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
+import '../../core/widgets/pocketlink_scaffold.dart';
 import '../home/navigation_dock.dart';
 
 class NavigationCustomizationScreen extends StatefulWidget {
