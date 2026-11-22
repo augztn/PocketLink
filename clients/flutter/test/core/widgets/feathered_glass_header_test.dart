@@ -231,10 +231,11 @@ void main() {
     expect(find.byType(BackdropFilter), findsNothing);
   });
 
-  testWidgets('glass header buttons follow the progressive blur toggle', (tester) async {
-    await tester.runAsync(
-      () => AppSettings.instance.setProgressiveBlurEnabled(false),
-    );
+  testWidgets('header action buttons follow the Liquid Glass toggle', (tester) async {
+    await tester.runAsync(() async {
+      await AppSettings.instance.setProgressiveBlurEnabled(true);
+      await AppSettings.instance.setUseLiquidGlass(false);
+    });
 
     await tester.pumpWidget(
       const MaterialApp(
@@ -251,7 +252,7 @@ void main() {
     expect(find.byType(BackdropFilter), findsNothing);
 
     await tester.runAsync(
-      () => AppSettings.instance.setProgressiveBlurEnabled(true),
+      () => AppSettings.instance.setUseLiquidGlass(true),
     );
     await tester.pump();
 
