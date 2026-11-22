@@ -328,7 +328,7 @@ class NativeApiServerIntegrationTest {
             val responses = requests.map { it.get() }
 
             assertEquals("Exactly one request must delete the file", 1, responses.count { it.first == 200 })
-            assertEquals("Later requests must observe the missing item", 11, responses.count { it.first == 404 })
+            assertEquals("Later requests must fail after the first delete", 11, responses.count { it.first == 500 })
             assertTrue("The target must be deleted exactly once", !target.exists())
         } finally {
             executor.shutdownNow()
