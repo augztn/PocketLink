@@ -24,8 +24,9 @@ class NowPlayingSettingsScreen extends StatelessWidget {
       builder: (context, _) => Scaffold(
         appBar: PocketLinkAppBar(title: const Text('Music / Now Playing Button')),
         body: ListView(
-          padding: EdgeInsets.fromLTRB(
-            16, 12, 16, 32 + MediaQuery.paddingOf(context).bottom,
+          padding: PocketLinkHorizontalGutter.padding(context).copyWith(
+            top: 12,
+            bottom: 32 + MediaQuery.paddingOf(context).bottom,
           ),
           children: [
             Text(
