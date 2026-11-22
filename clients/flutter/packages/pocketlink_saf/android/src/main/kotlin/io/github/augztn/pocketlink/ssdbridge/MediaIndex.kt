@@ -504,6 +504,7 @@ internal class MediaIndexScanner(
             return current
         }
 
+        var deferredDirectories = false
         while (true) {
             ensureScanActive()
             ensureVolumeConnected(volume)
@@ -511,6 +512,7 @@ internal class MediaIndexScanner(
             if (pendingBatch.isEmpty()) break
             val consumedIds = pendingBatch.map { it.id }
             val pendingPaths = mutableListOf<String>()
+            val deferredIds = mutableSetOf<Long>()
             val visitedThisBatch = mutableSetOf<String>()
             for (pendingItem in pendingBatch) {
                 ensureScanActive()
@@ -530,49 +532,57 @@ internal class MediaIndexScanner(
                             continue
                         }
                         if (!directory.exists() || !directory.isDirectory || !directory.canRead()) {
-                            complete = false
+                            deferredDirectories = true
+                            deferredIds.add(pendingItem.id)
                             skipped++
-                            recordSkipped(volume, relativePath, "Folder could not be read")
+                            recordSkipped(volume, relativePath, "Folder could not be read; queued for retry")
                             continue
                         }
                         identity = directory.path
-                        if (database.hasVisited(volume, scanId, identity) || !visitedThisBatch.add(identity)) continue
-                        children = try { directory.listFiles()?.toList()?.toTypedArray() ?: run {
-                            complete = false
+                        if (database.hasVisited(volume, scanId, identity) || identity in visitedThisBatch) continue
+                        children = try {
+                            directory.listFiles()?.toList()?.toTypedArray()
+                        } catch (_: Exception) {
+                            null
+                        } ?: run {
+                            deferredDirectories = true
+                            deferredIds.add(pendingItem.id)
                             skipped++
-                            recordSkipped(volume, relativePath, "Folder could not be read")
-                            emptyArray()
-                        } } catch (_: Exception) {
-                            complete = false
-                            skipped++
-                            recordSkipped(volume, relativePath, "Folder could not be read")
-                            emptyArray()
+                            recordSkipped(volume, relativePath, "Folder listing failed; queued for retry")
+                            continue
                         }
                     }
                     is DocumentFile -> {
-                        val directory = resolveDocumentDirectory(relativePath)
+                        val directory = try { resolveDocumentDirectory(relativePath) } catch (_: Exception) { null }
                         if (directory == null || !directory.exists() || !directory.isDirectory || !directory.canRead()) {
-                            complete = false
+                            deferredDirectories = true
+                            deferredIds.add(pendingItem.id)
                             skipped++
-                            recordSkipped(volume, relativePath, "Folder could not be read or resolved")
+                            recordSkipped(volume, relativePath, "Folder could not be read or resolved; queued for retry")
                             continue
                         }
                         identity = directory.uri.toString()
-                        if (database.hasVisited(volume, scanId, identity) || !visitedThisBatch.add(identity)) continue
+                        if (database.hasVisited(volume, scanId, identity) || identity in visitedThisBatch) continue
                         children = try { directory.listFiles().toList().toTypedArray() } catch (_: Exception) {
-                            complete = false
+                            null
+                        } ?: run {
+                            deferredDirectories = true
+                            deferredIds.add(pendingItem.id)
                             skipped++
-                            recordSkipped(volume, relativePath, "Folder could not be read")
-                            emptyArray()
+                            recordSkipped(volume, relativePath, "Folder listing failed; queued for retry")
+                            continue
                         }
                         if (children.isEmpty() && hasIndexedDescendants(fileSnapshot.keys + mediaSnapshot.keys, relativePath)) {
-                            complete = false
+                            deferredDirectories = true
+                            deferredIds.add(pendingItem.id)
                             skipped++
-                            recordSkipped(volume, relativePath, "Storage provider returned an empty listing; previous entries were retained")
+                            recordSkipped(volume, relativePath, "Storage provider returned an empty listing; previous entries were retained and the folder was queued for retry")
+                            continue
                         }
                     }
                     else -> throw IllegalArgumentException("Unsupported storage source")
                 }
+                visitedThisBatch.add(identity)
                 scannedDirectories++
                 children.forEach { child ->
                     ensureScanActive()
@@ -615,9 +625,12 @@ internal class MediaIndexScanner(
             // Queue consumption, discovered directories, visited identities and health flags
             // commit atomically. A crash before commit safely replays this batch.
             database.commitScanBatch(
-                volume, scanId, consumedIds, pendingPaths, visitedThisBatch,
+                volume, scanId, consumedIds.filterNot { it in deferredIds }, pendingPaths, visitedThisBatch,
                 complete, filesHealthy, mediaHealthy
             )
+            // Leave failed directory rows in the durable queue. Retry on the next
+            // explicit/scheduled scan instead of dropping them or spinning here.
+            if (deferredIds.isNotEmpty()) break
         }
 
         ensureScanActive()
@@ -626,13 +639,15 @@ internal class MediaIndexScanner(
         synchronized(this) {
             ensureScanActive()
             ensureVolumeConnected(volume)
-            if (complete && filesHealthy) database.finishFilesSource(volume, scanId)
-            ensureScanActive()
-            ensureVolumeConnected(volume)
-            if (complete && mediaHealthy) database.finishMediaSource(volume, scanId)
-            database.clearScanCheckpoint(volume)
+            if (complete && filesHealthy && mediaHealthy && !deferredDirectories) {
+                database.finishFilesSource(volume, scanId)
+                ensureScanActive()
+                ensureVolumeConnected(volume)
+                database.finishMediaSource(volume, scanId)
+            }
+            if (!deferredDirectories) database.clearScanCheckpoint(volume)
         }
-        return complete && filesHealthy && mediaHealthy && volume !in disconnectedVolumes
+        return complete && filesHealthy && mediaHealthy && !deferredDirectories && volume !in disconnectedVolumes
     }
 
     fun status(): org.json.JSONObject {
