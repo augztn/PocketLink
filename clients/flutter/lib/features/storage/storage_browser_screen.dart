@@ -487,7 +487,7 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: PocketLinkHorizontalGutter.padding(context),
             child: TextField(
               controller: _searchController,
               onChanged: (value) => setState(() => _searchQuery = value),
@@ -543,7 +543,10 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
                             child: _gridView
                                 ? GridView.builder(
                                     physics: const AlwaysScrollableScrollPhysics(),
-                                    padding: EdgeInsets.fromLTRB(16, 10, 16, LayoutInsetsScope.of(context).bottomClearance),
+                                    padding: PocketLinkHorizontalGutter.padding(context).copyWith(
+                                      top: 10,
+                                      bottom: LayoutInsetsScope.of(context).bottomClearance,
+                                    ),
                                     gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                                       maxCrossAxisExtent: 190, mainAxisExtent: 158,
                                       crossAxisSpacing: 10, mainAxisSpacing: 10),
@@ -572,7 +575,10 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
                                   )
                                 : ListView.separated(
                                     physics: const AlwaysScrollableScrollPhysics(),
-                                    padding: EdgeInsets.fromLTRB(16, 10, 16, LayoutInsetsScope.of(context).bottomClearance),
+                                    padding: PocketLinkHorizontalGutter.padding(context).copyWith(
+                                      top: 10,
+                                      bottom: LayoutInsetsScope.of(context).bottomClearance,
+                                    ),
                                     itemCount: items.length,
                                     separatorBuilder: (_, __) => const SizedBox(height: 8),
                                     itemBuilder: (context, index) {
