@@ -5,8 +5,6 @@ import '../../core/logging/app_logger.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
 
-import '../../core/logging/app_logger.dart';
-
 class DiagnosticsScreen extends StatefulWidget {
   const DiagnosticsScreen({super.key});
 
