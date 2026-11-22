@@ -14,7 +14,7 @@ class VideoPlayerSettingsScreen extends StatelessWidget {
     final settings = AppSettings.instance;
     return AnimatedBuilder(animation: settings, builder: (context, _) => Scaffold(
       appBar: PocketLinkAppBar(title: const Text('Video player')),
-      body: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 32), children: [
+      body: ListView(padding: PocketLinkHorizontalGutter.padding(context).copyWith(top: 12, bottom: 32 + MediaQuery.paddingOf(context).bottom), children: [
         _group('Playback & controls', [
           _choice<double>(icon: Icons.timer_outlined, title: 'Controls auto-hide', value: settings.videoControlsTimeoutSeconds, options: _timeouts, label: (v) => v == 0 ? 'Never' : '${v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toString()} seconds', onChanged: (v) => settings.setVideoPlayerOptions(controlsTimeoutSeconds: v)),
           const Divider(height: 1),
