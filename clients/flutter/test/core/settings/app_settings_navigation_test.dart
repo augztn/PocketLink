@@ -18,7 +18,7 @@ void main() {
 
   test('an existing explicit Liquid Glass off preference is preserved', () async {
     final preferences = await SharedPreferences.getInstance();
-    await preferences.setBool('settings_liquid_glass', false);
+    await preferences.setBool('settings_use_liquid_glass', false);
 
     final settings = AppSettings.instance;
     await settings.reloadPreferences();
