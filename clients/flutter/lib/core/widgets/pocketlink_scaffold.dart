@@ -34,6 +34,21 @@ class PocketLinkResponsiveLayout {
   }
 }
 
+/// Scroll position shared by the active route tree so every top bar reacts
+/// consistently to the same scroll activity.
+class PocketLinkScrollOffsetScope extends InheritedNotifier<ValueNotifier<double>> {
+  const PocketLinkScrollOffsetScope({
+    required ValueNotifier<double> offset,
+    required super.child,
+    super.key,
+  }) : super(notifier: offset);
+
+  static final ValueNotifier<double> _zero = ValueNotifier<double>(0);
+
+  static ValueListenable<double> listenableOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<PocketLinkScrollOffsetScope>()?.notifier ?? _zero;
+}
+
 /// Route-level layout geometry shared by every PocketLink screen.
 class LayoutInsetsScope extends InheritedWidget {
   const LayoutInsetsScope({
