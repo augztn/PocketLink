@@ -2,6 +2,8 @@ import 'dart:ui' as ui;
 
 import 'package:material_ui/material_ui.dart';
 
+import '../settings/app_settings.dart';
+
 class SmokedGlassPopoverMenuItem<T> {
   const SmokedGlassPopoverMenuItem({
     required this.value,
@@ -181,6 +183,7 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
     );
     final top = (anchor.bottom + (titleMenu ? 6 : gap)).clamp(minTop, maxTop).toDouble();
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final useGlass = AppSettings.instance.useLiquidGlass;
     final curved = CurvedAnimation(
       parent: animation,
       curve: Curves.easeOutCubic,
@@ -193,6 +196,17 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
       type: MaterialType.transparency,
       child: Stack(
         children: [
+          if (useGlass)
+            Positioned.fill(
+              child: FadeTransition(
+                opacity: curved,
+                child: IgnorePointer(
+                  child: ColoredBox(
+                    color: Colors.black.withValues(alpha: 0.45),
+                  ),
+                ),
+              ),
+            ),
           Positioned(
             top: top,
             left: titleMenu ? 16 : null,
@@ -218,30 +232,65 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
                     ),
                     child: ClipRRect(
                 borderRadius: BorderRadius.circular(22),
-                child: BackdropFilter(
-                  filter: ui.ImageFilter.blur(sigmaX: 28, sigmaY: 28),
-                  child: Stack(
-                    children: [
-                      DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? const Color(0xFF16181F).withValues(alpha: 0.90)
-                              : Colors.white.withValues(alpha: 0.95),
-                          borderRadius: BorderRadius.circular(22),
-                          border: Border.all(
-                            color: isDark
-                                ? Colors.white.withValues(alpha: 0.14)
-                                : const Color(0xFF94A3B8).withValues(alpha: 0.34),
-                          ),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Colors.black26,
-                              blurRadius: 24,
-                              offset: Offset(0, 10),
-                            ),
-                          ],
+                child: useGlass
+                    ? BackdropFilter(
+                        filter: ui.ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+                        child: _buildMenuCard(
+                          isDark: isDark,
+                          useGlass: true,
+                          foreground: foreground,
+                          iconColor: iconColor,
                         ),
-                        child: Material(
+                      )
+                    : _buildMenuCard(
+                        isDark: isDark,
+                        useGlass: false,
+                        foreground: foreground,
+                        iconColor: iconColor,
+                      ),
+              ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMenuCard({
+    required bool isDark,
+    required bool useGlass,
+    required Color foreground,
+    required Color iconColor,
+  }) {
+    return Stack(
+      children: [
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: isDark
+                ? (useGlass
+                    ? const Color(0xFF14151A).withValues(alpha: 0.72)
+                    : const Color(0xFF1E2025))
+                : (useGlass
+                    ? Colors.white.withValues(alpha: 0.82)
+                    : Colors.white),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withValues(alpha: useGlass ? 0.20 : 0.12)
+                  : const Color(0xFF94A3B8).withValues(alpha: 0.34),
+            ),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black26,
+                blurRadius: 24,
+                offset: Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Material(
                           color: Colors.transparent,
                           child: SingleChildScrollView(
                             primary: false,
@@ -328,36 +377,27 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
                           ),
                         ),
                       ),
-                      Positioned(
-                        top: 0,
-                        left: 1,
-                        right: 1,
-                        child: IgnorePointer(
-                          child: Container(
-                            height: 1,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  Colors.white.withValues(alpha: 0.02),
-                                  Colors.white.withValues(alpha: 0.42),
-                                  Colors.white.withValues(alpha: 0.02),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
+        if (useGlass)
+          Positioned(
+            top: 0,
+            left: 1,
+            right: 1,
+            child: IgnorePointer(
+              child: Container(
+                height: 1,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Color(0x08FFFFFF),
+                      Color(0x6BFFFFFF),
+                      Color(0x08FFFFFF),
                     ],
                   ),
                 ),
               ),
-                    ),
-                  ),
-                ),
-              ),
             ),
-        ],
-      ),
+          ),
+      ],
     );
   }
 
