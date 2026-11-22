@@ -231,6 +231,19 @@ class MediaIndexScannerTest {
             .putBoolean("automatic_scanning_enabled", false)
             .putBoolean("scan_on_startup", false)
             .putBoolean("scan_on_storage_change", false)
+            .putString("last_attempt_trigger", "manual")
+            .putLong("last_attempt_started_at", 1L)
+            .putLong("last_attempt_finished_at", 1L)
+            .putString("scan_history", org.json.JSONArray().put(
+                org.json.JSONObject()
+                    .put("run_id", "previous-run")
+                    .put("started_at", 1L)
+                    .put("completed_at", 1L)
+                    .put("state", "partial")
+                    .put("volumes", org.json.JSONArray().put(
+                        org.json.JSONObject().put("volume", "usb-test").put("state", "complete")
+                    ))
+            ).toString())
             .commit()
         val internalRoot = File(context.cacheDir, "media-index-saf-resume-internal").apply {
             deleteRecursively()
@@ -265,9 +278,18 @@ class MediaIndexScannerTest {
             { listOf("usb-test" to DocumentFile.fromFile(externalRoot)) }
         )
         try {
+            scanner.onStorageChanged(connected = false, volumeId = "usb-test")
             scanner.ensureStarted()
-            val result = awaitFinished(scanner)
+            val disconnected = awaitFinished(scanner)
+            assertEquals("partial", disconnected.getString("state"))
+
+            // Reconnection must resume the saved SAF traversal despite routine
+            // automatic storage-change scans being disabled.
+            scanner.onStorageChanged(connected = true, volumeId = "usb-test")
+            val result = awaitFinished(scanner, disconnected.getLong("last_scan_started_at"))
             assertEquals("complete", result.getString("state"))
+            assertEquals(2, result.getInt("scanned_directories"))
+            assertEquals(1, result.getInt("scanned"))
             assertEquals("usb-track.mp3", scanner.media("music", "", 10, 0).single().name)
             assertTrue(scanner.files("removed.txt", 10, 0).isEmpty())
         } finally {
