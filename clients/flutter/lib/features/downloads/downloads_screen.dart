@@ -242,11 +242,9 @@ tooltip: 'Filter downloads',
             ],
           ),
           body: ListView.builder(
-            padding: EdgeInsets.fromLTRB(
-              16,
-              LayoutInsetsScope.of(context).topClearance + 2,
-              16,
-              LayoutInsetsScope.of(context).bottomClearance,
+            padding: PocketLinkHorizontalGutter.padding(context).copyWith(
+              top: LayoutInsetsScope.of(context).topClearance + 2,
+              bottom: LayoutInsetsScope.of(context).bottomClearance,
             ),
             itemCount: tasks.isEmpty ? 2 : tasks.length + 1,
             itemBuilder: (context, index) {
