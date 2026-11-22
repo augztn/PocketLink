@@ -109,6 +109,31 @@ void main() {
     expect(gutter, const EdgeInsets.fromLTRB(26, 0, 36, 0));
   });
 
+  testWidgets('uses adaptive grid columns for phone, tablet and wide layouts', (tester) async {
+    Future<int> columnsFor(double width) async {
+      late int columns;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MediaQuery(
+            data: MediaQueryData(size: Size(width, 800)),
+            child: Builder(
+              builder: (context) {
+                columns = PocketLinkResponsiveLayout.gridColumns(context);
+                return const SizedBox.shrink();
+              },
+            ),
+          ),
+        ),
+      );
+      return columns;
+    }
+
+    expect(await columnsFor(360), 2);
+    expect(await columnsFor(720), 3);
+    expect(await columnsFor(1024), 4);
+    expect(await columnsFor(1440), 5);
+  });
+
   testWidgets('updates top clearance from the rendered header measurement', (tester) async {
     late LayoutInsetsScope insets;
 
