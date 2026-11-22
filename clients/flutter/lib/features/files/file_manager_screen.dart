@@ -727,11 +727,17 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
           dense: true,
           visualDensity: VisualDensity.compact,
           contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+          horizontalTitleGap: 12,
+          minLeadingWidth: 40,
           leading: fileIcon(item),
           title: Text(item.name, maxLines: 1, overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontWeight: FontWeight.w600)),
-          subtitle: Text(item.isDirectory ? 'Folder' : _formatSize(item.size),
-              style: TextStyle(color: colors.onSurfaceVariant)),
+          subtitle: Text(
+            item.isDirectory ? 'Folder' : _formatSize(item.size),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: colors.onSurfaceVariant),
+          ),
           onTap: item.isDirectory
               ? () => _load(_itemPath(item.name))
               : _isAudio(item) ? () => _openAudio(item)
