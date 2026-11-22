@@ -3,6 +3,12 @@ package io.github.augztn.pocketlink.ssdbridge
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
+import java.util.Collections
+
+internal data class IndexDatabaseStats(
+    val counts: Map<String, Int>,
+    val sizes: Map<String, Long>
+)
 
 internal class MediaIndexDatabase(context: Context) :
     SQLiteOpenHelper(context, "pocketlink_index.db", null, 1) {
@@ -32,7 +38,7 @@ internal class MediaIndexDatabase(context: Context) :
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
 
-    fun upsertFiles(batch: List<IndexedFile>, scanId: String) {
+    @Synchronized fun upsertFiles(batch: List<IndexedFile>, scanId: String) {
         if (batch.isEmpty()) return
         val db = writableDatabase
         db.beginTransaction()
@@ -59,7 +65,7 @@ internal class MediaIndexDatabase(context: Context) :
         } finally { db.endTransaction() }
     }
 
-    fun upsertMedia(batch: List<IndexedFile>, scanId: String) {
+    @Synchronized fun upsertMedia(batch: List<IndexedFile>, scanId: String) {
         val mediaItems = batch.filter { it.category != null && it.type == "file" }
         if (mediaItems.isEmpty()) return
         val db = writableDatabase
@@ -87,11 +93,11 @@ internal class MediaIndexDatabase(context: Context) :
         } finally { db.endTransaction() }
     }
 
-    fun finishFilesSource(volume: String, scanId: String) {
+    @Synchronized fun finishFilesSource(volume: String, scanId: String) {
         writableDatabase.delete("files", "volume=? AND scan_id<>?", arrayOf(volume, scanId))
     }
 
-    fun finishMediaSource(volume: String, scanId: String) {
+    @Synchronized fun finishMediaSource(volume: String, scanId: String) {
         writableDatabase.delete("media", "volume=? AND scan_id<>?", arrayOf(volume, scanId))
     }
 
@@ -121,7 +127,7 @@ internal class MediaIndexDatabase(context: Context) :
     fun markMediaSeen(volume: String, paths: List<String>, scanId: String) =
         markSeen("media", volume, paths, scanId)
 
-    private fun markSeen(table: String, volume: String, paths: List<String>, scanId: String) {
+    @Synchronized private fun markSeen(table: String, volume: String, paths: List<String>, scanId: String) {
         if (paths.isEmpty()) return
         val db = writableDatabase
         db.beginTransaction()
@@ -194,7 +200,7 @@ internal class MediaIndexDatabase(context: Context) :
         return rows
     }
 
-    fun counts(): Map<String, Int> {
+    @Synchronized fun counts(): Map<String, Int> {
         val db = readableDatabase
         fun count(table: String): Int = db.rawQuery("SELECT COUNT(*) FROM $table", null).use {
             if (it.moveToFirst()) it.getInt(0) else 0
@@ -221,7 +227,12 @@ internal class MediaIndexDatabase(context: Context) :
         )
     }
 
-    fun sizeTotals(): Map<String, Long> {
+    @Synchronized fun statsSnapshot(): IndexDatabaseStats = IndexDatabaseStats(
+        counts = Collections.unmodifiableMap(counts()),
+        sizes = Collections.unmodifiableMap(sizeTotals())
+    )
+
+    @Synchronized fun sizeTotals(): Map<String, Long> {
         val db = readableDatabase
         fun total(table: String): Long = db.rawQuery("SELECT COALESCE(SUM(size), 0) FROM $table", null).use {
             if (it.moveToFirst()) it.getLong(0) else 0L
