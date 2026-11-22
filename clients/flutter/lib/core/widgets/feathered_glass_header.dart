@@ -79,8 +79,8 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
                           ).createShader(bounds),
                           child: BackdropFilter(
                             filter: ui.ImageFilter.blur(
-                              sigmaX: 22,
-                              sigmaY: 22,
+                              sigmaX: 14,
+                              sigmaY: 14,
                             ),
                             child: const ColoredBox(
                               color: Colors.white,
@@ -174,18 +174,22 @@ class GlassCircleButton extends StatelessWidget {
         // follow the independent Liquid Glass setting.
         final useBlur = settings.useLiquidGlass &&
             !MediaQuery.of(context).disableAnimations;
-        return RepaintBoundary(
-          child: ClipOval(
-            child: useBlur
-                ? BackdropFilter(
-                    filter: ui.ImageFilter.blur(
-                      sigmaX: 22,
-                      sigmaY: 22,
-                    ),
-                    child: button,
-                  )
-                : button,
-          ),
+        final noSplashTheme = Theme.of(context).copyWith(
+          splashFactory: NoSplash.splashFactory,
+          highlightColor: Colors.transparent,
+          hoverColor: Colors.transparent,
+          focusColor: Colors.transparent,
+        );
+        return ClipOval(
+          child: useBlur
+              ? BackdropFilter(
+                  filter: ui.ImageFilter.blur(
+                    sigmaX: 14,
+                    sigmaY: 14,
+                  ),
+                  child: Theme(data: noSplashTheme, child: button),
+                )
+              : Theme(data: noSplashTheme, child: button),
         );
       },
     );
