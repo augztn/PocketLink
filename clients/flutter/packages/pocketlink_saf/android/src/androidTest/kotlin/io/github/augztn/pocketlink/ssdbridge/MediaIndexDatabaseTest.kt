@@ -7,6 +7,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.atomic.AtomicReference
 
 @RunWith(AndroidJUnit4::class)
 class MediaIndexDatabaseTest {
@@ -35,6 +37,54 @@ class MediaIndexDatabaseTest {
             } catch (_: UnsupportedOperationException) {
                 // Expected: callers cannot mutate a published snapshot.
             }
+        } finally {
+            database.close()
+            context.deleteDatabase("pocketlink_index.db")
+        }
+    }
+
+    @Test
+    fun aggregateStatsNeverMixCountsAndBytesDuringConcurrentWrites() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        context.deleteDatabase("pocketlink_index.db")
+        val database = MediaIndexDatabase(context)
+        val start = CountDownLatch(1)
+        val failure = AtomicReference<Throwable?>()
+        val writer = Thread {
+            try {
+                start.await()
+                repeat(40) { index ->
+                    database.upsertFiles(
+                        listOf(IndexedFile("internal", "file-$index.txt", "file-$index.txt",
+                            "file", 42L, index.toLong(), "text/plain", null)),
+                        "scan"
+                    )
+                }
+            } catch (error: Throwable) {
+                failure.compareAndSet(null, error)
+            }
+        }
+        val reader = Thread {
+            try {
+                start.await()
+                repeat(80) {
+                    val snapshot = database.statsSnapshot()
+                    val expectedBytes = (snapshot.counts["files"] ?: 0).toLong() * 42L
+                    assertEquals(expectedBytes, snapshot.sizes["indexed_bytes"])
+                }
+            } catch (error: Throwable) {
+                failure.compareAndSet(null, error)
+            }
+        }
+
+        try {
+            writer.start()
+            reader.start()
+            start.countDown()
+            writer.join()
+            reader.join()
+            failure.get()?.let { throw AssertionError("Concurrent stats snapshot failed", it) }
+            assertEquals(40, database.statsSnapshot().counts["files"])
         } finally {
             database.close()
             context.deleteDatabase("pocketlink_index.db")
