@@ -203,11 +203,19 @@ class _PocketLinkScaffoldState extends State<PocketLinkScaffold> {
     }
     final next = notification.metrics.pixels.clamp(0.0, double.infinity).toDouble();
     final offset = PocketLinkScrollOffsetScope.currentOffset;
-    if ((offset.value - next).abs() >= 0.5) {
+    final previous = offset.value;
+    if ((previous - next).abs() >= 0.5) {
       offset.value = next;
     }
-    final collapsed = next >= PocketLinkScrollOffsetScope.collapseThreshold;
-    if (PocketLinkScrollOffsetScope.dockCollapsed.value != collapsed) {
+    final scrollingDown = next > previous + 0.5;
+    final scrollingUp = next < previous - 0.5;
+    final collapsed = scrollingDown
+        ? next >= PocketLinkScrollOffsetScope.collapseThreshold
+        : scrollingUp
+            ? false
+            : PocketLinkScrollOffsetScope.dockCollapsed.value;
+    if (next < PocketLinkScrollOffsetScope.collapseThreshold ||
+        PocketLinkScrollOffsetScope.dockCollapsed.value != collapsed) {
       PocketLinkScrollOffsetScope.dockCollapsed.value = collapsed;
     }
     return false;
