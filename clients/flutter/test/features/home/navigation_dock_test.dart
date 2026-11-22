@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:pocketlink_client/core/navigation/pocketlink_navigation.dart';
 import 'package:pocketlink_client/features/home/navigation_dock.dart';
+import 'package:pocketlink_client/core/widgets/liquid_glass_pill.dart';
 
 void main() {
   testWidgets('expanded shortcuts dismiss from Music button without an X icon', (tester) async {
@@ -25,6 +26,41 @@ void main() {
     await tester.tap(find.byKey(PocketLinkNavigation.musicButtonKey));
     expect(dismisses, 1);
     expect(opens, 0);
+  });
+
+  testWidgets('3+1 dock uses shared safe-area gutters and flexes at phone width', (tester) async {
+    await tester.view.setPhysicalSize(const Size(360, 800));
+    await tester.view.setDevicePixelRatio(1);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(
+            size: Size(360, 800),
+            padding: EdgeInsets.only(left: 10, right: 20, bottom: 24),
+          ),
+          child: Scaffold(
+            body: const SizedBox.expand(),
+            bottomNavigationBar: FloatingNavigationDock(
+              order: const ['home', 'explore', 'files', 'browse'],
+              visibleItems: const {'home', 'explore', 'files', 'browse'},
+              selectedIndex: 0,
+              onSelect: (_) {},
+              onBrowsePressed: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final capsule = tester.getRect(find.byType(LiquidGlassPill).first);
+    final music = tester.getRect(find.byKey(PocketLinkNavigation.musicButtonKey));
+    expect(capsule.left, 26);
+    expect(music.right, 324);
+    expect(music.left - capsule.right, 12);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('Music button supports tap, hold and horizontal swipe callbacks',
