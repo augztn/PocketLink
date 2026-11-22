@@ -141,7 +141,10 @@ internal class MediaIndexScanner(
         if (closeRequested.get()) return
         if (!started) {
             started = true
-            if (scanScheduler.automaticScanningEnabled() && scanScheduler.scanOnStartupEnabled()) {
+            if (database.hasScanCheckpoints()) {
+                // Resume an interrupted volume traversal even when routine startup scans are disabled.
+                requestScan(force = true, trigger = scanTrigger)
+            } else if (scanScheduler.automaticScanningEnabled() && scanScheduler.scanOnStartupEnabled()) {
                 requestScan(force = true, trigger = "automatic")
             } else {
                 scanScheduler.ensureScheduleAnchor()
