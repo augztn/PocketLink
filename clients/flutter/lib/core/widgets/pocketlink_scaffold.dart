@@ -51,6 +51,7 @@ class PocketLinkScrollOffsetScope extends InheritedNotifier<ValueNotifier<double
 
 /// Single source of truth for the floating dock and mini-player geometry.
 abstract final class PocketLinkLayoutMetrics {
+  static const double topBarHeight = 64;
   static const double dockHeight = 84;
   static const double miniPlayerHeight = 62;
   static const double miniPlayerGap = 10;
@@ -126,7 +127,7 @@ class LayoutInsetsScope extends InheritedWidget {
     final safeTop = media?.padding.top ?? 0.0;
     final safeBottom = media?.padding.bottom ?? 0.0;
     return LayoutInsetsScope(
-      topClearance: safeTop + kToolbarHeight + 10,
+      topClearance: safeTop + PocketLinkLayoutMetrics.topBarHeight + 10,
       bottomClearance: PocketLinkLayoutMetrics.bottomOverlayHeight(
         bottomInset: safeBottom,
         hasDock: false,
@@ -219,9 +220,9 @@ class _PocketLinkScaffoldState extends State<PocketLinkScaffold> {
     final statusBarHeight = media.padding.top;
     final headerContentHeight =
         _renderedHeaderHeight == null
-            ? kToolbarHeight
+            ? PocketLinkLayoutMetrics.topBarHeight
             : (_renderedHeaderHeight! - statusBarHeight - 16).clamp(
-                kToolbarHeight,
+                PocketLinkLayoutMetrics.topBarHeight,
                 200.0,
               ).toDouble();
     final topClearance = statusBarHeight + headerContentHeight + 10;
