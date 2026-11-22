@@ -359,7 +359,7 @@ class ServerApi {
 
     final generation = _cacheGeneration;
     late final Future<List<StorageVolume>> request;
-    request = _transport.sharedRead<List<StorageVolume>>('storage:volumes', () async {
+    request = _transport._sharedRead<List<StorageVolume>>('storage:volumes', () async {
       final response =
           await _dio.get<Map<String, dynamic>>('/api/storage/volumes');
       return (response.data?['items'] as List<dynamic>? ?? const [])
