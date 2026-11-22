@@ -367,7 +367,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final player = PersistentAudioPlayer.instance;
     final reduceMotion = MediaQuery.of(context).disableAnimations;
     final miniPlayerVisible = AppSettings.instance.showMiniPlayer && player.shouldShowMiniPlayer;
-    final bottomSystemInset = MediaQuery.paddingOf(context).bottom;
+    final bottomSystemInset = MediaQuery.viewPaddingOf(context).bottom;
     final parsedServerHost = Uri.tryParse(widget.api.baseUrl)?.host;
     final serverHost = parsedServerHost == null || parsedServerHost.isEmpty
         ? widget.api.baseUrl
