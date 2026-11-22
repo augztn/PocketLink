@@ -187,7 +187,7 @@ void main() {
     );
 
     await tester.pumpWidget(
-      _withScrolledHeader(
+      _withHeader(
         MaterialApp(
           home: MediaQuery(
             data: const MediaQueryData(disableAnimations: true),
@@ -233,7 +233,7 @@ void main() {
     );
 
     await tester.pumpWidget(
-      _withScrolledHeader(
+      _withHeader(
         const MaterialApp(
           home: Scaffold(body: FeatheredGlassHeaderBackground()),
         ),
@@ -283,7 +283,7 @@ void main() {
     });
 
     await tester.pumpWidget(
-      _withScrolledHeader(
+      _withHeader(
         const MaterialApp(
           home: Scaffold(
             body: Column(
