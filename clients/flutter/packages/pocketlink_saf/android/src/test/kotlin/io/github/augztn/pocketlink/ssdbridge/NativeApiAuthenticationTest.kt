@@ -10,7 +10,7 @@ class NativeApiAuthenticationTest {
     @Test
     fun acceptsValidBasicCredentials() {
         var verifiedPassword: String? = null
-        val authentication = NativeApiAuthentication("admin") { password ->
+        val authentication = authentication("admin") { password ->
             verifiedPassword = String(password)
             true
         }
@@ -21,7 +21,7 @@ class NativeApiAuthenticationTest {
 
     @Test
     fun rejectsMissingOrUnsupportedAuthorizationHeader() {
-        val authentication = NativeApiAuthentication("admin") { true }
+        val authentication = authentication("admin") { true }
 
         assertFalse(authentication.isAuthorized(emptyMap()))
         assertFalse(authentication.isAuthorized(mapOf("authorization" to "Bearer token")))
@@ -57,10 +57,17 @@ class NativeApiAuthenticationTest {
 
     @Test
     fun acceptsCaseInsensitiveBasicSchemeAndHeaderWhitespace() {
-        val authentication = NativeApiAuthentication("admin") { String(it) == "password" }
+        val authentication = authentication("admin") { String(it) == "password" }
         val encoded = Base64.getEncoder().encodeToString("admin:password".toByteArray(Charsets.UTF_8))
 
         assertTrue(authentication.isAuthorized(mapOf("authorization" to "basic   $encoded  ")))
+    }
+
+    private fun authentication(
+        username: String,
+        verifyPassword: (CharArray) -> Boolean
+    ) = NativeApiAuthentication(username, verifyPassword) { encoded ->
+        Base64.getDecoder().decode(encoded)
     }
 
     private fun header(value: String): Map<String, String> =
