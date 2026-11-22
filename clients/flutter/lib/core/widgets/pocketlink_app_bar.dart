@@ -125,7 +125,10 @@ class PocketLinkTopBar extends StatelessWidget implements PreferredSizeWidget {
       automaticallyImplyLeading: false,
       centerTitle: centerTitle,
       backgroundColor: backgroundColor ?? Colors.transparent,
-      flexibleSpace: const FeatheredGlassHeaderBackground(),
+      toolbarHeight: PocketLinkLayoutMetrics.topBarHeight,
+      flexibleSpace: const FeatheredGlassHeaderBackground(
+        contentHeight: PocketLinkLayoutMetrics.topBarHeight,
+      ),
       foregroundColor: foregroundColor,
       elevation: elevation ?? 0,
       scrolledUnderElevation: 0,
@@ -196,7 +199,7 @@ class PocketLinkTopBar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+  Size get preferredSize => const Size.fromHeight(PocketLinkLayoutMetrics.topBarHeight);
 }
 
 
