@@ -5,7 +5,7 @@ extension AppSettingsAppearance on AppSettings {
     _themeMode = value;
     _amoled = false;
     _notifySettingsChanged();
-    await _storage.write(key: _themeKey, value: switch (value) {
+    await AppSettings._storage.write(key: AppSettings._themeKey, value: switch (value) {
       ThemeMode.light => 'light',
       ThemeMode.dark => 'dark',
       ThemeMode.system => 'system',
@@ -16,14 +16,14 @@ extension AppSettingsAppearance on AppSettings {
     _amoled = value;
     if (value) _themeMode = ThemeMode.dark;
     _notifySettingsChanged();
-    await _storage.write(key: _themeKey, value: value ? 'amoled' : 'dark');
+    await AppSettings._storage.write(key: AppSettings._themeKey, value: value ? 'amoled' : 'dark');
   }
 
   Future<void> setUseLiquidGlass(bool value) async {
     _useLiquidGlass = value;
     _notifySettingsChanged();
     final preferences = await SharedPreferences.getInstance();
-    await preferences.setBool(_liquidGlassKey, value);
+    await preferences.setBool(AppSettings._liquidGlassKey, value);
   }
 
   Future<void> setProgressiveBlurEnabled(bool value) async {
@@ -32,7 +32,7 @@ extension AppSettingsAppearance on AppSettings {
     final snapshot = value;
     final write = _progressiveBlurWrite.catchError((_) {}).then((_) async {
       final preferences = await SharedPreferences.getInstance();
-      await preferences.setBool(_progressiveBlurKey, snapshot);
+      await preferences.setBool(AppSettings._progressiveBlurKey, snapshot);
     });
     _progressiveBlurWrite = write;
     await write;
@@ -48,7 +48,7 @@ extension AppSettingsAppearance on AppSettings {
     final snapshot = value;
     final write = _progressiveBlurWrite.catchError((_) {}).then((_) async {
       final preferences = await SharedPreferences.getInstance();
-      await preferences.setDouble(_progressiveBlurStrengthKey, snapshot);
+      await preferences.setDouble(AppSettings._progressiveBlurStrengthKey, snapshot);
     });
     _progressiveBlurWrite = write;
     await write;
