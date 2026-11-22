@@ -22,8 +22,8 @@ class PocketLinkAppBarAction {
 }
 
 /// Shared navigation and action surface for every secondary screen.
-class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
-  const PocketLinkAppBar({
+class PocketLinkTopBar extends StatelessWidget implements PreferredSizeWidget {
+  const PocketLinkTopBar({
     required this.title,
     this.actions = const [],
     this.onHome,
@@ -198,6 +198,9 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }
 
+
+/// Backwards-compatible name while screens migrate to the unified top bar.
+typedef PocketLinkAppBar = PocketLinkTopBar;
 
 /// Supplies dashboard navigation to screens hosted inside nested navigators.
 class PocketLinkNavigationScope extends InheritedWidget {
