@@ -38,7 +38,7 @@ class LiquidGlassSurface extends StatelessWidget {
                 color: useRefraction
                     ? (!isDark && lightRefractive
                         ? Colors.white.withValues(alpha: 0.58)
-                        : const Color(0xFF1A1C23).withValues(alpha: 0.40))
+                        : const Color(0xFF14151A).withValues(alpha: 0.55))
                     : null,
                 gradient: useRefraction ? null : LinearGradient(
                   begin: Alignment.topCenter,
@@ -184,7 +184,7 @@ class SmokedGlassSurface extends StatelessWidget {
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       color: refractive
-                          ? const Color(0xFF1A1C23).withValues(alpha: 0.40)
+                          ? const Color(0xFF14151A).withValues(alpha: 0.55)
                           : isLight
                               ? Colors.white.withValues(alpha: 0.78)
                               : const Color(0xFF1C1E24).withValues(alpha: 0.68),
