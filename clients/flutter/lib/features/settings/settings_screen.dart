@@ -562,7 +562,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       secondary: const Icon(Icons.blur_on_rounded),
                       title: const Text('Liquid Glass UI'),
                       subtitle: const Text(
-                        'Frosted blur, glass reflections and refined floating surfaces',
+                        'Translucent smoked-glass surfaces, subtle reflections and floating controls',
                       ),
                       value: _settings.useLiquidGlass,
                       onChanged: _settings.setUseLiquidGlass,
