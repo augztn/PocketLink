@@ -30,7 +30,7 @@ void main() {
     );
 
     expect(insets.topClearance, 90);
-    expect(insets.bottomClearance, 192);
+    expect(insets.bottomClearance, 216);
     expect(insets.hasFloatingNavBar, isTrue);
     expect(insets.hasActiveMiniPlayer, isTrue);
   });
@@ -58,7 +58,7 @@ void main() {
       ),
     );
 
-    expect(insets.bottomClearance, 46);
+    expect(insets.bottomClearance, 70);
   });
 
   testWidgets('reserves mini-player space without a floating dock', (tester) async {
@@ -84,7 +84,29 @@ void main() {
       ),
     );
 
-    expect(insets.bottomClearance, 120);
+    expect(insets.bottomClearance, 144);
+  });
+
+  testWidgets('horizontal gutter includes the 16dp base and system safe insets', (tester) async {
+    late EdgeInsets gutter;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(
+            padding: EdgeInsets.only(left: 10, right: 20),
+          ),
+          child: Builder(
+            builder: (context) {
+              gutter = PocketLinkHorizontalGutter.padding(context);
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      ),
+    );
+
+    expect(gutter, const EdgeInsets.fromLTRB(26, 0, 36, 0));
   });
 
   testWidgets('updates top clearance from the rendered header measurement', (tester) async {
