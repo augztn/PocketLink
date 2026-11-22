@@ -59,19 +59,16 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
                           child: const ColoredBox(color: Colors.transparent),
                         ),
                       ),
+                    // Transparency is permanent; the preference controls blur only.
                     DecoratedBox(
-                      decoration: useHeaderBlur
-                          ? BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: baseTint,
-                                stops: const [0.0, 0.82, 1.0],
-                              ),
-                            )
-                          : BoxDecoration(
-                              color: isDark ? Colors.black : Colors.white,
-                            ),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: baseTint,
+                          stops: const [0.0, 0.82, 1.0],
+                        ),
+                      ),
                     ),
                   ],
                 ),
