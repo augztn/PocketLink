@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/navigation/pocketlink_navigation.dart';
+import '../../core/settings/app_settings.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
 
@@ -70,28 +71,77 @@ class FloatingNavigationDock extends StatelessWidget {
               padding: const EdgeInsets.all(5),
               child: SizedBox(
                 height: 54,
-                child: Row(
-                  children: [
-                  for (final id in ids)
-                    Expanded(
-                      child: _DockTab(
-                        index: _indices[id]!,
-                        selectedIndex: selectedIndex,
-                        icon: switch (id) {
-                          'home' => Icons.home_outlined,
-                          'explore' => Icons.explore_outlined,
-                          _ => Icons.folder_outlined,
-                        },
-                        activeIcon: switch (id) {
-                          'home' => Icons.home_rounded,
-                          'explore' => Icons.explore_rounded,
-                          _ => Icons.folder_rounded,
-                        },
-                        label: _labels[id]!,
-                        onTap: onSelect,
-                      ),
-                    ),
-                  ],
+                child: AnimatedBuilder(
+                  animation: AppSettings.instance,
+                  builder: (context, _) {
+                    final useGlass = AppSettings.instance.useLiquidGlass;
+                    final selectedPosition = ids.indexWhere(
+                      (id) => _indices[id] == selectedIndex,
+                    );
+                    return Stack(
+                      children: [
+                        if (useGlass && selectedPosition >= 0)
+                          Positioned.fill(
+                            child: AnimatedAlign(
+                              alignment: Alignment(
+                                ((selectedPosition + 0.5) * 2 / ids.length) - 1,
+                                0,
+                              ),
+                              duration: const Duration(milliseconds: 260),
+                              curve: Curves.easeOutCubic,
+                              child: FractionallySizedBox(
+                                widthFactor: 1 / ids.length,
+                                heightFactor: 1,
+                                child: Container(
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [
+                                        Colors.white.withValues(alpha: 0.18),
+                                        Colors.white.withValues(alpha: 0.08),
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(25),
+                                    border: Border.all(
+                                      color: Colors.white.withValues(alpha: 0.22),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        Row(
+                          children: [
+                            for (final id in ids)
+                              Expanded(
+                                child: _DockTab(
+                                  index: _indices[id]!,
+                                  selectedIndex: selectedIndex,
+                                  useSharedLens: useGlass,
+                                  icon: switch (id) {
+                                    'home' => Icons.home_outlined,
+                                    'explore' => Icons.explore_outlined,
+                                    _ => Icons.folder_outlined,
+                                  },
+                                  activeIcon: switch (id) {
+                                    'home' => Icons.home_rounded,
+                                    'explore' => Icons.explore_rounded,
+                                    _ => Icons.folder_rounded,
+                                  },
+                                  label: _labels[id]!,
+                                  onTap: onSelect,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
             ),
@@ -386,6 +436,7 @@ class _DockTab extends StatelessWidget {
   const _DockTab({
     required this.index,
     required this.selectedIndex,
+    required this.useSharedLens,
     required this.icon,
     required this.activeIcon,
     required this.label,
@@ -394,6 +445,7 @@ class _DockTab extends StatelessWidget {
 
   final int index;
   final int selectedIndex;
+  final bool useSharedLens;
   final IconData icon;
   final IconData activeIcon;
   final String label;
@@ -414,42 +466,44 @@ class _DockTab extends StatelessWidget {
             duration: const Duration(milliseconds: 220),
             curve: Curves.easeOutCubic,
             margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-            decoration: BoxDecoration(
-              gradient: selected
-                  ? (Theme.of(context).brightness == Brightness.dark
-                      ? LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.white.withValues(alpha: 0.14),
-                            Colors.white.withValues(alpha: 0.07),
-                          ],
-                        )
-                      : LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Color.alphaBlend(
-                              const Color(0x1A536DFE),
-                              Colors.white.withValues(alpha: 0.90),
-                            ),
-                            Color.alphaBlend(
-                              const Color(0x1A536DFE),
-                              Colors.white.withValues(alpha: 0.90),
-                            ),
-                          ],
-                        ))
-                  : null,
-              borderRadius: BorderRadius.circular(25),
-              border: selected
-                  ? Border.all(
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white.withValues(alpha: 0.22)
-                          : const Color(0xFF536DFE)
-                              .withValues(alpha: 0.25),
-                    )
-                  : null,
-            ),
+            decoration: useSharedLens
+                ? null
+                : BoxDecoration(
+                    gradient: selected
+                        ? (Theme.of(context).brightness == Brightness.dark
+                            ? LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.white.withValues(alpha: 0.14),
+                                  Colors.white.withValues(alpha: 0.07),
+                                ],
+                              )
+                            : LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Color.alphaBlend(
+                                    const Color(0x1A536DFE),
+                                    Colors.white.withValues(alpha: 0.90),
+                                  ),
+                                  Color.alphaBlend(
+                                    const Color(0x1A536DFE),
+                                    Colors.white.withValues(alpha: 0.90),
+                                  ),
+                                ],
+                              ))
+                        : null,
+                    borderRadius: BorderRadius.circular(25),
+                    border: selected
+                        ? Border.all(
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.white.withValues(alpha: 0.22)
+                                : const Color(0xFF536DFE)
+                                    .withValues(alpha: 0.25),
+                          )
+                        : null,
+                  ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
