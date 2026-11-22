@@ -986,58 +986,37 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       extendBodyBehindAppBar: true,
-      appBar: AppBar(
+      appBar: PocketLinkAppBar(
         automaticallyImplyLeading: false,
-        leadingWidth: 70 + MediaQuery.paddingOf(context).left,
-        leading: Align(
-          alignment: Alignment.centerLeft,
-          child: Padding(
-            padding: EdgeInsets.only(
-              left: 16 + MediaQuery.paddingOf(context).left,
-              top: 4,
-              bottom: 4,
-            ),
-            child: SizedBox.square(
-              dimension: 38,
-              child: GlassCircleButton(
-                tooltip: 'Open navigation menu',
-                onPressed: widget.onOpenDrawer,
-                child: const Icon(Icons.menu_rounded, size: 18),
-              ),
+        leadingWidth: 54,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 16),
+          child: SizedBox.square(
+            dimension: 38,
+            child: GlassCircleButton(
+              tooltip: 'Open navigation menu',
+              onPressed: widget.onOpenDrawer,
+              child: const Icon(Icons.menu_rounded, size: 18),
             ),
           ),
-        ),
-        backgroundColor: Colors.transparent,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        flexibleSpace: const FeatheredGlassHeaderBackground(
-          darkTint: [
-            Color(0xFF000000),
-            Color(0xFF000000),
-            Color(0xFF000000),
-          ],
         ),
         titleSpacing: 8,
-        title: Transform.translate(
-          offset: const Offset(0, 6),
-          child: Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('PocketLink', style: theme.textTheme.titleLarge?.copyWith(
-              fontSize: 26,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.5,
-            )),
-            Text('Your private space', style: theme.textTheme.labelSmall?.copyWith(
-              color: colors.onSurfaceVariant,
-              fontWeight: FontWeight.w500,
-            )),
+            Text('PocketLink', maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontSize: 26, fontWeight: FontWeight.w700, letterSpacing: -0.5,
+              )),
+            Text('Your private space', maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: colors.onSurfaceVariant, fontWeight: FontWeight.w500,
+              )),
           ],
-          ),
         ),
-        actionsPadding: EdgeInsets.only(right: PocketLinkHorizontalGutter.padding(context).right),
-        actions: [
+        showMoreMenu: false,
+        actionsBeforeHome: [
           SmokedGlassPopoverMenu<String>(
             tooltip: 'More actions',
             items: [
