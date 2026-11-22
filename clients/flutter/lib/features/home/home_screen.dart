@@ -702,15 +702,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   left: 0,
                   right: 0,
                   bottom: 0,
-                  child: ValueListenableBuilder<bool>(
-                    valueListenable: PocketLinkScrollOffsetScope.dockCollapsed,
-                    builder: (context, collapsed, _) => PocketLinkBottomScrim(
-                      height: PocketLinkLayoutMetrics.bottomOverlayHeight(
-                        bottomInset: bottomSystemInset,
-                        hasDock: true,
-                        hasMiniPlayer: miniPlayerVisible,
-                        collapsed: miniPlayerVisible && collapsed,
-                      ),
+                  child: PocketLinkBottomScrim(
+                    height: PocketLinkLayoutMetrics.bottomOverlayHeight(
+                      bottomInset: bottomSystemInset,
+                      hasDock: true,
+                      hasMiniPlayer: miniPlayerVisible,
                     ),
                   ),
                 ),
@@ -719,9 +715,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   left: 0,
                   right: 0,
                   bottom: 0,
-                  child: ValueListenableBuilder<bool>(
-                    valueListenable: PocketLinkScrollOffsetScope.dockCollapsed,
-                    builder: (context, collapsed, _) => FloatingNavigationDock(
+                  child: FloatingNavigationDock(
                     order: AppSettings.instance.navigationOrder,
                     visibleItems: AppSettings.instance.visibleNavigationItems,
                     selectedIndex: _selectedIndex,
@@ -731,7 +725,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     hasMedia: player.isActive && player.currentItem != null,
                     isVideo: player.isActive && !player.isMusic,
                     onSelect: _openTab,
-                    collapsed: miniPlayerVisible && collapsed,
                     musicShortcutsExpanded: _musicShortcutsExpanded,
                     onMusicShortcutDismissed: () {
                       if (_musicShortcutsExpanded) {
