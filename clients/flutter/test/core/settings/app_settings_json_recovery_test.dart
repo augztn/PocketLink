@@ -36,6 +36,11 @@ void main() {
 
   test('malformed navigation JSON falls back independently', () async {
     final preferences = await SharedPreferences.getInstance();
+    final settings = AppSettings.instance;
+    await settings.setNavigationLayout(
+      order: AppSettings.navigationDefaults,
+      visibleItems: AppSettings.navigationDefaults.toSet(),
+    );
     await preferences.setString(
       'settings_navigation_order',
       '["home","home","files","browse"]',
@@ -43,12 +48,6 @@ void main() {
     await preferences.setString(
       'settings_navigation_visibility',
       '["home","files"]',
-    );
-
-    final settings = AppSettings.instance;
-    await settings.setNavigationLayout(
-      order: AppSettings.navigationDefaults,
-      visibleItems: AppSettings.navigationDefaults.toSet(),
     );
     await settings.reloadPreferences();
 
