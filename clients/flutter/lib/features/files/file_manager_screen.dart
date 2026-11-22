@@ -916,8 +916,8 @@ tooltip: 'Choose storage location',
               top: topInset + 12,
               bottom: LayoutInsetsScope.of(context).bottomClearance,
             ),
-                                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                                      maxCrossAxisExtent: 190,
+                                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: PocketLinkResponsiveLayout.gridColumns(context),
                                       mainAxisExtent: 156,
                                       crossAxisSpacing: 10,
                                       mainAxisSpacing: 10,
