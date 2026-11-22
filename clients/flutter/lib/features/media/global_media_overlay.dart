@@ -280,6 +280,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
         settings,
         PocketLinkNavigation.drawerOpen,
         PocketLinkNavigation.quickShortcutsOpen,
+        PocketLinkNavigation.bottomDockVisible,
         _nowPlayingController,
       ]),
       builder: (context, _) => ValueListenableBuilder<List<Route<dynamic>>>(
@@ -294,6 +295,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
               !observer.isModalRouteOnTop &&
               _nowPlayingController.value <= 0.0;
           final onDashboard = observer.isDashboardVisible;
+          final dockVisible = onDashboard && PocketLinkNavigation.bottomDockVisible.value;
           final showTrackPopup = _trackPopup != null &&
               _trackPopupOffset != null &&
               onDashboard &&
@@ -310,7 +312,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
           // measured header and mounted-overlay geometry from this scope.
           final navigatorContent = PocketLinkScaffold(
             routeIdentity: observer.currentPageRoute,
-            hasFloatingNavBar: onDashboard,
+            hasFloatingNavBar: dockVisible,
             hasActiveMiniPlayer: visible,
             child: widget.child,
           );
@@ -320,7 +322,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
             fit: StackFit.expand,
             children: [
               Positioned.fill(child: navigatorContent),
-              if (!onDashboard && visible)
+              if (!dockVisible && visible)
                 Positioned(
                   left: 0,
                   right: 0,
@@ -337,7 +339,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
                 Positioned(
                   left: 0,
                   right: 0,
-                  bottom: bottomInset + (onDashboard ? PocketLinkLayoutMetrics.dockHeight : 0),
+                  bottom: bottomInset + (dockVisible ? PocketLinkLayoutMetrics.dockHeight : 0),
                   child: AnimatedSlide(
                     offset: Offset.zero,
                     duration: reduceMotion || drawerOpen
