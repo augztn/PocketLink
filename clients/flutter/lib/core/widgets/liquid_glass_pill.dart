@@ -28,9 +28,7 @@ class LiquidGlassSurface extends StatelessWidget {
     return AnimatedBuilder(
       animation: AppSettings.instance,
       builder: (context, _) {
-        final settings = AppSettings.instance;
-        final useGlass = settings.useLiquidGlass;
-        final useBlur = useGlass && settings.progressiveBlurEnabled;
+        final useGlass = AppSettings.instance.useLiquidGlass;
         final useRefraction = useGlass && refractive;
         final isDark = Theme.of(context).brightness == Brightness.dark;
         final colors = Theme.of(context).colorScheme;
@@ -95,7 +93,7 @@ class LiquidGlassSurface extends StatelessWidget {
         final clippedSurface = ClipRRect(
           borderRadius: radius,
           clipBehavior: Clip.antiAlias,
-          child: useBlur
+          child: useGlass
               ? BackdropFilter(
                   filter: ui.ImageFilter.blur(
                     sigmaX: useRefraction ? 28 : 22,
@@ -136,9 +134,7 @@ class SmokedGlassSurface extends StatelessWidget {
     return AnimatedBuilder(
       animation: AppSettings.instance,
       builder: (context, _) {
-        final settings = AppSettings.instance;
-        final enabled = settings.useLiquidGlass;
-        final useBlur = enabled && settings.progressiveBlurEnabled;
+        final enabled = AppSettings.instance.useLiquidGlass;
         final isLight = Theme.of(context).brightness == Brightness.light;
         final borderColor = isLight
             ? const Color(0x1A0F172A)
@@ -176,52 +172,47 @@ class SmokedGlassSurface extends StatelessWidget {
                 ],
               )
             : child;
-        final glassDecoration = BoxDecoration(
-          color: refractive
-              ? const Color(0xFF1A1C23).withValues(alpha: 0.40)
-              : isLight
-                  ? Colors.white.withValues(alpha: 0.78)
-                  : const Color(0xFF1C1E24).withValues(alpha: 0.68),
-          borderRadius: radius,
-          border: Border.all(color: borderColor, width: 1),
-          boxShadow: isLight
-              ? const [
-                  BoxShadow(
-                    color: Color(0x140F172A),
-                    blurRadius: 18,
-                    offset: Offset(0, 5),
-                  ),
-                ]
-              : const [],
-        );
-        final glassSurface = DecoratedBox(
-          decoration: glassDecoration,
-          child: content,
-        );
-        final fallbackSurface = DecoratedBox(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainerLow,
-            borderRadius: radius,
-            border: Border.all(
-              color: Theme.of(context).colorScheme.outlineVariant,
-            ),
-          ),
-          child: child,
-        );
         final surface = ClipRRect(
           borderRadius: radius,
           clipBehavior: Clip.antiAlias,
-          child: !enabled
-              ? fallbackSurface
-              : useBlur
-                  ? BackdropFilter(
-                      filter: ui.ImageFilter.blur(
-                        sigmaX: refractive ? 28 : 24,
-                        sigmaY: refractive ? 28 : 24,
-                      ),
-                      child: glassSurface,
-                    )
-                  : glassSurface,
+          child: enabled
+              ? BackdropFilter(
+                  filter: ui.ImageFilter.blur(
+                    sigmaX: refractive ? 28 : 24,
+                    sigmaY: refractive ? 28 : 24,
+                  ),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: refractive
+                          ? const Color(0xFF1A1C23).withValues(alpha: 0.40)
+                          : isLight
+                              ? Colors.white.withValues(alpha: 0.78)
+                              : const Color(0xFF1C1E24).withValues(alpha: 0.68),
+                      borderRadius: radius,
+                      border: Border.all(color: borderColor, width: 1),
+                      boxShadow: isLight
+                          ? const [
+                              BoxShadow(
+                                color: Color(0x140F172A),
+                                blurRadius: 18,
+                                offset: Offset(0, 5),
+                              ),
+                            ]
+                          : const [],
+                    ),
+                    child: content,
+                  ),
+                )
+              : DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerLow,
+                    borderRadius: radius,
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                    ),
+                  ),
+                  child: child,
+                ),
         );
         return enabled && refractive
             ? CustomPaint(
