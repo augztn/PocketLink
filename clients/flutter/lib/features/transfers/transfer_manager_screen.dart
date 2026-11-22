@@ -39,7 +39,7 @@ class TransferManagerScreen extends StatelessWidget {
         feathered: true,
         title: const Text('Transfers'),
         actions: [
-          PocketLinkTopBarAction(label: 'Clear history', icon: Icons.delete_sweep_outlined, onPressed: manager.clearFinished),
+          PocketLinkAppBarAction(label: 'Clear history', icon: Icons.delete_sweep_outlined, onPressed: manager.clearFinished),
         ],
       ),
       body: AnimatedBuilder(
