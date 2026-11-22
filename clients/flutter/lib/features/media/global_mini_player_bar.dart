@@ -68,17 +68,20 @@ class GlobalMiniPlayerBar extends StatelessWidget {
       child: Padding(
         // Match the full outer width of the 3+1 navigation dock.
         padding: PocketLinkHorizontalGutter.padding(context).copyWith(top: 4),
-        child: SmokedGlassSurface(
-          key: surfaceKey,
-          radius: BorderRadius.circular(22),
-          refractive: true,
-          child: AnimatedOpacity(
-            opacity: visible ? 1 : 0,
-            duration: reduceMotion
-                ? Duration.zero
-                : const Duration(milliseconds: 220),
-            curve: Curves.easeOut,
-            child: GestureDetector(
+        child: TweenAnimationBuilder<double>(
+          tween: Tween<double>(end: visible ? 1 : 0),
+          duration: reduceMotion
+              ? Duration.zero
+              : const Duration(milliseconds: 220),
+          curve: Curves.easeOut,
+          builder: (context, intensity, _) => SmokedGlassSurface(
+            key: surfaceKey,
+            radius: BorderRadius.circular(22),
+            refractive: true,
+            intensity: intensity,
+            child: Opacity(
+              opacity: intensity,
+              child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onHorizontalDragEnd: _handleHorizontalDrag,
               onVerticalDragEnd: (details) {
@@ -217,6 +220,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
                     ],
                   ),
                 ),
+              ),
               ),
             ),
           ),
