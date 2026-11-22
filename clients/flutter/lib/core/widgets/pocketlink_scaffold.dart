@@ -44,10 +44,11 @@ class PocketLinkScrollOffsetScope extends InheritedNotifier<ValueNotifier<double
     super.key,
   }) : super(notifier: offset);
 
-  static final ValueNotifier<double> _zero = ValueNotifier<double>(0);
+  static final ValueNotifier<double> currentOffset = ValueNotifier<double>(0);
 
   static ValueListenable<double> listenableOf(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<PocketLinkScrollOffsetScope>()?.notifier ?? _zero;
+      context.dependOnInheritedWidgetOfExactType<PocketLinkScrollOffsetScope>()?.notifier ??
+      currentOffset;
 }
 
 /// Single source of truth for the floating dock and mini-player geometry.
@@ -173,28 +174,27 @@ class PocketLinkScaffold extends StatefulWidget {
 
 class _PocketLinkScaffoldState extends State<PocketLinkScaffold> {
   double? _renderedHeaderHeight;
-  final ValueNotifier<double> _scrollOffset = ValueNotifier<double>(0);
-
   @override
   void didUpdateWidget(covariant PocketLinkScaffold oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.routeIdentity != widget.routeIdentity) {
       _renderedHeaderHeight = null;
-      _scrollOffset.value = 0;
+      PocketLinkScrollOffsetScope.currentOffset.value = 0;
     }
   }
 
   @override
   void dispose() {
-    _scrollOffset.dispose();
+    PocketLinkScrollOffsetScope.currentOffset.value = 0;
     super.dispose();
   }
 
   bool _handleScrollNotification(ScrollNotification notification) {
     if (notification.depth != 0 || notification.metrics.axis != Axis.vertical) return false;
     final next = notification.metrics.pixels.clamp(0.0, double.infinity).toDouble();
-    if ((_scrollOffset.value - next).abs() >= 0.5) {
-      _scrollOffset.value = next;
+    final offset = PocketLinkScrollOffsetScope.currentOffset;
+    if ((offset.value - next).abs() >= 0.5) {
+      offset.value = next;
     }
     return false;
   }
@@ -242,7 +242,7 @@ class _PocketLinkScaffoldState extends State<PocketLinkScaffold> {
       child: NotificationListener<ScrollNotification>(
         onNotification: _handleScrollNotification,
         child: PocketLinkScrollOffsetScope(
-          offset: _scrollOffset,
+          offset: PocketLinkScrollOffsetScope.currentOffset,
           child: widget.child,
         ),
       ),
