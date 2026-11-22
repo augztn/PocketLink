@@ -738,6 +738,7 @@ class _GlobalMiniPlayerBar extends StatelessWidget {
   const _GlobalMiniPlayerBar({
     required this.visible,
     required this.reduceMotion,
+    required this.compact,
     required this.player,
     required this.onOpen,
     required this.onDismiss,
@@ -745,6 +746,7 @@ class _GlobalMiniPlayerBar extends StatelessWidget {
 
   final bool visible;
   final bool reduceMotion;
+  final bool compact;
   final PersistentAudioPlayer player;
   final VoidCallback onOpen;
   final VoidCallback onDismiss;
@@ -767,6 +769,7 @@ class _GlobalMiniPlayerBar extends StatelessWidget {
             item: item,
             visible: visible,
             reduceMotion: reduceMotion,
+            compact: compact,
             isPlaying: playingSnapshot.data ?? false,
             position: positionSnapshot.data ?? Duration.zero,
             duration: durationSnapshot.data ?? Duration.zero,
