@@ -180,6 +180,7 @@ class FloatingNavigationDock extends StatelessWidget {
                                 page <= groupStartPage + ids.length - 0.5;
                             return Stack(
                               fit: StackFit.expand,
+                              clipBehavior: Clip.none,
                               children: [
                                 if (useGlass &&
                                     selectedPosition >= 0 &&
