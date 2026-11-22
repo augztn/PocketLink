@@ -24,7 +24,9 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
         final media = MediaQuery.of(context);
         final settings = AppSettings.instance;
         final isDark = Theme.of(context).brightness == Brightness.dark;
-        final useProgressiveBlur = settings.progressiveBlurEnabled;
+        final useProgressiveBlur =
+            settings.progressiveBlurEnabled && settings.progressiveBlurStrength > 0;
+        final blurScale = settings.progressiveBlurStrength / 55;
         final headerHeight = media.padding.top + contentHeight + 16;
 
         return ValueListenableBuilder<double>(
@@ -66,8 +68,8 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
                           Positioned.fill(
                             child: BackdropFilter(
                               filter: ui.ImageFilter.blur(
-                                sigmaX: 12 * scrollProgress,
-                                sigmaY: 12 * scrollProgress,
+                                sigmaX: 12 * blurScale * scrollProgress,
+                                sigmaY: 12 * blurScale * scrollProgress,
                               ),
                               child: const ColoredBox(color: Colors.transparent),
                             ),
@@ -158,12 +160,17 @@ class GlassCircleButton extends StatelessWidget {
       animation: settings,
       builder: (context, _) {
         final useBlur = settings.progressiveBlurEnabled &&
+            settings.progressiveBlurStrength > 0 &&
             !MediaQuery.of(context).disableAnimations;
+        final blurScale = settings.progressiveBlurStrength / 55;
         return RepaintBoundary(
           child: ClipOval(
             child: useBlur
                 ? BackdropFilter(
-                    filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                    filter: ui.ImageFilter.blur(
+                      sigmaX: 24 * blurScale,
+                      sigmaY: 24 * blurScale,
+                    ),
                     child: button,
                   )
                 : button,
