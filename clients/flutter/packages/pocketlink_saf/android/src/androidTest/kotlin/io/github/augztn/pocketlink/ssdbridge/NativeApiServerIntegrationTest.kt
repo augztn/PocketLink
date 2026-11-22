@@ -290,6 +290,50 @@ class NativeApiServerIntegrationTest {
         }
     }
 
+    @Test
+    fun fileStreamingReturnsFullAndRequestedByteRangeOverHttp() {
+        val appContext = ApplicationProvider.getApplicationContext<Context>()
+        val context = object : ContextWrapper(appContext) {
+            override fun getSharedPreferences(name: String, mode: Int): SharedPreferences =
+                appContext.getSharedPreferences("stream-test-$name", mode)
+        }
+        val root = File(context.cacheDir, "stream-test-${UUID.randomUUID()}").apply {
+            check(mkdirs())
+        }
+        val source = File(root, "sample.txt").apply { writeText("0123456789") }
+        val credentials = ServerCredentials(context)
+        val password = "stream-test-password"
+        credentials.setPassword(password)
+        val authorization = "Basic " + Base64.encodeToString(
+            "admin:$password".toByteArray(), Base64.NO_WRAP
+        )
+        val server = NativeApiServer(context, credentials, 0, "0.0.0.0", root)
+
+        server.start(30_000, false)
+        try {
+            val port = server.listeningPort
+            val full = request(port, "/api/files/stream?path=sample.txt", authorization)
+            assertEquals(200, full.first)
+            assertEquals(source.readText(), full.second)
+
+            val partial = request(
+                port,
+                "/api/files/stream?path=sample.txt",
+                authorization,
+                headers = mapOf("Range" to "bytes=2-5")
+            )
+            assertEquals(206, partial.first)
+            assertEquals("2345", partial.second)
+        } finally {
+            server.stop()
+            root.deleteRecursively()
+            context.getSharedPreferences("stream-test-ssd-bridge", Context.MODE_PRIVATE)
+                .edit().clear().commit()
+            context.getSharedPreferences("stream-test-pocketlink-auth", Context.MODE_PRIVATE)
+                .edit().clear().commit()
+        }
+    }
+
     private fun multipartBody(name: String, content: ByteArray): ByteArray {
         val prefix = (
             "--pocketlink-test-boundary\r\n" +
@@ -306,7 +350,8 @@ class NativeApiServerIntegrationTest {
         authorization: String? = null,
         method: String = "GET",
         body: ByteArray = byteArrayOf(),
-        contentType: String? = null
+        contentType: String? = null,
+        headers: Map<String, String> = emptyMap()
     ): Pair<Int, String> {
         return Socket().use { socket ->
             socket.connect(InetSocketAddress("127.0.0.1", port), 5_000)
@@ -317,6 +362,7 @@ class NativeApiServerIntegrationTest {
                 append("Connection: close\r\n")
                 if (authorization != null) append("Authorization: $authorization\r\n")
                 if (contentType != null) append("Content-Type: $contentType\r\n")
+                headers.forEach { (name, value) -> append("$name: $value\r\n") }
                 if (body.isNotEmpty()) append("Content-Length: ${body.size}\r\n")
                 append("\r\n")
             }
