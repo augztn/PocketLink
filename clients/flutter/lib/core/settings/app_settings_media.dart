@@ -5,9 +5,9 @@ extension AppSettingsMedia on AppSettings {
     _downloadDirectory = value;
     _notifySettingsChanged();
     if (value == null) {
-      await _storage.delete(key: _downloadKey);
+      await AppSettings._storage.delete(key: AppSettings._downloadKey);
     } else {
-      await _storage.write(key: _downloadKey, value: value);
+      await AppSettings._storage.write(key: AppSettings._downloadKey, value: value);
     }
   }
 
@@ -32,10 +32,10 @@ extension AppSettingsMedia on AppSettings {
     _notifySettingsChanged();
     final preferences = await SharedPreferences.getInstance();
     await Future.wait([
-      if (swipeEnabled != null) preferences.setBool(_musicButtonSwipeEnabledKey, swipeEnabled),
-      if (swipeLeftAction != null) preferences.setString(_musicButtonSwipeLeftActionKey, swipeLeftAction),
-      if (swipeRightAction != null) preferences.setString(_musicButtonSwipeRightActionKey, swipeRightAction),
-      if (longPressEnabled != null) preferences.setBool(_musicButtonLongPressEnabledKey, longPressEnabled),
+      if (swipeEnabled != null) preferences.setBool(AppSettings._musicButtonSwipeEnabledKey, swipeEnabled),
+      if (swipeLeftAction != null) preferences.setString(AppSettings._musicButtonSwipeLeftActionKey, swipeLeftAction),
+      if (swipeRightAction != null) preferences.setString(AppSettings._musicButtonSwipeRightActionKey, swipeRightAction),
+      if (longPressEnabled != null) preferences.setBool(AppSettings._musicButtonLongPressEnabledKey, longPressEnabled),
     ]);
   }
 
@@ -47,10 +47,10 @@ extension AppSettingsMedia on AppSettings {
     _notifySettingsChanged();
     final preferences = await SharedPreferences.getInstance();
     await Future.wait([
-      preferences.remove(_musicButtonSwipeEnabledKey),
-      preferences.remove(_musicButtonSwipeLeftActionKey),
-      preferences.remove(_musicButtonSwipeRightActionKey),
-      preferences.remove(_musicButtonLongPressEnabledKey),
+      preferences.remove(AppSettings._musicButtonSwipeEnabledKey),
+      preferences.remove(AppSettings._musicButtonSwipeLeftActionKey),
+      preferences.remove(AppSettings._musicButtonSwipeRightActionKey),
+      preferences.remove(AppSettings._musicButtonLongPressEnabledKey),
     ]);
   }
 
@@ -65,9 +65,9 @@ extension AppSettingsMedia on AppSettings {
     _notifySettingsChanged();
     final preferences = await SharedPreferences.getInstance();
     await Future.wait([
-      if (miniPlayer != null) preferences.setBool(_nowPlayingMiniPlayerKey, miniPlayer),
-      if (gestures != null) preferences.setBool(_nowPlayingGesturesKey, gestures),
-      if (statsForNerds != null) preferences.setBool(_nowPlayingStatsForNerdsKey, statsForNerds),
+      if (miniPlayer != null) preferences.setBool(AppSettings._nowPlayingMiniPlayerKey, miniPlayer),
+      if (gestures != null) preferences.setBool(AppSettings._nowPlayingGesturesKey, gestures),
+      if (statsForNerds != null) preferences.setBool(AppSettings._nowPlayingStatsForNerdsKey, statsForNerds),
     ]);
   }
 
@@ -79,7 +79,7 @@ extension AppSettingsMedia on AppSettings {
     _nowPlayingScrubberStyle = style;
     _notifySettingsChanged();
     final preferences = await SharedPreferences.getInstance();
-    await preferences.setString(_nowPlayingScrubberStyleKey, style);
+    await preferences.setString(AppSettings._nowPlayingScrubberStyleKey, style);
   }
 
   Future<void> setNowPlayingTheme(String theme) async {
@@ -90,7 +90,7 @@ extension AppSettingsMedia on AppSettings {
     _nowPlayingTheme = theme;
     _notifySettingsChanged();
     final preferences = await SharedPreferences.getInstance();
-    await preferences.setString(_nowPlayingThemeKey, theme);
+    await preferences.setString(AppSettings._nowPlayingThemeKey, theme);
   }
 
   Future<void> setDownloadOptions({
@@ -107,9 +107,9 @@ extension AppSettingsMedia on AppSettings {
     _notifySettingsChanged();
     final preferences = await SharedPreferences.getInstance();
     await Future.wait([
-      if (concurrency != null) preferences.setInt(_downloadConcurrencyKey, concurrency),
-      if (wifiOnly != null) preferences.setBool(_downloadWifiOnlyKey, wifiOnly),
-      if (autoResume != null) preferences.setBool(_downloadAutoResumeKey, autoResume),
+      if (concurrency != null) preferences.setInt(AppSettings._downloadConcurrencyKey, concurrency),
+      if (wifiOnly != null) preferences.setBool(AppSettings._downloadWifiOnlyKey, wifiOnly),
+      if (autoResume != null) preferences.setBool(AppSettings._downloadAutoResumeKey, autoResume),
     ]);
   }
 
@@ -122,11 +122,11 @@ extension AppSettingsMedia on AppSettings {
     _notifySettingsChanged();
     final preferences = await SharedPreferences.getInstance();
     await Future.wait([
-      preferences.remove(_nowPlayingMiniPlayerKey),
-      preferences.remove(_nowPlayingGesturesKey),
-      preferences.remove(_nowPlayingStatsForNerdsKey),
-      preferences.remove(_nowPlayingScrubberStyleKey),
-      preferences.remove(_nowPlayingThemeKey),
+      preferences.remove(AppSettings._nowPlayingMiniPlayerKey),
+      preferences.remove(AppSettings._nowPlayingGesturesKey),
+      preferences.remove(AppSettings._nowPlayingStatsForNerdsKey),
+      preferences.remove(AppSettings._nowPlayingScrubberStyleKey),
+      preferences.remove(AppSettings._nowPlayingThemeKey),
     ]);
   }
 
@@ -157,17 +157,17 @@ extension AppSettingsMedia on AppSettings {
     _notifySettingsChanged();
     final preferences = await SharedPreferences.getInstance();
     await Future.wait([
-      if (controlsTimeoutSeconds != null) preferences.setDouble(_videoControlsTimeoutKey, controlsTimeoutSeconds),
-      if (seekSeconds != null) preferences.setInt(_videoSeekSecondsKey, seekSeconds),
-      if (defaultSpeed != null) preferences.setDouble(_videoDefaultSpeedKey, defaultSpeed),
-      if (fitMode != null) preferences.setString(_videoFitModeKey, fitMode),
-      if (gesturesEnabled != null) preferences.setBool(_videoGesturesKey, gesturesEnabled),
-      if (pinchZoomEnabled != null) preferences.setBool(_videoPinchZoomKey, pinchZoomEnabled),
-      if (tapToTogglePlayback != null) preferences.setBool(_videoTapToggleKey, tapToTogglePlayback),
-      if (subtitleFontSize != null) preferences.setDouble(_videoSubtitleFontSizeKey, subtitleFontSize),
-      if (subtitleBackground != null) preferences.setBool(_videoSubtitleBackgroundKey, subtitleBackground),
-      if (autoFullscreen != null) preferences.setBool(_videoAutoFullscreenKey, autoFullscreen),
-      if (fullscreenOrientation != null) preferences.setString(_videoFullscreenOrientationKey, fullscreenOrientation),
+      if (controlsTimeoutSeconds != null) preferences.setDouble(AppSettings._videoControlsTimeoutKey, controlsTimeoutSeconds),
+      if (seekSeconds != null) preferences.setInt(AppSettings._videoSeekSecondsKey, seekSeconds),
+      if (defaultSpeed != null) preferences.setDouble(AppSettings._videoDefaultSpeedKey, defaultSpeed),
+      if (fitMode != null) preferences.setString(AppSettings._videoFitModeKey, fitMode),
+      if (gesturesEnabled != null) preferences.setBool(AppSettings._videoGesturesKey, gesturesEnabled),
+      if (pinchZoomEnabled != null) preferences.setBool(AppSettings._videoPinchZoomKey, pinchZoomEnabled),
+      if (tapToTogglePlayback != null) preferences.setBool(AppSettings._videoTapToggleKey, tapToTogglePlayback),
+      if (subtitleFontSize != null) preferences.setDouble(AppSettings._videoSubtitleFontSizeKey, subtitleFontSize),
+      if (subtitleBackground != null) preferences.setBool(AppSettings._videoSubtitleBackgroundKey, subtitleBackground),
+      if (autoFullscreen != null) preferences.setBool(AppSettings._videoAutoFullscreenKey, autoFullscreen),
+      if (fullscreenOrientation != null) preferences.setString(AppSettings._videoFullscreenOrientationKey, fullscreenOrientation),
     ]);
   }
 
@@ -186,11 +186,11 @@ extension AppSettingsMedia on AppSettings {
     _notifySettingsChanged();
     final preferences = await SharedPreferences.getInstance();
     await Future.wait([
-      preferences.remove(_videoControlsTimeoutKey), preferences.remove(_videoSeekSecondsKey),
-      preferences.remove(_videoDefaultSpeedKey), preferences.remove(_videoFitModeKey),
-      preferences.remove(_videoGesturesKey), preferences.remove(_videoPinchZoomKey), preferences.remove(_videoTapToggleKey),
-      preferences.remove(_videoSubtitleFontSizeKey), preferences.remove(_videoSubtitleBackgroundKey),
-      preferences.remove(_videoAutoFullscreenKey), preferences.remove(_videoFullscreenOrientationKey),
+      preferences.remove(AppSettings._videoControlsTimeoutKey), preferences.remove(AppSettings._videoSeekSecondsKey),
+      preferences.remove(AppSettings._videoDefaultSpeedKey), preferences.remove(AppSettings._videoFitModeKey),
+      preferences.remove(AppSettings._videoGesturesKey), preferences.remove(AppSettings._videoPinchZoomKey), preferences.remove(AppSettings._videoTapToggleKey),
+      preferences.remove(AppSettings._videoSubtitleFontSizeKey), preferences.remove(AppSettings._videoSubtitleBackgroundKey),
+      preferences.remove(AppSettings._videoAutoFullscreenKey), preferences.remove(AppSettings._videoFullscreenOrientationKey),
     ]);
   }
 
