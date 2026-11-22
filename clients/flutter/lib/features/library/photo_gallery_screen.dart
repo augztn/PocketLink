@@ -719,7 +719,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                               height: 28,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2.5,
-                                color: theme.colorScheme.primary,
+                                color: const Color(0xFFB8C4FF),
                               ),
                             ),
                             const SizedBox(height: 12),
