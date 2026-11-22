@@ -159,7 +159,7 @@ class FloatingNavigationDock extends StatelessWidget {
       child: Padding(
         padding: PocketLinkHorizontalGutter.padding(context).copyWith(
           top: 8,
-          bottom: 10,
+          bottom: 12,
         ),
         child: content,
       ),
