@@ -306,7 +306,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
               !observer.isModalRouteOnTop;
           final media = MediaQuery.of(context);
           final reduceMotion = media.disableAnimations;
-          final bottomInset = media.padding.bottom;
+          final bottomInset = media.viewPadding.bottom;
 
           // Keep the navigator at full height. Every route reads the same
           // measured header and mounted-overlay geometry from this scope.
