@@ -29,8 +29,8 @@ void main() {
   });
 
   testWidgets('3+1 dock uses shared safe-area gutters and flexes at phone width', (tester) async {
-    await tester.view.setPhysicalSize(const Size(360, 800));
-    await tester.view.setDevicePixelRatio(1);
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
