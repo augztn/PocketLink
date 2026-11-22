@@ -46,8 +46,9 @@ class HostDeviceMetricsCard extends StatelessWidget {
       String value,
       double? progress,
       String detail,
-      IconData icon,
-    ) {
+      IconData icon, {
+      bool fitDetail = false,
+    }) {
       return Expanded(
         child: Container(
           padding: const EdgeInsets.all(12),
@@ -87,8 +88,16 @@ class HostDeviceMetricsCard extends StatelessWidget {
                 ),
               ],
               const SizedBox(height: 5),
-              Text(detail, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.labelSmall?.copyWith(color: muted)),
+              if (fitDetail)
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(detail, maxLines: 1, softWrap: false,
+                    style: theme.textTheme.labelSmall?.copyWith(color: muted)),
+                )
+              else
+                Text(detail, maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelSmall?.copyWith(color: muted)),
             ],
           ),
         ),
@@ -101,7 +110,7 @@ class HostDeviceMetricsCard extends StatelessWidget {
         : '';
     final storageDetail = telemetry?.storageUsedBytes != null &&
             telemetry?.storageTotalBytes != null
-        ? '${formatBytes(telemetry!.storageUsedBytes!)} / ${formatBytes(telemetry.storageTotalBytes!)} used'
+        ? '${(telemetry!.storageUsedBytes! / (1024 * 1024 * 1024)).toStringAsFixed(1)} / ${(telemetry.storageTotalBytes! / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB'
         : '';
     final batteryDetail = telemetry == null
         ? 'Battery status unavailable'
@@ -183,7 +192,8 @@ class HostDeviceMetricsCard extends StatelessWidget {
               Row(children: [
                 if (hasStorage)
                   metric('STORAGE', percentLabel(telemetry.storageUsagePercent),
-                      telemetry.storageUsagePercent, storageDetail, Icons.storage_rounded),
+                      telemetry.storageUsagePercent, storageDetail, Icons.storage_rounded,
+                      fitDetail: true),
                 if (hasStorage && hasBattery) const SizedBox(width: 9),
                 if (hasBattery)
                   metric(
