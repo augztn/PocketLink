@@ -56,8 +56,11 @@ void main() {
       ),
     );
 
-    expect(find.byType(BackdropFilter), findsOneWidget);
-    expect(find.byType(Opacity), findsOneWidget);
+    final backdrop = tester.widget<BackdropFilter>(
+      find.byType(BackdropFilter),
+    );
+    expect(backdrop.child, isA<DecoratedBox>());
+    expect(find.byType(Opacity), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }
