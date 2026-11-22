@@ -185,8 +185,10 @@ internal class MediaIndexScanner(
                     .filter { it.isNotBlank() && it != "internal" }.toMutableSet()
             }
             currentSource?.takeIf { it != "internal" }?.let { externalIds.add(it) }
-            disconnectedVolumes.addAll(externalIds)
-            reportPrefs.edit().putStringSet("disconnected_volumes", disconnectedVolumes.toSet()).apply()
+            synchronized(this) {
+                disconnectedVolumes.addAll(externalIds)
+                reportPrefs.edit().putStringSet("disconnected_volumes", disconnectedVolumes.toSet()).apply()
+            }
             externalIds.forEach { id ->
                 volumeReports[id]?.let { previous ->
                     volumeReports[id] = org.json.JSONObject(previous.toString())
@@ -202,8 +204,10 @@ internal class MediaIndexScanner(
             dirty.set(true)
             return
         }
-        if (volumeId == null) disconnectedVolumes.clear() else disconnectedVolumes.remove(volumeId)
-        reportPrefs.edit().putStringSet("disconnected_volumes", disconnectedVolumes.toSet()).apply()
+        synchronized(this) {
+            if (volumeId == null) disconnectedVolumes.clear() else disconnectedVolumes.remove(volumeId)
+            reportPrefs.edit().putStringSet("disconnected_volumes", disconnectedVolumes.toSet()).apply()
+        }
         val reconnectingIds = if (volumeId == null) volumeReports.keys.toList() else listOf(volumeId)
         reconnectingIds.forEach { id ->
             volumeReports[id]?.let { previous ->
