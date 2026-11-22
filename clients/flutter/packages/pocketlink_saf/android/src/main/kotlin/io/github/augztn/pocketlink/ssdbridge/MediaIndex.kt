@@ -556,7 +556,7 @@ internal class MediaIndexScanner(
                             continue
                         }
                         identity = directory.uri.toString()
-                        if (!visited.add(identity)) continue
+                        if (database.hasVisited(volume, scanId, identity) || !visitedThisBatch.add(identity)) continue
                         children = try { directory.listFiles().toList().toTypedArray() } catch (_: Exception) {
                             complete = false
                             skipped++
@@ -572,7 +572,6 @@ internal class MediaIndexScanner(
                     else -> throw IllegalArgumentException("Unsupported storage source")
                 }
                 scannedDirectories++
-                directoriesInBatch++
                 children.forEach { child ->
                     ensureScanActive()
                     ensureVolumeConnected(volume)
@@ -606,7 +605,7 @@ internal class MediaIndexScanner(
                             val childPath = if (relativePath.isEmpty()) name else "$relativePath/$name"
                             add(childPath, name, child.isDirectory, if (child.isFile) child.length() else 0L,
                                 child.lastModified(), child.type ?: MediaFileClassifier.mimeForName(name))
-                            if (child.isDirectory) pending.add(childPath)
+                            if (child.isDirectory) pendingPaths.add(childPath)
                         }
                     }
                 }
