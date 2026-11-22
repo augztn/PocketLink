@@ -159,11 +159,26 @@ class SmokedGlassSurface extends StatelessWidget {
         final borderColor = isLight
             ? const Color(0x1A0F172A)
             : Colors.white.withValues(alpha: 0.14);
+        final contentTheme = Theme.of(context).copyWith(
+          splashFactory: NoSplash.splashFactory,
+          highlightColor: Colors.transparent,
+          hoverColor: Colors.transparent,
+          focusColor: Colors.transparent,
+          iconButtonTheme: IconButtonThemeData(
+            style: ButtonStyle(
+              overlayColor: WidgetStatePropertyAll(Colors.transparent),
+            ),
+          ),
+        );
+        final glassChild = Theme(
+          data: contentTheme,
+          child: child,
+        );
         final content = enabled
             ? Stack(
                 fit: StackFit.passthrough,
                 children: [
-                  child,
+                  glassChild,
                   Positioned(
                     top: 0,
                     left: 1,
@@ -175,14 +190,14 @@ class SmokedGlassSurface extends StatelessWidget {
                           gradient: LinearGradient(
                             colors: isLight
                                 ? [
-                                    Colors.white.withValues(alpha: 0.55),
-                                    Colors.white.withValues(alpha: 0.90),
-                                    Colors.white.withValues(alpha: 0.55),
+                                    Colors.white.withValues(alpha: 0.55 * level),
+                                    Colors.white.withValues(alpha: 0.90 * level),
+                                    Colors.white.withValues(alpha: 0.55 * level),
                                   ]
                                 : [
-                                    Colors.white.withValues(alpha: 0.02),
-                                    Colors.white.withValues(alpha: 0.42),
-                                    Colors.white.withValues(alpha: 0.02),
+                                    Colors.white.withValues(alpha: 0.02 * level),
+                                    Colors.white.withValues(alpha: 0.42 * level),
+                                    Colors.white.withValues(alpha: 0.02 * level),
                                   ],
                           ),
                         ),
@@ -191,7 +206,7 @@ class SmokedGlassSurface extends StatelessWidget {
                   ),
                 ],
               )
-            : child;
+            : glassChild;
         final surface = ClipRRect(
           borderRadius: radius,
           clipBehavior: Clip.antiAlias,
