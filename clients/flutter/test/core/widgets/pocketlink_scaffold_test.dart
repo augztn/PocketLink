@@ -215,6 +215,11 @@ void main() {
     expect(PocketLinkScrollOffsetScope.dockCollapsed.value, isTrue);
     expect(insets.bottomClearance, 142);
 
+    controller.jumpTo(100);
+    await tester.pump();
+    expect(PocketLinkScrollOffsetScope.dockCollapsed.value, isFalse);
+    expect(insets.bottomClearance, 214);
+
     controller.jumpTo(0);
     await tester.pump();
     expect(PocketLinkScrollOffsetScope.dockCollapsed.value, isFalse);
