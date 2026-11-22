@@ -590,7 +590,7 @@ internal class MediaIndexScanner(
      * while another scan updates the map. Use the Java snapshot API instead.
      */
     private fun volumeReportSnapshot(): List<org.json.JSONObject> =
-        volumeReports.values.toArray().mapNotNull { it as? org.json.JSONObject }
+        volumeReports.values.toTypedArray().mapNotNull { it as? org.json.JSONObject }
 
     fun status(): org.json.JSONObject {
         val counts = database.counts()
