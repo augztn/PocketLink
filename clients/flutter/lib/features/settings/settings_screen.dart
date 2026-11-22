@@ -399,7 +399,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         appBar: PocketLinkTopBar(
           title: Text(widget.category ?? 'Settings'),
           actions: [
-            PocketLinkTopBarAction(
+            PocketLinkAppBarAction(
               label: 'Return to Home',
               icon: Icons.home_rounded,
               onPressed: () => PocketLinkTopBar.goToDashboard(context),
