@@ -22,124 +22,74 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
       animation: AppSettings.instance,
       builder: (context, _) {
         final media = MediaQuery.of(context);
-        final isDark = Theme.of(context).brightness == Brightness.dark;
         final settings = AppSettings.instance;
-        // Backdrop blur is a static rendering effect, not an animation.
-        // Keep it available when the OS requests reduced motion.
-        final useProgressiveBlur =
-            settings.progressiveBlurEnabled &&
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final useProgressiveBlur = settings.progressiveBlurEnabled &&
             settings.progressiveBlurStrength > 0;
         final blurScale = settings.progressiveBlurStrength / 55;
         final headerHeight = media.padding.top + contentHeight + 16;
-        final statusBlurHeight = media.padding.top + 12;
 
-        final tint = isDark
-            ? (darkTint ?? const [
-                Color(0xFF000000),
-                Color(0xE6000000),
-                Colors.transparent,
-              ])
-            : const [
-                Color(0xCCFFFFFF),
-                Color(0x55FFFFFF),
-                Colors.transparent,
-              ];
+        return ValueListenableBuilder<double>(
+          valueListenable: PocketLinkScrollOffsetScope.listenableOf(context),
+          builder: (context, scrollOffset, _) {
+            final scrollProgress =
+                (scrollOffset / 24).clamp(0.0, 1.0).toDouble();
+            final baseTint = isDark
+                ? (darkTint ??
+                    const [
+                      Color(0xEB000000),
+                      Color(0xD9000000),
+                      Colors.transparent,
+                    ])
+                : const [
+                    Color(0xEBFFFFFF),
+                    Color(0xD9FFFFFF),
+                    Colors.transparent,
+                  ];
+            final tint = baseTint
+                .map((color) => color.withValues(
+                      alpha: color.alpha / 255 * scrollProgress,
+                    ))
+                .toList(growable: false);
 
-        return LayoutBuilder(
-          builder: (context, _) {
-            final renderedHeight = headerHeight;
-            if (TickerMode.of(context)) {
-              LayoutInsetsScope.reportRenderedHeader(context, renderedHeight);
-            }
-            return SizedBox(
-          width: double.infinity,
-          height: renderedHeight,
-          child: ClipRect(
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                if (useProgressiveBlur) ...[
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: statusBlurHeight,
-                    child: ClipRect(
-                      child: ShaderMask(
-                        blendMode: BlendMode.dstIn,
-                        shaderCallback: (bounds) => const LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.white,
-                            Colors.white,
-                            Colors.transparent,
-                          ],
-                          stops: [0.0, 0.68, 1.0],
-                        ).createShader(bounds),
-                        child: BackdropFilter(
-                          filter: ui.ImageFilter.blur(sigmaX: 24 * blurScale * scrollProgress, sigmaY: 24 * blurScale * scrollProgress),
-                          child: const ColoredBox(color: Colors.transparent),
+            return LayoutBuilder(
+              builder: (context, _) {
+                if (TickerMode.of(context)) {
+                  LayoutInsetsScope.reportRenderedHeader(context, headerHeight);
+                }
+                return SizedBox(
+                  width: double.infinity,
+                  height: headerHeight,
+                  child: ClipRect(
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        if (useProgressiveBlur && scrollProgress > 0)
+                          Positioned.fill(
+                            child: BackdropFilter(
+                              filter: ui.ImageFilter.blur(
+                                sigmaX: 12 * blurScale * scrollProgress,
+                                sigmaY: 12 * blurScale * scrollProgress,
+                              ),
+                              child: const ColoredBox(color: Colors.transparent),
+                            ),
+                          ),
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: tint,
+                              stops: const [0.0, 0.82, 1.0],
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ),
-                  Positioned.fill(
-                    child: ClipRect(
-                      child: ShaderMask(
-                        blendMode: BlendMode.dstIn,
-                        shaderCallback: (bounds) => const LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.white,
-                            Colors.white,
-                            Colors.transparent,
-                          ],
-                          stops: [0.0, 0.55, 1.0],
-                        ).createShader(bounds),
-                        child: BackdropFilter(
-                          filter: ui.ImageFilter.blur(sigmaX: 10 * blurScale * scrollProgress, sigmaY: 10 * blurScale * scrollProgress),
-                          child: const ColoredBox(color: Colors.transparent),
-                        ),
-                      ),
-                    ),
-                  ),
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: tint,
-                        stops: const [0.0, 0.82, 1.0],
-                      ),
-                    ),
-                  ),
-                ] else
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: darkTint != null && isDark
-                            ? tint
-                            : [
-                                isDark
-                                    ? const Color(0xFF000000)
-                                    : const Color(0xF2FFFFFF),
-                                isDark ? const Color(0xE6000000) : const Color(0xE6FFFFFF),
-                                Colors.transparent,
-                              ],
-                        stops: darkTint != null && isDark
-                            ? const [0.0, 0.82, 1.0]
-                            : null,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        );
+                );
+              },
+            );
           },
         );
       },
