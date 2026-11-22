@@ -1108,7 +1108,7 @@ tooltip: 'Choose video view',
                   const SizedBox(height: 8),
                   Wrap(spacing: 8, children: [
                     for (final option in [('name', 'Name'), ('newest', 'Newest'), ('largest', 'Largest')])
-                      ChoiceChip(label: Text(option.$2), selected: sort == option.$1, onSelected: (_) => update(() => sort = option.$1)),
+                      ChoiceChip(label: Text(option.$2, maxLines: 1, overflow: TextOverflow.ellipsis), selected: sort == option.$1, onSelected: (_) => update(() => sort = option.$1)),
                   ]),
                   const SizedBox(height: 18),
                   SizedBox(width: double.infinity, child: FilledButton(
