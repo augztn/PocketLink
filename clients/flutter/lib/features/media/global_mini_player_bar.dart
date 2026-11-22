@@ -71,6 +71,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
         child: SmokedGlassSurface(
           key: surfaceKey,
           radius: BorderRadius.circular(22),
+          refractive: true,
           child: AnimatedOpacity(
             opacity: visible ? 1 : 0,
             duration: reduceMotion
