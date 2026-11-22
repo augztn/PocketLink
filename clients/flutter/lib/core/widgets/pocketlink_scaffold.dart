@@ -125,7 +125,7 @@ class LayoutInsetsScope extends InheritedWidget {
     if (scope != null) return scope;
     final media = MediaQuery.maybeOf(context);
     final safeTop = media?.padding.top ?? 0.0;
-    final safeBottom = media?.padding.bottom ?? 0.0;
+    final safeBottom = media?.viewPadding.bottom ?? 0.0;
     return LayoutInsetsScope(
       topClearance: safeTop + PocketLinkLayoutMetrics.topBarHeight + 10,
       bottomClearance: PocketLinkLayoutMetrics.bottomOverlayHeight(
@@ -227,7 +227,7 @@ class _PocketLinkScaffoldState extends State<PocketLinkScaffold> {
               ).toDouble();
     final topClearance = statusBarHeight + headerContentHeight + 10;
     final bottomClearance = PocketLinkLayoutMetrics.bottomOverlayHeight(
-      bottomInset: media.padding.bottom,
+      bottomInset: media.viewPadding.bottom,
       hasDock: widget.hasFloatingNavBar,
       hasMiniPlayer: widget.hasActiveMiniPlayer,
     );
