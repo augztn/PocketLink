@@ -426,11 +426,9 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       ),
       body: SingleChildScrollView(
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-        padding: EdgeInsets.fromLTRB(
-          20,
-          media.padding.top + kToolbarHeight + 16,
-          20,
-          media.padding.bottom + 24,
+        padding: PocketLinkHorizontalGutter.padding(context).copyWith(
+          top: media.padding.top + kToolbarHeight + 16,
+          bottom: media.padding.bottom + 24,
         ),
         child: Center(
           child: ConstrainedBox(
