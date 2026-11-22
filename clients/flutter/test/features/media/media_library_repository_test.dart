@@ -119,11 +119,11 @@ void main() {
         );
         expect(
           adapter.requests.map((request) => request.queryParameters['limit']),
-          everyElement('500'),
+          everyElement(500),
         );
         expect(
           adapter.requests.map((request) => request.queryParameters['offset']),
-          ['0', '500'],
+          [0, 500],
         );
       } finally {
         api.close(force: true);
