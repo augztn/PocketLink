@@ -340,7 +340,11 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
                   ),
                 ),
               if (visible)
-                Positioned(
+                AnimatedPositioned(
+                  duration: reduceMotion || drawerOpen
+                      ? Duration.zero
+                      : const Duration(milliseconds: 240),
+                  curve: Curves.easeInOutCubic,
                   left: compactDock
                       ? PocketLinkHorizontalGutter.padding(context).left + 76
                       : 0,
