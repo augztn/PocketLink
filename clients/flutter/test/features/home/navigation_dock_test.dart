@@ -151,6 +151,55 @@ void main() {
     }
   });
 
+  testWidgets('dragging the tab capsule snaps the PageController to a tab', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await AppSettings.instance.setUseLiquidGlass(true);
+
+    final controller = PageController();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PageView(
+            controller: controller,
+            children: const [
+              Center(child: Text('Home page')),
+              Center(child: Text('Explore page')),
+              Center(child: Text('Files page')),
+            ],
+          ),
+          bottomNavigationBar: FloatingNavigationDock(
+            order: const ['home', 'explore', 'files', 'browse'],
+            visibleItems: const {'home', 'explore', 'files', 'browse'},
+            selectedIndex: 0,
+            pageController: controller,
+            pageIndices: const {0: 0, 1: 1, 2: 2},
+            onSelect: (index) => controller.animateToPage(
+              index,
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOut,
+            ),
+            onBrowsePressed: () {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final capsule = find.byType(LiquidGlassPill).first;
+    await tester.drag(capsule, const Offset(-210, 0));
+    await tester.pumpAndSettle();
+
+    expect(controller.page, closeTo(1, 0.01));
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+    controller.dispose();
+  });
+
   testWidgets('Music button supports tap, hold and horizontal swipe callbacks',
       (tester) async {
     var taps = 0;
