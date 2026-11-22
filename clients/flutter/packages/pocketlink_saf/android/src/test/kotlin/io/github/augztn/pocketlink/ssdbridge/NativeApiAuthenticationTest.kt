@@ -29,7 +29,7 @@ class NativeApiAuthenticationTest {
 
     @Test
     fun rejectsMalformedBase64AndMissingUsernameSeparator() {
-        val authentication = NativeApiAuthentication("admin") { true }
+        val authentication = authentication("admin") { true }
 
         assertFalse(authentication.isAuthorized(mapOf("authorization" to "Basic !!!")))
         assertFalse(authentication.isAuthorized(header("admin")))
@@ -39,7 +39,7 @@ class NativeApiAuthenticationTest {
     @Test
     fun rejectsUnexpectedUsernameWithoutCheckingPassword() {
         var verificationCalled = false
-        val authentication = NativeApiAuthentication("admin") {
+        val authentication = authentication("admin") {
             verificationCalled = true
             true
         }
@@ -50,7 +50,7 @@ class NativeApiAuthenticationTest {
 
     @Test
     fun returnsPasswordVerifierResult() {
-        val authentication = NativeApiAuthentication("admin") { false }
+        val authentication = authentication("admin") { false }
 
         assertFalse(authentication.isAuthorized(header("admin:wrong-password")))
     }
