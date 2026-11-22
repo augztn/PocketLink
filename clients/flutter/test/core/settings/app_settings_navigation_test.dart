@@ -10,6 +10,22 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
+  test('Liquid Glass defaults on for new installs', () async {
+    final settings = AppSettings.instance;
+    await settings.reloadPreferences();
+    expect(settings.useLiquidGlass, isTrue);
+  });
+
+  test('an existing explicit Liquid Glass off preference is preserved', () async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool('settings_liquid_glass', false);
+
+    final settings = AppSettings.instance;
+    await settings.reloadPreferences();
+
+    expect(settings.useLiquidGlass, isFalse);
+  });
+
   test('navigation layout persists reordered destinations and visibility', () async {
     final settings = AppSettings.instance;
     const order = ['home', 'files', 'browse', 'explore'];
