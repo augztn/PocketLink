@@ -519,7 +519,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           : const Icon(Icons.folder_open_rounded),
                       onTap: _exportingSettings || _importingSettings ? null : _importSettingsBackup,
                     ),
-                    const Padding(
+                    Padding(
                       padding: PocketLinkHorizontalGutter.padding(context).copyWith(top: 8, bottom: 16),
                       child: Text(
                         'Backups include supported app preferences only. Theme and download location stay unchanged; server profiles, credentials, storage permissions, downloads and personal files are excluded.',
