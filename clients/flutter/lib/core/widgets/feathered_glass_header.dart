@@ -35,8 +35,8 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
 
         final tint = isDark
             ? (darkTint ?? const [
-                Color(0xB8000000),
-                Color(0x40000000),
+                Color(0xFF000000),
+                Color(0xE6000000),
                 Colors.transparent,
               ])
             : const [
@@ -111,7 +111,7 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: tint,
-                        stops: const [0.0, 0.48, 1.0],
+                        stops: const [0.0, 0.82, 1.0],
                       ),
                     ),
                   ),
@@ -125,12 +125,13 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
                             ? tint
                             : [
                                 isDark
-                                    ? const Color(0xE6000000)
+                                    ? const Color(0xFF000000)
                                     : const Color(0xF2FFFFFF),
+                                isDark ? const Color(0xE6000000) : const Color(0xE6FFFFFF),
                                 Colors.transparent,
                               ],
                         stops: darkTint != null && isDark
-                            ? const [0.0, 0.48, 1.0]
+                            ? const [0.0, 0.82, 1.0]
                             : null,
                       ),
                     ),
