@@ -595,15 +595,18 @@ internal class MediaIndexScanner(
                     when (child) {
                         is File -> {
                             if (child.name.startsWith(".")) return@forEach
+                            // The lambda boundary loses the smart-cast for the heterogeneous root.
+                            // File children are only produced by a File root.
+                            val baseDirectory = (root as File).canonicalFile
                             val canonical = try { child.canonicalFile } catch (_: Exception) { null }
-                            if (canonical == null || !(canonical.path == root.canonicalPath ||
-                                    canonical.path.startsWith(root.canonicalPath + File.separator))) {
+                            if (canonical == null || !(canonical.path == baseDirectory.path ||
+                                    canonical.path.startsWith(baseDirectory.path + File.separator))) {
                                 complete = false
                                 skipped++
                                 recordSkipped(volume, child.name, "Path could not be safely resolved")
                                 return@forEach
                             }
-                            val childPath = canonical.relativeTo(root.canonicalFile).invariantSeparatorsPath
+                            val childPath = canonical.relativeTo(baseDirectory).invariantSeparatorsPath
                             add(childPath, child.name, child.isDirectory, if (child.isFile) child.length() else 0L,
                                 child.lastModified(), MediaFileClassifier.mimeForName(child.name))
                             if (child.isDirectory) pending.add(childPath)
