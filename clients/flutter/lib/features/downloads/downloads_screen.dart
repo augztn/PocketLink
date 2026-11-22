@@ -205,18 +205,18 @@ tooltip: 'Filter downloads',
               ),
             ),
             actions: [
-              PocketLinkTopBarAction(
+              PocketLinkAppBarAction(
                 label: 'New URL download',
                 icon: Icons.add_link_rounded,
                 onPressed: _newDownload,
               ),
-              PocketLinkTopBarAction(
+              PocketLinkAppBarAction(
                 label: 'Pause all',
                 icon: Icons.pause_rounded,
                 enabled: _manager.activeCount > 0 || _manager.queuedCount > 0,
                 onPressed: _manager.activeCount > 0 || _manager.queuedCount > 0 ? _manager.pauseAll : null,
               ),
-              PocketLinkTopBarAction(
+              PocketLinkAppBarAction(
                 label: 'Resume all',
                 icon: Icons.play_arrow_rounded,
                 enabled: _manager.tasks.any((task) =>
@@ -228,7 +228,7 @@ tooltip: 'Filter downloads',
                     ? _manager.resumeAll
                     : null,
               ),
-              PocketLinkTopBarAction(
+              PocketLinkAppBarAction(
                 label: 'Clear completed',
                 icon: Icons.delete_sweep_outlined,
                 enabled: _manager.tasks.any(
