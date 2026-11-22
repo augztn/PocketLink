@@ -381,7 +381,9 @@ internal class MediaIndexScanner(
             else -> throw IllegalArgumentException("Unsupported storage source")
         }
         val saved = database.scanCheckpoint(volume)?.let { org.json.JSONObject(it) }
-        val savedState = saved?.optJSONObject("state")
+        val savedState = saved?.optString("state")?.let { encoded ->
+            runCatching { org.json.JSONObject(encoded) }.getOrNull()
+        }
         val resume = saved != null &&
             saved.optString("root_id") == rootId &&
             saved.optString("scan_id").isNotBlank() &&
