@@ -66,11 +66,9 @@ class TransferManagerScreen extends StatelessWidget {
             );
           }
           return ListView.separated(
-            padding: EdgeInsets.fromLTRB(
-              16,
-              LayoutInsetsScope.of(context).topClearance - 10 + 16,
-              16,
-              LayoutInsetsScope.of(context).bottomClearance,
+            padding: PocketLinkHorizontalGutter.padding(context).copyWith(
+              top: LayoutInsetsScope.of(context).topClearance - 10 + 16,
+              bottom: LayoutInsetsScope.of(context).bottomClearance,
             ),
             itemCount: tasks.length,
             separatorBuilder: (_, __) => const SizedBox(height: 10),
