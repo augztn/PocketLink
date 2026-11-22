@@ -15,6 +15,27 @@ void main() {
     });
   });
 
+  group('AppLogger.sanitizeDiagnosticFields', () {
+    test('preserves typed values while redacting sensitive keys', () {
+      final sanitized = AppLogger.sanitizeDiagnosticFields({
+        'status_code': 404,
+        'retryable': false,
+        'elapsed_ms': 125.5,
+        'password': 'private-value',
+        'file_path': '/sdcard/Documents/private.pdf',
+        'nested': {'access_token': 'opaque', 'attempt': 2},
+        'items': ['safe', '/sdcard/Photos/private.jpg'],
+      });
+
+      expect(sanitized['status_code'], 404);
+      expect(sanitized['retryable'], false);
+      expect(sanitized['elapsed_ms'], 125.5);
+      expect(sanitized['password'], '[REDACTED]');
+      expect(sanitized['file_path'], '[REDACTED_PATH]');
+      expect(sanitized['nested'], {'access_token': '[REDACTED]', 'attempt': 2});
+      expect(sanitized['items'], ['safe', '[REDACTED_HOST]']);
+    });
+  });
   group('AppLogger.sanitizeDiagnosticContent', () {
     test('redacts usernames and private IPv4 addresses', () {
       final sanitized = AppLogger.sanitizeDiagnosticContent(
