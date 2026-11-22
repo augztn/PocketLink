@@ -19,6 +19,8 @@ class FloatingNavigationDock extends StatelessWidget {
     this.hasMedia = false,
     this.isVideo = false,
     this.preview = false,
+    this.pageController,
+    this.pageIndices = const <int, int>{},
     this.musicShortcutsExpanded = false,
     this.onMusicShortcutLongPress,
     this.onMusicShortcutDismissed,
@@ -36,6 +38,8 @@ class FloatingNavigationDock extends StatelessWidget {
   final bool hasMedia;
   final bool isVideo;
   final bool preview;
+  final PageController? pageController;
+  final Map<int, int> pageIndices;
   final bool musicShortcutsExpanded;
   final VoidCallback? onMusicShortcutLongPress;
   final VoidCallback? onMusicShortcutDismissed;
@@ -78,69 +82,87 @@ class FloatingNavigationDock extends StatelessWidget {
                     final selectedPosition = ids.indexWhere(
                       (id) => _indices[id] == selectedIndex,
                     );
-                    return Stack(
-                      children: [
-                        if (useGlass && selectedPosition >= 0)
-                          Positioned.fill(
-                            child: AnimatedAlign(
-                              alignment: Alignment(
-                                ((selectedPosition + 0.5) * 2 / ids.length) - 1,
-                                0,
-                              ),
-                              duration: const Duration(milliseconds: 260),
-                              curve: Curves.easeOutCubic,
-                              child: FractionallySizedBox(
-                                widthFactor: 1 / ids.length,
-                                heightFactor: 1,
-                                child: Container(
-                                  margin: const EdgeInsets.symmetric(
-                                    horizontal: 4,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                      colors: [
-                                        Colors.white.withValues(alpha: 0.18),
-                                        Colors.white.withValues(alpha: 0.08),
-                                      ],
+                    final groupStartPage =
+                        pageIndices[_indices[ids.first]!] ?? selectedPosition;
+                    return LayoutBuilder(
+                      builder: (context, constraints) {
+                        final tabWidth = constraints.maxWidth / ids.length;
+                        return AnimatedBuilder(
+                          animation: pageController ?? AppSettings.instance,
+                          builder: (context, _) {
+                            final fallbackPage =
+                                pageIndices[selectedIndex]?.toDouble() ??
+                                    selectedPosition.toDouble();
+                            final page = pageController?.hasClients == true
+                                ? (pageController!.page ?? fallbackPage)
+                                : fallbackPage;
+                            final pageOffset = (page - groupStartPage)
+                                .clamp(0.0, ids.length - 1.0);
+                            final lensInThisGroup =
+                                page >= groupStartPage - 0.5 &&
+                                page <= groupStartPage + ids.length - 0.5;
+                            return Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                if (useGlass &&
+                                    selectedPosition >= 0 &&
+                                    lensInThisGroup)
+                                  Positioned(
+                                    left: pageOffset * tabWidth,
+                                    width: tabWidth,
+                                    top: 0,
+                                    bottom: 0,
+                                    child: Container(
+                                      margin: const EdgeInsets.symmetric(
+                                        horizontal: 4,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                          colors: [
+                                            Colors.white.withValues(alpha: 0.18),
+                                            Colors.white.withValues(alpha: 0.08),
+                                          ],
+                                        ),
+                                        borderRadius: BorderRadius.circular(25),
+                                        border: Border.all(
+                                          color: Colors.white.withValues(alpha: 0.22),
+                                        ),
+                                      ),
                                     ),
-                                    borderRadius: BorderRadius.circular(25),
-                                    border: Border.all(
-                                      color: Colors.white.withValues(alpha: 0.22),
-                                    ),
                                   ),
+                                Row(
+                                  children: [
+                                    for (final id in ids)
+                                      Expanded(
+                                        child: _DockTab(
+                                          index: _indices[id]!,
+                                          selectedIndex: selectedIndex,
+                                          useSharedLens: useGlass,
+                                          icon: switch (id) {
+                                            'home' => Icons.home_outlined,
+                                            'explore' => Icons.explore_outlined,
+                                            _ => Icons.folder_outlined,
+                                          },
+                                          activeIcon: switch (id) {
+                                            'home' => Icons.home_rounded,
+                                            'explore' => Icons.explore_rounded,
+                                            _ => Icons.folder_rounded,
+                                          },
+                                          label: _labels[id]!,
+                                          onTap: onSelect,
+                                        ),
+                                      ),
+                                  ],
                                 ),
-                              ),
-                            ),
-                          ),
-                        Row(
-                          children: [
-                            for (final id in ids)
-                              Expanded(
-                                child: _DockTab(
-                                  index: _indices[id]!,
-                                  selectedIndex: selectedIndex,
-                                  useSharedLens: useGlass,
-                                  icon: switch (id) {
-                                    'home' => Icons.home_outlined,
-                                    'explore' => Icons.explore_outlined,
-                                    _ => Icons.folder_outlined,
-                                  },
-                                  activeIcon: switch (id) {
-                                    'home' => Icons.home_rounded,
-                                    'explore' => Icons.explore_rounded,
-                                    _ => Icons.folder_rounded,
-                                  },
-                                  label: _labels[id]!,
-                                  onTap: onSelect,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ],
-                    );
+                              ],
+                            );
+                          },
+                        );
+                      },
+                    );;
                   },
                 ),
               ),
