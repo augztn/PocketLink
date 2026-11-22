@@ -988,10 +988,15 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        leadingWidth: 70,
-        leading: Center(
+        leadingWidth: 70 + MediaQuery.paddingOf(context).left,
+        leading: Align(
+          alignment: Alignment.centerLeft,
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
+            padding: EdgeInsets.only(
+              left: 16 + MediaQuery.paddingOf(context).left,
+              top: 4,
+              bottom: 4,
+            ),
             child: SizedBox.square(
               dimension: 38,
               child: GlassCircleButton(
