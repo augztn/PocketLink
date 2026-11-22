@@ -2,6 +2,7 @@ import 'dart:ffi' show Abi;
 import 'dart:io' show Platform;
 
 import 'package:material_ui/material_ui.dart';
+import '../../core/widgets/pocketlink_scaffold.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -85,11 +86,9 @@ class _AboutScreenState extends State<AboutScreen> {
               : 'Version ${info.version} (${info.buildNumber})';
 
           return ListView(
-            padding: EdgeInsets.fromLTRB(
-              18,
-              MediaQuery.paddingOf(context).top + kToolbarHeight + 20,
-              18,
-              32 + MediaQuery.paddingOf(context).bottom,
+            padding: PocketLinkHorizontalGutter.padding(context).copyWith(
+              top: MediaQuery.paddingOf(context).top + kToolbarHeight + 20,
+              bottom: 32 + MediaQuery.paddingOf(context).bottom,
             ),
             children: [
               Container(
