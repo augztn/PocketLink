@@ -188,7 +188,7 @@ void main() {
     );
 
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
         theme: ThemeData(brightness: Brightness.dark),
         home: Scaffold(body: FeatheredGlassHeaderBackground()),
       ),
