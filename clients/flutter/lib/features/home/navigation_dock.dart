@@ -108,6 +108,7 @@ class FloatingNavigationDock extends StatelessWidget {
                                     selectedPosition >= 0 &&
                                     lensInThisGroup)
                                   Positioned(
+                                    key: const ValueKey<String>('navigation-active-lens'),
                                     left: pageOffset * tabWidth,
                                     width: tabWidth,
                                     top: 0,
@@ -162,7 +163,7 @@ class FloatingNavigationDock extends StatelessWidget {
                           },
                         );
                       },
-                    );;
+                    );
                   },
                 ),
               ),
