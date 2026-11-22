@@ -151,6 +151,36 @@ void main() {
     }
   });
 
+  testWidgets('collapsed dock keeps active tab and Music controls in one row', (
+    tester,
+  ) async {
+    await AppSettings.instance.setUseLiquidGlass(true);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          bottomNavigationBar: FloatingNavigationDock(
+            order: const ['home', 'explore', 'files', 'browse'],
+            visibleItems: const {'home', 'explore', 'files', 'browse'},
+            selectedIndex: 1,
+            collapsed: true,
+            onSelect: (_) {},
+            onBrowsePressed: () {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byIcon(Icons.explore_rounded), findsOneWidget);
+    expect(find.byKey(PocketLinkNavigation.musicButtonKey), findsOneWidget);
+    expect(find.text('Home'), findsNothing);
+    expect(find.text('Explore'), findsNothing);
+    expect(find.text('Files'), findsNothing);
+    final music = tester.getRect(find.byKey(PocketLinkNavigation.musicButtonKey));
+    expect(music.width, 64);
+    expect(music.height, 64);
+  });
+
   testWidgets('dragging the tab capsule snaps the PageController to a tab', (
     tester,
   ) async {
