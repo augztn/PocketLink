@@ -106,7 +106,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   }
 
   void _saveState({String? folderPath, bool clearVolume = false}) {
-    final current = _browserState.mediaState(_stateKey, widget.type.name);
+    final current = _browserState.stateFor(_stateKey, widget.type.name);
     _browserState.update(_stateKey, widget.type.name, current.copyWith(
       folderPath: folderPath ?? _currentFolderPath,
       selectedVolume: _selectedVolume,
