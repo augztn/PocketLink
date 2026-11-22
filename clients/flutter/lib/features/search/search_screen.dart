@@ -695,11 +695,18 @@ class _SearchScreenState extends State<SearchScreen> {
                   ? Theme.of(context).colorScheme.primary
                   : Theme.of(context).colorScheme.onSurfaceVariant),
               const SizedBox(width: 7),
-              Text(label, style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Theme.of(context).colorScheme.onSurface,
-              )),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+              ),
               if (_quick == value) ...[
                 const SizedBox(width: 5),
                 const Icon(Icons.check_rounded, size: 14),
@@ -723,7 +730,7 @@ class _SearchScreenState extends State<SearchScreen> {
           TextButton(onPressed: _clearSearchHistory, child: const Text('Clear')),
         ]),
         Wrap(spacing: 8, children: [for (final item in _history)
-          InputChip(label: Text(item), onPressed: () { _controller.text = item; _scan(); },
+          InputChip(label: Text(item, maxLines: 1, overflow: TextOverflow.ellipsis), onPressed: () { _controller.text = item; _scan(); },
             onDeleted: () => _removeHistory(item))]),
         const SizedBox(height: 24),
       ],
