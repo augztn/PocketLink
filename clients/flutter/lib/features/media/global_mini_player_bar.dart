@@ -10,7 +10,6 @@ class GlobalMiniPlayerBar extends StatelessWidget {
     required this.item,
     required this.visible,
     required this.reduceMotion,
-    this.compact = false,
     required this.isPlaying,
     required this.position,
     required this.duration,
@@ -28,7 +27,6 @@ class GlobalMiniPlayerBar extends StatelessWidget {
   final MediaQueueItem item;
   final bool visible;
   final bool reduceMotion;
-  final bool compact;
   final bool isPlaying;
   final Duration position;
   final Duration duration;
@@ -69,33 +67,21 @@ class GlobalMiniPlayerBar extends StatelessWidget {
       alignment: Alignment.centerLeft,
       child: Padding(
         // Match the full outer width of the 3+1 navigation dock.
-        padding: compact
-            ? const EdgeInsets.only(top: 4)
-            : PocketLinkHorizontalGutter.padding(context).copyWith(top: 4),
+        padding: PocketLinkHorizontalGutter.padding(context).copyWith(top: 4),
         child: TweenAnimationBuilder<double>(
           tween: Tween<double>(end: visible ? 1 : 0),
           duration: reduceMotion
               ? Duration.zero
               : const Duration(milliseconds: 220),
           curve: Curves.easeOut,
-          builder: (context, intensity, _) => TweenAnimationBuilder<double>(
-            tween: Tween<double>(end: compact ? 1 : 0),
-            duration: reduceMotion
-                ? Duration.zero
-                : const Duration(milliseconds: 220),
-            curve: Curves.easeInOutCubic,
-            builder: (context, compactProgress, _) => SmokedGlassSurface(
-              key: surfaceKey,
-              radius: BorderRadius.lerp(
-                BorderRadius.circular(22),
-                BorderRadius.circular(18),
-                compactProgress,
-              )!,
-              refractive: true,
-              intensity: intensity,
-              child: Opacity(
-                opacity: intensity,
-                child: GestureDetector(
+          builder: (context, intensity, _) => SmokedGlassSurface(
+            key: surfaceKey,
+            radius: BorderRadius.circular(22),
+            refractive: true,
+            intensity: intensity,
+            child: Opacity(
+              opacity: intensity,
+              child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onHorizontalDragEnd: _handleHorizontalDrag,
               onVerticalDragEnd: (details) {
@@ -117,7 +103,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
                             : const Duration(milliseconds: 220),
                         curve: Curves.easeInOutCubic,
                         child: SizedBox(
-                        height: compact ? 52 : 55,
+                        height: 55,
                         child: Row(
                           children: [
                             const SizedBox(width: 10),
@@ -153,9 +139,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
                                         ),
                                   ),
                                   Text(
-                                    isPlaying
-                                        ? (compact ? 'NOW PLAYING' : 'NOW PLAYING · SWIPE TO SKIP')
-                                        : 'PAUSED',
+                                    isPlaying ? 'NOW PLAYING · SWIPE TO SKIP' : 'PAUSED',
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: Theme.of(context)
@@ -170,8 +154,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
                                 ],
                               ),
                             ),
-                            if (!compact)
-                              IconButton(
+                            IconButton(
                               tooltip: 'Previous track',
                               visualDensity: VisualDensity.compact,
                               padding: EdgeInsets.zero,
@@ -204,8 +187,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
                                 size: 22,
                               ),
                             ),
-                            if (!compact)
-                              IconButton(
+                            IconButton(
                               tooltip: 'Next track',
                               visualDensity: VisualDensity.compact,
                               padding: EdgeInsets.zero,
