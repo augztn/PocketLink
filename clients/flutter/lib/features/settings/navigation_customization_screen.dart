@@ -103,8 +103,9 @@ class _NavigationCustomizationScreenState
         title: Text('Customize Navigation Bar'),
       ),
       body: ListView(
-        padding: EdgeInsets.fromLTRB(
-          16, 12, 16, MediaQuery.paddingOf(context).bottom + 140,
+        padding: PocketLinkHorizontalGutter.padding(context).copyWith(
+          top: 12,
+          bottom: MediaQuery.paddingOf(context).bottom + 140,
         ),
         children: [
           Text('Live preview', style: theme.textTheme.titleMedium?.copyWith(
