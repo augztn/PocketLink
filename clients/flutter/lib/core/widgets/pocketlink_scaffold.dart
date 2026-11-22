@@ -121,13 +121,30 @@ class PocketLinkScaffold extends StatefulWidget {
 
 class _PocketLinkScaffoldState extends State<PocketLinkScaffold> {
   double? _renderedHeaderHeight;
+  final ValueNotifier<double> _scrollOffset = ValueNotifier<double>(0);
 
   @override
   void didUpdateWidget(covariant PocketLinkScaffold oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.routeIdentity != widget.routeIdentity) {
       _renderedHeaderHeight = null;
+      _scrollOffset.value = 0;
     }
+  }
+
+  @override
+  void dispose() {
+    _scrollOffset.dispose();
+    super.dispose();
+  }
+
+  bool _handleScrollNotification(ScrollNotification notification) {
+    if (notification.depth != 0) return false;
+    final next = notification.metrics.pixels.clamp(0.0, double.infinity).toDouble();
+    if ((_scrollOffset.value - next).abs() >= 0.5) {
+      _scrollOffset.value = next;
+    }
+    return false;
   }
 
   void reportHeaderHeight(double height) {
@@ -169,7 +186,13 @@ class _PocketLinkScaffoldState extends State<PocketLinkScaffold> {
       hasFloatingNavBar: widget.hasFloatingNavBar,
       hasActiveMiniPlayer: widget.hasActiveMiniPlayer,
       reportHeaderHeight: reportHeaderHeight,
-      child: widget.child,
+      child: NotificationListener<ScrollNotification>(
+        onNotification: _handleScrollNotification,
+        child: PocketLinkScrollOffsetScope(
+          offset: _scrollOffset,
+          child: widget.child,
+        ),
+      ),
     );
   }
 }
