@@ -682,7 +682,7 @@ internal class MediaIndexScanner(
             .put("current_source", currentSource)
             .put("current_path", currentPath)
             .put("last_error", if (state == "interrupted") {
-                "The host restarted before the previous scan finished. Run a new scan to reconcile the index."
+                "The host restarted before the previous scan finished. A saved checkpoint will resume automatically; if none exists, run a new scan to reconcile the index."
             } else lastError)
             .put("skipped_items", org.json.JSONArray().also { items ->
                 synchronized(skippedItems) {
