@@ -14,6 +14,10 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
+  tearDown(() async {
+    await AppSettings.instance.setUseLiquidGlass(false);
+  });
+
   testWidgets('expanded shortcuts dismiss from Music button without an X icon', (tester) async {
     var opens = 0;
     var dismisses = 0;
@@ -120,6 +124,8 @@ void main() {
           reason: 'lens should be centered in tab $index of $tabCount',
         );
       }
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
       controller.dispose();
     }
   });
