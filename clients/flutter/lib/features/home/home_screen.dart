@@ -45,7 +45,6 @@ class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey<ScaffoldState> _rootScaffoldKey = GlobalKey<ScaffoldState>();
   int _selectedIndex = 0;
   bool _hostSetupOpen = false;
- PocketLinkNavigation.bottomDockVisible.value = true;
   bool _hostSetupInitialized = false;
   final Set<int> _initializedTabs = {0};
   ExploreCategory _exploreCategory = ExploreCategory.files;
