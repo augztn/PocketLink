@@ -398,7 +398,9 @@ class PocketLinkSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
             }
             val rootName = DocumentFile.fromTreeUri(context, uri)?.name ?: volumeId
             val preferenceKey = "volume_uri_$volumeId"
+            val nameKey = "volume_name_$volumeId"
             val previousUri = prefs.getString(preferenceKey, null)
+            val previousName = prefs.getString(nameKey, null)
             val otherReferencedUris = prefs.all.entries
                 .asSequence()
                 .filter { (key, _) -> key.startsWith("volume_uri_") && key != preferenceKey }
@@ -413,10 +415,22 @@ class PocketLinkSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
                     context.contentResolver.takePersistableUriPermission(uri, flags)
                 },
                 saveSelection = {
-                    prefs.edit()
+                    val committed = prefs.edit()
                         .putString(preferenceKey, uri.toString())
-                        .putString("volume_name_$volumeId", rootName)
+                        .putString(nameKey, rootName)
                         .commit()
+                    if (committed) {
+                        SelectionSaveResult.SAVED
+                    } else {
+                        val rolledBack = prefs.edit().apply {
+                            if (previousUri == null) remove(preferenceKey)
+                            else putString(preferenceKey, previousUri)
+                            if (previousName == null) remove(nameKey)
+                            else putString(nameKey, previousName)
+                        }.commit()
+                        if (rolledBack) SelectionSaveResult.FAILED_ROLLED_BACK
+                        else SelectionSaveResult.FAILED_STATE_UNCERTAIN
+                    }
                 },
                 releasePermission = { staleUri ->
                     val persistedGrant = context.contentResolver.persistedUriPermissions
