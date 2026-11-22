@@ -656,8 +656,9 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
             child: const Padding(
               padding: EdgeInsets.symmetric(vertical: 4),
               child: SizedBox.square(
-                dimension: 38,
+                dimension: 40,
                 child: GlassCircleButton(
+                  size: 40,
                   tooltip: 'Open more photo actions',
                   onPressed: null,
                   child: Icon(Icons.more_vert_rounded),
