@@ -25,8 +25,6 @@ class GlobalMediaOverlay extends StatefulWidget {
 
 class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     with TickerProviderStateMixin, WidgetsBindingObserver {
-  static const double _miniPlayerHeight = 62;
-  static const double _homeDockHeight = 84;
   static const Duration _trackPopupDuration = Duration(milliseconds: 2300);
 
   bool _openingNowPlaying = false;
@@ -126,7 +124,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     const popupWidth = 184.0;
     const popupHeight = 44.0;
     final left = 14.0.clamp(0.0, math.max(0.0, size.width - popupWidth)).toDouble();
-    final miniPlayerOffset = _shouldShowMiniPlayer() ? _miniPlayerHeight : 0.0;
+    final miniPlayerOffset = _shouldShowMiniPlayer() ? PocketLinkLayoutMetrics.miniPlayerHeight : 0.0;
     final top = (buttonPosition.dy - popupHeight - 8 - miniPlayerOffset)
         .clamp(8.0, math.max(8.0, size.height - popupHeight - 8))
         .toDouble();
@@ -335,7 +333,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
                 Positioned(
                   left: 0,
                   right: 0,
-                  bottom: bottomInset + (onDashboard ? _homeDockHeight : 0),
+                  bottom: bottomInset + (onDashboard ? PocketLinkLayoutMetrics.dockHeight : 0),
                   child: AnimatedSlide(
                     offset: Offset.zero,
                     duration: reduceMotion || drawerOpen
