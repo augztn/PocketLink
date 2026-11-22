@@ -217,7 +217,7 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
     final filterLabels = {'all':'All Docs','pdf':'PDF','office':'Office','text':'Text & Code','archives':'Archives'};
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: PocketLinkAppBar(
+      appBar: PocketLinkTopBar(
         feathered: true,
         showHome: false,
         automaticallyImplyLeading: false,
@@ -259,14 +259,14 @@ tooltip: 'Filter document types',
           ]),
         ),
         actions: [
-          PocketLinkAppBarAction(label: 'Search documents', icon: Icons.search_rounded, onPressed: () => setState(() => _searchExpanded = !_searchExpanded)),
-          PocketLinkAppBarAction(label: 'Sort by name', icon: Icons.sort_by_alpha_rounded,
+          PocketLinkTopBarAction(label: 'Search documents', icon: Icons.search_rounded, onPressed: () => setState(() => _searchExpanded = !_searchExpanded)),
+          PocketLinkTopBarAction(label: 'Sort by name', icon: Icons.sort_by_alpha_rounded,
             onPressed: () => setState(() => _sortBy = 'name')),
-          PocketLinkAppBarAction(label: 'Sort by newest', icon: Icons.schedule_rounded,
+          PocketLinkTopBarAction(label: 'Sort by newest', icon: Icons.schedule_rounded,
             onPressed: () => setState(() => _sortBy = 'newest')),
-          PocketLinkAppBarAction(label: 'Sort by largest', icon: Icons.storage_rounded,
+          PocketLinkTopBarAction(label: 'Sort by largest', icon: Icons.storage_rounded,
             onPressed: () => setState(() => _sortBy = 'largest')),
-          PocketLinkAppBarAction(label: 'Scan again', icon: Icons.refresh_rounded,
+          PocketLinkTopBarAction(label: 'Scan again', icon: Icons.refresh_rounded,
             onPressed: _loading ? null : () => _scan(refresh: true), dividerBefore: true),
         ],
       ),
