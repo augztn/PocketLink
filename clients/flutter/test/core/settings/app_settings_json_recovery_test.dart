@@ -46,6 +46,10 @@ void main() {
     );
 
     final settings = AppSettings.instance;
+    await settings.setNavigationLayout(
+      order: AppSettings.navigationDefaults,
+      visibleItems: AppSettings.navigationDefaults.toSet(),
+    );
     await settings.reloadPreferences();
 
     expect(settings.navigationOrder, AppSettings.navigationDefaults);
