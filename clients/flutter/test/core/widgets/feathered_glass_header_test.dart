@@ -115,7 +115,7 @@ void main() {
     expect(find.byType(BackdropFilter), findsOneWidget);
   });
 
-  testWidgets('progressive header uses staged blur when enabled', (tester) async {
+  testWidgets('progressive header applies scroll-responsive blur when enabled', (tester) async {
     await tester.runAsync(() => AppSettings.instance.setProgressiveBlurStrength(55));
     await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(true));
 
@@ -127,10 +127,10 @@ void main() {
       ),
     );
 
-    expect(find.byType(BackdropFilter), findsNWidgets(2));
+    expect(find.byType(BackdropFilter), findsOneWidget);
   });
 
-  testWidgets('progressive blur remains active when reduced motion is enabled', (tester) async {
+  testWidgets('scroll-responsive blur remains active when reduced motion is enabled', (tester) async {
     await tester.runAsync(() => AppSettings.instance.setProgressiveBlurStrength(55));
     await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(true));
 
