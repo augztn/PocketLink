@@ -1,5 +1,26 @@
 import 'package:material_ui/material_ui.dart';
 
+/// Shared 16dp content gutter plus the current horizontal system safe area.
+class PocketLinkHorizontalGutter {
+  const PocketLinkHorizontalGutter._();
+
+  static const double base = 16;
+
+  static EdgeInsets padding(
+    BuildContext context, {
+    double top = 0,
+    double bottom = 0,
+  }) {
+    final safe = MediaQuery.paddingOf(context);
+    return EdgeInsets.fromLTRB(
+      base + safe.left,
+      top,
+      base + safe.right,
+      bottom,
+    );
+  }
+}
+
 /// Route-level layout geometry shared by every PocketLink screen.
 class LayoutInsetsScope extends InheritedWidget {
   const LayoutInsetsScope({
