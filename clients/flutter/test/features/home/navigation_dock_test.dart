@@ -112,6 +112,22 @@ void main() {
       final innerWidth = capsule.width - 10;
       final tabWidth = innerWidth / tabCount;
 
+      if (tabCount == 3) {
+        controller.position.jumpTo(
+          controller.position.viewportDimension * 0.5,
+        );
+        await tester.pump();
+        expect(controller.page, closeTo(0.5, 0.01));
+        final movingLens = tester.getRect(
+          find.byKey(const ValueKey<String>('navigation-active-lens')),
+        );
+        expect(
+          movingLens.center.dx,
+          closeTo(innerLeft + tabWidth, 1.5),
+          reason: 'lens should track the PageController between tabs while dragging',
+        );
+      }
+
       for (var index = 0; index < tabCount; index++) {
         controller.jumpToPage(index);
         await tester.pump();
