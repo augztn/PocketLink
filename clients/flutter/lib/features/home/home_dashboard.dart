@@ -986,7 +986,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       extendBodyBehindAppBar: true,
-      appBar: PocketLinkAppBar(
+      appBar: PocketLinkTopBar(
         automaticallyImplyLeading: false,
         leadingWidth: 56,
         leading: Padding(
