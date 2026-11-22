@@ -105,14 +105,14 @@ class MediaIndexScanSchedulerTest {
 
     private class SchedulerHarness(
         preferences: android.content.SharedPreferences,
-        now: Long
+        initialNowMillis: Long
     ) {
         var scanning = false
         var running = false
         var lastScanStartedAt = 0L
         var lastCompletedAt = 0L
         var lastAttemptStartedAt = 0L
-        var now = now
+        var now = initialNowMillis
         val requests = mutableListOf<Pair<Boolean, String>>()
 
         val scheduler = MediaIndexScanScheduler(
