@@ -201,8 +201,11 @@ internal class MediaIndexDatabase(context: Context) :
         try {
             if (consumedIds.isNotEmpty()) {
                 val placeholders = consumedIds.joinToString(",") { "?" }
+                val selectionArgs = mutableListOf(volume, scanId).apply {
+                    addAll(consumedIds.map { it.toString() })
+                }
                 db.delete("scan_pending", "volume=? AND scan_id=? AND id IN ($placeholders)",
-                    arrayOf(volume, scanId, *consumedIds.map(Long::toString).toTypedArray()))
+                    selectionArgs.toTypedArray())
             }
             val pendingStatement = db.compileStatement(
                 "INSERT INTO scan_pending(volume,scan_id,path) VALUES(?,?,?)"
