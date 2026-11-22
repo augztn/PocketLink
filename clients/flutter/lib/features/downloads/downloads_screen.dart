@@ -121,7 +121,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
 
         return Scaffold(
           extendBodyBehindAppBar: true,
-          appBar: PocketLinkAppBar(
+          appBar: PocketLinkTopBar(
             feathered: true,
             showHome: false,
             automaticallyImplyLeading: false,
@@ -205,18 +205,18 @@ tooltip: 'Filter downloads',
               ),
             ),
             actions: [
-              PocketLinkAppBarAction(
+              PocketLinkTopBarAction(
                 label: 'New URL download',
                 icon: Icons.add_link_rounded,
                 onPressed: _newDownload,
               ),
-              PocketLinkAppBarAction(
+              PocketLinkTopBarAction(
                 label: 'Pause all',
                 icon: Icons.pause_rounded,
                 enabled: _manager.activeCount > 0 || _manager.queuedCount > 0,
                 onPressed: _manager.activeCount > 0 || _manager.queuedCount > 0 ? _manager.pauseAll : null,
               ),
-              PocketLinkAppBarAction(
+              PocketLinkTopBarAction(
                 label: 'Resume all',
                 icon: Icons.play_arrow_rounded,
                 enabled: _manager.tasks.any((task) =>
@@ -228,7 +228,7 @@ tooltip: 'Filter downloads',
                     ? _manager.resumeAll
                     : null,
               ),
-              PocketLinkAppBarAction(
+              PocketLinkTopBarAction(
                 label: 'Clear completed',
                 icon: Icons.delete_sweep_outlined,
                 enabled: _manager.tasks.any(
