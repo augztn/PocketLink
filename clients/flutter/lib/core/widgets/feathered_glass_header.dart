@@ -33,15 +33,19 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
 
         final scrimColors = isDark
             ? const [
-                Color(0xBF000000), // status bar
-                Color(0x59000000), // title
-                Color(0x1A000000),
+                Color(0xBF000000), // status bar: 75%
+                Color(0xA6000000),
+                Color(0x59000000), // title: 35%
+                Color(0x33000000),
+                Color(0x0F000000),
                 Colors.transparent,
               ]
             : const [
                 Color(0xBFFFFFFF),
+                Color(0xA6FFFFFF),
                 Color(0x59FFFFFF),
-                Color(0x1AFFFFFF),
+                Color(0x33FFFFFF),
+                Color(0x0FFFFFFF),
                 Colors.transparent,
               ];
 
@@ -67,9 +71,11 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
                             colors: [
                               Colors.white,
                               Colors.white,
+                              Color(0xA6FFFFFF),
+                              Color(0x2EFFFFFF),
                               Colors.transparent,
                             ],
-                            stops: [0.0, 0.68, 1.0],
+                            stops: [0.0, 0.58, 0.78, 0.90, 1.0],
                           ).createShader(bounds),
                           child: BackdropFilter(
                             filter: ui.ImageFilter.blur(
@@ -87,7 +93,7 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                             colors: scrimColors,
-                            stops: const [0.0, 0.34, 0.72, 1.0],
+                            stops: const [0.0, 0.20, 0.48, 0.72, 0.88, 1.0],
                           ),
                         ),
                       ),
