@@ -21,6 +21,19 @@ class PocketLinkHorizontalGutter {
   }
 }
 
+/// Shared adaptive column count for card grids across phones and larger displays.
+class PocketLinkResponsiveLayout {
+  const PocketLinkResponsiveLayout._();
+
+  static int gridColumns(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    if (width < 600) return 2;
+    if (width < 840) return 3;
+    if (width < 1200) return 4;
+    return 5;
+  }
+}
+
 /// Route-level layout geometry shared by every PocketLink screen.
 class LayoutInsetsScope extends InheritedWidget {
   const LayoutInsetsScope({
