@@ -49,6 +49,24 @@ class PocketLinkScrollOffsetScope extends InheritedNotifier<ValueNotifier<double
       context.dependOnInheritedWidgetOfExactType<PocketLinkScrollOffsetScope>()?.notifier ?? _zero;
 }
 
+/// Single source of truth for the floating dock and mini-player geometry.
+abstract final class PocketLinkLayoutMetrics {
+  static const double dockHeight = 84;
+  static const double miniPlayerHeight = 62;
+  static const double miniPlayerGap = 10;
+  static const double bottomClearance = 24;
+
+  static double bottomOverlayHeight({
+    required double bottomInset,
+    required bool hasDock,
+    required bool hasMiniPlayer,
+  }) =>
+      bottomInset +
+      (hasDock ? dockHeight : 0) +
+      (hasMiniPlayer ? miniPlayerHeight + miniPlayerGap : 0) +
+      bottomClearance;
+}
+
 /// Shared background fade behind the persistent mini-player and bottom dock.
 class PocketLinkBottomScrim extends StatelessWidget {
   const PocketLinkBottomScrim({required this.height, super.key});
@@ -109,7 +127,11 @@ class LayoutInsetsScope extends InheritedWidget {
     final safeBottom = media?.padding.bottom ?? 0.0;
     return LayoutInsetsScope(
       topClearance: safeTop + kToolbarHeight + 10,
-      bottomClearance: safeBottom + 12 + 24,
+      bottomClearance: PocketLinkLayoutMetrics.bottomOverlayHeight(
+        bottomInset: safeBottom,
+        hasDock: false,
+        hasMiniPlayer: false,
+      ),
       hasFloatingNavBar: false,
       hasActiveMiniPlayer: false,
       reportHeaderHeight: (_) {},
@@ -203,10 +225,11 @@ class _PocketLinkScaffoldState extends State<PocketLinkScaffold> {
                 200.0,
               ).toDouble();
     final topClearance = statusBarHeight + headerContentHeight + 10;
-    final bottomClearance = media.padding.bottom +
-        (widget.hasFloatingNavBar ? 84.0 : 12.0) +
-        (widget.hasActiveMiniPlayer ? 74.0 : 0.0) +
-        24.0;
+    final bottomClearance = PocketLinkLayoutMetrics.bottomOverlayHeight(
+      bottomInset: media.padding.bottom,
+      hasDock: widget.hasFloatingNavBar,
+      hasMiniPlayer: widget.hasActiveMiniPlayer,
+    );
 
     return LayoutInsetsScope(
       topClearance: topClearance,
