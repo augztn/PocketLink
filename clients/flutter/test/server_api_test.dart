@@ -131,6 +131,40 @@ class _SequenceAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+
+class _SharedConcurrencyTracker {
+  int active = 0;
+  int maxActive = 0;
+}
+
+class _TrackedConcurrencyAdapter implements HttpClientAdapter {
+  _TrackedConcurrencyAdapter(this.tracker);
+
+  final _SharedConcurrencyTracker tracker;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    tracker.active++;
+    if (tracker.active > tracker.maxActive) {
+      tracker.maxActive = tracker.active;
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 30));
+    tracker.active--;
+    return ResponseBody.fromString(
+      '{"path":"","items":[]}',
+      200,
+      headers: {Headers.contentTypeHeader: ['application/json']},
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
 class _SharedReadAdapter implements HttpClientAdapter {
   int requests = 0;
 
@@ -389,6 +423,38 @@ void main() {
       final api = ServerApi(baseUrl: 'http://127.0.0.1:8000', username: 'admin', password: 'secret', httpClientAdapter: adapter);
       await Future.wait(List.generate(12, (index) => api.listDirectory('folder-$index')));
       expect(adapter.maxActive, lessThanOrEqualTo(4));
+    });
+
+    test('limits simultaneous requests globally across ServerApi instances', () async {
+      final tracker = _SharedConcurrencyTracker();
+      final firstApi = ServerApi(
+        baseUrl: 'http://127.0.0.1:8000',
+        username: 'admin',
+        password: 'secret',
+        httpClientAdapter: _TrackedConcurrencyAdapter(tracker),
+      );
+      final secondApi = ServerApi(
+        baseUrl: 'http://127.0.0.1:8000',
+        username: 'admin',
+        password: 'secret',
+        httpClientAdapter: _TrackedConcurrencyAdapter(tracker),
+      );
+
+      await Future.wait([
+        ...List.generate(
+          6,
+          (index) => firstApi.listDirectory('first-$index'),
+        ),
+        ...List.generate(
+          6,
+          (index) => secondApi.listDirectory('second-$index'),
+        ),
+      ]);
+
+      expect(tracker.maxActive, 4);
+      expect(tracker.active, 0);
+      firstApi.close();
+      secondApi.close();
     });
 
     test('does not retry authentication failures', () async {
