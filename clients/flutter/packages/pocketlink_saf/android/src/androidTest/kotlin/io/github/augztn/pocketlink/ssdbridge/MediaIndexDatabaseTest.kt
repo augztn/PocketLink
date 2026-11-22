@@ -11,6 +11,37 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class MediaIndexDatabaseTest {
     @Test
+    fun statsSnapshotIsStableAndReadOnlyAcrossSubsequentWrites() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        context.deleteDatabase("pocketlink_index.db")
+        val database = MediaIndexDatabase(context)
+        try {
+            val snapshot = database.statsSnapshot()
+            database.upsertFiles(
+                listOf(IndexedFile("internal", "note.txt", "note.txt", "file", 42L, 1L,
+                    "text/plain", null)),
+                "scan"
+            )
+
+            assertEquals(0, snapshot.counts["files"])
+            assertEquals(0L, snapshot.sizes["indexed_bytes"])
+            assertEquals(1, database.statsSnapshot().counts["files"])
+            assertEquals(42L, database.statsSnapshot().sizes["indexed_bytes"])
+
+            try {
+                @Suppress("UNCHECKED_CAST")
+                (snapshot.counts as MutableMap<String, Int>)["files"] = 99
+                throw AssertionError("Stats snapshot counts must be immutable")
+            } catch (_: UnsupportedOperationException) {
+                // Expected: callers cannot mutate a published snapshot.
+            }
+        } finally {
+            database.close()
+            context.deleteDatabase("pocketlink_index.db")
+        }
+    }
+
+    @Test
     fun fileAndMediaIndexesPersistAndCanBePrunedIndependently() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         context.deleteDatabase("pocketlink_index.db")
