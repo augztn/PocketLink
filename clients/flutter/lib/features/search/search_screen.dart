@@ -849,7 +849,7 @@ class _SearchScreenState extends State<SearchScreen> {
                       ),
                     ),
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                      padding: PocketLinkHorizontalGutter.padding(context).copyWith(bottom: 10),
                       child: Row(children: [
                         Expanded(
                           child: SmokedGlassPopoverMenu<String>(
