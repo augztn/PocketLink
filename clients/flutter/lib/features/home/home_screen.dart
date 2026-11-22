@@ -43,6 +43,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey<ScaffoldState> _rootScaffoldKey = GlobalKey<ScaffoldState>();
+  late final PageController _pageController;
   int _selectedIndex = 0;
   bool _hostSetupOpen = false;
   bool _hostSetupInitialized = false;
@@ -64,9 +65,61 @@ class _HomeScreenState extends State<HomeScreen> {
   double? _horizontalDragStartX;
   double _horizontalDragDeltaX = 0;
 
+  List<int> get _visibleTabIndices {
+    final settings = AppSettings.instance;
+    final indices = settings.navigationOrder
+        .where((id) => id != 'browse' && settings.visibleNavigationItems.contains(id))
+        .map((id) => switch (id) {
+          'explore' => 1,
+          'files' => 2,
+          _ => 0,
+        })
+        .toList(growable: false);
+    return indices.isEmpty ? const <int>[0] : indices;
+  }
+
+  int _pagePositionForTab(int tabIndex) {
+    final position = _visibleTabIndices.indexOf(tabIndex);
+    return position < 0 ? 0 : position;
+  }
+
+  void _syncPageToTab(int tabIndex, {bool animate = true}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_pageController.hasClients) return;
+      final target = _pagePositionForTab(tabIndex);
+      final current = _pageController.page;
+      if (current != null && (current - target).abs() < 0.001) return;
+      final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+      if (!animate || reduceMotion) {
+        _pageController.jumpToPage(target);
+      } else {
+        _pageController.animateToPage(
+          target,
+          duration: const Duration(milliseconds: 260),
+          curve: Curves.easeOutCubic,
+        );
+      }
+    });
+  }
+
+  void _onPageChanged(int page) {
+    final tabs = _visibleTabIndices;
+    if (page < 0 || page >= tabs.length) return;
+    final nextIndex = tabs[page];
+    if (_selectedIndex == nextIndex && _initializedTabs.contains(nextIndex)) {
+      return;
+    }
+    setState(() {
+      _selectedIndex = nextIndex;
+      _initializedTabs.add(nextIndex);
+      _libraryOpen = false;
+    });
+  }
+
   @override
   void initState() {
     super.initState();
+    _pageController = PageController(initialPage: _pagePositionForTab(_selectedIndex));
     unawaited(DownloadManagerService.instance.initialize());
     DownloadManagerService.instance.bindServerApi(widget.api);
     PocketLinkNavigation.drawerOpen.value = false;
@@ -108,7 +161,10 @@ class _HomeScreenState extends State<HomeScreen> {
       2 => 'files',
       _ => 'home',
     };
-    if (settings.visibleNavigationItems.contains(selectedId)) return;
+    if (settings.visibleNavigationItems.contains(selectedId)) {
+      _syncPageToTab(_selectedIndex, animate: false);
+      return;
+    }
     final nextId = settings.navigationOrder.firstWhere(
       (id) => id != 'browse' && settings.visibleNavigationItems.contains(id),
       orElse: () => 'home',
@@ -118,16 +174,20 @@ class _HomeScreenState extends State<HomeScreen> {
       'files' => 2,
       _ => 0,
     };
-    if (mounted) setState(() {
-      _selectedIndex = nextIndex;
-      _initializedTabs.add(nextIndex);
-    });
+    if (mounted) {
+      setState(() {
+        _selectedIndex = nextIndex;
+        _initializedTabs.add(nextIndex);
+      });
+      _syncPageToTab(nextIndex, animate: false);
+    }
   }
 
   @override
   void dispose() {
     DownloadManagerService.instance.releaseServerApi(widget.api);
     AppSettings.instance.removeListener(_navigationSettingsChanged);
+    _pageController.dispose();
     PocketLinkNavigation.drawerOpen.value = false;
     PocketLinkNavigation.quickShortcutsOpen.value = false;
     PocketLinkNavigation.bottomDockVisible.value = false;
@@ -148,6 +208,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _initializedTabs.add(index);
       _selectedIndex = index;
     });
+    _syncPageToTab(index);
   }
 
   void _onLibraryBackHandlerChanged(VoidCallback? handler) {
@@ -173,6 +234,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _requestedPath = path;
       _fileLocationRequest++;
     });
+    _syncPageToTab(2);
   }
 
   void _openExternalStorage() {
@@ -187,6 +249,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _selectedIndex = 2;
       _externalDriveRequest++;
     });
+    _syncPageToTab(2);
   }
 
   void _openExplore(ExploreCategory category, {String? fileCategory}) {
@@ -206,6 +269,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _fileCategory = fileCategory ?? 'All';
       _selectedIndex = 1;
     });
+    _syncPageToTab(1);
   }
 
 
@@ -272,6 +336,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _selectedIndex = 2;
           _uploadRequest++;
         });
+        _syncPageToTab(2);
         break;
       case 'drives':
         _openExternalStorage();
@@ -377,8 +442,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final drawerServerName = widget.serverName?.trim().isNotEmpty == true
         ? widget.serverName!.trim()
         : serverHost;
-    final pages = [
-      HomeDashboard(
+    final tabPages = <int, Widget>{
+      0: HomeDashboard(
         api: widget.api,
         serverName: widget.serverName,
         onOpenExplore: _openExplore,
@@ -390,47 +455,46 @@ class _HomeScreenState extends State<HomeScreen> {
         onReturnToConnection: widget.onReturnToConnection,
         onOpenDrawer: () => _rootScaffoldKey.currentState?.openDrawer(),
       ),
-      if (_initializedTabs.contains(1))
-        ExploreScreen(
-          key: const PageStorageKey<String>('pocketlink-explore'),
-          api: widget.api,
-          category: _exploreCategory,
-          fileCategory: _fileCategory,
-          onBackAtRoot: () => _openTab(0),
-          onOpenFiles: () => _openTab(2),
-          onOpenLibrary: _openLibrary,
-          onCategoryChanged: (category) => setState(() {
-            _exploreCategory = category;
-            if (category == ExploreCategory.files) _fileCategory = 'All';
-          }),
-        )
-      else
-        const SizedBox.shrink(),
-      if (_initializedTabs.contains(2))
-        FileManagerScreen(
-          key: PageStorageKey<String>('pocketlink-files-${widget.api.baseUrl}'),
-          api: widget.api,
-          isActive: true,
-          onBackAtRoot: () => _openTab(0),
-          onCanNavigateBackChanged: (canNavigateBack) {
-            if (_filesCanNavigateBack != canNavigateBack) {
-              setState(() => _filesCanNavigateBack = canNavigateBack);
-            }
-          },
-          onBackHandlerChanged: _onTabBackHandlerChanged,
-          externalDriveRequest: _externalDriveRequest,
-          locationRequest: _fileLocationRequest,
-          uploadRequest: _uploadRequest,
-          requestedVolume: _requestedVolume,
-          requestedPath: _requestedPath,
-        )
-      else
-        const SizedBox.shrink(),
-      if (_hostSetupInitialized)
-        LocalStorageSetupScreen(onHome: _closeHostSetup)
-      else
-        const SizedBox.shrink(),
-    ];
+      1: _initializedTabs.contains(1)
+          ? ExploreScreen(
+              key: const PageStorageKey<String>('pocketlink-explore'),
+              api: widget.api,
+              category: _exploreCategory,
+              fileCategory: _fileCategory,
+              onBackAtRoot: () => _openTab(0),
+              onOpenFiles: () => _openTab(2),
+              onOpenLibrary: _openLibrary,
+              onCategoryChanged: (category) => setState(() {
+                _exploreCategory = category;
+                if (category == ExploreCategory.files) _fileCategory = 'All';
+              }),
+            )
+          : const SizedBox.shrink(),
+      2: _initializedTabs.contains(2)
+          ? FileManagerScreen(
+              key: PageStorageKey<String>('pocketlink-files-${widget.api.baseUrl}'),
+              api: widget.api,
+              isActive: true,
+              onBackAtRoot: () => _openTab(0),
+              onCanNavigateBackChanged: (canNavigateBack) {
+                if (_filesCanNavigateBack != canNavigateBack) {
+                  setState(() => _filesCanNavigateBack = canNavigateBack);
+                }
+              },
+              onBackHandlerChanged: _onTabBackHandlerChanged,
+              externalDriveRequest: _externalDriveRequest,
+              locationRequest: _fileLocationRequest,
+              uploadRequest: _uploadRequest,
+              requestedVolume: _requestedVolume,
+              requestedPath: _requestedPath,
+            )
+          : const SizedBox.shrink(),
+    };
+    final visibleTabIndices = _visibleTabIndices;
+    final pageIndices = <int, int>{
+      for (var position = 0; position < visibleTabIndices.length; position++)
+        visibleTabIndices[position]: position,
+    };
 
     return PopScope(
       canPop: !_libraryOpen && !_hostSetupOpen && _selectedIndex == 0 &&
@@ -500,78 +564,71 @@ class _HomeScreenState extends State<HomeScreen> {
           body: Stack(
             fit: StackFit.expand,
             children: [
-              GestureDetector(
-                behavior: HitTestBehavior.deferToChild,
-                onHorizontalDragStart: (details) {
-                  _horizontalDragStartX = details.localPosition.dx;
-                  _horizontalDragDeltaX = 0;
-                },
-                onHorizontalDragUpdate: (details) {
-                  _horizontalDragDeltaX += details.delta.dx;
-                },
-                onHorizontalDragEnd: (details) {
-                  final startX = _horizontalDragStartX;
-                  final dragDeltaX = _horizontalDragDeltaX;
-                  _horizontalDragStartX = null;
-                  _horizontalDragDeltaX = 0;
-                  if (_hostSetupOpen) return;
-
-                  final isHomeRoot = _selectedIndex == 0 &&
-                      !_libraryOpen &&
-                      !_hostSetupOpen &&
-                      !_musicShortcutsExpanded &&
-                      !PocketLinkNavigation.drawerOpen.value;
-                  if (startX != null &&
-                      PocketLinkNavigation.shouldOpenDrawerFromEdgeSwipe(
-                        startX: startX,
-                        deltaX: dragDeltaX,
-                        isHome: isHomeRoot,
-                      )) {
-                    _rootScaffoldKey.currentState?.openDrawer();
-                    return;
-                  }
-
-                  final velocity = details.primaryVelocity ?? 0;
-                  if (velocity.abs() < 300) return;
-                  final settings = AppSettings.instance;
-                  final visibleTabs = settings.navigationOrder
-                      .where((id) => id != 'browse' && settings.visibleNavigationItems.contains(id))
-                      .map((id) => switch (id) {
-                        'explore' => 1,
-                        'files' => 2,
-                        _ => 0,
-                      })
-                      .toList(growable: false);
-                  final currentPosition = visibleTabs.indexOf(_selectedIndex);
-                  if (currentPosition < 0) return;
-                  final nextPosition = velocity < 0
-                      ? (currentPosition + 1).clamp(0, visibleTabs.length - 1)
-                      : (currentPosition - 1).clamp(0, visibleTabs.length - 1);
-                  final nextIndex = visibleTabs[nextPosition];
-                  if (nextIndex != _selectedIndex) _openTab(nextIndex);
-                },
-                child: TweenAnimationBuilder<double>(
-                  tween: Tween<double>(
-                    end: _musicShortcutsExpanded ? 16 : 0,
-                  ),
-                  duration: reduceMotion
-                      ? Duration.zero
-                      : Duration(milliseconds: _musicShortcutsExpanded ? 360 : 220),
-                  curve: Curves.easeOutCubic,
-                  builder: (context, blurSigma, child) => ImageFiltered(
-                    imageFilter: ui.ImageFilter.blur(
-                      sigmaX: blurSigma,
-                      sigmaY: blurSigma,
-                    ),
-                    enabled: blurSigma > 0.1,
-                    child: child!,
-                  ),
-                  child: IndexedStack(
-                    index: _hostSetupOpen ? 3 : (_libraryOpen ? pages.length : _selectedIndex),
-                    children: [...pages, _libraryPage ?? const SizedBox.shrink()],
+              ImageFiltered(
+                imageFilter: ui.ImageFilter.blur(
+                  sigmaX: _musicShortcutsExpanded ? 16 : 0,
+                  sigmaY: _musicShortcutsExpanded ? 16 : 0,
+                ),
+                enabled: _musicShortcutsExpanded,
+                child: IgnorePointer(
+                  ignoring: _libraryOpen || _hostSetupOpen,
+                  child: PageView.builder(
+                    controller: _pageController,
+                    itemCount: visibleTabIndices.length,
+                    onPageChanged: _onPageChanged,
+                    physics: _libraryOpen || _hostSetupOpen
+                        ? const NeverScrollableScrollPhysics()
+                        : const PageScrollPhysics(),
+                    itemBuilder: (context, page) {
+                      final tabIndex = visibleTabIndices[page];
+                      return _KeepAliveTab(
+                        key: ValueKey<String>('pocketlink-tab-$tabIndex'),
+                        child: tabPages[tabIndex] ?? const SizedBox.shrink(),
+                      );
+                    },
                   ),
                 ),
               ),
+              if (_libraryOpen && _libraryPage != null)
+                Positioned.fill(child: _libraryPage!),
+              if (_hostSetupOpen && _hostSetupInitialized)
+                Positioned.fill(
+                  child: LocalStorageSetupScreen(onHome: _closeHostSetup),
+                ),
+              if (!_hostSetupOpen && !_libraryOpen)
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: 24,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onHorizontalDragStart: (details) {
+                      _horizontalDragStartX = details.globalPosition.dx;
+                      _horizontalDragDeltaX = 0;
+                    },
+                    onHorizontalDragUpdate: (details) {
+                      _horizontalDragDeltaX += details.delta.dx;
+                    },
+                    onHorizontalDragEnd: (details) {
+                      final startX = _horizontalDragStartX;
+                      final deltaX = _horizontalDragDeltaX;
+                      _horizontalDragStartX = null;
+                      _horizontalDragDeltaX = 0;
+                      final isHomeRoot = _selectedIndex == 0 &&
+                          !_musicShortcutsExpanded &&
+                          !PocketLinkNavigation.drawerOpen.value;
+                      if (startX != null &&
+                          PocketLinkNavigation.shouldOpenDrawerFromEdgeSwipe(
+                            startX: startX,
+                            deltaX: deltaX,
+                            isHome: isHomeRoot,
+                          )) {
+                        _rootScaffoldKey.currentState?.openDrawer();
+                      }
+                    },
+                  ),
+                ),
               if (!_hostSetupOpen)
                 Positioned.fill(
                   child: IgnorePointer(
@@ -628,6 +685,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     order: AppSettings.instance.navigationOrder,
                     visibleItems: AppSettings.instance.visibleNavigationItems,
                     selectedIndex: _selectedIndex,
+                    pageController: _pageController,
+                    pageIndices: pageIndices,
                     isPlaying: player.isMusic && player.isPlaying,
                     hasMedia: player.isActive && player.currentItem != null,
                     isVideo: player.isActive && !player.isMusic,
@@ -661,3 +720,25 @@ class _HomeScreenState extends State<HomeScreen> {
 
 
 
+
+
+class _KeepAliveTab extends StatefulWidget {
+  const _KeepAliveTab({required this.child, super.key});
+
+  final Widget child;
+
+  @override
+  State<_KeepAliveTab> createState() => _KeepAliveTabState();
+}
+
+class _KeepAliveTabState extends State<_KeepAliveTab>
+    with AutomaticKeepAliveClientMixin<_KeepAliveTab> {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
+  }
+}
