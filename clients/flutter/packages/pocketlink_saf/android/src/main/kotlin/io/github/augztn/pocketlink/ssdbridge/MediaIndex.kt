@@ -141,7 +141,10 @@ internal class MediaIndexScanner(
         if (closeRequested.get()) return
         if (!started) {
             started = true
-            if (scanScheduler.automaticScanningEnabled() && scanScheduler.scanOnStartupEnabled()) {
+            if (database.hasScanCheckpoints()) {
+                // Resume an interrupted volume traversal even when routine startup scans are disabled.
+                requestScan(force = true, trigger = scanTrigger)
+            } else if (scanScheduler.automaticScanningEnabled() && scanScheduler.scanOnStartupEnabled()) {
                 requestScan(force = true, trigger = "automatic")
             } else {
                 scanScheduler.ensureScheduleAnchor()
@@ -182,8 +185,10 @@ internal class MediaIndexScanner(
                     .filter { it.isNotBlank() && it != "internal" }.toMutableSet()
             }
             currentSource?.takeIf { it != "internal" }?.let { externalIds.add(it) }
-            disconnectedVolumes.addAll(externalIds)
-            reportPrefs.edit().putStringSet("disconnected_volumes", disconnectedVolumes.toSet()).apply()
+            synchronized(this) {
+                disconnectedVolumes.addAll(externalIds)
+                reportPrefs.edit().putStringSet("disconnected_volumes", disconnectedVolumes.toSet()).apply()
+            }
             externalIds.forEach { id ->
                 volumeReports[id]?.let { previous ->
                     volumeReports[id] = org.json.JSONObject(previous.toString())
@@ -199,8 +204,10 @@ internal class MediaIndexScanner(
             dirty.set(true)
             return
         }
-        if (volumeId == null) disconnectedVolumes.clear() else disconnectedVolumes.remove(volumeId)
-        reportPrefs.edit().putStringSet("disconnected_volumes", disconnectedVolumes.toSet()).apply()
+        synchronized(this) {
+            if (volumeId == null) disconnectedVolumes.clear() else disconnectedVolumes.remove(volumeId)
+            reportPrefs.edit().putStringSet("disconnected_volumes", disconnectedVolumes.toSet()).apply()
+        }
         val reconnectingIds = if (volumeId == null) volumeReports.keys.toList() else listOf(volumeId)
         reconnectingIds.forEach { id ->
             volumeReports[id]?.let { previous ->
@@ -211,7 +218,10 @@ internal class MediaIndexScanner(
             }
         }
         dirty.set(true)
-        if (scanScheduler.automaticScanningEnabled() && scanScheduler.scanOnStorageChangeEnabled()) {
+        if (database.hasScanCheckpoints()) {
+            // A disconnected volume keeps its last safe checkpoint and resumes on reconnection.
+            requestScan(force = true, trigger = scanTrigger)
+        } else if (scanScheduler.automaticScanningEnabled() && scanScheduler.scanOnStorageChangeEnabled()) {
             requestScan(force = true, trigger = "automatic")
         }
     }
@@ -277,6 +287,7 @@ internal class MediaIndexScanner(
                         .put("last_scanned_at", previous.optLong("completed_at"))
                         .put("error", "Storage volume is disconnected or no longer accessible")
                 }
+                var incompleteVolume = false
                 sources.forEach { (id, root) ->
                     currentSource = id
                     val skippedBefore = skipped
@@ -285,13 +296,14 @@ internal class MediaIndexScanner(
                     volumeReports[id] = org.json.JSONObject()
                         .put("volume", id).put("state", "scanning").put("started_at", startedAt)
                     try {
-                        scanSource(id, root)
+                        val sourceComplete = scanSource(id, root)
                         if (closeRequested.get()) return@execute
+                        if (!sourceComplete) incompleteVolume = true
                         volumeReports[id] = org.json.JSONObject()
                             .put("volume", id)
                             .put("state", when {
                                 id in disconnectedVolumes -> "unavailable"
-                                skipped == skippedBefore -> "complete"
+                                sourceComplete -> "complete"
                                 else -> "partial"
                             })
                             .put("stale", id in disconnectedVolumes)
@@ -321,11 +333,13 @@ internal class MediaIndexScanner(
                     }
                 }
                 val unavailableVolumes = volumeReports.values.any { it.optString("state") == "unavailable" }
+                if (database.hasScanCheckpoints()) incompleteVolume = true
                 if (lastError == null && skipped > 0) lastError = "Some files or folders could not be indexed."
+                if (lastError == null && incompleteVolume) lastError = "One or more storage volumes could not be fully indexed; previous entries were retained."
                 if (lastError == null && unavailableVolumes) {
                     lastError = "One or more previously indexed storage volumes are disconnected; their indexed content may be stale."
                 }
-                state = if (lastError == null && skipped == 0 && !unavailableVolumes) "complete" else "partial"
+                state = if (lastError == null && skipped == 0 && !unavailableVolumes && !incompleteVolume) "complete" else "partial"
                 lastCompletedAt = System.currentTimeMillis()
                 lastAttemptFinishedAt = lastCompletedAt
                 reportPrefs.edit().putLong("last_attempt_finished_at", lastAttemptFinishedAt).apply()
@@ -367,17 +381,45 @@ internal class MediaIndexScanner(
         }
     }
 
-    private fun scanSource(volume: String, root: Any) {
+    private fun ensureVolumeConnected(volume: String) {
+        if (volume in disconnectedVolumes) {
+            throw IllegalStateException("Storage volume disconnected during scan; checkpoint retained")
+        }
+    }
+
+    private fun scanSource(volume: String, root: Any): Boolean {
         ensureScanActive()
-        val scanId = UUID.randomUUID().toString()
+        val rootId = when (root) {
+            is File -> root.canonicalPath
+            is DocumentFile -> root.uri.toString()
+            else -> throw IllegalArgumentException("Unsupported storage source")
+        }
+        val saved = database.scanCheckpoint(volume)?.let { org.json.JSONObject(it) }
+        val savedState = saved?.optString("state")?.let { encoded ->
+            runCatching { org.json.JSONObject(encoded) }.getOrNull()
+        }
+        val resume = saved != null &&
+            saved.optString("root_id") == rootId &&
+            saved.optString("scan_id").isNotBlank() &&
+            savedState != null &&
+            (savedState.optBoolean("normalized", false) ||
+                (savedState.has("pending") && savedState.has("visited")))
+        val scanId = if (resume) saved!!.optString("scan_id") else UUID.randomUUID().toString()
+        var complete = savedState?.optBoolean("complete", true) ?: true
+        var filesHealthy = savedState?.optBoolean("files_healthy", true) ?: true
+        var mediaHealthy = savedState?.optBoolean("media_healthy", true) ?: true
+        if (resume && savedState?.optBoolean("normalized", false) != true) {
+            // Convert an existing JSON checkpoint once; subsequent updates touch only changed rows.
+            database.saveScanCheckpoint(volume, rootId, scanId, savedState.toString())
+        } else if (!resume) {
+            database.beginScanCheckpoint(volume, rootId, scanId)
+        }
+
         val fileSnapshot = database.fileSnapshot(volume)
         val mediaSnapshot = database.mediaSnapshot(volume)
         val batch = ArrayList<IndexedFile>(200)
         val unchangedFiles = ArrayList<String>(200)
         val unchangedMedia = ArrayList<String>(200)
-        var complete = true
-        var filesHealthy = true
-        var mediaHealthy = true
         fun flush() {
             val snapshot = batch.toList()
             if (snapshot.isNotEmpty()) {
@@ -417,12 +459,9 @@ internal class MediaIndexScanner(
             scannedBytes += safeSize
             val previousFile = fileSnapshot[path]
             val previousMedia = mediaSnapshot[path]
-            // Some SAF providers always report modified=0. In that case use
-            // size + category as the best available stable fingerprint.
             val fileUnchanged = previousFile != null &&
                 previousFile.size == safeSize &&
-                (if (safeModified <= 0L) previousFile.modified <= 0L
-                else previousFile.modified == safeModified)
+                (if (safeModified <= 0L) previousFile.modified <= 0L else previousFile.modified == safeModified)
             if (!directory) {
                 if (previousFile == null) newFiles++
                 else if (!fileUnchanged) updatedFiles++
@@ -446,122 +485,178 @@ internal class MediaIndexScanner(
             if (batch.size >= 200 || unchangedFiles.size >= 200) flush()
         }
 
-        when (root) {
-            is File -> {
-                if (!root.exists() || !root.isDirectory || !root.canRead()) {
-                    throw IllegalStateException("Internal storage is unavailable or unreadable")
-                }
-                val base = root.canonicalFile
-                val stack = ArrayDeque<Pair<File, Int>>()
-                stack.add(base to 0)
-                while (stack.isNotEmpty()) {
-                    ensureScanActive()
-                    val (directory, depth) = stack.removeLast()
-                    currentPath = runCatching {
-                        if (directory == base) "" else directory.canonicalFile.relativeTo(base).invariantSeparatorsPath
-                    }.getOrDefault("")
-                    scannedDirectories++
-                    val children = try { directory.listFiles() } catch (_: Exception) { null }
-                    if (children == null) {
-                        complete = false
-                        skipped++
-                        val inaccessiblePath = runCatching { directory.canonicalFile.relativeTo(base).invariantSeparatorsPath }.getOrDefault("")
-                        recordSkipped(volume, inaccessiblePath, "Folder could not be read")
-                        continue
-                    }
-                    children.forEach { child ->
-                        ensureScanActive()
-                        if (child.name.startsWith(".")) return@forEach
-                        val canonical = try { child.canonicalFile } catch (_: Exception) { null }
-                        if (canonical == null || !(canonical.path == base.path ||
-                                canonical.path.startsWith(base.path + File.separator))) {
-                            complete = false
-                            skipped++
-                            recordSkipped(volume, child.name, "Path could not be safely resolved")
-                            return@forEach
-                        }
-                        val relative = canonical.relativeTo(base).invariantSeparatorsPath
-                        add(relative, child.name, child.isDirectory, if (child.isFile) child.length() else 0L,
-                            child.lastModified(), MediaFileClassifier.mimeForName(child.name))
-                        if (child.isDirectory) {
-                            if (depth < MAX_DEPTH) stack.add(child to depth + 1)
-                            else { complete = false; skipped++; recordSkipped(volume, relative, "Maximum folder depth reached") }
-                        }
-                    }
-                }
-            }
-            is DocumentFile -> {
-                if (!root.exists() || !root.isDirectory || !root.canRead()) {
-                    throw IllegalStateException("Storage volume is disconnected, unavailable, or unreadable")
-                }
-                val stack = ArrayDeque<Pair<Pair<DocumentFile, String>, Int>>()
-                stack.add((root to "") to 0)
-                while (stack.isNotEmpty()) {
-                    ensureScanActive()
-                    val (entry, depth) = stack.removeLast()
-                    val (directory, parentPath) = entry
-                    currentPath = parentPath
-                    scannedDirectories++
-                    if (!directory.canRead()) {
-                        complete = false
-                        skipped++
-                        recordSkipped(volume, parentPath, "Folder could not be read")
-                        continue
-                    }
-                    val children = try { directory.listFiles() } catch (_: Exception) { null }
-                    if (children == null) {
-                        complete = false
-                        skipped++
-                        recordSkipped(volume, parentPath, "Folder could not be read")
-                        continue
-                    }
-                    if (children.isEmpty() && hasIndexedDescendants(fileSnapshot.keys + mediaSnapshot.keys, parentPath)) {
-                        // SAF providers may report an empty array on transient query failures.
-                        // An empty listing cannot prove deletion when prior descendants exist.
-                        complete = false
-                        skipped++
-                        recordSkipped(volume, parentPath, "Storage provider returned an empty listing; previous entries were retained")
-                        continue
-                    }
-                    children.forEach { child ->
-                        ensureScanActive()
-                        val name = child.name ?: run {
-                            complete = false
-                            skipped++
-                            recordSkipped(volume, parentPath, "Storage provider returned an item without a name")
-                            return@forEach
-                        }
-                        if (name.startsWith(".")) return@forEach
-                        val relative = if (parentPath.isEmpty()) name else "$parentPath/$name"
-                        add(relative, name, child.isDirectory, if (child.isFile) child.length() else 0L,
-                            child.lastModified(), child.type ?: MediaFileClassifier.mimeForName(name))
-                        if (child.isDirectory) {
-                            if (depth < MAX_DEPTH) stack.add((child to relative) to depth + 1)
-                            else { complete = false; skipped++; recordSkipped(volume, relative, "Maximum folder depth reached") }
-                        }
-                    }
-                }
+        if (root is File) {
+            val internalRoot = root.canonicalFile
+            if (!internalRoot.exists() || !internalRoot.isDirectory || !internalRoot.canRead()) {
+                throw IllegalStateException("Internal storage is unavailable or unreadable")
             }
         }
+        if (root is DocumentFile && (!root.exists() || !root.isDirectory || !root.canRead())) {
+            throw IllegalStateException("Storage volume is disconnected, unavailable, or unreadable")
+        }
+
+        fun resolveDocumentDirectory(relativePath: String): DocumentFile? {
+            var current = root as DocumentFile
+            if (relativePath.isEmpty()) return current
+            for (segment in relativePath.split('/')) {
+                current = current.listFiles().firstOrNull { it.name == segment && it.isDirectory } ?: return null
+            }
+            return current
+        }
+
+        var deferredDirectories = false
+        while (true) {
+            ensureScanActive()
+            ensureVolumeConnected(volume)
+            val pendingBatch = database.pendingBatch(volume, scanId, MAX_DIRECTORIES_PER_BATCH)
+            if (pendingBatch.isEmpty()) break
+            val consumedIds = pendingBatch.map { it.id }
+            val pendingPaths = mutableListOf<String>()
+            val deferredIds = mutableSetOf<Long>()
+            val visitedThisBatch = mutableSetOf<String>()
+            for (pendingItem in pendingBatch) {
+                ensureScanActive()
+                ensureVolumeConnected(volume)
+                val relativePath = pendingItem.path
+                currentPath = relativePath
+                val identity: String
+                val children: Array<out Any>
+                when (root) {
+                    is File -> {
+                        val baseDirectory = root.canonicalFile
+                        val directory = if (relativePath.isEmpty()) baseDirectory else File(baseDirectory, relativePath).canonicalFile
+                        if (!(directory.path == baseDirectory.path || directory.path.startsWith(baseDirectory.path + File.separator))) {
+                            complete = false
+                            skipped++
+                            recordSkipped(volume, relativePath, "Directory path could not be safely resolved")
+                            continue
+                        }
+                        // A directory removed after its parent was listed is a normal
+                        // deletion; an existing but unreadable directory is retryable.
+                        if (!directory.exists() || !directory.isDirectory) continue
+                        if (!directory.canRead()) {
+                            deferredDirectories = true
+                            deferredIds.add(pendingItem.id)
+                            skipped++
+                            recordSkipped(volume, relativePath, "Folder could not be read; queued for retry")
+                            continue
+                        }
+                        identity = directory.path
+                        if (database.hasVisited(volume, scanId, identity) || identity in visitedThisBatch) continue
+                        val listedChildren: Array<out Any>? = try {
+                            directory.listFiles()?.toList()?.toTypedArray()
+                        } catch (_: Exception) {
+                            null
+                        }
+                        if (listedChildren == null) {
+                            deferredDirectories = true
+                            deferredIds.add(pendingItem.id)
+                            skipped++
+                            recordSkipped(volume, relativePath, "Folder listing failed; queued for retry")
+                            continue
+                        }
+                        children = listedChildren
+                    }
+                    is DocumentFile -> {
+                        val directory = try { resolveDocumentDirectory(relativePath) } catch (_: Exception) { null }
+                        if (directory == null || !directory.exists() || !directory.isDirectory || !directory.canRead()) {
+                            deferredDirectories = true
+                            deferredIds.add(pendingItem.id)
+                            skipped++
+                            recordSkipped(volume, relativePath, "Folder could not be read or resolved; queued for retry")
+                            continue
+                        }
+                        identity = directory.uri.toString()
+                        if (database.hasVisited(volume, scanId, identity) || identity in visitedThisBatch) continue
+                        val listedChildren: Array<out Any>? = try {
+                            directory.listFiles().toList().toTypedArray()
+                        } catch (_: Exception) {
+                            null
+                        }
+                        if (listedChildren == null) {
+                            deferredDirectories = true
+                            deferredIds.add(pendingItem.id)
+                            skipped++
+                            recordSkipped(volume, relativePath, "Folder listing failed; queued for retry")
+                            continue
+                        }
+                        children = listedChildren
+                        if (children.isEmpty() && hasIndexedDescendants(fileSnapshot.keys + mediaSnapshot.keys, relativePath)) {
+                            deferredDirectories = true
+                            deferredIds.add(pendingItem.id)
+                            skipped++
+                            recordSkipped(volume, relativePath, "Storage provider returned an empty listing; previous entries were retained and the folder was queued for retry")
+                            continue
+                        }
+                    }
+                    else -> throw IllegalArgumentException("Unsupported storage source")
+                }
+                visitedThisBatch.add(identity)
+                scannedDirectories++
+                children.forEach { child ->
+                    ensureScanActive()
+                    ensureVolumeConnected(volume)
+                    when (child) {
+                        is File -> {
+                            // The lambda boundary loses the smart-cast for the heterogeneous root.
+                            // File children are only produced by a File root.
+                            val baseDirectory = (root as File).canonicalFile
+                            val canonical = try { child.canonicalFile } catch (_: Exception) { null }
+                            if (canonical == null || !(canonical.path == baseDirectory.path ||
+                                    canonical.path.startsWith(baseDirectory.path + File.separator))) {
+                                complete = false
+                                skipped++
+                                recordSkipped(volume, child.name, "Path could not be safely resolved")
+                                return@forEach
+                            }
+                            val childPath = canonical.relativeTo(baseDirectory).invariantSeparatorsPath
+                            add(childPath, child.name, child.isDirectory, if (child.isFile) child.length() else 0L,
+                                child.lastModified(), MediaFileClassifier.mimeForName(child.name))
+                            if (child.isDirectory) pendingPaths.add(childPath)
+                        }
+                        is DocumentFile -> {
+                            val name = child.name ?: run {
+                                complete = false
+                                skipped++
+                                recordSkipped(volume, relativePath, "Storage provider returned an item without a name")
+                                return@forEach
+                            }
+                            val childPath = if (relativePath.isEmpty()) name else "$relativePath/$name"
+                            add(childPath, name, child.isDirectory, if (child.isFile) child.length() else 0L,
+                                child.lastModified(), child.type ?: MediaFileClassifier.mimeForName(name))
+                            if (child.isDirectory) pendingPaths.add(childPath)
+                        }
+                    }
+                }
+            }
+            ensureScanActive()
+            flush()
+            // Queue consumption, discovered directories, visited identities and health flags
+            // commit atomically. A crash before commit safely replays this batch.
+            database.commitScanBatch(
+                volume, scanId, consumedIds.filterNot { it in deferredIds }, pendingPaths, visitedThisBatch,
+                complete, filesHealthy, mediaHealthy
+            )
+            // Leave failed directory rows in the durable queue. Retry on the next
+            // explicit/scheduled scan instead of dropping them or spinning here.
+            if (deferredIds.isNotEmpty()) break
+        }
+
         ensureScanActive()
+        ensureVolumeConnected(volume)
         flush()
-        ensureScanActive()
-        if (volume in disconnectedVolumes) {
-            complete = false
-            skipped++
-            recordSkipped(volume, "", "Storage volume disconnected during scan")
-            lastError = "A storage volume disconnected during scanning; its previous index was retained."
-        }
-        // Serialize final pruning with close(): shutdown either starts after this
-        // commit or prevents it entirely, so a cancelled traversal cannot prune rows.
         synchronized(this) {
             ensureScanActive()
-            // Each index is committed and pruned independently. A media-index
-            // failure must not invalidate the general file index, or vice versa.
-            if (complete && filesHealthy) database.finishFilesSource(volume, scanId)
-            ensureScanActive()
-            if (complete && mediaHealthy) database.finishMediaSource(volume, scanId)
+            ensureVolumeConnected(volume)
+            if (complete && filesHealthy && mediaHealthy && !deferredDirectories) {
+                database.finishFilesSource(volume, scanId)
+                ensureScanActive()
+                ensureVolumeConnected(volume)
+                database.finishMediaSource(volume, scanId)
+            }
+            if (!deferredDirectories) database.clearScanCheckpoint(volume)
         }
+        return complete && filesHealthy && mediaHealthy && !deferredDirectories && volume !in disconnectedVolumes
     }
 
     fun status(): org.json.JSONObject {
@@ -601,7 +696,7 @@ internal class MediaIndexScanner(
             .put("current_source", currentSource)
             .put("current_path", currentPath)
             .put("last_error", if (state == "interrupted") {
-                "The host restarted before the previous scan finished. Run a new scan to reconcile the index."
+                "The host restarted before the previous scan finished. A saved checkpoint will resume automatically; if none exists, run a new scan to reconcile the index."
             } else lastError)
             .put("skipped_items", org.json.JSONArray().also { items ->
                 synchronized(skippedItems) {
@@ -725,7 +820,7 @@ internal class MediaIndexScanner(
     }
 
     companion object {
-        private const val MAX_DEPTH = 64
+        private const val MAX_DIRECTORIES_PER_BATCH = 10_000
         private const val MAX_REPORTED_SKIPPED_ITEMS = 100
 
     }
