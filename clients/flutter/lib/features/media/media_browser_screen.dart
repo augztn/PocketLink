@@ -1393,6 +1393,7 @@ tooltip: 'Choose video view',
       child: AnimatedBuilder(
         animation: PersistentAudioPlayer.instance,
         builder: (context, _) => Scaffold(
+          extendBodyBehindAppBar: true,
           appBar: PocketLinkTopBar(
             automaticallyImplyLeading: false,
             showMoreMenu: false,
@@ -1606,7 +1607,7 @@ tooltip: 'Choose video view',
             Positioned.fill(
               child: _libraryView == 'folders'
                   ? Padding(
-                      padding: const EdgeInsets.only(top: 8),
+                      padding: EdgeInsets.only(top: LayoutInsetsScope.of(context).topClearance),
                       child: RefreshIndicator(
                         onRefresh: _refreshMusic,
                         child: _buildFolders(visible),
@@ -1619,7 +1620,7 @@ tooltip: 'Choose video view',
                           ? ListView(
                               physics: const AlwaysScrollableScrollPhysics(),
                               padding: PocketLinkHorizontalGutter.padding(context).copyWith(
-            top: 8,
+            top: LayoutInsetsScope.of(context).topClearance,
             bottom: LayoutInsetsScope.of(context).bottomClearance,
           ),
                               children: [
@@ -1655,7 +1656,7 @@ tooltip: 'Choose video view',
                     ),
             ),
             if (_loading)              Positioned(
-                top: 4,
+                top: LayoutInsetsScope.of(context).topClearance + 4,
                 left: PocketLinkHorizontalGutter.padding(context).left,
                 right: PocketLinkHorizontalGutter.padding(context).right,
                 child: ClipRRect(
@@ -1665,7 +1666,7 @@ tooltip: 'Choose video view',
               ),
             if (_error != null)
               Positioned(
-                top: 12,
+                top: LayoutInsetsScope.of(context).topClearance + 12,
                 left: PocketLinkHorizontalGutter.padding(context).left,
                 right: PocketLinkHorizontalGutter.padding(context).right,
                 child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
