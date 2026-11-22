@@ -300,11 +300,9 @@ tooltip: 'Filter document types',
                       )),
                     ))
                   : ListView.separated(
-                      padding: EdgeInsets.fromLTRB(
-                        12,
-                        LayoutInsetsScope.of(context).topClearance + (_searchExpanded ? 58 : -6),
-                        12,
-                        LayoutInsetsScope.of(context).bottomClearance,
+                      padding: PocketLinkHorizontalGutter.padding(context).copyWith(
+                        top: LayoutInsetsScope.of(context).topClearance + (_searchExpanded ? 58 : -6),
+                        bottom: LayoutInsetsScope.of(context).bottomClearance,
                       ),
                       itemCount: filtered.length + 1,
                       separatorBuilder: (_, __) => const SizedBox(height: 6),
