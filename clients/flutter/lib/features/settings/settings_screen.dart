@@ -397,13 +397,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       animation: _settings,
       builder: (context, _) => Scaffold(
         extendBodyBehindAppBar: true,
-        appBar: PocketLinkAppBar(
+        appBar: PocketLinkTopBar(
           title: Text(widget.category ?? 'Settings'),
           actions: [
-            PocketLinkAppBarAction(
+            PocketLinkTopBarAction(
               label: 'Return to Home',
               icon: Icons.home_rounded,
-              onPressed: () => PocketLinkAppBar.goToDashboard(context),
+              onPressed: () => PocketLinkTopBar.goToDashboard(context),
             ),
           ],
           showHome: false,
@@ -774,14 +774,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ),
                               ]),
                 ],
-                ),
-                const Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: IgnorePointer(
-                    child: FeatheredGlassHeaderBackground(),
-                  ),
                 ),
               ],
             );
