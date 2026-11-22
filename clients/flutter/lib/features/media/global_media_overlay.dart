@@ -473,8 +473,6 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
         )!;
         // Finish the source mini-player fade before the full player starts fading in.
         final miniOpacity = (1.0 - t / 0.25).clamp(0.0, 1.0).toDouble();
-        final fullOpacity = ((t - 0.25) / 0.75).clamp(0.0, 1.0).toDouble();
-
         return Material(
           type: MaterialType.transparency,
           child: Stack(
@@ -498,11 +496,8 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
                   const ColoredBox(color: Color(0xFF0A0B0E)),
                   Positioned.fill(
                     child: IgnorePointer(
-                      ignoring: fullOpacity < 1,
-                      child: Opacity(
-                        opacity: fullOpacity,
-                        child: animatedChild,
-                      ),
+                      ignoring: t < 0.9,
+                      child: animatedChild,
                     ),
                   ),
                   Positioned.fromRect(
