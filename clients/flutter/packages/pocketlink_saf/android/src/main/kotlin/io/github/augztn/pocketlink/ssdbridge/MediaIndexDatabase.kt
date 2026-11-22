@@ -199,10 +199,11 @@ internal class MediaIndexDatabase(context: Context) :
         val db = writableDatabase
         db.beginTransaction()
         try {
-            if (consumedIds.isNotEmpty()) {
-                val placeholders = consumedIds.joinToString(",") { "?" }
+            // Stay below SQLite's bind-parameter limit on older Android releases.
+            consumedIds.chunked(500).forEach { idBatch ->
+                val placeholders = idBatch.joinToString(",") { "?" }
                 val selectionArgs = mutableListOf(volume, scanId).apply {
-                    addAll(consumedIds.map { it.toString() })
+                    addAll(idBatch.map { it.toString() })
                 }
                 db.delete("scan_pending", "volume=? AND scan_id=? AND id IN ($placeholders)",
                     selectionArgs.toTypedArray())
