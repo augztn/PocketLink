@@ -170,7 +170,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   }
 
   void _saveState({String? path}) {
-    final current = _browserState.fileState(_stateKey);
+    final current = _browserState.stateFor(_stateKey);
     _browserState.update(_stateKey, current.copyWith(
       path: path ?? _path,
       category: _category,
