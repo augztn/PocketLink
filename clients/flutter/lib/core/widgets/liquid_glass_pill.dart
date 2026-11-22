@@ -139,6 +139,7 @@ class SmokedGlassSurface extends StatelessWidget {
     required this.radius,
     this.refractive = false,
     this.intensity = 1,
+    this.tintOpacity = 0.55,
     super.key,
   });
 
@@ -146,6 +147,7 @@ class SmokedGlassSurface extends StatelessWidget {
   final BorderRadius radius;
   final bool refractive;
   final double intensity;
+  final double tintOpacity;
 
   @override
   Widget build(BuildContext context) {
@@ -219,7 +221,9 @@ class SmokedGlassSurface extends StatelessWidget {
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       color: refractive
-                          ? const Color(0xFF14151A).withValues(alpha: 0.55 * level)
+                          ? const Color(0xFF14151A).withValues(
+                              alpha: tintOpacity.clamp(0.0, 1.0) * level,
+                            )
                           : isLight
                               ? Colors.white.withValues(alpha: 0.78 * level)
                               : const Color(0xFF1C1E24).withValues(alpha: 0.68 * level),
