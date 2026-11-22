@@ -322,6 +322,32 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
             fit: StackFit.expand,
             children: [
               Positioned.fill(child: navigatorContent),
+              if (onDashboard || visible)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  height: bottomInset +
+                      (onDashboard ? _homeDockHeight : 0) +
+                      (visible ? _miniPlayerHeight + 10 : 0) +
+                      24,
+                  child: const IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            Color(0x66000000),
+                            Color(0xFF000000),
+                          ],
+                          stops: [0.0, 0.48, 1.0],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               if (visible)
                 Positioned(
                   left: 0,
