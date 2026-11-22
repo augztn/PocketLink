@@ -6,6 +6,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_settings_migrations.dart';
 
+part 'app_settings_appearance.dart';
+part 'app_settings_media.dart';
+part 'app_settings_navigation.dart';
+
 List<String>? _decodeStoredStringList(String? raw) {
   if (raw == null) return null;
   try {
@@ -18,10 +22,6 @@ List<String>? _decodeStoredStringList(String? raw) {
     return null;
   }
 }
-
-part 'app_settings_appearance.dart';
-part 'app_settings_media.dart';
-part 'app_settings_navigation.dart';
 
 class AppSettings extends ChangeNotifier {
   AppSettings._();
