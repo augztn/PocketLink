@@ -78,8 +78,22 @@ void main() {
   testWidgets('active glass lens tracks every measured tab slot', (tester) async {
     await AppSettings.instance.setUseLiquidGlass(true);
 
-    for (final tabCount in [2, 3]) {
-      final ids = ['home', 'explore', 'files'].take(tabCount).toList();
+    const configurations = <List<String>>[
+      ['home', 'explore'],
+      ['files', 'home'],
+      ['explore', 'files'],
+      ['home', 'explore', 'files'],
+      ['files', 'explore', 'home'],
+      ['explore', 'home', 'files'],
+    ];
+    const indexById = {'home': 0, 'explore': 1, 'files': 2};
+
+    for (final ids in configurations) {
+      final tabCount = ids.length;
+      final pageIndices = <int, int>{
+        for (var page = 0; page < tabCount; page++)
+          indexById[ids[page]]!: page,
+      };
       final controller = PageController();
       await tester.pumpWidget(
         MaterialApp(
@@ -94,12 +108,10 @@ void main() {
             bottomNavigationBar: FloatingNavigationDock(
               order: [...ids, 'browse'],
               visibleItems: {...ids, 'browse'},
-              selectedIndex: 0,
+              selectedIndex: indexById[ids.first]!,
               pageController: controller,
-              pageIndices: {
-                for (var index = 0; index < tabCount; index++) index: index,
-              },
-              onSelect: (index) => controller.jumpToPage(index),
+              pageIndices: pageIndices,
+              onSelect: (index) => controller.jumpToPage(pageIndices[index]!),
               onBrowsePressed: () {},
             ),
           ),
