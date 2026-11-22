@@ -562,7 +562,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       secondary: const Icon(Icons.blur_on_rounded),
                       title: const Text('Liquid Glass UI'),
                       subtitle: const Text(
-                        'Translucent smoked-glass surfaces, subtle reflections and floating controls',
+                        'Frosted blur, glass reflections and refined floating surfaces',
                       ),
                       value: _settings.useLiquidGlass,
                       onChanged: _settings.setUseLiquidGlass,
@@ -573,12 +573,50 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _section('Glass & Visual Effects', [
                     SwitchListTile(
                       secondary: const Icon(Icons.gradient_rounded),
-                      title: const Text('Background Blur'),
+                      title: const Text('Progressive Blur'),
                       subtitle: const Text(
-                        'Blur content behind translucent headers, the mini-player and navigation dock',
+                        'Blur scrolling content smoothly behind the status bar and floating headers',
                       ),
                       value: _settings.progressiveBlurEnabled,
                       onChanged: _settings.setProgressiveBlurEnabled,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                'Blur strength',
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                              const Spacer(),
+                              Text(
+                                '${_settings.progressiveBlurStrength.round()}%',
+                                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Slider(
+                            min: 0,
+                            max: 100,
+                            divisions: 20,
+                            value: _settings.progressiveBlurStrength,
+                            onChanged: _settings.progressiveBlurEnabled
+                                ? _settings.setProgressiveBlurStrength
+                                : null,
+                          ),
+                          Text(
+                            'Subtle at 0% · Strong at 100%',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ]),
                 if (widget.category == 'Dashboard & Shortcuts')
