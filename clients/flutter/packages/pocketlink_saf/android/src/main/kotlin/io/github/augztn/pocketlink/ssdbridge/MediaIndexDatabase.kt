@@ -11,7 +11,7 @@ internal data class IndexDatabaseStats(
 )
 
 internal class MediaIndexDatabase(context: Context) :
-    SQLiteOpenHelper(context, "pocketlink_index.db", null, 2) {
+    SQLiteOpenHelper(context, "pocketlink_index.db", null, 3) {
 
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL("""
@@ -35,10 +35,12 @@ internal class MediaIndexDatabase(context: Context) :
         db.execSQL("CREATE INDEX media_category_name_idx ON media(category, name COLLATE NOCASE)")
         db.execSQL("CREATE INDEX media_modified_idx ON media(category, modified DESC)")
         createScanCheckpointTable(db)
+        createScanTraversalTables(db)
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         if (oldVersion < 2) createScanCheckpointTable(db)
+        if (oldVersion < 3) createScanTraversalTables(db)
     }
 
     private fun createScanCheckpointTable(db: SQLiteDatabase) {
@@ -65,23 +67,183 @@ internal class MediaIndexDatabase(context: Context) :
         }
 
     @Synchronized fun saveScanCheckpoint(volume: String, rootId: String, scanId: String, state: String) {
-        val values = android.content.ContentValues().apply {
-            put("volume", volume)
-            put("root_id", rootId)
-            put("scan_id", scanId)
-            put("state", state)
-        }
-        writableDatabase.insertWithOnConflict(
-            "scan_checkpoints", null, values, SQLiteDatabase.CONFLICT_REPLACE
-        )
+        // Compatibility path for persisted v2 checkpoints and test fixtures.
+        val legacy = org.json.JSONObject(state)
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            val normalized = org.json.JSONObject()
+                .put("normalized", true)
+                .put("complete", legacy.optBoolean("complete", true))
+                .put("files_healthy", legacy.optBoolean("files_healthy", true))
+                .put("media_healthy", legacy.optBoolean("media_healthy", true))
+            val values = android.content.ContentValues().apply {
+                put("volume", volume); put("root_id", rootId); put("scan_id", scanId)
+                put("state", normalized.toString())
+            }
+            db.insertWithOnConflict("scan_checkpoints", null, values, SQLiteDatabase.CONFLICT_REPLACE)
+            db.delete("scan_pending", "volume=?", arrayOf(volume))
+            db.delete("scan_visited", "volume=?", arrayOf(volume))
+            val pending = legacy.optJSONArray("pending")
+            if (pending != null) {
+                val statement = db.compileStatement("INSERT INTO scan_pending(volume,scan_id,path) VALUES(?,?,?)")
+                try { for (i in 0 until pending.length()) {
+                    statement.clearBindings(); statement.bindString(1, volume); statement.bindString(2, scanId)
+                    statement.bindString(3, pending.optString(i)); statement.executeInsert()
+                } } finally { statement.close() }
+            }
+            val visited = legacy.optJSONArray("visited")
+            if (visited != null) {
+                val statement = db.compileStatement("INSERT OR IGNORE INTO scan_visited(volume,scan_id,identity) VALUES(?,?,?)")
+                try { for (i in 0 until visited.length()) {
+                    statement.clearBindings(); statement.bindString(1, volume); statement.bindString(2, scanId)
+                    statement.bindString(3, visited.optString(i)); statement.executeInsert()
+                } } finally { statement.close() }
+            }
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
     }
 
     @Synchronized fun clearScanCheckpoint(volume: String) {
-        writableDatabase.delete("scan_checkpoints", "volume=?", arrayOf(volume))
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            db.delete("scan_checkpoints", "volume=?", arrayOf(volume))
+            db.delete("scan_pending", "volume=?", arrayOf(volume))
+            db.delete("scan_visited", "volume=?", arrayOf(volume))
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
     }
 
     @Synchronized fun hasScanCheckpoints(): Boolean =
         readableDatabase.rawQuery("SELECT 1 FROM scan_checkpoints LIMIT 1", null).use { it.moveToFirst() }
+
+    private fun createScanTraversalTables(db: SQLiteDatabase) {
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS scan_pending (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                volume TEXT NOT NULL,
+                scan_id TEXT NOT NULL,
+                path TEXT NOT NULL
+            )
+        """.trimIndent())
+        db.execSQL("CREATE INDEX IF NOT EXISTS scan_pending_order_idx ON scan_pending(volume, scan_id, id DESC)")
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS scan_visited (
+                volume TEXT NOT NULL,
+                scan_id TEXT NOT NULL,
+                identity TEXT NOT NULL,
+                PRIMARY KEY(volume, scan_id, identity)
+            )
+        """.trimIndent())
+    }
+
+    data class PendingDirectory(val id: Long, val path: String)
+
+    @Synchronized fun beginScanCheckpoint(
+        volume: String, rootId: String, scanId: String, initialPath: String = ""
+    ) {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            val state = org.json.JSONObject()
+                .put("normalized", true)
+                .put("complete", true)
+                .put("files_healthy", true)
+                .put("media_healthy", true)
+            val values = android.content.ContentValues().apply {
+                put("volume", volume)
+                put("root_id", rootId)
+                put("scan_id", scanId)
+                put("state", state.toString())
+            }
+            db.insertWithOnConflict("scan_checkpoints", null, values, SQLiteDatabase.CONFLICT_REPLACE)
+            db.delete("scan_pending", "volume=?", arrayOf(volume))
+            db.delete("scan_visited", "volume=?", arrayOf(volume))
+            val pending = android.content.ContentValues().apply {
+                put("volume", volume); put("scan_id", scanId); put("path", initialPath)
+            }
+            db.insertOrThrow("scan_pending", null, pending)
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
+    }
+
+    @Synchronized fun pendingBatch(volume: String, scanId: String, limit: Int): List<PendingDirectory> {
+        val result = mutableListOf<PendingDirectory>()
+        readableDatabase.query(
+            "scan_pending", arrayOf("id", "path"), "volume=? AND scan_id=?",
+            arrayOf(volume, scanId), null, null, "id DESC", limit.toString()
+        ).use { cursor ->
+            while (cursor.moveToNext()) result += PendingDirectory(cursor.getLong(0), cursor.getString(1))
+        }
+        return result
+    }
+
+    @Synchronized fun hasVisited(volume: String, scanId: String, identity: String): Boolean =
+        readableDatabase.query(
+            "scan_visited", arrayOf("identity"),
+            "volume=? AND scan_id=? AND identity=?",
+            arrayOf(volume, scanId, identity), null, null, null, "1"
+        ).use { it.moveToFirst() }
+
+    @Synchronized fun commitScanBatch(
+        volume: String,
+        scanId: String,
+        consumedIds: List<Long>,
+        pendingPaths: List<String>,
+        visitedIdentities: Set<String>,
+        complete: Boolean,
+        filesHealthy: Boolean,
+        mediaHealthy: Boolean
+    ) {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            if (consumedIds.isNotEmpty()) {
+                val placeholders = consumedIds.joinToString(",") { "?" }
+                db.delete("scan_pending", "volume=? AND scan_id=? AND id IN ($placeholders)",
+                    arrayOf(volume, scanId, *consumedIds.map(Long::toString).toTypedArray()))
+            }
+            val pendingStatement = db.compileStatement(
+                "INSERT INTO scan_pending(volume,scan_id,path) VALUES(?,?,?)"
+            )
+            try {
+                pendingPaths.forEach { path ->
+                    pendingStatement.clearBindings()
+                    pendingStatement.bindString(1, volume)
+                    pendingStatement.bindString(2, scanId)
+                    pendingStatement.bindString(3, path)
+                    pendingStatement.executeInsert()
+                }
+            } finally { pendingStatement.close() }
+            val visitedStatement = db.compileStatement(
+                "INSERT OR IGNORE INTO scan_visited(volume,scan_id,identity) VALUES(?,?,?)"
+            )
+            try {
+                visitedIdentities.forEach { identity ->
+                    visitedStatement.clearBindings()
+                    visitedStatement.bindString(1, volume)
+                    visitedStatement.bindString(2, scanId)
+                    visitedStatement.bindString(3, identity)
+                    visitedStatement.executeInsert()
+                }
+            } finally { visitedStatement.close() }
+            val state = org.json.JSONObject()
+                .put("normalized", true)
+                .put("complete", complete)
+                .put("files_healthy", filesHealthy)
+                .put("media_healthy", mediaHealthy)
+            val values = android.content.ContentValues().apply { put("state", state.toString()) }
+            db.update("scan_checkpoints", values, "volume=? AND scan_id=?", arrayOf(volume, scanId))
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
+    }
+
+    @Synchronized fun checkpointHasPending(volume: String, scanId: String): Boolean =
+        readableDatabase.rawQuery(
+            "SELECT 1 FROM scan_pending WHERE volume=? AND scan_id=? LIMIT 1",
+            arrayOf(volume, scanId)
+        ).use { it.moveToFirst() }
 
     @Synchronized fun upsertFiles(batch: List<IndexedFile>, scanId: String) {
         if (batch.isEmpty()) return
