@@ -809,7 +809,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                      padding: PocketLinkHorizontalGutter.padding(context).copyWith(top: 8, bottom: 8),
                       child: SmokedGlassSurface(
                         radius: BorderRadius.circular(20),
                         child: SizedBox(
