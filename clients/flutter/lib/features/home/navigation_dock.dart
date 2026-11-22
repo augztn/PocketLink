@@ -68,10 +68,16 @@ class FloatingNavigationDock extends StatelessWidget {
       final ids = List<String>.of(tabGroup);
       segments.add(
         Expanded(
-          child: LiquidGlassPill(
-            radius: BorderRadius.circular(32),
-            refractive: true,
-            child: Padding(
+          child: _DockLensDragSurface(
+            controller: pageController,
+            tabPages: ids
+                .map((id) => pageIndices[_indices[id]!] ?? _indices[id]!)
+                .toList(growable: false),
+            enabled: !preview,
+            child: LiquidGlassPill(
+              radius: BorderRadius.circular(32),
+              refractive: true,
+              child: Padding(
               padding: const EdgeInsets.all(5),
               child: SizedBox(
                 height: 54,
@@ -169,6 +175,7 @@ class FloatingNavigationDock extends StatelessWidget {
               ),
             ),
           ),
+          ),
         ),
       );
       tabGroup = <String>[];
@@ -238,6 +245,118 @@ class FloatingNavigationDock extends StatelessWidget {
       ),
     );
   }
+}
+
+class _DockLensDragSurface extends StatefulWidget {
+  const _DockLensDragSurface({
+    required this.controller,
+    required this.tabPages,
+    required this.enabled,
+    required this.child,
+  });
+
+  final PageController? controller;
+  final List<int> tabPages;
+  final bool enabled;
+  final Widget child;
+
+  @override
+  State<_DockLensDragSurface> createState() => _DockLensDragSurfaceState();
+}
+
+class _DockLensDragSurfaceState extends State<_DockLensDragSurface> {
+  double? _startPage;
+  double _totalDelta = 0;
+
+  void _onDragStart(DragStartDetails details) {
+    final controller = widget.controller;
+    if (!widget.enabled || controller == null || !controller.hasClients) {
+      return;
+    }
+    _startPage = controller.page;
+    _totalDelta = 0;
+  }
+
+  void _onDragUpdate(DragUpdateDetails details) {
+    final controller = widget.controller;
+    final startPage = _startPage;
+    if (startPage == null || controller == null || !controller.hasClients) {
+      return;
+    }
+    final position = controller.position;
+    final viewport = position.viewportDimension;
+    if (viewport <= 0 || widget.tabPages.isEmpty) return;
+
+    _totalDelta += details.delta.dx;
+    final minPage = widget.tabPages.reduce((a, b) => a < b ? a : b);
+    final maxPage = widget.tabPages.reduce((a, b) => a > b ? a : b);
+    final pixels = (startPage * viewport - _totalDelta)
+        .clamp(minPage * viewport, maxPage * viewport)
+        .toDouble();
+    position.jumpTo(pixels);
+  }
+
+  void _onDragEnd(DragEndDetails details) {
+    final controller = widget.controller;
+    if (_startPage == null || controller == null || !controller.hasClients) {
+      _resetDrag();
+      return;
+    }
+    final position = controller.position;
+    final viewport = position.viewportDimension;
+    if (viewport <= 0 || widget.tabPages.isEmpty) {
+      _resetDrag();
+      return;
+    }
+
+    final currentPage = controller.page ?? _startPage!;
+    final velocityPages = (details.velocity.pixelsPerSecond.dx / viewport) * 0.16;
+    final minPage = widget.tabPages.reduce((a, b) => a < b ? a : b);
+    final maxPage = widget.tabPages.reduce((a, b) => a > b ? a : b);
+    final targetPage = (currentPage - velocityPages)
+        .round()
+        .clamp(minPage, maxPage);
+    _resetDrag();
+
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
+    unawaited(controller.animateToPage(
+      targetPage,
+      duration: reduceMotion ? Duration.zero : const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+    ));
+  }
+
+  void _onDragCancel() {
+    final controller = widget.controller;
+    if (controller != null && controller.hasClients && _startPage != null) {
+      final page = (controller.page ?? _startPage!).round();
+      final minPage = widget.tabPages.reduce((a, b) => a < b ? a : b);
+      final maxPage = widget.tabPages.reduce((a, b) => a > b ? a : b);
+      unawaited(controller.animateToPage(
+        page.clamp(minPage, maxPage),
+        duration: MediaQuery.of(context).disableAnimations
+            ? Duration.zero
+            : const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
+      ));
+    }
+    _resetDrag();
+  }
+
+  void _resetDrag() {
+    _startPage = null;
+    _totalDelta = 0;
+  }
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onHorizontalDragStart: widget.enabled ? _onDragStart : null,
+        onHorizontalDragUpdate: widget.enabled ? _onDragUpdate : null,
+        onHorizontalDragEnd: widget.enabled ? _onDragEnd : null,
+        onHorizontalDragCancel: widget.enabled ? _onDragCancel : null,
+        child: widget.child,
+      );
 }
 
 class _MusicDockButton extends StatefulWidget {
