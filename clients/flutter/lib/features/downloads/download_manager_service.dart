@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -8,17 +7,16 @@ import 'package:flutter/foundation.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/network/server_api.dart';
 import '../../core/settings/app_settings.dart';
 import 'download_task.dart';
+import 'data/download_task_repository.dart';
 
 class DownloadManagerService extends ChangeNotifier {
   DownloadManagerService._();
   static final DownloadManagerService instance = DownloadManagerService._();
 
-  static const _tasksKey = 'downloads_tasks_v1';
   final Dio _dio = Dio(BaseOptions(
     connectTimeout: const Duration(seconds: 15),
     sendTimeout: const Duration(seconds: 30),
@@ -32,7 +30,7 @@ class DownloadManagerService extends ChangeNotifier {
   ServerApi? _serverApi;
   final Map<String, ServerApi> _activeServerApis = {};
   final Set<ServerApi> _retiredServerApis = {};
-  Future<void> _writeQueue = Future<void>.value();
+  final DownloadTaskRepository _taskRepository = DownloadTaskRepository();
   bool _initialized = false;
   Future<void>? _initialization;
   bool _isWifi = false;
@@ -65,29 +63,16 @@ class DownloadManagerService extends ChangeNotifier {
   }
 
   Future<void> _initialize() async {
-    final preferences = await SharedPreferences.getInstance();
-    final raw = preferences.getString(_tasksKey);
-    if (raw != null) {
-      try {
-        final decoded = jsonDecode(raw);
-        if (decoded is List) {
-          for (final item in decoded.whereType<Map>()) {
-            final task = DownloadTask.fromJson(
-              Map<String, dynamic>.from(item),
-            );
-            if (task.status == DownloadStatus.downloading ||
-                task.status == DownloadStatus.queued) {
-              task.status = AppSettings.instance.downloadAutoResume
-                  ? DownloadStatus.queued
-                  : DownloadStatus.paused;
-              task.speedBytesPerSecond = 0;
-            }
-            _tasks.add(task);
-          }
-        }
-      } catch (_) {
-        await preferences.remove(_tasksKey);
+    final persistedTasks = await _taskRepository.load();
+    for (final task in persistedTasks) {
+      if (task.status == DownloadStatus.downloading ||
+          task.status == DownloadStatus.queued) {
+        task.status = AppSettings.instance.downloadAutoResume
+            ? DownloadStatus.queued
+            : DownloadStatus.paused;
+        task.speedBytesPerSecond = 0;
       }
+      _tasks.add(task);
     }
     try {
       _isWifi = (await Connectivity().checkConnectivity())
@@ -648,15 +633,7 @@ class DownloadManagerService extends ChangeNotifier {
     return null;
   }
 
-  Future<void> _persist() {
-    final snapshot = jsonEncode(_tasks.map((task) => task.toJson()).toList());
-    final write = _writeQueue.catchError((_) {}).then((_) async {
-      final preferences = await SharedPreferences.getInstance();
-      await preferences.setString(_tasksKey, snapshot);
-    });
-    _writeQueue = write;
-    return write;
-  }
+  Future<void> _persist() => _taskRepository.save(_tasks);
 
   @override
   void dispose() {
