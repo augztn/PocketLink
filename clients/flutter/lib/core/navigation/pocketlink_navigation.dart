@@ -75,6 +75,18 @@ class PocketLinkNavigationObserver extends NavigatorObserver {
 }
 
 abstract final class PocketLinkNavigation {
+  /// Recognizes a rightward Home-screen edge swipe without treating ordinary
+  /// in-content or tab-navigation gestures as drawer-open gestures.
+  static bool shouldOpenDrawerFromEdgeSwipe({
+    required double startX,
+    required double deltaX,
+    required bool isHome,
+    double edgeWidth = 28,
+    double minimumDistance = 72,
+  }) =>
+      isHome && startX >= 0 && startX <= edgeWidth &&
+      deltaX >= minimumDistance;
+
   static final navigatorKey = GlobalKey<NavigatorState>();
   static final musicButtonKey = GlobalKey();
   static final miniPlayerKey = GlobalKey();
