@@ -561,8 +561,6 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     final albumCount = groupByAlbum(photos).length;
     final favoriteCount = photos.where((p) => favorites.contains(p.id)).length;
     final counts = [photos.length, albumCount, favoriteCount];
-    final headerTop = MediaQuery.paddingOf(context).top;
-    final contentTop = LayoutInsetsScope.of(context).topClearance;
 
     return Scaffold(
       appBar: PocketLinkAppBar(
