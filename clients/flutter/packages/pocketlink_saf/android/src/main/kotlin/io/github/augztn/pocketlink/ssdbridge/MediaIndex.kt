@@ -491,9 +491,11 @@ internal class MediaIndexScanner(
             if (batch.size >= 200 || unchangedFiles.size >= 200) flush()
         }
 
-        val base = (root as? File)?.canonicalFile
-        if (root is File && (base == null || !base.exists() || !base.isDirectory || !base.canRead())) {
-            throw IllegalStateException("Internal storage is unavailable or unreadable")
+        if (root is File) {
+            val internalRoot = root.canonicalFile
+            if (!internalRoot.exists() || !internalRoot.isDirectory || !internalRoot.canRead()) {
+                throw IllegalStateException("Internal storage is unavailable or unreadable")
+            }
         }
         if (root is DocumentFile && (!root.exists() || !root.isDirectory || !root.canRead())) {
             throw IllegalStateException("Storage volume is disconnected, unavailable, or unreadable")
@@ -518,8 +520,9 @@ internal class MediaIndexScanner(
                 val children: Array<out Any>
                 when (root) {
                     is File -> {
-                        val directory = if (relativePath.isEmpty()) base!! else File(base, relativePath).canonicalFile
-                        if (!(directory.path == base!!.path || directory.path.startsWith(base.path + File.separator))) {
+                        val baseDirectory = root.canonicalFile
+                        val directory = if (relativePath.isEmpty()) baseDirectory else File(baseDirectory, relativePath).canonicalFile
+                        if (!(directory.path == baseDirectory.path || directory.path.startsWith(baseDirectory.path + File.separator))) {
                             complete = false
                             skipped++
                             recordSkipped(volume, relativePath, "Directory path could not be safely resolved")
@@ -577,14 +580,14 @@ internal class MediaIndexScanner(
                         is File -> {
                             if (child.name.startsWith(".")) return@forEach
                             val canonical = try { child.canonicalFile } catch (_: Exception) { null }
-                            if (canonical == null || !(canonical.path == base!!.path ||
-                                    canonical.path.startsWith(base.path + File.separator))) {
+                            if (canonical == null || !(canonical.path == root.canonicalPath ||
+                                    canonical.path.startsWith(root.canonicalPath + File.separator))) {
                                 complete = false
                                 skipped++
                                 recordSkipped(volume, child.name, "Path could not be safely resolved")
                                 return@forEach
                             }
-                            val childPath = canonical.relativeTo(base).invariantSeparatorsPath
+                            val childPath = canonical.relativeTo(root.canonicalFile).invariantSeparatorsPath
                             add(childPath, child.name, child.isDirectory, if (child.isFile) child.length() else 0L,
                                 child.lastModified(), MediaFileClassifier.mimeForName(child.name))
                             if (child.isDirectory) pending.add(childPath)
