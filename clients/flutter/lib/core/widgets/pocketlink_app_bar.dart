@@ -95,31 +95,30 @@ class PocketLinkTopBar extends StatelessWidget implements PreferredSizeWidget {
             ? IconButton(
                 tooltip: 'Open navigation menu',
                 onPressed: () => scaffold?.openDrawer(),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints.tightFor(width: 40, height: 40),
                 icon: const Icon(Icons.menu_rounded),
               )
             : automaticallyImplyLeading && (navigator?.canPop() ?? false)
                 ? IconButton(
                     tooltip: 'Back',
                     onPressed: () => navigator?.maybePop(),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints.tightFor(width: 40, height: 40),
                     icon: const Icon(Icons.arrow_back_rounded),
                   )
                 : null);
     final alignedLeading = effectiveLeading == null
         ? null
         : Padding(
-            padding: EdgeInsets.only(left: safeLeft),
+            padding: EdgeInsets.only(left: safeLeft + (leading == null ? 16 : 0)),
             child: effectiveLeading,
           );
     final effectiveLeadingWidth = effectiveLeading == null
         ? null
-        : (leadingWidth ?? kToolbarHeight) + safeLeft;
+        : (leadingWidth ?? kToolbarHeight) + safeLeft + (leading == null ? 16 : 0);
     return AppBar(
-      title: feathered
-          ? Align(
-              alignment: Alignment.topLeft,
-              child: Padding(padding: const EdgeInsets.only(top: 8), child: title),
-            )
-          : title,
+      title: title,
       leading: alignedLeading,
       leadingWidth: effectiveLeadingWidth,
       titleSpacing: titleSpacing,
@@ -147,8 +146,9 @@ class PocketLinkTopBar extends StatelessWidget implements PreferredSizeWidget {
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 4),
           child: SizedBox.square(
-            dimension: 38,
+            dimension: 40,
             child: GlassCircleButton(
+              size: 40,
               tooltip: 'Home',
               onPressed: () => _goHome(context),
               child: const Icon(Icons.home_rounded),
@@ -181,8 +181,9 @@ class PocketLinkTopBar extends StatelessWidget implements PreferredSizeWidget {
           child: const Padding(
             padding: EdgeInsets.symmetric(vertical: 4),
             child: SizedBox.square(
-              dimension: 38,
+              dimension: 40,
               child: GlassCircleButton(
+                size: 40,
                 tooltip: 'Open overflow menu',
                 onPressed: null,
                 child: Icon(Icons.more_vert_rounded, size: 18),
