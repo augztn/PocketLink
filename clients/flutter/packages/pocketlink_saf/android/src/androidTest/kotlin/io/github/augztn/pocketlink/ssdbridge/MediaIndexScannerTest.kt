@@ -205,7 +205,9 @@ class MediaIndexScannerTest {
 
         val scanner = MediaIndexScanner(context, { root }, { emptyList() })
         try {
-            scanner.requestScan(force = true)
+            // A saved checkpoint must resume at host startup even when routine
+            // automatic startup scans are disabled.
+            scanner.ensureStarted()
             val result = awaitFinished(scanner)
             assertEquals("complete", result.getString("state"))
             assertEquals("track.mp3", scanner.media("music", "", 10, 0).single().name)
