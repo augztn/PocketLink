@@ -382,7 +382,10 @@ internal class MediaIndexScanner(
         }
         val saved = database.scanCheckpoint(volume)?.let { org.json.JSONObject(it) }
         val savedState = saved?.optJSONObject("state")
-        val resume = saved != null && saved.optString("root_id") == rootId && savedState != null
+        val resume = saved != null &&
+            saved.optString("root_id") == rootId &&
+            saved.optString("scan_id").isNotBlank() &&
+            savedState != null && savedState.has("pending") && savedState.has("visited")
         val scanId = if (resume) saved!!.optString("scan_id") else UUID.randomUUID().toString()
         val pending = mutableListOf<String>()
         val visited = mutableSetOf<String>()
@@ -407,8 +410,8 @@ internal class MediaIndexScanner(
 
         fun saveCheckpoint() {
             val state = org.json.JSONObject()
-                .put("pending", org.json.JSONArray().also { array -> pending.forEach(array::put) })
-                .put("visited", org.json.JSONArray().also { array -> visited.forEach(array::put) })
+                .put("pending", org.json.JSONArray().also { array -> pending.forEach { array.put(it) } })
+                .put("visited", org.json.JSONArray().also { array -> visited.forEach { array.put(it) } })
                 .put("complete", complete)
                 .put("files_healthy", filesHealthy)
                 .put("media_healthy", mediaHealthy)
