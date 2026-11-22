@@ -30,7 +30,7 @@ class NativeApiFileMetadataTest {
 
     @Test
     fun serializesFileMetadataWithoutChangingTheApiShape() {
-        val directory = createTempDir(prefix = "pocketlink-metadata-")
+        val directory = java.nio.file.Files.createTempDirectory("pocketlink-metadata-").toFile()
         try {
             val file = File(directory, "track.mp3").apply { writeText("audio") }
             val json = metadata.fileJson(file)
