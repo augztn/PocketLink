@@ -579,7 +579,6 @@ internal class MediaIndexScanner(
                     ensureVolumeConnected(volume)
                     when (child) {
                         is File -> {
-                            if (child.name.startsWith(".")) return@forEach
                             // The lambda boundary loses the smart-cast for the heterogeneous root.
                             // File children are only produced by a File root.
                             val baseDirectory = (root as File).canonicalFile
@@ -603,7 +602,6 @@ internal class MediaIndexScanner(
                                 recordSkipped(volume, relativePath, "Storage provider returned an item without a name")
                                 return@forEach
                             }
-                            if (name.startsWith(".")) return@forEach
                             val childPath = if (relativePath.isEmpty()) name else "$relativePath/$name"
                             add(childPath, name, child.isDirectory, if (child.isFile) child.length() else 0L,
                                 child.lastModified(), child.type ?: MediaFileClassifier.mimeForName(name))
