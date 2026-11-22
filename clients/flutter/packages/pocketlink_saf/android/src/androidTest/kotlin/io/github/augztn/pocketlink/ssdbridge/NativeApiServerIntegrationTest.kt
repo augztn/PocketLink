@@ -291,6 +291,57 @@ class NativeApiServerIntegrationTest {
     }
 
     @Test
+    fun concurrentDeletesSerializeAndResolveAfterEarlierMutations() {
+        val appContext = ApplicationProvider.getApplicationContext<Context>()
+        val context = object : ContextWrapper(appContext) {
+            override fun getSharedPreferences(name: String, mode: Int): SharedPreferences =
+                appContext.getSharedPreferences("delete-mutation-test-$name", mode)
+        }
+        val root = File(context.cacheDir, "delete-mutation-test-${UUID.randomUUID()}").apply {
+            check(mkdirs())
+        }
+        val target = File(root, "shared-delete.txt").apply { writeText("delete-once") }
+        val credentials = ServerCredentials(context)
+        val password = "delete-mutation-test-password"
+        credentials.setPassword(password)
+        val authorization = "Basic " + Base64.encodeToString(
+            "admin:$password".toByteArray(), Base64.NO_WRAP
+        )
+        val server = NativeApiServer(context, credentials, 0, "0.0.0.0", root)
+        val executor = Executors.newFixedThreadPool(12)
+        server.start(30_000, false)
+        try {
+            val port = server.listeningPort
+            val gate = CountDownLatch(1)
+            val requests = (0 until 12).map {
+                executor.submit<Pair<Int, String>> {
+                    gate.await()
+                    request(
+                        port,
+                        "/api/files/item?path=shared-delete.txt",
+                        authorization,
+                        method = "DELETE"
+                    )
+                }
+            }
+            gate.countDown()
+            val responses = requests.map { it.get() }
+
+            assertEquals("Exactly one request must delete the file", 1, responses.count { it.first == 200 })
+            assertEquals("Later requests must observe the missing item", 11, responses.count { it.first == 404 })
+            assertTrue("The target must be deleted exactly once", !target.exists())
+        } finally {
+            executor.shutdownNow()
+            server.stop()
+            root.deleteRecursively()
+            context.getSharedPreferences("delete-mutation-test-ssd-bridge", Context.MODE_PRIVATE)
+                .edit().clear().commit()
+            context.getSharedPreferences("delete-mutation-test-pocketlink-auth", Context.MODE_PRIVATE)
+                .edit().clear().commit()
+        }
+    }
+
+    @Test
     fun fileStreamingReturnsFullAndRequestedByteRangeOverHttp() {
         val appContext = ApplicationProvider.getApplicationContext<Context>()
         val context = object : ContextWrapper(appContext) {
