@@ -1025,7 +1025,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
           ],
           ),
         ),
-        actionsPadding: const EdgeInsets.only(right: 16),
+        actionsPadding: EdgeInsets.only(right: PocketLinkHorizontalGutter.padding(context).right),
         actions: [
           SmokedGlassPopoverMenu<String>(
             tooltip: 'More actions',
@@ -1091,11 +1091,9 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
         onRefresh: () => _refreshStatus(forceRefresh: true),
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: EdgeInsets.fromLTRB(
-            18,
-            LayoutInsetsScope.of(context).topClearance + 2,
-            18,
-            LayoutInsetsScope.of(context).bottomClearance,
+          padding: PocketLinkHorizontalGutter.padding(context).copyWith(
+            top: LayoutInsetsScope.of(context).topClearance + 2,
+            bottom: LayoutInsetsScope.of(context).bottomClearance,
           ),
           children: [
             _buildServerTelemetry(),
