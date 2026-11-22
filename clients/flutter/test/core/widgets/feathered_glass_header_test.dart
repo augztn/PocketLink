@@ -203,8 +203,10 @@ void main() {
     await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(true));
 
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(body: FeatheredGlassHeaderBackground()),
+      _withScrolledHeader(
+        const MaterialApp(
+          home: Scaffold(body: FeatheredGlassHeaderBackground()),
+        ),
       ),
     );
     expect(find.byType(BackdropFilter), findsNWidgets(2));
