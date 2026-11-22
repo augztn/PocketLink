@@ -32,7 +32,7 @@ class MediaIndexScanSchedulerTest {
 
     @Test
     fun configurationClampsIntervalAndInitializesScheduleAnchor() {
-        val harness = SchedulerHarness(preferences, now = 100_000L)
+        val harness = SchedulerHarness(preferences, initialNowMillis = 100_000L)
 
         val settings = harness.scheduler.configure(
             enabled = true,
@@ -50,7 +50,7 @@ class MediaIndexScanSchedulerTest {
 
     @Test
     fun nextScanUsesActiveScanStartOrMostRecentCompletionBaseline() {
-        val harness = SchedulerHarness(preferences, now = 500_000L)
+        val harness = SchedulerHarness(preferences, initialNowMillis = 500_000L)
         preferences.edit().putBoolean("automatic_scanning_enabled", true)
             .putInt("scan_interval_minutes", 60).apply()
         harness.lastCompletedAt = 200_000L
@@ -65,7 +65,7 @@ class MediaIndexScanSchedulerTest {
 
     @Test
     fun scheduledScanRunsOnlyWhenEnabledAndIntervalHasElapsed() {
-        val harness = SchedulerHarness(preferences, now = 1_000_000L)
+        val harness = SchedulerHarness(preferences, initialNowMillis = 1_000_000L)
         preferences.edit()
             .putBoolean("automatic_scanning_enabled", true)
             .putInt("scan_interval_minutes", 15)
@@ -92,7 +92,7 @@ class MediaIndexScanSchedulerTest {
 
     @Test
     fun intervalIsClampedAtMaximumAndDisabledScheduleHasNoNextRun() {
-        val harness = SchedulerHarness(preferences, now = 42L)
+        val harness = SchedulerHarness(preferences, initialNowMillis = 42L)
 
         val settings = harness.scheduler.configure(
             enabled = false,
