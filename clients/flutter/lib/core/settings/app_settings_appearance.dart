@@ -1,0 +1,58 @@
+part of 'app_settings.dart';
+
+extension AppSettingsAppearance on AppSettings {
+  Future<void> setThemeMode(ThemeMode value) async {
+    _themeMode = value;
+    _amoled = false;
+    _notifySettingsChanged();
+    await AppSettings._storage.write(key: AppSettings._themeKey, value: switch (value) {
+      ThemeMode.light => 'light',
+      ThemeMode.dark => 'dark',
+      ThemeMode.system => 'system',
+    });
+  }
+
+  Future<void> setAmoled(bool value) async {
+    _amoled = value;
+    if (value) _themeMode = ThemeMode.dark;
+    _notifySettingsChanged();
+    await AppSettings._storage.write(key: AppSettings._themeKey, value: value ? 'amoled' : 'dark');
+  }
+
+  Future<void> setUseLiquidGlass(bool value) async {
+    _useLiquidGlass = value;
+    _notifySettingsChanged();
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(AppSettings._liquidGlassKey, value);
+  }
+
+  Future<void> setProgressiveBlurEnabled(bool value) async {
+    _progressiveBlurEnabled = value;
+    _notifySettingsChanged();
+    final snapshot = value;
+    final write = _progressiveBlurWrite.catchError((_) {}).then((_) async {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setBool(AppSettings._progressiveBlurKey, snapshot);
+    });
+    _progressiveBlurWrite = write;
+    await write;
+  }
+
+  Future<void> setProgressiveBlurStrength(double value) async {
+    if (!value.isFinite || value < 0 || value > 100) {
+      throw ArgumentError.value(value, 'value', 'Must be between 0 and 100');
+    }
+    if (_progressiveBlurStrength == value) return;
+    _progressiveBlurStrength = value;
+    _notifySettingsChanged();
+    final snapshot = value;
+    final write = _progressiveBlurWrite.catchError((_) {}).then((_) async {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setDouble(AppSettings._progressiveBlurStrengthKey, snapshot);
+    });
+    _progressiveBlurWrite = write;
+    await write;
+  }
+
+
+}
