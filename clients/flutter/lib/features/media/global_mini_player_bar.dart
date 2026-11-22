@@ -78,18 +78,24 @@ class GlobalMiniPlayerBar extends StatelessWidget {
               ? Duration.zero
               : const Duration(milliseconds: 220),
           curve: Curves.easeOut,
-          builder: (context, intensity, _) => SmokedGlassSurface(
-            key: surfaceKey,
-            radius: BorderRadius.lerp(
-              BorderRadius.circular(22),
-              BorderRadius.circular(18),
-              compact ? 1 : 0,
-            )!,
-            refractive: true,
-            intensity: intensity,
-            child: Opacity(
-              opacity: intensity,
-              child: GestureDetector(
+          builder: (context, intensity, _) => TweenAnimationBuilder<double>(
+            tween: Tween<double>(end: compact ? 1 : 0),
+            duration: reduceMotion
+                ? Duration.zero
+                : const Duration(milliseconds: 220),
+            curve: Curves.easeInOutCubic,
+            builder: (context, compactProgress, _) => SmokedGlassSurface(
+              key: surfaceKey,
+              radius: BorderRadius.lerp(
+                BorderRadius.circular(22),
+                BorderRadius.circular(18),
+                compactProgress,
+              )!,
+              refractive: true,
+              intensity: intensity,
+              child: Opacity(
+                opacity: intensity,
+                child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onHorizontalDragEnd: _handleHorizontalDrag,
               onVerticalDragEnd: (details) {
@@ -105,7 +111,12 @@ class GlobalMiniPlayerBar extends StatelessWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      SizedBox(
+                      AnimatedSize(
+                        duration: reduceMotion
+                            ? Duration.zero
+                            : const Duration(milliseconds: 220),
+                        curve: Curves.easeInOutCubic,
+                        child: SizedBox(
                         height: compact ? 52 : 55,
                         child: Row(
                           children: [
@@ -143,7 +154,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
                                   ),
                                   Text(
                                     isPlaying
-                                        ? 'NOW PLAYING · SWIPE TO SKIP'
+                                        ? (compact ? 'NOW PLAYING' : 'NOW PLAYING · SWIPE TO SKIP')
                                         : 'PAUSED',
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
@@ -213,6 +224,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
                           ],
                         ),
                       ),
+                      ),
                       ClipRRect(
                         borderRadius: const BorderRadius.vertical(
                           bottom: Radius.circular(22),
@@ -232,6 +244,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
                 ),
               ),
               ),
+            ),
             ),
           ),
         ),
