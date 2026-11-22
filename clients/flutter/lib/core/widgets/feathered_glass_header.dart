@@ -67,14 +67,18 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
                             ),
                           ),
                         DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: tint,
-                              stops: const [0.0, 0.82, 1.0],
-                            ),
-                          ),
+                          decoration: useHeaderBlur
+                              ? BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: tint,
+                                    stops: const [0.0, 0.82, 1.0],
+                                  ),
+                                )
+                              : BoxDecoration(
+                                  color: isDark ? Colors.black : Colors.white,
+                                ),
                         ),
                       ],
                     ),
