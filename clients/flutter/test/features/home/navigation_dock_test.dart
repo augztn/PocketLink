@@ -135,9 +135,14 @@ void main() {
           find.byKey(const ValueKey<String>('navigation-active-lens')),
         );
         expect(
-          lens.center.dx,
-          closeTo(innerLeft + tabWidth * (index + 0.5), 1.5),
-          reason: 'lens should be centered in tab $index of $tabCount',
+          lens,
+          Rect.fromLTWH(
+            innerLeft + tabWidth * index,
+            capsule.top + 5,
+            tabWidth,
+            54,
+          ),
+          reason: 'lens should exactly match tab $index of $tabCount',
         );
       }
       await tester.pumpWidget(const SizedBox.shrink());
