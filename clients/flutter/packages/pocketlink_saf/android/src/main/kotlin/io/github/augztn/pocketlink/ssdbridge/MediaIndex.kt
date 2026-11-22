@@ -98,6 +98,18 @@ internal class MediaIndexScanner(
         }
     }
 
+    private val scanScheduler by lazy(LazyThreadSafetyMode.NONE) {
+        MediaIndexScanScheduler(
+            preferences = reportPrefs,
+            isScanning = { state == "scanning" },
+            isRunning = { running.get() },
+            lastScanStartedAt = { lastScanStartedAt },
+            lastCompletedAt = { lastCompletedAt },
+            lastAttemptStartedAt = { lastAttemptStartedAt },
+            requestScan = { force, trigger -> requestScan(force, trigger) }
+        )
+    }
+
     init {
         disconnectedVolumes.forEach { volume ->
             volumeReports[volume]?.let { previous ->
@@ -129,10 +141,10 @@ internal class MediaIndexScanner(
         if (closeRequested.get()) return
         if (!started) {
             started = true
-            if (automaticScanningEnabled() && reportPrefs.getBoolean("scan_on_startup", true)) {
+            if (scanScheduler.automaticScanningEnabled() && scanScheduler.scanOnStartupEnabled()) {
                 requestScan(force = true, trigger = "automatic")
-            } else if (automaticScanningEnabled() && reportPrefs.getLong("schedule_anchor_at", 0L) == 0L) {
-                reportPrefs.edit().putLong("schedule_anchor_at", System.currentTimeMillis()).apply()
+            } else {
+                scanScheduler.ensureScheduleAnchor()
             }
         } else if (automaticScanningEnabled() && dirty.get() && !running.get()) {
             requestScan(force = true, trigger = "automatic")
@@ -140,55 +152,22 @@ internal class MediaIndexScanner(
     }
 
     fun automaticScanningEnabled(): Boolean =
-        reportPrefs.getBoolean("automatic_scanning_enabled", true)
+        scanScheduler.automaticScanningEnabled()
 
-    fun scanIntervalMinutes(): Int =
-        reportPrefs.getInt("scan_interval_minutes", 60).coerceIn(15, 1440)
+    fun scanIntervalMinutes(): Int = scanScheduler.scanIntervalMinutes()
 
     fun configureAutomaticScanning(
         enabled: Boolean,
         intervalMinutes: Int,
-        scanOnStartup: Boolean = reportPrefs.getBoolean("scan_on_startup", true),
-        scanOnStorageChange: Boolean = reportPrefs.getBoolean("scan_on_storage_change", true)
-    ): org.json.JSONObject {
-        val safeInterval = intervalMinutes.coerceIn(15, 1440)
-        val editor = reportPrefs.edit()
-            .putBoolean("automatic_scanning_enabled", enabled)
-            .putBoolean("scan_on_startup", scanOnStartup)
-            .putBoolean("scan_on_storage_change", scanOnStorageChange)
-            .putInt("scan_interval_minutes", safeInterval)
-        if (enabled && lastCompletedAt == 0L && lastAttemptStartedAt == 0L &&
-            reportPrefs.getLong("schedule_anchor_at", 0L) == 0L) {
-            editor.putLong("schedule_anchor_at", System.currentTimeMillis())
-        }
-        editor.apply()
-        return automaticSettings()
-    }
+        scanOnStartup: Boolean = scanScheduler.scanOnStartupEnabled(),
+        scanOnStorageChange: Boolean = scanScheduler.scanOnStorageChangeEnabled()
+    ): org.json.JSONObject = scanScheduler.configure(
+        enabled, intervalMinutes, scanOnStartup, scanOnStorageChange
+    )
 
-    fun automaticSettings(): org.json.JSONObject {
-        val enabled = automaticScanningEnabled()
-        val interval = scanIntervalMinutes()
-        val baseline = if (state == "scanning") lastScanStartedAt else
-            lastCompletedAt.takeIf { it > 0L }
-                ?: lastAttemptStartedAt.takeIf { it > 0L }
-                ?: reportPrefs.getLong("schedule_anchor_at", 0L)
-        return org.json.JSONObject()
-            .put("enabled", enabled)
-            .put("scan_on_startup", reportPrefs.getBoolean("scan_on_startup", true))
-            .put("scan_on_storage_change", reportPrefs.getBoolean("scan_on_storage_change", true))
-            .put("interval_minutes", interval)
-            .put("next_scan_at", if (enabled && baseline > 0L) baseline + interval * 60_000L else 0L)
-    }
+    fun automaticSettings(): org.json.JSONObject = scanScheduler.settings()
 
-    fun maybeRunScheduledScan() {
-        if (!automaticScanningEnabled() || running.get()) return
-        val baseline = lastCompletedAt.takeIf { it > 0L }
-            ?: lastAttemptStartedAt.takeIf { it > 0L }
-            ?: reportPrefs.getLong("schedule_anchor_at", 0L)
-        if (baseline == 0L || System.currentTimeMillis() - baseline >= scanIntervalMinutes() * 60_000L) {
-            requestScan(force = true, trigger = "automatic")
-        }
-    }
+    fun maybeRunScheduledScan() = scanScheduler.maybeRunScheduledScan()
 
     fun runScheduledScanCheck() = maybeRunScheduledScan()
 
@@ -232,7 +211,7 @@ internal class MediaIndexScanner(
             }
         }
         dirty.set(true)
-        if (automaticScanningEnabled() && reportPrefs.getBoolean("scan_on_storage_change", true)) {
+        if (scanScheduler.automaticScanningEnabled() && scanScheduler.scanOnStorageChangeEnabled()) {
             requestScan(force = true, trigger = "automatic")
         }
     }
