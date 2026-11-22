@@ -174,6 +174,74 @@ class MediaIndexScannerTest {
 
 
     @Test
+    fun retriesAnUnreadableDirectoryWithoutPruningUntilTheRetryCompletes() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        context.deleteDatabase("pocketlink_index.db")
+        context.getSharedPreferences("media-index-report", Context.MODE_PRIVATE).edit()
+            .clear()
+            .putBoolean("automatic_scanning_enabled", false)
+            .putBoolean("scan_on_startup", false)
+            .putBoolean("scan_on_storage_change", false)
+            .commit()
+        val root = File(context.cacheDir, "media-index-retry").apply {
+            deleteRecursively()
+            mkdirs()
+        }
+        val blocked = File(root, "Blocked").apply { mkdirs() }
+        File(blocked, "available-again.mp3").writeBytes(byteArrayOf(1, 2, 3))
+        val database = MediaIndexDatabase(context)
+        try {
+            val stale = IndexedFile(
+                "internal", "Blocked/old-track.mp3", "old-track.mp3",
+                "file", 3, 1, "audio/mpeg", "music"
+            )
+            database.upsertFiles(listOf(stale), "previous-scan")
+            database.upsertMedia(listOf(stale), "previous-scan")
+        } finally {
+            database.close()
+        }
+
+        blocked.setReadable(false, false)
+        assertTrue("Test directory must be unreadable", !blocked.canRead())
+        val scanner = MediaIndexScanner(context, { root }, { emptyList() })
+        try {
+            scanner.requestScan(force = true)
+            val partial = awaitFinished(scanner)
+            assertEquals("partial", partial.getString("state"))
+            assertEquals(1, partial.getInt("music_count"))
+            assertEquals("old-track.mp3", scanner.media("music", "", 10, 0).single().name)
+            val checkpointDatabase = MediaIndexDatabase(context)
+            try {
+                assertTrue("Unreadable directory must remain in the durable scan checkpoint",
+                    checkpointDatabase.hasScanCheckpoints())
+            } finally {
+                checkpointDatabase.close()
+            }
+
+            assertTrue(blocked.setReadable(true, false))
+            SystemClock.sleep(5)
+            scanner.retryFailedScan()
+            val completed = awaitFinished(scanner, partial.getLong("last_scan_started_at"))
+            assertEquals("complete", completed.getString("state"))
+            assertEquals("available-again.mp3", scanner.media("music", "", 10, 0).single().name)
+            assertTrue(scanner.files("old-track.mp3", 10, 0).isEmpty())
+            val completedDatabase = MediaIndexDatabase(context)
+            try {
+                assertTrue("Checkpoint should clear only after the retry completes",
+                    !completedDatabase.hasScanCheckpoints())
+            } finally {
+                completedDatabase.close()
+            }
+        } finally {
+            blocked.setReadable(true, false)
+            scanner.close()
+            root.deleteRecursively()
+            context.deleteDatabase("pocketlink_index.db")
+            context.getSharedPreferences("media-index-report", Context.MODE_PRIVATE).edit().clear().commit()
+        }
+    }
+
+    @Test
     fun resumesAnExistingVolumeCheckpointAndPrunesOnlyAfterCompletion() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         context.deleteDatabase("pocketlink_index.db")
