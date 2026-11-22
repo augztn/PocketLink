@@ -322,6 +322,15 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
             fit: StackFit.expand,
             children: [
               Positioned.fill(child: navigatorContent),
+              if (!onDashboard && visible)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: PocketLinkBottomScrim(
+                    height: bottomInset + _miniPlayerHeight + 10 + 24,
+                  ),
+                ),
               if (visible)
                 Positioned(
                   left: 0,
