@@ -242,7 +242,7 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
                       );
                       if (!useGlass) return card;
                       return SmokedGlassSurface(
-                        radius: BorderRadius.circular(22),
+                        radius: BorderRadius.circular(28),
                         refractive: true,
                         intensity: curved.value,
                         tintOpacity: 0.72,
@@ -274,7 +274,7 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
                 : isDark
                     ? const Color(0xFF1E2025)
                     : Colors.white,
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(28),
             border: Border.all(
               color: useGlass
                   ? Colors.transparent
