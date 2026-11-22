@@ -1,7 +1,9 @@
 import 'package:material_ui/material_ui.dart';
-import '../../core/widgets/pocketlink_scaffold.dart';
 import 'package:share_plus/share_plus.dart';
+
+import '../../core/logging/app_logger.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
+import '../../core/widgets/pocketlink_scaffold.dart';
 
 import '../../core/logging/app_logger.dart';
 
