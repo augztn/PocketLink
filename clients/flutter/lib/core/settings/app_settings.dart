@@ -16,7 +16,6 @@ class AppSettings extends ChangeNotifier {
   static const _recentKey = 'settings_home_recent';
   static const _liquidGlassKey = 'settings_use_liquid_glass';
   static const _progressiveBlurKey = 'settings_progressive_blur';
-  static const _progressiveBlurStrengthKey = 'settings_progressive_blur_strength';
   static const _navigationOrderKey = 'settings_navigation_order';
   static const _navigationVisibilityKey = 'settings_navigation_visibility';
   static const _homeSearchKey = 'settings_home_search';
@@ -66,9 +65,7 @@ class AppSettings extends ChangeNotifier {
   bool _showActiveTransfers = true;
   List<String> _homeSectionOrder = List.of(homeSectionDefaults);
   bool _useLiquidGlass = false;
-  bool _progressiveBlurEnabled = false;
-  double _progressiveBlurStrength = 55;
-  Future<void> _progressiveBlurWrite = Future<void>.value();
+  bool _progressiveBlurEnabled = true;
   bool _loaded = false;
   List<String> _navigationOrder = List.of(navigationDefaults);
   Set<String> _visibleNavigationItems = Set.of(navigationDefaults);
@@ -110,7 +107,6 @@ class AppSettings extends ChangeNotifier {
   List<String> get homeSectionOrder => List.unmodifiable(_homeSectionOrder);
   bool get useLiquidGlass => _useLiquidGlass;
   bool get progressiveBlurEnabled => _progressiveBlurEnabled;
-  double get progressiveBlurStrength => _progressiveBlurStrength;
   List<String> get navigationOrder => List.unmodifiable(_navigationOrder);
   Set<String> get visibleNavigationItems => Set.unmodifiable(_visibleNavigationItems);
   bool get navigationLayoutIsDefault => _navigationOrder.join(',') == navigationDefaults.join(',') && _visibleNavigationItems.length == navigationDefaults.length;
@@ -150,10 +146,6 @@ class AppSettings extends ChangeNotifier {
       final preferences = await SharedPreferences.getInstance();
       _useLiquidGlass = preferences.getBool(_liquidGlassKey) ?? false;
       _progressiveBlurEnabled = preferences.getBool(_progressiveBlurKey) ?? false;
-      final storedBlurStrength = preferences.get(_progressiveBlurStrengthKey);
-      _progressiveBlurStrength = storedBlurStrength is num
-          ? storedBlurStrength.toDouble().clamp(0, 100).toDouble()
-          : 55;
       _showMiniPlayer = preferences.getBool(_nowPlayingMiniPlayerKey) ?? true;
       _enableNowPlayingGestures = preferences.getBool(_nowPlayingGesturesKey) ?? true;
       _showStatsForNerds = preferences.getBool(_nowPlayingStatsForNerdsKey) ?? true;
@@ -595,27 +587,8 @@ class AppSettings extends ChangeNotifier {
   Future<void> setProgressiveBlurEnabled(bool value) async {
     _progressiveBlurEnabled = value;
     notifyListeners();
-    final snapshot = value;
-    final write = _progressiveBlurWrite.catchError((_) {}).then((_) async {
-      final preferences = await SharedPreferences.getInstance();
-      await preferences.setBool(_progressiveBlurKey, snapshot);
-    });
-    _progressiveBlurWrite = write;
-    await write;
-  }
-
-  Future<void> setProgressiveBlurStrength(double value) async {
-    final normalized = value.clamp(0, 100).toDouble();
-    if (_progressiveBlurStrength == normalized) return;
-    _progressiveBlurStrength = normalized;
-    notifyListeners();
-    final snapshot = normalized;
-    final write = _progressiveBlurWrite.catchError((_) {}).then((_) async {
-      final preferences = await SharedPreferences.getInstance();
-      await preferences.setDouble(_progressiveBlurStrengthKey, snapshot);
-    });
-    _progressiveBlurWrite = write;
-    await write;
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_progressiveBlurKey, value);
   }
 
   Future<void> setHomeSectionOrder(List<String> order) async {
