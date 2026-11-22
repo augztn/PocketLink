@@ -67,9 +67,11 @@ class HostDeviceMetricsCard extends StatelessWidget {
                 )),
               ]),
               const SizedBox(height: 7),
-              Text(value, style: theme.textTheme.titleMedium?.copyWith(
-                color: foreground, fontWeight: FontWeight.w800,
-              )),
+              Text(value, maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: foreground, fontWeight: FontWeight.w800,
+                ),
+              ),
               if (progress != null) ...[
                 const SizedBox(height: 7),
                 ClipRRect(
@@ -138,9 +140,14 @@ class HostDeviceMetricsCard extends StatelessWidget {
                 color: foreground, fontWeight: FontWeight.w800, letterSpacing: 0.65,
               ))),
             if (sampledAt != null)
-              Text(
-                '${serverOnline == true ? 'Updated' : 'Last known'} ${sampledAt.hour.toString().padLeft(2, '0')}:${sampledAt.minute.toString().padLeft(2, '0')}',
-                style: theme.textTheme.labelSmall?.copyWith(color: muted),
+              Flexible(
+                child: Text(
+                  '${serverOnline == true ? 'Updated' : 'Last known'} ${sampledAt.hour.toString().padLeft(2, '0')}:${sampledAt.minute.toString().padLeft(2, '0')}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.end,
+                  style: theme.textTheme.labelSmall?.copyWith(color: muted),
+                ),
               ),
           ]),
           const SizedBox(height: 11),
@@ -243,8 +250,15 @@ class HostDeviceMetricsCard extends StatelessWidget {
                         '${formatBytes(volume.usedBytes!)} of ${formatBytes(volume.totalBytes!)} used',
                         style: theme.textTheme.labelSmall?.copyWith(color: muted),
                       )),
-                      Text('${formatBytes(volume.availableBytes!)} free',
-                        style: theme.textTheme.labelSmall?.copyWith(color: muted)),
+                      Flexible(
+                        child: Text(
+                          '${formatBytes(volume.availableBytes!)} free',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.end,
+                          style: theme.textTheme.labelSmall?.copyWith(color: muted),
+                        ),
+                      ),
                     ]),
                     const SizedBox(height: 5),
                     ClipRRect(
@@ -285,7 +299,15 @@ class HostDeviceMetricsCard extends StatelessWidget {
         Expanded(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
           style: theme.textTheme.labelMedium?.copyWith(color: muted))),
         if (trailing != null)
-          Text(trailing, style: theme.textTheme.labelSmall?.copyWith(color: muted)),
+          Flexible(
+            child: Text(
+              trailing,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.end,
+              style: theme.textTheme.labelSmall?.copyWith(color: muted),
+            ),
+          ),
       ]),
     );
   }
