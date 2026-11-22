@@ -140,8 +140,6 @@ abstract final class PocketLinkNavigation {
             ? origin.shortestSide / 2
             : 22.0;
         final radius = sourceRadius * (1 - progress);
-        final scaleX = rect.width / size.width;
-        final scaleY = rect.height / size.height;
         final contentOpacity = ((progress - 0.12) / 0.38)
             .clamp(0.0, 1.0)
             .toDouble();
@@ -155,18 +153,12 @@ abstract final class PocketLinkNavigation {
             const ColoredBox(color: Color(0xFF0A0B0E)),
             ClipPath(
               clipper: _MediaMorphClipper(rect: rect, radius: radius),
-              child: Transform(
-                alignment: Alignment.topLeft,
-                transform: Matrix4.identity()
-                  ..translate(rect.left, rect.top)
-                  ..scale(scaleX, scaleY),
-                child: SizedBox(
-                  width: size.width,
-                  height: size.height,
-                  child: Opacity(
-                    opacity: contentOpacity,
-                    child: animatedChild,
-                  ),
+              child: SizedBox(
+                width: size.width,
+                height: size.height,
+                child: Opacity(
+                  opacity: contentOpacity,
+                  child: animatedChild,
                 ),
               ),
             ),
