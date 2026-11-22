@@ -134,6 +134,43 @@ void main() {
     expect(await columnsFor(1440), 5);
   });
 
+  testWidgets('publishes active top-level scroll offset to shared headers', (tester) async {
+    final controller = ScrollController();
+    addTearDown(controller.dispose);
+    var observedOffset = -1.0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PocketLinkScaffold(
+          hasFloatingNavBar: false,
+          hasActiveMiniPlayer: false,
+          child: Scaffold(
+            body: Builder(
+              builder: (context) => ValueListenableBuilder<double>(
+                valueListenable: PocketLinkScrollOffsetScope.listenableOf(context),
+                builder: (context, offset, _) {
+                  observedOffset = offset;
+                  return SingleChildScrollView(
+                    controller: controller,
+                    child: const SizedBox(height: 1600),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    controller.jumpTo(140);
+    await tester.pump();
+    expect(observedOffset, 140);
+
+    controller.jumpTo(0);
+    await tester.pump();
+    expect(observedOffset, 0);
+  });
+
   testWidgets('updates top clearance from the rendered header measurement', (tester) async {
     late LayoutInsetsScope insets;
 
