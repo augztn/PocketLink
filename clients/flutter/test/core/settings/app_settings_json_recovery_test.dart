@@ -64,4 +64,20 @@ void main() {
     );
   });
 
+  test('mixed-type navigation visibility JSON falls back to defaults', () async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(
+      'settings_navigation_visibility',
+      '["home","files",123]',
+    );
+
+    final settings = AppSettings.instance;
+    await settings.reloadPreferences();
+
+    expect(
+      settings.visibleNavigationItems,
+      AppSettings.navigationDefaults.toSet(),
+    );
+  });
+
 }
