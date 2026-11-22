@@ -4,6 +4,8 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'app_settings_migrations.dart';
+
 class AppSettings extends ChangeNotifier {
   AppSettings._();
   static final AppSettings instance = AppSettings._();
@@ -22,8 +24,8 @@ class AppSettings extends ChangeNotifier {
   static const _homeSearchKey = 'settings_home_search';
   static const _homeTransfersKey = 'settings_home_transfers';
   static const _homeSectionOrderKey = 'settings_home_section_order';
-  static const _musicButtonShortcutsKey = 'settings_music_button_shortcuts';
-  static const _legacyFloatingShortcutsKey = 'settings_floating_shortcuts';
+  static const _musicButtonShortcutsKey = AppSettingsMigrations.musicButtonShortcutsKey;
+  static const _legacyFloatingShortcutsKey = AppSettingsMigrations.legacyFloatingShortcutsKey;
   static const _musicButtonSwipeEnabledKey = 'settings_music_button_swipe_enabled';
   static const _musicButtonSwipeLeftActionKey = 'settings_music_button_swipe_left_action';
   static const _musicButtonSwipeRightActionKey = 'settings_music_button_swipe_right_action';
@@ -49,12 +51,10 @@ class AppSettings extends ChangeNotifier {
   static const _videoFullscreenOrientationKey = 'settings_video_fullscreen_orientation';
   static const homeSectionDefaults = <String>['search', 'quick', 'transfers', 'continue', 'recent'];
   static const navigationDefaults = <String>['home', 'explore', 'files', 'browse'];
-  static const musicButtonShortcutDefaults = <String>[
-    'photos', 'music', 'videos', 'documents', 'files', 'search', 'drives',
-  ];
-  static const musicButtonShortcutDestinations = <String>{
-    'explore', 'files', 'music', 'videos', 'photos', 'documents', 'favorites', 'upload', 'search', 'drives',
-  };
+  static const musicButtonShortcutDefaults =
+      AppSettingsMigrations.musicButtonShortcutDefaults;
+  static const musicButtonShortcutDestinations =
+      AppSettingsMigrations.musicButtonShortcutDestinations;
 
   ThemeMode _themeMode = ThemeMode.system;
   bool _amoled = false;
@@ -186,49 +186,8 @@ class AppSettings extends ChangeNotifier {
       _musicButtonSwipeLeftAction = _validMusicSwipeAction(preferences.getString(_musicButtonSwipeLeftActionKey), 'next');
       _musicButtonSwipeRightAction = _validMusicSwipeAction(preferences.getString(_musicButtonSwipeRightActionKey), 'previous');
       _musicButtonLongPressEnabled = preferences.getBool(_musicButtonLongPressEnabledKey) ?? true;
-      final rawMusicButtonShortcuts = preferences.getString(_musicButtonShortcutsKey) ??
-          preferences.getString(_legacyFloatingShortcutsKey);
-      if (rawMusicButtonShortcuts != null) {
-        final decoded = jsonDecode(rawMusicButtonShortcuts);
-        if (decoded is List) {
-          final values = decoded.whereType<String>()
-              .where(musicButtonShortcutDestinations.contains)
-              .toList();
-          const legacyDefaults = ['explore', 'music', 'files', 'videos', 'photos', 'documents'];
-          const previousMusicDefaults = [
-            'photos', 'music', 'videos', 'documents', 'files', 'search',
-          ];
-          final isLegacyDefault = values.length == legacyDefaults.length &&
-              values.toSet().containsAll(legacyDefaults);
-          final isPreviousDefault = values.length == previousMusicDefaults.length &&
-              values.join(',') == previousMusicDefaults.join(',');
-          if (isLegacyDefault || isPreviousDefault) {
-            _musicButtonShortcuts = List.of(musicButtonShortcutDefaults);
-            if (isPreviousDefault && preferences.containsKey(_musicButtonShortcutsKey)) {
-              await preferences.setString(
-                _musicButtonShortcutsKey,
-                jsonEncode(_musicButtonShortcuts),
-              );
-            }
-          } else if (values.isNotEmpty && values.toSet().length == values.length) {
-            _musicButtonShortcuts = values;
-          }
-        }
-      }
-      if (preferences.containsKey(_legacyFloatingShortcutsKey)) {
-        await Future.wait([
-          preferences.setString(
-            _musicButtonShortcutsKey,
-            jsonEncode(_musicButtonShortcuts),
-          ),
-          preferences.remove(_legacyFloatingShortcutsKey),
-        ]);
-      }
-      await Future.wait([
-        preferences.remove('settings_floating_shortcut_enabled'),
-        preferences.remove('settings_floating_shortcut_tap_action'),
-        preferences.remove('settings_floating_shortcut_long_press'),
-      ]);
+      _musicButtonShortcuts =
+          await AppSettingsMigrations.migrateMusicButtonShortcuts(preferences);
       _showGlobalSearch = preferences.getBool(_homeSearchKey) ?? true;
       _showActiveTransfers = preferences.getBool(_homeTransfersKey) ?? true;
       final rawSectionOrder = preferences.getString(_homeSectionOrderKey);
