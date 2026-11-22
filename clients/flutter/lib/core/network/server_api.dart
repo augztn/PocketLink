@@ -517,8 +517,7 @@ class ServerApi {
     required String username,
     required String password,
     HttpClientAdapter? httpClientAdapter,
-  })  : _requestGate = _RequestGate(4),
-        _dio = Dio(
+  })  : _dio = Dio(
           BaseOptions(
             baseUrl: _normalizeBaseUrl(baseUrl),
             connectTimeout: const Duration(seconds: 10),
@@ -641,7 +640,9 @@ class ServerApi {
   }
 
   final Dio _dio;
-  final _RequestGate _requestGate;
+  // All ServerApi clients share one transport budget so profile/screen-level
+  // client instances cannot multiply the app-wide number of active requests.
+  static final _RequestGate _requestGate = _RequestGate(4);
   bool _closed = false;
   static const _directoryCacheTtl = Duration(seconds: 20);
   static const _maxCachedDirectories = 512;
