@@ -821,12 +821,12 @@ class _PhotoViewerState extends State<_PhotoViewer>{
           Text('${index+1} / ${widget.photos.length}',style:const TextStyle(fontSize:11,color:Colors.white70)),
         ]),
         actions:[
-          PocketLinkTopBarAction(
+          PocketLinkAppBarAction(
             label: widget.favorite(p) ? 'Remove favorite' : 'Add favorite',
             icon: widget.favorite(p) ? Icons.favorite : Icons.favorite_border,
             onPressed: () => setState(() => widget.onFavorite(p)),
           ),
-          PocketLinkTopBarAction(
+          PocketLinkAppBarAction(
             label: 'Download photo',
             icon: Icons.download_rounded,
             onPressed: () async {
