@@ -1,8 +1,82 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:pocketlink_client/core/settings/app_settings.dart';
 import 'package:pocketlink_client/core/widgets/smoked_glass_popover_menu.dart';
 
 void main() {
+  testWidgets('Liquid Glass ON blurs and dims the floating menu', (tester) async {
+    await tester.runAsync(
+      () => AppSettings.instance.setUseLiquidGlass(true),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SmokedGlassPopoverMenu<String>(
+            items: const [
+              SmokedGlassPopoverMenuItem(
+                value: 'settings',
+                label: 'Settings',
+                icon: Icons.settings_rounded,
+              ),
+            ],
+            onSelected: (_) {},
+            child: const Icon(Icons.more_vert_rounded),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byIcon(Icons.more_vert_rounded));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(BackdropFilter), findsOneWidget);
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is ColoredBox &&
+            widget.color == const Color(0x73000000),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('Liquid Glass OFF keeps the menu solid without backdrop blur', (tester) async {
+    await tester.runAsync(
+      () => AppSettings.instance.setUseLiquidGlass(false),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SmokedGlassPopoverMenu<String>(
+            items: const [
+              SmokedGlassPopoverMenuItem(
+                value: 'settings',
+                label: 'Settings',
+                icon: Icons.settings_rounded,
+              ),
+            ],
+            onSelected: (_) {},
+            child: const Icon(Icons.more_vert_rounded),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byIcon(Icons.more_vert_rounded));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(BackdropFilter), findsNothing);
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is ColoredBox &&
+            widget.color == const Color(0x73000000),
+      ),
+      findsNothing,
+    );
+  });
+
   testWidgets('popover blooms from its trigger and returns the selected action', (
     tester,
   ) async {
