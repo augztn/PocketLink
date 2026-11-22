@@ -280,6 +280,7 @@ internal class MediaIndexScanner(
                         .put("last_scanned_at", previous.optLong("completed_at"))
                         .put("error", "Storage volume is disconnected or no longer accessible")
                 }
+                var incompleteVolume = false
                 sources.forEach { (id, root) ->
                     currentSource = id
                     val skippedBefore = skipped
@@ -288,13 +289,14 @@ internal class MediaIndexScanner(
                     volumeReports[id] = org.json.JSONObject()
                         .put("volume", id).put("state", "scanning").put("started_at", startedAt)
                     try {
-                        scanSource(id, root)
+                        val sourceComplete = scanSource(id, root)
                         if (closeRequested.get()) return@execute
+                        if (!sourceComplete) incompleteVolume = true
                         volumeReports[id] = org.json.JSONObject()
                             .put("volume", id)
                             .put("state", when {
                                 id in disconnectedVolumes -> "unavailable"
-                                skipped == skippedBefore -> "complete"
+                                sourceComplete -> "complete"
                                 else -> "partial"
                             })
                             .put("stale", id in disconnectedVolumes)
@@ -325,10 +327,11 @@ internal class MediaIndexScanner(
                 }
                 val unavailableVolumes = volumeReports.values.any { it.optString("state") == "unavailable" }
                 if (lastError == null && skipped > 0) lastError = "Some files or folders could not be indexed."
+                if (lastError == null && incompleteVolume) lastError = "One or more storage volumes could not be fully indexed; previous entries were retained."
                 if (lastError == null && unavailableVolumes) {
                     lastError = "One or more previously indexed storage volumes are disconnected; their indexed content may be stale."
                 }
-                state = if (lastError == null && skipped == 0 && !unavailableVolumes) "complete" else "partial"
+                state = if (lastError == null && skipped == 0 && !unavailableVolumes && !incompleteVolume) "complete" else "partial"
                 lastCompletedAt = System.currentTimeMillis()
                 lastAttemptFinishedAt = lastCompletedAt
                 reportPrefs.edit().putLong("last_attempt_finished_at", lastAttemptFinishedAt).apply()
@@ -370,7 +373,7 @@ internal class MediaIndexScanner(
         }
     }
 
-    private fun scanSource(volume: String, root: Any) {
+    private fun scanSource(volume: String, root: Any): Boolean {
         ensureScanActive()
         val rootId = when (root) {
             is File -> root.canonicalPath
@@ -618,6 +621,7 @@ internal class MediaIndexScanner(
             if (complete && mediaHealthy) database.finishMediaSource(volume, scanId)
             database.clearScanCheckpoint(volume)
         }
+        return complete && filesHealthy && mediaHealthy && volume !in disconnectedVolumes
     }
 
     fun status(): org.json.JSONObject {
