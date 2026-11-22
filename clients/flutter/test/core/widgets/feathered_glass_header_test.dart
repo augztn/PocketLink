@@ -147,7 +147,7 @@ void main() {
     expect(find.byType(BackdropFilter), findsNWidgets(2));
   });
 
-  testWidgets('transparent header applies frosted blur when enabled', (tester) async {
+  testWidgets('header applies frosted blur when enabled', (tester) async {
     await tester.runAsync(
       () => AppSettings.instance.setProgressiveBlurEnabled(true),
     );
@@ -163,7 +163,7 @@ void main() {
     expect(find.byType(BackdropFilter), findsOneWidget);
   });
 
-  testWidgets('transparent header blur remains active when reduced motion is enabled', (tester) async {
+  testWidgets('header blur remains active when reduced motion is enabled', (tester) async {
     await tester.runAsync(
       () => AppSettings.instance.setProgressiveBlurEnabled(true),
     );
@@ -182,7 +182,7 @@ void main() {
     expect(find.byType(BackdropFilter), findsOneWidget);
   });
 
-  testWidgets('disabled transparent header uses a solid dark fallback', (tester) async {
+  testWidgets('turning header blur off preserves its translucent tint', (tester) async {
     await tester.runAsync(
       () => AppSettings.instance.setProgressiveBlurEnabled(false),
     );
@@ -194,12 +194,17 @@ void main() {
       ),
     );
 
-    final decorations = tester
+    expect(find.byType(BackdropFilter), findsNothing);
+    final gradients = tester
         .widgetList<DecoratedBox>(find.byType(DecoratedBox))
         .map((box) => box.decoration)
-        .whereType<BoxDecoration>();
+        .whereType<BoxDecoration>()
+        .map((decoration) => decoration.gradient)
+        .whereType<LinearGradient>();
     expect(
-      decorations.any((decoration) => decoration.color == Colors.black),
+      gradients.any((gradient) =>
+          gradient.colors.first == const Color(0x66000000) &&
+          gradient.colors.last == Colors.transparent),
       isTrue,
     );
   });
