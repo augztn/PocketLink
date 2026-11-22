@@ -393,12 +393,65 @@ class PocketLinkSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
         val uri = data.data!!
         val flags = data.flags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
         try {
-            context.contentResolver.takePersistableUriPermission(uri, flags)
+            if (flags == 0) {
+                throw SecurityException("The storage picker did not grant read or write access.")
+            }
             val rootName = DocumentFile.fromTreeUri(context, uri)?.name ?: volumeId
-            prefs.edit()
-                .putString("volume_uri_$volumeId", uri.toString())
-                .putString("volume_name_$volumeId", rootName)
-                .apply()
+            val preferenceKey = "volume_uri_$volumeId"
+            val nameKey = "volume_name_$volumeId"
+            val previousUri = prefs.getString(preferenceKey, null)
+            val previousName = prefs.getString(nameKey, null)
+            val otherReferencedUris = prefs.all.entries
+                .asSequence()
+                .filter { (key, _) -> key.startsWith("volume_uri_") && key != preferenceKey }
+                .mapNotNull { (_, value) -> value as? String }
+                .toSet()
+
+            val saved = PersistedTreePermissionReplacement.replace(
+                previousUri = previousUri,
+                selectedUri = uri.toString(),
+                otherReferencedUris = otherReferencedUris,
+                takeSelectedPermission = {
+                    context.contentResolver.takePersistableUriPermission(uri, flags)
+                },
+                saveSelection = {
+                    val committed = prefs.edit()
+                        .putString(preferenceKey, uri.toString())
+                        .putString(nameKey, rootName)
+                        .commit()
+                    if (committed) {
+                        SelectionSaveResult.SAVED
+                    } else {
+                        val rolledBack = prefs.edit().apply {
+                            if (previousUri == null) remove(preferenceKey)
+                            else putString(preferenceKey, previousUri)
+                            if (previousName == null) remove(nameKey)
+                            else putString(nameKey, previousName)
+                        }.commit()
+                        if (rolledBack) SelectionSaveResult.FAILED_ROLLED_BACK
+                        else SelectionSaveResult.FAILED_STATE_UNCERTAIN
+                    }
+                },
+                releasePermission = { staleUri ->
+                    val persistedGrant = context.contentResolver.persistedUriPermissions
+                        .firstOrNull { it.uri.toString() == staleUri }
+                    if (persistedGrant != null) {
+                        val staleFlags =
+                            (if (persistedGrant.isReadPermission) Intent.FLAG_GRANT_READ_URI_PERMISSION else 0) or
+                            (if (persistedGrant.isWritePermission) Intent.FLAG_GRANT_WRITE_URI_PERMISSION else 0)
+                        if (staleFlags != 0) {
+                            context.contentResolver.releasePersistableUriPermission(
+                                Uri.parse(staleUri),
+                                staleFlags
+                            )
+                        }
+                    }
+                }
+            )
+            if (!saved) {
+                channel.invokeMethod("storageError", "Could not save the selected storage location.")
+                return true
+            }
             channel.invokeMethod("storageChanged", status())
         } catch (error: SecurityException) {
             channel.invokeMethod("storageError", error.message ?: "Could not persist storage permission.")
