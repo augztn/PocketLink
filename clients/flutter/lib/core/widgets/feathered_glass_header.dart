@@ -46,7 +46,7 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
               ];
 
         return LayoutBuilder(
-          builder: (context, constraints) {
+          builder: (context, _) {
             if (TickerMode.of(context)) {
               LayoutInsetsScope.reportRenderedHeader(context, headerHeight);
             }
@@ -55,10 +55,9 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
               child: SizedBox(
                 width: double.infinity,
                 height: headerHeight,
-                child: ClipRect(
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
                       if (useHeaderBlur)
                         ShaderMask(
                           blendMode: BlendMode.dstIn,
@@ -92,8 +91,7 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
                           ),
                         ),
                       ),
-                    ],
-                  ),
+                  ],
                 ),
               ),
             );
