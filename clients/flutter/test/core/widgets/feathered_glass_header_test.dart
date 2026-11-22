@@ -19,28 +19,11 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  test('progressive blur is disabled by default', () {
+  test('background blur is disabled by default', () {
     expect(AppSettings.instance.progressiveBlurEnabled, isFalse);
   });
 
-  test('progressive blur strength defaults to 55 percent', () {
-    expect(AppSettings.instance.progressiveBlurStrength, 55);
-  });
-
-  test('progressive blur strength is clamped, persisted and validated', () async {
-    await AppSettings.instance.setProgressiveBlurStrength(72.5);
-    expect(AppSettings.instance.progressiveBlurStrength, 72.5);
-    expect(
-      (await SharedPreferences.getInstance()).getDouble('settings_progressive_blur_strength'),
-      72.5,
-    );
-    await expectLater(
-      AppSettings.instance.setProgressiveBlurStrength(101),
-      throwsArgumentError,
-    );
-  });
-
-  test('progressive blur preference persists when toggled', () async {
+  test('background blur preference persists when toggled', () async {
     await AppSettings.instance.setProgressiveBlurEnabled(true);
     expect(AppSettings.instance.progressiveBlurEnabled, isTrue);
     expect(
@@ -56,26 +39,11 @@ void main() {
     );
   });
 
-  testWidgets('Liquid Glass UI off disables LiquidGlassSurface blur', (tester) async {
-    await tester.runAsync(() => AppSettings.instance.setUseLiquidGlass(false));
-
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: LiquidGlassSurface(
-            radius: BorderRadius.all(Radius.circular(16)),
-            refractive: true,
-            child: Text('Dock'),
-          ),
-        ),
-      ),
-    );
-
-    expect(find.byType(BackdropFilter), findsNothing);
-  });
-
-  testWidgets('Liquid Glass UI off disables SmokedGlassSurface blur and rim', (tester) async {
-    await tester.runAsync(() => AppSettings.instance.setUseLiquidGlass(false));
+  testWidgets('Liquid Glass UI off disables floating glass blur and rim', (tester) async {
+    await tester.runAsync(() async {
+      await AppSettings.instance.setUseLiquidGlass(false);
+      await AppSettings.instance.setProgressiveBlurEnabled(true);
+    });
 
     await tester.pumpWidget(
       const MaterialApp(
@@ -98,26 +66,68 @@ void main() {
     );
   });
 
-  testWidgets('Liquid Glass UI on enables shared surface blur', (tester) async {
-    await tester.runAsync(() => AppSettings.instance.setUseLiquidGlass(true));
+  testWidgets('Background Blur off keeps translucent glass without backdrop blur', (tester) async {
+    await tester.runAsync(() async {
+      await AppSettings.instance.setUseLiquidGlass(true);
+      await AppSettings.instance.setProgressiveBlurEnabled(false);
+    });
 
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
           body: LiquidGlassSurface(
             radius: BorderRadius.all(Radius.circular(16)),
+            refractive: true,
             child: Text('Dock'),
           ),
         ),
       ),
     );
 
-    expect(find.byType(BackdropFilter), findsOneWidget);
+    expect(find.byType(BackdropFilter), findsNothing);
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is DecoratedBox &&
+            widget.decoration is BoxDecoration &&
+            (widget.decoration as BoxDecoration).color != null,
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('Background Blur on blurs both dock and mini-player glass', (tester) async {
+    await tester.runAsync(() async {
+      await AppSettings.instance.setUseLiquidGlass(true);
+      await AppSettings.instance.setProgressiveBlurEnabled(true);
+    });
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: Column(
+            children: [
+              LiquidGlassSurface(
+                radius: BorderRadius.all(Radius.circular(16)),
+                child: Text('Dock'),
+              ),
+              SmokedGlassSurface(
+                radius: BorderRadius.all(Radius.circular(16)),
+                child: Text('Mini player'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(BackdropFilter), findsNWidgets(2));
   });
 
   testWidgets('progressive header applies scroll-responsive blur when enabled', (tester) async {
-    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurStrength(55));
-    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(true));
+    await tester.runAsync(
+      () => AppSettings.instance.setProgressiveBlurEnabled(true),
+    );
 
     await tester.pumpWidget(
       _withScrolledHeader(
@@ -131,8 +141,9 @@ void main() {
   });
 
   testWidgets('scroll-responsive blur remains active when reduced motion is enabled', (tester) async {
-    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurStrength(55));
-    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(true));
+    await tester.runAsync(
+      () => AppSettings.instance.setProgressiveBlurEnabled(true),
+    );
 
     await tester.pumpWidget(
       _withScrolledHeader(
@@ -148,8 +159,10 @@ void main() {
     expect(find.byType(BackdropFilter), findsOneWidget);
   });
 
-  testWidgets('custom dark tint is retained when progressive blur is disabled', (tester) async {
-    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(false));
+  testWidgets('custom dark tint is retained when background blur is disabled', (tester) async {
+    await tester.runAsync(
+      () => AppSettings.instance.setProgressiveBlurEnabled(false),
+    );
 
     await tester.pumpWidget(
       _withScrolledHeader(
@@ -175,7 +188,8 @@ void main() {
         .map((decoration) => decoration.gradient)
         .whereType<LinearGradient>();
     expect(
-      gradients.any((gradient) => gradient.colors.length == 3 &&
+      gradients.any((gradient) =>
+          gradient.colors.length == 3 &&
           gradient.colors[0] == const Color(0xD9000000) &&
           gradient.colors[1] == const Color(0x66000000) &&
           gradient.colors[2] == Colors.transparent),
@@ -183,24 +197,10 @@ void main() {
     );
   });
 
-  testWidgets('zero blur strength removes backdrop filters while enabled', (tester) async {
-    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(true));
-    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurStrength(0));
-
-    await tester.pumpWidget(
-      _withScrolledHeader(
-        const MaterialApp(
-          home: Scaffold(body: FeatheredGlassHeaderBackground()),
-        ),
-      ),
+  testWidgets('background blur off removes header filters immediately', (tester) async {
+    await tester.runAsync(
+      () => AppSettings.instance.setProgressiveBlurEnabled(true),
     );
-
-    expect(find.byType(BackdropFilter), findsNothing);
-  });
-
-  testWidgets('progressive blur off removes backdrop filters immediately', (tester) async {
-    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurStrength(55));
-    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(true));
 
     await tester.pumpWidget(
       _withScrolledHeader(
@@ -211,15 +211,18 @@ void main() {
     );
     expect(find.byType(BackdropFilter), findsOneWidget);
 
-    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(false));
+    await tester.runAsync(
+      () => AppSettings.instance.setProgressiveBlurEnabled(false),
+    );
     await tester.pump();
 
     expect(find.byType(BackdropFilter), findsNothing);
   });
 
-  testWidgets('glass header buttons disable their filter in fallback mode', (tester) async {
-    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurStrength(55));
-    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(false));
+  testWidgets('glass header buttons follow the background blur toggle', (tester) async {
+    await tester.runAsync(
+      () => AppSettings.instance.setProgressiveBlurEnabled(false),
+    );
 
     await tester.pumpWidget(
       const MaterialApp(
@@ -235,7 +238,9 @@ void main() {
 
     expect(find.byType(BackdropFilter), findsNothing);
 
-    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(true));
+    await tester.runAsync(
+      () => AppSettings.instance.setProgressiveBlurEnabled(true),
+    );
     await tester.pump();
 
     expect(find.byType(BackdropFilter), findsOneWidget);
