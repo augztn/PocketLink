@@ -6,6 +6,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_settings_migrations.dart';
 
+List<String>? _decodeStoredStringList(String? raw) {
+  if (raw == null) return null;
+  try {
+    final decoded = jsonDecode(raw);
+    return decoded is List ? decoded.whereType<String>().toList() : null;
+  } on FormatException {
+    return null;
+  }
+}
+
 class AppSettings extends ChangeNotifier {
   AppSettings._();
   static final AppSettings instance = AppSettings._();
@@ -190,40 +200,35 @@ class AppSettings extends ChangeNotifier {
           await AppSettingsMigrations.migrateMusicButtonShortcuts(preferences);
       _showGlobalSearch = preferences.getBool(_homeSearchKey) ?? true;
       _showActiveTransfers = preferences.getBool(_homeTransfersKey) ?? true;
-      final rawSectionOrder = preferences.getString(_homeSectionOrderKey);
-      if (rawSectionOrder != null) {
-        final decoded = jsonDecode(rawSectionOrder);
-        if (decoded is List) {
-          final values = decoded.whereType<String>().toList();
-          if (values.length == homeSectionDefaults.length &&
-              values.toSet().length == homeSectionDefaults.length &&
-              values.toSet().containsAll(homeSectionDefaults)) {
-            _homeSectionOrder = values;
-          }
-        }
+      final sectionValues = _decodeStoredStringList(
+        preferences.getString(_homeSectionOrderKey),
+      );
+      if (sectionValues != null &&
+          sectionValues.length == homeSectionDefaults.length &&
+          sectionValues.toSet().length == homeSectionDefaults.length &&
+          sectionValues.toSet().containsAll(homeSectionDefaults)) {
+        _homeSectionOrder = sectionValues;
       }
-      final rawOrder = preferences.getString(_navigationOrderKey);
-      final rawVisibility = preferences.getString(_navigationVisibilityKey);
-      if (rawOrder != null) {
-        final decoded = jsonDecode(rawOrder);
-        if (decoded is List) {
-          final values = decoded.whereType<String>().toList();
-          if (values.length == navigationDefaults.length &&
-              values.toSet().length == navigationDefaults.length &&
-              values.toSet().containsAll(navigationDefaults)) {
-            _navigationOrder = values;
-          }
-        }
+
+      final navigationValues = _decodeStoredStringList(
+        preferences.getString(_navigationOrderKey),
+      );
+      if (navigationValues != null &&
+          navigationValues.length == navigationDefaults.length &&
+          navigationValues.toSet().length == navigationDefaults.length &&
+          navigationValues.toSet().containsAll(navigationDefaults)) {
+        _navigationOrder = navigationValues;
       }
-      if (rawVisibility != null) {
-        final decoded = jsonDecode(rawVisibility);
-        if (decoded is List) {
-          final values = decoded.whereType<String>().toSet();
-          if (values.contains('home') &&
-              values.length >= 2 &&
-              values.every(navigationDefaults.contains)) {
-            _visibleNavigationItems = values;
-          }
+
+      final visibilityValues = _decodeStoredStringList(
+        preferences.getString(_navigationVisibilityKey),
+      );
+      if (visibilityValues != null) {
+        final values = visibilityValues.toSet();
+        if (values.contains('home') &&
+            values.length >= 2 &&
+            values.every(navigationDefaults.contains)) {
+          _visibleNavigationItems = values;
         }
       }
     } catch (_) {
