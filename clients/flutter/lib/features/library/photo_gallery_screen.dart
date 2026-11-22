@@ -277,7 +277,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     padding: (shrinkWrap
         ? EdgeInsets.zero
         : PocketLinkHorizontalGutter.padding(context)).copyWith(
-      top: shrinkWrap || searchOpen ? 2 : 8,
+      top: shrinkWrap || searchOpen || loading ? 2 : LayoutInsetsScope.of(context).topClearance,
       bottom: shrinkWrap ? 0 : LayoutInsetsScope.of(context).bottomClearance,
     ),
     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -307,7 +307,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     if (dateMode == 3) return grid(items);
     final groups = <String,List<_Photo>>{};
     for (final p in items) { groups.putIfAbsent(group(p), () => []).add(p); }
-    return ListView(padding: PocketLinkHorizontalGutter.padding(context).copyWith(top: searchOpen ? 0 : 8, bottom: LayoutInsetsScope.of(context).bottomClearance), children: [
+    return ListView(padding: PocketLinkHorizontalGutter.padding(context).copyWith(top: searchOpen || loading ? 0 : LayoutInsetsScope.of(context).topClearance, bottom: LayoutInsetsScope.of(context).bottomClearance), children: [
       for (final entry in groups.entries) ...[
         Padding(padding: const EdgeInsets.fromLTRB(0,18,0,8),
           child: Row(children: [
@@ -329,7 +329,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
       );
     }
     return GridView.builder(
-      padding: PocketLinkHorizontalGutter.padding(context).copyWith(top: searchOpen ? 12 : 8, bottom: LayoutInsetsScope.of(context).bottomClearance),
+      padding: PocketLinkHorizontalGutter.padding(context).copyWith(top: searchOpen || loading ? 12 : LayoutInsetsScope.of(context).topClearance, bottom: LayoutInsetsScope.of(context).bottomClearance),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: PocketLinkResponsiveLayout.gridColumns(context),
         crossAxisSpacing: 12,
@@ -362,7 +362,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     }
     final featured=memories.entries.take(8).toList();
     final albums=groupByAlbum(items);
-    return ListView(padding: PocketLinkHorizontalGutter.padding(context).copyWith(top: searchOpen ? 16 : 8, bottom: LayoutInsetsScope.of(context).bottomClearance),children:[
+    return ListView(padding: PocketLinkHorizontalGutter.padding(context).copyWith(top: searchOpen || loading ? 16 : LayoutInsetsScope.of(context).topClearance, bottom: LayoutInsetsScope.of(context).bottomClearance),children:[
       Text('Memories',style:Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight:FontWeight.w800)),
       const SizedBox(height:4),
       Text('Moments grouped by the dates stored with your photos.',style:Theme.of(context).textTheme.bodySmall),
@@ -568,6 +568,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     final counts = [photos.length, albumCount, favoriteCount];
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: PocketLinkTopBar(
         showMoreMenu: false,
         title: selecting
@@ -675,6 +676,8 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
       ),
       body: Column(children: [
         if (widget.showSearch && searchOpen)
+          SizedBox(height: LayoutInsetsScope.of(context).topClearance),
+        if (widget.showSearch && searchOpen)
           Padding(
             padding: PocketLinkHorizontalGutter.padding(context).copyWith(top: 4, bottom: 8),
             child: TextField(
@@ -697,6 +700,8 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
               ),
             ),
           ),
+        if (!searchOpen && (loading || error != null))
+          SizedBox(height: LayoutInsetsScope.of(context).topClearance),
         if (loading) const LinearProgressIndicator(minHeight: 2),
         if (error != null)
           Padding(
@@ -749,6 +754,9 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                             : items.isEmpty
                                 ? Padding(
                                     padding: EdgeInsets.only(
+                                      top: searchOpen || loading || error != null
+                                          ? 0
+                                          : LayoutInsetsScope.of(context).topClearance,
                                       bottom: LayoutInsetsScope.of(context).bottomClearance,
                                     ),
                                     child: empty(tab == 2
