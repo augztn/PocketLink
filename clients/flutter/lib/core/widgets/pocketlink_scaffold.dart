@@ -49,6 +49,34 @@ class PocketLinkScrollOffsetScope extends InheritedNotifier<ValueNotifier<double
       context.dependOnInheritedWidgetOfExactType<PocketLinkScrollOffsetScope>()?.notifier ?? _zero;
 }
 
+/// Shared background fade behind the persistent mini-player and bottom dock.
+class PocketLinkBottomScrim extends StatelessWidget {
+  const PocketLinkBottomScrim({required this.height, super.key});
+
+  final double height;
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+        child: SizedBox(
+          height: height,
+          child: const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.transparent,
+                  Color(0x66000000),
+                  Color(0xFF000000),
+                ],
+                stops: [0.0, 0.48, 1.0],
+              ),
+            ),
+          ),
+        ),
+      );
+}
+
 /// Route-level layout geometry shared by every PocketLink screen.
 class LayoutInsetsScope extends InheritedWidget {
   const LayoutInsetsScope({
