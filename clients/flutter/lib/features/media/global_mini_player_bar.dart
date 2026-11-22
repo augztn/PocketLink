@@ -10,6 +10,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
     required this.item,
     required this.visible,
     required this.reduceMotion,
+    this.compact = false,
     required this.isPlaying,
     required this.position,
     required this.duration,
@@ -27,6 +28,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
   final MediaQueueItem item;
   final bool visible;
   final bool reduceMotion;
+  final bool compact;
   final bool isPlaying;
   final Duration position;
   final Duration duration;
@@ -67,7 +69,9 @@ class GlobalMiniPlayerBar extends StatelessWidget {
       alignment: Alignment.centerLeft,
       child: Padding(
         // Match the full outer width of the 3+1 navigation dock.
-        padding: PocketLinkHorizontalGutter.padding(context).copyWith(top: 4),
+        padding: compact
+            ? const EdgeInsets.only(top: 4)
+            : PocketLinkHorizontalGutter.padding(context).copyWith(top: 4),
         child: TweenAnimationBuilder<double>(
           tween: Tween<double>(end: visible ? 1 : 0),
           duration: reduceMotion
@@ -76,7 +80,11 @@ class GlobalMiniPlayerBar extends StatelessWidget {
           curve: Curves.easeOut,
           builder: (context, intensity, _) => SmokedGlassSurface(
             key: surfaceKey,
-            radius: BorderRadius.circular(22),
+            radius: BorderRadius.lerp(
+              BorderRadius.circular(22),
+              BorderRadius.circular(18),
+              compact ? 1 : 0,
+            )!,
             refractive: true,
             intensity: intensity,
             child: Opacity(
@@ -98,7 +106,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       SizedBox(
-                        height: 55,
+                        height: compact ? 52 : 55,
                         child: Row(
                           children: [
                             const SizedBox(width: 10),
@@ -151,7 +159,8 @@ class GlobalMiniPlayerBar extends StatelessWidget {
                                 ],
                               ),
                             ),
-                            IconButton(
+                            if (!compact)
+                              IconButton(
                               tooltip: 'Previous track',
                               visualDensity: VisualDensity.compact,
                               padding: EdgeInsets.zero,
@@ -184,7 +193,8 @@ class GlobalMiniPlayerBar extends StatelessWidget {
                                 size: 22,
                               ),
                             ),
-                            IconButton(
+                            if (!compact)
+                              IconButton(
                               tooltip: 'Next track',
                               visualDensity: VisualDensity.compact,
                               padding: EdgeInsets.zero,
