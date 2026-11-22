@@ -5,7 +5,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pocketlink_client/core/settings/app_settings.dart';
 import 'package:pocketlink_client/core/widgets/feathered_glass_header.dart';
 import 'package:pocketlink_client/core/widgets/liquid_glass_pill.dart';
-import 'package:pocketlink_client/core/widgets/pocketlink_scaffold.dart';
 
 Widget _withHeader(Widget child) => child;
 
@@ -303,5 +302,4 @@ void main() {
     // The dock keeps its original Liquid Glass blur; the header contributes none.
     expect(find.byType(BackdropFilter), findsOneWidget);
   });
-
 }
