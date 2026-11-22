@@ -333,6 +333,7 @@ internal class MediaIndexScanner(
                     }
                 }
                 val unavailableVolumes = volumeReports.values.any { it.optString("state") == "unavailable" }
+                if (database.hasScanCheckpoints()) incompleteVolume = true
                 if (lastError == null && skipped > 0) lastError = "Some files or folders could not be indexed."
                 if (lastError == null && incompleteVolume) lastError = "One or more storage volumes could not be fully indexed; previous entries were retained."
                 if (lastError == null && unavailableVolumes) {
