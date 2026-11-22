@@ -826,7 +826,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       },
       child: Scaffold(
         extendBodyBehindAppBar: true,
-        appBar: PocketLinkAppBar(
+        appBar: PocketLinkTopBar(
           feathered: true,
           showHome: false,
           automaticallyImplyLeading: false,
@@ -899,11 +899,11 @@ tooltip: 'Choose video view',
             ]),
           ),
           actions: [
-            if (widget.showSearch) PocketLinkAppBarAction(label: _searchExpanded ? 'Close search' : 'Search videos', icon: _searchExpanded ? Icons.close_rounded : Icons.search_rounded, onPressed: () => _setSearchExpanded(!_searchExpanded)),
-            PocketLinkAppBarAction(label: 'Filter & sort', icon: Icons.tune_rounded, onPressed: _showMusicFilters),
-            PocketLinkAppBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded,
+            if (widget.showSearch) PocketLinkTopBarAction(label: _searchExpanded ? 'Close search' : 'Search videos', icon: _searchExpanded ? Icons.close_rounded : Icons.search_rounded, onPressed: () => _setSearchExpanded(!_searchExpanded)),
+            PocketLinkTopBarAction(label: 'Filter & sort', icon: Icons.tune_rounded, onPressed: _showMusicFilters),
+            PocketLinkTopBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded,
               onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TransferManagerScreen())), dividerBefore: true),
-            PocketLinkAppBarAction(label: 'Scan again', icon: Icons.refresh_rounded, onPressed: _loading ? null : () => _scan(refresh: true)),
+            PocketLinkTopBarAction(label: 'Scan again', icon: Icons.refresh_rounded, onPressed: _loading ? null : () => _scan(refresh: true)),
           ],
         ),
         body: Column(children: [
@@ -1393,7 +1393,7 @@ tooltip: 'Choose video view',
       child: AnimatedBuilder(
         animation: PersistentAudioPlayer.instance,
         builder: (context, _) => Scaffold(
-          appBar: PocketLinkAppBar(
+          appBar: PocketLinkTopBar(
             automaticallyImplyLeading: false,
             showMoreMenu: false,
             title: _searchExpanded && widget.showSearch
@@ -1574,7 +1574,7 @@ tooltip: 'Choose video view',
                                 builder: (_) => const SettingsScreen(),
                               ));
                             }
-                            if (value == 'home') PocketLinkAppBar.goToDashboard(context);
+                            if (value == 'home') PocketLinkTopBar.goToDashboard(context);
                           },
                           child: GlassCircleButton(
                             size: 40,
