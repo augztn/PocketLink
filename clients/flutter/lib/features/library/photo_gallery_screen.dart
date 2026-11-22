@@ -324,7 +324,10 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     final albums = groupByAlbum(items).entries.toList()..sort((a,b)=>a.key.compareTo(b.key));
     if (albums.isEmpty) {
       return Padding(
-        padding: EdgeInsets.only(bottom: LayoutInsetsScope.of(context).bottomClearance),
+        padding: EdgeInsets.only(
+          top: searchOpen || loading ? 0 : LayoutInsetsScope.of(context).topClearance,
+          bottom: LayoutInsetsScope.of(context).bottomClearance,
+        ),
         child: empty('Albums will appear when photos are found.'),
       );
     }
@@ -702,7 +705,10 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
           ),
         if (!searchOpen && (loading || error != null))
           SizedBox(height: LayoutInsetsScope.of(context).topClearance),
-        if (loading) const LinearProgressIndicator(minHeight: 2),
+        if (loading) const LinearProgressIndicator(
+          minHeight: 2,
+          color: Color(0xFFB8C4FF),
+        ),
         if (error != null)
           Padding(
             padding: const EdgeInsets.all(12),
