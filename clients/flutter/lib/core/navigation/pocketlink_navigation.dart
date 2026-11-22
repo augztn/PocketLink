@@ -140,13 +140,9 @@ abstract final class PocketLinkNavigation {
             ? origin.shortestSide / 2
             : 22.0;
         final radius = sourceRadius * (1 - progress);
-        final contentOpacity = ((progress - 0.12) / 0.38)
-            .clamp(0.0, 1.0)
-            .toDouble();
-
-        // Keep a solid route backdrop underneath the moving clip. The page is
-        // painted at its real full-screen size and transformed only at paint
-        // time; FittedBox(BoxFit.fill) re-laid it out and produced the blue band.
+        // Keep the page at its real full-screen size; only the rounded clip
+        // grows from the source rect. No opacity layer is placed above the
+        // page because it contains backdrop-filtered artwork surfaces.
         return Stack(
           fit: StackFit.expand,
           children: [
@@ -156,10 +152,7 @@ abstract final class PocketLinkNavigation {
               child: SizedBox(
                 width: size.width,
                 height: size.height,
-                child: Opacity(
-                  opacity: contentOpacity,
-                  child: animatedChild,
-                ),
+                child: animatedChild,
               ),
             ),
           ],
