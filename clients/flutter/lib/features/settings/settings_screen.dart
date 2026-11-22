@@ -1,6 +1,5 @@
 import 'dart:io';
 import '../../core/widgets/pocketlink_app_bar.dart';
-import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
 
 import 'package:file_picker/file_picker.dart' as file_picker;
