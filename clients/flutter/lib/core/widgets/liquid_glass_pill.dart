@@ -108,16 +108,24 @@ class LiquidGlassSurface extends StatelessWidget {
               : themedSurface,
         );
 
-        return CustomPaint(
-          painter: _LiquidGlassShadowPainter(
-            radius: radius,
-            intensity: level,
+        final shadowedSurface = PhysicalShape(
+          clipper: ShapeBorderClipper(
+            shape: RoundedRectangleBorder(borderRadius: radius),
           ),
-          foregroundPainter: useRefraction
-              ? _RefractiveGlassRimPainter(radius: radius, intensity: level)
-              : null,
+          color: Colors.transparent,
+          elevation: useGlass ? 8 * level : 0,
+          shadowColor: Colors.black.withValues(alpha: 0.22 * level),
           child: clippedSurface,
         );
+        return useRefraction
+            ? CustomPaint(
+                foregroundPainter: _RefractiveGlassRimPainter(
+                  radius: radius,
+                  intensity: level,
+                ),
+                child: shadowedSurface,
+              )
+            : shadowedSurface;
       },
     );
   }
@@ -220,16 +228,24 @@ class SmokedGlassSurface extends StatelessWidget {
                   child: child,
                 ),
         );
-        return CustomPaint(
-          painter: _LiquidGlassShadowPainter(
-            radius: radius,
-            intensity: enabled ? level : 0,
+        final shadowedSurface = PhysicalShape(
+          clipper: ShapeBorderClipper(
+            shape: RoundedRectangleBorder(borderRadius: radius),
           ),
-          foregroundPainter: enabled && refractive
-              ? _RefractiveGlassRimPainter(radius: radius, intensity: level)
-              : null,
+          color: Colors.transparent,
+          elevation: enabled ? 8 * level : 0,
+          shadowColor: Colors.black.withValues(alpha: 0.22 * level),
           child: surface,
         );
+        return enabled && refractive
+            ? CustomPaint(
+                foregroundPainter: _RefractiveGlassRimPainter(
+                  radius: radius,
+                  intensity: level,
+                ),
+                child: shadowedSurface,
+              )
+            : shadowedSurface;
       },
     );
   }
@@ -267,7 +283,8 @@ class _RefractiveGlassRimPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _RefractiveGlassRimPainter oldDelegate) =>
-      oldDelegate.radius != radius;
+      oldDelegate.radius != radius ||
+      oldDelegate.intensity != intensity;
 }
 
 /// Backwards-compatible name retained for existing call sites.
