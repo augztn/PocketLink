@@ -131,16 +131,16 @@ internal class InternalStorageOperations(
         }
     }
 
-    fun delete(relative: String): NanoHTTPD.Response {
+    fun delete(relative: String): NanoHTTPD.Response = synchronized(mutationLock) {
         val file = resolve(relative)
-            ?: return error(NanoHTTPD.Response.Status.NOT_FOUND, "Item not found")
+            ?: return@synchronized error(NanoHTTPD.Response.Status.NOT_FOUND, "Item not found")
         if (file == root()) {
-            return error(NanoHTTPD.Response.Status.BAD_REQUEST, "Cannot delete storage root")
+            return@synchronized error(NanoHTTPD.Response.Status.BAD_REQUEST, "Cannot delete storage root")
         }
         if (file.isDirectory && file.list()?.isNotEmpty() == true) {
-            return error(NanoHTTPD.Response.Status.BAD_REQUEST, "Folder is not empty")
+            return@synchronized error(NanoHTTPD.Response.Status.BAD_REQUEST, "Folder is not empty")
         }
-        return if (file.delete()) {
+        if (file.delete()) {
             markMediaIndexDirty()
             json(JSONObject().put("ok", true))
         } else {
