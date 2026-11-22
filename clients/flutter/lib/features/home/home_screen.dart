@@ -564,12 +564,22 @@ class _HomeScreenState extends State<HomeScreen> {
           body: Stack(
             fit: StackFit.expand,
             children: [
-              ImageFiltered(
-                imageFilter: ui.ImageFilter.blur(
-                  sigmaX: _musicShortcutsExpanded ? 16 : 0,
-                  sigmaY: _musicShortcutsExpanded ? 16 : 0,
+              TweenAnimationBuilder<double>(
+                tween: Tween<double>(
+                  end: _musicShortcutsExpanded ? 16 : 0,
                 ),
-                enabled: _musicShortcutsExpanded,
+                duration: reduceMotion
+                    ? Duration.zero
+                    : Duration(milliseconds: _musicShortcutsExpanded ? 360 : 220),
+                curve: Curves.easeOutCubic,
+                builder: (context, blurSigma, child) => ImageFiltered(
+                  imageFilter: ui.ImageFilter.blur(
+                    sigmaX: blurSigma,
+                    sigmaY: blurSigma,
+                  ),
+                  enabled: blurSigma > 0.1,
+                  child: child!,
+                ),
                 child: IgnorePointer(
                   ignoring: _libraryOpen || _hostSetupOpen,
                   child: PageView.builder(
