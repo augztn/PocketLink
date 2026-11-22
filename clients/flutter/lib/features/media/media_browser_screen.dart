@@ -1642,7 +1642,7 @@ tooltip: 'Choose video view',
                               physics: const AlwaysScrollableScrollPhysics(),
                               controller: _contentScrollController,
                               padding: PocketLinkHorizontalGutter.padding(context).copyWith(
-            top: 8,
+            top: LayoutInsetsScope.of(context).topClearance,
             bottom: LayoutInsetsScope.of(context).bottomClearance,
           ),
                               itemCount: visible.length,
@@ -1655,7 +1655,8 @@ tooltip: 'Choose video view',
                             ),
                     ),
             ),
-            if (_loading)              Positioned(
+            if (_loading)
+              Positioned(
                 top: LayoutInsetsScope.of(context).topClearance + 4,
                 left: PocketLinkHorizontalGutter.padding(context).left,
                 right: PocketLinkHorizontalGutter.padding(context).right,
