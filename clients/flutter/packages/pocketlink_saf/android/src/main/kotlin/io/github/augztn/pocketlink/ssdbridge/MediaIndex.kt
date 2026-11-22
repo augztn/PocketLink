@@ -401,39 +401,17 @@ internal class MediaIndexScanner(
         val resume = saved != null &&
             saved.optString("root_id") == rootId &&
             saved.optString("scan_id").isNotBlank() &&
-            savedState != null && savedState.has("pending") && savedState.has("visited")
+            savedState != null
         val scanId = if (resume) saved!!.optString("scan_id") else UUID.randomUUID().toString()
-        val pending = mutableListOf<String>()
-        val visited = mutableSetOf<String>()
-        var complete = true
-        var filesHealthy = true
-        var mediaHealthy = true
-        if (resume) {
-            val paths = savedState!!.optJSONArray("pending")
-            if (paths != null) for (index in 0 until paths.length()) {
-                paths.optString(index).takeIf { it.isNotBlank() || index == 0 }?.let(pending::add)
-            }
-            val identities = savedState.optJSONArray("visited")
-            if (identities != null) for (index in 0 until identities.length()) {
-                identities.optString(index).takeIf { it.isNotBlank() }?.let(visited::add)
-            }
-            complete = savedState.optBoolean("complete", true)
-            filesHealthy = savedState.optBoolean("files_healthy", true)
-            mediaHealthy = savedState.optBoolean("media_healthy", true)
-        } else {
-            pending += ""
+        var complete = savedState?.optBoolean("complete", true) ?: true
+        var filesHealthy = savedState?.optBoolean("files_healthy", true) ?: true
+        var mediaHealthy = savedState?.optBoolean("media_healthy", true) ?: true
+        if (resume && savedState?.optBoolean("normalized", false) != true) {
+            // Convert an existing JSON checkpoint once; subsequent updates touch only changed rows.
+            database.saveScanCheckpoint(volume, rootId, scanId, savedState.toString())
+        } else if (!resume) {
+            database.beginScanCheckpoint(volume, rootId, scanId)
         }
-
-        fun saveCheckpoint() {
-            val state = org.json.JSONObject()
-                .put("pending", org.json.JSONArray().also { array -> pending.forEach { array.put(it) } })
-                .put("visited", org.json.JSONArray().also { array -> visited.forEach { array.put(it) } })
-                .put("complete", complete)
-                .put("files_healthy", filesHealthy)
-                .put("media_healthy", mediaHealthy)
-            database.saveScanCheckpoint(volume, rootId, scanId, state.toString())
-        }
-        saveCheckpoint()
 
         val fileSnapshot = database.fileSnapshot(volume)
         val mediaSnapshot = database.mediaSnapshot(volume)
@@ -524,12 +502,18 @@ internal class MediaIndexScanner(
             return current
         }
 
-        while (pending.isNotEmpty()) {
-            var directoriesInBatch = 0
-            while (pending.isNotEmpty() && directoriesInBatch < MAX_DIRECTORIES_PER_BATCH) {
+        while (true) {
+            ensureScanActive()
+            ensureVolumeConnected(volume)
+            val pendingBatch = database.pendingBatch(volume, scanId, MAX_DIRECTORIES_PER_BATCH)
+            if (pendingBatch.isEmpty()) break
+            val consumedIds = pendingBatch.map { it.id }
+            val pendingPaths = mutableListOf<String>()
+            val visitedThisBatch = mutableSetOf<String>()
+            for (pendingItem in pendingBatch) {
                 ensureScanActive()
                 ensureVolumeConnected(volume)
-                val relativePath = pending.removeAt(pending.lastIndex)
+                val relativePath = pendingItem.path
                 currentPath = relativePath
                 val identity: String
                 val children: Array<out Any>
@@ -550,7 +534,7 @@ internal class MediaIndexScanner(
                             continue
                         }
                         identity = directory.path
-                        if (!visited.add(identity)) continue
+                        if (database.hasVisited(volume, scanId, identity) || !visitedThisBatch.add(identity)) continue
                         children = try { directory.listFiles()?.toList()?.toTypedArray() ?: run {
                             complete = false
                             skipped++
@@ -609,7 +593,7 @@ internal class MediaIndexScanner(
                             val childPath = canonical.relativeTo(baseDirectory).invariantSeparatorsPath
                             add(childPath, child.name, child.isDirectory, if (child.isFile) child.length() else 0L,
                                 child.lastModified(), MediaFileClassifier.mimeForName(child.name))
-                            if (child.isDirectory) pending.add(childPath)
+                            if (child.isDirectory) pendingPaths.add(childPath)
                         }
                         is DocumentFile -> {
                             val name = child.name ?: run {
@@ -629,8 +613,12 @@ internal class MediaIndexScanner(
             }
             ensureScanActive()
             flush()
-            // The previous checkpoint remains valid until this complete batch is committed.
-            saveCheckpoint()
+            // Queue consumption, discovered directories, visited identities and health flags
+            // commit atomically. A crash before commit safely replays this batch.
+            database.commitScanBatch(
+                volume, scanId, consumedIds, pendingPaths, visitedThisBatch,
+                complete, filesHealthy, mediaHealthy
+            )
         }
 
         ensureScanActive()
