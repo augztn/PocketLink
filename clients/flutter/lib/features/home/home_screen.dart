@@ -109,6 +109,10 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_selectedIndex == nextIndex && _initializedTabs.contains(nextIndex)) {
       return;
     }
+    if (_selectedIndex != nextIndex) {
+      _tabBackHandler?.call();
+      _tabBackHandler = null;
+    }
     setState(() {
       _selectedIndex = nextIndex;
       _initializedTabs.add(nextIndex);
