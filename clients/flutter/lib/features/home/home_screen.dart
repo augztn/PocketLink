@@ -589,11 +589,31 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
-              if (_libraryOpen && _libraryPage != null)
-                Positioned.fill(child: _libraryPage!),
-              if (_hostSetupOpen && _hostSetupInitialized)
+              if (_libraryPage != null)
                 Positioned.fill(
-                  child: LocalStorageSetupScreen(onHome: _closeHostSetup),
+                  child: Offstage(
+                    offstage: !_libraryOpen,
+                    child: TickerMode(
+                      enabled: _libraryOpen,
+                      child: IgnorePointer(
+                        ignoring: !_libraryOpen,
+                        child: _libraryPage!,
+                      ),
+                    ),
+                  ),
+                ),
+              if (_hostSetupInitialized)
+                Positioned.fill(
+                  child: Offstage(
+                    offstage: !_hostSetupOpen,
+                    child: TickerMode(
+                      enabled: _hostSetupOpen,
+                      child: IgnorePointer(
+                        ignoring: !_hostSetupOpen,
+                        child: LocalStorageSetupScreen(onHome: _closeHostSetup),
+                      ),
+                    ),
+                  ),
                 ),
               if (!_hostSetupOpen && !_libraryOpen)
                 Positioned(
