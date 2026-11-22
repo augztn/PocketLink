@@ -390,11 +390,9 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
         ),
         body: Column(children: [
           Padding(
-            padding: EdgeInsets.fromLTRB(
-              16,
-              LayoutInsetsScope.of(context).topClearance + 0,
-              16,
-              10,
+            padding: PocketLinkHorizontalGutter.padding(context).copyWith(
+              top: LayoutInsetsScope.of(context).topClearance,
+              bottom: 10,
             ),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
