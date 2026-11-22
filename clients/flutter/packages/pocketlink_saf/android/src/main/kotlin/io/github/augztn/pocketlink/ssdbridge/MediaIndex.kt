@@ -610,7 +610,8 @@ internal class MediaIndexScanner(
         val counts = stats.counts
         val sizes = stats.sizes
         val history = readScanHistory()
-        return org.json.JSONObject()
+        return synchronized(statusLock) {
+            org.json.JSONObject()
             .put("state", state)
             .put("last_attempt_started_at", lastAttemptStartedAt)
             .put("last_attempt_finished_at", lastAttemptFinishedAt)
