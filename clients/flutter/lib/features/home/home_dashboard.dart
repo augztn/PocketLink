@@ -1011,7 +1011,13 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
-        flexibleSpace: const FeatheredGlassHeaderBackground(),
+        flexibleSpace: const FeatheredGlassHeaderBackground(
+          darkTint: [
+            Color(0xFF000000),
+            Color(0xFF000000),
+            Color(0xFF000000),
+          ],
+        ),
         titleSpacing: 8,
         title: Transform.translate(
           offset: const Offset(0, 6),
