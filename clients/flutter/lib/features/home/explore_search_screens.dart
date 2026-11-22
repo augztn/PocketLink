@@ -298,28 +298,28 @@ class _ExploreGridState extends State<_ExploreGrid>
         automaticallyImplyLeading: false,
         title: const Text('Explore'),
         actions: [
-          PocketLinkTopBarAction(
+          PocketLinkAppBarAction(
             label: 'Download manager',
             icon: Icons.download_rounded,
             onPressed: () => onOpen(DownloadsScreen(api: api)),
           ),
-          PocketLinkTopBarAction(
+          PocketLinkAppBarAction(
             label: 'Transfers',
             icon: Icons.swap_vert_rounded,
             onPressed: () => onOpen(const TransferManagerScreen()),
           ),
-          PocketLinkTopBarAction(
+          PocketLinkAppBarAction(
             label: 'Drives & storage',
             icon: Icons.storage_rounded,
             onPressed: () => onOpen(StorageBrowserScreen(api: api)),
           ),
-          PocketLinkTopBarAction(
+          PocketLinkAppBarAction(
             label: 'Scan all libraries',
             icon: Icons.refresh_rounded,
             onPressed: _scanAllLibraries,
             dividerBefore: true,
           ),
-          PocketLinkTopBarAction(
+          PocketLinkAppBarAction(
             label: 'Settings',
             icon: Icons.settings_rounded,
             onPressed: () => onOpen(const SettingsScreen()),
