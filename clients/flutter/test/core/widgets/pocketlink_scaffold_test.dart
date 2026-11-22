@@ -14,6 +14,7 @@ void main() {
         home: MediaQuery(
           data: const MediaQueryData(
             padding: EdgeInsets.only(top: 24, bottom: 34),
+            viewPadding: EdgeInsets.only(top: 24, bottom: 34),
           ),
           child: PocketLinkScaffold(
             hasFloatingNavBar: true,
@@ -43,6 +44,7 @@ void main() {
         home: MediaQuery(
           data: const MediaQueryData(
             padding: EdgeInsets.only(top: 24, bottom: 34),
+            viewPadding: EdgeInsets.only(top: 24, bottom: 34),
           ),
           child: PocketLinkScaffold(
             hasFloatingNavBar: false,
@@ -69,6 +71,7 @@ void main() {
         home: MediaQuery(
           data: const MediaQueryData(
             padding: EdgeInsets.only(top: 24, bottom: 34),
+            viewPadding: EdgeInsets.only(top: 24, bottom: 34),
           ),
           child: PocketLinkScaffold(
             hasFloatingNavBar: false,
@@ -179,6 +182,7 @@ void main() {
         home: MediaQuery(
           data: const MediaQueryData(
             padding: EdgeInsets.only(top: 24, bottom: 34),
+            viewPadding: EdgeInsets.only(top: 24, bottom: 34),
           ),
           child: PocketLinkScaffold(
             hasFloatingNavBar: false,
