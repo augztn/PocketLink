@@ -45,6 +45,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey<ScaffoldState> _rootScaffoldKey = GlobalKey<ScaffoldState>();
   int _selectedIndex = 0;
   bool _hostSetupOpen = false;
+ PocketLinkNavigation.bottomDockVisible.value = true;
   bool _hostSetupInitialized = false;
   final Set<int> _initializedTabs = {0};
   ExploreCategory _exploreCategory = ExploreCategory.files;
@@ -177,6 +178,8 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _libraryOpen = false;
       _hostSetupOpen = false;
+
+      PocketLinkNavigation.bottomDockVisible.value = true;
       _musicShortcutsExpanded = false;
       PocketLinkNavigation.quickShortcutsOpen.value = false;
       _initializedTabs.add(2);
@@ -193,6 +196,8 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _libraryOpen = false;
       _hostSetupOpen = false;
+
+      PocketLinkNavigation.bottomDockVisible.value = true;
       _musicShortcutsExpanded = false;
       PocketLinkNavigation.quickShortcutsOpen.value = false;
       _initializedTabs.add(1);
@@ -220,6 +225,8 @@ class _HomeScreenState extends State<HomeScreen> {
     if (page == null) return;
     setState(() {
       _hostSetupOpen = false;
+
+      PocketLinkNavigation.bottomDockVisible.value = true;
       _musicShortcutsExpanded = false;
       PocketLinkNavigation.quickShortcutsOpen.value = false;
       _libraryPage = page;
