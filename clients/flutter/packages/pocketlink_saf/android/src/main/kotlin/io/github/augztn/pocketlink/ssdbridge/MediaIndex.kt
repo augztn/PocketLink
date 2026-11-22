@@ -540,17 +540,19 @@ internal class MediaIndexScanner(
                         }
                         identity = directory.path
                         if (database.hasVisited(volume, scanId, identity) || identity in visitedThisBatch) continue
-                        children = try {
+                        val listedChildren: Array<out Any>? = try {
                             directory.listFiles()?.toList()?.toTypedArray()
                         } catch (_: Exception) {
                             null
-                        } ?: run {
+                        }
+                        if (listedChildren == null) {
                             deferredDirectories = true
                             deferredIds.add(pendingItem.id)
                             skipped++
                             recordSkipped(volume, relativePath, "Folder listing failed; queued for retry")
                             continue
                         }
+                        children = listedChildren
                     }
                     is DocumentFile -> {
                         val directory = try { resolveDocumentDirectory(relativePath) } catch (_: Exception) { null }
@@ -563,15 +565,19 @@ internal class MediaIndexScanner(
                         }
                         identity = directory.uri.toString()
                         if (database.hasVisited(volume, scanId, identity) || identity in visitedThisBatch) continue
-                        children = try { directory.listFiles().toList().toTypedArray() } catch (_: Exception) {
+                        val listedChildren: Array<out Any>? = try {
+                            directory.listFiles().toList().toTypedArray()
+                        } catch (_: Exception) {
                             null
-                        } ?: run {
+                        }
+                        if (listedChildren == null) {
                             deferredDirectories = true
                             deferredIds.add(pendingItem.id)
                             skipped++
                             recordSkipped(volume, relativePath, "Folder listing failed; queued for retry")
                             continue
                         }
+                        children = listedChildren
                         if (children.isEmpty() && hasIndexedDescendants(fileSnapshot.keys + mediaSnapshot.keys, relativePath)) {
                             deferredDirectories = true
                             deferredIds.add(pendingItem.id)
