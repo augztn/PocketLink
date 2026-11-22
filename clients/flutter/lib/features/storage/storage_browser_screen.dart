@@ -547,8 +547,9 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
                                       top: 10,
                                       bottom: LayoutInsetsScope.of(context).bottomClearance,
                                     ),
-                                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                                      maxCrossAxisExtent: 190, mainAxisExtent: 158,
+                                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: PocketLinkResponsiveLayout.gridColumns(context),
+                                      mainAxisExtent: 158,
                                       crossAxisSpacing: 10, mainAxisSpacing: 10),
                                     itemCount: items.length,
                                     itemBuilder: (context, index) {
