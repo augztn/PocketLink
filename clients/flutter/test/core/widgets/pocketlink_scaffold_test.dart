@@ -90,6 +90,47 @@ void main() {
     expect(insets.bottomClearance, 130);
   });
 
+  testWidgets('keeps stacked dock and mini-player clearance while scrolling both directions', (
+    tester,
+  ) async {
+    final controller = ScrollController();
+    addTearDown(controller.dispose);
+    late LayoutInsetsScope insets;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(
+            padding: EdgeInsets.only(top: 24, bottom: 34),
+            viewPadding: EdgeInsets.only(top: 24, bottom: 34),
+          ),
+          child: PocketLinkScaffold(
+            hasFloatingNavBar: true,
+            hasActiveMiniPlayer: true,
+            child: Builder(
+              builder: (context) {
+                insets = LayoutInsetsScope.of(context);
+                return SingleChildScrollView(
+                  controller: controller,
+                  child: const SizedBox(height: 1600),
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(insets.bottomClearance, 214);
+    controller.jumpTo(140);
+    await tester.pump();
+    expect(insets.bottomClearance, 214);
+
+    controller.jumpTo(0);
+    await tester.pump();
+    expect(insets.bottomClearance, 214);
+  });
+
   testWidgets('horizontal gutter includes the 16dp base and system safe insets', (tester) async {
     late EdgeInsets gutter;
 
