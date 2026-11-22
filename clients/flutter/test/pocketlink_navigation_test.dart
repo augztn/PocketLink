@@ -3,6 +3,54 @@ import 'package:material_ui/material_ui.dart';
 import 'package:pocketlink_client/core/navigation/pocketlink_navigation.dart';
 
 void main() {
+  group('PocketLinkNavigation edge swipe', () {
+    test('opens the drawer only for a rightward swipe from the Home edge', () {
+      expect(
+        PocketLinkNavigation.shouldOpenDrawerFromEdgeSwipe(
+          startX: 12,
+          deltaX: 96,
+          isHome: true,
+        ),
+        isTrue,
+      );
+    });
+
+    test('does not steal center, reverse, short, or non-Home swipes', () {
+      expect(
+        PocketLinkNavigation.shouldOpenDrawerFromEdgeSwipe(
+          startX: 80,
+          deltaX: 120,
+          isHome: true,
+        ),
+        isFalse,
+      );
+      expect(
+        PocketLinkNavigation.shouldOpenDrawerFromEdgeSwipe(
+          startX: 12,
+          deltaX: -100,
+          isHome: true,
+        ),
+        isFalse,
+      );
+      expect(
+        PocketLinkNavigation.shouldOpenDrawerFromEdgeSwipe(
+          startX: 12,
+          deltaX: 40,
+          isHome: true,
+        ),
+        isFalse,
+      );
+      expect(
+        PocketLinkNavigation.shouldOpenDrawerFromEdgeSwipe(
+          startX: 12,
+          deltaX: 100,
+          isHome: false,
+        ),
+        isFalse,
+      );
+    });
+  });
+
   group('PocketLinkNavigationObserver', () {
     late PocketLinkNavigationObserver observer;
 
