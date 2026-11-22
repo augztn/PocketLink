@@ -125,71 +125,71 @@ class GlassCircleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final settings = AppSettings.instance;
-    final foreground = isDark ? Colors.white : const Color(0xFF0F172A);
-    final button = CustomPaint(
-      foregroundPainter: _GlassCircleRimPainter(isDark: isDark),
-      child: Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onPressed,
-        customBorder: const CircleBorder(),
-        splashColor: foreground.withValues(alpha: 0.08),
-        highlightColor: Colors.transparent,
-        child: Tooltip(
-          message: tooltip,
-          child: Container(
-            width: size,
-            height: size,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isDark
-                  ? const Color(0xFF1C1E24).withValues(alpha: 0.58)
-                  : Colors.white.withValues(alpha: 0.58),
-              border: Border.all(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.24)
-                    : const Color(0xFF94A3B8).withValues(alpha: 0.30),
-                width: 1.0,
-              ),
-            ),
-            child: Center(
-              child: IconTheme(
-                data: IconThemeData(color: foreground, size: 18),
-                child: child,
-              ),
-            ),
-          ),
-        ),
-      ),
-      ),
-    );
-
     return AnimatedBuilder(
       animation: settings,
       builder: (context, _) {
-        // The header has its own blur preference. Floating action controls
-        // follow the independent Liquid Glass setting.
-        final useBlur = settings.useLiquidGlass &&
-            !MediaQuery.of(context).disableAnimations;
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final useGlass = settings.useLiquidGlass;
+        final useBlur = useGlass && !MediaQuery.of(context).disableAnimations;
+        final foreground = isDark ? Colors.white : const Color(0xFF0F172A);
+        final button = CustomPaint(
+          foregroundPainter:
+              useGlass ? _GlassCircleRimPainter(isDark: isDark) : null,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onPressed,
+              customBorder: const CircleBorder(),
+              splashColor: Colors.transparent,
+              highlightColor: Colors.transparent,
+              child: Tooltip(
+                message: tooltip,
+                child: Container(
+                  width: size,
+                  height: size,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: useGlass
+                        ? (isDark
+                            ? const Color(0xFF1C1E24).withValues(alpha: 0.58)
+                            : Colors.white.withValues(alpha: 0.58))
+                        : Theme.of(context).colorScheme.surfaceContainerLow,
+                    border: Border.all(
+                      color: useGlass
+                          ? (isDark
+                              ? Colors.white.withValues(alpha: 0.24)
+                              : const Color(0xFF94A3B8).withValues(alpha: 0.30))
+                          : Theme.of(context).colorScheme.outlineVariant,
+                      width: 1,
+                    ),
+                  ),
+                  child: Center(
+                    child: IconTheme(
+                      data: IconThemeData(color: foreground, size: 18),
+                      child: child,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
         final noSplashTheme = Theme.of(context).copyWith(
           splashFactory: NoSplash.splashFactory,
           highlightColor: Colors.transparent,
           hoverColor: Colors.transparent,
           focusColor: Colors.transparent,
         );
+        final themedButton = Theme(data: noSplashTheme, child: button);
         return ClipOval(
           child: useBlur
               ? BackdropFilter(
-                  filter: ui.ImageFilter.blur(
-                    sigmaX: 14,
-                    sigmaY: 14,
-                  ),
-                  child: Theme(data: noSplashTheme, child: button),
+                  filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                  child: themedButton,
                 )
-              : Theme(data: noSplashTheme, child: button),
+              : themedButton,
         );
       },
     );
