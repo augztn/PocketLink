@@ -1,11 +1,19 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:pocketlink_client/core/navigation/pocketlink_navigation.dart';
+import 'package:pocketlink_client/core/settings/app_settings.dart';
 import 'package:pocketlink_client/features/home/navigation_dock.dart';
 import 'package:pocketlink_client/core/widgets/liquid_glass_pill.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   testWidgets('expanded shortcuts dismiss from Music button without an X icon', (tester) async {
     var opens = 0;
     var dismisses = 0;
@@ -61,6 +69,59 @@ void main() {
     expect(music.right, 324);
     expect(music.left - capsule.right, 12);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('active glass lens tracks every measured tab slot', (tester) async {
+    await AppSettings.instance.setUseLiquidGlass(true);
+
+    for (final tabCount in [2, 3]) {
+      final ids = ['home', 'explore', 'files'].take(tabCount).toList();
+      final controller = PageController();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PageView(
+              controller: controller,
+              children: List<Widget>.generate(
+                tabCount,
+                (index) => Center(child: Text('Page $index')),
+              ),
+            ),
+            bottomNavigationBar: FloatingNavigationDock(
+              order: [...ids, 'browse'],
+              visibleItems: {...ids, 'browse'},
+              selectedIndex: 0,
+              pageController: controller,
+              pageIndices: {
+                for (var index = 0; index < tabCount; index++) index: index,
+              },
+              onSelect: (index) => controller.jumpToPage(index),
+              onBrowsePressed: () {},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final capsule = tester.getRect(find.byType(LiquidGlassPill).first);
+      final innerLeft = capsule.left + 5;
+      final innerWidth = capsule.width - 10;
+      final tabWidth = innerWidth / tabCount;
+
+      for (var index = 0; index < tabCount; index++) {
+        controller.jumpToPage(index);
+        await tester.pump();
+        final lens = tester.getRect(
+          find.byKey(const ValueKey<String>('navigation-active-lens')),
+        );
+        expect(
+          lens.center.dx,
+          closeTo(innerLeft + tabWidth * (index + 0.5), 1.5),
+          reason: 'lens should be centered in tab $index of $tabCount',
+        );
+      }
+      controller.dispose();
+    }
   });
 
   testWidgets('Music button supports tap, hold and horizontal swipe callbacks',
