@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -52,7 +53,7 @@ void main() {
 
   test('invalid artwork returns no palette', () async {
     expect(
-      await NowPlayingArtworkPalette.extract([1, 2, 3]),
+      await NowPlayingArtworkPalette.extract(Uint8List.fromList([1, 2, 3])),
       isNull,
     );
   });
