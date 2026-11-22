@@ -197,7 +197,10 @@ class _PocketLinkScaffoldState extends State<PocketLinkScaffold> {
   }
 
   bool _handleScrollNotification(ScrollNotification notification) {
-    if (notification.depth != 0 || notification.metrics.axis != Axis.vertical) return false;
+    // Main vertical lists sit one level below the horizontal root PageView.
+    if (notification.depth > 1 || notification.metrics.axis != Axis.vertical) {
+      return false;
+    }
     final next = notification.metrics.pixels.clamp(0.0, double.infinity).toDouble();
     final offset = PocketLinkScrollOffsetScope.currentOffset;
     if ((offset.value - next).abs() >= 0.5) {
