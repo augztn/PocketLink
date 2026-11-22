@@ -33,7 +33,7 @@ void main() {
       expect(sanitized['password'], '[REDACTED]');
       expect(sanitized['file_path'], '[REDACTED_PATH]');
       expect(sanitized['nested'], {'access_token': '[REDACTED]', 'attempt': 2});
-      expect(sanitized['items'], ['safe', '[REDACTED_HOST]']);
+      expect(sanitized['items'], ['safe', '[REDACTED_PATH]']);
     });
   });
   group('AppLogger.sanitizeDiagnosticContent', () {
