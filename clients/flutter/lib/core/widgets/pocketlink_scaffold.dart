@@ -222,7 +222,7 @@ class _PocketLinkScaffoldState extends State<PocketLinkScaffold> {
     final headerContentHeight =
         _renderedHeaderHeight == null
             ? PocketLinkLayoutMetrics.topBarHeight
-            : (_renderedHeaderHeight! - statusBarHeight - 16).clamp(
+            : (_renderedHeaderHeight! - statusBarHeight - 32).clamp(
                 PocketLinkLayoutMetrics.topBarHeight,
                 200.0,
               ).toDouble();
