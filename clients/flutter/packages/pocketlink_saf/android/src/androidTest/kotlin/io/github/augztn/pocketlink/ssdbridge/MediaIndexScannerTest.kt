@@ -1,6 +1,7 @@
 package io.github.augztn.pocketlink.ssdbridge
 
 import android.content.Context
+import android.database.sqlite.SQLiteDatabase
 import android.os.SystemClock
 import androidx.documentfile.provider.DocumentFile
 import androidx.test.core.app.ApplicationProvider
@@ -481,6 +482,106 @@ class MediaIndexScannerTest {
         } finally {
             database.close()
             context.deleteDatabase("pocketlink_index.db")
+        }
+    }
+
+
+    @Test
+    fun migratesVersionTwoCheckpointAndPreservesIndexedRows() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        context.deleteDatabase("pocketlink_index.db")
+        context.getSharedPreferences("media-index-report", Context.MODE_PRIVATE).edit()
+            .clear()
+            .putBoolean("automatic_scanning_enabled", false)
+            .putBoolean("scan_on_startup", false)
+            .putBoolean("scan_on_storage_change", false)
+            .commit()
+
+        val root = File(context.cacheDir, "media-index-v2-migration").apply {
+            deleteRecursively()
+            mkdirs()
+        }
+        val resumeDirectory = File(root, "Resume").apply { mkdirs() }
+        File(resumeDirectory, "migrated-track.mp3").writeBytes(byteArrayOf(1, 2, 3))
+        val scanId = "legacy-v2-scan"
+        val databaseFile = context.getDatabasePath("pocketlink_index.db")
+        databaseFile.parentFile?.mkdirs()
+        val legacy = SQLiteDatabase.openOrCreateDatabase(databaseFile, null)
+        try {
+            legacy.execSQL("""
+                CREATE TABLE files (
+                    volume TEXT NOT NULL, path TEXT NOT NULL, name TEXT NOT NULL,
+                    type TEXT NOT NULL, size INTEGER NOT NULL, modified INTEGER NOT NULL,
+                    mime TEXT NOT NULL, scan_id TEXT NOT NULL,
+                    PRIMARY KEY(volume, path)
+                )
+            """.trimIndent())
+            legacy.execSQL("""
+                CREATE TABLE media (
+                    volume TEXT NOT NULL, path TEXT NOT NULL, name TEXT NOT NULL,
+                    category TEXT NOT NULL, size INTEGER NOT NULL, modified INTEGER NOT NULL,
+                    mime TEXT NOT NULL, scan_id TEXT NOT NULL,
+                    PRIMARY KEY(volume, path)
+                )
+            """.trimIndent())
+            legacy.execSQL("""
+                CREATE TABLE scan_checkpoints (
+                    volume TEXT PRIMARY KEY NOT NULL,
+                    root_id TEXT NOT NULL,
+                    scan_id TEXT NOT NULL,
+                    state TEXT NOT NULL
+                )
+            """.trimIndent())
+            legacy.execSQL(
+                "INSERT INTO files VALUES(?,?,?,?,?,?,?,?)",
+                arrayOf("internal", "Resume", "Resume", "directory", 0, 1,
+                    "application/octet-stream", scanId)
+            )
+            legacy.execSQL(
+                "INSERT INTO files VALUES(?,?,?,?,?,?,?,?)",
+                arrayOf("internal", "stale.txt", "stale.txt", "file", 1, 1,
+                    "text/plain", "older-scan")
+            )
+            legacy.execSQL(
+                "INSERT INTO media VALUES(?,?,?,?,?,?,?,?)",
+                arrayOf("internal", "stale.mp3", "stale.mp3", "music", 1, 1,
+                    "audio/mpeg", "older-scan")
+            )
+            val checkpoint = org.json.JSONObject()
+                .put("pending", org.json.JSONArray().put("Resume"))
+                .put("visited", org.json.JSONArray().put(root.canonicalPath))
+                .put("complete", true)
+                .put("files_healthy", true)
+                .put("media_healthy", true)
+            legacy.execSQL(
+                "INSERT INTO scan_checkpoints(volume,root_id,scan_id,state) VALUES(?,?,?,?)",
+                arrayOf("internal", root.canonicalPath, scanId, checkpoint.toString())
+            )
+            legacy.version = 2
+        } finally {
+            legacy.close()
+        }
+
+        val scanner = MediaIndexScanner(context, { root }, { emptyList() })
+        try {
+            scanner.ensureStarted()
+            val result = awaitFinished(scanner)
+            assertEquals("complete", result.getString("state"))
+            assertEquals("migrated-track.mp3", scanner.media("music", "", 10, 0).single().name)
+            assertTrue(scanner.files("stale.txt", 10, 0).isEmpty())
+            val migrated = MediaIndexDatabase(context)
+            try {
+                assertTrue("Version-two checkpoint must be cleared after its resumed scan completes",
+                    !migrated.hasScanCheckpoints())
+                assertTrue(migrated.fileSnapshot("internal").containsKey("Resume/migrated-track.mp3"))
+            } finally {
+                migrated.close()
+            }
+        } finally {
+            scanner.close()
+            root.deleteRecursively()
+            context.deleteDatabase("pocketlink_index.db")
+            context.getSharedPreferences("media-index-report", Context.MODE_PRIVATE).edit().clear().commit()
         }
     }
 
