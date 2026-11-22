@@ -223,6 +223,63 @@ class MediaIndexScannerTest {
     }
 
     @Test
+    fun resumesAnExternalSafCheckpointAfterHostStartup() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        context.deleteDatabase("pocketlink_index.db")
+        context.getSharedPreferences("media-index-report", Context.MODE_PRIVATE).edit()
+            .clear()
+            .putBoolean("automatic_scanning_enabled", false)
+            .putBoolean("scan_on_startup", false)
+            .putBoolean("scan_on_storage_change", false)
+            .commit()
+        val internalRoot = File(context.cacheDir, "media-index-saf-resume-internal").apply {
+            deleteRecursively()
+            mkdirs()
+        }
+        val externalRoot = File(context.cacheDir, "media-index-saf-resume-external").apply {
+            deleteRecursively()
+            mkdirs()
+        }
+        val music = File(externalRoot, "Music").apply { mkdirs() }
+        File(music, "usb-track.mp3").writeBytes(byteArrayOf(1, 2, 3))
+        val documentRoot = DocumentFile.fromFile(externalRoot)
+        val database = MediaIndexDatabase(context)
+        val checkpoint = org.json.JSONObject()
+            .put("pending", org.json.JSONArray().put("Music"))
+            .put("visited", org.json.JSONArray().put(documentRoot.uri.toString()))
+            .put("complete", true)
+            .put("files_healthy", true)
+            .put("media_healthy", true)
+        try {
+            database.upsertFiles(listOf(
+                IndexedFile("usb-test", "removed.txt", "removed.txt", "file", 1, 1, "text/plain", null)
+            ), "previous-usb-scan")
+            database.saveScanCheckpoint("usb-test", documentRoot.uri.toString(), "resumed-usb-scan", checkpoint.toString())
+        } finally {
+            database.close()
+        }
+
+        val scanner = MediaIndexScanner(
+            context,
+            { internalRoot },
+            { listOf("usb-test" to DocumentFile.fromFile(externalRoot)) }
+        )
+        try {
+            scanner.ensureStarted()
+            val result = awaitFinished(scanner)
+            assertEquals("complete", result.getString("state"))
+            assertEquals("usb-track.mp3", scanner.media("music", "", 10, 0).single().name)
+            assertTrue(scanner.files("removed.txt", 10, 0).isEmpty())
+        } finally {
+            scanner.close()
+            internalRoot.deleteRecursively()
+            externalRoot.deleteRecursively()
+            context.deleteDatabase("pocketlink_index.db")
+            context.getSharedPreferences("media-index-report", Context.MODE_PRIVATE).edit().clear().commit()
+        }
+    }
+
+    @Test
     fun scansDirectoriesDeeperThanTheFormerDepthLimit() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         context.deleteDatabase("pocketlink_index.db")
