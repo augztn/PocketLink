@@ -86,34 +86,38 @@ internal class ExternalStorageOperations(
     }
 
     fun upload(volume: String?, relative: String, session: NanoHTTPD.IHTTPSession): NanoHTTPD.Response {
-        val root = storage.root(volume) ?: return notFound("Storage permission not granted")
-        val parent = storage.resolveDocument(root, relative) ?: return notFound("Destination folder not found")
-        if (!parent.isDirectory) return bad("Destination is not a folder")
         val (name, temp) = parseMultipart(session) ?: return bad("Multipart field 'file' is required")
         if (!isValidName(name)) { temp.delete(); return bad("Invalid filename") }
-        val staged = parent.createFile(mimeFor(name), ".pocketlink-upload-${UUID.randomUUID()}.part")
-            ?: run { temp.delete(); return error(NanoHTTPD.Response.Status.INTERNAL_ERROR, "Could not stage upload") }
         return try {
-            context.contentResolver.openOutputStream(staged.uri, "wt")?.use { output ->
-                temp.inputStream().use { input -> input.copyTo(output) }
-            } ?: return error(NanoHTTPD.Response.Status.INTERNAL_ERROR, "Cannot write file")
             synchronized(mutationLock) {
-                when {
-                    parent.findFile(name) != null ->
-                        error(NanoHTTPD.Response.Status.CONFLICT, "Name already exists")
-                    !staged.renameTo(name) ->
-                        if (parent.findFile(name) != null) {
+                val root = storage.root(volume) ?: return@synchronized notFound("Storage permission not granted")
+                val parent = storage.resolveDocument(root, relative)
+                    ?: return@synchronized notFound("Destination folder not found")
+                if (!parent.isDirectory) return@synchronized bad("Destination is not a folder")
+                val staged = parent.createFile(mimeFor(name), ".pocketlink-upload-${UUID.randomUUID()}.part")
+                    ?: return@synchronized error(NanoHTTPD.Response.Status.INTERNAL_ERROR, "Could not stage upload")
+                try {
+                    context.contentResolver.openOutputStream(staged.uri, "wt")?.use { output ->
+                        temp.inputStream().use { input -> input.copyTo(output) }
+                    } ?: return@synchronized error(NanoHTTPD.Response.Status.INTERNAL_ERROR, "Cannot write file")
+                    when {
+                        parent.findFile(name) != null ->
                             error(NanoHTTPD.Response.Status.CONFLICT, "Name already exists")
-                        } else {
-                            error(NanoHTTPD.Response.Status.INTERNAL_ERROR, "Could not finalize uploaded file")
-                        }
-                    else -> json(JSONObject().put("ok", true).put("name", name))
-                        .also { markMediaIndexDirty() }
+                        !staged.renameTo(name) ->
+                            if (parent.findFile(name) != null) {
+                                error(NanoHTTPD.Response.Status.CONFLICT, "Name already exists")
+                            } else {
+                                error(NanoHTTPD.Response.Status.INTERNAL_ERROR, "Could not finalize uploaded file")
+                            }
+                        else -> json(JSONObject().put("ok", true).put("name", name))
+                            .also { markMediaIndexDirty() }
+                    }
+                } finally {
+                    if (staged.exists()) staged.delete()
                 }
             }
         } finally {
             temp.delete()
-            if (staged.exists()) staged.delete()
         }
     }
 
