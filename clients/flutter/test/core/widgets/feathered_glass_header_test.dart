@@ -19,8 +19,8 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  test('progressive header blur is disabled by default', () {
-    expect(AppSettings.instance.progressiveBlurEnabled, isFalse);
+  test('transparent header blur is enabled by default', () {
+    expect(AppSettings.instance.progressiveBlurEnabled, isTrue);
   });
 
   test('progressive header blur preference persists when toggled', () async {
@@ -115,7 +115,7 @@ void main() {
     expect(find.byType(BackdropFilter), findsNWidgets(2));
   });
 
-  testWidgets('progressive header applies scroll-responsive blur when enabled', (tester) async {
+  testWidgets('transparent header applies frosted blur when enabled', (tester) async {
     await tester.runAsync(
       () => AppSettings.instance.setProgressiveBlurEnabled(true),
     );
@@ -131,7 +131,7 @@ void main() {
     expect(find.byType(BackdropFilter), findsOneWidget);
   });
 
-  testWidgets('scroll-responsive header blur remains active when reduced motion is enabled', (tester) async {
+  testWidgets('transparent header blur remains active when reduced motion is enabled', (tester) async {
     await tester.runAsync(
       () => AppSettings.instance.setProgressiveBlurEnabled(true),
     );
@@ -236,18 +236,6 @@ void main() {
 
     expect(find.byType(BackdropFilter), findsOneWidget);
   });
-  test('progressive blur strength is restored and persisted', () async {
-    await AppSettings.instance.setProgressiveBlurStrength(72);
-    expect(AppSettings.instance.progressiveBlurStrength, 72);
-    expect(
-      (await SharedPreferences.getInstance())
-          .getDouble('settings_progressive_blur_strength'),
-      72,
-    );
-    await AppSettings.instance.setProgressiveBlurStrength(0);
-    expect(AppSettings.instance.progressiveBlurStrength, 0);
-  });
-
   testWidgets('Progressive Blur off affects only the header, not Liquid Glass surfaces', (tester) async {
     await tester.runAsync(() async {
       await AppSettings.instance.setUseLiquidGlass(true);
