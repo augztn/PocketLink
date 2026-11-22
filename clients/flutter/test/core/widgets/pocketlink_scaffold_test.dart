@@ -30,7 +30,7 @@ void main() {
     );
 
     expect(insets.topClearance, 90);
-    expect(insets.bottomClearance, 210);
+    expect(insets.bottomClearance, 214);
     expect(insets.hasFloatingNavBar, isTrue);
     expect(insets.hasActiveMiniPlayer, isTrue);
   });
