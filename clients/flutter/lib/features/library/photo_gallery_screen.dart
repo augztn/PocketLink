@@ -563,7 +563,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     final counts = [photos.length, albumCount, favoriteCount];
 
     return Scaffold(
-      appBar: PocketLinkAppBar(
+      appBar: PocketLinkTopBar(
         showMoreMenu: false,
         title: selecting
             ? Text(title, maxLines: 1, overflow: TextOverflow.ellipsis)
@@ -647,7 +647,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                   builder: (_) => const TransferManagerScreen(),
                 ));
               }
-              if (value == 'home') PocketLinkAppBar.goToDashboard(context);
+              if (value == 'home') PocketLinkTopBar.goToDashboard(context);
               if (value == 'select') setState(() {
                 if (selected.isEmpty) selected.addAll(items.map((p) => p.id));
                 else selected.clear();
@@ -777,7 +777,7 @@ class _PhotoAlbum extends StatelessWidget {
   final String title;final List<_Photo> photos;final ServerApi api;final ValueChanged<int> onOpen;
   @override
   Widget build(BuildContext context)=>Scaffold(
-    appBar:PocketLinkAppBar(title:Text(title)),
+    appBar:PocketLinkTopBar(title:Text(title)),
     body:GridView.builder(
       padding:const EdgeInsets.all(2),
       gridDelegate:const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount:3,crossAxisSpacing:2,mainAxisSpacing:2),
@@ -808,7 +808,7 @@ class _PhotoViewerState extends State<_PhotoViewer>{
     final p=widget.photos[index];
     return Scaffold(
       backgroundColor:Colors.black,
-      appBar:controls?PocketLinkAppBar(
+      appBar:controls?PocketLinkTopBar(
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         title:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
@@ -816,12 +816,12 @@ class _PhotoViewerState extends State<_PhotoViewer>{
           Text('${index+1} / ${widget.photos.length}',style:const TextStyle(fontSize:11,color:Colors.white70)),
         ]),
         actions:[
-          PocketLinkAppBarAction(
+          PocketLinkTopBarAction(
             label: widget.favorite(p) ? 'Remove favorite' : 'Add favorite',
             icon: widget.favorite(p) ? Icons.favorite : Icons.favorite_border,
             onPressed: () => setState(() => widget.onFavorite(p)),
           ),
-          PocketLinkAppBarAction(
+          PocketLinkTopBarAction(
             label: 'Download photo',
             icon: Icons.download_rounded,
             onPressed: () async {
