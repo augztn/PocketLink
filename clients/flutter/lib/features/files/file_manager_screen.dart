@@ -12,7 +12,7 @@ import '../../core/widgets/liquid_glass_pill.dart';
 import '../../core/network/server_api.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/storage/home_activity_store.dart';
-import '../home/browser_state_store.dart';
+import 'file_browser_state_store.dart';
 import '../transfers/transfer_manager.dart';
 import '../downloads/download_manager_service.dart';
 import '../transfers/transfer_manager_screen.dart';
@@ -64,7 +64,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   String? _error;
   final ScrollController _scrollController = ScrollController();
   late final String _stateKey;
-  late final BrowserStateStore _browserState;
+  late final FileBrowserStateStore _browserState;
   String _sortBy = 'name';
   double _pendingScrollOffset = 0;
   int _loadGeneration = 0;
@@ -143,8 +143,8 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   void initState() {
     super.initState();
     _stateKey = widget.api.baseUrl;
-    _browserState = Provider.of<BrowserStateStore>(context, listen: false);
-    final saved = _browserState.fileState(_stateKey);
+    _browserState = Provider.of<FileBrowserStateStore>(context, listen: false);
+    final saved = _browserState.stateFor(_stateKey);
     _path = widget.locationRequest > 0 ? widget.requestedPath : (widget.initialPath.isNotEmpty ? widget.initialPath : saved.path);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) widget.onCanNavigateBackChanged?.call(_path.isNotEmpty);
@@ -171,7 +171,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
 
   void _saveState({String? path}) {
     final current = _browserState.fileState(_stateKey);
-    _browserState.updateFile(_stateKey, current.copyWith(
+    _browserState.update(_stateKey, current.copyWith(
       path: path ?? _path,
       category: _category,
       sortBy: _sortBy,
