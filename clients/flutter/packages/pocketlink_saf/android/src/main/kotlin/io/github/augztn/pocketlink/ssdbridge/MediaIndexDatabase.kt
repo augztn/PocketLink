@@ -11,7 +11,7 @@ internal data class IndexDatabaseStats(
 )
 
 internal class MediaIndexDatabase(context: Context) :
-    SQLiteOpenHelper(context, "pocketlink_index.db", null, 1) {
+    SQLiteOpenHelper(context, "pocketlink_index.db", null, 2) {
 
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL("""
@@ -34,9 +34,51 @@ internal class MediaIndexDatabase(context: Context) :
         db.execSQL("CREATE INDEX files_modified_idx ON files(modified DESC)")
         db.execSQL("CREATE INDEX media_category_name_idx ON media(category, name COLLATE NOCASE)")
         db.execSQL("CREATE INDEX media_modified_idx ON media(category, modified DESC)")
+        createScanCheckpointTable(db)
     }
 
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        if (oldVersion < 2) createScanCheckpointTable(db)
+    }
+
+    private fun createScanCheckpointTable(db: SQLiteDatabase) {
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS scan_checkpoints (
+                volume TEXT PRIMARY KEY NOT NULL,
+                root_id TEXT NOT NULL,
+                scan_id TEXT NOT NULL,
+                state TEXT NOT NULL
+            )
+        """.trimIndent())
+    }
+
+    @Synchronized fun scanCheckpoint(volume: String): String? =
+        readableDatabase.query(
+            "scan_checkpoints", arrayOf("root_id", "scan_id", "state"),
+            "volume=?", arrayOf(volume), null, null, null
+        ).use { cursor ->
+            if (!cursor.moveToFirst()) null else org.json.JSONObject()
+                .put("root_id", cursor.getString(0))
+                .put("scan_id", cursor.getString(1))
+                .put("state", cursor.getString(2))
+                .toString()
+        }
+
+    @Synchronized fun saveScanCheckpoint(volume: String, rootId: String, scanId: String, state: String) {
+        val values = android.content.ContentValues().apply {
+            put("volume", volume)
+            put("root_id", rootId)
+            put("scan_id", scanId)
+            put("state", state)
+        }
+        writableDatabase.insertWithOnConflict(
+            "scan_checkpoints", null, values, SQLiteDatabase.CONFLICT_REPLACE
+        )
+    }
+
+    @Synchronized fun clearScanCheckpoint(volume: String) {
+        writableDatabase.delete("scan_checkpoints", "volume=?", arrayOf(volume))
+    }
 
     @Synchronized fun upsertFiles(batch: List<IndexedFile>, scanId: String) {
         if (batch.isEmpty()) return
