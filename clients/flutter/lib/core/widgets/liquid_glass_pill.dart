@@ -222,7 +222,7 @@ class SmokedGlassSurface extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: refractive
                           ? const Color(0xFF14151A).withValues(
-                              alpha: tintOpacity.clamp(0.0, 1.0) * level,
+                              alpha: tintOpacity.clamp(0.0, 1.0).toDouble() * level,
                             )
                           : isLight
                               ? Colors.white.withValues(alpha: 0.78 * level)
