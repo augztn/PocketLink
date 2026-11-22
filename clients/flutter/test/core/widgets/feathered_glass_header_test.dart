@@ -5,6 +5,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pocketlink_client/core/settings/app_settings.dart';
 import 'package:pocketlink_client/core/widgets/feathered_glass_header.dart';
 import 'package:pocketlink_client/core/widgets/liquid_glass_pill.dart';
+import 'package:pocketlink_client/core/widgets/pocketlink_scaffold.dart';
+
+Widget _withScrolledHeader(Widget child) => PocketLinkScrollOffsetScope(
+      offset: ValueNotifier<double>(24),
+      child: child,
+    );
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -114,8 +120,10 @@ void main() {
     await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(true));
 
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(body: FeatheredGlassHeaderBackground()),
+      _withScrolledHeader(
+        const MaterialApp(
+          home: Scaffold(body: FeatheredGlassHeaderBackground()),
+        ),
       ),
     );
 
@@ -127,10 +135,12 @@ void main() {
     await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(true));
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: MediaQuery(
-          data: const MediaQueryData(disableAnimations: true),
-          child: const Scaffold(body: FeatheredGlassHeaderBackground()),
+      _withScrolledHeader(
+        MaterialApp(
+          home: MediaQuery(
+            data: const MediaQueryData(disableAnimations: true),
+            child: const Scaffold(body: FeatheredGlassHeaderBackground()),
+          ),
         ),
       ),
     );
@@ -142,15 +152,17 @@ void main() {
     await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(false));
 
     await tester.pumpWidget(
-      MaterialApp(
-        theme: ThemeData(brightness: Brightness.dark),
-        home: Scaffold(
-          body: FeatheredGlassHeaderBackground(
-            darkTint: [
-              Color(0xD9000000),
-              Color(0x66000000),
-              Colors.transparent,
-            ],
+      _withScrolledHeader(
+        MaterialApp(
+          theme: ThemeData(brightness: Brightness.dark),
+          home: Scaffold(
+            body: FeatheredGlassHeaderBackground(
+              darkTint: [
+                Color(0xD9000000),
+                Color(0x66000000),
+                Colors.transparent,
+              ],
+            ),
           ),
         ),
       ),
@@ -176,8 +188,10 @@ void main() {
     await tester.runAsync(() => AppSettings.instance.setProgressiveBlurStrength(0));
 
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(body: FeatheredGlassHeaderBackground()),
+      _withScrolledHeader(
+        const MaterialApp(
+          home: Scaffold(body: FeatheredGlassHeaderBackground()),
+        ),
       ),
     );
 
