@@ -87,6 +87,32 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final safeLeft = MediaQuery.paddingOf(context).left;
+    final navigator = Navigator.maybeOf(context);
+    final scaffold = Scaffold.maybeOf(context);
+    final effectiveLeading = leading ??
+        (automaticallyImplyLeading && scaffold?.hasDrawer == true
+            ? IconButton(
+                tooltip: 'Open navigation menu',
+                onPressed: () => scaffold?.openDrawer(),
+                icon: const Icon(Icons.menu_rounded),
+              )
+            : automaticallyImplyLeading && (navigator?.canPop() ?? false)
+                ? IconButton(
+                    tooltip: 'Back',
+                    onPressed: () => navigator?.maybePop(),
+                    icon: const Icon(Icons.arrow_back_rounded),
+                  )
+                : null);
+    final alignedLeading = effectiveLeading == null
+        ? null
+        : Padding(
+            padding: EdgeInsets.only(left: safeLeft),
+            child: effectiveLeading,
+          );
+    final effectiveLeadingWidth = effectiveLeading == null
+        ? null
+        : (leadingWidth ?? kToolbarHeight) + safeLeft;
     return AppBar(
       title: feathered
           ? Align(
@@ -94,10 +120,10 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
               child: Padding(padding: const EdgeInsets.only(top: 8), child: title),
             )
           : title,
-      leading: leading,
-      leadingWidth: leadingWidth,
+      leading: alignedLeading,
+      leadingWidth: effectiveLeadingWidth,
       titleSpacing: titleSpacing,
-      automaticallyImplyLeading: automaticallyImplyLeading,
+      automaticallyImplyLeading: false,
       centerTitle: centerTitle,
       backgroundColor: backgroundColor ?? Colors.transparent,
       flexibleSpace: const FeatheredGlassHeaderBackground(),
