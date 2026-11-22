@@ -316,7 +316,8 @@ class _DockLensDragSurfaceState extends State<_DockLensDragSurface> {
     final maxPage = widget.tabPages.reduce((a, b) => a > b ? a : b);
     final targetPage = (currentPage - velocityPages)
         .round()
-        .clamp(minPage, maxPage);
+        .clamp(minPage, maxPage)
+        .toInt();
     _resetDrag();
 
     final reduceMotion = MediaQuery.of(context).disableAnimations;
@@ -334,7 +335,7 @@ class _DockLensDragSurfaceState extends State<_DockLensDragSurface> {
       final minPage = widget.tabPages.reduce((a, b) => a < b ? a : b);
       final maxPage = widget.tabPages.reduce((a, b) => a > b ? a : b);
       unawaited(controller.animateToPage(
-        page.clamp(minPage, maxPage),
+        page.clamp(minPage, maxPage).toInt(),
         duration: MediaQuery.of(context).disableAnimations
             ? Duration.zero
             : const Duration(milliseconds: 180),
