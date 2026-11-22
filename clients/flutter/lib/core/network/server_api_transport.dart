@@ -44,8 +44,7 @@ class _ServerApiTransport {
     required String username,
     required String password,
     HttpClientAdapter? httpClientAdapter,
-  })  : _requestGate = _RequestGate(4),
-        _dio = Dio(
+  })  : _dio = Dio(
           BaseOptions(
             baseUrl: _normalizeBaseUrl(baseUrl),
             connectTimeout: const Duration(seconds: 10),
@@ -168,7 +167,8 @@ class _ServerApiTransport {
   }
 
   final Dio _dio;
-  final _RequestGate _requestGate;
+  // One app-wide budget across every ServerApi/transport instance.
+  static final _RequestGate _requestGate = _RequestGate(4);
   static final Map<String, Future<Object?>> _sharedReadRequests = {};
 
   Dio get client => _dio;
