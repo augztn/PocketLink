@@ -1002,7 +1002,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
         ],
         actions: [PocketLinkAppBarAction(
           label: 'Refresh Discover', icon: Icons.refresh_rounded,
-          onPressed: _loading ? null : _loadHome,
+          onPressed: _loading ? null : _refreshDiscover,
         )],
       ),
       body: RefreshIndicator(
