@@ -481,6 +481,14 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
           ),
         ),
       ),
+      const SizedBox(height: 14),
+      DiagnosticsGuidanceCard(
+        onOpen: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => const DiagnosticsScreen(),
+          ),
+        ),
+      ),
     ];
     final securitySections = <Widget>[
       const SizedBox(height: 22),
