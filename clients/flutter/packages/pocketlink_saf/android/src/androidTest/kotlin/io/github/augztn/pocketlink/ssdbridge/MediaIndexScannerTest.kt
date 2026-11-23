@@ -164,12 +164,21 @@ class MediaIndexScannerTest {
             val third = awaitFinished(scanner, second.getLong("last_scan_started_at"))
             assertEquals("complete", third.getString("state"))
             assertEquals(0, third.getInt("music_count"))
-            // Aggregate status counts include every volume. Other instrumentation
-            // tests may scan a separate volume concurrently, so assert pruning
-            // against this test's internal volume rather than the global total.
+            // The instrumentation suite can leave unrelated rows in the shared
+            // database. Verify this fixture's exact survivors instead of a global count.
             val finalDatabase = MediaIndexDatabase(context)
             try {
-                assertEquals(9, finalDatabase.fileSnapshot("internal").size)
+                val paths = finalDatabase.fileSnapshot("internal").keys
+                val expectedSurvivors = setOf(
+                    "Music", "Music/legacy.aiff",
+                    "Documents", "Documents/report.pdf",
+                    "Photos", "Photos/cover.heic",
+                    "Videos", "Videos/clip.ts", "Videos/legacy.wmv"
+                )
+                assertTrue("All non-deleted fixture entries must remain indexed",
+                    paths.containsAll(expectedSurvivors))
+                assertTrue("Deleted media entry must be pruned",
+                    "Music/track.mp3" !in paths)
             } finally {
                 finalDatabase.close()
             }
