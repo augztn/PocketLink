@@ -18,6 +18,26 @@ void main() {
     });
   });
 
+  group('DiscoverService progressive queue ordering', () {
+    test('resolves immediate neighbours before remaining tracks', () {
+      expect(
+        DiscoverService.progressiveQueueOrder(6, 3),
+        [2, 4, 1, 0, 5],
+      );
+    });
+
+    test('handles first and last selected tracks', () {
+      expect(DiscoverService.progressiveQueueOrder(4, 0), [1, 2, 3]);
+      expect(DiscoverService.progressiveQueueOrder(4, 3), [2, 1, 0]);
+    });
+
+    test('rejects invalid queue positions', () {
+      expect(DiscoverService.progressiveQueueOrder(0, 0), isEmpty);
+      expect(DiscoverService.progressiveQueueOrder(3, -1), isEmpty);
+      expect(DiscoverService.progressiveQueueOrder(3, 3), isEmpty);
+    });
+  });
+
   group('DiscoverService lossless matching', () {
     final track = DiscoverTrack(
       videoId: 'abc12345678',
