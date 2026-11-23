@@ -223,7 +223,7 @@ void main() {
       final complete = jsonEncode({'event_id': 'complete', 'message': 'whole'});
       const partial = '{"event_id":"partial","message":"cut';
       final bytes = AppLogger.latestCompleteDiagnosticLinesForTesting(
-        '$complete\\n$partial',
+        '$complete\n$partial',
         1024,
       );
       final retained = utf8.decode(bytes);
