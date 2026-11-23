@@ -45,6 +45,35 @@ internal object DiscoverBridge {
     @Volatile private var lastSuccessfulResolver: String? = null
     private val initLock = Any()
 
+
+    fun moodAndGenres(regionCode: String, result: io.flutter.plugin.common.MethodChannel.Result) {
+        executor.execute {
+            try {
+                val sections = catalog.moodAndGenres(regionCode)
+                mainHandler.post { result.success(sections) }
+            } catch (error: Exception) {
+                mainHandler.post { result.error("DISCOVER_MOODS_FAILED", error.message ?: "Could not load moods and genres.", null) }
+            }
+        }
+    }
+
+    fun browseMood(
+        browseId: String,
+        params: String?,
+        limit: Int,
+        regionCode: String,
+        result: io.flutter.plugin.common.MethodChannel.Result
+    ) {
+        executor.execute {
+            try {
+                val tracks = catalog.browseMood(browseId, params, limit.coerceIn(1, 50), regionCode)
+                mainHandler.post { result.success(tracks) }
+            } catch (error: Exception) {
+                mainHandler.post { result.error("DISCOVER_MOOD_BROWSE_FAILED", error.message ?: "Could not open this mood.", null) }
+            }
+        }
+    }
+
     fun search(query: String, limit: Int, regionCode: String, result: io.flutter.plugin.common.MethodChannel.Result) {
         executor.execute {
             try {
