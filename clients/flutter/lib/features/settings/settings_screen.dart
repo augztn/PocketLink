@@ -732,12 +732,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ListTile(
                       leading: const Icon(Icons.graphic_eq_rounded),
                       title: const Text('Audio quality'),
-                      subtitle: const Text('Preference for the best matching available stream'),
+                      subtitle: const Text('Balanced targets 160 kbps; Data saver targets 96 kbps when available.'),
                       trailing: DropdownButton<String>(
                         value: _settings.discoverAudioQuality,
                         underline: const SizedBox.shrink(),
                         items: const [
-                          DropdownMenuItem(value: 'best_available', child: Text('Best')),
+                          DropdownMenuItem(value: 'best_available', child: Text('Best available')),
                           DropdownMenuItem(value: 'balanced', child: Text('Balanced')),
                           DropdownMenuItem(value: 'data_saver', child: Text('Data saver')),
                         ],
