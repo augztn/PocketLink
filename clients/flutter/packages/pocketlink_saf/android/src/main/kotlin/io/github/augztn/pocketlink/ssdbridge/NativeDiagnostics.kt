@@ -99,7 +99,7 @@ internal object NativeDiagnostics {
         if (backup.length() > MAX_BACKUP_BYTES) {
             val bytes = backup.readBytes().takeLast(MAX_BACKUP_BYTES)
             val firstLine = bytes.indexOf(10)
-            backup.writeBytes(if (firstLine >= 0) bytes.drop(firstLine + 1).toByteArray() else bytes)
+            backup.writeBytes(if (firstLine >= 0) bytes.drop(firstLine + 1).toByteArray() else bytes.toByteArray())
         }
         target.createNewFile()
     }
