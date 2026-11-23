@@ -243,30 +243,35 @@ class PersistentAudioPlayer extends ChangeNotifier {
           'Accept': '*/*',
         },
       );
-      final updated = _queue.toList();
-      final retryIndex = updated.indexWhere(
-        (queued) => queued.lyricsVideoId == item.lyricsVideoId &&
-            queued.streamUrl == item.streamUrl,
-      );
+      var retryIndex = -1;
+      await _serializeQueueMutation(() async {
+        if (session != _queueSession) return;
+        final updated = _queue.toList();
+        retryIndex = updated.indexWhere(
+          (queued) => queued.lyricsVideoId == item.lyricsVideoId &&
+              queued.streamUrl == item.streamUrl,
+        );
+        if (retryIndex < 0 || session != _queueSession) return;
+        updated[retryIndex] = retryItem;
+        _queue = List.unmodifiable(updated);
+        _currentIndex = retryIndex;
+        final api = _api;
+        final media = _queue.map((queued) => Media(
+          queued.localPath ?? queued.streamUrl ??
+              api!.mediaStreamUrl(queued.path, volume: queued.volume),
+          httpHeaders: queued.localPath != null
+              ? const {}
+              : queued.streamUrl != null
+                  ? queued.httpHeaders
+                  : api!.mediaHeaders,
+          extras: {
+            'title': queued.title,
+            if (queued.artist != null) 'artist': queued.artist,
+          },
+        )).toList(growable: false);
+        await player.open(Playlist(media, index: retryIndex));
+      });
       if (retryIndex < 0 || session != _queueSession) return;
-      updated[retryIndex] = retryItem;
-      _queue = List.unmodifiable(updated);
-      _currentIndex = retryIndex;
-      final api = _api;
-      final media = _queue.map((queued) => Media(
-        queued.localPath ?? queued.streamUrl ??
-            api!.mediaStreamUrl(queued.path, volume: queued.volume),
-        httpHeaders: queued.localPath != null
-            ? const {}
-            : queued.streamUrl != null
-                ? queued.httpHeaders
-                : api!.mediaHeaders,
-        extras: {
-          'title': queued.title,
-          if (queued.artist != null) 'artist': queued.artist,
-        },
-      )).toList(growable: false);
-      await player.open(Playlist(media, index: retryIndex));
       await AppLogger.info(
         'Discover playback retried with alternate resolver',
         category: 'media',
