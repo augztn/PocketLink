@@ -391,7 +391,7 @@ class AppLogger {
     var remaining = maxBytes;
     for (final line in lines.reversed) {
       if (line.isEmpty) continue;
-      final bytes = utf8.encode(_redact(line) + '\\n');
+      final bytes = utf8.encode(_redact(line) + '\n');
       if (bytes.length > remaining) break;
       retained.add(bytes);
       remaining -= bytes.length;
@@ -451,9 +451,6 @@ class AppLogger {
           final nativeBytes = _latestCompleteDiagnosticLines(nativeLogs, remainingBytes);
           sink.add(nativeBytes);
           remainingBytes -= nativeBytes.length;
-          if (nativeBytes.length < utf8.encode(sanitizeDiagnosticContent(nativeLogs)).length) {
-            sink.writeln('[Native diagnostics truncated at complete event boundary]');
-          }
         }
 
         final backup = File('${logFile.path}.1');
@@ -463,7 +460,7 @@ class AppLogger {
           remainingBytes -= utf8.encode(backupSection).length;
           final backupResult = await _appendCurrentSessionLog(backup, sink, remainingBytes);
           remainingBytes = backupResult.$2;
-          if (!backupResult.$1) sink.writeln('[Older Flutter log omitted beyond 2 MB export limit]');
+
         }
       }
       await sink.flush();
