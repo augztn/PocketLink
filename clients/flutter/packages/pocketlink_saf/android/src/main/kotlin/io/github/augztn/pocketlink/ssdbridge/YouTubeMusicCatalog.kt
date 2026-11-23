@@ -26,40 +26,42 @@ internal class YouTubeMusicCatalog(
 ) {
     @Volatile private var visitorData: String = ""
 
-    fun search(query: String, limit: Int): List<Map<String, Any>> {
+    fun search(query: String, limit: Int, regionCode: String = "IN"): List<Map<String, Any>> {
         val clean = query.trim()
         if (clean.length < 2) return emptyList()
         val filtered = runCatching {
             val response = post(
                 "search",
-                JSONObject().put("query", clean).put("params", SONGS_FILTER)
+                JSONObject().put("query", clean).put("params", SONGS_FILTER),
+                regionCode
             )
             parseTracks(response, limit)
         }.getOrDefault(emptyList())
         if (filtered.isNotEmpty()) return filtered
         return runCatching {
-            parseTracks(post("search", JSONObject().put("query", clean)), limit)
+            parseTracks(post("search", JSONObject().put("query", clean), regionCode), limit)
         }.getOrDefault(emptyList())
     }
 
-    fun home(limit: Int): List<Map<String, Any>> {
+    fun home(limit: Int, regionCode: String = "IN"): List<Map<String, Any>> {
         val charts = runCatching {
-            parseTracks(post("browse", JSONObject().put("browseId", "FEmusic_charts")), limit)
+            parseTracks(post("browse", JSONObject().put("browseId", "FEmusic_charts"), regionCode), limit)
         }.getOrDefault(emptyList())
         if (charts.isNotEmpty()) return charts
         return runCatching {
-            parseTracks(post("browse", JSONObject().put("browseId", "FEmusic_home")), limit)
+            parseTracks(post("browse", JSONObject().put("browseId", "FEmusic_home"), regionCode), limit)
         }.getOrDefault(emptyList())
     }
 
-    fun radio(videoId: String, limit: Int): List<Map<String, Any>> {
+    fun radio(videoId: String, limit: Int, regionCode: String = "IN"): List<Map<String, Any>> {
         require(VIDEO_ID.matches(videoId)) { "Invalid YouTube video ID." }
         val response = post(
             "next",
             JSONObject()
                 .put("videoId", videoId)
                 .put("playlistId", "RDAMVM$videoId")
-                .put("isAudioOnly", true)
+                .put("isAudioOnly", true),
+            regionCode
         )
         return parseTracks(response, limit).filterNot { it["videoId"] == videoId }
     }
@@ -67,21 +69,26 @@ internal class YouTubeMusicCatalog(
     fun suggestions(input: String): List<String> {
         val clean = input.trim()
         if (clean.length < 2) return emptyList()
-        val response = post("music/get_search_suggestions", JSONObject().put("input", clean))
+        val response = post("music/get_search_suggestions", JSONObject().put("input", clean), "IN")
         val values = mutableListOf<String>()
         collectStrings(response, values)
         return values.asSequence().map(String::trim).filter { it.length in 2..100 }
             .distinct().take(8).toList()
     }
 
-    private fun post(endpoint: String, payload: JSONObject): JSONObject {
-        val context = JSONObject()
-            .put("client", JSONObject()
-                .put("clientName", "WEB_REMIX")
-                .put("clientVersion", WEB_REMIX_VERSION)
-                .put("hl", "en")
-                .put("gl", "IN")
-                .put("utcOffsetMinutes", 330))
+    internal fun buildClientContext(regionCode: String): JSONObject {
+        val utcOffsetMinutes = java.util.TimeZone.getDefault()
+            .getOffset(System.currentTimeMillis()) / 60_000
+        return JSONObject()
+            .put("clientName", "WEB_REMIX")
+            .put("clientVersion", WEB_REMIX_VERSION)
+            .put("hl", "en")
+            .put("gl", DiscoverPlaybackOptions.normalizeRegion(regionCode))
+            .put("utcOffsetMinutes", utcOffsetMinutes)
+    }
+
+    private fun post(endpoint: String, payload: JSONObject, regionCode: String): JSONObject {
+        val context = JSONObject().put("client", buildClientContext(regionCode))
         val body = JSONObject().put("context", context)
         val iterator = payload.keys()
         while (iterator.hasNext()) {
