@@ -11,6 +11,21 @@ void main() {
     await AppSettings.instance.reloadPreferences();
   });
 
+  test('first-screen Discover visibility defaults on and persists', () async {
+    final settings = AppSettings.instance;
+    expect(settings.showDiscoverOnWelcome, isTrue);
+
+    await settings.setShowDiscoverOnWelcome(false);
+    expect(settings.showDiscoverOnWelcome, isFalse);
+    final preferences = await SharedPreferences.getInstance();
+    expect(preferences.getBool('settings_show_discover_on_welcome'), isFalse);
+
+    await settings.reloadPreferences();
+    expect(settings.showDiscoverOnWelcome, isFalse);
+    await settings.setShowDiscoverOnWelcome(true);
+    expect(settings.showDiscoverOnWelcome, isTrue);
+  });
+
   test('Discover preferences persist and reload', () async {
     final settings = AppSettings.instance;
     await settings.setDiscoverOptions(
