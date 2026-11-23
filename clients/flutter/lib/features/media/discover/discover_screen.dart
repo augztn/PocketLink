@@ -274,6 +274,17 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     }
   }
 
+  Widget _quickSearchChip(String label, String query) => Padding(
+        padding: const EdgeInsets.only(right: 8),
+        child: ActionChip(
+          label: Text(label),
+          onPressed: () {
+            _searchController.text = query;
+            _search(query);
+          },
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
