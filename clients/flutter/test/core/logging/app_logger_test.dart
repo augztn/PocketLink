@@ -90,7 +90,7 @@ void main() {
       );
 
       expect(sanitized, isNot(contains('pocketlink.example')));
-      expect(sanitized, contains('[REDACTED_HOST]')));
+      expect(sanitized, contains('[REDACTED_HOST]'));
       expect(sanitized, contains('/api/files/'));
       expect(sanitized, contains('200'));
     });
