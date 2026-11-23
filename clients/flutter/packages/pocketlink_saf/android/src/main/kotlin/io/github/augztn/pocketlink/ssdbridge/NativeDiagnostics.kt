@@ -109,8 +109,8 @@ internal object NativeDiagnostics {
         fields.forEach { (key, value) ->
             val normalized = key.replace(Regex("([A-Z])"), "_$1").lowercase()
             when {
-                SENSITIVE_KEY.containsMatchIn(normalized) -> result.put(key, "[REDACTED]")
-                PRIVATE_PATH_KEY.containsMatchIn(normalized) -> result.put(key, "[REDACTED_PATH]")
+                isSensitiveKey(normalized) -> result.put(key, "[REDACTED]")
+                isPrivatePathKey(normalized, value) -> result.put(key, "[REDACTED_PATH]")
                 else -> result.put(key, sanitizeValue(value))
             }
         }
@@ -127,8 +127,8 @@ internal object NativeDiagnostics {
                 val name = key?.toString() ?: return@forEach
                 val normalized = name.replace(Regex("([A-Z])"), "_$1").lowercase()
                 nested.put(name, when {
-                    SENSITIVE_KEY.containsMatchIn(normalized) -> "[REDACTED]"
-                    PRIVATE_PATH_KEY.containsMatchIn(normalized) -> "[REDACTED_PATH]"
+                    isSensitiveKey(normalized) -> "[REDACTED]"
+                    isPrivatePathKey(normalized, item) -> "[REDACTED_PATH]"
                     else -> sanitizeValue(item)
                 })
             }
@@ -149,12 +149,22 @@ internal object NativeDiagnostics {
             .replace(Regex("""(?i)(password|passwd|authorization|token|secret|api[_-]?key)\s*[:=]\s*[^,;\s}]+"""), "$1=[REDACTED]")
     }
 
+    private fun isSensitiveKey(normalized: String): Boolean {
+        if (normalized in setOf("host_mode", "host_status", "host_state", "host_type", "server_status", "server_state", "server_type", "server_mode")) return false
+        return SENSITIVE_KEY.containsMatchIn(normalized)
+    }
+
+    private fun isPrivatePathKey(normalized: String, value: Any?): Boolean {
+        if (!PRIVATE_PATH_KEY.containsMatchIn(normalized)) return false
+        return !(value is String && value.matches(Regex("^/api/[a-zA-Z0-9_/{}/-]+/?$")))
+    }
+
     private val SENSITIVE_KEY = Regex(
-        "password|passwd|authorization|token|secret|api[_-]?key|username|cookie|host|hostname|address|server",
+        "(^|_)(password|passwd|authorization|token|secret|api_key|username|user|login|cookie|host|hostname|address|server)(_|$)",
         RegexOption.IGNORE_CASE
     )
     private val PRIVATE_PATH_KEY = Regex(
-        "(^|[_-])(path|filename|directory|folder|uri)([_-]|$)",
+        "(^|_)(path|filename|directory|folder|uri)(_|$)",
         RegexOption.IGNORE_CASE
     )
 
