@@ -116,7 +116,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       // personalized recommendations.
       final responses = await Future.wait<List<DiscoverTrack>>([
         _service.home(limit: 24).catchError((Object _) => <DiscoverTrack>[]),
-        _service.search('new music releases 2026 $_regionName', limit: 18).catchError((Object _) => <DiscoverTrack>[]),
+        _service.search('new music releases ${DateTime.now().year} $_regionName', limit: 18).catchError((Object _) => <DiscoverTrack>[]),
         _service.search('popular Malayalam songs', limit: 18).catchError((Object _) => <DiscoverTrack>[]),
         _service.search('popular Hindi songs', limit: 18).catchError((Object _) => <DiscoverTrack>[]),
         _service.search('popular Tamil songs', limit: 18).catchError((Object _) => <DiscoverTrack>[]),
@@ -600,7 +600,6 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   }
 
   Widget _homeShelf(_DiscoverShelf shelf) {
-    final theme = Theme.of(context);
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.only(top: 22),
