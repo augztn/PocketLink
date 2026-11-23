@@ -61,6 +61,9 @@ class SettingsBackupService {
     'settings_now_playing_theme',
     'settings_video_fit_mode',
     'settings_video_fullscreen_orientation',
+    'settings_discover_audio_quality',
+    'settings_discover_resolver_profile',
+    'settings_discover_region',
   };
 
   static Set<String> get _allowedKeys =>
@@ -90,6 +93,18 @@ class SettingsBackupService {
     if (key == 'settings_video_fit_mode') return const {'contain', 'cover', 'fill'}.contains(value);
     if (key == 'settings_video_fullscreen_orientation') {
       return const {'landscape', 'portrait', 'auto'}.contains(value);
+    }
+    if (key == 'settings_discover_audio_quality') {
+      return const {'best_available', 'balanced', 'data_saver'}.contains(value);
+    }
+    if (key == 'settings_discover_resolver_profile') {
+      return const {'automatic', 'newpipe_first', 'player_api_first'}.contains(value);
+    }
+    if (key == 'settings_discover_region') {
+      return const {
+        'IN', 'US', 'GB', 'CA', 'AU', 'JP', 'KR', 'DE', 'FR', 'BR',
+        'MX', 'ID', 'PH', 'SG', 'MY', 'TH', 'AE', 'SA', 'ZA', 'NG',
+      }.contains(value);
     }
 
     if (const {
