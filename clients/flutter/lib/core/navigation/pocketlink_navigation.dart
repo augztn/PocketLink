@@ -26,8 +26,9 @@ class PocketLinkNavigationObserver extends NavigatorObserver {
   bool get isNowPlayingVisible =>
       currentPageRoute?.settings.name == PocketLinkRouteNames.nowPlaying;
 
-  bool get isStandaloneDiscoverVisible =>
-      currentPageRoute?.settings.name == PocketLinkRouteNames.standaloneDiscover;
+  bool get isStandaloneDiscoverFlow => _routes.any(
+    (route) => route.settings.name == PocketLinkRouteNames.standaloneDiscover,
+  );
 
   bool get isModalRouteOnTop =>
       _routes.isNotEmpty && _routes.last is PopupRoute<dynamic>;
