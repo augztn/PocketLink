@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/widgets/pocketlink_scaffold.dart';
+import '../../../core/widgets/pocketlink_section_header.dart';
 
 const Color settingsSectionColor = Color(0xFFB8C4FF);
 const Color settingsGroupColor = Color(0xFF15161B);
@@ -15,14 +16,10 @@ class SettingsSectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.only(left: 4, bottom: 8),
-        child: Text(
-          title.toUpperCase(),
-          style: const TextStyle(
-            color: settingsSectionColor,
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.8,
-          ),
+        child: PocketLinkSectionHeader(
+          title,
+          uppercase: true,
+          color: settingsSectionColor,
         ),
       );
 }
