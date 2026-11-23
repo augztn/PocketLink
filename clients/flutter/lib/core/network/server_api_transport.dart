@@ -73,8 +73,10 @@ class _ServerApiTransport {
         options.extra['pocketlink.queueWaitMs'] = queueStopwatch.elapsedMilliseconds;
         options.extra['pocketlink.queryKey'] = _diagnosticQueryKey(options);
         options.extra['pocketlink.requestStopwatch'] = Stopwatch()..start();
-        AppLogger.info('API request started', fields: {
+        AppLogger.info('API request started', category: 'network', component: 'server_api', correlationId: requestId, fields: {
           'requestId': requestId,
+          'operation': '${options.method.toUpperCase()} ${options.uri.path}',
+          'endpoint': options.uri.path,
           'method': options.method,
           'path': options.uri.path,
           'queryKey': options.extra['pocketlink.queryKey'],
@@ -88,8 +90,11 @@ class _ServerApiTransport {
         _releaseRequestSlot(response.requestOptions);
         final options = response.requestOptions;
         final stopwatch = options.extra['pocketlink.requestStopwatch'] as Stopwatch?;
-        AppLogger.info('API request completed', fields: {
-          'requestId': options.extra['pocketlink.requestId'] ?? 'unknown',
+        final requestId = options.extra['pocketlink.requestId']?.toString() ?? 'unknown';
+        AppLogger.info('API request completed', category: 'network', component: 'server_api', correlationId: requestId, fields: {
+          'requestId': requestId,
+          'operation': '${options.method.toUpperCase()} ${options.uri.path}',
+          'endpoint': options.uri.path,
           'method': options.method,
           'path': options.uri.path,
           'status': response.statusCode,
@@ -103,8 +108,11 @@ class _ServerApiTransport {
       onError: (error, handler) async {
         final failedOptions = error.requestOptions;
         final stopwatch = failedOptions.extra['pocketlink.requestStopwatch'] as Stopwatch?;
-        AppLogger.warning('API request failed', fields: {
-          'requestId': failedOptions.extra['pocketlink.requestId'] ?? 'unknown',
+        final requestId = failedOptions.extra['pocketlink.requestId']?.toString() ?? 'unknown';
+        AppLogger.warning('API request failed', category: 'network', component: 'server_api', correlationId: requestId, fields: {
+          'requestId': requestId,
+          'operation': '${failedOptions.method.toUpperCase()} ${failedOptions.uri.path}',
+          'endpoint': failedOptions.uri.path,
           'method': failedOptions.method,
           'path': failedOptions.uri.path,
           'type': error.type.name,
