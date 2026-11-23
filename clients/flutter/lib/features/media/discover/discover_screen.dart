@@ -35,7 +35,6 @@ class DiscoverScreen extends StatefulWidget {
 class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProviderStateMixin {
   final DiscoverService _service = DiscoverService();
   late final AnimationController _shimmerController;
-  final TextEditingController _searchController = TextEditingController();
   List<DiscoverTrack> _tracks = const [];
   List<_DiscoverShelf> _homeShelves = const [];
   List<IndexedFile> _localLibrary = const [];
@@ -73,7 +72,6 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
   void dispose() {
     AppSettings.instance.removeListener(_onSettingsChanged);
     _shimmerController.dispose();
-    _searchController.dispose();
     super.dispose();
   }
 
@@ -193,33 +191,6 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     } catch (_) {
       if (!mounted || generation != _requestGeneration) return;
       setState(() => _error = 'Could not load YouTube Music home. Check your connection and try again.');
-    } finally {
-      if (mounted && generation == _requestGeneration) setState(() => _loading = false);
-    }
-  }
-
-  Future<void> _search(String query) async {
-    if (query.trim().length < 2) return;
-    final generation = ++_requestGeneration;
-    setState(() {
-      _loading = true;
-      _error = null;
-      _sectionTitle = query.trim();
-      _homeShelves = const [];
-    });
-    try {
-      final results = await _service.search(query);
-      if (!mounted || generation != _requestGeneration) return;
-      setState(() {
-        _tracks = results;
-        if (results.isEmpty) _error = 'No tracks found. Try another search.';
-      });
-    } on PlatformException catch (error) {
-      if (!mounted || generation != _requestGeneration) return;
-      setState(() => _error = error.message ?? 'Discover is unavailable on this device.');
-    } catch (_) {
-      if (!mounted || generation != _requestGeneration) return;
-      setState(() => _error = 'Could not load Discover results. Check your connection and try again.');
     } finally {
       if (mounted && generation == _requestGeneration) setState(() => _loading = false);
     }
@@ -509,17 +480,6 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       );
     }
   }
-
-  Widget _quickSearchChip(String label, String query) => Padding(
-        padding: const EdgeInsets.only(right: 8),
-        child: ActionChip(
-          label: Text(label),
-          onPressed: () {
-            _searchController.text = query;
-            _search(query);
-          },
-        ),
-      );
 
   Widget _art(DiscoverTrack track, {double size = 56}) {
     final show = AppSettings.instance.discoverArtwork && track.thumbnailUrl.isNotEmpty;
@@ -930,60 +890,6 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     );
   }
 
-  Widget _moodTiles() {
-    const moods = <({String title, String query, Color color, IconData icon})>[
-      (title: 'Energy', query: 'high energy dance workout songs', color: Color(0xFF236B50), icon: Icons.bolt_rounded),
-      (title: 'Relax', query: 'calm relaxing acoustic music', color: Color(0xFF315F91), icon: Icons.water_drop_outlined),
-      (title: 'Heartbreak', query: 'sad heartbreak songs', color: Color(0xFF9A5938), icon: Icons.cloud_outlined),
-      (title: 'Love', query: 'romantic love songs', color: Color(0xFF9A426C), icon: Icons.favorite_border_rounded),
-    ];
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.only(top: 24),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          _shelfHeading('Find your mood'),
-          SizedBox(
-            height: 112,
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              scrollDirection: Axis.horizontal,
-              itemCount: moods.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 10),
-              itemBuilder: (context, index) {
-                final mood = moods[index];
-                return SizedBox(
-                  width: (MediaQuery.sizeOf(context).width - 50) / 2,
-                  child: Material(
-                    color: mood.color,
-                    borderRadius: BorderRadius.circular(14),
-                    clipBehavior: Clip.antiAlias,
-                    child: InkWell(
-                      onTap: () {
-                        _searchController.text = mood.query;
-                        _search(mood.query);
-                      },
-                      child: Stack(children: [
-                        Positioned(right: 12, top: 8,
-                          child: Icon(mood.icon, size: 42, color: Colors.white24)),
-                        Positioned(left: 14, bottom: 13,
-                          child: Text(mood.title, style: const TextStyle(
-                            color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800))),
-                        Positioned(right: 10, top: 9,
-                          child: Text('PL', style: TextStyle(
-                            color: Colors.white.withValues(alpha: .55),
-                            fontSize: 9, fontWeight: FontWeight.w900))),
-                      ]),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ]),
-      ),
-    );
-  }
-
   Widget _homeShelf(_DiscoverShelf shelf) {
     return SliverToBoxAdapter(
       child: Padding(
@@ -1033,7 +939,6 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final top = LayoutInsetsScope.of(context).topClearance;
     final bottom = LayoutInsetsScope.of(context).bottomClearance;
     final hasTracks = _tracks.isNotEmpty;
