@@ -141,8 +141,11 @@ class _ServerApiTransport {
           // Wi-Fi/mobile route. Force the retry onto a fresh TCP connection.
           options.headers['connection'] = 'close';
           final retryDelay = _retryDelay(error, attempts);
-          AppLogger.warning('API retry scheduled', fields: {
-            'requestId': options.extra['pocketlink.requestId'] ?? 'unknown',
+          final requestId = options.extra['pocketlink.requestId']?.toString() ?? 'unknown';
+          AppLogger.warning('API retry scheduled', category: 'network', component: 'server_api', correlationId: requestId, fields: {
+            'requestId': requestId,
+            'operation': '${options.method.toUpperCase()} ${options.uri.path}',
+            'endpoint': options.uri.path,
             'method': options.method,
             'path': options.uri.path,
             'nextAttempt': attempts + 1,
@@ -209,7 +212,13 @@ Future<T> _sharedRead<T>(
     final authorization = _dio.options.headers['Authorization']?.toString() ?? '';
     final key = '${_dio.options.baseUrl}:$authorization:$resourceKey';
     final existing = _sharedReadRequests[key];
-    if (existing != null) return existing.then((value) => value as T);
+    if (existing != null) {
+      AppLogger.info('API read joined in-flight request', category: 'network', component: 'server_api', fields: {
+        'operation': 'shared_read_joined',
+        'resourceKeyHash': _stableDiagnosticHash(resourceKey),
+      });
+      return existing.then((value) => value as T);
+    }
 
     late final Future<T> request;
     request = load().whenComplete(() {
