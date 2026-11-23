@@ -270,6 +270,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         size: local.size,
         artist: track.artist,
         artworkUrl: track.thumbnailUrl,
+        lyricsVideoId: track.videoId,
+        durationText: track.durationText,
       );
     }
     return _remoteQueueItem(track);
@@ -329,6 +331,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       streamUrl: stream.url,
       artist: track.artist,
       artworkUrl: track.thumbnailUrl,
+      lyricsVideoId: track.videoId,
+      durationText: track.durationText,
       httpHeaders: {
         'User-Agent': stream.userAgent,
         'Accept': '*/*',
