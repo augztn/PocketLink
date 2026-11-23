@@ -453,7 +453,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+            padding: EdgeInsets.fromLTRB(20, media.padding.top + kToolbarHeight + 4, 20, 8),
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 520),
@@ -666,76 +666,6 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                   ),
                 ],
                 const SizedBox(height: 14),
-                Card(
-                  clipBehavior: Clip.antiAlias,
-                  margin: EdgeInsets.zero,
-                  color: colors.surfaceContainerLow.withValues(alpha: 0.76),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
-                    side: BorderSide(
-                      color: colors.outlineVariant.withValues(alpha: 0.52),
-                      width: 1,
-                    ),
-                  ),
-                  child: InkWell(
-                    onTap: _isConnecting
-                        ? null
-                        : () => Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => const LocalStorageSetupScreen(),
-                              ),
-                            ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: colors.primaryContainer,
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                            child: Icon(
-                              Icons.phone_android_rounded,
-                              color: colors.onPrimaryContainer,
-                              size: 25,
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Host PocketLink on this device',
-                                  style: theme.textTheme.titleSmall?.copyWith(
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Turn this phone into your server and configure storage access.',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: colors.onSurfaceVariant,
-                                    height: 1.35,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Icon(
-                            Icons.arrow_forward_ios_rounded,
-                            size: 16,
-                            color: colors.onSurfaceVariant,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 18),
                 Text(
                   'Saved passwords are kept in Android secure storage. Use HTTPS on untrusted networks.',
                   style: theme.textTheme.bodySmall,
