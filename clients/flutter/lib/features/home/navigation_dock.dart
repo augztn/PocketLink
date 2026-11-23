@@ -392,9 +392,12 @@ class _DockTab extends StatelessWidget {
   final IconData activeIcon;
   final String label;
   final ValueChanged<int> onTap;
+
   @override
   Widget build(BuildContext context) {
     final selected = selectedIndex == index;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Semantics(
       button: true,
       selected: selected,
@@ -411,12 +414,10 @@ class _DockTab extends StatelessWidget {
                 curve: Curves.easeOutCubic,
                 margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                 decoration: BoxDecoration(
-                  color: selected &&
-                          Theme.of(context).brightness == Brightness.dark
+                  color: selected && isDark
                       ? Colors.white.withValues(alpha: 0.16)
                       : null,
-                  gradient: selected &&
-                          Theme.of(context).brightness == Brightness.light
+                  gradient: selected && !isDark
                       ? LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
@@ -435,33 +436,40 @@ class _DockTab extends StatelessWidget {
                   borderRadius: BorderRadius.circular(25),
                 ),
                 child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  selected ? activeIcon : icon,
-                  size: 21,
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white.withValues(alpha: selected ? 1 : 0.65)
-                      : selected
-                          ? const Color(0xFF4355E8)
-                          : const Color(0xFF475569),
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      selected ? activeIcon : icon,
+                      size: 21,
+                      color: isDark
+                          ? Colors.white.withValues(
+                              alpha: selected ? 1 : 0.65,
+                            )
+                          : selected
+                              ? const Color(0xFF4355E8)
+                              : const Color(0xFF475569),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            fontSize: 10,
+                            fontWeight:
+                                selected ? FontWeight.w800 : FontWeight.w600,
+                            color: isDark
+                                ? Colors.white.withValues(
+                                    alpha: selected ? 1 : 0.65,
+                                  )
+                                : selected
+                                    ? const Color(0xFF4355E8)
+                                    : const Color(0xFF475569),
+                          ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        fontSize: 10,
-                        fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? Colors.white.withValues(alpha: selected ? 1 : 0.65)
-                            : selected
-                                ? const Color(0xFF4355E8)
-                                : const Color(0xFF475569),
-                      ),
-                ),
-                ),
+              ),
               if (selected)
                 Positioned.fill(
                   child: IgnorePointer(
