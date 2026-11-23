@@ -19,6 +19,13 @@ class MediaQueueItem {
   final String? streamUrl;
   final Map<String, String> httpHeaders;
   final String? artist;
+
+  /// Describes the origin of the media, not the device or cache used to play it.
+  String get sourceLabel {
+    if (localPath != null) return 'Local';
+    if (streamUrl != null) return 'Discover';
+    return 'PocketLink';
+  }
 }
 
 /// App-scoped owner for the native media engine.
