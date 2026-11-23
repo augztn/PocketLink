@@ -17,7 +17,10 @@ class PocketLinkPageTransitionsBuilder extends PageTransitionsBuilder {
     final eased = CurvedAnimation(
       parent: animation,
       curve: Curves.easeOutCubic,
-      reverseCurve: Curves.easeInCubic,
+      // Keep reverse progress linear. Predictive-back gestures drive this
+      // animation interactively; easing it can distort the finger-tracked
+      // progress and make a partially completed pop feel hesitant on release.
+      reverseCurve: Curves.linear,
     );
 
     // Do not fade the route: Settings pages use layered/glass surfaces, and
