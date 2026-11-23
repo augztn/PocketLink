@@ -164,7 +164,15 @@ class MediaIndexScannerTest {
             val third = awaitFinished(scanner, second.getLong("last_scan_started_at"))
             assertEquals("complete", third.getString("state"))
             assertEquals(0, third.getInt("music_count"))
-            assertEquals(9, third.getInt("file_count"))
+            // Aggregate status counts include every volume. Other instrumentation
+            // tests may scan a separate volume concurrently, so assert pruning
+            // against this test's internal volume rather than the global total.
+            val finalDatabase = MediaIndexDatabase(context)
+            try {
+                assertEquals(9, finalDatabase.fileSnapshot("internal").size)
+            } finally {
+                finalDatabase.close()
+            }
         } finally {
             scanner.close()
             root.deleteRecursively()
