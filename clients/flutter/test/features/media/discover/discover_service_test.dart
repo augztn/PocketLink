@@ -52,6 +52,30 @@ void main() {
       expect(match?.name, 'Dreams.flac');
     });
 
+    test('matches Unicode regional-language titles without ASCII loss', () {
+      final regionalTrack = DiscoverTrack(
+        videoId: 'regional12345',
+        title: 'പവിഴമഴ',
+        artist: 'KS Harisankar',
+      );
+      final files = [
+        IndexedFile(
+          volume: 'internal',
+          path: 'Music/KS Harisankar/പവിഴമഴ.flac',
+          name: 'പവിഴമഴ.flac',
+          type: 'file',
+          size: 12000000,
+          modified: '',
+          mime: 'audio/flac',
+          category: 'music',
+        ),
+      ];
+      expect(
+        DiscoverService.findLocalLosslessMatch(regionalTrack, files)?.name,
+        'പവിഴമഴ.flac',
+      );
+    });
+
     test('does not substitute a different recording with a different title', () {
       final files = [
         IndexedFile(
