@@ -29,13 +29,14 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   bool _loading = false;
   bool _loadingLibrary = false;
   String? _error;
-  String _sectionTitle = 'Popular in India';
+  String _sectionTitle = 'Top charts in India';
+  int _requestGeneration = 0;
 
   @override
   void initState() {
     super.initState();
     _loadLocalLibrary();
-    _search('top songs India');
+    _loadHome();
   }
 
   @override
@@ -76,8 +77,38 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     }
   }
 
+  Future<void> _loadHome() async {
+    final generation = ++_requestGeneration;
+    setState(() {
+      _loading = true;
+      _error = null;
+      _sectionTitle = 'Top charts in India';
+    });
+    try {
+      final results = await _service.home();
+      if (!mounted || generation != _requestGeneration) return;
+      if (results.isEmpty) {
+        await _search('top songs India');
+        return;
+      }
+      setState(() {
+        _tracks = results;
+        _error = null;
+      });
+    } on PlatformException catch (error) {
+      if (!mounted || generation != _requestGeneration) return;
+      setState(() => _error = error.message ?? 'YouTube Music home is unavailable.');
+    } catch (_) {
+      if (!mounted || generation != _requestGeneration) return;
+      setState(() => _error = 'Could not load YouTube Music home. Check your connection and try again.');
+    } finally {
+      if (mounted && generation == _requestGeneration) setState(() => _loading = false);
+    }
+  }
+
   Future<void> _search(String query) async {
-    if (query.trim().length < 2 || _loading) return;
+    if (query.trim().length < 2) return;
+    final generation = ++_requestGeneration;
     setState(() {
       _loading = true;
       _error = null;
@@ -85,19 +116,44 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     });
     try {
       final results = await _service.search(query);
-      if (!mounted) return;
+      if (!mounted || generation != _requestGeneration) return;
       setState(() {
         _tracks = results;
         if (results.isEmpty) _error = 'No tracks found. Try another search.';
       });
     } on PlatformException catch (error) {
-      if (!mounted) return;
+      if (!mounted || generation != _requestGeneration) return;
       setState(() => _error = error.message ?? 'Discover is unavailable on this device.');
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || generation != _requestGeneration) return;
       setState(() => _error = 'Could not load Discover results. Check your connection and try again.');
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted && generation == _requestGeneration) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _loadRadio(DiscoverTrack track) async {
+    final generation = ++_requestGeneration;
+    setState(() {
+      _loading = true;
+      _error = null;
+      _sectionTitle = 'Radio · ${track.title}';
+    });
+    try {
+      final results = await _service.radio(track);
+      if (!mounted || generation != _requestGeneration) return;
+      setState(() {
+        _tracks = results;
+        if (results.isEmpty) _error = 'No radio recommendations are available for this track.';
+      });
+    } on PlatformException catch (error) {
+      if (!mounted || generation != _requestGeneration) return;
+      setState(() => _error = error.message ?? 'Radio is unavailable right now.');
+    } catch (_) {
+      if (!mounted || generation != _requestGeneration) return;
+      setState(() => _error = 'Could not load radio recommendations.');
+    } finally {
+      if (mounted && generation == _requestGeneration) setState(() => _loading = false);
     }
   }
 
@@ -369,9 +425,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             else
               Expanded(
                 child: RefreshIndicator(
-                  onRefresh: () => _search(_searchController.text.isEmpty
-                      ? 'top songs India'
-                      : _searchController.text),
+                  onRefresh: () => _searchController.text.isEmpty
+                      ? _loadHome()
+                      : _search(_searchController.text),
                   child: ListView.separated(
                     padding: const EdgeInsets.fromLTRB(12, 0, 12, 24),
                     itemCount: _tracks.length,
@@ -414,9 +470,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                           onSelected: (value) {
                             if (value == 'lyrics') _showLyrics(track, local: local);
                             if (value == 'play') _play(track);
+                            if (value == 'radio') _loadRadio(track);
                           },
                           itemBuilder: (_) => const [
                             PopupMenuItem(value: 'play', child: Text('Play')),
+                            PopupMenuItem(value: 'radio', child: Text('Start radio')),
                             PopupMenuItem(value: 'lyrics', child: Text('Lyrics')),
                           ],
                         ),
