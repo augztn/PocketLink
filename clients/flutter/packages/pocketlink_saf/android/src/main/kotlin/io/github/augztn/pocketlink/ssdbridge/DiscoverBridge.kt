@@ -39,26 +39,33 @@ internal object DiscoverBridge {
         .retryOnConnectionFailure(true)
         .build()
 
+    private val catalog = YouTubeMusicCatalog(httpClient)
     @Volatile private var initialized = false
     private val initLock = Any()
 
     fun search(query: String, limit: Int, result: io.flutter.plugin.common.MethodChannel.Result) {
         executor.execute {
             try {
-                ensureInitialized()
                 val cleanQuery = query.trim()
                 require(cleanQuery.length >= 2) { "Enter at least two characters." }
-                val handler = ServiceList.YouTube.searchQHFactory.fromQuery(
-                    cleanQuery,
-                    listOf("music_songs"),
-                    ""
-                )
-                val info = SearchInfo.getInfo(ServiceList.YouTube, handler)
-                val tracks = info.relatedItems.orEmpty()
-                    .filterIsInstance<StreamInfoItem>()
-                    .mapNotNull { item -> item.toDiscoverTrack() }
-                    .distinctBy { it["videoId"] }
-                    .take(limit.coerceIn(1, 50))
+                val boundedLimit = limit.coerceIn(1, 50)
+                val catalogueTracks = catalog.search(cleanQuery, boundedLimit)
+                val tracks = if (catalogueTracks.isNotEmpty()) {
+                    catalogueTracks
+                } else {
+                    ensureInitialized()
+                    val handler = ServiceList.YouTube.searchQHFactory.fromQuery(
+                        cleanQuery,
+                        listOf("music_songs"),
+                        ""
+                    )
+                    val info = SearchInfo.getInfo(ServiceList.YouTube, handler)
+                    info.relatedItems.orEmpty()
+                        .filterIsInstance<StreamInfoItem>()
+                        .mapNotNull { item -> item.toDiscoverTrack() }
+                        .distinctBy { it["videoId"] }
+                        .take(boundedLimit)
+                }
                 mainHandler.post { result.success(tracks) }
             } catch (error: Exception) {
                 mainHandler.post {
@@ -67,6 +74,32 @@ internal object DiscoverBridge {
                         error.message ?: "YouTube Music search failed.",
                         null
                     )
+                }
+            }
+        }
+    }
+
+    fun home(limit: Int, result: io.flutter.plugin.common.MethodChannel.Result) {
+        executor.execute {
+            try {
+                val tracks = catalog.home(limit.coerceIn(1, 50))
+                mainHandler.post { result.success(tracks) }
+            } catch (error: Exception) {
+                mainHandler.post {
+                    result.error("DISCOVER_HOME_FAILED", error.message ?: "YouTube Music home is unavailable.", null)
+                }
+            }
+        }
+    }
+
+    fun radio(videoId: String, limit: Int, result: io.flutter.plugin.common.MethodChannel.Result) {
+        executor.execute {
+            try {
+                val tracks = catalog.radio(videoId.trim(), limit.coerceIn(1, 50))
+                mainHandler.post { result.success(tracks) }
+            } catch (error: Exception) {
+                mainHandler.post {
+                    result.error("DISCOVER_RADIO_FAILED", error.message ?: "Could not load radio recommendations.", null)
                 }
             }
         }
