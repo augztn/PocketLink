@@ -44,11 +44,11 @@ void main() {
   });
 
   test('Now Playing theme selection persists independently', () async {
-    await settings.setNowPlayingTheme('blurCard');
+    await settings.setNowPlayingTheme('aether');
 
     final preferences = await SharedPreferences.getInstance();
-    expect(settings.nowPlayingTheme, 'blurCard');
-    expect(preferences.getString('settings_now_playing_theme'), 'blurCard');
+    expect(settings.nowPlayingTheme, 'aether');
+    expect(preferences.getString('settings_now_playing_theme'), 'aether');
     expect(settings.nowPlayingScrubberStyle, 'apple');
   });
 
