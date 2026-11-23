@@ -45,15 +45,11 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
                 Colors.transparent,
               ];
 
-        return LayoutBuilder(
-          builder: (context, _) {
-            final renderedHeight = headerHeight;
-            if (TickerMode.of(context)) {
-              LayoutInsetsScope.reportRenderedHeader(context, renderedHeight);
-            }
-            return SizedBox(
+        return _HeaderHeightReporter(
+          height: headerHeight,
+          child: SizedBox(
           width: double.infinity,
-          height: renderedHeight,
+          height: headerHeight,
           child: ClipRect(
             child: Stack(
               fit: StackFit.expand,
@@ -138,12 +134,73 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
               ],
             ),
           ),
-        );
-          },
+        ),
         );
       },
     );
   }
+}
+
+/// Reports a header's known geometry after layout, never during build.
+class _HeaderHeightReporter extends StatefulWidget {
+  const _HeaderHeightReporter({
+    required this.height,
+    required this.child,
+  });
+
+  final double height;
+  final Widget child;
+
+  @override
+  State<_HeaderHeightReporter> createState() => _HeaderHeightReporterState();
+}
+
+class _HeaderHeightReporterState extends State<_HeaderHeightReporter> {
+  Route<dynamic>? _reportedRoute;
+  double? _reportedHeight;
+  bool _reportScheduled = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _scheduleReport();
+  }
+
+  @override
+  void didUpdateWidget(covariant _HeaderHeightReporter oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if ((oldWidget.height - widget.height).abs() >= 0.5) {
+      _scheduleReport();
+    }
+  }
+
+  void _scheduleReport() {
+    final route = ModalRoute.of(context);
+    if (route == null || _reportScheduled ||
+        (identical(_reportedRoute, route) &&
+            _reportedHeight != null &&
+            (_reportedHeight! - widget.height).abs() < 0.5)) {
+      return;
+    }
+
+    final height = widget.height;
+    _reportScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _reportScheduled = false;
+      if (!mounted || !identical(ModalRoute.of(context), route)) return;
+      if (identical(_reportedRoute, route) &&
+          _reportedHeight != null &&
+          (_reportedHeight! - height).abs() < 0.5) {
+        return;
+      }
+      LayoutInsetsScope.reportRenderedHeader(context, route, height);
+      _reportedRoute = route;
+      _reportedHeight = height;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 /// Circular frosted action control for edge-to-edge headers.
