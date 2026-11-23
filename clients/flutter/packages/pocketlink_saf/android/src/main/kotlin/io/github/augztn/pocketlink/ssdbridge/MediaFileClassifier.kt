@@ -8,7 +8,7 @@ internal object MediaFileClassifier {
     internal val AUDIO_MIME_TYPES = setOf(
         "audio/mpeg", "audio/flac", "audio/x-flac", "audio/mp4", "audio/x-m4a",
         "audio/wav", "audio/x-wav", "audio/ogg", "audio/aac", "audio/opus",
-        "audio/x-ms-wma"
+        "audio/x-ms-wma", "audio/aiff", "audio/x-aiff", "audio/alac", "audio/x-alac"
     )
     internal val VIDEO_MIME_TYPES = setOf(
         "video/mp4", "video/x-m4v", "video/x-matroska", "video/webm",
