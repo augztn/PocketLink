@@ -148,7 +148,7 @@ class MediaIndexScannerTest {
             assertEquals(5, first.getInt("scanned_directories"))
             assertEquals(setOf("track.mp3", "legacy.aiff"), scanner.media("music", "", 10, 0).map { it.name }.toSet())
             assertEquals("clip.ts", scanner.media("video", "", 10, 0).single().name)
-            assertEquals("audio/mpeg", scanner.media("music", "", 10, 0).single().mime)
+            assertEquals("audio/mpeg", scanner.media("music", "", 10, 0).first { it.name == "track.mp3" }.mime)
             assertEquals("application/pdf", scanner.files("report.pdf", 10, 0).single().mime)
 
             SystemClock.sleep(5)
