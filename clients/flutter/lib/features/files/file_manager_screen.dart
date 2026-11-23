@@ -919,7 +919,16 @@ tooltip: 'Choose storage location',
                                     itemCount: items.length,
                                     itemBuilder: (context, index) {
                                       final item = items[index];
-                                      return InkWell(
+                                      return Material(
+                                        color: colors.surfaceContainerLow,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(20),
+                                          side: BorderSide(
+                                            color: colors.outlineVariant.withValues(alpha: 0.32),
+                                          ),
+                                        ),
+                                        clipBehavior: Clip.antiAlias,
+                                        child: InkWell(
                                         borderRadius: BorderRadius.circular(20),
                                         onTap: item.isDirectory
                                             ? () => _load(_itemPath(item.name))
@@ -968,6 +977,7 @@ tooltip: 'Choose storage location',
                                                 style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
                                             ],
                                           ),
+                                        ),
                                         ),
                                       );
                                     },
