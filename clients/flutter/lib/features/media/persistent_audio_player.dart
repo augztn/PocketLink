@@ -152,7 +152,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
     });
     if (session != _queueSession) return;
     final current = currentItem;
-    if (current != null && current.localPath == null && current.streamUrl == null && _music) {
+    if (current != null && current.localPath == null && current.streamUrl == null && _music && api != null) {
       unawaited(HomeActivityStore.instance.recordTrack(serverUrl: api.baseUrl, title: current.title, path: current.path, volume: current.volume));
     }
     await _syncMediaSession(start: true);
