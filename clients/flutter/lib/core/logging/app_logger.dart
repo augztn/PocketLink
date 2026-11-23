@@ -174,7 +174,12 @@ class AppLogger {
     if (!RegExp(r'(^|_)(path|filename|directory|folder|uri)(_|$)')
         .hasMatch(normalized)) return false;
     // API route templates are operational metadata, not user filesystem paths.
-    if (value is String && RegExp(r'^/api/[a-zA-Z0-9_/{}/-]+/?  static Map<String, Object?> _sanitizeFields(Map<String, Object?> fields) {
+    if (value is String && RegExp(r'^/api/[a-zA-Z0-9_/{}/-]+/?$').hasMatch(value)) {
+      return false;
+    }
+    return true;
+  }
+  static Map<String, Object?> _sanitizeFields(Map<String, Object?> fields) {
     return fields.map((key, value) {
       if (_isSensitiveKey(key)) return MapEntry(key, '[REDACTED]');
       if (_isSensitivePathKey(key, value)) return MapEntry(key, '[REDACTED_PATH]');
