@@ -37,7 +37,7 @@ void main() {
         final expectedCenter =
             capsule.left + 5 + (activeIndex + 0.5) * slotWidth;
         final activeLabel = tester.getCenter(
-          find.text(const ['Home', 'Explore', 'Files'][activeIndex]),
+          find.text(['Home', 'Explore', 'Files'][activeIndex]),
         );
 
         expect(activeLabel.dx, closeTo(expectedCenter, 0.5));
