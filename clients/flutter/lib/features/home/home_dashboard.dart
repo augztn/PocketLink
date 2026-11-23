@@ -21,6 +21,7 @@ import 'explore_search_screens.dart';
 import '../media/persistent_audio_player.dart';
 import '../media/now_playing_overlay_controller.dart';
 import '../../core/network/server_api.dart';
+import '../../core/logging/app_logger.dart';
 import '../transfers/transfer_manager_screen.dart';
 import '../transfers/transfer_manager.dart';
 import '../search/search_screen.dart';
@@ -630,13 +631,44 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
   }
 
   Future<void> _startHostMediaScan() async {
-    if (_startingMediaScan || (_mediaScanStatus?.isScanning ?? false)) return;
+    if (_startingMediaScan || (_mediaScanStatus?.isScanning ?? false)) {
+      unawaited(AppLogger.info(
+        'Host media scan request ignored because a scan is already active',
+        category: 'media',
+        component: 'host_media_scan',
+        fields: {
+          'starting': _startingMediaScan,
+          'alreadyScanning': _mediaScanStatus?.isScanning ?? false,
+        },
+      ));
+      return;
+    }
+    final scanCorrelationId = AppLogger.nextEventId('media-scan');
     setState(() {
       _startingMediaScan = true;
       _mediaScanError = null;
     });
+    unawaited(AppLogger.info(
+      'Host media scan requested',
+      category: 'media',
+      component: 'host_media_scan',
+      correlationId: scanCorrelationId,
+      fields: {'trigger': 'manual', 'serverOnline': _serverOnline == true},
+    ));
     try {
       final status = await widget.api.startMediaIndexScan();
+      unawaited(AppLogger.info(
+        'Host media scan start response received',
+        category: 'media',
+        component: 'host_media_scan',
+        correlationId: scanCorrelationId,
+        fields: {
+          'state': status.state,
+          'isScanning': status.isScanning,
+          'scanned': status.scanned,
+          'skipped': status.skipped,
+        },
+      ));
       if (!mounted) return;
       setState(() {
         _mediaScanStatus = status;
@@ -648,7 +680,16 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
           SnackBar(content: Text(status.lastError ?? 'The host scan did not complete fully.')),
         );
       }
-    } catch (_) {
+    } catch (error, stackTrace) {
+      unawaited(AppLogger.error(
+        'Host media scan request failed',
+        error: error,
+        stackTrace: stackTrace,
+        category: 'media',
+        component: 'host_media_scan',
+        correlationId: scanCorrelationId,
+        fields: {'serverOnline': _serverOnline == true},
+      ));
       if (mounted) {
         setState(() => _mediaScanError = 'Could not start the host scan. Check the host connection and storage permissions.');
         ScaffoldMessenger.of(context).showSnackBar(

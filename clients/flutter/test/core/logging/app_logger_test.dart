@@ -165,5 +165,19 @@ void main() {
       expect(sanitized, contains('/api/files/'));
       expect(sanitized, contains('200'));
     });
+
+    test('preserves safe API route fields while redacting private paths', () {
+      final sanitized = AppLogger.sanitizeDiagnosticFields({
+        'route': '/api/index/status',
+        'endpoint': '/api/files/',
+        'path': '/api/storage/volumes',
+        'file_path': '/sdcard/Private/movie.mp4',
+      });
+
+      expect(sanitized['route'], '/api/index/status');
+      expect(sanitized['endpoint'], '/api/files/');
+      expect(sanitized['path'], '/api/storage/volumes');
+      expect(sanitized['file_path'], '[REDACTED_PATH]');
+    });
   });
 }

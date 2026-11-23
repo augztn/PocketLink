@@ -77,6 +77,7 @@ class _ServerApiTransport {
           'requestId': requestId,
           'operation': '${options.method.toUpperCase()} ${options.uri.path}',
           'endpoint': options.uri.path,
+          'route': options.uri.path,
           'method': options.method,
           'path': options.uri.path,
           'queryKey': options.extra['pocketlink.queryKey'],
@@ -95,6 +96,7 @@ class _ServerApiTransport {
           'requestId': requestId,
           'operation': '${options.method.toUpperCase()} ${options.uri.path}',
           'endpoint': options.uri.path,
+          'route': options.uri.path,
           'method': options.method,
           'path': options.uri.path,
           'status': response.statusCode,
@@ -113,6 +115,8 @@ class _ServerApiTransport {
           'requestId': requestId,
           'operation': '${failedOptions.method.toUpperCase()} ${failedOptions.uri.path}',
           'endpoint': failedOptions.uri.path,
+          'route': failedOptions.uri.path,
+          'failureHint': _networkFailureHint(error),
           'method': failedOptions.method,
           'path': failedOptions.uri.path,
           'type': error.type.name,
@@ -146,11 +150,13 @@ class _ServerApiTransport {
             'requestId': requestId,
             'operation': '${options.method.toUpperCase()} ${options.uri.path}',
             'endpoint': options.uri.path,
+          'route': options.uri.path,
             'method': options.method,
             'path': options.uri.path,
             'nextAttempt': attempts + 1,
             'delayMs': retryDelay.inMilliseconds,
             'freshConnection': true,
+            'failureHint': _networkFailureHint(error),
           });
           await Future<void>.delayed(retryDelay);
           if (options.cancelToken?.isCancelled ?? false) {
@@ -238,6 +244,14 @@ String _stableDiagnosticHash(String value) {
     _sharedReadRequests[key] = request;
     return request;
   }
+
+String _networkFailureHint(DioException error) => switch (error.type) {
+  DioExceptionType.connectionTimeout => 'host_or_network_route_unreachable',
+  DioExceptionType.connectionError => 'network_route_or_server_unavailable',
+  DioExceptionType.receiveTimeout => 'server_response_timeout',
+  DioExceptionType.sendTimeout => 'request_send_timeout',
+  _ => 'http_or_transport_error',
+};
 
 Duration _retryDelay(DioException error, int attempts) {
     final retryAfter = error.response?.headers.value('retry-after')?.trim();
