@@ -136,7 +136,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   bool _shouldShowMiniPlayer() {
     final player = _player;
     final standaloneDiscover =
-        PocketLinkNavigation.observer.isStandaloneDiscoverVisible;
+        PocketLinkNavigation.observer.isStandaloneDiscoverFlow;
     return player.shouldShowMiniPlayer &&
         (standaloneDiscover || AppSettings.instance.showMiniPlayer);
   }
