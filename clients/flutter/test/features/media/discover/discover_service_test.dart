@@ -1,9 +1,56 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pocketlink_client/core/settings/app_settings.dart';
 import 'package:pocketlink_client/core/network/server_api_models.dart';
 import 'package:pocketlink_client/features/media/discover/discover_models.dart';
 import 'package:pocketlink_client/features/media/discover/discover_service.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  const channel = MethodChannel('pocketlink/saf');
+  final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+  test('resolve forwards persisted quality, resolver and region preferences', () async {
+    SharedPreferences.setMockInitialValues({});
+    await AppSettings.instance.reloadPreferences();
+    await AppSettings.instance.setDiscoverPlaybackOptions(
+      audioQuality: 'data_saver',
+      resolverProfile: 'player_api_first',
+      region: 'JP',
+    );
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      expect(call.method, 'discoverResolve');
+      expect(call.arguments, {
+        'videoId': 'abcdefghijk',
+        'quality': 'data_saver',
+        'resolverProfile': 'player_api_first',
+        'region': 'JP',
+      });
+      return {
+        'url': 'https://r1.googlevideo.com/videoplayback',
+        'mimeType': 'audio/webm',
+        'userAgent': 'test-agent',
+        'bitrateBps': 96000,
+        'resolver': 'ANDROID_VR',
+        'codec': 'opus',
+        'quality': 'data_saver',
+        'qualityFallbackReason': '',
+        'audioOnly': true,
+      };
+    });
+
+    final stream = await DiscoverService().resolve(
+      const DiscoverTrack(videoId: 'abcdefghijk', title: 'Track', artist: 'Artist'),
+    );
+
+    expect(stream.resolver, 'ANDROID_VR');
+    expect(stream.codec, 'opus');
+    expect(stream.bitrateBps, 96000);
+    expect(stream.audioOnly, isTrue);
+    messenger.setMockMethodCallHandler(channel, null);
+  });
+
   group('DiscoverService.parseLrc', () {
     test('parses fractional timestamps and sorts lines', () {
       final lines = DiscoverService.parseLrc('[00:12.34]Second\n[00:02.1]First');
