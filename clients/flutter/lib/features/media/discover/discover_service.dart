@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 
-import '../../core/network/server_api_models.dart';
+import '../../../core/network/server_api_models.dart';
 
 import 'discover_models.dart';
 
