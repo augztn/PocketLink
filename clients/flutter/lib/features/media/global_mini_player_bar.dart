@@ -23,6 +23,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
     required this.onSkipNext,
     this.surfaceKey,
     this.hasFloatingNavBar = true,
+    this.surfaceIntensity = 1.0,
     this.artworkBytes,
     this.artworkKey,
     this.onExpandDragUpdate,
@@ -45,6 +46,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
   final VoidCallback onSkipNext;
   final Key? surfaceKey;
   final bool hasFloatingNavBar;
+  final double surfaceIntensity;
   final Uint8List? artworkBytes;
   final Key? artworkKey;
   final ValueChanged<double>? onExpandDragUpdate;
@@ -89,6 +91,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
         child: SmokedGlassSurface(
           key: surfaceKey,
           radius: BorderRadius.circular(22),
+          intensity: surfaceIntensity,
           child: AnimatedOpacity(
             opacity: visible ? 1 : 0,
             duration: reduceMotion

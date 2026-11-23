@@ -385,10 +385,15 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
         valueListenable: observer.routeStack,
         builder: (context, routes, __) {
           final drawerOpen = PocketLinkNavigation.drawerOpen.value;
-          final visible = _shouldShowMiniPlayer() &&
-              !_nowPlayingOpen &&
+          final miniPlayerAvailable = _shouldShowMiniPlayer() &&
               !drawerOpen &&
-              !PocketLinkNavigation.quickShortcutsOpen.value &&
+              !PocketLinkNavigation.quickShortcutsOpen.value;
+          final shouldRenderMiniPlayer = miniPlayerAvailable &&
+              (_nowPlayingOpen ||
+                  (!observer.isNowPlayingVisible &&
+                      !observer.isModalRouteOnTop));
+          final visible = shouldRenderMiniPlayer &&
+              !_nowPlayingOpen &&
               !observer.isNowPlayingVisible &&
               !observer.isModalRouteOnTop &&
               _nowPlayingController.value <= 0.0;
@@ -414,7 +419,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
                 .cast<Object>()
                 .toList(growable: false),
             hasFloatingNavBar: onDashboard,
-            hasActiveMiniPlayer: visible,
+            hasActiveMiniPlayer: shouldRenderMiniPlayer,
             child: widget.child,
           );
 
@@ -444,27 +449,31 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
                     ),
                   ),
                 ),
-              if (visible)
+              if (shouldRenderMiniPlayer)
                 Positioned(
                   left: 0,
                   right: 0,
                   bottom: bottomInset + (onDashboard ? _homeDockHeight : 0),
-                  child: AnimatedSlide(
-                    offset: Offset.zero,
-                    duration: reduceMotion || drawerOpen
-                        ? Duration.zero
-                        : const Duration(milliseconds: 280),
-                    curve: Curves.easeOutCubic,
-                    child: _GlobalMiniPlayerBar(
-                      visible: true,
-                      hasFloatingNavBar: onDashboard,
-                      reduceMotion: reduceMotion,
-                      player: player,
-                      artworkBytes: _sharedArtwork,
-                      onOpen: _openNowPlaying,
-                      onDismiss: player.dismissMiniPlayer,
-                      onExpandDragUpdate: _updateMiniPlayerDrag,
-                      onExpandDragEnd: _endMiniPlayerDrag,
+                  child: IgnorePointer(
+                    ignoring: !visible,
+                    child: AnimatedSlide(
+                      offset: Offset.zero,
+                      duration: reduceMotion || drawerOpen
+                          ? Duration.zero
+                          : const Duration(milliseconds: 280),
+                      curve: Curves.easeOutCubic,
+                      child: _GlobalMiniPlayerBar(
+                        visible: visible,
+                        hasFloatingNavBar: onDashboard,
+                        reduceMotion: reduceMotion,
+                        player: player,
+                        artworkBytes: _sharedArtwork,
+                        surfaceIntensity: visible ? 1.0 : 0.0,
+                        onOpen: _openNowPlaying,
+                        onDismiss: player.dismissMiniPlayer,
+                        onExpandDragUpdate: _updateMiniPlayerDrag,
+                        onExpandDragEnd: _endMiniPlayerDrag,
+                      ),
                     ),
                   ),
                 ),
@@ -981,6 +990,7 @@ class _GlobalMiniPlayerBar extends StatelessWidget {
     required this.reduceMotion,
     required this.player,
     required this.artworkBytes,
+    required this.surfaceIntensity,
     required this.onOpen,
     required this.onDismiss,
     required this.onExpandDragUpdate,
@@ -992,6 +1002,7 @@ class _GlobalMiniPlayerBar extends StatelessWidget {
   final bool reduceMotion;
   final PersistentAudioPlayer player;
   final ValueListenable<Uint8List?> artworkBytes;
+  final double surfaceIntensity;
   final VoidCallback onOpen;
   final VoidCallback onDismiss;
   final ValueChanged<double> onExpandDragUpdate;
@@ -1029,6 +1040,7 @@ class _GlobalMiniPlayerBar extends StatelessWidget {
               onSkipNext: player.skipToNext,
               surfaceKey: PocketLinkNavigation.miniPlayerKey,
               hasFloatingNavBar: hasFloatingNavBar,
+              surfaceIntensity: surfaceIntensity,
               artworkBytes: artwork,
               artworkKey: PocketLinkNavigation.miniArtworkKey,
               onExpandDragUpdate: onExpandDragUpdate,
