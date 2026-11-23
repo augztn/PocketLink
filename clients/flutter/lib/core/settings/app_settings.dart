@@ -115,8 +115,8 @@ class AppSettings extends ChangeNotifier {
   bool _showGlobalSearch = true;
   bool _showActiveTransfers = true;
   List<String> _homeSectionOrder = List.of(homeSectionDefaults);
-  bool _useLiquidGlass = false;
-  bool _progressiveBlurEnabled = false;
+  bool _useLiquidGlass = true;
+  bool _progressiveBlurEnabled = true;
   double _progressiveBlurStrength = 55;
   Future<void> _progressiveBlurWrite = Future<void>.value();
   bool _loaded = false;
@@ -219,8 +219,8 @@ class AppSettings extends ChangeNotifier {
     _visibleNavigationItems = Set.of(navigationDefaults);
     try {
       final preferences = await SharedPreferences.getInstance();
-      _useLiquidGlass = preferences.getBool(_liquidGlassKey) ?? false;
-      _progressiveBlurEnabled = preferences.getBool(_progressiveBlurKey) ?? false;
+      _useLiquidGlass = preferences.getBool(_liquidGlassKey) ?? true;
+      _progressiveBlurEnabled = preferences.getBool(_progressiveBlurKey) ?? true;
       final storedBlurStrength = preferences.get(_progressiveBlurStrengthKey);
       _progressiveBlurStrength = storedBlurStrength is num
           ? storedBlurStrength.toDouble().clamp(0, 100).toDouble()
