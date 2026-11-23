@@ -83,19 +83,20 @@ class FloatingNavigationDock extends StatelessWidget {
                       children: [
                         if (activeIndex >= 0)
                           AnimatedPositioned(
-                            key: const ValueKey('navigation-dock-active-lens'),
                             duration: const Duration(milliseconds: 260),
                             curve: Curves.easeOutCubic,
                             left: activeIndex * slotWidth,
                             top: 0,
                             bottom: 0,
                             width: slotWidth,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 4,
-                                vertical: 2,
-                              ),
-                              child: DecoratedBox(
+                            child: SizedBox.expand(
+                              key: const ValueKey('navigation-dock-active-lens'),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                  vertical: 2,
+                                ),
+                                child: DecoratedBox(
                                 decoration: BoxDecoration(
                                   color: Theme.of(context).brightness ==
                                           Brightness.dark
