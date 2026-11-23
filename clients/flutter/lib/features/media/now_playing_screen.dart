@@ -31,7 +31,7 @@ import 'discover/discover_service.dart';
 
 class NowPlayingScreen extends StatefulWidget {
   const NowPlayingScreen({
-    required this.api,
+    this.api,
     required this.queue,
     this.initialIndex = 0,
     this.resumeExisting = false,
@@ -42,7 +42,7 @@ class NowPlayingScreen extends StatefulWidget {
     super.key,
   });
 
-  final ServerApi api;
+  final ServerApi? api;
   final VoidCallback onDismiss;
   final VoidCallback onDismissDragStart;
   final ValueChanged<double> onDismissDragUpdate;
@@ -75,15 +75,15 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
       widget.queue[widget.initialIndex.clamp(0, widget.queue.length - 1).toInt()];
 
   String get _trackKey =>
-      '${widget.api.baseUrl}|${_track.volume ?? 'internal'}:${_track.path}';
+      '${widget.api?.baseUrl ?? 'discover'}|${_track.volume ?? 'internal'}:${_track.path}';
 
   String get _favoriteId => '${_track.volume ?? 'internal'}:${_track.path}';
 
   String get _favoriteStorageKey =>
-      'pocketlink.music.favorites.${Uri.encodeComponent(widget.api.baseUrl)}';
+      'pocketlink.music.favorites.${Uri.encodeComponent(widget.api?.baseUrl ?? 'discover')}';
 
   String get _legacyFavoriteStorageKey =>
-      'homeserver.music.favorites.${Uri.encodeComponent(widget.api.baseUrl)}';
+      'homeserver.music.favorites.${Uri.encodeComponent(widget.api?.baseUrl ?? 'discover')}';
 
   bool get _isFavorite => _favorites.contains(_favoriteId);
 
@@ -260,8 +260,13 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   }
 
   Future<void> _refreshCacheStatus() async {
+    final api = widget.api;
+    if (api == null || _track.streamUrl != null || _track.localPath != null) {
+      if (mounted) setState(() => _cached = false);
+      return;
+    }
     final cached = await OfflineFileCache().find(
-      OfflineFileCache().serverId(widget.api),
+      OfflineFileCache().serverId(api),
       _track.volume,
       _track.path,
     );
@@ -316,10 +321,19 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     // PocketLink currently exposes raw files, not embedded-artwork metadata.
     // Use an existing folder cover file when present; otherwise show the
     // compact artwork fallback rather than a blank full-height region.
+    final api = widget.api;
+    if (api == null) {
+      if (mounted && request == _artworkRequest) setState(() {
+        _artwork = null;
+        _artworkKey = key;
+        _artworkPalette = null;
+      });
+      return;
+    }
     try {
       final listing = _track.volume == null
-          ? await widget.api.listDirectory(_folder)
-          : await widget.api.listStorageDirectory(_track.volume!, _folder);
+          ? await api.listDirectory(_folder)
+          : await api.listStorageDirectory(_track.volume!, _folder);
       const candidates = {
         'cover.jpg', 'cover.jpeg', 'cover.png', 'cover.webp',
         'folder.jpg', 'folder.png', 'album.jpg', 'album.png', 'front.jpg',
@@ -334,8 +348,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
       if (cover != null) {
         final path = '$_folder/${cover.name}';
         final bytes = _track.volume == null
-            ? await widget.api.downloadFile(path)
-            : await widget.api.downloadStorageFile(_track.volume!, path);
+            ? await api.downloadFile(path)
+            : await api.downloadStorageFile(_track.volume!, path);
         if (!mounted || request != _artworkRequest) return;
         if (bytes.isNotEmpty) {
           final palette = await NowPlayingArtworkPalette.extract(bytes);
@@ -390,7 +404,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
         break;
       case TrackOptionAction.removeFromCache:
         await OfflineFileCache().remove(
-          OfflineFileCache().serverId(widget.api),
+          OfflineFileCache().serverId(widget.api!),
           _track.volume,
           _track.path,
         );
@@ -404,9 +418,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     if (_track.localPath != null) {
       return File(_track.localPath!).readAsBytes();
     }
+    final api = widget.api;
+    if (api == null) throw StateError('This Discover stream is not a server file.');
     final bytes = _track.volume == null
-        ? await widget.api.downloadFile(_track.path)
-        : await widget.api.downloadStorageFile(_track.volume!, _track.path);
+        ? await api.downloadFile(_track.path)
+        : await api.downloadStorageFile(_track.volume!, _track.path);
     if (bytes.isEmpty) throw StateError('The server returned an empty file.');
     return bytes;
   }
@@ -416,9 +432,14 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
       _message('This track is already stored on this device.');
       return;
     }
+    final api = widget.api;
+    if (api == null) {
+      _message('Downloads are unavailable for Discover streams.');
+      return;
+    }
     try {
       await DownloadManagerService.instance.enqueueServerFile(
-        api: widget.api,
+        api: api,
         name: _track.path.split('/').last,
         sourcePath: _track.path,
         volume: _track.volume,
@@ -453,10 +474,12 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
         return null;
       }
     }
+    final api = widget.api;
+    if (api == null) return null;
     try {
       final listing = _track.volume == null
-          ? await widget.api.listDirectory(_folder)
-          : await widget.api.listStorageDirectory(_track.volume!, _folder);
+          ? await api.listDirectory(_folder)
+          : await api.listStorageDirectory(_track.volume!, _folder);
       final name = _track.path.split('/').last;
       for (final entry in listing.items) {
         if (!entry.isDirectory && entry.name == name) return entry.size;
@@ -542,14 +565,19 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   }
 
   void _showInFolder() {
+    final api = widget.api;
+    if (api == null) {
+      _message('Discover tracks do not have a server folder.');
+      return;
+    }
     if (_track.volume == null) {
       Navigator.of(context).push(MaterialPageRoute<void>(
-        builder: (_) => FileManagerScreen(api: widget.api, initialPath: _folder),
+        builder: (_) => FileManagerScreen(api: api, initialPath: _folder),
       ));
     } else {
       Navigator.of(context).push(MaterialPageRoute<void>(
         builder: (_) => StorageBrowserScreen(
-          api: widget.api,
+          api: api,
           initialVolume: _track.volume,
           initialPath: _folder,
         ),
@@ -629,6 +657,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
       context,
       isFavorite: _isFavorite,
       isCached: _cached,
+      serverActionsEnabled: widget.api != null,
       onAction: (action) => unawaited(_runOption(action)),
     );
   }
