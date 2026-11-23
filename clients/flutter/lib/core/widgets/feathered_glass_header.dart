@@ -74,6 +74,7 @@ class _FeatheredGlassHeaderBackgroundState
         final useBlur = settings.progressiveBlurEnabled && _isScrolled;
         final headerHeight =
             media.padding.top + widget.contentHeight + pocketLinkHeaderFadeTailHeight;
+        final scrimBase = theme.scaffoldBackgroundColor;
         final scrimColors = [
           Colors.black.withValues(alpha: 0.45),
           Colors.black.withValues(alpha: 0.22),
@@ -101,7 +102,7 @@ class _FeatheredGlassHeaderBackgroundState
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                             colors: scrimColors,
-                            stops: const [0, 0.55, 0.85, 1],
+                            stops: const [0, 0.55, 1],
                           ),
                         ),
                       ),
