@@ -97,34 +97,35 @@ class FloatingNavigationDock extends StatelessWidget {
                                   vertical: 2,
                                 ),
                                 child: DecoratedBox(
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context).brightness ==
-                                          Brightness.dark
-                                      ? Colors.white.withValues(alpha: 0.14)
-                                      : Colors.white.withValues(alpha: 0.72),
-                                  borderRadius: BorderRadius.circular(25),
-                                  border: Border.all(
-                                    color: Colors.white.withValues(
-                                      alpha: Theme.of(context).brightness ==
-                                              Brightness.dark
-                                          ? 0.20
-                                          : 0.58,
-                                    ),
-                                    width: 0.8,
-                                  ),
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: Theme.of(context).brightness ==
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).brightness ==
                                             Brightness.dark
-                                        ? [
-                                            Colors.white.withValues(alpha: 0.17),
-                                            Colors.white.withValues(alpha: 0.07),
-                                          ]
-                                        : [
-                                            Colors.white.withValues(alpha: 0.88),
-                                            Colors.white.withValues(alpha: 0.58),
-                                          ],
+                                        ? Colors.white.withValues(alpha: 0.14)
+                                        : Colors.white.withValues(alpha: 0.72),
+                                    borderRadius: BorderRadius.circular(25),
+                                    border: Border.all(
+                                      color: Colors.white.withValues(
+                                        alpha: Theme.of(context).brightness ==
+                                                Brightness.dark
+                                            ? 0.20
+                                            : 0.58,
+                                      ),
+                                      width: 0.8,
+                                    ),
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: Theme.of(context).brightness ==
+                                              Brightness.dark
+                                          ? [
+                                              Colors.white.withValues(alpha: 0.17),
+                                              Colors.white.withValues(alpha: 0.07),
+                                            ]
+                                          : [
+                                              Colors.white.withValues(alpha: 0.88),
+                                              Colors.white.withValues(alpha: 0.58),
+                                            ],
+                                    ),
                                   ),
                                 ),
                               ),
