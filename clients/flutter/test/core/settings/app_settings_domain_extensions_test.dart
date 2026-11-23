@@ -124,7 +124,7 @@ void main() {
     expect(settings.videoAutoFullscreen, isTrue);
     expect(settings.videoFullscreenOrientation, 'portrait');
     expect(preferences.getInt('settings_download_concurrency'), 3);
-    expect(preferences.getString('settings_now_playing_theme'), 'gradient');
+    expect(preferences.getString('settings_now_playing_theme'), 'aether');
     expect(preferences.getString('settings_video_fit_mode'), 'cover');
 
     await expectLater(settings.setDownloadOptions(concurrency: 4), throwsArgumentError);
