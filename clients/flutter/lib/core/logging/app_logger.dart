@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 
 /// Small, private, rotating diagnostic log for troubleshooting PocketLink.
@@ -11,6 +12,7 @@ class AppLogger {
   static const int _maxBytes = 1024 * 1024;
   static const int _maxBackupBytes = 1024 * 1024;
   static const int _maxDiagnosticExportBytes = 2 * 1024 * 1024;
+  static const MethodChannel _nativeDiagnosticsChannel = MethodChannel('pocketlink/saf');
   static Directory? _directory;
   static Future<void> _writeQueue = Future<void>.value();
   static File? _logFile;
@@ -347,6 +349,28 @@ class AppLogger {
     return (true, remainingBytes);
   }
 
+  static Future<String> _readNativeDiagnostics() async {
+    if (!Platform.isAndroid) return '';
+    try {
+      return await _nativeDiagnosticsChannel.invokeMethod<String>('readNativeDiagnostics') ?? '';
+    } on PlatformException catch (error) {
+      return '[Native Android diagnostics unavailable: ${error.code}]\n';
+    } on MissingPluginException {
+      return '[Native Android diagnostics bridge unavailable]\n';
+    }
+  }
+
+  static Future<void> _clearNativeDiagnostics() async {
+    if (!Platform.isAndroid) return;
+    try {
+      await _nativeDiagnosticsChannel.invokeMethod<bool>('clearNativeDiagnostics');
+    } on PlatformException {
+      // Keep Flutter log clearing available if the optional native bridge fails.
+    } on MissingPluginException {
+      // Non-plugin test and desktop runtimes have no native diagnostics channel.
+    }
+  }
+
   static Future<File> createDiagnosticFile() async {
     await _writeQueue;
     final directory = _directory ?? await getApplicationSupportDirectory();
@@ -356,6 +380,18 @@ class AppLogger {
       final header = sanitizeDiagnosticContent(await _diagnosticHeader());
       sink.write(header);
       var remainingBytes = _maxDiagnosticExportBytes - utf8.encode(header).length;
+      final nativeLogs = await _readNativeDiagnostics();
+      if (nativeLogs.isNotEmpty && remainingBytes > 0) {
+        final nativeSection = '--- Native Android diagnostics ---\n' +
+            sanitizeDiagnosticContent(nativeLogs) + '\n';
+        final nativeBytes = utf8.encode(nativeSection);
+        final retainedBytes = nativeBytes.take(remainingBytes).toList(growable: false);
+        sink.add(retainedBytes);
+        remainingBytes -= retainedBytes.length;
+        if (retainedBytes.length < nativeBytes.length) {
+          sink.writeln('[Native diagnostics truncated by 2 MB export limit]');
+        }
+      }
       final logFile = _logFile;
       if (logFile != null) {
         final backup = File('${logFile.path}.1');
@@ -379,8 +415,19 @@ class AppLogger {
   static Future<int> logSize() async {
     await _writeQueue;
     final file = _logFile;
-    if (file == null || !await file.exists()) return 0;
-    return file.length();
+    var size = file != null && await file.exists() ? await file.length() : 0;
+    final backup = file == null ? null : File('${file.path}.1');
+    if (backup != null && await backup.exists()) size += await backup.length();
+    if (Platform.isAndroid) {
+      try {
+        size += await _nativeDiagnosticsChannel.invokeMethod<int>('nativeDiagnosticsSize') ?? 0;
+      } on PlatformException {
+        // Report the Flutter log size if native diagnostics are temporarily unavailable.
+      } on MissingPluginException {
+        // Non-plugin Android test runtimes have no native diagnostics channel.
+      }
+    }
+    return size;
   }
 
   static Future<void> clear() async {
@@ -389,5 +436,6 @@ class AppLogger {
     if (file != null && await file.exists()) await file.writeAsString('', flush: true);
     final backup = file == null ? null : File('${file.path}.1');
     if (backup != null && await backup.exists()) await backup.delete();
+    await _clearNativeDiagnostics();
   }
 }
