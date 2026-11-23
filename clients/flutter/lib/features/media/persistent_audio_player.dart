@@ -11,7 +11,7 @@ import '../../core/settings/app_settings.dart';
 import '../../core/storage/home_activity_store.dart';
 
 class MediaQueueItem {
-  const MediaQueueItem({required this.title, required this.path, this.volume, this.localPath, this.size, this.streamUrl, this.httpHeaders = const {}, this.artist, this.artworkUrl, this.lyricsVideoId, this.durationText, this.streamCodec, this.streamResolver, this.streamBitrateBps});
+  const MediaQueueItem({required this.title, required this.path, this.volume, this.localPath, this.size, this.streamUrl, this.httpHeaders = const {}, this.artist, this.artworkUrl, this.lyricsVideoId, this.durationText = '', this.streamCodec, this.streamResolver, this.streamBitrateBps});
 
   final String title;
   final String path;
