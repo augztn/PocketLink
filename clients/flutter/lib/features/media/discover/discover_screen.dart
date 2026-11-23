@@ -626,12 +626,13 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           onPressed: _loading ? null : _loadHome,
         )],
       ),
-      body: Padding(
-        padding: EdgeInsets.only(top: top),
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            SliverToBoxAdapter(child: Padding(
+      body: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          // Keep the scrollable behind the transparent shared app bar so
+          // content can feather through it exactly like the other sections.
+          SliverToBoxAdapter(child: SizedBox(height: top)),
+          SliverToBoxAdapter(child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('Find your', style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w500, height: 1.04)),
@@ -798,9 +799,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 ),
               ],
             ],
-            SliverToBoxAdapter(child: SizedBox(height: bottom + 16)),
-          ],
-        ),
+          SliverToBoxAdapter(child: SizedBox(height: bottom + 16)),
+        ],
       ),
     );
   }
