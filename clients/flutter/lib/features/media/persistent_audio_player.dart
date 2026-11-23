@@ -77,8 +77,17 @@ class PersistentAudioPlayer extends ChangeNotifier {
   bool _miniPlayerDismissed = false;
   int? _pendingTrackDirection;
   DateTime? _pendingTrackDirectionAt;
+  int _queueSession = 0;
+  Future<void> _queueMutationTail = Future<void>.value();
 
   List<MediaQueueItem> get queue => _queue;
+  int get queueSession => _queueSession;
+
+  Future<void> _serializeQueueMutation(Future<void> Function() operation) {
+    final pending = _queueMutationTail.then((_) => operation());
+    _queueMutationTail = pending.catchError((Object _) {});
+    return pending;
+  }
   ServerApi? get api => _api;
   int get currentIndex => _currentIndex;
   bool get isActive => _active;
@@ -116,6 +125,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
     required bool isMusic,
   }) async {
     if (queue.isEmpty) return;
+    final session = ++_queueSession;
     _api = api;
     _queue = List.unmodifiable(queue);
     _currentIndex = initialIndex.clamp(0, _queue.length - 1).toInt();
@@ -133,7 +143,11 @@ class PersistentAudioPlayer extends ChangeNotifier {
               : api.mediaHeaders,
       extras: {'title': item.title, if (item.artist != null) 'artist': item.artist},
     )).toList(growable: false);
-    await player.open(Playlist(tracks, index: _currentIndex));
+    await _serializeQueueMutation(() async {
+      if (session != _queueSession) return;
+      await player.open(Playlist(tracks, index: _currentIndex));
+    });
+    if (session != _queueSession) return;
     final current = currentItem;
     if (current != null && current.localPath == null && current.streamUrl == null && _music) {
       unawaited(HomeActivityStore.instance.recordTrack(serverUrl: api.baseUrl, title: current.title, path: current.path, volume: current.volume));
@@ -142,29 +156,45 @@ class PersistentAudioPlayer extends ChangeNotifier {
   }
 
   /// Adds an original server/local media item to the active queue.
-  Future<void> enqueue(MediaQueueItem item, {bool playNext = false}) async {
-    if (!_active || _api == null) return;
-    final media = Media(
-      item.localPath ?? item.streamUrl ?? _api!.mediaStreamUrl(item.path, volume: item.volume),
-      httpHeaders: item.localPath != null
-          ? const {}
-          : item.streamUrl != null
-              ? item.httpHeaders
-              : _api!.mediaHeaders,
-      extras: {'title': item.title, if (item.artist != null) 'artist': item.artist},
-    );
-    final oldLength = _queue.length;
-    await player.add(media);
-    final updated = _queue.toList();
-    if (playNext && oldLength > 0) {
-      final target = (_currentIndex + 1).clamp(0, oldLength).toInt();
-      if (target < oldLength) await player.move(oldLength, target);
-      updated.insert(target, item);
-    } else {
-      updated.add(item);
-    }
-    _queue = List.unmodifiable(updated);
-    notifyListeners();
+  Future<void> enqueue(
+    MediaQueueItem item, {
+    bool playNext = false,
+    bool insertAtStart = false,
+    int? expectedSession,
+  }) async {
+    await _serializeQueueMutation(() async {
+      if (!_active || _api == null ||
+          (expectedSession != null && expectedSession != _queueSession)) {
+        return;
+      }
+      final api = _api!;
+      final session = _queueSession;
+      final media = Media(
+        item.localPath ?? item.streamUrl ?? api.mediaStreamUrl(item.path, volume: item.volume),
+        httpHeaders: item.localPath != null
+            ? const {}
+            : item.streamUrl != null
+                ? item.httpHeaders
+                : api.mediaHeaders,
+        extras: {'title': item.title, if (item.artist != null) 'artist': item.artist},
+      );
+      final oldLength = _queue.length;
+      await player.add(media);
+      if (session != _queueSession) return;
+      final updated = _queue.toList();
+      if (insertAtStart && oldLength > 0) {
+        await player.move(oldLength, 0);
+        updated.insert(0, item);
+      } else if (playNext && oldLength > 0) {
+        final target = (_currentIndex + 1).clamp(0, oldLength).toInt();
+        if (target < oldLength) await player.move(oldLength, target);
+        updated.insert(target, item);
+      } else {
+        updated.add(item);
+      }
+      _queue = List.unmodifiable(updated);
+      notifyListeners();
+    });
   }
 
   void dismissMiniPlayer() {
