@@ -27,6 +27,36 @@ class DiscoverService {
   static const MethodChannel _channel = MethodChannel('pocketlink/saf');
   final Dio _http;
 
+
+  Future<List<DiscoverMoodSection>> moodsAndGenres() async {
+    final raw = await _channel.invokeListMethod<Object?>(
+      'discoverMoods',
+      {'region': AppSettings.instance.discoverRegion},
+    );
+    return (raw ?? const [])
+        .whereType<Map<Object?, Object?>>()
+        .map((item) => DiscoverMoodSection.fromJson(
+          item.map((key, value) => MapEntry(key.toString(), value)),
+        ))
+        .where((section) => section.title.isNotEmpty && section.items.isNotEmpty)
+        .toList(growable: false);
+  }
+
+  Future<List<DiscoverTrack>> browseMood(
+    DiscoverMood mood, {int limit = 30}
+  ) async {
+    final raw = await _channel.invokeListMethod<Object?>(
+      'discoverMoodBrowse',
+      {
+        'browseId': mood.browseId,
+        if (mood.params != null) 'params': mood.params,
+        'limit': limit.clamp(1, 50),
+        'region': AppSettings.instance.discoverRegion,
+      },
+    );
+    return _parseTracks(raw);
+  }
+
   Future<List<DiscoverTrack>> search(String query, {int limit = 30}) async {
     final clean = query.trim();
     if (clean.length < 2) return const [];
