@@ -25,6 +25,16 @@ void main() {
     observer.didPop(clientRoute, discoverRoute);
     expect(observer.isStandaloneDiscoverFlow, isTrue);
 
+    final dashboardRoute = MaterialPageRoute<void>(
+      settings: const RouteSettings(name: PocketLinkRouteNames.dashboard),
+      builder: (_) => const SizedBox.shrink(),
+    );
+    observer.didPush(dashboardRoute, discoverRoute);
+    expect(observer.isStandaloneDiscoverFlow, isFalse);
+
+    observer.didPop(dashboardRoute, discoverRoute);
+    expect(observer.isStandaloneDiscoverFlow, isTrue);
+
     observer.didPop(discoverRoute, null);
     expect(observer.isStandaloneDiscoverFlow, isFalse);
   });
