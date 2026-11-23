@@ -2,6 +2,8 @@ import 'dart:ui' as ui;
 
 import 'package:material_ui/material_ui.dart';
 
+import '../settings/app_settings.dart';
+
 class SmokedGlassPopoverMenuItem<T> {
   const SmokedGlassPopoverMenuItem({
     required this.value,
@@ -218,20 +220,20 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
                     ),
                     child: ClipRRect(
                 borderRadius: BorderRadius.circular(22),
-                child: BackdropFilter(
-                  filter: ui.ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+                child: _OptionalGlassBackdropFilter(
                   child: Stack(
                     children: [
                       DecoratedBox(
                         decoration: BoxDecoration(
                           color: isDark
-                              ? const Color(0xFF16181F).withValues(alpha: 0.90)
-                              : Colors.white.withValues(alpha: 0.95),
+                              ? const Color(0xFF141518).withValues(alpha: 0.68)
+                              : Colors.white.withValues(alpha: 0.82),
                           borderRadius: BorderRadius.circular(22),
-                          border: Border.all(
-                            color: isDark
-                                ? Colors.white.withValues(alpha: 0.14)
-                                : const Color(0xFF94A3B8).withValues(alpha: 0.34),
+                          border: Border(
+                            top: BorderSide(color: Colors.white.withValues(alpha: 0.13), width: 0.85),
+                            left: BorderSide(color: Colors.white.withValues(alpha: 0.07), width: 0.75),
+                            right: BorderSide(color: Colors.white.withValues(alpha: 0.07), width: 0.75),
+                            bottom: BorderSide(color: Colors.white.withValues(alpha: 0.04), width: 0.85),
                           ),
                           boxShadow: const [
                             BoxShadow(
@@ -338,9 +340,9 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: [
-                                  Colors.white.withValues(alpha: 0.02),
-                                  Colors.white.withValues(alpha: 0.42),
-                                  Colors.white.withValues(alpha: 0.02),
+                                  Colors.white.withValues(alpha: 0.01),
+                                  Colors.white.withValues(alpha: 0.035),
+                                  Colors.white.withValues(alpha: 0.01),
                                 ],
                               ),
                             ),
@@ -372,3 +374,23 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
 
 double mathMin(double a, double b) => a < b ? a : b;
 double mathMax(double a, double b) => a > b ? a : b;
+
+
+class _OptionalGlassBackdropFilter extends StatelessWidget {
+  const _OptionalGlassBackdropFilter({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!AppSettings.instance.useLiquidGlass) return child;
+    return BackdropFilter(
+      filter: ui.ImageFilter.blur(
+        sigmaX: 20,
+        sigmaY: 20,
+        tileMode: ui.TileMode.clamp,
+      ),
+      child: child,
+    );
+  }
+}
