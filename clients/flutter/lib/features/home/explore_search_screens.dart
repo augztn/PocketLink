@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/network/server_api.dart';
+import '../../core/settings/app_settings.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
 import '../files/file_manager_screen.dart';
@@ -351,13 +352,14 @@ class _ExploreGridState extends State<_ExploreGrid>
               onHome: () => Navigator.of(context).maybePop(),
             )),
           ),
-          card(
-            index: 7,
-            title: 'Discover', subtitle: 'YouTube Music and local lossless',
-            icon: Icons.explore_rounded, tint: const Color(0xFFDB79A8),
-            badge: 'NEW',
-            onTap: () => onOpen(DiscoverScreen(api: api)),
-          ),
+          if (AppSettings.instance.discoverEnabled)
+            card(
+              index: 7,
+              title: 'Discover', subtitle: 'YouTube Music and local lossless',
+              icon: Icons.explore_rounded, tint: const Color(0xFFDB79A8),
+              badge: 'NEW',
+              onTap: () => onOpen(DiscoverScreen(api: api)),
+            ),
           card(
             index: 2,
             title: 'Videos', subtitle: 'Movies and clips',
