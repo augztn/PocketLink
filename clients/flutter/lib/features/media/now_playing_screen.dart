@@ -35,6 +35,10 @@ class NowPlayingScreen extends StatefulWidget {
     required this.queue,
     this.initialIndex = 0,
     this.resumeExisting = false,
+    this.morphAnimation,
+    this.useSharedArtwork = false,
+    this.artworkTargetKey,
+    this.onArtworkChanged,
     required this.onDismiss,
     required this.onDismissDragStart,
     required this.onDismissDragUpdate,
@@ -50,6 +54,10 @@ class NowPlayingScreen extends StatefulWidget {
   final List<MediaQueueItem> queue;
   final int initialIndex;
   final bool resumeExisting;
+  final Animation<double>? morphAnimation;
+  final bool useSharedArtwork;
+  final GlobalKey? artworkTargetKey;
+  final ValueChanged<Uint8List?>? onArtworkChanged;
 
   @override
   State<NowPlayingScreen> createState() => _NowPlayingScreenState();
@@ -280,6 +288,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
       _artworkKey = null;
       _artworkPalette = null;
     });
+    widget.onArtworkChanged?.call(null);
     await Future.wait([
       _refreshCacheStatus(),
       _loadArtwork(),
@@ -302,6 +311,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             _artworkKey = key;
             _artworkPalette = palette;
           });
+          widget.onArtworkChanged?.call(bytes);
           return;
         }
       } catch (_) {
@@ -315,6 +325,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
         _artworkKey = key;
         _artworkPalette = null;
       });
+      widget.onArtworkChanged?.call(null);
       return;
     }
 
@@ -328,6 +339,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
         _artworkKey = key;
         _artworkPalette = null;
       });
+      widget.onArtworkChanged?.call(null);
       return;
     }
     try {
@@ -359,6 +371,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             _artworkKey = key;
             _artworkPalette = palette;
           });
+          widget.onArtworkChanged?.call(bytes);
           return;
         }
       }
@@ -371,6 +384,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
         _artworkKey = key;
         _artworkPalette = null;
       });
+      widget.onArtworkChanged?.call(null);
     }
   }
 
@@ -822,53 +836,125 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     return '${value.toStringAsFixed(1)} ${units[unit]}';
   }
 
-  Widget _header() => SizedBox(
+  Widget _header({double contentOpacity = 1}) => SizedBox(
     height: 64,
     child: Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(children: [
-        _roundAction(icon: Icons.keyboard_arrow_down_rounded, tooltip: 'Minimize player',
-          onTap: widget.onDismiss),
-        const SizedBox(width: 12),
-        Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Container(width: 34, height: 4, decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.42), borderRadius: BorderRadius.circular(99))),
-          const SizedBox(height: 7),
-          Text('PLAYING FROM ${_track.sourceLabel.toUpperCase()}', textAlign: TextAlign.center,
-            maxLines: 1, overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: Colors.white54, fontSize: 10, letterSpacing: 1.2, fontWeight: FontWeight.w700)),
-        ])),
-        const SizedBox(width: 12),
-        SizedBox(width: 38, height: 38, child: LiquidGlassPill(
-          radius: BorderRadius.circular(19),
-          child: SmokedGlassPopoverMenu<String>(
-            tooltip: 'Quick destinations',
-            items: [
-              const SmokedGlassPopoverMenuItem(value: 'home', label: 'Home', icon: Icons.home_outlined),
-              const SmokedGlassPopoverMenuItem(value: 'queue', label: 'Queue', icon: Icons.queue_music_rounded),
-              if (AppSettings.instance.showStatsForNerds)
-                const SmokedGlassPopoverMenuItem(value: 'stats', label: 'Stats for nerds', icon: Icons.query_stats_rounded),
-              if (widget.api != null)
-                const SmokedGlassPopoverMenuItem(value: 'download', label: 'Download track', icon: Icons.download_rounded, dividerBefore: true),
-              const SmokedGlassPopoverMenuItem(value: 'track_options', label: 'Track options', icon: Icons.more_horiz_rounded),
-            ],
-            onSelected: (value) {
-              switch (value) {
-                case 'home': PocketLinkAppBar.goToDashboard(context); break;
-                case 'stats': _showStatsForNerds(); break;
-                case 'download': unawaited(_downloadTrack()); break;
-                case 'track_options': _showOptions(); break;
-                case 'queue': _showQueue(); break;
-              }
-            },
-            child: const SizedBox(
-              width: 38,
-              height: 38,
-              child: Icon(Icons.more_vert_rounded, color: Colors.white, size: 19),
+      child: Row(
+        children: [
+          _roundAction(
+            icon: Icons.keyboard_arrow_down_rounded,
+            tooltip: 'Minimize player',
+            onTap: widget.onDismiss,
+            contentOpacity: contentOpacity,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Opacity(
+              opacity: contentOpacity,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 34,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.42),
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                  ),
+                  const SizedBox(height: 7),
+                  Text(
+                    'PLAYING FROM ${_track.sourceLabel.toUpperCase()}',
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white54,
+                      fontSize: 10,
+                      letterSpacing: 1.2,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        )),
-      ]),
+          const SizedBox(width: 12),
+          SizedBox(
+            width: 38,
+            height: 38,
+            child: LiquidGlassPill(
+              radius: BorderRadius.circular(19),
+              intensity: contentOpacity,
+              child: Opacity(
+                opacity: contentOpacity,
+                child: SmokedGlassPopoverMenu<String>(
+                  tooltip: 'Quick destinations',
+                  items: [
+                    const SmokedGlassPopoverMenuItem(
+                      value: 'home',
+                      label: 'Home',
+                      icon: Icons.home_outlined,
+                    ),
+                    const SmokedGlassPopoverMenuItem(
+                      value: 'queue',
+                      label: 'Queue',
+                      icon: Icons.queue_music_rounded,
+                    ),
+                    if (AppSettings.instance.showStatsForNerds)
+                      const SmokedGlassPopoverMenuItem(
+                        value: 'stats',
+                        label: 'Stats for nerds',
+                        icon: Icons.query_stats_rounded,
+                      ),
+                    if (widget.api != null)
+                      const SmokedGlassPopoverMenuItem(
+                        value: 'download',
+                        label: 'Download track',
+                        icon: Icons.download_rounded,
+                        dividerBefore: true,
+                      ),
+                    const SmokedGlassPopoverMenuItem(
+                      value: 'track_options',
+                      label: 'Track options',
+                      icon: Icons.more_horiz_rounded,
+                    ),
+                  ],
+                  onSelected: (value) {
+                    switch (value) {
+                      case 'home':
+                        PocketLinkAppBar.goToDashboard(context);
+                        break;
+                      case 'stats':
+                        _showStatsForNerds();
+                        break;
+                      case 'download':
+                        unawaited(_downloadTrack());
+                        break;
+                      case 'track_options':
+                        _showOptions();
+                        break;
+                      case 'queue':
+                        _showQueue();
+                        break;
+                    }
+                  },
+                  child: const SizedBox(
+                    width: 38,
+                    height: 38,
+                    child: Icon(
+                      Icons.more_vert_rounded,
+                      color: Colors.white,
+                      size: 19,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     ),
   );
 
@@ -881,6 +967,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
         final height = (constraints.maxHeight - 18).clamp(0.0, 380.0).toDouble();
         final dimension = math.min(width, height).clamp(0.0, 360.0).toDouble();
         return Container(
+          key: widget.artworkTargetKey,
           width: dimension,
           height: dimension,
           decoration: BoxDecoration(
@@ -901,7 +988,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             ],
           ),
           clipBehavior: Clip.antiAlias,
-          child: AnimatedSwitcher(
+          child: widget.useSharedArtwork
+              ? const SizedBox.expand()
+              : AnimatedSwitcher(
             duration: const Duration(milliseconds: 360),
             switchInCurve: Curves.easeOutCubic,
             switchOutCurve: Curves.easeInCubic,
@@ -968,13 +1057,17 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     required String tooltip,
     required VoidCallback onTap,
     Color foreground = Colors.white,
+    double contentOpacity = 1,
   }) {
     return SizedBox(
       width: 40,
       height: 40,
       child: LiquidGlassPill(
         radius: BorderRadius.circular(20),
-        child: IconButton(
+        intensity: contentOpacity,
+        child: Opacity(
+          opacity: contentOpacity,
+          child: IconButton(
           tooltip: tooltip,
           onPressed: onTap,
           padding: EdgeInsets.zero,
@@ -986,6 +1079,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             foregroundColor: foreground,
           ),
           icon: Icon(icon),
+          ),
         ),
       ),
     );
@@ -1215,14 +1309,16 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     }
   }
 
-  Widget _trackMetadata() {
+  Widget _trackMetadata({double contentOpacity = 1}) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(22, 8, 22, 0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
-            child: Column(
+            child: Opacity(
+              opacity: contentOpacity,
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -1290,6 +1386,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                 ),
               ],
             ),
+            ),
           ),
           const SizedBox(width: 10),
           if (AppSettings.instance.discoverLyrics &&
@@ -1298,6 +1395,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
               icon: Icons.lyrics_rounded,
               tooltip: 'Lyrics',
               onTap: () => unawaited(_showTrackLyrics()),
+              contentOpacity: contentOpacity,
             ),
             const SizedBox(width: 8),
           ],
@@ -1310,29 +1408,42 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                 ? const Color(0xFFFFD66B)
                 : Colors.white,
             onTap: () => unawaited(_toggleFavorite()),
+            contentOpacity: contentOpacity,
           ),
         ],
       ),
     );
   }
 
-  Widget _playerDetails({bool glassCard = false}) {
+  Widget _playerDetails({
+    bool glassCard = false,
+    double contentOpacity = 1,
+  }) {
     final content = Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _trackMetadata(),
+        _trackMetadata(contentOpacity: contentOpacity),
         const SizedBox(height: 16),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 22),
-          child: _timeline(),
+        Opacity(
+          opacity: contentOpacity,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 22),
+            child: _timeline(),
+          ),
         ),
         const SizedBox(height: 14),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 22),
-          child: _transport(),
+        Opacity(
+          opacity: contentOpacity,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 22),
+            child: _transport(),
+          ),
         ),
         const SizedBox(height: 8),
-        _bottomUtilities(),
+        Opacity(
+          opacity: contentOpacity,
+          child: _bottomUtilities(),
+        ),
         const SizedBox(height: 2),
         const Text(
           'This device',
@@ -1344,6 +1455,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     if (!glassCard) return content;
     return SmokedGlassSurface(
       radius: BorderRadius.circular(28),
+      intensity: contentOpacity,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(0, 12, 0, 4),
         child: content,
@@ -1490,11 +1602,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     return _ambientBackground();
   }
 
-  Widget _themeLayout(String theme) {
+  Widget _themeLayout(String theme, double contentOpacity) {
     if (theme == 'blur') {
       return Column(
         children: [
-          _header(),
+          _header(contentOpacity: contentOpacity),
           Expanded(
             flex: 3,
             child: Center(
@@ -1509,7 +1621,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             flex: 4,
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
-              child: _playerDetails(),
+              child: _playerDetails(contentOpacity: contentOpacity),
             ),
           ),
         ],
@@ -1519,7 +1631,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     if (theme == 'blurCard') {
       return Column(
         children: [
-          _header(),
+          _header(contentOpacity: contentOpacity),
           Expanded(
             flex: 2,
             child: Center(
@@ -1535,7 +1647,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
-              child: _playerDetails(glassCard: true),
+              child: _playerDetails(
+                glassCard: true,
+                contentOpacity: contentOpacity,
+              ),
             ),
           ),
         ],
@@ -1545,7 +1660,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     if (theme == 'aether') {
       return Column(
         children: [
-          _header(),
+          _header(contentOpacity: contentOpacity),
           Expanded(
             flex: 5,
             child: Center(
@@ -1560,7 +1675,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
-              child: _playerDetails(glassCard: true),
+              child: _playerDetails(
+                glassCard: true,
+                contentOpacity: contentOpacity,
+              ),
             ),
           ),
         ],
@@ -1570,9 +1688,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     if (theme == 'gradient') {
       return Column(
         children: [
-          _header(),
+          _header(contentOpacity: contentOpacity),
           const Expanded(child: SizedBox.expand()),
-          _playerDetails(),
+          _playerDetails(contentOpacity: contentOpacity),
         ],
       );
     }
@@ -1580,21 +1698,27 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     // Apple Glass remains the default layout.
     return Column(
       children: [
-        _header(),
+        _header(contentOpacity: contentOpacity),
         Expanded(
           child: Center(child: _artworkCard()),
         ),
-        _playerDetails(),
+        _playerDetails(contentOpacity: contentOpacity),
       ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final animation = widget.morphAnimation;
+    final listenables = <Listenable>[AppSettings.instance];
+    if (animation != null) listenables.add(animation);
     return AnimatedBuilder(
-      animation: AppSettings.instance,
+      animation: Listenable.merge(listenables),
       builder: (context, _) {
         final theme = AppSettings.instance.nowPlayingTheme;
+        final progress = animation?.value ?? 1.0;
+        final contentOpacity =
+            ((progress - 0.30) / 0.70).clamp(0.0, 1.0).toDouble();
         return Scaffold(
           backgroundColor: const Color(0xFF0A0B0E),
           body: Stack(
@@ -1638,7 +1762,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                         }
                       : null,
                   child: SafeArea(
-                    child: _themeLayout(theme),
+                    child: Transform.translate(
+                      offset: Offset(0, 12 * (1 - contentOpacity)),
+                      child: _themeLayout(theme, contentOpacity),
+                    ),
                   ),
                 ),
               ),

@@ -89,10 +89,50 @@ abstract final class PocketLinkNavigation {
   static final navigatorKey = GlobalKey<NavigatorState>();
   static final musicButtonKey = GlobalKey();
   static final miniPlayerKey = GlobalKey();
+  static final miniArtworkKey = GlobalKey();
+  static final nowPlayingArtworkKey = GlobalKey();
   static final mediaOverlayKey = GlobalKey();
   static final drawerOpen = ValueNotifier<bool>(false);
   static final quickShortcutsOpen = ValueNotifier<bool>(false);
   static final observer = PocketLinkNavigationObserver();
+
+  /// Resolves an element in the coordinate space shared by the media overlay.
+  static Rect? resolveMediaRect(GlobalKey key) {
+    final target = key.currentContext?.findRenderObject();
+    final overlay = mediaOverlayKey.currentContext?.findRenderObject();
+    if (target is! RenderBox ||
+        overlay is! RenderBox ||
+        !target.attached ||
+        !overlay.attached ||
+        !target.hasSize) {
+      return null;
+    }
+    return target.localToGlobal(Offset.zero, ancestor: overlay) & target.size;
+  }
+
+  /// Applies a vertical drag to the shared expand controller in 1:1 screen-space.
+  static double updateMorphProgress({
+    required double current,
+    required double dragDelta,
+    required double extent,
+  }) {
+    if (!extent.isFinite || extent <= 0) {
+      return current.clamp(0.0, 1.0).toDouble();
+    }
+    return (current - dragDelta / extent).clamp(0.0, 1.0).toDouble();
+  }
+
+  static bool shouldCollapseNowPlaying({
+    required double progress,
+    required double downwardVelocity,
+  }) =>
+      progress <= 0.75 || downwardVelocity > 650;
+
+  static bool shouldExpandFromMiniPlayer({
+    required double progress,
+    required double upwardVelocity,
+  }) =>
+      progress >= 0.25 || upwardVelocity < -650;
 
   /// Captures the visible source surface for the Now Playing container transform.
   static Rect? resolveMediaOriginRect({required bool preferMiniPlayer}) {

@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/widgets/liquid_glass_pill.dart';
@@ -21,6 +23,10 @@ class GlobalMiniPlayerBar extends StatelessWidget {
     required this.onSkipNext,
     this.surfaceKey,
     this.hasFloatingNavBar = true,
+    this.artworkBytes,
+    this.artworkKey,
+    this.onExpandDragUpdate,
+    this.onExpandDragEnd,
     super.key,
   });
 
@@ -39,6 +45,10 @@ class GlobalMiniPlayerBar extends StatelessWidget {
   final VoidCallback onSkipNext;
   final Key? surfaceKey;
   final bool hasFloatingNavBar;
+  final Uint8List? artworkBytes;
+  final Key? artworkKey;
+  final ValueChanged<double>? onExpandDragUpdate;
+  final ValueChanged<double>? onExpandDragEnd;
 
   double get _progress {
     if (duration <= Duration.zero) return 0;
@@ -88,9 +98,17 @@ class GlobalMiniPlayerBar extends StatelessWidget {
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onHorizontalDragEnd: _handleHorizontalDrag,
+              onVerticalDragUpdate: onExpandDragUpdate == null
+                  ? null
+                  : (details) =>
+                      onExpandDragUpdate!(details.primaryDelta ?? 0),
               onVerticalDragEnd: (details) {
                 final velocity = details.primaryVelocity ?? 0;
-                if (!isPlaying && velocity > 300) onDismiss();
+                if (onExpandDragEnd != null) {
+                  onExpandDragEnd!(velocity);
+                } else if (!isPlaying && velocity > 300) {
+                  onDismiss();
+                }
               },
               child: Material(
                 type: MaterialType.transparency,
@@ -107,17 +125,35 @@ class GlobalMiniPlayerBar extends StatelessWidget {
                           children: [
                             const SizedBox(width: 10),
                             Container(
+                              key: artworkKey,
                               width: 34,
                               height: 34,
+                              clipBehavior: Clip.antiAlias,
                               decoration: BoxDecoration(
                                 color: colors.primary.withValues(alpha: 0.14),
                                 borderRadius: BorderRadius.circular(11),
                               ),
-                              child: Icon(
-                                Icons.graphic_eq_rounded,
-                                color: colors.primary,
-                                size: 19,
-                              ),
+                              child: artworkBytes != null
+                                  ? Image.memory(
+                                      artworkBytes!,
+                                      fit: BoxFit.cover,
+                                      gaplessPlayback: true,
+                                    )
+                                  : item.artworkUrl?.isNotEmpty == true
+                                      ? Image.network(
+                                          item.artworkUrl!,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) => Icon(
+                                            Icons.graphic_eq_rounded,
+                                            color: colors.primary,
+                                            size: 19,
+                                          ),
+                                        )
+                                      : Icon(
+                                          Icons.graphic_eq_rounded,
+                                          color: colors.primary,
+                                          size: 19,
+                                        ),
                             ),
                             const SizedBox(width: 8),
                             Expanded(

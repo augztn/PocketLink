@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:typed_data';
+
+import 'package:flutter/physics.dart';
 
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/scheduler.dart' show TickerCanceled;
@@ -34,6 +37,8 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   final ValueNotifier<bool> _isNowPlayingDragging = ValueNotifier<bool>(false);
   bool _closingNowPlaying = false;
   Rect? _nowPlayingOriginRect;
+  Rect? _miniArtworkOriginRect;
+  final ValueNotifier<Uint8List?> _sharedArtwork = ValueNotifier(null);
   Route<void>? _nowPlayingRoute;
   late final AnimationController _nowPlayingController;
   MediaQueueItem? _lastTrack;
@@ -71,6 +76,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     _nowPlayingRoute = null;
     _nowPlayingController.stop();
     _isNowPlayingDragging.dispose();
+    _sharedArtwork.dispose();
     _nowPlayingController.dispose();
     super.dispose();
   }
@@ -84,6 +90,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     final previousIndex = _lastTrackIndex;
     _lastTrack = current;
     _lastTrackIndex = currentIndex;
+    if (changed) _sharedArtwork.value = null;
     if (!changed || previous == null || current == null || !_player.isMusic) {
       return;
     }
@@ -141,27 +148,31 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
         (standaloneDiscover || AppSettings.instance.showMiniPlayer);
   }
 
-  Future<void> _openNowPlaying() async {
-    if (_openingNowPlaying || _nowPlayingOpen) return;
+  void _prepareNowPlaying() {
+    if (_nowPlayingOpen || _openingNowPlaying) return;
     final player = _player;
     final item = player.currentItem;
-    final api = player.api;
     final navigator = PocketLinkNavigation.navigatorKey.currentState;
-    final overlay = navigator?.overlay;
-    if (!player.isMusic || !player.isActive || item == null ||
-        navigator == null || overlay == null) {
+    if (!player.isMusic || !player.isActive || item == null || navigator == null) {
       return;
     }
 
     _openingNowPlaying = true;
     final media = MediaQuery.of(context);
+    final mediaOverlayBox =
+        PocketLinkNavigation.mediaOverlayKey.currentContext?.findRenderObject();
     final globalOrigin = PocketLinkNavigation.resolveMediaOriginRect(
       preferMiniPlayer: _shouldShowMiniPlayer(),
     );
-    final overlayBox = overlay.context.findRenderObject();
-    _nowPlayingOriginRect = globalOrigin != null && overlayBox is RenderBox
-        ? globalOrigin.shift(-overlayBox.localToGlobal(Offset.zero))
-        : globalOrigin;
+    _nowPlayingOriginRect =
+        globalOrigin != null && mediaOverlayBox is RenderBox
+            ? globalOrigin.shift(
+                -mediaOverlayBox.localToGlobal(Offset.zero),
+              )
+            : globalOrigin;
+    _miniArtworkOriginRect =
+        PocketLinkNavigation.resolveMediaRect(PocketLinkNavigation.miniArtworkKey);
+    _nowPlayingController.value = 0;
     setState(() {
       _nowPlayingOpen = true;
       _isNowPlayingDragging.value = false;
@@ -180,10 +191,13 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
           animation: _nowPlayingController,
           media: media,
           originRect: _nowPlayingOriginRect,
+          sourceArtworkRect: _miniArtworkOriginRect,
+          artworkBytes: _sharedArtwork,
+          artworkTargetKey: PocketLinkNavigation.nowPlayingArtworkKey,
           player: player,
-          api: api,
-          onDismiss: _closeNowPlaying,
+          api: player.api,
           isDragging: isDragging,
+          onDismiss: () => _closeNowPlaying(),
           onDragStart: () => _isNowPlayingDragging.value = true,
           onDragUpdate: _updateNowPlayingDrag,
           onDragEnd: _endNowPlayingDrag,
@@ -200,16 +214,24 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
         _nowPlayingOpen = false;
         _isNowPlayingDragging.value = false;
         _nowPlayingOriginRect = null;
+        _miniArtworkOriginRect = null;
       });
       _nowPlayingController.value = 0;
     }));
+  }
 
+  Future<void> _openNowPlaying() async {
+    if (_openingNowPlaying || _nowPlayingOpen) return;
+    _prepareNowPlaying();
+    if (!_nowPlayingOpen) return;
     try {
-      await _nowPlayingController.animateTo(
-        1,
-        duration: const Duration(milliseconds: 380),
-        curve: Curves.easeOutQuart,
-      );
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted || !_nowPlayingOpen) return;
+      if (MediaQuery.of(context).disableAnimations) {
+        _nowPlayingController.value = 1;
+      } else {
+        await _animateNowPlayingTo(1);
+      }
     } on TickerCanceled {
       // A close gesture can interrupt the opening animation.
     } finally {
@@ -217,47 +239,114 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     }
   }
 
-  Future<void> _closeNowPlaying() async {
+  Future<void> _animateNowPlayingTo(
+    double target, {
+    double velocity = 0,
+  }) async {
+    if (MediaQuery.of(context).disableAnimations) {
+      _nowPlayingController.value = target;
+      return;
+    }
+    const spring = SpringDescription.withDampingRatio(
+      mass: 1,
+      stiffness: 520,
+      ratio: 0.90,
+    );
+    await _nowPlayingController.animateWith(
+      SpringSimulation(
+        spring,
+        _nowPlayingController.value,
+        target,
+        velocity,
+      ),
+    );
+  }
+
+  Future<void> _closeNowPlaying({double velocity = 0}) async {
     if (!_nowPlayingOpen || _closingNowPlaying) return;
     _closingNowPlaying = true;
     try {
-      await _nowPlayingController.animateBack(
-        0,
-        duration: const Duration(milliseconds: 320),
-        curve: Curves.easeOutQuart,
-      );
+      await _animateNowPlayingTo(0, velocity: velocity);
     } on TickerCanceled {
       // The route is already being removed.
     }
 
+    _isNowPlayingDragging.value = false;
     final navigator = PocketLinkNavigation.navigatorKey.currentState;
     final route = _nowPlayingRoute;
-    if (navigator != null && route != null &&
-        PocketLinkNavigation.observer.currentPageRoute == route) {
-      navigator.pop();
-    } else if (route != null) {
-      navigator?.removeRoute(route);
+    if (navigator != null && route != null) {
+      // Remove only after the shared controller has completed its reverse spring.
+      navigator.removeRoute(route);
+    }
+  }
+
+  void _updateMiniPlayerDrag(double delta) {
+    // Only an upward drag expands. A downward swipe retains the paused-player
+    // dismiss shortcut and never opens an intermediate route.
+    if (!_nowPlayingOpen && delta < 0) _prepareNowPlaying();
+    if (!_nowPlayingOpen) return;
+    _openingNowPlaying = false;
+    if (MediaQuery.of(context).disableAnimations) {
+      _nowPlayingController.value = 1;
+      return;
+    }
+    final height = MediaQuery.sizeOf(context).height;
+    _nowPlayingController.value =
+        PocketLinkNavigation.updateMorphProgress(
+      current: _nowPlayingController.value,
+      dragDelta: delta,
+      extent: height,
+    );
+  }
+
+  void _endMiniPlayerDrag(double velocity) {
+    if (!_nowPlayingOpen) {
+      if (!_player.player.state.playing && velocity > 300) {
+        _player.dismissMiniPlayer();
+      }
+      return;
+    }
+    _openingNowPlaying = false;
+    final height = math.max(1.0, MediaQuery.sizeOf(context).height);
+    final expand = PocketLinkNavigation.shouldExpandFromMiniPlayer(
+      progress: _nowPlayingController.value,
+      upwardVelocity: velocity,
+    );
+    if (expand) {
+      unawaited(_animateNowPlayingTo(
+        1,
+        velocity: -velocity / height,
+      ));
+    } else {
+      unawaited(_closeNowPlaying(velocity: -velocity / height));
     }
   }
 
   void _updateNowPlayingDrag(double delta) {
-    if (!_nowPlayingOpen) return;
+    if (!_nowPlayingOpen || MediaQuery.of(context).disableAnimations) return;
     final height = MediaQuery.sizeOf(context).height;
     _nowPlayingController.value =
-        (_nowPlayingController.value - delta / (height * 0.65))
-            .clamp(0.0, 1.0)
-            .toDouble();
+        PocketLinkNavigation.updateMorphProgress(
+      current: _nowPlayingController.value,
+      dragDelta: delta,
+      extent: height,
+    );
   }
 
   void _endNowPlayingDrag(double velocity) {
-    if (_nowPlayingController.value < 0.85 || velocity > 280) {
-      unawaited(_closeNowPlaying());
+    if (!_nowPlayingOpen) return;
+    final height = math.max(1.0, MediaQuery.sizeOf(context).height);
+    final collapse = PocketLinkNavigation.shouldCollapseNowPlaying(
+      progress: _nowPlayingController.value,
+      downwardVelocity: velocity,
+    );
+    _isNowPlayingDragging.value = false;
+    if (collapse) {
+      unawaited(_closeNowPlaying(velocity: -velocity / height));
     } else {
-      _isNowPlayingDragging.value = false;
-      unawaited(_nowPlayingController.animateTo(
+      unawaited(_animateNowPlayingTo(
         1,
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOutQuart,
+        velocity: -velocity / height,
       ));
     }
   }
@@ -366,8 +455,11 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
                       hasFloatingNavBar: onDashboard,
                       reduceMotion: reduceMotion,
                       player: player,
+                      artworkBytes: _sharedArtwork,
                       onOpen: _openNowPlaying,
                       onDismiss: player.dismissMiniPlayer,
+                      onExpandDragUpdate: _updateMiniPlayerDrag,
+                      onExpandDragEnd: _endMiniPlayerDrag,
                     ),
                   ),
                 ),
@@ -420,6 +512,9 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
     required this.animation,
     required this.media,
     required this.originRect,
+    required this.sourceArtworkRect,
+    required this.artworkBytes,
+    required this.artworkTargetKey,
     required this.isDragging,
     required this.player,
     required this.api,
@@ -432,6 +527,9 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
   final Animation<double> animation;
   final MediaQueryData media;
   final Rect? originRect;
+  final Rect? sourceArtworkRect;
+  final ValueListenable<Uint8List?> artworkBytes;
+  final GlobalKey artworkTargetKey;
   final bool isDragging;
   final PersistentAudioPlayer player;
   final ServerApi? api;
@@ -446,81 +544,169 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
     final destination = Offset.zero & size;
     final origin = originRect ??
         Rect.fromLTWH(size.width - 292, size.height - 142, 278, 62);
+    final sourceArt = sourceArtworkRect ??
+        Rect.fromLTWH(origin.left + 10, origin.top + 10, 34, 34);
 
     return MediaQuery(
       data: media,
       child: AnimatedBuilder(
-      animation: animation,
-      child: NowPlayingScreen(
-        api: api,
-        queue: player.queue,
-        initialIndex: player.currentIndex,
-        resumeExisting: true,
-        onDismiss: onDismiss,
-        onDismissDragStart: onDragStart,
-        onDismissDragUpdate: onDragUpdate,
-        onDismissDragEnd: onDragEnd,
-      ),
-      builder: (context, animatedChild) {
-        final t = animation.value.clamp(0.0, 1.0).toDouble();
-        final rect = Rect.lerp(origin, destination, t)!;
-        final radius = BorderRadius.lerp(
-          BorderRadius.circular(22),
-          BorderRadius.circular(isDragging ? 32 : 0),
-          t,
-        )!;
-        // Finish the source mini-player fade before the full player starts fading in.
-        final miniOpacity = (1.0 - t / 0.25).clamp(0.0, 1.0).toDouble();
-        final fullOpacity = ((t - 0.25) / 0.75).clamp(0.0, 1.0).toDouble();
+        animation: animation,
+        child: NowPlayingScreen(
+          api: api,
+          queue: player.queue,
+          initialIndex: player.currentIndex,
+          resumeExisting: true,
+          morphAnimation: animation,
+          useSharedArtwork: true,
+          artworkTargetKey: artworkTargetKey,
+          onArtworkChanged: (bytes) => artworkBytes.value = bytes,
+          onDismiss: onDismiss,
+          onDismissDragStart: onDragStart,
+          onDismissDragUpdate: onDragUpdate,
+          onDismissDragEnd: onDragEnd,
+        ),
+        builder: (context, animatedChild) {
+          final t = animation.value.clamp(0.0, 1.0).toDouble();
+          final rect = Rect.lerp(origin, destination, t)!;
+          final radiusValue = t < 0.5
+              ? 22 + (24 - 22) * (t * 2)
+              : 24 * (1 - (t - 0.5) * 2);
+          final radius = BorderRadius.circular(
+            radiusValue + (isDragging ? 4 * (1 - t) : 0),
+          );
+          final glassIntensity =
+              1.0 - (t * 2.5).clamp(0.0, 1.0).toDouble();
+          final miniOpacity =
+              (1.0 - t / 0.35).clamp(0.0, 1.0).toDouble();
+          final targetArt = PocketLinkNavigation.resolveMediaRect(
+                artworkTargetKey,
+              ) ??
+              Rect.fromCenter(
+                center: Offset(size.width / 2, size.height * 0.34),
+                width: 260,
+                height: 260,
+              );
+          final artworkRect = Rect.lerp(sourceArt, targetArt, t)!;
+          final artworkRadius = BorderRadius.lerp(
+            BorderRadius.circular(11),
+            BorderRadius.circular(26),
+            t,
+          )!;
 
-        return Material(
-          type: MaterialType.transparency,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Positioned.fill(
-                child: AbsorbPointer(
-                child: ColoredBox(
-                  color: Colors.black.withValues(alpha: 0.55 * t),
-                ),
-              ),
-            ),
-            ClipPath(
-              clipper: _NowPlayingMorphClipper(
-                rect: rect,
-                radius: radius,
-              ),
+          return PopScope<void>(
+            canPop: false,
+            onPopInvokedWithResult: (didPop, result) {
+              if (!didPop) onDismiss();
+            },
+            child: Material(
+              type: MaterialType.transparency,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  const ColoredBox(color: Color(0xFF0A0B0E)),
                   Positioned.fill(
                     child: IgnorePointer(
-                      ignoring: fullOpacity < 1,
-                      child: Opacity(
-                        opacity: fullOpacity,
-                        child: animatedChild,
+                      child: ColoredBox(
+                        color: Colors.black.withValues(alpha: 0.55 * t),
                       ),
                     ),
                   ),
-                  Positioned.fromRect(
-                    rect: rect,
-                    child: IgnorePointer(
-                      ignoring: miniOpacity <= 0,
-                      child: Opacity(
-                        opacity: miniOpacity,
-                        child: _MiniPlayerMorphContents(player: player),
-                      ),
+                  ClipPath(
+                    clipper: _NowPlayingMorphClipper(
+                      rect: rect,
+                      radius: radius,
+                    ),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Positioned.fill(
+                          child: IgnorePointer(
+                            ignoring: t < 0.35,
+                            child: animatedChild!,
+                          ),
+                        ),
+                        Positioned.fromRect(
+                          rect: rect,
+                          child: IgnorePointer(
+                            child: SmokedGlassSurface(
+                              radius: radius,
+                              intensity: glassIntensity,
+                              child: const SizedBox.expand(),
+                            ),
+                          ),
+                        ),
+                        Positioned.fromRect(
+                          rect: artworkRect,
+                          child: ValueListenableBuilder<Uint8List?>(
+                            valueListenable: artworkBytes,
+                            builder: (context, bytes, _) =>
+                                _SharedMorphArtwork(
+                              item: player.currentItem,
+                              bytes: bytes,
+                              radius: artworkRadius,
+                            ),
+                          ),
+                        ),
+                        Positioned.fromRect(
+                          rect: rect,
+                          child: IgnorePointer(
+                            ignoring: t > 0.1,
+                            child: Opacity(
+                              opacity: miniOpacity,
+                              child: _MiniPlayerMorphContents(player: player),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-          ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _SharedMorphArtwork extends StatelessWidget {
+  const _SharedMorphArtwork({
+    required this.item,
+    required this.bytes,
+    required this.radius,
+  });
+
+  final MediaQueueItem? item;
+  final Uint8List? bytes;
+  final BorderRadius radius;
+
+  @override
+  Widget build(BuildContext context) {
+    final artworkUrl = item?.artworkUrl;
+    Widget fallback() => DecoratedBox(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF6559A8), Color(0xFF24243D)],
+            ),
+          ),
+          child: const Center(
+            child: Icon(Icons.music_note_rounded, color: Colors.white, size: 30),
           ),
         );
-      },
-      ),
+
+    return ClipRRect(
+      borderRadius: radius,
+      child: bytes != null
+          ? Image.memory(bytes!, fit: BoxFit.cover, gaplessPlayback: true)
+          : artworkUrl?.isNotEmpty == true
+              ? Image.network(
+                  artworkUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => fallback(),
+                )
+              : fallback(),
     );
   }
 }
@@ -552,93 +738,125 @@ class _MiniPlayerMorphContents extends StatelessWidget {
     final item = player.currentItem;
     if (item == null) return const SizedBox.shrink();
     final colors = Theme.of(context).colorScheme;
-    return Align(
-      alignment: Alignment.center,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: colors.primary.withValues(alpha: 0.14),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(Icons.graphic_eq_rounded, color: colors.primary, size: 21),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const Text(
-                    'NOW PLAYING',
-                    style: TextStyle(
-                      color: Colors.white54,
-                      fontSize: 8,
-                      letterSpacing: 1,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            StreamBuilder<bool>(
-              stream: player.player.stream.buffering,
-              initialData: player.player.state.buffering,
-              builder: (context, bufferingSnapshot) =>
-                  StreamBuilder<Duration>(
-                stream: player.player.stream.duration,
-                initialData: player.player.state.duration,
-                builder: (context, durationSnapshot) =>
-                    StreamBuilder<bool>(
-                  stream: player.player.stream.playing,
-                  initialData: player.player.state.playing,
-                  builder: (context, playingSnapshot) {
-                    final loading =
-                        (bufferingSnapshot.data ?? false) ||
-                        (durationSnapshot.data ?? Duration.zero) <=
-                            Duration.zero;
-                    return PlaybackLoadingIndicator(
-                      loading: loading,
-                      size: 40,
-                      child: IconButton(
-                        visualDensity: VisualDensity.compact,
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints.tightFor(
-                          width: 36,
-                          height: 36,
-                        ),
-                        onPressed: player.togglePlayback,
-                        color: Colors.white,
-                        icon: Icon((playingSnapshot.data ?? false)
-                            ? Icons.pause_rounded
-                            : Icons.play_arrow_rounded),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          height: 55,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Row(
+              children: [
+                const SizedBox(width: 34, height: 34),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                            ),
                       ),
-                    );
-                  },
+                      const Text(
+                        'NOW PLAYING · SWIPE TO SKIP',
+                        style: TextStyle(
+                          color: Colors.white54,
+                          fontSize: 8,
+                          letterSpacing: 0.45,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
+                StreamBuilder<bool>(
+                  stream: player.player.stream.buffering,
+                  initialData: player.player.state.buffering,
+                  builder: (context, bufferingSnapshot) =>
+                      StreamBuilder<Duration>(
+                    stream: player.player.stream.duration,
+                    initialData: player.player.state.duration,
+                    builder: (context, durationSnapshot) =>
+                        StreamBuilder<bool>(
+                      stream: player.player.stream.playing,
+                      initialData: player.player.state.playing,
+                      builder: (context, playingSnapshot) {
+                        final loading =
+                            (bufferingSnapshot.data ?? false) ||
+                            (durationSnapshot.data ?? Duration.zero) <=
+                                Duration.zero;
+                        return PlaybackLoadingIndicator(
+                          loading: loading,
+                          size: 40,
+                          child: IconButton(
+                            visualDensity: VisualDensity.compact,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints.tightFor(
+                              width: 36,
+                              height: 36,
+                            ),
+                            onPressed: player.togglePlayback,
+                            color: Colors.white,
+                            icon: Icon(
+                              (playingSnapshot.data ?? false)
+                                  ? Icons.pause_rounded
+                                  : Icons.play_arrow_rounded,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  onPressed: player.skipToNext,
+                  color: Colors.white,
+                  icon: const Icon(Icons.skip_next_rounded),
+                ),
+              ],
             ),
-            IconButton(
-              visualDensity: VisualDensity.compact,
-              onPressed: player.skipToNext,
-              color: Colors.white,
-              icon: const Icon(Icons.skip_next_rounded),
-            ),
-          ],
+          ),
         ),
-      ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(19, 0, 19, 3),
+          child: StreamBuilder<Duration>(
+            stream: player.player.stream.position,
+            initialData: player.player.state.position,
+            builder: (context, positionSnapshot) =>
+                StreamBuilder<Duration>(
+              stream: player.player.stream.duration,
+              initialData: player.player.state.duration,
+              builder: (context, durationSnapshot) {
+                final duration = durationSnapshot.data ?? Duration.zero;
+                final position = positionSnapshot.data ?? Duration.zero;
+                final progress = duration > Duration.zero
+                    ? (position.inMilliseconds / duration.inMilliseconds)
+                        .clamp(0.0, 1.0)
+                        .toDouble()
+                    : 0.0;
+                return ClipRRect(
+                  borderRadius: BorderRadius.circular(2),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 2.5,
+                    backgroundColor:
+                        colors.onSurface.withValues(alpha: 0.07),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      colors.primary.withValues(alpha: 0.92),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -742,47 +960,60 @@ class _GlobalMiniPlayerBar extends StatelessWidget {
     required this.hasFloatingNavBar,
     required this.reduceMotion,
     required this.player,
+    required this.artworkBytes,
     required this.onOpen,
     required this.onDismiss,
+    required this.onExpandDragUpdate,
+    required this.onExpandDragEnd,
   });
 
   final bool visible;
   final bool hasFloatingNavBar;
   final bool reduceMotion;
   final PersistentAudioPlayer player;
+  final ValueListenable<Uint8List?> artworkBytes;
   final VoidCallback onOpen;
   final VoidCallback onDismiss;
+  final ValueChanged<double> onExpandDragUpdate;
+  final ValueChanged<double> onExpandDragEnd;
 
   @override
   Widget build(BuildContext context) {
     final item = player.currentItem;
     if (item == null) return const SizedBox.shrink();
 
-    return StreamBuilder<bool>(
-      stream: player.player.stream.playing,
-      initialData: player.player.state.playing,
-      builder: (context, playingSnapshot) => StreamBuilder<Duration>(
-        stream: player.player.stream.position,
-        initialData: player.player.state.position,
-        builder: (context, positionSnapshot) => StreamBuilder<Duration>(
-          stream: player.player.stream.duration,
-          initialData: player.player.state.duration,
-          builder: (context, durationSnapshot) => GlobalMiniPlayerBar(
-            item: item,
-            visible: visible,
-            reduceMotion: reduceMotion,
-            isPlaying: playingSnapshot.data ?? false,
-            position: positionSnapshot.data ?? Duration.zero,
-            duration: durationSnapshot.data ?? Duration.zero,
-            canSkipPrevious: player.queue.length > 1,
-            canSkipNext: player.queue.length > 1,
-            onOpen: onOpen,
-            onDismiss: onDismiss,
-            onTogglePlayback: player.togglePlayback,
-            onSkipPrevious: player.skipToPrevious,
-            onSkipNext: player.skipToNext,
-            surfaceKey: PocketLinkNavigation.miniPlayerKey,
-            hasFloatingNavBar: hasFloatingNavBar,
+    return ValueListenableBuilder<Uint8List?>(
+      valueListenable: artworkBytes,
+      builder: (context, artwork, _) => StreamBuilder<bool>(
+        stream: player.player.stream.playing,
+        initialData: player.player.state.playing,
+        builder: (context, playingSnapshot) => StreamBuilder<Duration>(
+          stream: player.player.stream.position,
+          initialData: player.player.state.position,
+          builder: (context, positionSnapshot) => StreamBuilder<Duration>(
+            stream: player.player.stream.duration,
+            initialData: player.player.state.duration,
+            builder: (context, durationSnapshot) => GlobalMiniPlayerBar(
+              item: item,
+              visible: visible,
+              reduceMotion: reduceMotion,
+              isPlaying: playingSnapshot.data ?? false,
+              position: positionSnapshot.data ?? Duration.zero,
+              duration: durationSnapshot.data ?? Duration.zero,
+              canSkipPrevious: player.queue.length > 1,
+              canSkipNext: player.queue.length > 1,
+              onOpen: onOpen,
+              onDismiss: onDismiss,
+              onTogglePlayback: player.togglePlayback,
+              onSkipPrevious: player.skipToPrevious,
+              onSkipNext: player.skipToNext,
+              surfaceKey: PocketLinkNavigation.miniPlayerKey,
+              hasFloatingNavBar: hasFloatingNavBar,
+              artworkBytes: artwork,
+              artworkKey: PocketLinkNavigation.miniArtworkKey,
+              onExpandDragUpdate: onExpandDragUpdate,
+              onExpandDragEnd: onExpandDragEnd,
+            ),
           ),
         ),
       ),
