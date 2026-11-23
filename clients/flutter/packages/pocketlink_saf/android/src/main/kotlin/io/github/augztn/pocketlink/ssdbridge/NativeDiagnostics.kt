@@ -49,18 +49,19 @@ internal object NativeDiagnostics {
                     .put("level", level)
                     .put("category", sanitize(category))
                     .put("component", sanitize(component))
-                    .put("message", sanitize(message))
+                    .put("message", sanitize(message).take(8192))
                     .put("fields", sanitizeFields(fields))
                 if (error != null) {
-                    event.put("error", sanitize(error.message ?: error.javaClass.simpleName))
+                    event.put("error", sanitize(error.message ?: error.javaClass.simpleName).take(2048))
                     event.put("error_type", error.javaClass.simpleName)
-                    event.put("stack_trace", sanitize(error.stackTraceToString()))
+                    event.put("stack_trace", sanitize(error.stackTraceToString()).take(8192))
                 }
                 var line = "$event\n"
                 if (line.toByteArray(Charsets.UTF_8).size > MAX_EVENT_BYTES) {
                     event.put("message", sanitize(message).take(2048))
                     event.put("fields", JSONObject().put("truncated", true))
                     if (error != null) {
+                        event.put("error", sanitize(error.message ?: error.javaClass.simpleName).take(2048))
                         event.put("stack_trace", sanitize(error.stackTraceToString()).take(8192))
                     }
                     line = "$event\n"
@@ -118,7 +119,7 @@ internal object NativeDiagnostics {
 
     private fun sanitizeValue(value: Any?): Any? = when (value) {
         null -> JSONObject.NULL
-        is String -> sanitize(value)
+        is String -> sanitize(value).take(4096)
         is Number, is Boolean -> value
         is Map<*, *> -> {
             val nested = JSONObject()
