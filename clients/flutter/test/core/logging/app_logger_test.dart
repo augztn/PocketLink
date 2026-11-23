@@ -180,4 +180,60 @@ void main() {
       expect(sanitized['file_path'], '[REDACTED_PATH]');
     });
   });
+
+
+  group('AppLogger diagnostic export boundaries', () {
+    late Directory directory;
+
+    setUp(() async {
+      directory = await Directory.systemTemp.createTemp('pocketlink-export-test-');
+      await AppLogger.initializeForTesting(directory);
+    });
+
+    tearDown(() async {
+      if (await directory.exists()) await directory.delete(recursive: true);
+    });
+
+    test('retains the active session event before a large rotated log', () async {
+      await AppLogger.info('LATEST_ACTIVE_SESSION_EVENT');
+      final current = await File('\${directory.path}/pocketlink.log').readAsString();
+      final jsonStart = current.indexOf('{');
+      final sessionId = (jsonDecode(current.substring(jsonStart)) as Map<String, dynamic>)['session_id'];
+
+      final oldEvents = List.generate(2200, (index) {
+        return jsonEncode({
+          'event_id': 'old-\$index',
+          'session_id': sessionId,
+          'timestamp': '2026-11-22T00:00:00.000Z',
+          'level': 'INFO',
+          'message': 'older event \${'x' * 1200}',
+        });
+      }).join('\n');
+      await File('\${directory.path}/pocketlink.log.1').writeAsString('\$oldEvents\n');
+
+      final exported = await AppLogger.createDiagnosticFile();
+      final content = await exported.readAsString();
+
+      expect(content, contains('LATEST_ACTIVE_SESSION_EVENT'));
+      expect(await exported.length(), lessThanOrEqualTo(2 * 1024 * 1024));
+    });
+
+    test('native export truncation keeps complete UTF-8 JSON event lines', () {
+      final older = jsonEncode({'event_id': 'older', 'message': 'old'});
+      final newest = jsonEncode({'event_id': 'newest', 'message': 'USB connected 🔌'});
+      final newestBytes = utf8.encode('\$newest\n');
+      final bytes = AppLogger.latestCompleteDiagnosticLinesForTesting(
+        '\$older\n\$newest\n',
+        newestBytes.length,
+      );
+      final retained = utf8.decode(bytes);
+      final records = retained.trimRight().split('\n').map(
+            (line) => jsonDecode(line) as Map<String, dynamic>,
+          );
+
+      expect(records.map((record) => record['event_id']), ['newest']);
+      expect(retained, contains('🔌'));
+    });
+  });
+
 }
