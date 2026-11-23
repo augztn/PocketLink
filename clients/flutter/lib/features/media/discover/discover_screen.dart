@@ -550,6 +550,55 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     ));
   }
 
+  List<DiscoverTrack> get _artistStationTracks {
+    if (_homeShelves.isEmpty) return const [];
+    final unique = <String, DiscoverTrack>{};
+    for (final track in _homeShelves.first.tracks) {
+      final artist = track.artist.trim();
+      if (artist.isEmpty || artist.toLowerCase() == 'discover') continue;
+      unique.putIfAbsent(artist.toLowerCase(), () => track);
+      if (unique.length >= 10) break;
+    }
+    return unique.values.toList(growable: false);
+  }
+
+  Widget _artistStationCard(DiscoverTrack track) {
+    final theme = Theme.of(context);
+    return SizedBox(
+      width: 132,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => _loadRadio(track),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipOval(
+              child: SizedBox(
+                width: 116,
+                height: 116,
+                child: _art(track, size: 116),
+              ),
+            ),
+            const SizedBox(height: 9),
+            Text(
+              track.artist,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              'Start artist radio',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _homeShelf(_DiscoverShelf shelf) {
     final theme = Theme.of(context);
     return SliverToBoxAdapter(
@@ -779,6 +828,32 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                             ),
                           ),
                         ),
+                      ),
+                    ),
+                  ),
+                if (_artistStationTracks.isNotEmpty)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 22),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.fromLTRB(20, 0, 20, 12),
+                            child: PocketLinkSectionHeader('Artist stations'),
+                          ),
+                          SizedBox(
+                            height: 178,
+                            child: ListView.separated(
+                              padding: const EdgeInsets.symmetric(horizontal: 20),
+                              scrollDirection: Axis.horizontal,
+                              itemCount: _artistStationTracks.length,
+                              separatorBuilder: (_, __) => const SizedBox(width: 14),
+                              itemBuilder: (context, index) =>
+                                  _artistStationCard(_artistStationTracks[index]),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
