@@ -14,7 +14,7 @@ void main() {
     );
 
     observer.didPush(discoverRoute, null);
-    expect(observer.isStandaloneDiscoverVisible, isTrue);
+    expect(observer.isStandaloneDiscoverFlow, isTrue);
 
     final clientRoute = MaterialPageRoute<void>(
       builder: (_) => const SizedBox.shrink(),
