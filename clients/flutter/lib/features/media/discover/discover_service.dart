@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:dio/dio.dart';
@@ -98,7 +99,7 @@ class DiscoverService {
       throw StateError('No playable audio stream was returned.');
     }
     final stream = DiscoverResolvedStream.fromJson(raw);
-    await AppLogger.info(
+    unawaited(AppLogger.info(
       'Discover stream resolved',
       category: 'media',
       component: 'discover_resolver',
@@ -111,7 +112,7 @@ class DiscoverService {
         'region': settings.discoverRegion,
         'audio_only': stream.audioOnly,
       },
-    );
+    ));
     return stream;
   }
 
