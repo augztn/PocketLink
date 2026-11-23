@@ -744,6 +744,11 @@ class _MiniPlayerMorphContents extends StatelessWidget {
     final item = player.currentItem;
     if (item == null) return const SizedBox.shrink();
     final colors = Theme.of(context).colorScheme;
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final foreground =
+        isLight ? const Color(0xFF0F172A) : Colors.white;
+    final secondaryForeground =
+        isLight ? const Color(0xFF475569) : Colors.white54;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -765,14 +770,14 @@ class _MiniPlayerMorphContents extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                              color: Colors.white,
+                              color: foreground,
                               fontWeight: FontWeight.w800,
                             ),
                       ),
                       const Text(
                         'NOW PLAYING · SWIPE TO SKIP',
                         style: TextStyle(
-                          color: Colors.white54,
+                          color: secondaryForeground,
                           fontSize: 8,
                           letterSpacing: 0.45,
                         ),
@@ -785,7 +790,7 @@ class _MiniPlayerMorphContents extends StatelessWidget {
                   onPressed: player.queue.length > 1
                       ? player.skipToPrevious
                       : null,
-                  color: Colors.white,
+                  color: foreground,
                   icon: const Icon(Icons.skip_previous_rounded),
                 ),
                 StreamBuilder<bool>(
@@ -815,7 +820,7 @@ class _MiniPlayerMorphContents extends StatelessWidget {
                               height: 36,
                             ),
                             onPressed: player.togglePlayback,
-                            color: Colors.white,
+                            color: foreground,
                             icon: Icon(
                               (playingSnapshot.data ?? false)
                                   ? Icons.pause_rounded
@@ -831,7 +836,7 @@ class _MiniPlayerMorphContents extends StatelessWidget {
                   visualDensity: VisualDensity.compact,
                   onPressed:
                       player.queue.length > 1 ? player.skipToNext : null,
-                  color: Colors.white,
+                  color: foreground,
                   icon: const Icon(Icons.skip_next_rounded),
                 ),
               ],
