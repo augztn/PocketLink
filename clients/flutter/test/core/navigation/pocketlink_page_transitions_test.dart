@@ -39,6 +39,42 @@ void main() {
       expect(find.byKey(const ValueKey<String>('route-content')), findsOneWidget);
     });
 
+    testWidgets('keeps reverse progress linear for predictive back', (
+      tester,
+    ) async {
+      final route = MaterialPageRoute<void>(builder: (_) => child);
+      final controller = AnimationController(
+        vsync: tester,
+        duration: const Duration(milliseconds: 300),
+      )..value = 0.25;
+      controller.reverse();
+
+      await tester.pumpWidget(
+        MediaQuery(
+          data: const MediaQueryData(disableAnimations: false),
+          child: Builder(
+            builder: (context) => builder.buildTransitions<void>(
+              route,
+              context,
+              controller,
+              const AlwaysStoppedAnimation<double>(0),
+              child,
+            ),
+          ),
+        ),
+      );
+
+      final slide = tester.widget<SlideTransition>(
+        find.byType(SlideTransition),
+      );
+      expect(
+        slide.position.value.dx,
+        closeTo(0.035 * 0.75, 0.000001),
+      );
+
+      controller.dispose();
+    });
+
     testWidgets('respects the system reduced-motion setting', (tester) async {
       final route = MaterialPageRoute<void>(
         builder: (_) => child,
