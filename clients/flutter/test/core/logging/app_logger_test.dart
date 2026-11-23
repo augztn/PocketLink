@@ -36,6 +36,19 @@ void main() {
       expect(sanitized['items'], ['safe', '[REDACTED_PATH]']);
     });
   });
+  group('AppLogger.sanitizeDiagnosticFields additional privacy cases', () {
+    test('redacts camelCase paths and private paths in nested values', () {
+      final sanitized = AppLogger.sanitizeDiagnosticFields({
+        'filePath': '/storage/emulated/0/Documents/report.pdf',
+        'documentUri': 'content://private/document/123',
+        'metadata': {'folderPath': '/data/user/0/private/cache'},
+      });
+
+      expect(sanitized['filePath'], '[REDACTED_PATH]');
+      expect(sanitized['documentUri'], '[REDACTED_PATH]');
+      expect(sanitized['metadata'], {'folderPath': '[REDACTED_PATH]'});
+    });
+  });
   group('AppLogger.sanitizeDiagnosticContent', () {
     test('redacts usernames and private IPv4 addresses', () {
       final sanitized = AppLogger.sanitizeDiagnosticContent(
