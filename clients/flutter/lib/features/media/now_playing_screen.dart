@@ -1260,7 +1260,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             ),
           ),
           const SizedBox(width: 10),
-          if (_track.lyricsVideoId?.isNotEmpty == true) ...[
+          if (AppSettings.instance.discoverLyrics &&
+              _track.lyricsVideoId?.isNotEmpty == true) ...[
             _roundAction(
               icon: Icons.lyrics_rounded,
               tooltip: 'Lyrics',
@@ -1321,7 +1322,53 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   Widget _themeBackground(String theme) {
     final palette = _trackPalette;
     final hasArtwork = _artwork != null && _artworkKey == _trackKey;
-    if (theme == 'blur' || theme == 'blurCard' || theme == 'aether') {
+    if (theme == 'aether') {
+      return AnimatedContainer(
+        duration: const Duration(milliseconds: 700),
+        curve: Curves.easeInOut,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color.lerp(palette[0], Colors.white, 0.08)!,
+              Color.lerp(palette[1], palette[0], 0.28)!,
+              Color.lerp(palette[2], Colors.black, 0.42)!,
+              const Color(0xFF090910),
+            ],
+            stops: const [0, 0.36, 0.72, 1],
+          ),
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (hasArtwork)
+              ImageFiltered(
+                imageFilter: ui.ImageFilter.blur(sigmaX: 44, sigmaY: 44),
+                child: Opacity(
+                  opacity: 0.52,
+                  child: Image.memory(_artwork!, fit: BoxFit.cover, gaplessPlayback: true),
+                ),
+              ),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    palette[0].withValues(alpha: 0.22),
+                    palette[1].withValues(alpha: 0.34),
+                    Colors.black.withValues(alpha: 0.82),
+                  ],
+                  stops: const [0, 0.48, 1],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    if (theme == 'blur' || theme == 'blurCard') {
       return Stack(
         fit: StackFit.expand,
         children: [
