@@ -134,7 +134,7 @@ double settingsListBottomPadding(
   final visible = miniPlayerVisible ??
       LayoutInsetsScope.maybeOf(context)?.hasActiveMiniPlayer ??
       false;
-  return media.padding.bottom + (visible ? 74.0 + 24.0 : 24.0);
+  return media.padding.bottom + (visible ? pocketLinkMiniPlayerHeight + 24.0 : 24.0);
 }
 
 EdgeInsets settingsListPadding(
