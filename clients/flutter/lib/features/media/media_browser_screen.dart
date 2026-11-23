@@ -878,7 +878,7 @@ tooltip: 'Choose video view',
         ),
         body: Column(children: [
           if ((_searchExpanded && widget.showSearch) || isFolderView)
-            SizedBox(height: LayoutInsetsScope.of(context).topClearance - 6),
+            SizedBox(height: LayoutInsetsScope.of(context).topClearance),
           if (_searchExpanded && widget.showSearch)
             Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: CompactSearchField(controller: _searchController,
