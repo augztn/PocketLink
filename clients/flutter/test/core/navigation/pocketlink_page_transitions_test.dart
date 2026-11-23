@@ -33,7 +33,7 @@ void main() {
         ),
       );
 
-      expect(find.byType(FadeTransition), findsOneWidget);
+      expect(find.byType(FadeTransition), findsNothing);
       expect(find.byType(SlideTransition), findsOneWidget);
       expect(find.byType(ScaleTransition), findsOneWidget);
       expect(find.byKey(const ValueKey<String>('route-content')), findsOneWidget);
