@@ -357,7 +357,6 @@ class _ExploreGridState extends State<_ExploreGrid>
               index: 7,
               title: 'Discover', subtitle: 'YouTube Music and local lossless',
               icon: Icons.explore_rounded, tint: const Color(0xFFDB79A8),
-              badge: 'NEW',
               onTap: () => onOpen(DiscoverScreen(api: api)),
             ),
           card(
