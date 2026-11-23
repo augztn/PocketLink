@@ -7,6 +7,7 @@ import 'package:dio/dio.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../../core/navigation/pocketlink_navigation.dart';
 import '../../core/network/server_api.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/logging/app_logger.dart';
@@ -201,7 +202,12 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
 
   Future<void> _openDiscover() async {
     await Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const DiscoverScreen()),
+      MaterialPageRoute<void>(
+        settings: const RouteSettings(
+          name: PocketLinkRouteNames.standaloneDiscover,
+        ),
+        builder: (_) => const DiscoverScreen(),
+      ),
     );
   }
 
