@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/network/server_api.dart';
+import '../../../core/settings/app_settings.dart';
 import '../../../core/widgets/pocketlink_app_bar.dart';
 import '../data/media_library_repository.dart';
 import '../media_library_catalog.dart';
@@ -158,24 +159,22 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   }
 
   Future<void> _play(DiscoverTrack track) async {
-    final local = DiscoverService.findLocalLosslessMatch(track, _localLibrary);
+    final results = List<DiscoverTrack>.of(_tracks);
+    final selectedIndex = results.indexWhere((item) => item.videoId == track.videoId);
+    final queueTracks = selectedIndex < 0 ? <DiscoverTrack>[track] : results;
+    final startIndex = selectedIndex < 0 ? 0 : selectedIndex;
     try {
-      final item = local != null
-          ? MediaQueueItem(
-              title: track.title,
-              path: local.path,
-              volume: local.volume == 'internal' ? null : local.volume,
-              size: local.size,
-              artist: track.artist,
-            )
-          : await _remoteQueueItem(track);
-      await PersistentAudioPlayer.instance.openQueue(
+      final item = await _queueItem(queueTracks[startIndex]);
+      final player = PersistentAudioPlayer.instance;
+      await player.openQueue(
         api: widget.api,
         queue: [item],
         initialIndex: 0,
         isMusic: true,
       );
+      final session = player.queueSession;
       NowPlayingOverlayController.open();
+      unawaited(_populateQueue(queueTracks, startIndex, session));
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -183,6 +182,76 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             ? error.message ?? 'Could not resolve this track.'
             : 'Could not start playback. Try again later.')),
       );
+    }
+  }
+
+  Future<MediaQueueItem> _queueItem(DiscoverTrack track) async {
+    final local = AppSettings.instance.discoverLocalLossless
+        ? DiscoverService.findLocalLosslessMatch(track, _localLibrary)
+        : null;
+    if (local != null) {
+      return MediaQueueItem(
+        title: track.title,
+        path: local.path,
+        volume: local.volume == 'internal' ? null : local.volume,
+        size: local.size,
+        artist: track.artist,
+      );
+    }
+    return _remoteQueueItem(track);
+  }
+
+  Future<void> _populateQueue(
+    List<DiscoverTrack> tracks,
+    int selectedIndex,
+    int session,
+  ) async {
+    final player = PersistentAudioPlayer.instance;
+    Future<MediaQueueItem?> resolveAt(int index) async {
+      if (session != player.queueSession) return null;
+      try {
+        return await _queueItem(tracks[index]);
+      } catch (_) {
+        return null;
+      }
+    }
+
+    // Resolve the immediate neighbours first so both skip directions become
+    // available quickly, then fill the rest without blocking initial playback.
+    final neighbours = await Future.wait<MediaQueueItem?>([
+      if (selectedIndex > 0) resolveAt(selectedIndex - 1),
+      if (selectedIndex + 1 < tracks.length) resolveAt(selectedIndex + 1),
+    ]);
+    var neighbourOffset = 0;
+    if (selectedIndex > 0) {
+      final previous = neighbours[neighbourOffset++];
+      if (previous != null) {
+        await player.enqueue(previous, insertAtStart: true, expectedSession: session);
+      }
+    }
+    if (selectedIndex + 1 < tracks.length) {
+      final next = neighbours[neighbourOffset];
+      if (next != null) {
+        await player.enqueue(next, expectedSession: session);
+      }
+    }
+    if (session != player.queueSession || !AppSettings.instance.discoverAutoQueue) return;
+
+    // Prepend earlier results from nearest to oldest; append later results in
+    // source order. Each insertion preserves the selected track's position.
+    for (var index = selectedIndex - 2; index >= 0; index--) {
+      if (session != player.queueSession) return;
+      final item = await resolveAt(index);
+      if (item != null) {
+        await player.enqueue(item, insertAtStart: true, expectedSession: session);
+      }
+    }
+    for (var index = selectedIndex + 2; index < tracks.length; index++) {
+      if (session != player.queueSession) return;
+      final item = await resolveAt(index);
+      if (item != null) {
+        await player.enqueue(item, expectedSession: session);
+      }
     }
   }
 
@@ -246,6 +315,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   }
 
   Future<void> _showLyrics(DiscoverTrack track, {IndexedFile? local}) async {
+    if (!AppSettings.instance.discoverLyrics) return;
     try {
       final lyrics = (local == null ? null : await _readSidecarLyrics(local)) ??
           await _service.lyrics(track);
@@ -434,12 +504,14 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                     separatorBuilder: (_, __) => const Divider(height: 1, indent: 68),
                     itemBuilder: (context, index) {
                       final track = _tracks[index];
-                      final local = DiscoverService.findLocalLosslessMatch(track, _localLibrary);
+                      final local = AppSettings.instance.discoverLocalLossless
+                          ? DiscoverService.findLocalLosslessMatch(track, _localLibrary)
+                          : null;
                       return ListTile(
                         contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         leading: ClipRRect(
                           borderRadius: BorderRadius.circular(10),
-                          child: track.thumbnailUrl.isEmpty
+                          child: !AppSettings.instance.discoverArtwork || track.thumbnailUrl.isEmpty
                               ? Container(
                                   width: 52,
                                   height: 52,
@@ -472,10 +544,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                             if (value == 'play') _play(track);
                             if (value == 'radio') _loadRadio(track);
                           },
-                          itemBuilder: (_) => const [
-                            PopupMenuItem(value: 'play', child: Text('Play')),
-                            PopupMenuItem(value: 'radio', child: Text('Start radio')),
-                            PopupMenuItem(value: 'lyrics', child: Text('Lyrics')),
+                          itemBuilder: (_) => [
+                            const PopupMenuItem(value: 'play', child: Text('Play')),
+                            const PopupMenuItem(value: 'radio', child: Text('Start radio')),
+                            if (AppSettings.instance.discoverLyrics)
+                              const PopupMenuItem(value: 'lyrics', child: Text('Lyrics')),
                           ],
                         ),
                         onTap: () => _play(track),
