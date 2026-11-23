@@ -560,9 +560,8 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
                                         borderRadius: BorderRadius.circular(20),
                                         onTap: item.isDirectory ? () => _loadDirectory(_itemPath(item.name))
                                             : () => _isAudio(item) ? _openAudio(item) : _openFile(item),
-                                        child: Container(
+                                        child: Padding(
                                           padding: const EdgeInsets.all(14),
-                                          decoration: BoxDecoration(color: colors.surfaceContainerLow, borderRadius: BorderRadius.circular(20)),
                                           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                                             Row(children: [iconFor(item), const Spacer(), menu(item)]),
                                             const Spacer(),
