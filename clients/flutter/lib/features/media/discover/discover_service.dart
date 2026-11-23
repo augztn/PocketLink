@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/logging/app_logger.dart';
 import '../../../core/network/server_api_models.dart';
 import '../../../core/settings/app_settings.dart';
 
@@ -96,7 +97,22 @@ class DiscoverService {
     if (raw == null || (raw['url']?.toString().isEmpty ?? true)) {
       throw StateError('No playable audio stream was returned.');
     }
-    return DiscoverResolvedStream.fromJson(raw);
+    final stream = DiscoverResolvedStream.fromJson(raw);
+    await AppLogger.info(
+      'Discover stream resolved',
+      category: 'media',
+      component: 'discover_resolver',
+      fields: {
+        'resolver': stream.resolver,
+        'codec': stream.codec,
+        'bitrate_bps': stream.bitrateBps,
+        'quality': stream.quality,
+        'quality_fallback_reason': stream.qualityFallbackReason,
+        'region': settings.discoverRegion,
+        'audio_only': stream.audioOnly,
+      },
+    );
+    return stream;
   }
 
   Future<DiscoverLyrics?> lyrics(DiscoverTrack track) async {
