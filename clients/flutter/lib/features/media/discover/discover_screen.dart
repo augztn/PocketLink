@@ -77,6 +77,27 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     super.dispose();
   }
 
+
+  Future<void> _openMoodsAndMoments() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => _MoodsAndMomentsScreen(
+          service: _service,
+          onOpenTracks: (title, tracks) {
+            if (!mounted) return;
+            setState(() {
+              _tracks = tracks;
+              _homeShelves = const [];
+              _sectionTitle = title;
+              _error = tracks.isEmpty ? 'No tracks found for this mood.' : null;
+              _loading = false;
+            });
+          },
+        ),
+      ),
+    );
+  }
+
   Future<void> _loadLocalLibrary() async {
     if (_loadingLibrary || widget.api == null) return;
     setState(() => _loadingLibrary = true);
@@ -1021,6 +1042,13 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       appBar: PocketLinkAppBar(
         feathered: true, showHome: false, automaticallyImplyLeading: true,
         title: const Text('Discover'),
+        actionsBeforeHome: [
+          IconButton(
+            tooltip: 'Search moods and genres',
+            onPressed: _openMoodsAndMoments,
+            icon: const Icon(Icons.search_rounded),
+          ),
+        ],
         actions: [PocketLinkAppBarAction(
           label: 'Refresh Discover', icon: Icons.refresh_rounded,
           onPressed: _loading ? null : _loadHome,
@@ -1032,36 +1060,6 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
           // Keep the scrollable behind the transparent shared app bar so
           // content can feather through it exactly like the other sections.
           SliverToBoxAdapter(child: SizedBox(height: top)),
-          SliverToBoxAdapter(child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const SizedBox(height: 4),
-                TextField(
-                  controller: _searchController, textInputAction: TextInputAction.search,
-                  onSubmitted: _search,
-                  decoration: InputDecoration(
-                    hintText: 'Songs, artists and albums',
-                    prefixIcon: const Icon(Icons.search_rounded),
-                    suffixIcon: IconButton(
-                      tooltip: 'Search',
-                      onPressed: () => _search(_searchController.text),
-                      icon: const Icon(Icons.arrow_forward_rounded),
-                    ),
-                    filled: true,
-                    fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: .72),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                SizedBox(height: 38, child: ListView(scrollDirection: Axis.horizontal, children: [
-                  _quickSearchChip('India', 'top songs India'),
-                  _quickSearchChip('Malayalam', 'popular Malayalam songs'),
-                  _quickSearchChip('Hindi', 'top Hindi songs'),
-                  _quickSearchChip('Tamil', 'popular Tamil songs'),
-                  _quickSearchChip('English', 'top English songs'),
-                ])),
-              ]),
-            )),
             if (_loading && !hasTracks)
               _discoverHomeSkeleton()
             else if (_error != null && !hasTracks)
@@ -1080,7 +1078,6 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
               if (_homeShelves.isNotEmpty) ...[
                 _heroShelf(_homeShelves),
                 if (_homeShelves.isNotEmpty) _trackPager(_homeShelves.first),
-                _moodTiles(),
                 for (final shelf in _homeShelves.skip(1)) _homeShelf(shelf),
               ] else ...[
                 SliverToBoxAdapter(
@@ -1102,4 +1099,293 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       ),
     );
   }
+}
+
+
+class _MoodsAndMomentsScreen extends StatefulWidget {
+  const _MoodsAndMomentsScreen({
+    required this.service,
+    required this.onOpenTracks,
+  });
+
+  final DiscoverService service;
+  final void Function(String title, List<DiscoverTrack> tracks) onOpenTracks;
+
+  @override
+  State<_MoodsAndMomentsScreen> createState() => _MoodsAndMomentsScreenState();
+}
+
+class _MoodsAndMomentsScreenState extends State<_MoodsAndMomentsScreen> {
+  late Future<List<DiscoverMoodSection>> _sections;
+  final TextEditingController _query = TextEditingController();
+  bool _searching = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _sections = widget.service.moodsAndGenres();
+  }
+
+  @override
+  void dispose() {
+    _query.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submitSearch() async {
+    final query = _query.text.trim();
+    if (query.length < 2 || _searching) return;
+    setState(() => _searching = true);
+    try {
+      final tracks = await widget.service.search(query);
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      widget.onOpenTracks(query, tracks);
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Search failed: $error')),
+      );
+    } finally {
+      if (mounted) setState(() => _searching = false);
+    }
+  }
+
+  Future<void> _openMood(DiscoverMood mood) async {
+    if (_searching) return;
+    setState(() => _searching = true);
+    try {
+      final tracks = await widget.service.browseMood(mood);
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      widget.onOpenTracks(mood.title, tracks);
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not load ${mood.title}: $error')),
+      );
+    } finally {
+      if (mounted) setState(() => _searching = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: PocketLinkAppBar(
+        feathered: true,
+        title: const Text('Search'),
+        actions: const [],
+      ),
+      body: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(20, MediaQuery.paddingOf(context).top + kToolbarHeight + 12, 20, 18),
+              child: TextField(
+                controller: _query,
+                autofocus: true,
+                textInputAction: TextInputAction.search,
+                onSubmitted: (_) => _submitSearch(),
+                decoration: InputDecoration(
+                  hintText: 'Songs, artists and albums',
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  suffixIcon: IconButton(
+                    tooltip: 'Search',
+                    onPressed: _submitSearch,
+                    icon: _searching
+                        ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.arrow_forward_rounded),
+                  ),
+                  filled: true,
+                  fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: .72),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
+                ),
+              ),
+            ),
+          ),
+          FutureBuilder<List<DiscoverMoodSection>>(
+            future: _sections,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState != ConnectionState.done) {
+                return const SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+              if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                return SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('Moods & Moments are unavailable right now.'),
+                          const SizedBox(height: 12),
+                          FilledButton(
+                            onPressed: () => setState(() => _sections = widget.service.moodsAndGenres()),
+                            child: const Text('Try again'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }
+              return SliverList(
+                delegate: SliverChildListDelegate([
+                  for (final section in snapshot.data!) ...[
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                      child: Text(section.title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: section.items.length,
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisExtent: 76,
+                          crossAxisSpacing: 10,
+                          mainAxisSpacing: 10,
+                        ),
+                        itemBuilder: (context, index) => _DiscoverMoodTile(
+                          mood: section.items[index],
+                          service: widget.service,
+                          onTap: () => _openMood(section.items[index]),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 22),
+                  ],
+                ]),
+              );
+            },
+          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 28)),
+        ],
+      ),
+    );
+  }
+}
+
+class _DiscoverMoodTile extends StatefulWidget {
+  const _DiscoverMoodTile({
+    required this.mood,
+    required this.service,
+    required this.onTap,
+  });
+
+  final DiscoverMood mood;
+  final DiscoverService service;
+  final VoidCallback onTap;
+
+  @override
+  State<_DiscoverMoodTile> createState() => _DiscoverMoodTileState();
+}
+
+class _DiscoverMoodTileState extends State<_DiscoverMoodTile> {
+  late Future<List<DiscoverTrack>> _covers;
+
+  @override
+  void initState() {
+    super.initState();
+    _covers = widget.service.browseMood(widget.mood, limit: 2);
+  }
+
+  Color _tint(int argb) {
+    final source = Color(argb);
+    return Color.lerp(source, const Color(0xFF777782), .42) ?? const Color(0xFF454550);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tint = _tint(widget.mood.stripeColor);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: widget.onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            gradient: LinearGradient(
+              colors: [
+                Color.alphaBlend(tint.withValues(alpha: .55), const Color(0xFF24242A)),
+                Color.alphaBlend(tint.withValues(alpha: .16), const Color(0xFF24242A)),
+              ],
+            ),
+          ),
+          child: Stack(
+            clipBehavior: Clip.hardEdge,
+            children: [
+              Positioned(
+                right: 4,
+                top: 5,
+                bottom: 5,
+                width: 76,
+                child: FutureBuilder<List<DiscoverTrack>>(
+                  future: _covers,
+                  builder: (context, snapshot) {
+                    final covers = snapshot.data ?? const <DiscoverTrack>[];
+                    return Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        if (covers.length > 1)
+                          Transform.translate(
+                            offset: const Offset(-12, 2),
+                            child: Transform.rotate(
+                              angle: -.34,
+                              child: _cover(covers[1].thumbnailUrl, 43),
+                            ),
+                          ),
+                        if (covers.isNotEmpty)
+                          Transform.translate(
+                            offset: const Offset(10, 5),
+                            child: Transform.rotate(
+                              angle: -.08,
+                              child: _cover(covers[0].thumbnailUrl, 48),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 14, right: 66),
+                  child: Text(
+                    widget.mood.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      height: 1.1,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _cover(String url, double size) => ClipRRect(
+    borderRadius: BorderRadius.circular(8),
+    child: SizedBox.square(
+      dimension: size,
+      child: url.isEmpty
+          ? const ColoredBox(color: Color(0xFF393941))
+          : Image.network(url, fit: BoxFit.cover, errorBuilder: (_, __, ___) =>
+              const ColoredBox(color: Color(0xFF393941))),
+    ),
+  );
 }
