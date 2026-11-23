@@ -33,16 +33,30 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   String? _error;
   String _sectionTitle = 'Top charts in India';
   int _requestGeneration = 0;
+  late String _lastRegion;
 
   @override
   void initState() {
     super.initState();
+    _lastRegion = AppSettings.instance.discoverRegion;
+    AppSettings.instance.addListener(_onSettingsChanged);
     _loadLocalLibrary();
     _loadHome();
   }
 
+  void _onSettingsChanged() {
+    final region = AppSettings.instance.discoverRegion;
+    if (region == _lastRegion) return;
+    _lastRegion = region;
+    if (mounted) unawaited(_loadHome());
+  }
+
+  String get _regionName =>
+      AppSettings.discoverRegions[AppSettings.instance.discoverRegion] ?? 'India';
+
   @override
   void dispose() {
+    AppSettings.instance.removeListener(_onSettingsChanged);
     _searchController.dispose();
     super.dispose();
   }
@@ -84,13 +98,13 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     setState(() {
       _loading = true;
       _error = null;
-      _sectionTitle = 'Top charts in India';
+      _sectionTitle = 'Top charts in $_regionName';
     });
     try {
       final results = await _service.home();
       if (!mounted || generation != _requestGeneration) return;
       if (results.isEmpty) {
-        await _search('top songs India');
+        await _search('top songs $_regionName');
         return;
       }
       setState(() {
