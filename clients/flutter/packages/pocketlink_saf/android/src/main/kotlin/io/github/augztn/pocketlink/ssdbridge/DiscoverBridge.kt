@@ -41,20 +41,21 @@ internal object DiscoverBridge {
 
     private val catalog = YouTubeMusicCatalog(httpClient)
     private val playerFallback = YouTubePlayerFallback(httpClient)
-    @Volatile private var initialized = false
+    @Volatile private var initializedCountry: String? = null
+    @Volatile private var lastSuccessfulResolver: String? = null
     private val initLock = Any()
 
-    fun search(query: String, limit: Int, result: io.flutter.plugin.common.MethodChannel.Result) {
+    fun search(query: String, limit: Int, regionCode: String, result: io.flutter.plugin.common.MethodChannel.Result) {
         executor.execute {
             try {
                 val cleanQuery = query.trim()
                 require(cleanQuery.length >= 2) { "Enter at least two characters." }
                 val boundedLimit = limit.coerceIn(1, 50)
-                val catalogueTracks = catalog.search(cleanQuery, boundedLimit)
+                val catalogueTracks = catalog.search(cleanQuery, boundedLimit, regionCode)
                 val tracks = if (catalogueTracks.isNotEmpty()) {
                     catalogueTracks
                 } else {
-                    ensureInitialized()
+                    ensureInitialized(regionCode)
                     val handler = ServiceList.YouTube.searchQHFactory.fromQuery(
                         cleanQuery,
                         listOf("music_songs"),
@@ -80,17 +81,17 @@ internal object DiscoverBridge {
         }
     }
 
-    fun home(limit: Int, result: io.flutter.plugin.common.MethodChannel.Result) {
+    fun home(limit: Int, regionCode: String, result: io.flutter.plugin.common.MethodChannel.Result) {
         executor.execute {
             try {
                 val boundedLimit = limit.coerceIn(1, 50)
-                val catalogueTracks = catalog.home(boundedLimit)
+                val catalogueTracks = catalog.home(boundedLimit, regionCode)
                 val tracks = if (catalogueTracks.isNotEmpty()) {
                     catalogueTracks
                 } else {
-                    ensureInitialized()
+                    ensureInitialized(regionCode)
                     val handler = ServiceList.YouTube.searchQHFactory.fromQuery(
-                        "top songs India",
+                        "top songs",
                         listOf("music_songs"),
                         ""
                     )
@@ -109,16 +110,16 @@ internal object DiscoverBridge {
         }
     }
 
-    fun radio(videoId: String, limit: Int, result: io.flutter.plugin.common.MethodChannel.Result) {
+    fun radio(videoId: String, limit: Int, regionCode: String, result: io.flutter.plugin.common.MethodChannel.Result) {
         executor.execute {
             try {
                 val id = videoId.trim()
                 val boundedLimit = limit.coerceIn(1, 50)
-                val catalogueTracks = catalog.radio(id, boundedLimit)
+                val catalogueTracks = catalog.radio(id, boundedLimit, regionCode)
                 val tracks = if (catalogueTracks.isNotEmpty()) {
                     catalogueTracks
                 } else {
-                    ensureInitialized()
+                    ensureInitialized(regionCode)
                     StreamInfo.getInfo(ServiceList.YouTube, "https://www.youtube.com/watch?v=$id")
                         .relatedItems.orEmpty()
                         .filterIsInstance<StreamInfoItem>()
@@ -136,82 +137,74 @@ internal object DiscoverBridge {
         }
     }
 
-    fun resolve(videoId: String, result: io.flutter.plugin.common.MethodChannel.Result) {
+    fun resolve(
+        videoId: String,
+        quality: String,
+        resolverProfile: String,
+        regionCode: String,
+        result: io.flutter.plugin.common.MethodChannel.Result
+    ) {
         executor.execute {
             try {
-                ensureInitialized()
                 val id = videoId.trim()
                 require(ID_PATTERN.matches(id)) { "Invalid YouTube video ID." }
-
+                val selectedQuality = DiscoverPlaybackOptions.normalizeQuality(quality)
+                val selectedRegion = DiscoverPlaybackOptions.normalizeRegion(regionCode)
+                val order = DiscoverPlaybackOptions.resolverOrder(
+                    resolverProfile,
+                    lastSuccessfulResolver
+                )
                 var payload: Map<String, Any>? = null
+                var progressiveFallback: Map<String, Any>? = null
                 var newPipeFailure: String? = null
-                val info = runCatching {
-                    StreamInfo.getInfo(
-                        ServiceList.YouTube,
-                        "https://www.youtube.com/watch?v=$id"
-                    )
-                }.onFailure { error ->
-                    // Keep diagnostics useful without logging signed URLs or request tokens.
-                    newPipeFailure = error.javaClass.simpleName
-                }.getOrNull()
+                var newPipeAttempted = false
 
-                if (info != null) {
-                    val audio = info.audioStreams.orEmpty()
-                        .filter { stream -> stream.content.orEmpty().startsWith("https://") }
-                        .sortedWith(
-                            compareByDescending<AudioStream> { isOpus(it) }
-                                .thenByDescending { it.averageBitrate }
-                        )
-                        .firstOrNull()
-                    if (audio != null) {
-                        payload = mapOf(
-                            "url" to audio.content.orEmpty(),
-                            "mimeType" to (audio.format?.mimeType ?: "audio/webm"),
-                            "bitrateBps" to audio.averageBitrate.toLong() * 1000L,
-                            "userAgent" to BROWSER_USER_AGENT,
-                            "codec" to (audio.codec ?: ""),
-                            "itag" to audio.itag,
-                            "resolver" to "NewPipe"
-                        )
-                    } else {
-                        // Some YouTube clients expose only muxed progressive streams.
-                        val progressive = info.videoStreams.orEmpty()
-                            .filter { !it.isVideoOnly && it.content.orEmpty().startsWith("https://") }
-                            .maxByOrNull { it.height }
-                        if (progressive != null) {
-                            payload = mapOf(
-                                "url" to progressive.content.orEmpty(),
-                                "mimeType" to (progressive.format?.mimeType ?: "video/mp4"),
-                                "bitrateBps" to 128_000L,
-                                "userAgent" to BROWSER_USER_AGENT,
-                                "codec" to (progressive.codec ?: ""),
-                                "itag" to progressive.itag,
-                                "resolver" to "NewPipe-progressive"
-                            )
+                for (resolver in order) {
+                    when (resolver) {
+                        "PLAYER_API" -> {
+                            val candidate = resolveWithPlayerApi(id, selectedRegion, selectedQuality)
+                            if (candidate?.get("audioOnly") == false) {
+                                if (progressiveFallback == null) progressiveFallback = candidate
+                            } else if (candidate != null) {
+                                payload = candidate
+                                lastSuccessfulResolver = "PLAYER_API"
+                            }
+                        }
+                        else -> {
+                            newPipeAttempted = true
+                            val streams = runCatching {
+                                resolveNewPipeStreams(id, selectedRegion, selectedQuality)
+                            }.onFailure { error ->
+                                newPipeFailure = error.javaClass.simpleName
+                            }.getOrNull()
+                            if (progressiveFallback == null) progressiveFallback = streams?.second
+                            if (streams?.first != null) {
+                                payload = streams.first
+                                lastSuccessfulResolver = "NEWPIPE"
+                            }
                         }
                     }
+                    if (payload != null) break
                 }
 
-                if (payload == null) {
-                    val fallback = playerFallback.resolve(id)
-                    if (fallback != null) {
-                        payload = mapOf(
-                            "url" to fallback.url,
-                            "mimeType" to fallback.mimeType,
-                            "bitrateBps" to fallback.bitrateBps,
-                            "userAgent" to fallback.userAgent,
-                            "codec" to fallback.codec,
-                            "itag" to fallback.itag,
-                            "resolver" to fallback.client
-                        )
+                if (payload == null && !newPipeAttempted) {
+                    val streams = runCatching {
+                        resolveNewPipeStreams(id, selectedRegion, selectedQuality)
+                    }.onFailure { error ->
+                        newPipeFailure = error.javaClass.simpleName
+                    }.getOrNull()
+                    if (progressiveFallback == null) progressiveFallback = streams?.second
+                    if (streams?.first != null) {
+                        payload = streams.first
+                        lastSuccessfulResolver = "NEWPIPE"
                     }
                 }
+                if (payload == null) payload = progressiveFallback
 
-                val resolved = payload
-                    ?: throw IOException(
-                        "No playable stream was exposed by NewPipe or the alternate YouTube player clients." +
-                            (newPipeFailure?.let { " NewPipe: $it." } ?: "")
-                    )
+                val resolved = payload ?: throw IOException(
+                    "No playable stream was exposed by NewPipe or the alternate YouTube player clients." +
+                        (newPipeFailure?.let { " NewPipe: $it." } ?: "")
+                )
                 mainHandler.post { result.success(resolved) }
             } catch (error: Exception) {
                 mainHandler.post {
@@ -225,10 +218,89 @@ internal object DiscoverBridge {
         }
     }
 
-    private fun ensureInitialized() {
-        if (initialized) return
+    private fun resolveWithPlayerApi(
+        videoId: String,
+        regionCode: String,
+        quality: String
+    ): Map<String, Any>? {
+        val stream = playerFallback.resolve(videoId, regionCode, quality) ?: return null
+        val reason = if (stream.audioOnly) {
+            DiscoverPlaybackOptions.qualityFallbackReason(quality, stream.bitrateBps)
+        } else {
+            "Only a muxed progressive stream was available; the requested audio-only quality could not be applied."
+        }
+        return mapOf(
+            "url" to stream.url,
+            "mimeType" to stream.mimeType,
+            "bitrateBps" to stream.bitrateBps,
+            "userAgent" to stream.userAgent,
+            "codec" to stream.codec,
+            "itag" to stream.itag,
+            "resolver" to stream.client,
+            "quality" to quality,
+            "qualityFallbackReason" to (reason ?: ""),
+            "audioOnly" to stream.audioOnly
+        )
+    }
+
+    private fun resolveNewPipeStreams(
+        videoId: String,
+        regionCode: String,
+        quality: String
+    ): Pair<Map<String, Any>?, Map<String, Any>?> {
+        ensureInitialized(regionCode)
+        val info = StreamInfo.getInfo(
+            ServiceList.YouTube,
+            "https://www.youtube.com/watch?v=$videoId"
+        )
+        val audio = info.audioStreams.orEmpty()
+            .filter { it.content.orEmpty().startsWith("https://") }
+        val selectedAudio = DiscoverPlaybackOptions.selectAudioFormat(
+            audio,
+            quality,
+            { it.averageBitrate.toLong().coerceAtLeast(0L) * 1000L },
+            { isOpus(it) }
+        )
+        val audioPayload = selectedAudio?.let {
+            val bitrate = it.averageBitrate.toLong().coerceAtLeast(0L) * 1000L
+            mapOf(
+                "url" to it.content.orEmpty(),
+                "mimeType" to (it.format?.mimeType ?: "audio/webm"),
+                "bitrateBps" to bitrate,
+                "userAgent" to BROWSER_USER_AGENT,
+                "codec" to (it.codec ?: ""),
+                "itag" to it.itag,
+                "resolver" to "NewPipe",
+                "quality" to quality,
+                "qualityFallbackReason" to (DiscoverPlaybackOptions.qualityFallbackReason(quality, bitrate) ?: ""),
+                "audioOnly" to true
+            )
+        }
+        val progressivePayload = info.videoStreams.orEmpty()
+            .filter { !it.isVideoOnly && it.content.orEmpty().startsWith("https://") }
+            .maxByOrNull { it.height }
+            ?.let {
+                mapOf(
+                    "url" to it.content.orEmpty(),
+                    "mimeType" to (it.format?.mimeType ?: "video/mp4"),
+                    "bitrateBps" to 0L,
+                    "userAgent" to BROWSER_USER_AGENT,
+                    "codec" to (it.codec ?: ""),
+                    "itag" to it.itag,
+                    "resolver" to "NewPipe-progressive",
+                    "quality" to quality,
+                    "qualityFallbackReason" to "Only a muxed progressive stream was available; the requested audio-only quality could not be applied.",
+                    "audioOnly" to false
+                )
+            }
+        return audioPayload to progressivePayload
+    }
+
+    private fun ensureInitialized(regionCode: String) {
+        val country = DiscoverPlaybackOptions.normalizeRegion(regionCode)
+        if (initializedCountry == country) return
         synchronized(initLock) {
-            if (initialized) return
+            if (initializedCountry == country) return
             NewPipe.init(
                 object : Downloader() {
                     @Throws(IOException::class, ReCaptchaException::class)
@@ -264,10 +336,10 @@ internal object DiscoverBridge {
                         }
                     }
                 },
-                Localization("en", "IN"),
-                ContentCountry("IN")
+                Localization("en", country),
+                ContentCountry(country)
             )
-            initialized = true
+            initializedCountry = country
         }
     }
 
