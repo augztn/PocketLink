@@ -53,10 +53,12 @@ internal class YouTubePlayerFallback(client: OkHttpClient) {
         return progressiveFallback
     }
 
-    internal fun buildClientContext(regionCode: String): JSONObject {
+    internal fun buildClientContext(regionCode: String): JSONObject =
+        buildClientContext(CLIENTS.first(), regionCode)
+
+    private fun buildClientContext(profile: PlayerClient, regionCode: String): JSONObject {
         val utcOffsetMinutes = java.util.TimeZone.getDefault()
             .getOffset(System.currentTimeMillis()) / 60_000
-        val profile = CLIENTS.first()
         return JSONObject()
             .put("clientName", profile.clientName)
             .put("clientVersion", profile.version)
@@ -77,21 +79,7 @@ internal class YouTubePlayerFallback(client: OkHttpClient) {
         profile: PlayerClient,
         regionCode: String
     ): JSONObject {
-        val utcOffsetMinutes = java.util.TimeZone.getDefault()
-            .getOffset(System.currentTimeMillis()) / 60_000
-        val clientContext = JSONObject()
-            .put("clientName", profile.clientName)
-            .put("clientVersion", profile.version)
-            .put("hl", "en")
-            .put("gl", DiscoverPlaybackOptions.normalizeRegion(regionCode))
-            .put("utcOffsetMinutes", utcOffsetMinutes)
-            .apply {
-                profile.osName?.let { put("osName", it) }
-                profile.osVersion?.let { put("osVersion", it) }
-                profile.deviceMake?.let { put("deviceMake", it) }
-                profile.deviceModel?.let { put("deviceModel", it) }
-                profile.androidSdkVersion?.let { put("androidSdkVersion", it) }
-            }
+        val clientContext = buildClientContext(profile, regionCode)
         val context = JSONObject().put("client", clientContext).apply {
             profile.embedUrl?.let { put("thirdParty", JSONObject().put("embedUrl", it)) }
         }
