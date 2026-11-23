@@ -185,6 +185,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
       if (insertAtStart && oldLength > 0) {
         await player.move(oldLength, 0);
         updated.insert(0, item);
+        _currentIndex = (_currentIndex + 1).clamp(0, updated.length - 1).toInt();
       } else if (playNext && oldLength > 0) {
         final target = (_currentIndex + 1).clamp(0, oldLength).toInt();
         if (target < oldLength) await player.move(oldLength, target);
