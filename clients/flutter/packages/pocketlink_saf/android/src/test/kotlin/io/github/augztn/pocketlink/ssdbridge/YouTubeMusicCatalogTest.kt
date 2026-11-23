@@ -59,6 +59,32 @@ class YouTubeMusicCatalogTest {
     }
 
     @Test
+    fun upgradesGoogleArtworkSizeWithoutChangingOtherCdnParameters() {
+        val json = JSONObject(
+            """
+            {
+              "items": [{
+                "musicTwoRowItemRenderer": {
+                  "videoId": "abcdefghijk",
+                  "title": {"simpleText": "Artwork test"},
+                  "thumbnail": {"thumbnails": [
+                    {"url": "https://lh3.googleusercontent.com/art=w544-h544-l90-rj", "width": 544, "height": 544}
+                  ]}
+                }
+              }]
+            }
+            """.trimIndent()
+        )
+
+        val track = catalog.parseTracks(json, 1).single()
+
+        assertEquals(
+            "https://lh3.googleusercontent.com/art=w1200-h1200-l90-rj",
+            track["thumbnailUrl"]
+        )
+    }
+
+    @Test
     fun ignoresMalformedAndDuplicateVideoItems() {
         val json = JSONObject(
             """
