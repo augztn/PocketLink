@@ -305,7 +305,7 @@ class AppLogger {
     IOSink sink,
     int remainingBytes,
   ) async {
-    if (!await source.exists()) return true;
+    if (!await source.exists()) return (true, remainingBytes);
     var includeEvent = false;
     await for (final line in source.openRead().transform(utf8.decoder).transform(const LineSplitter())) {
       if (RegExp(r'^\d{4}-\d{2}-\d{2}T').hasMatch(line)) {
@@ -313,13 +313,13 @@ class AppLogger {
             line.contains('session: ' + (_sessionId ?? 'uninitialized'));
       }
       if (!includeEvent) continue;
-      final outputLine = line + '\n';
+      final outputLine = _redact(line) + '\n';
       final bytes = utf8.encode(outputLine);
-      if (bytes.length > remainingBytes) return false;
+      if (bytes.length > remainingBytes) return (false, remainingBytes);
       sink.add(bytes);
       remainingBytes -= bytes.length;
     }
-    return true;
+    return (true, remainingBytes);
   }
 
   static Future<File> createDiagnosticFile() async {
@@ -334,14 +334,13 @@ class AppLogger {
       final logFile = _logFile;
       if (logFile != null) {
         final backup = File('${logFile.path}.1');
-        var complete = await _appendCurrentSessionLog(backup, sink, remainingBytes);
-        if (complete) {
-          final backupLength = await backup.exists() ? await backup.length() : 0;
-          remainingBytes -= backupLength;
-          if (remainingBytes < 0) remainingBytes = 0;
-          complete = await _appendCurrentSessionLog(logFile, sink, remainingBytes);
+        var result = await _appendCurrentSessionLog(backup, sink, remainingBytes);
+        remainingBytes = result.$2;
+        if (result.$1) {
+          result = await _appendCurrentSessionLog(logFile, sink, remainingBytes);
+          remainingBytes = result.$2;
         }
-        if (!complete) sink.writeln('[Diagnostic export truncated at 2 MB]');
+        if (!result.$1) sink.writeln('[Diagnostic export truncated at 2 MB]');
       }
       await sink.flush();
     } catch (_) {
