@@ -1,7 +1,7 @@
 package io.github.augztn.pocketlink.ssdbridge
 
 internal object MediaFileClassifier {
-    internal val AUDIO_EXTENSIONS = setOf("mp3", "flac", "m4a", "wav", "ogg", "aac", "opus", "wma")
+    internal val AUDIO_EXTENSIONS = setOf("mp3", "flac", "m4a", "wav", "ogg", "aac", "opus", "wma", "alac", "aiff", "aif", "wv", "ape", "dsf", "dff")
     internal val VIDEO_EXTENSIONS = setOf("mp4", "mkv", "webm", "mov", "avi", "m4v", "3gp", "ts")
     internal val PHOTO_EXTENSIONS = setOf("jpg", "jpeg", "png", "webp", "gif", "bmp", "heic", "heif", "tif", "tiff", "avif")
 
