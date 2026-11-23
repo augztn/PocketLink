@@ -26,6 +26,8 @@ import 'now_playing_artwork_palette.dart';
 import 'widgets/media_info_row.dart';
 import 'track_options_sheet.dart';
 import '../downloads/download_manager_service.dart';
+import 'discover/discover_models.dart';
+import 'discover/discover_service.dart';
 
 class NowPlayingScreen extends StatefulWidget {
   const NowPlayingScreen({
@@ -1098,6 +1100,89 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     ],
   );
 
+  Future<void> _showTrackLyrics() async {
+    final videoId = _track.lyricsVideoId;
+    if (videoId == null || videoId.isEmpty) return;
+    final track = DiscoverTrack(
+      videoId: videoId,
+      title: _track.title,
+      artist: _track.artist ?? '',
+      durationText: _track.durationText,
+      thumbnailUrl: _track.artworkUrl ?? '',
+    );
+    try {
+      final lyrics = await DiscoverService().lyrics(track);
+      if (!mounted) return;
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (sheetContext) => SafeArea(
+          child: Container(
+            height: MediaQuery.sizeOf(sheetContext).height * 0.72,
+            decoration: BoxDecoration(
+              color: _trackPalette[2].withValues(alpha: 0.96),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(22, 18, 22, 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Lyrics', style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(color: Colors.white)),
+                      const SizedBox(height: 4),
+                      Text('${track.title} · ${track.artist}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white60)),
+                      if (lyrics != null) ...[
+                        const SizedBox(height: 5),
+                        Text(lyrics.isSynced ? 'Synced lyrics · ${lyrics.source}' : 'Lyrics · ${lyrics.source}', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                      ],
+                    ],
+                  ),
+                ),
+                const Divider(height: 1, color: Colors.white24),
+                Expanded(
+                  child: lyrics == null
+                      ? const Center(child: Text('No matching lyrics were found.', style: TextStyle(color: Colors.white70)))
+                      : StreamBuilder<Duration>(
+                          stream: _player.stream.position,
+                          initialData: _player.state.position,
+                          builder: (context, snapshot) {
+                            final position = snapshot.data?.inMilliseconds ?? 0;
+                            final activeIndex = lyrics.isSynced
+                                ? lyrics.lines.lastIndexWhere((line) => line.timeMs <= position)
+                                : -1;
+                            return ListView.builder(
+                              padding: const EdgeInsets.fromLTRB(22, 16, 22, 28),
+                              itemCount: lyrics.lines.length,
+                              itemBuilder: (context, index) => Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                child: Text(
+                                  lyrics.lines[index].text,
+                                  style: TextStyle(
+                                    color: index == activeIndex ? Colors.white : Colors.white70,
+                                    fontSize: index == activeIndex ? 19 : 16,
+                                    fontWeight: index == activeIndex ? FontWeight.w700 : FontWeight.w400,
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    } catch (_) {
+      if (mounted) _message('Could not load lyrics.');
+    }
+  }
+
   Widget _trackMetadata() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(22, 8, 22, 0),
@@ -1175,6 +1260,14 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             ),
           ),
           const SizedBox(width: 10),
+          if (_track.lyricsVideoId?.isNotEmpty == true) ...[
+            _roundAction(
+              icon: Icons.lyrics_rounded,
+              tooltip: 'Lyrics',
+              onTap: () => unawaited(_showTrackLyrics()),
+            ),
+            const SizedBox(width: 8),
+          ],
           _roundAction(
             icon: _isFavorite
                 ? Icons.star_rounded
