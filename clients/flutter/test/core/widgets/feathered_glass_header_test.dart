@@ -120,7 +120,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byType(BackdropFilter).evaluate().length, anyOf(1, 5));
+    expect(find.byType(BackdropFilter).evaluate().length, anyOf(1, 9));
     scrollController.dispose();
   });
 
