@@ -426,199 +426,229 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         ),
       );
 
+  Widget _art(DiscoverTrack track, {double size = 56}) {
+    final show = AppSettings.instance.discoverArtwork && track.thumbnailUrl.isNotEmpty;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(13),
+      child: SizedBox(width: size, height: size,
+        child: show
+          ? Image.network(track.thumbnailUrl, fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _artFallback(size))
+          : _artFallback(size)),
+    );
+  }
+
+  Widget _artFallback(double size) => Container(
+    width: size, height: size,
+    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+    alignment: Alignment.center,
+    child: Icon(Icons.music_note_rounded, size: size * .42),
+  );
+
+  Widget _feedCard(DiscoverTrack track) {
+    final theme = Theme.of(context);
+    final local = AppSettings.instance.discoverLocalLossless
+        ? DiscoverService.findLocalLosslessMatch(track, _localLibrary) : null;
+    return SizedBox(width: 148, child: InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: () => _play(track),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        AspectRatio(aspectRatio: 1, child: Stack(fit: StackFit.expand, children: [
+          _art(track, size: double.infinity),
+          if (local != null) Positioned(left: 7, bottom: 7, child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+            decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(7)),
+            child: const Text('LOSSLESS', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800)),
+          )),
+          Positioned(right: 4, top: 4, child: Material(
+            color: Colors.black45, shape: const CircleBorder(),
+            child: PopupMenuButton<String>(
+              icon: const Icon(Icons.more_horiz_rounded, color: Colors.white),
+              onSelected: (v) {
+                if (v == 'play') _play(track);
+                if (v == 'radio') _loadRadio(track);
+                if (v == 'lyrics') _showLyrics(track, local: local);
+              },
+              itemBuilder: (_) => [
+                const PopupMenuItem(value: 'play', child: Text('Play')),
+                const PopupMenuItem(value: 'radio', child: Text('Start radio')),
+                if (AppSettings.instance.discoverLyrics)
+                  const PopupMenuItem(value: 'lyrics', child: Text('Lyrics')),
+              ],
+            ),
+          )),
+        ])),
+        const SizedBox(height: 9),
+        Text(track.title, maxLines: 1, overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 3),
+        Text(track.artist, maxLines: 1, overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+      ]),
+    ));
+  }
+
+  Widget _feedRow(DiscoverTrack track) {
+    final local = AppSettings.instance.discoverLocalLossless
+        ? DiscoverService.findLocalLosslessMatch(track, _localLibrary) : null;
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 3),
+      leading: _art(track, size: 54),
+      title: Text(track.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: Text('\${track.artist}\${track.durationText.isEmpty ? '' : ' · \${track.durationText}'}\${local == null ? '' : ' · LOSSLESS'}',
+        maxLines: 1, overflow: TextOverflow.ellipsis),
+      trailing: PopupMenuButton<String>(
+        onSelected: (v) {
+          if (v == 'play') _play(track);
+          if (v == 'radio') _loadRadio(track);
+          if (v == 'lyrics') _showLyrics(track, local: local);
+        },
+        itemBuilder: (_) => [
+          const PopupMenuItem(value: 'play', child: Text('Play')),
+          const PopupMenuItem(value: 'radio', child: Text('Start radio')),
+          if (AppSettings.instance.discoverLyrics)
+            const PopupMenuItem(value: 'lyrics', child: Text('Lyrics')),
+        ],
+      ),
+      onTap: () => _play(track),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final topClearance = LayoutInsetsScope.of(context).topClearance;
-
+    final top = LayoutInsetsScope.of(context).topClearance;
+    final bottom = LayoutInsetsScope.of(context).bottomClearance;
+    final hasTracks = _tracks.isNotEmpty;
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: PocketLinkAppBar(
-        feathered: true,
-        showHome: false,
-        automaticallyImplyLeading: false,
+        feathered: true, showHome: false, automaticallyImplyLeading: false,
         title: const Text('Discover'),
-        actions: [
-          PocketLinkAppBarAction(
-            label: 'Refresh Discover',
-            icon: Icons.refresh_rounded,
-            onPressed: _loading ? null : _loadHome,
-          ),
-        ],
+        actions: [PocketLinkAppBarAction(
+          label: 'Refresh Discover', icon: Icons.refresh_rounded,
+          onPressed: _loading ? null : _loadHome,
+        )],
       ),
       body: Padding(
-        padding: EdgeInsets.only(top: topClearance),
-        child: Column(
-          children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                    child: TextField(
-                      controller: _searchController,
-                      textInputAction: TextInputAction.search,
-                      onSubmitted: _search,
-                      decoration: InputDecoration(
-                        hintText: 'Search songs, artists and albums',
-                        prefixIcon: const Icon(Icons.search_rounded),
-                        suffixIcon: IconButton(
-                          tooltip: 'Search',
-                          onPressed: () => _search(_searchController.text),
-                          icon: const Icon(Icons.arrow_forward_rounded),
-                        ),
-                        filled: true,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(18),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
+        padding: EdgeInsets.only(top: top),
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverToBoxAdapter(child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Find your', style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w500, height: 1.04)),
+                Text('next favourite.', style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w900, height: 1.04, letterSpacing: -0.8)),
+                const SizedBox(height: 18),
+                TextField(
+                  controller: _searchController, textInputAction: TextInputAction.search,
+                  onSubmitted: _search,
+                  decoration: InputDecoration(
+                    hintText: 'Songs, artists and albums',
+                    prefixIcon: const Icon(Icons.search_rounded),
+                    suffixIcon: IconButton(
+                      tooltip: 'Search',
+                      onPressed: () => _search(_searchController.text),
+                      icon: const Icon(Icons.arrow_forward_rounded),
                     ),
+                    filled: true,
+                    fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: .72),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
                   ),
-                  SizedBox(
-                    height: 38,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      children: [
-                        _quickSearchChip('India', 'top songs India'),
-                        _quickSearchChip('Malayalam', 'popular Malayalam songs'),
-                        _quickSearchChip('Hindi', 'top Hindi songs'),
-                        _quickSearchChip('Tamil', 'popular Tamil songs'),
-                        _quickSearchChip('English', 'top English songs'),
-                      ],
-                    ),
+                ),
+                const SizedBox(height: 14),
+                SizedBox(height: 38, child: ListView(scrollDirection: Axis.horizontal, children: [
+                  _quickSearchChip('India', 'top songs India'),
+                  _quickSearchChip('Malayalam', 'popular Malayalam songs'),
+                  _quickSearchChip('Hindi', 'top Hindi songs'),
+                  _quickSearchChip('Tamil', 'popular Tamil songs'),
+                  _quickSearchChip('English', 'top English songs'),
+                ])),
+              ]),
+            )),
+            if (_loading && !hasTracks)
+              const SliverFillRemaining(hasScrollBody: false, child: Center(child: CircularProgressIndicator()))
+            else if (_error != null && !hasTracks)
+              SliverFillRemaining(hasScrollBody: false, child: Center(child: Padding(
+                padding: const EdgeInsets.all(28),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.cloud_off_rounded, size: 38),
+                  const SizedBox(height: 12),
+                  Text(_error!, textAlign: TextAlign.center),
+                  const SizedBox(height: 14),
+                  FilledButton.icon(onPressed: _loadHome, icon: const Icon(Icons.refresh_rounded), label: const Text('Try again')),
+                ]),
+              )))
+            else if (hasTracks) ...[
+              if (_loading) const SliverToBoxAdapter(child: LinearProgressIndicator(minHeight: 2)),
+              SliverToBoxAdapter(child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
+                child: Row(children: [
+                  Expanded(child: Text(_sectionTitle, maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800))),
+                  if (_loadingLibrary) const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
+                ]),
+              )),
+              if (_tracks.length > 1)
+                SliverToBoxAdapter(child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 14),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(22),
+                    onTap: () => _play(_tracks.first),
+                    child: SizedBox(height: 204, child: ClipRRect(
+                      borderRadius: BorderRadius.circular(22),
+                      child: Stack(fit: StackFit.expand, children: [
+                        _art(_tracks.first, size: double.infinity),
+                        DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(
+                          begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                          colors: [Colors.black.withValues(alpha: .02), Colors.black.withValues(alpha: .88)],
+                        ))),
+                        Positioned(left: 18, right: 64, bottom: 18, child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            const Text('FEATURED TRACK', style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+                            const SizedBox(height: 6),
+                            Text(_tracks.first.title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.titleLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w900)),
+                            const SizedBox(height: 3),
+                            Text(_tracks.first.artist, maxLines: 1, overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white70)),
+                          ],
+                        )),
+                        Positioned(right: 16, bottom: 16, child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                          child: Icon(Icons.play_arrow_rounded, color: theme.colorScheme.onSurface, size: 25),
+                        )),
+                      ]),
+                    )),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 10),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            _sectionTitle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                        if (_loadingLibrary)
-                          const Padding(
-                            padding: EdgeInsets.only(left: 8),
-                            child: SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  if (_loading && _tracks.isEmpty)
-                    const Expanded(
-                      child: Center(child: CircularProgressIndicator()),
-                    )
-                  else if (_error != null && _tracks.isEmpty)
-                    Expanded(
-                      child: Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Text(_error!, textAlign: TextAlign.center),
-                        ),
-                      ),
-                    )
-                  else
-                    Expanded(
-                      child: RefreshIndicator(
-                        onRefresh: () => _searchController.text.isEmpty
-                            ? _loadHome()
-                            : _search(_searchController.text),
-                        child: ListView.separated(
-                          padding: EdgeInsets.fromLTRB(
-                            12,
-                            0,
-                            12,
-                            LayoutInsetsScope.of(context).bottomClearance,
-                          ),
-                          itemCount: _tracks.length,
-                          separatorBuilder: (_, __) =>
-                              const Divider(height: 1, indent: 68),
-                          itemBuilder: (context, index) {
-                            final track = _tracks[index];
-                            final local = AppSettings.instance.discoverLocalLossless
-                                ? DiscoverService.findLocalLosslessMatch(
-                                    track,
-                                    _localLibrary,
-                                  )
-                                : null;
-                            return ListTile(
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              leading: ClipRRect(
-                                borderRadius: BorderRadius.circular(10),
-                                child: !AppSettings.instance.discoverArtwork ||
-                                        track.thumbnailUrl.isEmpty
-                                    ? Container(
-                                        width: 52,
-                                        height: 52,
-                                        color: theme.colorScheme.surfaceContainerHighest,
-                                        child: const Icon(Icons.music_note_rounded),
-                                      )
-                                    : Image.network(
-                                        track.thumbnailUrl,
-                                        width: 52,
-                                        height: 52,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => Container(
-                                          width: 52,
-                                          height: 52,
-                                          color: theme.colorScheme.surfaceContainerHighest,
-                                          child: const Icon(Icons.music_note_rounded),
-                                        ),
-                                      ),
-                              ),
-                              title: Text(
-                                track.title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              subtitle: Text(
-                                '${track.artist}${track.durationText.isEmpty ? '' : ' · ${track.durationText}'}${local == null ? '' : ' · ${local.name.split('.').last.toUpperCase()} LOSSLESS'}',
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              trailing: PopupMenuButton<String>(
-                                tooltip: 'Track options',
-                                onSelected: (value) {
-                                  if (value == 'lyrics') {
-                                    _showLyrics(track, local: local);
-                                  }
-                                  if (value == 'play') _play(track);
-                                  if (value == 'radio') _loadRadio(track);
-                                },
-                                itemBuilder: (_) => [
-                                  const PopupMenuItem(
-                                    value: 'play',
-                                    child: Text('Play'),
-                                  ),
-                                  const PopupMenuItem(
-                                    value: 'radio',
-                                    child: Text('Start radio'),
-                                  ),
-                                  if (AppSettings.instance.discoverLyrics)
-                                    const PopupMenuItem(
-                                      value: 'lyrics',
-                                      child: Text('Lyrics'),
-                                    ),
-                                ],
-                              ),
-                              onTap: () => _play(track),
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-
+                )),
+              if (_tracks.length > 1) SliverToBoxAdapter(child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
+                child: Text('Explore more', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+              )),
+              if (_tracks.length > 1) SliverToBoxAdapter(child: SizedBox(
+                height: 214,
+                child: ListView.separated(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  scrollDirection: Axis.horizontal,
+                  itemCount: (_tracks.length - 1).clamp(0, 8),
+                  separatorBuilder: (_, __) => const SizedBox(width: 14),
+                  itemBuilder: (context, index) => _feedCard(_tracks[index + 1]),
+                ),
+              )),
+              if (_tracks.length > 9) SliverToBoxAdapter(child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 22, 20, 8),
+                child: Text('More tracks', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+              )),
+              if (_tracks.length > 9) SliverList(delegate: SliverChildBuilderDelegate(
+                (context, index) => _feedRow(_tracks[index + 9]),
+                childCount: _tracks.length - 9,
+              )),
+              if (_tracks.length == 1) SliverToBoxAdapter(child: _feedRow(_tracks.first)),
+            ],
+            SliverToBoxAdapter(child: SizedBox(height: bottom + 16)),
           ],
         ),
       ),
