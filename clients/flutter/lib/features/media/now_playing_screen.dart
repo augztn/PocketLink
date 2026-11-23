@@ -780,7 +780,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
           Container(width: 34, height: 4, decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.42), borderRadius: BorderRadius.circular(99))),
           const SizedBox(height: 7),
-          Text('PLAYING FROM ${_folderName.toUpperCase()}', textAlign: TextAlign.center,
+          Text('PLAYING FROM ${_track.sourceLabel.toUpperCase()}', textAlign: TextAlign.center,
             maxLines: 1, overflow: TextOverflow.ellipsis,
             style: const TextStyle(color: Colors.white54, fontSize: 10, letterSpacing: 1.2, fontWeight: FontWeight.w700)),
         ])),
@@ -1145,7 +1145,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  _folderName,
+                  _track.sourceLabel,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(color: Colors.white54, fontSize: 13),
