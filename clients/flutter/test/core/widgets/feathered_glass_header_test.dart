@@ -17,6 +17,10 @@ void main() {
     expect(AppSettings.instance.progressiveBlurEnabled, isTrue);
   });
 
+  test('Liquid Glass UI is enabled by default', () {
+    expect(AppSettings.instance.useLiquidGlass, isTrue);
+  });
+
   test('progressive blur strength defaults to 55 percent', () {
     expect(AppSettings.instance.progressiveBlurStrength, 55);
   });
