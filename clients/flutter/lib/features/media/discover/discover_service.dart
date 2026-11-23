@@ -75,7 +75,7 @@ class DiscoverService {
       final targetDuration = _durationSeconds(track.durationText);
       final durationScore = targetDuration <= 0 || duration <= 0
           ? 0.0
-          : (1 - ((duration - targetDuration).abs() / 30)).clamp(-1.0, 1.0);
+          : (1 - ((duration - targetDuration).abs() / 30)).clamp(-1.0, 1.0).toDouble();
       final score = titleScore * 0.65 + artistScore * 0.25 + durationScore * 0.10;
       if (score > bestScore) {
         bestScore = score;
@@ -188,7 +188,7 @@ class DiscoverService {
     final jaccard = union == 0 ? 0.0 : left.intersection(right).length / union;
     final maxLength = math.max(a.length, b.length);
     final distance = _levenshtein(a, b);
-    return (jaccard * 0.65 + (1 - distance / maxLength) * 0.35).clamp(0.0, 1.0);
+    return (jaccard * 0.65 + (1 - distance / maxLength) * 0.35).clamp(0.0, 1.0).toDouble();
   }
 
   static int _levenshtein(String a, String b) {
