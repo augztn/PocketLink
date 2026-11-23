@@ -5,6 +5,57 @@ import 'package:pocketlink_client/core/navigation/pocketlink_navigation.dart';
 import 'package:pocketlink_client/features/home/navigation_dock.dart';
 
 void main() {
+  testWidgets(
+    'three navigation tabs are centered in equal slots with one active lens',
+    (tester) async {
+      for (var activeIndex = 0; activeIndex < 3; activeIndex++) {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              bottomNavigationBar: FloatingNavigationDock(
+                order: const ['home', 'explore', 'files'],
+                visibleItems: const {'home', 'explore', 'files'},
+                selectedIndex: activeIndex,
+                onSelect: (_) {},
+                onBrowsePressed: () {},
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final capsule = tester.getRect(
+          find.byKey(const ValueKey('navigation-dock-tabs-capsule')),
+        );
+        final lens = tester.getRect(
+          find.byKey(const ValueKey('navigation-dock-active-lens')),
+        );
+        final innerWidth = capsule.width - 10;
+        final slotWidth = innerWidth / 3;
+        final expectedCenter =
+            capsule.left + 5 + (activeIndex + 0.5) * slotWidth;
+        final activeLabel = tester.getCenter(
+          find.text(const ['Home', 'Explore', 'Files'][activeIndex]),
+        );
+
+        expect(activeLabel.dx, closeTo(expectedCenter, 0.5));
+        expect(lens.center.dx, closeTo(expectedCenter, 0.5));
+        expect(lens.width, closeTo(slotWidth, 0.5));
+        expect(
+          find.byKey(const ValueKey('navigation-dock-active-lens')),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: find.byKey(const ValueKey('navigation-dock-tabs-capsule')),
+            matching: find.byType(AnimatedContainer),
+          ),
+          findsNothing,
+        );
+      }
+    },
+  );
+
   testWidgets('expanded shortcuts dismiss from Music button without an X icon', (tester) async {
     var opens = 0;
     var dismisses = 0;
