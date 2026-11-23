@@ -178,20 +178,52 @@ internal class YouTubeMusicCatalog(
             .joinToString("").trim()
     }
 
-    private fun findThumbnail(root: JSONObject): String? {
-        val thumbnails = mutableListOf<String>()
-        collectThumbnailUrls(root, thumbnails)
-        return thumbnails.lastOrNull()
+    private data class ThumbnailCandidate(
+        val url: String,
+        val width: Int,
+        val height: Int,
+        val order: Int
+    ) {
+        val area: Long get() = width.toLong() * height.toLong()
     }
 
-    private fun collectThumbnailUrls(value: Any?, output: MutableList<String>) {
+    private fun findThumbnail(root: JSONObject): String? {
+        val thumbnails = mutableListOf<ThumbnailCandidate>()
+        collectThumbnailUrls(root, thumbnails)
+        val selected = thumbnails.maxWithOrNull(
+            compareBy<ThumbnailCandidate> { it.area }.thenBy { it.order }
+        ) ?: return null
+        return upgradeArtworkResolution(selected.url)
+    }
+
+    private fun upgradeArtworkResolution(url: String): String {
+        // Preserve the image identifier and CDN parameters while requesting
+        // a larger rendition from YouTube Music's image CDN.
+        return if (url.contains("googleusercontent.com/") &&
+            Regex("=w\\d+-h\\d+").containsMatchIn(url)
+        ) {
+            url.replace(Regex("=w\\d+-h\\d+"), "=w1200-h1200")
+        } else {
+            url
+        }
+    }
+
+    private fun collectThumbnailUrls(value: Any?, output: MutableList<ThumbnailCandidate>) {
         when (value) {
             is JSONObject -> {
                 val thumbs = value.optJSONArray("thumbnails")
                 if (thumbs != null) {
                     for (i in 0 until thumbs.length()) {
-                        val url = thumbs.optJSONObject(i)?.optString("url").orEmpty()
-                        if (url.startsWith("https://")) output.add(url)
+                        val item = thumbs.optJSONObject(i) ?: continue
+                        val url = item.optString("url")
+                        if (url.startsWith("https://")) {
+                            output.add(ThumbnailCandidate(
+                                url = url,
+                                width = item.optInt("width"),
+                                height = item.optInt("height"),
+                                order = output.size
+                            ))
+                        }
                     }
                 }
                 val keys = value.keys()
