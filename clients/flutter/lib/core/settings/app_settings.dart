@@ -68,6 +68,11 @@ class AppSettings extends ChangeNotifier {
   static const _videoSubtitleBackgroundKey = 'settings_video_subtitle_background';
   static const _videoAutoFullscreenKey = 'settings_video_auto_fullscreen';
   static const _videoFullscreenOrientationKey = 'settings_video_fullscreen_orientation';
+  static const _discoverEnabledKey = 'settings_discover_enabled';
+  static const _discoverLocalLosslessKey = 'settings_discover_local_lossless';
+  static const _discoverLyricsKey = 'settings_discover_lyrics';
+  static const _discoverAutoQueueKey = 'settings_discover_auto_queue';
+  static const _discoverArtworkKey = 'settings_discover_artwork';
   static const homeSectionDefaults = <String>['search', 'quick', 'transfers', 'continue', 'recent'];
   static const navigationDefaults = <String>['home', 'explore', 'files', 'browse'];
   static const musicButtonShortcutDefaults =
@@ -117,6 +122,11 @@ class AppSettings extends ChangeNotifier {
   bool _videoSubtitleBackground = true;
   bool _videoAutoFullscreen = false;
   String _videoFullscreenOrientation = 'landscape';
+  bool _discoverEnabled = true;
+  bool _discoverLocalLossless = true;
+  bool _discoverLyrics = true;
+  bool _discoverAutoQueue = true;
+  bool _discoverArtwork = true;
 
   ThemeMode get themeMode => _themeMode;
   bool get amoled => _amoled;
@@ -157,6 +167,11 @@ class AppSettings extends ChangeNotifier {
   bool get videoSubtitleBackground => _videoSubtitleBackground;
   bool get videoAutoFullscreen => _videoAutoFullscreen;
   String get videoFullscreenOrientation => _videoFullscreenOrientation;
+  bool get discoverEnabled => _discoverEnabled;
+  bool get discoverLocalLossless => _discoverLocalLossless;
+  bool get discoverLyrics => _discoverLyrics;
+  bool get discoverAutoQueue => _discoverAutoQueue;
+  bool get discoverArtwork => _discoverArtwork;
 
   Future<void> reloadPreferences() async {
     _loaded = false;
@@ -204,6 +219,11 @@ class AppSettings extends ChangeNotifier {
       _videoSubtitleBackground = preferences.getBool(_videoSubtitleBackgroundKey) ?? true;
       _videoAutoFullscreen = preferences.getBool(_videoAutoFullscreenKey) ?? false;
       _videoFullscreenOrientation = preferences.getString(_videoFullscreenOrientationKey) ?? 'landscape';
+      _discoverEnabled = preferences.getBool(_discoverEnabledKey) ?? true;
+      _discoverLocalLossless = preferences.getBool(_discoverLocalLosslessKey) ?? true;
+      _discoverLyrics = preferences.getBool(_discoverLyricsKey) ?? true;
+      _discoverAutoQueue = preferences.getBool(_discoverAutoQueueKey) ?? true;
+      _discoverArtwork = preferences.getBool(_discoverArtworkKey) ?? true;
       _musicButtonSwipeEnabled = preferences.getBool(_musicButtonSwipeEnabledKey) ?? true;
       _musicButtonSwipeLeftAction = _validMusicSwipeAction(preferences.getString(_musicButtonSwipeLeftActionKey), 'next');
       _musicButtonSwipeRightAction = _validMusicSwipeAction(preferences.getString(_musicButtonSwipeRightActionKey), 'previous');
