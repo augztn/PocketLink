@@ -1,6 +1,29 @@
 part of 'app_settings.dart';
 
 extension AppSettingsMedia on AppSettings {
+  Future<void> setDiscoverOptions({
+    bool? enabled,
+    bool? localLossless,
+    bool? lyrics,
+    bool? autoQueue,
+    bool? artwork,
+  }) async {
+    if (enabled != null) _discoverEnabled = enabled;
+    if (localLossless != null) _discoverLocalLossless = localLossless;
+    if (lyrics != null) _discoverLyrics = lyrics;
+    if (autoQueue != null) _discoverAutoQueue = autoQueue;
+    if (artwork != null) _discoverArtwork = artwork;
+    _notifySettingsChanged();
+    final preferences = await SharedPreferences.getInstance();
+    await Future.wait([
+      if (enabled != null) preferences.setBool(AppSettings._discoverEnabledKey, enabled),
+      if (localLossless != null) preferences.setBool(AppSettings._discoverLocalLosslessKey, localLossless),
+      if (lyrics != null) preferences.setBool(AppSettings._discoverLyricsKey, lyrics),
+      if (autoQueue != null) preferences.setBool(AppSettings._discoverAutoQueueKey, autoQueue),
+      if (artwork != null) preferences.setBool(AppSettings._discoverArtworkKey, artwork),
+    ]);
+  }
+
   Future<void> setDownloadDirectory(String? value) async {
     _downloadDirectory = value;
     _notifySettingsChanged();
