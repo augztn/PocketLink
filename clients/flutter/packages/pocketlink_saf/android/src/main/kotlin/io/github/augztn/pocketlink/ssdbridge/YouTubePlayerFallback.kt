@@ -136,9 +136,12 @@ internal class YouTubePlayerFallback(client: OkHttpClient) {
                 if (item.optBoolean("isDrm", false) || item.optJSONArray("drmFamilies") != null) continue
                 val url = item.optString("url").trim()
                 if (!isGoogleVideoUrl(url)) continue
-                val mime = item.optString("mimeType").substringBefore(';').trim()
+                val rawMime = item.optString("mimeType")
+                val mime = rawMime.substringBefore(';').trim()
                 if (mime.isEmpty()) continue
-                val codec = mime.substringAfter('/', "").substringBefore(',').trim()
+                val codec = Regex("""codecs=["']?([^"';]+)""")
+                    .find(rawMime)?.groupValues?.getOrNull(1)?.substringBefore(',')?.trim()
+                    ?: mime.substringAfter('/', "").trim()
                 val bitrate = item.optLong("averageBitrate", 0L).takeIf { it > 0L }
                     ?: item.optLong("bitrate", 0L)
                 add(
