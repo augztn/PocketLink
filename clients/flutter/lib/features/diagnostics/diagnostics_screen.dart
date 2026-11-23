@@ -160,3 +160,77 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
     );
   }
 }
+
+/// Inline guidance shown in the Client and Host sections so users can
+/// understand diagnostic collection and privacy before opening the log tools.
+class DiagnosticsGuidanceCard extends StatelessWidget {
+  const DiagnosticsGuidanceCard({required this.onOpen, super.key});
+
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.monitor_heart_outlined, color: colors.primary),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Diagnostics & logs',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Diagnostic log',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'PocketLink records connection attempts, API request IDs, response times, retries, navigation events, app foreground/background transitions, memory snapshots, errors and crash details. Logs stay on this device and rotate automatically.',
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Privacy',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Exported logs redact passwords, usernames, authentication headers, tokens, server addresses and IP addresses. Device OS details, error messages and file-system details may still appear. Review the file before sharing it.',
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'What to include in a bug report',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Share the exported log, the approximate time of the issue, the screen you were using and the action that triggered it. Never send your server password or private keys.',
+            ),
+            const SizedBox(height: 14),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton.icon(
+                onPressed: onOpen,
+                icon: const Icon(Icons.article_outlined),
+                label: const Text('Open diagnostics & log tools'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
