@@ -74,11 +74,9 @@ class _FeatheredGlassHeaderBackgroundState
         final useBlur = settings.progressiveBlurEnabled && _isScrolled;
         final headerHeight =
             media.padding.top + widget.contentHeight + pocketLinkHeaderFadeTailHeight;
-        final scrimBase = theme.scaffoldBackgroundColor;
         final scrimColors = [
-          scrimBase.withValues(alpha: isDark ? 0.78 : 0.78),
-          scrimBase.withValues(alpha: 0.45),
-          scrimBase.withValues(alpha: 0.12),
+          Colors.black.withValues(alpha: 0.45),
+          Colors.black.withValues(alpha: 0.22),
           Colors.transparent,
         ];
 
@@ -189,11 +187,16 @@ class _FeatheredGlassHeaderBackgroundState
     return Stack(
       fit: StackFit.expand,
       children: [
-        _blurBand(top: 0, bottom: 0.35, height: height, sigma: 18 * blurScale),
-        _blurBand(top: 0.35, bottom: 0.55, height: height, sigma: 12 * blurScale),
-        _blurBand(top: 0.55, bottom: 0.72, height: height, sigma: 7 * blurScale),
-        _blurBand(top: 0.72, bottom: 0.86, height: height, sigma: 3.5 * blurScale),
-        _blurBand(top: 0.86, bottom: 1, height: height, sigma: 1.2 * blurScale),
+        for (var i = 0; i < 9; i++)
+          _blurBand(
+            top: i / 9,
+            bottom: (i + 1) / 9,
+            height: height,
+            sigma: (18 * blurScale *
+                    (1 - ((i + 0.5) / 9)).clamp(0.0, 1.0) *
+                    (1 - ((i + 0.5) / 9)).clamp(0.0, 1.0))
+                .clamp(0.4, 18.0),
+          ),
       ],
     );
   }
