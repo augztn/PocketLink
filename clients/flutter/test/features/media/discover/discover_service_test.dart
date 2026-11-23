@@ -51,6 +51,27 @@ void main() {
     messenger.setMockMethodCallHandler(channel, null);
   });
 
+
+  test('parses dynamic Moods and Moments sections and category endpoints', () {
+    final section = DiscoverMoodSection.fromJson({
+      'title': 'Moods & moments',
+      'items': [
+        {
+          'title': 'Chill',
+          'browseId': 'FEmusic_mood_chill',
+          'params': 'browse-params',
+          'stripeColor': 4281545523,
+        },
+      ],
+    });
+
+    expect(section.title, 'Moods & moments');
+    expect(section.items.single.title, 'Chill');
+    expect(section.items.single.browseId, 'FEmusic_mood_chill');
+    expect(section.items.single.params, 'browse-params');
+    expect(section.items.single.stripeColor, 4281545523);
+  });
+
   group('DiscoverService.parseLrc', () {
     test('parses fractional timestamps and sorts lines', () {
       final lines = DiscoverService.parseLrc('[00:12.34]Second\n[00:02.1]First');
