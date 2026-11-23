@@ -7,6 +7,7 @@ import 'package:media_kit_video/media_kit_video.dart';
 
 import '../../core/logging/app_logger.dart';
 import '../../core/network/server_api.dart';
+import '../../core/settings/app_settings.dart';
 import '../../core/storage/home_activity_store.dart';
 
 class MediaQueueItem {
@@ -63,23 +64,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
       unawaited(_syncMediaSession());
     });
     _errorSubscription = player.stream.error.listen((message) {
-      final item = currentItem;
-      if (item == null) return;
-      unawaited(AppLogger.error(
-        'Native media playback failed',
-        category: 'media',
-        component: 'audio_player',
-        error: message,
-        fields: {
-          'source': item.sourceLabel,
-          'title': item.title,
-          'codec': item.streamCodec ?? 'unknown',
-          'resolver': item.streamResolver ?? 'unknown',
-          'bitrate_bps': item.streamBitrateBps ?? 0,
-          'queue_index': _currentIndex,
-          'queue_length': _queue.length,
-        },
-      ));
+      unawaited(_handlePlaybackError(message));
     });
     // Do not publish every decoder position/duration tick over the platform
     // channel. Android's media session extrapolates position from playback
@@ -113,6 +98,8 @@ class PersistentAudioPlayer extends ChangeNotifier {
   DateTime? _pendingTrackDirectionAt;
   int _queueSession = 0;
   Future<void> _queueMutationTail = Future<void>.value();
+  final Set<String> _retriedDiscoverTracks = <String>{};
+  bool _retryingDiscoverPlayback = false;
 
   List<MediaQueueItem> get queue => _queue;
   int get queueSession => _queueSession;
@@ -165,6 +152,8 @@ class PersistentAudioPlayer extends ChangeNotifier {
     }
     _api = api;
     _queue = List.unmodifiable(queue);
+    _retriedDiscoverTracks.clear();
+    _retryingDiscoverPlayback = false;
     _currentIndex = initialIndex.clamp(0, _queue.length - 1).toInt();
     _music = isMusic;
     _active = true;
@@ -190,6 +179,117 @@ class PersistentAudioPlayer extends ChangeNotifier {
       unawaited(HomeActivityStore.instance.recordTrack(serverUrl: api.baseUrl, title: current.title, path: current.path, volume: current.volume));
     }
     await _syncMediaSession(start: true);
+  }
+
+  Future<void> _handlePlaybackError(String message) async {
+    final item = currentItem;
+    if (item == null) return;
+    await AppLogger.error(
+      'Native media playback failed',
+      category: 'media',
+      component: 'audio_player',
+      error: message,
+      fields: {
+        'source': item.sourceLabel,
+        'title': item.title,
+        'codec': item.streamCodec ?? 'unknown',
+        'resolver': item.streamResolver ?? 'unknown',
+        'bitrate_bps': item.streamBitrateBps ?? 0,
+        'queue_index': _currentIndex,
+        'queue_length': _queue.length,
+      },
+    );
+    if (item.streamUrl == null || item.lyricsVideoId == null ||
+        _retryingDiscoverPlayback) return;
+
+    final retryKey = '$_queueSession:${item.lyricsVideoId}';
+    if (!_retriedDiscoverTracks.add(retryKey)) return;
+    _retryingDiscoverPlayback = true;
+    final session = _queueSession;
+    try {
+      final currentResolver = (item.streamResolver ?? '').toLowerCase();
+      final alternateProfile = currentResolver.startsWith('newpipe')
+          ? 'player_api_first'
+          : 'newpipe_first';
+      final settings = AppSettings.instance;
+      final resolved = await _mediaChannel.invokeMapMethod<String, dynamic>(
+        'discoverResolve',
+        {
+          'videoId': item.lyricsVideoId,
+          'quality': settings.discoverAudioQuality,
+          'resolverProfile': alternateProfile,
+          'region': settings.discoverRegion,
+        },
+      );
+      if (session != _queueSession || resolved == null ||
+          (resolved['url']?.toString().isEmpty ?? true)) return;
+
+      final retryItem = MediaQueueItem(
+        title: item.title,
+        path: item.path,
+        volume: item.volume,
+        localPath: item.localPath,
+        size: item.size,
+        streamUrl: resolved['url']?.toString(),
+        artist: item.artist,
+        artworkUrl: item.artworkUrl,
+        lyricsVideoId: item.lyricsVideoId,
+        durationText: item.durationText,
+        streamCodec: resolved['codec']?.toString(),
+        streamResolver: resolved['resolver']?.toString(),
+        streamBitrateBps: (resolved['bitrateBps'] as num?)?.toInt(),
+        httpHeaders: {
+          'User-Agent': resolved['userAgent']?.toString() ?? '',
+          'Accept': '*/*',
+        },
+      );
+      final updated = _queue.toList();
+      final retryIndex = updated.indexWhere(
+        (queued) => queued.lyricsVideoId == item.lyricsVideoId &&
+            queued.streamUrl == item.streamUrl,
+      );
+      if (retryIndex < 0 || session != _queueSession) return;
+      updated[retryIndex] = retryItem;
+      _queue = List.unmodifiable(updated);
+      _currentIndex = retryIndex;
+      final api = _api;
+      final media = _queue.map((queued) => Media(
+        queued.localPath ?? queued.streamUrl ??
+            api!.mediaStreamUrl(queued.path, volume: queued.volume),
+        httpHeaders: queued.localPath != null
+            ? const {}
+            : queued.streamUrl != null
+                ? queued.httpHeaders
+                : api!.mediaHeaders,
+        extras: {
+          'title': queued.title,
+          if (queued.artist != null) 'artist': queued.artist,
+        },
+      )).toList(growable: false);
+      await player.open(Playlist(media, index: retryIndex));
+      await AppLogger.info(
+        'Discover playback retried with alternate resolver',
+        category: 'media',
+        component: 'discover_resolver',
+        fields: {
+          'resolver': retryItem.streamResolver ?? 'unknown',
+          'codec': retryItem.streamCodec ?? 'unknown',
+          'bitrate_bps': retryItem.streamBitrateBps ?? 0,
+          'queue_index': retryIndex,
+        },
+      );
+    } catch (error, stackTrace) {
+      await AppLogger.error(
+        'Discover alternate resolver retry failed',
+        category: 'media',
+        component: 'discover_resolver',
+        error: error,
+        stackTrace: stackTrace,
+        fields: {'queue_index': _currentIndex},
+      );
+    } finally {
+      _retryingDiscoverPlayback = false;
+    }
   }
 
   /// Adds an original server/local media item to the active queue.
