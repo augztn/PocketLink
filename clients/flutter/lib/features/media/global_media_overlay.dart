@@ -63,7 +63,10 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
       duration: const Duration(milliseconds: 380),
       reverseDuration: const Duration(milliseconds: 320),
     );
-    NowPlayingOverlayController.register(_openNowPlaying);
+    NowPlayingOverlayController.register(
+      _openNowPlaying,
+      progress: _nowPlayingController,
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) WidgetsBinding.instance.addObserver(this);
     });
