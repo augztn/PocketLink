@@ -145,7 +145,36 @@ class DiscoverService {
     var bestScore = 0.0;
     for (final item in library) {
       if (!isLosslessFile(item.name)) continue;
-      final basename = item.name.replaceFirst(RegExp(r'\.[^.]+
+      final basename = item.name.replaceFirst(RegExp(r'\.[^.]+$'), '');
+      final pathParts = item.path.split('/')..removeLast();
+      final pieces = basename.split(RegExp(r'\s+[-–—]\s+'));
+      var candidateTitleText = basename;
+      var artistHintText = pathParts.isEmpty ? '' : pathParts.last;
+      if (pieces.length >= 2) {
+        final firstTitleScore = _similarity(targetTitle, _normalize(_cleanTitle(pieces.first)));
+        final lastTitleScore = _similarity(targetTitle, _normalize(_cleanTitle(pieces.last)));
+        if (lastTitleScore > firstTitleScore) {
+          candidateTitleText = pieces.last;
+          if (artistHintText.isEmpty ||
+              const {'music', 'audio', 'songs', 'download', 'downloads'}
+                  .contains(artistHintText.toLowerCase())) {
+            artistHintText = pieces.first;
+          }
+        }
+      }
+
+      final candidateTitle = _normalize(_cleanTitle(candidateTitleText));
+      if (candidateTitle.isEmpty) continue;
+      final titleScore = _similarity(targetTitle, candidateTitle);
+      final artistHint = _normalize(artistHintText);
+      if (artistHint.isEmpty ||
+          const {'music', 'audio', 'songs', 'download', 'downloads'}
+              .contains(artistHint)) {
+        continue;
+      }
+      final artistScore = targetArtist.isEmpty ? 0.5 : _similarity(targetArtist, artistHint);
+      if (targetArtist.isNotEmpty && artistScore < 0.45) continue;
+      final score = titleScore * 0.82 + artistScore * 0.18;
       if (score > bestScore) {
         bestScore = score;
         best = item;
