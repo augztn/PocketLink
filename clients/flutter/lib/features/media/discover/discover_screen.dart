@@ -6,7 +6,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../core/network/server_api.dart';
 import '../../../core/settings/app_settings.dart';
-import '../../../core/widgets/feathered_glass_header.dart';
+import '../../../core/widgets/pocketlink_app_bar.dart';
 import '../../../core/widgets/pocketlink_scaffold.dart';
 import '../data/media_library_repository.dart';
 import '../media_library_catalog.dart';
@@ -428,22 +428,27 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final top = MediaQuery.paddingOf(context).top;
     final topClearance = LayoutInsetsScope.of(context).topClearance;
-    final foreground = theme.brightness == Brightness.dark
-        ? Colors.white
-        : const Color(0xFF172033);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: Padding(
-              padding: EdgeInsets.only(top: topClearance),
-              child: Column(
-                children: [
+      appBar: PocketLinkAppBar(
+        feathered: true,
+        showHome: false,
+        automaticallyImplyLeading: false,
+        title: const Text('Discover'),
+        actions: [
+          PocketLinkAppBarAction(
+            label: 'Refresh Discover',
+            icon: Icons.refresh_rounded,
+            onPressed: _loading ? null : _loadHome,
+          ),
+        ],
+      ),
+      body: Padding(
+        padding: EdgeInsets.only(top: topClearance),
+        child: Column(
+          children: [
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                     child: TextField(
@@ -612,49 +617,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                         ),
                       ),
                     ),
-                ],
-              ),
-            ),
-          ),
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: top + 88,
-            child: const IgnorePointer(
-              child: FeatheredGlassHeaderBackground(
-                contentHeight: 44,
-                darkTint: [
-                  Color(0xD9000000),
-                  Color(0x66000000),
-                  Colors.transparent,
-                ],
-              ),
-            ),
-          ),
-          Positioned(
-            top: top + 10,
-            left: 16,
-            right: 16,
-            height: 44,
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Discover',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: foreground,
-                  fontSize: 26,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.5,
-                  height: 1.0,
-                ),
-              ),
-            ),
-          ),
-        ],
+
+          ],
+        ),
       ),
     );
   }
+}
 }
