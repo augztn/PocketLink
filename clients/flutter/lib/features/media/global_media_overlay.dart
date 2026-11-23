@@ -212,13 +212,13 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
       _nowPlayingRoute = null;
       _closingNowPlaying = false;
       _openingNowPlaying = false;
+      _nowPlayingController.value = 0;
       setState(() {
         _nowPlayingOpen = false;
         _isNowPlayingDragging.value = false;
         _nowPlayingOriginRect = null;
         _miniArtworkOriginRect = null;
       });
-      _nowPlayingController.value = 0;
     }));
   }
 
@@ -380,7 +380,6 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
         settings,
         PocketLinkNavigation.drawerOpen,
         PocketLinkNavigation.quickShortcutsOpen,
-        _nowPlayingController,
       ]),
       builder: (context, _) => ValueListenableBuilder<List<Route<dynamic>>>(
         valueListenable: observer.routeStack,
