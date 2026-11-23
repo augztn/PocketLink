@@ -34,6 +34,9 @@ class _FeatheredGlassHeaderBackgroundState
     _scrollController?.removeListener(_handleScroll);
     _scrollController = nextController;
     _scrollController?.addListener(_handleScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _updateScrollState();
+    });
     _updateScrollState();
   }
 
