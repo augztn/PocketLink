@@ -10,6 +10,7 @@ class AppLogger {
 
   static const int _maxBytes = 1024 * 1024;
   static const int _maxBackupBytes = 1024 * 1024;
+  static const int _maxDiagnosticExportBytes = 2 * 1024 * 1024;
   static Directory? _directory;
   static Future<void> _writeQueue = Future<void>.value();
   static File? _logFile;
@@ -299,13 +300,55 @@ class AppLogger {
     return '${lines.join('\n')}\n\n';
   }
 
+  static Future<bool> _appendCurrentSessionLog(
+    File source,
+    IOSink sink,
+    int remainingBytes,
+  ) async {
+    if (!await source.exists()) return true;
+    var includeEvent = false;
+    await for (final line in source.openRead().transform(utf8.decoder).transform(const LineSplitter())) {
+      if (RegExp(r'^\d{4}-\d{2}-\d{2}T').hasMatch(line)) {
+        includeEvent = line.contains('"session_id":"' + (_sessionId ?? 'uninitialized') + '"') ||
+            line.contains('session: ' + (_sessionId ?? 'uninitialized'));
+      }
+      if (!includeEvent) continue;
+      final outputLine = line + '\n';
+      final bytes = utf8.encode(outputLine);
+      if (bytes.length > remainingBytes) return false;
+      sink.add(bytes);
+      remainingBytes -= bytes.length;
+    }
+    return true;
+  }
+
   static Future<File> createDiagnosticFile() async {
+    await _writeQueue;
     final directory = _directory ?? await getApplicationSupportDirectory();
-    final content = sanitizeDiagnosticContent(
-      '${await _diagnosticHeader()}${await readLogs(currentSessionOnly: true)}',
-    );
     final file = File('${directory.path}/pocketlink-diagnostics-${DateTime.now().toUtc().millisecondsSinceEpoch}.txt');
-    await file.writeAsString(content, flush: true);
+    final sink = file.openWrite();
+    try {
+      final header = sanitizeDiagnosticContent(await _diagnosticHeader());
+      sink.write(header);
+      var remainingBytes = _maxDiagnosticExportBytes - utf8.encode(header).length;
+      final logFile = _logFile;
+      if (logFile != null) {
+        final backup = File('${logFile.path}.1');
+        var complete = await _appendCurrentSessionLog(backup, sink, remainingBytes);
+        if (complete) {
+          final backupLength = await backup.exists() ? await backup.length() : 0;
+          remainingBytes -= backupLength;
+          if (remainingBytes < 0) remainingBytes = 0;
+          complete = await _appendCurrentSessionLog(logFile, sink, remainingBytes);
+        }
+        if (!complete) sink.writeln('[Diagnostic export truncated at 2 MB]');
+      }
+      await sink.flush();
+    } catch (_) {
+      await sink.close();
+      rethrow;
+    }
+    await sink.close();
     return file;
   }
 
