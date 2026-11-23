@@ -268,11 +268,19 @@ class _ProgressiveShaderBackdropFilterState
 
   @override
   Widget build(BuildContext context) {
-    return ClipRect(
-      child: BackdropFilter(
-        filter: _filter,
-        child: const ColoredBox(color: Colors.transparent),
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final pixelRatio = MediaQuery.devicePixelRatioOf(context);
+        _shader.setFloat(0, constraints.maxWidth * pixelRatio);
+        _shader.setFloat(1, constraints.maxHeight * pixelRatio);
+
+        return ClipRect(
+          child: BackdropFilter(
+            filter: _filter,
+            child: const ColoredBox(color: Colors.transparent),
+          ),
+        );
+      },
     );
   }
 }
