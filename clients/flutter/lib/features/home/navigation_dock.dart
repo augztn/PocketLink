@@ -63,10 +63,10 @@ class FloatingNavigationDock extends StatelessWidget {
       segments.add(
         Expanded(
           child: LiquidGlassPill(
-            key: const ValueKey('navigation-dock-tabs-capsule'),
             radius: BorderRadius.circular(32),
             refractive: true,
             child: Padding(
+              key: const ValueKey('navigation-dock-tabs-capsule'),
               padding: const EdgeInsets.all(5),
               child: SizedBox(
                 height: 54,
