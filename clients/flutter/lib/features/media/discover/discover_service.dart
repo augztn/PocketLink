@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/network/server_api_models.dart';
+import '../../../core/settings/app_settings.dart';
 
 import 'discover_models.dart';
 
@@ -29,7 +30,11 @@ class DiscoverService {
     if (clean.length < 2) return const [];
     final raw = await _channel.invokeListMethod<Object?>(
       'discoverSearch',
-      {'query': clean, 'limit': limit.clamp(1, 50)},
+      {
+        'query': clean,
+        'limit': limit.clamp(1, 50),
+        'region': AppSettings.instance.discoverRegion,
+      },
     );
     return _parseTracks(raw);
   }
@@ -37,7 +42,10 @@ class DiscoverService {
   Future<List<DiscoverTrack>> home({int limit = 30}) async {
     final raw = await _channel.invokeListMethod<Object?>(
       'discoverHome',
-      {'limit': limit.clamp(1, 50)},
+      {
+        'limit': limit.clamp(1, 50),
+        'region': AppSettings.instance.discoverRegion,
+      },
     );
     return _parseTracks(raw);
   }
@@ -45,7 +53,11 @@ class DiscoverService {
   Future<List<DiscoverTrack>> radio(DiscoverTrack track, {int limit = 25}) async {
     final raw = await _channel.invokeListMethod<Object?>(
       'discoverRadio',
-      {'videoId': track.videoId, 'limit': limit.clamp(1, 50)},
+      {
+        'videoId': track.videoId,
+        'limit': limit.clamp(1, 50),
+        'region': AppSettings.instance.discoverRegion,
+      },
     );
     return _parseTracks(raw);
   }
@@ -71,9 +83,15 @@ class DiscoverService {
       .toList(growable: false);
 
   Future<DiscoverResolvedStream> resolve(DiscoverTrack track) async {
+    final settings = AppSettings.instance;
     final raw = await _channel.invokeMapMethod<String, dynamic>(
       'discoverResolve',
-      {'videoId': track.videoId},
+      {
+        'videoId': track.videoId,
+        'quality': settings.discoverAudioQuality,
+        'resolverProfile': settings.discoverResolverProfile,
+        'region': settings.discoverRegion,
+      },
     );
     if (raw == null || (raw['url']?.toString().isEmpty ?? true)) {
       throw StateError('No playable audio stream was returned.');
