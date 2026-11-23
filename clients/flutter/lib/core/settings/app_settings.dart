@@ -73,6 +73,31 @@ class AppSettings extends ChangeNotifier {
   static const _discoverLyricsKey = 'settings_discover_lyrics';
   static const _discoverAutoQueueKey = 'settings_discover_auto_queue';
   static const _discoverArtworkKey = 'settings_discover_artwork';
+  static const _discoverAudioQualityKey = 'settings_discover_audio_quality';
+  static const _discoverResolverProfileKey = 'settings_discover_resolver_profile';
+  static const _discoverRegionKey = 'settings_discover_region';
+  static const discoverRegions = <String, String>{
+    'IN': 'India',
+    'US': 'United States',
+    'GB': 'United Kingdom',
+    'CA': 'Canada',
+    'AU': 'Australia',
+    'JP': 'Japan',
+    'KR': 'South Korea',
+    'DE': 'Germany',
+    'FR': 'France',
+    'BR': 'Brazil',
+    'MX': 'Mexico',
+    'ID': 'Indonesia',
+    'PH': 'Philippines',
+    'SG': 'Singapore',
+    'MY': 'Malaysia',
+    'TH': 'Thailand',
+    'AE': 'United Arab Emirates',
+    'SA': 'Saudi Arabia',
+    'ZA': 'South Africa',
+    'NG': 'Nigeria',
+  };
   static const homeSectionDefaults = <String>['search', 'quick', 'transfers', 'continue', 'recent'];
   static const navigationDefaults = <String>['home', 'explore', 'files', 'browse'];
   static const musicButtonShortcutDefaults =
@@ -127,6 +152,9 @@ class AppSettings extends ChangeNotifier {
   bool _discoverLyrics = true;
   bool _discoverAutoQueue = true;
   bool _discoverArtwork = true;
+  String _discoverAudioQuality = 'best_available';
+  String _discoverResolverProfile = 'automatic';
+  String _discoverRegion = 'IN';
 
   ThemeMode get themeMode => _themeMode;
   bool get amoled => _amoled;
@@ -172,6 +200,9 @@ class AppSettings extends ChangeNotifier {
   bool get discoverLyrics => _discoverLyrics;
   bool get discoverAutoQueue => _discoverAutoQueue;
   bool get discoverArtwork => _discoverArtwork;
+  String get discoverAudioQuality => _discoverAudioQuality;
+  String get discoverResolverProfile => _discoverResolverProfile;
+  String get discoverRegion => _discoverRegion;
 
   Future<void> reloadPreferences() async {
     _loaded = false;
@@ -224,6 +255,16 @@ class AppSettings extends ChangeNotifier {
       _discoverLyrics = preferences.getBool(_discoverLyricsKey) ?? true;
       _discoverAutoQueue = preferences.getBool(_discoverAutoQueueKey) ?? true;
       _discoverArtwork = preferences.getBool(_discoverArtworkKey) ?? true;
+      _discoverAudioQuality = const {'best_available', 'balanced', 'data_saver'}
+          .contains(preferences.getString(_discoverAudioQualityKey))
+          ? preferences.getString(_discoverAudioQualityKey)!
+          : 'best_available';
+      _discoverResolverProfile = const {'automatic', 'newpipe_first', 'player_api_first'}
+          .contains(preferences.getString(_discoverResolverProfileKey))
+          ? preferences.getString(_discoverResolverProfileKey)!
+          : 'automatic';
+      final storedRegion = preferences.getString(_discoverRegionKey);
+      _discoverRegion = discoverRegions.containsKey(storedRegion) ? storedRegion! : 'IN';
       _musicButtonSwipeEnabled = preferences.getBool(_musicButtonSwipeEnabledKey) ?? true;
       _musicButtonSwipeLeftAction = _validMusicSwipeAction(preferences.getString(_musicButtonSwipeLeftActionKey), 'next');
       _musicButtonSwipeRightAction = _validMusicSwipeAction(preferences.getString(_musicButtonSwipeRightActionKey), 'previous');
