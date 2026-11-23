@@ -16,6 +16,7 @@ import java.util.UUID
 internal object NativeDiagnostics {
     private const val MAX_BYTES = 512 * 1024
     private const val MAX_BACKUP_BYTES = 512 * 1024
+    private const val MAX_EVENT_BYTES = 64 * 1024
     private val lock = Any()
     @Volatile private var file: File? = null
     private val sessionId = "native-" + UUID.randomUUID().toString()
@@ -55,8 +56,17 @@ internal object NativeDiagnostics {
                     event.put("error_type", error.javaClass.simpleName)
                     event.put("stack_trace", sanitize(error.stackTraceToString()))
                 }
+                var line = "$event\n"
+                if (line.toByteArray(Charsets.UTF_8).size > MAX_EVENT_BYTES) {
+                    event.put("message", sanitize(message).take(2048))
+                    event.put("fields", JSONObject().put("truncated", true))
+                    if (error != null) {
+                        event.put("stack_trace", sanitize(error.stackTraceToString()).take(8192))
+                    }
+                    line = "$event\n"
+                }
                 target.parentFile?.mkdirs()
-                target.appendText("$event\n", Charsets.UTF_8)
+                target.appendText(line, Charsets.UTF_8)
             } catch (_: Exception) {
                 // Diagnostics must never interrupt host service or storage work.
             }
