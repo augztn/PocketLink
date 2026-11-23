@@ -550,7 +550,13 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
                                     itemCount: items.length,
                                     itemBuilder: (context, index) {
                                       final item = items[index];
-                                      return InkWell(
+                                      return Material(
+                                        color: colors.surfaceContainerLow,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(20),
+                                        ),
+                                        clipBehavior: Clip.antiAlias,
+                                        child: InkWell(
                                         borderRadius: BorderRadius.circular(20),
                                         onTap: item.isDirectory ? () => _loadDirectory(_itemPath(item.name))
                                             : () => _isAudio(item) ? _openAudio(item) : _openFile(item),
@@ -566,6 +572,7 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
                                             Text(item.isDirectory ? 'Folder' : _formatSize(item.size),
                                               style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
                                           ]),
+                                        ),
                                         ),
                                       );
                                     },
