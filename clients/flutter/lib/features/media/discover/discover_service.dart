@@ -50,6 +50,18 @@ class DiscoverService {
     return _parseTracks(raw);
   }
 
+  static List<int> progressiveQueueOrder(int trackCount, int selectedIndex) {
+    if (trackCount <= 0 || selectedIndex < 0 || selectedIndex >= trackCount) {
+      return const [];
+    }
+    return [
+      if (selectedIndex > 0) selectedIndex - 1,
+      if (selectedIndex + 1 < trackCount) selectedIndex + 1,
+      for (var index = selectedIndex - 2; index >= 0; index--) index,
+      for (var index = selectedIndex + 2; index < trackCount; index++) index,
+    ];
+  }
+
   List<DiscoverTrack> _parseTracks(List<Object?>? raw) => (raw ?? const [])
       .whereType<Map<Object?, Object?>>()
       .map((item) => DiscoverTrack.fromJson(
