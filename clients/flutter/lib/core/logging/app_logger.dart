@@ -29,6 +29,20 @@ class AppLogger {
   static String nextEventId([String prefix = 'evt']) =>
       '$prefix-${++_eventSequence}';
 
+  @visibleForTesting
+  static Future<void> initializeForTesting(Directory directory) async {
+    await _writeQueue;
+    await directory.create(recursive: true);
+    _directory = directory;
+    _logFile = File('${directory.path}/pocketlink.log');
+    _sessionStartedAt = DateTime.now().toUtc();
+    _sessionId = 'test-session-${_sessionStartedAt!.microsecondsSinceEpoch}';
+    _eventSequence = 0;
+    _writeFailures = 0;
+    _droppedEvents = 0;
+    _writeQueue = Future<void>.value();
+    _initialized = true;
+  }
   static Future<void> initialize() async {
     if (_initialized) return;
     _sessionStartedAt = DateTime.now().toUtc();
