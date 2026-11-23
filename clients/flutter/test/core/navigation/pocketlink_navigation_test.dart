@@ -77,7 +77,7 @@ void main() {
   test('uses distance and velocity thresholds for morph release', () {
     expect(
       PocketLinkNavigation.shouldCollapseNowPlaying(
-        progress: 0.75,
+        progress: 0.82,
         downwardVelocity: 0,
       ),
       isTrue,
@@ -91,14 +91,14 @@ void main() {
     );
     expect(
       PocketLinkNavigation.shouldCollapseNowPlaying(
-        progress: 0.9,
+        progress: 0.83,
         downwardVelocity: 100,
       ),
       isFalse,
     );
     expect(
       PocketLinkNavigation.shouldExpandFromMiniPlayer(
-        progress: 0.25,
+        progress: 0.18,
         upwardVelocity: 0,
       ),
       isTrue,
