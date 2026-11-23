@@ -8,6 +8,7 @@ import '../../../core/network/server_api.dart';
 import '../../../core/settings/app_settings.dart';
 import '../../../core/widgets/pocketlink_app_bar.dart';
 import '../../../core/widgets/pocketlink_scaffold.dart';
+import '../../../core/widgets/pocketlink_section_header.dart';
 import '../data/media_library_repository.dart';
 import '../media_library_catalog.dart';
 import '../now_playing_overlay_controller.dart';
@@ -115,20 +116,35 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       // personalized recommendations.
       final responses = await Future.wait<List<DiscoverTrack>>([
         _service.home(limit: 24).catchError((Object _) => <DiscoverTrack>[]),
+        _service.search('new music releases 2026 $_regionName', limit: 18).catchError((Object _) => <DiscoverTrack>[]),
         _service.search('popular Malayalam songs', limit: 18).catchError((Object _) => <DiscoverTrack>[]),
         _service.search('popular Hindi songs', limit: 18).catchError((Object _) => <DiscoverTrack>[]),
         _service.search('popular Tamil songs', limit: 18).catchError((Object _) => <DiscoverTrack>[]),
+        _service.search('chill relaxing songs playlist', limit: 18).catchError((Object _) => <DiscoverTrack>[]),
+        _service.search('workout energetic songs playlist', limit: 18).catchError((Object _) => <DiscoverTrack>[]),
+        _service.search('party hits playlist', limit: 18).catchError((Object _) => <DiscoverTrack>[]),
+        _service.search('popular music mixes $_regionName', limit: 18).catchError((Object _) => <DiscoverTrack>[]),
       ]);
       if (!mounted || generation != _requestGeneration) return;
       final shelves = <_DiscoverShelf>[
         if (responses[0].isNotEmpty)
           _DiscoverShelf('Trending in $_regionName', responses[0]),
         if (responses[1].isNotEmpty)
-          _DiscoverShelf('Malayalam hits', responses[1]),
+          _DiscoverShelf('New releases', responses[1]),
         if (responses[2].isNotEmpty)
-          _DiscoverShelf('Hindi hits', responses[2]),
+          _DiscoverShelf('Malayalam hits', responses[2]),
         if (responses[3].isNotEmpty)
-          _DiscoverShelf('Tamil hits', responses[3]),
+          _DiscoverShelf('Hindi hits', responses[3]),
+        if (responses[4].isNotEmpty)
+          _DiscoverShelf('Tamil hits', responses[4]),
+        if (responses[5].isNotEmpty)
+          _DiscoverShelf('Chill & unwind', responses[5]),
+        if (responses[6].isNotEmpty)
+          _DiscoverShelf('Workout energy', responses[6]),
+        if (responses[7].isNotEmpty)
+          _DiscoverShelf('Party starters', responses[7]),
+        if (responses[8].isNotEmpty)
+          _DiscoverShelf('Popular mixes', responses[8]),
       ];
       if (shelves.isEmpty) {
         final fallback = await _service.search('top songs $_regionName');
@@ -547,13 +563,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               child: Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      shelf.title,
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.35,
-                      ),
-                    ),
+                    child: PocketLinkSectionHeader(shelf.title),
                   ),
                   TextButton(
                     onPressed: () {
@@ -683,13 +693,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-                    child: Text(
-                      'Made for exploring',
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.6,
-                      ),
-                    ),
+                    child: const PocketLinkSectionHeader('Made for exploring'),
                   ),
                 ),
                 if (_homeShelves.first.tracks.isNotEmpty)
@@ -783,12 +787,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
-                    child: Text(
-                      _sectionTitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-                    ),
+                    child: PocketLinkSectionHeader(_sectionTitle),
                   ),
                 ),
                 SliverList(
