@@ -82,7 +82,23 @@ internal object DiscoverBridge {
     fun home(limit: Int, result: io.flutter.plugin.common.MethodChannel.Result) {
         executor.execute {
             try {
-                val tracks = catalog.home(limit.coerceIn(1, 50))
+                val boundedLimit = limit.coerceIn(1, 50)
+                val catalogueTracks = catalog.home(boundedLimit)
+                val tracks = if (catalogueTracks.isNotEmpty()) {
+                    catalogueTracks
+                } else {
+                    ensureInitialized()
+                    val handler = ServiceList.YouTube.searchQHFactory.fromQuery(
+                        "top songs India",
+                        listOf("music_songs"),
+                        ""
+                    )
+                    SearchInfo.getInfo(ServiceList.YouTube, handler).relatedItems.orEmpty()
+                        .filterIsInstance<StreamInfoItem>()
+                        .mapNotNull { it.toDiscoverTrack() }
+                        .distinctBy { it["videoId"] }
+                        .take(boundedLimit)
+                }
                 mainHandler.post { result.success(tracks) }
             } catch (error: Exception) {
                 mainHandler.post {
@@ -95,7 +111,21 @@ internal object DiscoverBridge {
     fun radio(videoId: String, limit: Int, result: io.flutter.plugin.common.MethodChannel.Result) {
         executor.execute {
             try {
-                val tracks = catalog.radio(videoId.trim(), limit.coerceIn(1, 50))
+                val id = videoId.trim()
+                val boundedLimit = limit.coerceIn(1, 50)
+                val catalogueTracks = catalog.radio(id, boundedLimit)
+                val tracks = if (catalogueTracks.isNotEmpty()) {
+                    catalogueTracks
+                } else {
+                    ensureInitialized()
+                    StreamInfo.getInfo(ServiceList.YouTube, "https://www.youtube.com/watch?v=$id")
+                        .relatedItems.orEmpty()
+                        .filterIsInstance<StreamInfoItem>()
+                        .mapNotNull { it.toDiscoverTrack() }
+                        .filter { it["videoId"] != id }
+                        .distinctBy { it["videoId"] }
+                        .take(boundedLimit)
+                }
                 mainHandler.post { result.success(tracks) }
             } catch (error: Exception) {
                 mainHandler.post {
