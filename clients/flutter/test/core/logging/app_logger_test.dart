@@ -219,6 +219,20 @@ void main() {
       expect(await exported.length(), lessThanOrEqualTo(2 * 1024 * 1024));
     });
 
+    test('native export drops an unterminated trailing record', () {
+      final complete = jsonEncode({'event_id': 'complete', 'message': 'whole'});
+      const partial = '{"event_id":"partial","message":"cut';
+      final bytes = AppLogger.latestCompleteDiagnosticLinesForTesting(
+        '$complete\\n$partial',
+        1024,
+      );
+      final retained = utf8.decode(bytes);
+
+      expect(retained, contains('complete'));
+      expect(retained, isNot(contains('partial')));
+      expect(() => jsonDecode(retained.trim()), returnsNormally);
+    });
+
     test('native export truncation keeps complete UTF-8 JSON event lines', () {
       final older = jsonEncode({'event_id': 'older', 'message': 'old'});
       final newest = jsonEncode({'event_id': 'newest', 'message': 'USB connected 🔌'});
