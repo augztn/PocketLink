@@ -1149,7 +1149,9 @@ class _MoodsAndMomentsScreenState extends State<_MoodsAndMomentsScreen> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: GridView.builder(
+                        padding: EdgeInsets.zero,
                         shrinkWrap: true,
+                        primary: false,
                         physics: const NeverScrollableScrollPhysics(),
                         itemCount: section.items.length,
                         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -1171,7 +1173,11 @@ class _MoodsAndMomentsScreenState extends State<_MoodsAndMomentsScreen> {
               );
             },
           ),
-          const SliverToBoxAdapter(child: SizedBox(height: 28)),
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height: LayoutInsetsScope.of(context).bottomClearance + 24,
+            ),
+          ),
         ],
       ),
     );
