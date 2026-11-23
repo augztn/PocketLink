@@ -174,7 +174,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       );
       final session = player.queueSession;
       NowPlayingOverlayController.open();
-      unawaited(_populateQueue(queueTracks, startIndex, session));
+      unawaited(_populateQueue(queueTracks, startIndex, session).catchError((Object _) {}));
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
