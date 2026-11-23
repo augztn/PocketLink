@@ -457,6 +457,7 @@ class _DockTab extends StatelessWidget {
     required this.activeIcon,
     required this.label,
     required this.onTap,
+    super.key,
   });
 
   final int index;
