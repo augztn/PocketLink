@@ -347,21 +347,57 @@ class AppLogger {
     int remainingBytes,
   ) async {
     if (!await source.exists()) return (true, remainingBytes);
+    final events = <String>[];
+    final current = StringBuffer();
     var includeEvent = false;
-    await for (final line in source.openRead().transform(utf8.decoder).transform(const LineSplitter())) {
-      if (RegExp(r'^\d{4}-\d{2}-\d{2}T').hasMatch(line)) {
+
+    void finishEvent() {
+      if (includeEvent && current.isNotEmpty) events.add(current.toString());
+      current.clear();
+    }
+
+    for (final line in await source.readAsLines()) {
+      if (RegExp(r'^\\d{4}-\\d{2}-\\d{2}T').hasMatch(line)) {
+        finishEvent();
         includeEvent = line.contains('"session_id":"' + (_sessionId ?? 'uninitialized') + '"') ||
             line.contains('session: ' + (_sessionId ?? 'uninitialized'));
       }
-      if (!includeEvent) continue;
-      final outputLine = _redact(line) + '\n';
-      final bytes = utf8.encode(outputLine);
+      if (includeEvent) current.writeln(line);
+    }
+    finishEvent();
+
+    // Select from the newest event backwards so a full backup can never crowd
+    // out the active session's latest diagnostics.
+    final retained = <List<int>>[];
+    for (final event in events.reversed) {
+      final bytes = utf8.encode(_redact(event));
       if (bytes.length > remainingBytes) return (false, remainingBytes);
-      sink.add(bytes);
+      retained.add(bytes);
       remainingBytes -= bytes.length;
+    }
+    for (final bytes in retained.reversed) {
+      sink.add(bytes);
     }
     return (true, remainingBytes);
   }
+
+  static List<int> _latestCompleteDiagnosticLines(String content, int maxBytes) {
+    final lines = content.split('\\n');
+    final retained = <List<int>>[];
+    var remaining = maxBytes;
+    for (final line in lines.reversed) {
+      if (line.isEmpty) continue;
+      final bytes = utf8.encode(_redact(line) + '\\n');
+      if (bytes.length > remaining) break;
+      retained.add(bytes);
+      remaining -= bytes.length;
+    }
+    return retained.reversed.expand((line) => line).toList(growable: false);
+  }
+
+  @visibleForTesting
+  static List<int> latestCompleteDiagnosticLinesForTesting(String content, int maxBytes) =>
+      _latestCompleteDiagnosticLines(content, maxBytes);
 
   static Future<String> _readNativeDiagnostics() async {
     if (!Platform.isAndroid) return '';
@@ -394,28 +430,37 @@ class AppLogger {
       final header = sanitizeDiagnosticContent(await _diagnosticHeader());
       sink.write(header);
       var remainingBytes = _maxDiagnosticExportBytes - utf8.encode(header).length;
-      final nativeLogs = await _readNativeDiagnostics();
-      if (nativeLogs.isNotEmpty && remainingBytes > 0) {
-        final nativeSection = '--- Native Android diagnostics ---\n' +
-            sanitizeDiagnosticContent(nativeLogs) + '\n';
-        final nativeBytes = utf8.encode(nativeSection);
-        final retainedBytes = nativeBytes.take(remainingBytes).toList(growable: false);
-        sink.add(retainedBytes);
-        remainingBytes -= retainedBytes.length;
-        if (retainedBytes.length < nativeBytes.length) {
-          sink.writeln('[Native diagnostics truncated by 2 MB export limit]');
-        }
-      }
       final logFile = _logFile;
       if (logFile != null) {
-        final backup = File('${logFile.path}.1');
-        var result = await _appendCurrentSessionLog(backup, sink, remainingBytes);
-        remainingBytes = result.$2;
-        if (result.$1) {
-          result = await _appendCurrentSessionLog(logFile, sink, remainingBytes);
-          remainingBytes = result.$2;
+        final currentSection = '--- Current Flutter session ---\\n';
+        sink.write(currentSection);
+        remainingBytes -= utf8.encode(currentSection).length;
+        final currentResult = await _appendCurrentSessionLog(logFile, sink, remainingBytes);
+        remainingBytes = currentResult.$2;
+        if (!currentResult.$1) sink.writeln('[Current Flutter log truncated at 2 MB export limit]');
+
+        final nativeLogs = await _readNativeDiagnostics();
+        if (nativeLogs.isNotEmpty && remainingBytes > 0) {
+          final nativeSection = '--- Native Android diagnostics ---\\n';
+          sink.write(nativeSection);
+          remainingBytes -= utf8.encode(nativeSection).length;
+          final nativeBytes = _latestCompleteDiagnosticLines(nativeLogs, remainingBytes);
+          sink.add(nativeBytes);
+          remainingBytes -= nativeBytes.length;
+          if (nativeBytes.length < utf8.encode(sanitizeDiagnosticContent(nativeLogs)).length) {
+            sink.writeln('[Native diagnostics truncated at complete event boundary]');
+          }
         }
-        if (!result.$1) sink.writeln('[Diagnostic export truncated at 2 MB]');
+
+        final backup = File('${logFile.path}.1');
+        if (await backup.exists() && remainingBytes > 0) {
+          final backupSection = '--- Rotated Flutter session log (older events) ---\\n';
+          sink.write(backupSection);
+          remainingBytes -= utf8.encode(backupSection).length;
+          final backupResult = await _appendCurrentSessionLog(backup, sink, remainingBytes);
+          remainingBytes = backupResult.$2;
+          if (!backupResult.$1) sink.writeln('[Older Flutter log omitted beyond 2 MB export limit]');
+        }
       }
       await sink.flush();
     } catch (_) {
