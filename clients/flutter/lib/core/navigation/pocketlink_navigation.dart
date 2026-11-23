@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 abstract final class PocketLinkRouteNames {
   static const dashboard = '/pocketlink-dashboard';
   static const nowPlaying = '/pocketlink-now-playing';
+  static const standaloneDiscover = '/pocketlink-standalone-discover';
 }
 
 /// Tracks the root navigator stack so app-level UI can react to route changes.
@@ -24,6 +25,9 @@ class PocketLinkNavigationObserver extends NavigatorObserver {
 
   bool get isNowPlayingVisible =>
       currentPageRoute?.settings.name == PocketLinkRouteNames.nowPlaying;
+
+  bool get isStandaloneDiscoverVisible =>
+      currentPageRoute?.settings.name == PocketLinkRouteNames.standaloneDiscover;
 
   bool get isModalRouteOnTop =>
       _routes.isNotEmpty && _routes.last is PopupRoute<dynamic>;
