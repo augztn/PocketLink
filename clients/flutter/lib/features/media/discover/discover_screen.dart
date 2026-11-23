@@ -16,9 +16,10 @@ import 'discover_models.dart';
 import 'discover_service.dart';
 
 class DiscoverScreen extends StatefulWidget {
-  const DiscoverScreen({required this.api, super.key});
+  const DiscoverScreen({this.api, this.embedded = false, super.key});
 
-  final ServerApi api;
+  final ServerApi? api;
+  final bool embedded;
 
   @override
   State<DiscoverScreen> createState() => _DiscoverScreenState();
@@ -63,11 +64,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   }
 
   Future<void> _loadLocalLibrary() async {
-    if (_loadingLibrary) return;
+    if (_loadingLibrary || widget.api == null) return;
     setState(() => _loadingLibrary = true);
     try {
       final result = await MediaLibraryRepository(
-        api: widget.api,
+        api: widget.api!,
         type: MediaLibraryType.music,
       ).readIndexedMedia();
       if (!mounted) return;
@@ -278,13 +279,15 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   }
 
   Future<DiscoverLyrics?> _readSidecarLyrics(IndexedFile audio) async {
+    final api = widget.api;
+    if (api == null) return null;
     try {
       final separator = audio.path.lastIndexOf('/');
       final parent = separator < 0 ? '' : audio.path.substring(0, separator);
       final baseName = audio.name.replaceFirst(RegExp(r'\.[^.]+$'), '');
       final listing = audio.volume == 'internal'
-          ? await widget.api.listDirectory(parent)
-          : await widget.api.listStorageDirectory(audio.volume, parent);
+          ? await api.listDirectory(parent)
+          : await api.listStorageDirectory(audio.volume, parent);
       FileEntry? sidecar;
       for (final item in listing.items) {
         final name = item.name.toLowerCase();
@@ -299,8 +302,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       }
       final sidecarPath = parent.isEmpty ? sidecar.name : parent + '/' + sidecar.name;
       final bytes = audio.volume == 'internal'
-          ? await widget.api.downloadFile(sidecarPath)
-          : await widget.api.downloadStorageFile(audio.volume, sidecarPath);
+          ? await api.downloadFile(sidecarPath)
+          : await api.downloadStorageFile(audio.volume, sidecarPath);
       final content = utf8.decode(bytes, allowMalformed: true).trim();
       if (content.isEmpty) return null;
       final syncedLines = DiscoverService.parseLrc(content);
