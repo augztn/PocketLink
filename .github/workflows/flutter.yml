@@ -173,28 +173,54 @@ jobs:
           from pathlib import Path
           import re
 
-          candidates = [Path("android/settings.gradle"), Path("android/settings.gradle.kts")]
-          settings = next((path for path in candidates if path.exists()), None)
+          settings_candidates = [Path("android/settings.gradle"), Path("android/settings.gradle.kts")]
+          settings = next((path for path in settings_candidates if path.exists()), None)
           if settings is None:
               raise SystemExit("Generated Android settings.gradle was not found")
-          content = settings.read_text()
-          if "jitpack.io" in content:
-              print("JitPack repository already configured")
-          else:
-              match = re.search(
+
+          settings_content = settings.read_text()
+          if "jitpack.io" in settings_content:
+              print("JitPack repository already configured in settings")
+          elif "dependencyResolutionManagement" in settings_content:
+              pattern = re.compile(
                   r"(dependencyResolutionManagement\s*\{[\s\S]*?repositories\s*\{)",
-                  content,
+                  re.MULTILINE,
               )
-              if match is None:
-                  raise SystemExit("Could not locate dependencyResolutionManagement repositories")
-              repository = (
-                  '        maven(url = "https://jitpack.io")\n'
-                  if settings.suffix == ".kts"
-                  else '        maven { url "https://jitpack.io" }\n'
-              )
-              content = content[:match.end()] + "\n" + repository + content[match.end():]
-              settings.write_text(content)
+              match = pattern.search(settings_content)
+              if match is not None:
+                  repository = '        maven(url = "https://jitpack.io")\n'
+                  settings_content = settings_content[:match.end()] + "\n" + repository + settings_content[match.end():]
+              else:
+                  settings_content += (
+                      '\ndependencyResolutionManagement {\n'
+                      '    repositories {\n'
+                      '        google()\n'
+                      '        mavenCentral()\n'
+                      '        maven(url = "https://jitpack.io")\n'
+                      '    }\n'
+                      '}\n'
+                  )
+              settings.write_text(settings_content)
               print(f"Added JitPack to {settings}")
+          else:
+              root_candidates = [Path("android/build.gradle"), Path("android/build.gradle.kts")]
+              root_build = next((path for path in root_candidates if path.exists()), None)
+              if root_build is None:
+                  raise SystemExit("Generated Android root Gradle file was not found")
+              root_content = root_build.read_text()
+              if "jitpack.io" not in root_content:
+                  pattern = re.compile(r"(allprojects\s*\{[\s\S]*?repositories\s*\{)", re.MULTILINE)
+                  match = pattern.search(root_content)
+                  if match is None:
+                      raise SystemExit("Could not locate allprojects repositories in Android root Gradle file")
+                  repository = (
+                      '        maven(url = "https://jitpack.io")\n'
+                      if root_build.suffix == ".kts"
+                      else '        maven { url "https://jitpack.io" }\n'
+                  )
+                  root_content = root_content[:match.end()] + "\n" + repository + root_content[match.end():]
+                  root_build.write_text(root_content)
+                  print(f"Added JitPack to {root_build}")
           PY
       - name: Enable network access for HTTP and HTTPS servers
         run: |
