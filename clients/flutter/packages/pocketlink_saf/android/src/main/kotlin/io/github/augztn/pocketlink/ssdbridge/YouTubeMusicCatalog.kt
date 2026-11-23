@@ -106,7 +106,7 @@ internal class YouTubeMusicCatalog(
         }
     }
 
-    private fun parseTracks(root: JSONObject, limit: Int): List<Map<String, Any>> {
+    internal fun parseTracks(root: JSONObject, limit: Int): List<Map<String, Any>> {
         val renderers = mutableListOf<JSONObject>()
         collectRenderers(root, renderers)
         val unique = LinkedHashMap<String, Map<String, Any>>()
