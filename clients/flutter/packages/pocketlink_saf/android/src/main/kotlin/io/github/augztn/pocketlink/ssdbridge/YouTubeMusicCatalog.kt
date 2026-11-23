@@ -53,6 +53,62 @@ internal class YouTubeMusicCatalog(
         }.getOrDefault(emptyList())
     }
 
+
+    fun moodAndGenres(regionCode: String = "IN"): List<Map<String, Any>> {
+        val response = post(
+            "browse",
+            JSONObject().put("browseId", "FEmusic_moods_and_genres"),
+            regionCode
+        )
+        val sections = mutableListOf<Map<String, Any>>()
+        collectMoodSections(response, sections)
+        return sections
+    }
+
+    fun browseMood(browseId: String, params: String?, limit: Int, regionCode: String): List<Map<String, Any>> {
+        require(browseId.matches(Regex("[A-Za-z0-9_-]{3,128}"))) { "Invalid mood browse ID." }
+        val payload = JSONObject().put("browseId", browseId)
+        if (!params.isNullOrBlank()) payload.put("params", params)
+        return parseTracks(post("browse", payload, regionCode), limit)
+    }
+
+    private fun collectMoodSections(value: Any?, output: MutableList<Map<String, Any>>) {
+        when (value) {
+            is JSONObject -> {
+                val grid = value.optJSONObject("gridRenderer")
+                if (grid != null) {
+                    val title = grid.optJSONObject("header")
+                        ?.optJSONObject("gridHeaderRenderer")
+                        ?.optJSONObject("title")?.let(::textValue).orEmpty()
+                    val items = mutableListOf<Map<String, Any>>()
+                    val rows = grid.optJSONArray("items")
+                    if (rows != null) for (index in 0 until rows.length()) {
+                        val renderer = rows.optJSONObject(index)
+                            ?.optJSONObject("musicNavigationButtonRenderer") ?: continue
+                        val itemTitle = renderer.optJSONObject("buttonText")?.let(::textValue).orEmpty()
+                        val endpoint = renderer.optJSONObject("clickCommand")
+                            ?.optJSONObject("browseEndpoint") ?: continue
+                        val browseId = endpoint.optString("browseId")
+                        if (itemTitle.isBlank() || browseId.isBlank()) continue
+                        val item = linkedMapOf<String, Any>(
+                            "title" to itemTitle,
+                            "browseId" to browseId,
+                            "stripeColor" to (renderer.optJSONObject("solid")?.optLong("leftStripeColor") ?: 0L)
+                        )
+                        endpoint.optString("params").takeIf { it.isNotBlank() }?.let { item["params"] = it }
+                        items.add(item)
+                    }
+                    if (title.isNotBlank() && items.isNotEmpty()) {
+                        output.add(mapOf("title" to title, "items" to items))
+                    }
+                }
+                val keys = value.keys()
+                while (keys.hasNext()) collectMoodSections(value.opt(keys.next()), output)
+            }
+            is JSONArray -> for (index in 0 until value.length()) collectMoodSections(value.opt(index), output)
+        }
+    }
+
     fun radio(videoId: String, limit: Int, regionCode: String = "IN"): List<Map<String, Any>> {
         require(VIDEO_ID.matches(videoId)) { "Invalid YouTube video ID." }
         val response = post(
