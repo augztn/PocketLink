@@ -66,6 +66,22 @@ class PocketLinkSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
+
+            "discoverMoods" -> {
+                DiscoverBridge.moodAndGenres(
+                    call.argument<String>("region") ?: "IN",
+                    result
+                )
+            }
+            "discoverMoodBrowse" -> {
+                DiscoverBridge.browseMood(
+                    call.argument<String>("browseId").orEmpty(),
+                    call.argument<String>("params"),
+                    call.argument<Number>("limit")?.toInt() ?: 30,
+                    call.argument<String>("region") ?: "IN",
+                    result
+                )
+            }
             "discoverSearch" -> {
                 DiscoverBridge.search(
                     call.argument<String>("query").orEmpty(),
