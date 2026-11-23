@@ -190,9 +190,9 @@ class VideoPlayerSettingsScreen extends StatelessWidget {
     required String Function(T) label,
     required ValueChanged<T> onChanged,
   }) =>
-      ListTile(
+      SettingsTile(
         leading: Icon(icon),
-        title: Text(title),
+        title: title,
         trailing: DropdownButton<T>(
           value: value,
           underline: const SizedBox.shrink(),
