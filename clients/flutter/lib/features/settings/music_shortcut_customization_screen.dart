@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../core/settings/app_settings.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
+import 'widgets/settings_components.dart';
 
 class MusicShortcutCustomizationScreen extends StatefulWidget {
   const MusicShortcutCustomizationScreen({super.key});
@@ -93,7 +94,7 @@ class _MusicShortcutCustomizationScreenState
     final colors = theme.colorScheme;
     return Scaffold(
       appBar: PocketLinkAppBar(
-        title: const Text('Music Shortcut Destinations'),
+        title: const Text('Music Shortcuts', style: TextStyle(fontSize: 20)),
         actionsBeforeHome: [
           IconButton(
             tooltip: 'Save shortcuts',
@@ -105,16 +106,16 @@ class _MusicShortcutCustomizationScreenState
         ],
       ),
       body: ListView(
-        padding: EdgeInsets.fromLTRB(16, 12, 16, 28 + MediaQuery.paddingOf(context).bottom),
+        padding: settingsListPadding(context),
         children: [
-          Text('Destinations', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
-          const SizedBox(height: 5),
+          const SettingsSectionHeader('Destinations'),
           Text(
             'Choose and reorder the destinations shown when you hold the Music button.',
             style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
           ),
           const SizedBox(height: 12),
-          ReorderableListView.builder(
+          SettingsGroupCard(children: [
+            ReorderableListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             buildDefaultDragHandles: false,
@@ -126,7 +127,7 @@ class _MusicShortcutCustomizationScreenState
               return ListTile(
                 key: ValueKey(id),
                 leading: Icon(detail.icon, color: colors.primary),
-                title: Text(detail.label, style: const TextStyle(fontWeight: FontWeight.w700)),
+                title: Text(detail.label),
                 subtitle: Text(index == 0 ? 'First in shortcut list · ${detail.description}' : detail.description),
                 trailing: ReorderableDelayedDragStartListener(
                   index: index,
@@ -135,12 +136,15 @@ class _MusicShortcutCustomizationScreenState
                     child: Icon(Icons.drag_handle_rounded),
                   ),
                 ),
+                if (index != _shortcuts.length - 1)
+                  const Divider(height: 1, indent: 56),
               );
             },
           ),
-          const Divider(height: 24),
-          Text('Available destinations', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
-          const SizedBox(height: 6),
+          ]),
+          const SizedBox(height: 20),
+          const SettingsSectionHeader('Available destinations'),
+          SettingsGroupCard(children: [
           for (final entry in _details.entries)
             CheckboxListTile(
               value: _shortcuts.contains(entry.key),
@@ -149,8 +153,9 @@ class _MusicShortcutCustomizationScreenState
               title: Text(entry.value.label),
               subtitle: Text(entry.value.description),
               controlAffinity: ListTileControlAffinity.trailing,
-              contentPadding: EdgeInsets.zero,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
             ),
+          ]),
           const SizedBox(height: 16),
           OutlinedButton.icon(
             onPressed: _reset,
