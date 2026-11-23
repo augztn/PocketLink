@@ -8,6 +8,7 @@ import 'dart:ui' as ui;
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:media_kit/media_kit.dart';
+import 'package:flutter/services.dart' show NetworkAssetBundle;
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/network/offline_file_cache.dart';
@@ -281,6 +282,26 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   Future<void> _loadArtwork() async {
     final request = ++_artworkRequest;
     final key = _trackKey;
+    if (_track.localPath == null && (_track.artworkUrl?.isNotEmpty ?? false)) {
+      try {
+        final data = await NetworkAssetBundle(Uri.parse(_track.artworkUrl!)).load('');
+        final bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+        if (!mounted || request != _artworkRequest) return;
+        if (bytes.isNotEmpty) {
+          final palette = await NowPlayingArtworkPalette.extract(bytes);
+          if (!mounted || request != _artworkRequest) return;
+          setState(() {
+            _artwork = bytes;
+            _artworkKey = key;
+            _artworkPalette = palette;
+          });
+          return;
+        }
+      } catch (_) {
+        // Continue to server folder artwork when a remote thumbnail is unavailable.
+      }
+    }
+
     if (_track.localPath != null || _folder.isEmpty) {
       if (mounted) setState(() {
         _artwork = null;
