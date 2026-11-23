@@ -258,22 +258,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       );
 
+  // Diagnostic isolation: Settings category routes temporarily bypass the
+  // app-wide custom PageTransitionsTheme. If the pop hesitation disappears,
+  // the category route transition is implicated; other app routes are unchanged.
+  PageRoute<void> _categoryRoute(WidgetBuilder builder) => PageRouteBuilder<void>(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            builder(context),
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: Duration.zero,
+      );
+
   void _openCategory(String id) {
     final route = switch (id) {
-      'navigation' => MaterialPageRoute<void>(
-          builder: (_) => const NavigationCustomizationScreen(),
+      'navigation' => _categoryRoute(
+          (_) => const NavigationCustomizationScreen(),
         ),
-      'audio' => MaterialPageRoute<void>(
-          builder: (_) => const NowPlayingSettingsScreen(),
+      'audio' => _categoryRoute(
+          (_) => const NowPlayingSettingsScreen(),
         ),
-      'video' => MaterialPageRoute<void>(
-          builder: (_) => const VideoPlayerSettingsScreen(),
+      'video' => _categoryRoute(
+          (_) => const VideoPlayerSettingsScreen(),
         ),
-      'about' => MaterialPageRoute<void>(
-          builder: (_) => const AboutScreen(),
-        ),
-      _ => MaterialPageRoute<void>(
-          builder: (_) => SettingsScreen(
+      'about' => _categoryRoute((_) => const AboutScreen()),
+      _ => _categoryRoute(
+          (_) => SettingsScreen(
             onOpenSavedServers: widget.onOpenSavedServers,
             category: switch (id) {
               'appearance' => 'Appearance',
