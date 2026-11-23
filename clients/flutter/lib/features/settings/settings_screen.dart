@@ -728,6 +728,67 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       value: _settings.discoverArtwork,
                       onChanged: (value) => _settings.setDiscoverOptions(artwork: value),
                     ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.graphic_eq_rounded),
+                      title: const Text('Audio quality'),
+                      subtitle: const Text('Preference for the best matching available stream'),
+                      trailing: DropdownButton<String>(
+                        value: _settings.discoverAudioQuality,
+                        underline: const SizedBox.shrink(),
+                        items: const [
+                          DropdownMenuItem(value: 'best_available', child: Text('Best')),
+                          DropdownMenuItem(value: 'balanced', child: Text('Balanced')),
+                          DropdownMenuItem(value: 'data_saver', child: Text('Data saver')),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            _settings.setDiscoverPlaybackOptions(audioQuality: value);
+                          }
+                        },
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.route_rounded),
+                      title: const Text('Resolver profile'),
+                      subtitle: const Text('Choose which stream resolver is tried first'),
+                      trailing: DropdownButton<String>(
+                        value: _settings.discoverResolverProfile,
+                        underline: const SizedBox.shrink(),
+                        items: const [
+                          DropdownMenuItem(value: 'automatic', child: Text('Automatic')),
+                          DropdownMenuItem(value: 'newpipe_first', child: Text('NewPipe first')),
+                          DropdownMenuItem(value: 'player_api_first', child: Text('Player API first')),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            _settings.setDiscoverPlaybackOptions(resolverProfile: value);
+                          }
+                        },
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.public_rounded),
+                      title: const Text('Content region'),
+                      subtitle: const Text('Changes YouTube Music catalogue and playback region'),
+                      trailing: DropdownButton<String>(
+                        value: _settings.discoverRegion,
+                        underline: const SizedBox.shrink(),
+                        items: AppSettings.discoverRegions.entries
+                            .map((entry) => DropdownMenuItem(
+                                  value: entry.key,
+                                  child: Text(entry.value),
+                                ))
+                            .toList(growable: false),
+                        onChanged: (value) {
+                          if (value != null) {
+                            _settings.setDiscoverPlaybackOptions(region: value);
+                          }
+                        },
+                      ),
+                    ),
                   ]),
                 if (widget.category == 'Media & Storage')
                   _section('Media Library & Storage', [
