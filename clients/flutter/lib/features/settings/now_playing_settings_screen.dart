@@ -140,6 +140,13 @@ class NowPlayingSettingsScreen extends StatelessWidget {
                         selected: settings.nowPlayingTheme == 'gradient',
                         onTap: () => settings.setNowPlayingTheme('gradient'),
                       ),
+                      _NowPlayingThemeOption(
+                        value: 'aether',
+                        label: 'Aether',
+                        description: 'Artwork glass',
+                        selected: settings.nowPlayingTheme == 'aether',
+                        onTap: () => settings.setNowPlayingTheme('aether'),
+                      ),
                     ],
                   ),
                 ),
@@ -371,6 +378,24 @@ class _NowPlayingThemeOption extends StatelessWidget {
           if (theme == 'blur')
             const Center(
               child: Icon(Icons.play_circle_fill_rounded, color: Colors.white, size: 25),
+            ),
+          if (theme == 'aether')
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Padding(
+                padding: const EdgeInsets.all(7),
+                child: Container(
+                  height: 25,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.20),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.28)),
+                  ),
+                  child: const Center(
+                    child: Icon(Icons.graphic_eq_rounded, color: Colors.white, size: 15),
+                  ),
+                ),
+              ),
             ),
         ],
       ),
