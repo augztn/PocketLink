@@ -29,14 +29,7 @@ extension AppSettingsAppearance on AppSettings {
   Future<void> setProgressiveBlurEnabled(bool value) async {
     _progressiveBlurEnabled = value;
     _notifySettingsChanged();
-    final snapshot = value;
-    final write = _progressiveBlurWrite.catchError((_) {}).then((_) async {
-      final preferences = await SharedPreferences.getInstance();
-      await preferences.setBool(AppSettings._progressiveBlurKey, snapshot);
-    });
-    _progressiveBlurWrite = write;
-    await write;
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(AppSettings._progressiveBlurKey, value);
   }
-
-
 }
