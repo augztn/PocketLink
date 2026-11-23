@@ -437,10 +437,10 @@ class AppLogger {
         remainingBytes -= utf8.encode(currentSection).length;
         final currentResult = await _appendCurrentSessionLog(logFile, sink, remainingBytes);
         remainingBytes = currentResult.$2;
-        if (!currentResult.$1) sink.writeln('[Current Flutter log truncated at 2 MB export limit]');
+        // The byte budget is strict; do not append a marker that would exceed it.
 
         final nativeLogs = await _readNativeDiagnostics();
-        if (nativeLogs.isNotEmpty && remainingBytes > 0) {
+        if (nativeLogs.isNotEmpty && remainingBytes > utf8.encode('--- Native Android diagnostics ---\\n').length) {
           final nativeSection = '--- Native Android diagnostics ---\\n';
           sink.write(nativeSection);
           remainingBytes -= utf8.encode(nativeSection).length;
@@ -453,7 +453,7 @@ class AppLogger {
         }
 
         final backup = File('${logFile.path}.1');
-        if (await backup.exists() && remainingBytes > 0) {
+        if (await backup.exists() && remainingBytes > utf8.encode('--- Rotated Flutter session log (older events) ---\\n').length) {
           final backupSection = '--- Rotated Flutter session log (older events) ---\\n';
           sink.write(backupSection);
           remainingBytes -= utf8.encode(backupSection).length;
