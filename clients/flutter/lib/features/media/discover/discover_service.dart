@@ -145,15 +145,93 @@ class DiscoverService {
     var bestScore = 0.0;
     for (final item in library) {
       if (!isLosslessFile(item.name)) continue;
-      final basename = item.name.replaceFirst(RegExp(r'\.[^.]+$'), '');
+      final basename = item.name.replaceFirst(RegExp(r'\.[^.]+
+      if (score > bestScore) {
+        bestScore = score;
+        best = item;
+      }
+    }
+    return bestScore >= 0.84 ? best : null;
+  }
+
+  static String _cleanTitle(String value) => value
+      .replaceAll(RegExp(r'\s*\([^)]*(official|audio|video|lyrics?|remaster|live|visualizer)[^)]*\)', caseSensitive: false), '')
+      .replaceAll(RegExp(r'\s*\[[^]]*(official|audio|video|lyrics?|remaster|live|visualizer)[^]]*\]', caseSensitive: false), '')
+      .replaceAll(RegExp(r'\s*[-–]\s*(official|audio|video|lyrics?).*$', caseSensitive: false), '')
+      .trim();
+
+  static String _cleanArtist(String value) => value
+      .replaceAll(RegExp(r'\s*(,|&|feat\.?|ft\.?|featuring).*$', caseSensitive: false), '')
+      .trim();
+
+  static String _normalize(String value) => value
+      .toLowerCase()
+      .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+      .trim()
+      .replaceAll(RegExp(r'\s+'), ' ');
+
+  static double _similarity(String a, String b) {
+    if (a.isEmpty || b.isEmpty) return 0;
+    if (a == b) return 1;
+    final left = a.split(' ').toSet();
+    final right = b.split(' ').toSet();
+    final union = left.union(right).length;
+    final jaccard = union == 0 ? 0.0 : left.intersection(right).length / union;
+    final maxLength = math.max(a.length, b.length);
+    final distance = _levenshtein(a, b);
+    return (jaccard * 0.65 + (1 - distance / maxLength) * 0.35).clamp(0.0, 1.0).toDouble();
+  }
+
+  static int _levenshtein(String a, String b) {
+    var previous = List<int>.generate(b.length + 1, (i) => i);
+    for (var i = 0; i < a.length; i++) {
+      final current = List<int>.filled(b.length + 1, 0)..[0] = i + 1;
+      for (var j = 0; j < b.length; j++) {
+        final cost = a.codeUnitAt(i) == b.codeUnitAt(j) ? 0 : 1;
+        current[j + 1] = math.min(
+          math.min(current[j] + 1, previous[j + 1] + 1),
+          previous[j] + cost,
+        );
+      }
+      previous = current;
+    }
+    return previous.last;
+  }
+
+  static int _durationSeconds(String text) {
+    final parts = text.split(':').map(int.tryParse).toList();
+    if (parts.length != 2 || parts.any((part) => part == null)) return 0;
+    return parts[0]! * 60 + parts[1]!;
+  }
+}
+), '');
       final pathParts = item.path.split('/')..removeLast();
-      final candidateTitle = _normalize(_cleanTitle(basename));
+      final pieces = basename.split(RegExp(r'\s+[-–—]\s+'));
+      var candidateTitleText = basename;
+      var artistHintText = pathParts.isEmpty ? '' : pathParts.last;
+      if (pieces.length >= 2) {
+        final firstTitleScore = _similarity(targetTitle, _normalize(_cleanTitle(pieces.first)));
+        final lastTitleScore = _similarity(targetTitle, _normalize(_cleanTitle(pieces.last)));
+        if (lastTitleScore > firstTitleScore) {
+          candidateTitleText = pieces.last;
+          if (artistHintText.isEmpty ||
+              const {'music', 'audio', 'songs', 'download', 'downloads'}
+                  .contains(artistHintText.toLowerCase())) {
+            artistHintText = pieces.first;
+          }
+        }
+      }
+      final candidateTitle = _normalize(_cleanTitle(candidateTitleText));
       if (candidateTitle.isEmpty) continue;
       final titleScore = _similarity(targetTitle, candidateTitle);
-      final artistHint = _normalize(pathParts.isEmpty ? '' : pathParts.last);
-      final artistScore = targetArtist.isEmpty || artistHint.isEmpty
-          ? 0.5
-          : _similarity(targetArtist, artistHint);
+      final artistHint = _normalize(artistHintText);
+      if (artistHint.isEmpty ||
+          const {'music', 'audio', 'songs', 'download', 'downloads'}
+              .contains(artistHint)) {
+        continue;
+      }
+      final artistScore = targetArtist.isEmpty ? 0.5 : _similarity(targetArtist, artistHint);
+      if (targetArtist.isNotEmpty && artistScore < 0.45) continue;
       final score = titleScore * 0.82 + artistScore * 0.18;
       if (score > bestScore) {
         bestScore = score;
