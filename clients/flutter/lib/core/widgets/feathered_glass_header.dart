@@ -97,7 +97,6 @@ class _FeatheredGlassHeaderBackgroundState
                     _buildProgressiveBlur(
                       height: headerHeight,
                       blurScale: blurScale,
-                      devicePixelRatio: media.devicePixelRatio,
                     ),
                     IgnorePointer(
                       child: DecoratedBox(
@@ -166,7 +165,6 @@ class _FeatheredGlassHeaderBackgroundState
   Widget _buildProgressiveBlur({
     required double height,
     required double blurScale,
-    required double devicePixelRatio,
   }) {
     final fallback = _buildSteppedBlur(height: height, blurScale: blurScale);
     if (!ui.ImageFilter.isShaderFilterSupported) return fallback;
@@ -178,8 +176,9 @@ class _FeatheredGlassHeaderBackgroundState
         if (program == null) return fallback;
         return _ProgressiveShaderBackdropFilter(
           program: program,
-          maxSigma: 18 * blurScale * devicePixelRatio,
-          minSigma: 1.2 * blurScale * devicePixelRatio,
+          sigma: 18 * blurScale,
+          fadeStart: 0.42,
+          fadeEnd: 1.0,
         );
       },
     );
@@ -202,18 +201,20 @@ class _FeatheredGlassHeaderBackgroundState
   }
 }
 
-/// Single-pass variable-radius backdrop blur for Impeller-capable renderers.
-/// The stepped implementation remains the compatibility path on other backends.
+/// One native Gaussian blur followed by a shader feather mask. This mirrors
+/// Mochy's blur-then-mask pipeline without a multi-tap custom blur kernel.
 class _ProgressiveShaderBackdropFilter extends StatefulWidget {
   const _ProgressiveShaderBackdropFilter({
     required this.program,
-    required this.maxSigma,
-    required this.minSigma,
+    required this.sigma,
+    required this.fadeStart,
+    required this.fadeEnd,
   });
 
   final ui.FragmentProgram program;
-  final double maxSigma;
-  final double minSigma;
+  final double sigma;
+  final double fadeStart;
+  final double fadeEnd;
 
   @override
   State<_ProgressiveShaderBackdropFilter> createState() =>
@@ -223,29 +224,41 @@ class _ProgressiveShaderBackdropFilter extends StatefulWidget {
 class _ProgressiveShaderBackdropFilterState
     extends State<_ProgressiveShaderBackdropFilter> {
   late final ui.FragmentShader _shader;
-  late final ui.ImageFilter _filter;
+  late ui.ImageFilter _filter;
 
   @override
   void initState() {
     super.initState();
     _shader = widget.program.fragmentShader();
     _updateUniforms();
-    _filter = ui.ImageFilter.shader(_shader);
+    _filter = _createFilter();
   }
 
   @override
   void didUpdateWidget(covariant _ProgressiveShaderBackdropFilter oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.maxSigma != widget.maxSigma ||
-        oldWidget.minSigma != widget.minSigma) {
+    if (oldWidget.fadeStart != widget.fadeStart ||
+        oldWidget.fadeEnd != widget.fadeEnd) {
       _updateUniforms();
+    }
+    if (oldWidget.sigma != widget.sigma) {
+      _filter = _createFilter();
     }
   }
 
   void _updateUniforms() {
-    _shader.setFloat(2, widget.maxSigma);
-    _shader.setFloat(3, widget.minSigma);
+    _shader.setFloat(2, widget.fadeStart);
+    _shader.setFloat(3, widget.fadeEnd);
   }
+
+  ui.ImageFilter _createFilter() => ui.ImageFilter.compose(
+        outer: ui.ImageFilter.shader(_shader),
+        inner: ui.ImageFilter.blur(
+          sigmaX: widget.sigma,
+          sigmaY: widget.sigma,
+          tileMode: ui.TileMode.clamp,
+        ),
+      );
 
   @override
   void dispose() {
