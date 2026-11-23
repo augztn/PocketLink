@@ -73,6 +73,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
 
   static final PersistentAudioPlayer instance = PersistentAudioPlayer._();
   static const MethodChannel _mediaChannel = MethodChannel('pocketlink/media');
+  static const MethodChannel _discoverChannel = MethodChannel('pocketlink/saf');
 
   late final Player player;
   VideoController? _videoController;
@@ -216,7 +217,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
           ? 'player_api_first'
           : 'newpipe_first';
       final settings = AppSettings.instance;
-      final resolved = await _mediaChannel.invokeMapMethod<String, dynamic>(
+      final resolved = await _discoverChannel.invokeMapMethod<String, dynamic>(
         'discoverResolve',
         {
           'videoId': item.lyricsVideoId,
@@ -225,8 +226,16 @@ class PersistentAudioPlayer extends ChangeNotifier {
           'region': settings.discoverRegion,
         },
       );
-      if (session != _queueSession || resolved == null ||
-          (resolved['url']?.toString().isEmpty ?? true)) return;
+      if (session != _queueSession) return;
+      if (resolved == null || (resolved['url']?.toString().isEmpty ?? true)) {
+        await AppLogger.warning(
+          'Discover alternate resolver returned no playable stream',
+          category: 'media',
+          component: 'discover_resolver',
+          fields: {'queue_index': _currentIndex},
+        );
+        return;
+      }
 
       final retryItem = MediaQueueItem(
         title: item.title,
@@ -275,7 +284,16 @@ class PersistentAudioPlayer extends ChangeNotifier {
         )).toList(growable: false);
         await player.open(Playlist(media, index: retryIndex));
       });
-      if (retryIndex < 0 || session != _queueSession) return;
+      if (session != _queueSession) return;
+      if (retryIndex < 0) {
+        await AppLogger.warning(
+          'Discover retry discarded because the failed queue item changed',
+          category: 'media',
+          component: 'discover_resolver',
+          fields: {'queue_index': _currentIndex},
+        );
+        return;
+      }
       await AppLogger.info(
         'Discover playback retried with alternate resolver',
         category: 'media',
