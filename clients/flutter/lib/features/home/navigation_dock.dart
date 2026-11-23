@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../core/navigation/pocketlink_navigation.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
+import '../media/now_playing_overlay_controller.dart';
 
 class FloatingNavigationDock extends StatelessWidget {
   const FloatingNavigationDock({
@@ -53,6 +54,27 @@ class FloatingNavigationDock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final progress = preview ? null : NowPlayingOverlayController.expandProgress;
+    if (progress == null) return _buildDock(context, 0);
+
+    return AnimatedBuilder(
+      animation: progress,
+      builder: (context, _) {
+        final value = progress.value.clamp(0.0, 1.0).toDouble();
+        final dockT = (value / 0.45).clamp(0.0, 1.0).toDouble();
+        final dockTotalHeight = 82.0 + MediaQuery.paddingOf(context).bottom;
+        return IgnorePointer(
+          ignoring: value > 0.05,
+          child: Transform.translate(
+            offset: Offset(0, dockTotalHeight * dockT),
+            child: _buildDock(context, dockT),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDock(BuildContext context, double dockT) {
     final activeItems = order.where(visibleItems.contains).toList(growable: false);
     final segments = <Widget>[];
     var tabGroup = <String>[];
@@ -65,6 +87,7 @@ class FloatingNavigationDock extends StatelessWidget {
           child: LiquidGlassPill(
             radius: BorderRadius.circular(32),
             refractive: true,
+            intensity: 1.0 - dockT,
             child: Padding(
               key: const ValueKey('navigation-dock-tabs-capsule'),
               padding: const EdgeInsets.all(5),
@@ -187,6 +210,7 @@ class FloatingNavigationDock extends StatelessWidget {
                  Positioned.fill(
                   child: _MusicDockButton(
                     preview: preview,
+                    glassIntensity: 1.0 - dockT,
                     isPlaying: isPlaying,
                     hasMedia: hasMedia,
                     isVideo: isVideo,
@@ -237,6 +261,7 @@ class FloatingNavigationDock extends StatelessWidget {
 class _MusicDockButton extends StatefulWidget {
   const _MusicDockButton({
     required this.preview,
+    required this.glassIntensity,
     required this.isPlaying,
     required this.hasMedia,
     required this.isVideo,
@@ -248,6 +273,7 @@ class _MusicDockButton extends StatefulWidget {
   });
 
   final bool preview;
+  final double glassIntensity;
   final bool isPlaying;
   final bool hasMedia;
   final bool isVideo;
@@ -357,6 +383,7 @@ class _MusicDockButtonState extends State<_MusicDockButton> {
           child: LiquidGlassPill(
             radius: BorderRadius.circular(32),
             refractive: true,
+            intensity: widget.glassIntensity,
             child: Material(
               color: Colors.transparent,
               shape: const CircleBorder(),
