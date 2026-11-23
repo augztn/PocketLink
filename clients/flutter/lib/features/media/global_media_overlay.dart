@@ -574,8 +574,16 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     final size = media.size;
     final destination = Offset.zero & size;
+    final safeInsets = media.padding;
+    final dockHeight = 82.0 + safeInsets.bottom;
+    final miniBottom = size.height - dockHeight;
     final origin = originRect ??
-        Rect.fromLTWH(size.width - 292, size.height - 142, 278, 62);
+        Rect.fromLTRB(
+          safeInsets.left + 16.0,
+          miniBottom - 60.0,
+          size.width - safeInsets.right - 16.0,
+          miniBottom,
+        );
     final sourceArt = sourceArtworkRect ??
         Rect.fromLTWH(origin.left + 10, origin.top + 10, 34, 34);
 
@@ -601,7 +609,7 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
           final t = animation.value.clamp(0.0, 1.0).toDouble();
           final rect = Rect.lerp(origin, destination, t)!;
           final radiusValue = t < 0.5
-              ? 22 + (24 - 22) * (t * 2)
+              ? 24 * (t * 2)
               : 24 * (1 - (t - 0.5) * 2);
           final radius = BorderRadius.circular(
             radiusValue + (isDragging ? 4 * (1 - t) : 0),
