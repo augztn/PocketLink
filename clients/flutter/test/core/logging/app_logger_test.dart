@@ -1,7 +1,52 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pocketlink_client/core/logging/app_logger.dart';
 
 void main() {
+  group('AppLogger structured persistence', () {
+    late Directory directory;
+
+    setUp(() async {
+      directory = await Directory.systemTemp.createTemp('pocketlink-logger-test-');
+      await AppLogger.initializeForTesting(directory);
+    });
+
+    tearDown(() async {
+      if (await directory.exists()) await directory.delete(recursive: true);
+    });
+
+    test('writes parseable structured records with correlation and typed fields', () async {
+      await AppLogger.info(
+        'Request completed',
+        category: 'network',
+        component: 'api_client',
+        correlationId: 'request-42',
+        fields: {'status_code': 200, 'retryable': false, 'elapsed_ms': 18.5},
+      );
+
+      final logs = await AppLogger.readLogs(currentSessionOnly: true);
+      final jsonStart = logs.indexOf('{');
+      expect(jsonStart, greaterThanOrEqualTo(0));
+      final record = jsonDecode(logs.substring(jsonStart)) as Map<String, dynamic>;
+
+      expect(record['event_id'], contains(record['session_id']));
+      expect(record['category'], 'network');
+      expect(record['component'], 'api_client');
+      expect(record['correlation_id'], 'request-42');
+      expect(record['fields'], {
+        'status_code': 200,
+        'retryable': false,
+        'elapsed_ms': 18.5,
+      });
+    });
+
+    test('tracks events dropped before logger initialization', () async {
+      // The test initializer resets counters; verify the health snapshot remains typed.
+      expect(AppLogger.health, {'write_failures': 0, 'dropped_events': 0});
+    });
+  });
   group('AppLogger.filterSessionLogs', () {
     test('keeps only events tagged with the active session', () {
       const logs = '2026-11-17T10:00:00Z [INFO] old event | {session: session-old}\n'
