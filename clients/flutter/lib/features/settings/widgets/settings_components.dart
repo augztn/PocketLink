@@ -67,18 +67,25 @@ class SettingsGroupCard extends StatelessWidget {
             color: Color(0xFF9A9BA3),
           ),
         ),
-        child: Container(
-          decoration: BoxDecoration(
-            color: settingsGroupColor,
-            borderRadius: BorderRadius.circular(18),
+        child: DividerTheme(
+          data: const DividerThemeData(
+            color: settingsDividerColor,
+            thickness: 1,
+            space: 1,
           ),
-          clipBehavior: Clip.antiAlias,
-          child: Padding(
-            padding: padding,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: _withDividers(),
+          child: Container(
+            decoration: BoxDecoration(
+              color: settingsGroupColor,
+              borderRadius: BorderRadius.circular(18),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Padding(
+              padding: padding,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: _withDividers(),
+              ),
             ),
           ),
         ),
