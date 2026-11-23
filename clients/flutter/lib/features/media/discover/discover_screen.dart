@@ -144,7 +144,51 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     try {
       final separator = audio.path.lastIndexOf('/');
       final parent = separator < 0 ? '' : audio.path.substring(0, separator);
-      final baseName = audio.name.replaceFirst(RegExp(r'\\.[^.]+
+      final baseName = audio.name.replaceFirst(RegExp(r'\.[^.]+$'), '');
+      final listing = audio.volume == 'internal'
+          ? await widget.api.listDirectory(parent)
+          : await widget.api.listStorageDirectory(audio.volume, parent);
+      FileEntry? sidecar;
+      for (final item in listing.items) {
+        final name = item.name.toLowerCase();
+        if (!item.isDirectory &&
+            (name == (baseName + '.lrc').toLowerCase() || name == 'lyrics.lrc')) {
+          sidecar = item;
+          break;
+        }
+      }
+      if (sidecar == null || sidecar.size <= 0 || sidecar.size > 512 * 1024) {
+        return null;
+      }
+      final sidecarPath = parent.isEmpty ? sidecar.name : parent + '/' + sidecar.name;
+      final bytes = audio.volume == 'internal'
+          ? await widget.api.downloadFile(sidecarPath)
+          : await widget.api.downloadStorageFile(audio.volume, sidecarPath);
+      final content = utf8.decode(bytes, allowMalformed: true).trim();
+      if (content.isEmpty) return null;
+      final syncedLines = DiscoverService.parseLrc(content);
+      final lines = syncedLines.isNotEmpty
+          ? syncedLines
+          : content.split(RegExp(r'\r?\n'))
+              .map((line) => line.trim())
+              .where((line) => line.isNotEmpty)
+              .map((line) => DiscoverLyricsLine(timeMs: 0, text: line))
+              .toList(growable: false);
+      if (lines.isEmpty) return null;
+      return DiscoverLyrics(
+        lines: List.unmodifiable(lines),
+        isSynced: syncedLines.isNotEmpty,
+        source: 'Sidecar',
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _showLyrics(DiscoverTrack track, {IndexedFile? local}) async {
+    try {
+      final lyrics = (local == null ? null : await _readSidecarLyrics(local)) ??
+          await _service.lyrics(track);
       if (!mounted) return;
       await showModalBottomSheet<void>(
         context: context,
@@ -165,10 +209,12 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                       const SizedBox(height: 4),
                       Text(track.artist, style: Theme.of(context).textTheme.bodyMedium),
                       const SizedBox(height: 8),
-                      Text(lyrics == null
-                          ? 'Lyrics not found'
-                          : '${lyrics.isSynced ? 'Synced lyrics' : 'Plain lyrics'} · ${lyrics.source}',
-                        style: Theme.of(context).textTheme.labelSmall),
+                      Text(
+                        lyrics == null
+                            ? 'Lyrics not found'
+                            : (lyrics.isSynced ? 'Synced lyrics' : 'Plain lyrics') + ' · ' + lyrics.source,
+                        style: Theme.of(context).textTheme.labelSmall,
+                      ),
                     ],
                   ),
                 ),
@@ -205,9 +251,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                                   child: Text(
                                     lyrics.lines[index].text,
                                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                      color: active
-                                          ? Theme.of(context).colorScheme.primary
-                                          : null,
+                                      color: active ? Theme.of(context).colorScheme.primary : null,
                                       fontWeight: active ? FontWeight.w700 : FontWeight.normal,
                                     ),
                                   ),
@@ -229,17 +273,6 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       );
     }
   }
-
-  Widget _quickSearchChip(String label, String query) => Padding(
-        padding: const EdgeInsets.only(right: 8),
-        child: ActionChip(
-          label: Text(label),
-          onPressed: () {
-            _searchController.text = query;
-            _search(query);
-          },
-        ),
-      );
 
   @override
   Widget build(BuildContext context) {
