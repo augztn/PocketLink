@@ -207,7 +207,6 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
           onArtworkChanged: _publishSharedArtwork,
           player: player,
           api: player.api,
-          isDragging: isDragging,
           onDismiss: () => _closeNowPlaying(),
           onDragStart: () => _isNowPlayingDragging.value = true,
           onDragUpdate: _updateNowPlayingDrag,
@@ -546,7 +545,6 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
     required this.artworkBytes,
     required this.artworkTargetKey,
     required this.onArtworkChanged,
-    required this.isDragging,
     required this.player,
     required this.api,
     required this.onDismiss,
@@ -562,7 +560,6 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
   final ValueNotifier<Uint8List?> artworkBytes;
   final GlobalKey artworkTargetKey;
   final ValueChanged<Uint8List?> onArtworkChanged;
-  final bool isDragging;
   final PersistentAudioPlayer player;
   final ServerApi? api;
   final VoidCallback onDismiss;
@@ -608,7 +605,7 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
         builder: (context, animatedChild) {
           final t = animation.value.clamp(0.0, 1.0).toDouble();
           final rect = Rect.lerp(origin, destination, t)!;
-          const miniPlayerRadius = 31.0;
+          const miniPlayerRadius = 22.0;
           final radius = BorderRadius.lerp(
             BorderRadius.zero,
             BorderRadius.circular(miniPlayerRadius),
