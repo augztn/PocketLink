@@ -220,7 +220,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     // Resolve the immediate neighbours concurrently, then fill the rest
     // in a deterministic order without blocking initial playback.
     final order = DiscoverService.progressiveQueueOrder(tracks.length, selectedIndex);
-    final immediate = order.take(2).toList(growable: false);
+    final immediateCount = (selectedIndex > 0 ? 1 : 0) +
+        (selectedIndex + 1 < tracks.length ? 1 : 0);
+    final immediate = order.take(immediateCount).toList(growable: false);
     final immediateItems = await Future.wait(immediate.map(resolveAt));
     for (var offset = 0; offset < immediate.length; offset++) {
       final item = immediateItems[offset];
