@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -138,9 +140,287 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     );
   }
 
-  Future<void> _showLyrics(DiscoverTrack track) async {
+  Future<DiscoverLyrics?> _readSidecarLyrics(IndexedFile audio) async {
     try {
-      final lyrics = await _service.lyrics(track);
+      final separator = audio.path.lastIndexOf('/');
+      final parent = separator < 0 ? '' : audio.path.substring(0, separator);
+      final baseName = audio.name.replaceFirst(RegExp(r'\\.[^.]+
+      if (!mounted) return;
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        builder: (context) => SafeArea(
+          child: SizedBox(
+            height: MediaQuery.sizeOf(context).height * 0.72,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(track.title, style: Theme.of(context).textTheme.titleLarge),
+                      const SizedBox(height: 4),
+                      Text(track.artist, style: Theme.of(context).textTheme.bodyMedium),
+                      const SizedBox(height: 8),
+                      Text(lyrics == null
+                          ? 'Lyrics not found'
+                          : '${lyrics.isSynced ? 'Synced lyrics' : 'Plain lyrics'} · ${lyrics.source}',
+                        style: Theme.of(context).textTheme.labelSmall),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: lyrics == null
+                      ? const Center(child: Text('No matching lyrics were found.'))
+                      : StreamBuilder<Duration>(
+                          stream: PersistentAudioPlayer.instance.player.stream.position,
+                          initialData: PersistentAudioPlayer.instance.player.state.position,
+                          builder: (context, snapshot) {
+                            final positionMs = snapshot.data?.inMilliseconds ?? 0;
+                            var activeIndex = -1;
+                            if (lyrics.isSynced) {
+                              for (var index = 0; index < lyrics.lines.length; index++) {
+                                if (lyrics.lines[index].timeMs > positionMs) break;
+                                activeIndex = index;
+                              }
+                            }
+                            return ListView.builder(
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                              itemCount: lyrics.lines.length,
+                              itemBuilder: (context, index) {
+                                final active = index == activeIndex;
+                                return AnimatedContainer(
+                                  duration: const Duration(milliseconds: 160),
+                                  padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 8),
+                                  decoration: BoxDecoration(
+                                    color: active
+                                        ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.10)
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    lyrics.lines[index].text,
+                                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                      color: active
+                                          ? Theme.of(context).colorScheme.primary
+                                          : null,
+                                      fontWeight: active ? FontWeight.w700 : FontWeight.normal,
+                                    ),
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not retrieve lyrics.')),
+      );
+    }
+  }
+
+  Widget _quickSearchChip(String label, String query) => Padding(
+        padding: const EdgeInsets.only(right: 8),
+        child: ActionChip(
+          label: Text(label),
+          onPressed: () {
+            _searchController.text = query;
+            _search(query);
+          },
+        ),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: PocketLinkAppBar(
+        feathered: true,
+        showHome: false,
+        title: const Text('Discover'),
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              child: TextField(
+                controller: _searchController,
+                textInputAction: TextInputAction.search,
+                onSubmitted: _search,
+                decoration: InputDecoration(
+                  hintText: 'Search songs, artists and albums',
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  suffixIcon: IconButton(
+                    tooltip: 'Search',
+                    onPressed: () => _search(_searchController.text),
+                    icon: const Icon(Icons.arrow_forward_rounded),
+                  ),
+                  filled: true,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(18),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(
+              height: 38,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                children: [
+                  _quickSearchChip('India', 'top songs India'),
+                  _quickSearchChip('Malayalam', 'popular Malayalam songs'),
+                  _quickSearchChip('Hindi', 'top Hindi songs'),
+                  _quickSearchChip('Tamil', 'popular Tamil songs'),
+                  _quickSearchChip('English', 'top English songs'),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(_sectionTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                  ),
+                  if (_loadingLibrary)
+                    const Padding(
+                      padding: EdgeInsets.only(left: 8),
+                      child: SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
+                    ),
+                ],
+              ),
+            ),
+            if (_loading && _tracks.isEmpty)
+              const Expanded(child: Center(child: CircularProgressIndicator()))
+            else if (_error != null && _tracks.isEmpty)
+              Expanded(child: Center(child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(_error!, textAlign: TextAlign.center),
+              )))
+            else
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: () => _search(_searchController.text.isEmpty
+                      ? 'top songs India'
+                      : _searchController.text),
+                  child: ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 24),
+                    itemCount: _tracks.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1, indent: 68),
+                    itemBuilder: (context, index) {
+                      final track = _tracks[index];
+                      final local = DiscoverService.findLocalLosslessMatch(track, _localLibrary);
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        leading: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: track.thumbnailUrl.isEmpty
+                              ? Container(
+                                  width: 52,
+                                  height: 52,
+                                  color: theme.colorScheme.surfaceContainerHighest,
+                                  child: const Icon(Icons.music_note_rounded),
+                                )
+                              : Image.network(
+                                  track.thumbnailUrl,
+                                  width: 52,
+                                  height: 52,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(
+                                    width: 52,
+                                    height: 52,
+                                    color: theme.colorScheme.surfaceContainerHighest,
+                                    child: const Icon(Icons.music_note_rounded),
+                                  ),
+                                ),
+                        ),
+                        title: Text(track.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                        subtitle: Text(
+                          '${track.artist}${track.durationText.isEmpty ? '' : ' · ${track.durationText}'}${local == null ? '' : ' · ${local.name.split('.').last.toUpperCase()} LOSSLESS'}',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        trailing: PopupMenuButton<String>(
+                          tooltip: 'Track options',
+                          onSelected: (value) {
+                            if (value == 'lyrics') _showLyrics(track, local: local);
+                            if (value == 'play') _play(track);
+                          },
+                          itemBuilder: (_) => const [
+                            PopupMenuItem(value: 'play', child: Text('Play')),
+                            PopupMenuItem(value: 'lyrics', child: Text('Lyrics')),
+                          ],
+                        ),
+                        onTap: () => _play(track),
+                      );
+                    },
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+), '');
+      final listing = audio.volume == 'internal'
+          ? await widget.api.listDirectory(parent)
+          : await widget.api.listStorageDirectory(audio.volume, parent);
+      final sidecar = listing.items.where((item) =>
+          !item.isDirectory &&
+          (item.name.toLowerCase() == '$baseName.lrc'.toLowerCase() ||
+              item.name.toLowerCase() == 'lyrics.lrc')).firstOrNull;
+      if (sidecar == null || sidecar.size <= 0 || sidecar.size > 512 * 1024) {
+        return null;
+      }
+      final sidecarPath = parent.isEmpty ? sidecar.name : '$parent/${sidecar.name}';
+      final bytes = audio.volume == 'internal'
+          ? await widget.api.downloadFile(sidecarPath)
+          : await widget.api.downloadStorageFile(audio.volume, sidecarPath);
+      final text = utf8.decode(bytes, allowMalformed: true).trim();
+      if (text.isEmpty) return null;
+      final syncedLines = DiscoverService.parseLrc(text);
+      final lines = syncedLines.isNotEmpty
+          ? syncedLines
+          : text.split(RegExp(r'\\r?\\n'))
+              .map((line) => line.trim())
+              .where((line) => line.isNotEmpty)
+              .map((line) => DiscoverLyricsLine(timeMs: 0, text: line))
+              .toList(growable: false);
+      if (lines.isEmpty) return null;
+      return DiscoverLyrics(
+        lines: List.unmodifiable(lines),
+        isSynced: syncedLines.isNotEmpty,
+        source: 'Sidecar',
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _showLyrics(DiscoverTrack track, {IndexedFile? local}) async {
+    try {
+      final lyrics = (local == null ? null : await _readSidecarLyrics(local)) ??
+          await _service.lyrics(track);
       if (!mounted) return;
       await showModalBottomSheet<void>(
         context: context,
