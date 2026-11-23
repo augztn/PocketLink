@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
 import '../home/navigation_dock.dart';
+import 'widgets/settings_components.dart';
 
 class NavigationCustomizationScreen extends StatefulWidget {
   const NavigationCustomizationScreen({super.key});
@@ -100,54 +101,39 @@ class _NavigationCustomizationScreenState
 
     return Scaffold(
       appBar: const PocketLinkAppBar(
-        title: Text('Customize Navigation Bar'),
+        title: Text('Navigation', style: TextStyle(fontSize: 20)),
       ),
       body: ListView(
-        padding: EdgeInsets.fromLTRB(
-          16, 12, 16, MediaQuery.paddingOf(context).bottom + 140,
-        ),
+        padding: settingsListPadding(context),
         children: [
-          Text('Live preview', style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w800,
-          )),
-          const SizedBox(height: 6),
+          const SettingsSectionHeader('Live preview'),
           Text(
             'Your dock updates as you rearrange or hide destinations.',
             style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
           ),
           const SizedBox(height: 10),
-          Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFF121316),
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
-            ),
-            child: FloatingNavigationDock(
+          SettingsGroupCard(
+            padding: const EdgeInsets.all(8),
+            children: [
+              FloatingNavigationDock(
               order: _order,
               visibleItems: _visibleItems,
               selectedIndex: 0,
               onSelect: (_) {},
               onBrowsePressed: () {},
               preview: true,
-            ),
+              ),
+            ],
           ),
           const SizedBox(height: 24),
-          Text('Navigation destinations', style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w800,
-          )),
-          const SizedBox(height: 6),
+          const SettingsSectionHeader('Navigation destinations'),
           Text(
             'Drag destinations, including Browse / Music, to change the dock order.',
             style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
           ),
           const SizedBox(height: 12),
-          Container(
-            decoration: BoxDecoration(
-              color: colors.surfaceContainerHigh,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.7)),
-            ),
-            child: ReorderableListView.builder(
+          SettingsGroupCard(children: [
+            ReorderableListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               buildDefaultDragHandles: false,
@@ -165,10 +151,7 @@ class _NavigationCustomizationScreenState
                     ListTile(
                       contentPadding: const EdgeInsets.symmetric(horizontal: 14),
                       leading: Icon(detail.icon, color: colors.onSurfaceVariant),
-                      title: Text(
-                        detail.label,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
+                      title: Text(detail.label),
                       subtitle: Text(
                         id == 'home' ? 'Always visible' : detail.description,
                       ),
