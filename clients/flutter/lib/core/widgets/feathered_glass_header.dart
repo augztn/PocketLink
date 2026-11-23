@@ -387,14 +387,8 @@ class GlassCircleButton extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: isDark
-                  ? const Color(0xFF1C1E24).withValues(alpha: 0.58)
-                  : Colors.white.withValues(alpha: 0.58),
-              border: Border.all(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.24)
-                    : const Color(0xFF94A3B8).withValues(alpha: 0.30),
-                width: 1.0,
-              ),
+                  ? const Color(0xFF141518).withValues(alpha: 0.66)
+                  : Colors.white.withValues(alpha: 0.68),
             ),
             child: Center(
               child: IconTheme(
@@ -411,14 +405,16 @@ class GlassCircleButton extends StatelessWidget {
     return AnimatedBuilder(
       animation: settings,
       builder: (context, _) {
-        final useBlur = settings.progressiveBlurEnabled &&
-            !MediaQuery.of(context).disableAnimations;
-        const blurScale = 1.0;
+        final useBlur = settings.useLiquidGlass;
         return RepaintBoundary(
           child: ClipOval(
             child: useBlur
                 ? BackdropFilter(
-                    filter: ui.ImageFilter.blur(sigmaX: 24 * blurScale, sigmaY: 24 * blurScale),
+                    filter: ui.ImageFilter.blur(
+                      sigmaX: 20,
+                      sigmaY: 20,
+                      tileMode: ui.TileMode.clamp,
+                    ),
                     child: button,
                   )
                 : button,
@@ -442,21 +438,21 @@ class _GlassCircleRimPainter extends CustomPainter {
     final rect = Offset.zero & size;
     final paint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1
+      ..strokeWidth = 0.85
       ..isAntiAlias = true
       ..shader = LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: isDark
             ? const [
-                Color(0x99FFFFFF),
-                Color(0x38FFFFFF),
-                Color(0x08FFFFFF),
+                Color(0x23FFFFFF),
+                Color(0x12FFFFFF),
+                Color(0x0AFFFFFF),
               ]
             : const [
-                Color(0xAFFFFFFF),
-                Color(0x54FFFFFF),
+                Color(0x23FFFFFF),
                 Color(0x12FFFFFF),
+                Color(0x0AFFFFFF),
               ],
         stops: const [0, 0.52, 1],
       ).createShader(rect);
