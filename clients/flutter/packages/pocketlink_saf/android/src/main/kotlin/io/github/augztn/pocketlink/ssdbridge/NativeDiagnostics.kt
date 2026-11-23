@@ -72,6 +72,14 @@ internal object NativeDiagnostics {
         }
     }
 
+    fun clear() {
+        synchronized(lock) {
+            val target = file ?: return
+            runCatching { target.writeText("", Charsets.UTF_8) }
+            runCatching { File(target.path + ".1").delete() }
+        }
+    }
+
     private fun rotateIfNeeded(target: File) {
         if (!target.isFile || target.length() < MAX_BYTES) return
         val backup = File(target.path + ".1")
