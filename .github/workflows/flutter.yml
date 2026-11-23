@@ -182,17 +182,17 @@ jobs:
               print("JitPack repository already configured")
           else:
               match = re.search(
-                  r"(dependencyResolutionManagement\\s*\\{[\\s\\S]*?repositories\\s*\\{)",
+                  r"(dependencyResolutionManagement\s*\{[\s\S]*?repositories\s*\{)",
                   content,
               )
               if match is None:
                   raise SystemExit("Could not locate dependencyResolutionManagement repositories")
               repository = (
-                  '        maven(url = "https://jitpack.io")\\n'
+                  '        maven(url = "https://jitpack.io")\n'
                   if settings.suffix == ".kts"
-                  else '        maven { url "https://jitpack.io" }\\n'
+                  else '        maven { url "https://jitpack.io" }\n'
               )
-              content = content[:match.end()] + "\\n" + repository + content[match.end():]
+              content = content[:match.end()] + "\n" + repository + content[match.end():]
               settings.write_text(content)
               print(f"Added JitPack to {settings}")
           PY
