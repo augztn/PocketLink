@@ -182,7 +182,7 @@ class _NavigationCustomizationScreenState
                       ),
                     ),
                     if (index != _order.length - 1)
-                      const Divider(height: 1, indent: 56),
+                      const Divider(height: 1),
                   ],
                 );
               },
