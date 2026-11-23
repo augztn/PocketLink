@@ -187,7 +187,7 @@ class _NavigationCustomizationScreenState
                 );
               },
             ),
-          ),
+          ]),
           const SizedBox(height: 12),
           Text(
             'Keep at least two destinations visible. Home cannot be hidden, but it can be moved.',
