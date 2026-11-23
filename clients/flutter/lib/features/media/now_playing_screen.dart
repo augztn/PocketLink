@@ -651,10 +651,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                 ),
               ),
               const SizedBox(height: 18),
-              const Row(
+              Row(
                 children: [
                   Icon(Icons.query_stats_rounded, color: accentColor),
-                  SizedBox(width: 10),
+                  const SizedBox(width: 10),
                   Text(
                     'Stats for nerds',
                     style: TextStyle(
