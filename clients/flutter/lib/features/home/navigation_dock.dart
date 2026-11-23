@@ -115,40 +115,14 @@ class FloatingNavigationDock extends StatelessWidget {
                             child: SizedBox.expand(
                               key: const ValueKey('navigation-dock-active-lens'),
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 4,
-                                  vertical: 2,
-                                ),
+                                padding: const EdgeInsets.all(4),
                                 child: DecoratedBox(
                                   decoration: BoxDecoration(
                                     color: Theme.of(context).brightness ==
                                             Brightness.dark
-                                        ? Colors.white.withValues(alpha: 0.14)
-                                        : Colors.white.withValues(alpha: 0.72),
+                                        ? Colors.white.withValues(alpha: 0.15)
+                                        : Colors.black.withValues(alpha: 0.08),
                                     borderRadius: BorderRadius.circular(25),
-                                    border: Border.all(
-                                      color: Colors.white.withValues(
-                                        alpha: Theme.of(context).brightness ==
-                                                Brightness.dark
-                                            ? 0.20
-                                            : 0.58,
-                                      ),
-                                      width: 0.8,
-                                    ),
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                      colors: Theme.of(context).brightness ==
-                                              Brightness.dark
-                                          ? [
-                                              Colors.white.withValues(alpha: 0.17),
-                                              Colors.white.withValues(alpha: 0.07),
-                                            ]
-                                          : [
-                                              Colors.white.withValues(alpha: 0.88),
-                                              Colors.white.withValues(alpha: 0.58),
-                                            ],
-                                    ),
                                   ),
                                 ),
                               ),
