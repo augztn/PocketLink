@@ -471,8 +471,9 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
                       child: _GlobalMiniPlayerBar(
                         visible: visible,
                         hasFloatingNavBar: onDashboard,
-                        reduceMotion:
-                            reduceMotion || _snapMiniPlayerVisibility,
+                        reduceMotion: reduceMotion ||
+                            _nowPlayingOpen ||
+                            _snapMiniPlayerVisibility,
                         player: player,
                         artworkBytes: _sharedArtwork,
                         surfaceIntensity: visible ? 1.0 : 0.0,
