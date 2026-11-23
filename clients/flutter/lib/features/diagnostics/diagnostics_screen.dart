@@ -87,7 +87,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final topPadding = LayoutInsetsScope.of(context).topClearance + 6;
+    final topPadding = LayoutInsetsScope.of(context).topClearance;
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: const PocketLinkAppBar(title: Text('Diagnostics', style: TextStyle(fontSize: 20))),
