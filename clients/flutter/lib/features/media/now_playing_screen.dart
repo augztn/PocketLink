@@ -403,8 +403,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
         await _chooseSleepTimer();
         break;
       case TrackOptionAction.removeFromCache:
+        final api = widget.api;
+        if (api == null) break;
         await OfflineFileCache().remove(
-          OfflineFileCache().serverId(widget.api!),
+          OfflineFileCache().serverId(api),
           _track.volume,
           _track.path,
         );
@@ -846,7 +848,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
               const SmokedGlassPopoverMenuItem(value: 'queue', label: 'Queue', icon: Icons.queue_music_rounded),
               if (AppSettings.instance.showStatsForNerds)
                 const SmokedGlassPopoverMenuItem(value: 'stats', label: 'Stats for nerds', icon: Icons.query_stats_rounded),
-              const SmokedGlassPopoverMenuItem(value: 'download', label: 'Download track', icon: Icons.download_rounded, dividerBefore: true),
+              if (widget.api != null)
+                const SmokedGlassPopoverMenuItem(value: 'download', label: 'Download track', icon: Icons.download_rounded, dividerBefore: true),
               const SmokedGlassPopoverMenuItem(value: 'track_options', label: 'Track options', icon: Icons.more_horiz_rounded),
             ],
             onSelected: (value) {
