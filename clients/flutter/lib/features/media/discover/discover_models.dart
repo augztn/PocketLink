@@ -22,6 +22,41 @@ class DiscoverTrack {
       );
 }
 
+
+class DiscoverMoodSection {
+  const DiscoverMoodSection({required this.title, required this.items});
+  final String title;
+  final List<DiscoverMood> items;
+
+  factory DiscoverMoodSection.fromJson(Map<String, dynamic> json) => DiscoverMoodSection(
+    title: json['title']?.toString() ?? '',
+    items: (json['items'] as List? ?? const [])
+        .whereType<Map>()
+        .map((item) => DiscoverMood.fromJson(item.map((key, value) => MapEntry(key.toString(), value))))
+        .toList(growable: false),
+  );
+}
+
+class DiscoverMood {
+  const DiscoverMood({
+    required this.title,
+    required this.browseId,
+    this.params,
+    this.stripeColor = 0,
+  });
+  final String title;
+  final String browseId;
+  final String? params;
+  final int stripeColor;
+
+  factory DiscoverMood.fromJson(Map<String, dynamic> json) => DiscoverMood(
+    title: json['title']?.toString() ?? '',
+    browseId: json['browseId']?.toString() ?? '',
+    params: json['params']?.toString(),
+    stripeColor: (json['stripeColor'] as num?)?.toInt() ?? 0,
+  );
+}
+
 class DiscoverLyricsLine {
   const DiscoverLyricsLine({required this.timeMs, required this.text});
 
