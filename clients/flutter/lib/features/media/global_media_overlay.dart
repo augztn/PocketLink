@@ -145,7 +145,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     final api = player.api;
     final navigator = PocketLinkNavigation.navigatorKey.currentState;
     final overlay = navigator?.overlay;
-    if (!player.isMusic || !player.isActive || item == null || api == null ||
+    if (!player.isMusic || !player.isActive || item == null ||
         navigator == null || overlay == null) {
       return;
     }
@@ -410,7 +410,7 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
   final Rect? originRect;
   final bool isDragging;
   final PersistentAudioPlayer player;
-  final ServerApi api;
+  final ServerApi? api;
   final VoidCallback onDismiss;
   final VoidCallback onDragStart;
   final ValueChanged<double> onDragUpdate;
