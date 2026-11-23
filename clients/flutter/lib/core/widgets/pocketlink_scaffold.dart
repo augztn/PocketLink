@@ -1,7 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 const double pocketLinkMiniPlayerHeight = 74.0;
-const double pocketLinkHeaderFadeTailHeight = 28.0;
+const double pocketLinkHeaderFadeTailHeight = 12.0;
 const double pocketLinkTopContentGap = 14.0;
 
 /// Route-level layout geometry shared by every PocketLink screen.
