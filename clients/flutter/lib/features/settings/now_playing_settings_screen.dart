@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
 import 'music_shortcut_customization_screen.dart';
+import 'widgets/settings_components.dart';
 import '../media/now_playing_scrubber.dart';
 
 class NowPlayingSettingsScreen extends StatelessWidget {
@@ -22,22 +23,12 @@ class NowPlayingSettingsScreen extends StatelessWidget {
     return AnimatedBuilder(
       animation: settings,
       builder: (context, _) => Scaffold(
-        appBar: PocketLinkAppBar(title: const Text('Music / Now Playing Button')),
+        appBar: PocketLinkAppBar(title: const Text('Music & Player', style: TextStyle(fontSize: 20))),
         body: ListView(
-          padding: EdgeInsets.fromLTRB(
-            16, 12, 16, 32 + MediaQuery.paddingOf(context).bottom,
-          ),
+          padding: settingsListPadding(context),
           children: [
-            Text(
-              'Music dock button',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Card(
-              clipBehavior: Clip.antiAlias,
-              child: Column(
+            const SettingsSectionHeader('Music dock button'),
+            SettingsGroupCard(children: [Column(
                 children: [
                   const ListTile(
                     leading: Icon(Icons.touch_app_rounded),
@@ -101,16 +92,8 @@ class NowPlayingSettingsScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            Text(
-              'Now Playing scrubber',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Card(
-              clipBehavior: Clip.antiAlias,
-              child: Column(
+            const SettingsSectionHeader('Now Playing scrubber'),
+            SettingsGroupCard(children: [Column(
                 children: NowPlayingScrubberStyle.values.map((style) {
                   final selected = settings.nowPlayingScrubberStyle == style.key;
                   return Column(
@@ -139,13 +122,7 @@ class NowPlayingSettingsScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            Text(
-              'Now Playing theme',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 8),
+            const SettingsSectionHeader('Now Playing theme'),
             SizedBox(
               height: 132,
               child: ListView(
@@ -183,16 +160,8 @@ class NowPlayingSettingsScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            Text(
-              'Mini-player and playback',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Card(
-              clipBehavior: Clip.antiAlias,
-              child: Column(
+            const SettingsSectionHeader('Mini-player and playback'),
+            SettingsGroupCard(children: [Column(
                 children: [
                   SwitchListTile(
                     secondary: const Icon(Icons.picture_in_picture_alt_rounded),
