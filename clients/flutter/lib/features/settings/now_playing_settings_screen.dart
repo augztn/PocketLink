@@ -227,8 +227,8 @@ class _SwipeActionTile extends StatelessWidget {
   final ValueChanged<String> onChanged;
 
   @override
-  Widget build(BuildContext context) => ListTile(
-    title: Text(title),
+  Widget build(BuildContext context) => SettingsTile(
+    title: title,
     trailing: DropdownButton<String>(
       value: NowPlayingSettingsScreen._swipeActions.containsKey(value)
           ? value
