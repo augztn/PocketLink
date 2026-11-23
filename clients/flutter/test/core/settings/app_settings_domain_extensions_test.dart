@@ -83,18 +83,17 @@ void main() {
 
     await settings.setUseLiquidGlass(true);
     await settings.setProgressiveBlurEnabled(true);
-    await settings.setProgressiveBlurStrength(72.5);
 
     final preferences = await SharedPreferences.getInstance();
     expect(settings.useLiquidGlass, isTrue);
     expect(settings.progressiveBlurEnabled, isTrue);
-    expect(settings.progressiveBlurStrength, 72.5);
     expect(preferences.getBool('settings_use_liquid_glass'), isTrue);
     expect(preferences.getBool('settings_progressive_blur'), isTrue);
-    expect(preferences.getDouble('settings_progressive_blur_strength'), 72.5);
+    expect(preferences.containsKey('settings_progressive_blur_strength'), isFalse);
 
-    await expectLater(settings.setProgressiveBlurStrength(-1), throwsArgumentError);
-    await expectLater(settings.setProgressiveBlurStrength(double.nan), throwsArgumentError);
+    await settings.setProgressiveBlurEnabled(false);
+    expect(settings.progressiveBlurEnabled, isFalse);
+    expect(preferences.getBool('settings_progressive_blur'), isFalse);
   });
 
   test('media settings persist, validate and reset through the facade', () async {
