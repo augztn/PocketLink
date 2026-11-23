@@ -430,7 +430,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     final show = AppSettings.instance.discoverArtwork && track.thumbnailUrl.isNotEmpty;
     return ClipRRect(
       borderRadius: BorderRadius.circular(13),
-      child: SizedBox(width: size, height: size,
+      child: SizedBox(
+        width: size.isFinite ? size : null,
+        height: size.isFinite ? size : null,
         child: show
           ? Image.network(track.thumbnailUrl, fit: BoxFit.cover,
               errorBuilder: (_, __, ___) => _artFallback(size))
@@ -439,10 +441,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   }
 
   Widget _artFallback(double size) => Container(
-    width: size, height: size,
+    width: size.isFinite ? size : null,
+    height: size.isFinite ? size : null,
     color: Theme.of(context).colorScheme.surfaceContainerHighest,
     alignment: Alignment.center,
-    child: Icon(Icons.music_note_rounded, size: size * .42),
+    child: Icon(Icons.music_note_rounded, size: size.isFinite ? size * .42 : 44),
   );
 
   Widget _feedCard(DiscoverTrack track) {
@@ -495,7 +498,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 3),
       leading: _art(track, size: 54),
       title: Text(track.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Text('\${track.artist}\${track.durationText.isEmpty ? '' : ' · \${track.durationText}'}\${local == null ? '' : ' · LOSSLESS'}',
+      subtitle: Text('${track.artist}${track.durationText.isEmpty ? '' : ' · ${track.durationText}'}${local == null ? '' : ' · LOSSLESS'}',
         maxLines: 1, overflow: TextOverflow.ellipsis),
       trailing: PopupMenuButton<String>(
         onSelected: (v) {
