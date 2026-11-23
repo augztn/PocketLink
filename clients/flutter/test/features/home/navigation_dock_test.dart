@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:pocketlink_client/core/navigation/pocketlink_navigation.dart';
 import 'package:pocketlink_client/features/home/navigation_dock.dart';
+import 'package:pocketlink_client/features/media/now_playing_overlay_controller.dart';
 
 void main() {
   testWidgets(
@@ -55,6 +56,53 @@ void main() {
           findsNothing,
         );
       }
+    },
+  );
+
+  testWidgets(
+    'navigation dock follows the shared Now Playing expansion progress',
+    (tester) async {
+      final controller = AnimationController(
+        vsync: const TestVSync(),
+        duration: const Duration(milliseconds: 380),
+      );
+      NowPlayingOverlayController.expandProgress = controller;
+      var selections = 0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            bottomNavigationBar: FloatingNavigationDock(
+              order: const ['home', 'explore', 'files'],
+              visibleItems: const {'home', 'explore', 'files'},
+              selectedIndex: 0,
+              onSelect: (_) => selections++,
+              onBrowsePressed: () {},
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final capsule = find.byKey(
+        const ValueKey('navigation-dock-tabs-capsule'),
+      );
+      final dockedTop = tester.getTopLeft(capsule).dy;
+
+      controller.value = 0.45;
+      await tester.pump();
+      final hiddenTop = tester.getTopLeft(capsule).dy;
+      expect(hiddenTop - dockedTop, closeTo(82, 0.5));
+
+      await tester.tap(find.text('Explore'), warnIfMissed: false);
+      expect(selections, 0);
+
+      controller.value = 0;
+      await tester.pump();
+      expect(tester.getTopLeft(capsule).dy, closeTo(dockedTop, 0.5));
+
+      NowPlayingOverlayController.expandProgress = null;
+      controller.dispose();
     },
   );
 
