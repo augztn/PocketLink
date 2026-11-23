@@ -300,7 +300,7 @@ class AppLogger {
     return '${lines.join('\n')}\n\n';
   }
 
-  static Future<bool> _appendCurrentSessionLog(
+  static Future<(bool, int)> _appendCurrentSessionLog(
     File source,
     IOSink sink,
     int remainingBytes,
