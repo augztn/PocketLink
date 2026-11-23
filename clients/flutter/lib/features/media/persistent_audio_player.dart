@@ -5,11 +5,12 @@ import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
+import '../../core/logging/app_logger.dart';
 import '../../core/network/server_api.dart';
 import '../../core/storage/home_activity_store.dart';
 
 class MediaQueueItem {
-  const MediaQueueItem({required this.title, required this.path, this.volume, this.localPath, this.size, this.streamUrl, this.httpHeaders = const {}, this.artist, this.artworkUrl, this.lyricsVideoId, this.durationText});
+  const MediaQueueItem({required this.title, required this.path, this.volume, this.localPath, this.size, this.streamUrl, this.httpHeaders = const {}, this.artist, this.artworkUrl, this.lyricsVideoId, this.durationText, this.streamCodec, this.streamResolver, this.streamBitrateBps});
 
   final String title;
   final String path;
@@ -22,6 +23,9 @@ class MediaQueueItem {
   final String? artworkUrl;
   final String? lyricsVideoId;
   final String durationText;
+  final String? streamCodec;
+  final String? streamResolver;
+  final int? streamBitrateBps;
 
   /// Describes the origin of the media, not the device or cache used to play it.
   String get sourceLabel {
@@ -58,6 +62,25 @@ class PersistentAudioPlayer extends ChangeNotifier {
       notifyListeners();
       unawaited(_syncMediaSession());
     });
+    _errorSubscription = player.stream.error.listen((message) {
+      final item = currentItem;
+      if (item == null) return;
+      unawaited(AppLogger.error(
+        'Native media playback failed',
+        category: 'media',
+        component: 'audio_player',
+        error: message,
+        fields: {
+          'source': item.sourceLabel,
+          'title': item.title,
+          'codec': item.streamCodec ?? 'unknown',
+          'resolver': item.streamResolver ?? 'unknown',
+          'bitrate_bps': item.streamBitrateBps ?? 0,
+          'queue_index': _currentIndex,
+          'queue_length': _queue.length,
+        },
+      ));
+    });
     // Do not publish every decoder position/duration tick over the platform
     // channel. Android's media session extrapolates position from playback
     // state; syncing on track and play-state changes is sufficient.
@@ -76,6 +99,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
   StreamSubscription<Playlist>? _playlistSubscription;
   StreamSubscription<bool>? _playingSubscription;
   StreamSubscription<bool>? _completedSubscription;
+  StreamSubscription<String>? _errorSubscription;
   bool _nativeSessionStarted = false;
   Timer? _sleepTimer;
 
@@ -343,6 +367,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
     unawaited(_playlistSubscription?.cancel());
     unawaited(_playingSubscription?.cancel());
     unawaited(_completedSubscription?.cancel());
+    unawaited(_errorSubscription?.cancel());
     _mediaChannel.setMethodCallHandler(null);
     unawaited(player.dispose());
     super.dispose();
