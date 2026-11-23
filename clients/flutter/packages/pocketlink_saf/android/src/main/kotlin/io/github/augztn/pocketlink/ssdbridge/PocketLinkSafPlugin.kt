@@ -66,6 +66,16 @@ class PocketLinkSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
+            "discoverSearch" -> {
+                DiscoverBridge.search(
+                    call.argument<String>("query").orEmpty(),
+                    call.argument<Number>("limit")?.toInt() ?: 30,
+                    result
+                )
+            }
+            "discoverResolve" -> {
+                DiscoverBridge.resolve(call.argument<String>("videoId").orEmpty(), result)
+            }
             "getVideoBrightness" -> {
                 val current = activity
                 if (current == null) {

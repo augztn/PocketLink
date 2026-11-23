@@ -9,13 +9,16 @@ import '../../core/network/server_api.dart';
 import '../../core/storage/home_activity_store.dart';
 
 class MediaQueueItem {
-  const MediaQueueItem({required this.title, required this.path, this.volume, this.localPath, this.size});
+  const MediaQueueItem({required this.title, required this.path, this.volume, this.localPath, this.size, this.streamUrl, this.httpHeaders = const {}, this.artist});
 
   final String title;
   final String path;
   final String? volume;
   final String? localPath;
   final int? size;
+  final String? streamUrl;
+  final Map<String, String> httpHeaders;
+  final String? artist;
 }
 
 /// App-scoped owner for the native media engine.
@@ -30,7 +33,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
     _playlistSubscription = player.stream.playlist.listen((playlist) {
       _currentIndex = playlist.index.clamp(0, _queue.isEmpty ? 0 : _queue.length - 1).toInt();
       final current = currentItem;
-      if (current != null && current.localPath == null && _active && _music && _api != null) {
+      if (current != null && current.localPath == null && current.streamUrl == null && _active && _music && _api != null) {
         unawaited(HomeActivityStore.instance.recordTrack(serverUrl: _api!.baseUrl, title: current.title, path: current.path, volume: current.volume));
       }
       notifyListeners();
@@ -122,13 +125,17 @@ class PersistentAudioPlayer extends ChangeNotifier {
     notifyListeners();
 
     final tracks = _queue.map((item) => Media(
-      item.localPath ?? api.mediaStreamUrl(item.path, volume: item.volume),
-      httpHeaders: item.localPath == null ? api.mediaHeaders : const {},
-      extras: {'title': item.title},
+      item.localPath ?? item.streamUrl ?? api.mediaStreamUrl(item.path, volume: item.volume),
+      httpHeaders: item.localPath != null
+          ? const {}
+          : item.streamUrl != null
+              ? item.httpHeaders
+              : api.mediaHeaders,
+      extras: {'title': item.title, if (item.artist != null) 'artist': item.artist},
     )).toList(growable: false);
     await player.open(Playlist(tracks, index: _currentIndex));
     final current = currentItem;
-    if (current != null && current.localPath == null && _music) {
+    if (current != null && current.localPath == null && current.streamUrl == null && _music) {
       unawaited(HomeActivityStore.instance.recordTrack(serverUrl: api.baseUrl, title: current.title, path: current.path, volume: current.volume));
     }
     await _syncMediaSession(start: true);
@@ -138,9 +145,13 @@ class PersistentAudioPlayer extends ChangeNotifier {
   Future<void> enqueue(MediaQueueItem item, {bool playNext = false}) async {
     if (!_active || _api == null) return;
     final media = Media(
-      item.localPath ?? _api!.mediaStreamUrl(item.path, volume: item.volume),
-      httpHeaders: item.localPath == null ? _api!.mediaHeaders : const {},
-      extras: {'title': item.title},
+      item.localPath ?? item.streamUrl ?? _api!.mediaStreamUrl(item.path, volume: item.volume),
+      httpHeaders: item.localPath != null
+          ? const {}
+          : item.streamUrl != null
+              ? item.httpHeaders
+              : _api!.mediaHeaders,
+      extras: {'title': item.title, if (item.artist != null) 'artist': item.artist},
     );
     final oldLength = _queue.length;
     await player.add(media);
@@ -263,7 +274,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
     if (track == null) return;
     final args = <String, Object>{
       'title': track.title.replaceAll(RegExp(r'\.[^.]+$'), ''),
-      'artist': 'PocketLink music library',
+      'artist': track.artist ?? 'PocketLink music library',
       'playing': player.state.playing,
       'positionMs': player.state.position.inMilliseconds,
       'durationMs': player.state.duration.inMilliseconds,

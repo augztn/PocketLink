@@ -7,6 +7,7 @@ import '../files/file_manager_screen.dart';
 import '../files/documents_browser_screen.dart';
 import '../library/photo_gallery_screen.dart';
 import '../media/media_browser_screen.dart';
+import '../media/discover/discover_screen.dart';
 import '../media/media_library_catalog.dart';
 import '../search/search_screen.dart';
 import '../downloads/download_manager_service.dart';
@@ -349,6 +350,13 @@ class _ExploreGridState extends State<_ExploreGrid>
               type: MediaLibraryType.music,
               onHome: () => Navigator.of(context).maybePop(),
             )),
+          ),
+          card(
+            index: 7,
+            title: 'Discover', subtitle: 'YouTube Music and local lossless',
+            icon: Icons.explore_rounded, tint: const Color(0xFFDB79A8),
+            badge: 'NEW',
+            onTap: () => onOpen(DiscoverScreen(api: api)),
           ),
           card(
             index: 2,
