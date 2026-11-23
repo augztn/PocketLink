@@ -104,10 +104,13 @@ class NowPlayingSettingsScreen extends StatelessWidget {
             }).toList(growable: false)),
             const SizedBox(height: 20),
             const SettingsSectionHeader('Now Playing theme'),
-            SizedBox(
-              height: 132,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
+            SettingsGroupCard(
+              padding: const EdgeInsets.all(8),
+              children: [
+                SizedBox(
+                  height: 132,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
                 children: [
                   _NowPlayingThemeOption(
                     value: 'apple',
@@ -137,8 +140,9 @@ class NowPlayingSettingsScreen extends StatelessWidget {
                     selected: settings.nowPlayingTheme == 'gradient',
                     onTap: () => settings.setNowPlayingTheme('gradient'),
                   ),
-                ],
-              ),
+                  ],
+                ),
+              ],
             ),
             const SizedBox(height: 20),
             const SettingsSectionHeader('Mini-player and playback'),
