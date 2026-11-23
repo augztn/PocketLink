@@ -529,7 +529,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: PocketLinkAppBar(
-        feathered: true, showHome: false, automaticallyImplyLeading: false,
+        feathered: true, showHome: false, automaticallyImplyLeading: true,
         title: const Text('Discover'),
         actions: [PocketLinkAppBarAction(
           label: 'Refresh Discover', icon: Icons.refresh_rounded,
