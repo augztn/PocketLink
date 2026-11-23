@@ -1,6 +1,14 @@
 part of 'app_settings.dart';
 
 extension AppSettingsMedia on AppSettings {
+  Future<void> setShowDiscoverOnWelcome(bool value) async {
+    if (_showDiscoverOnWelcome == value) return;
+    _showDiscoverOnWelcome = value;
+    _notifySettingsChanged();
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(AppSettings._showDiscoverOnWelcomeKey, value);
+  }
+
   Future<void> setDiscoverOptions({
     bool? enabled,
     bool? localLossless,
