@@ -217,41 +217,31 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       }
     }
 
-    // Resolve the immediate neighbours first so both skip directions become
-    // available quickly, then fill the rest without blocking initial playback.
-    final neighbours = await Future.wait<MediaQueueItem?>([
-      if (selectedIndex > 0) resolveAt(selectedIndex - 1),
-      if (selectedIndex + 1 < tracks.length) resolveAt(selectedIndex + 1),
-    ]);
-    var neighbourOffset = 0;
-    if (selectedIndex > 0) {
-      final previous = neighbours[neighbourOffset++];
-      if (previous != null) {
-        await player.enqueue(previous, insertAtStart: true, expectedSession: session);
-      }
-    }
-    if (selectedIndex + 1 < tracks.length) {
-      final next = neighbours[neighbourOffset];
-      if (next != null) {
-        await player.enqueue(next, expectedSession: session);
-      }
+    // Resolve the immediate neighbours concurrently, then fill the rest
+    // in a deterministic order without blocking initial playback.
+    final order = DiscoverService.progressiveQueueOrder(tracks.length, selectedIndex);
+    final immediate = order.take(2).toList(growable: false);
+    final immediateItems = await Future.wait(immediate.map(resolveAt));
+    for (var offset = 0; offset < immediate.length; offset++) {
+      final item = immediateItems[offset];
+      if (item == null || session != player.queueSession) continue;
+      await player.enqueue(
+        item,
+        insertAtStart: immediate[offset] < selectedIndex,
+        expectedSession: session,
+      );
     }
     if (session != player.queueSession || !AppSettings.instance.discoverAutoQueue) return;
 
-    // Prepend earlier results from nearest to oldest; append later results in
-    // source order. Each insertion preserves the selected track's position.
-    for (var index = selectedIndex - 2; index >= 0; index--) {
+    for (final index in order.skip(immediate.length)) {
       if (session != player.queueSession) return;
       final item = await resolveAt(index);
       if (item != null) {
-        await player.enqueue(item, insertAtStart: true, expectedSession: session);
-      }
-    }
-    for (var index = selectedIndex + 2; index < tracks.length; index++) {
-      if (session != player.queueSession) return;
-      final item = await resolveAt(index);
-      if (item != null) {
-        await player.enqueue(item, expectedSession: session);
+        await player.enqueue(
+          item,
+          insertAtStart: index < selectedIndex,
+          expectedSession: session,
+        );
       }
     }
   }
