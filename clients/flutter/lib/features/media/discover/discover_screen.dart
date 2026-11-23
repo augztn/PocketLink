@@ -114,10 +114,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       // shelves. These are public charts/search feeds, not fabricated
       // personalized recommendations.
       final responses = await Future.wait<List<DiscoverTrack>>([
-        _service.home(limit: 24),
-        _service.search('popular Malayalam songs', limit: 18),
-        _service.search('popular Hindi songs', limit: 18),
-        _service.search('popular Tamil songs', limit: 18),
+        _service.home(limit: 24).catchError((Object _) => <DiscoverTrack>[]),
+        _service.search('popular Malayalam songs', limit: 18).catchError((Object _) => <DiscoverTrack>[]),
+        _service.search('popular Hindi songs', limit: 18).catchError((Object _) => <DiscoverTrack>[]),
+        _service.search('popular Tamil songs', limit: 18).catchError((Object _) => <DiscoverTrack>[]),
       ]);
       if (!mounted || generation != _requestGeneration) return;
       final shelves = <_DiscoverShelf>[
@@ -209,7 +209,14 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   }
 
   Future<void> _play(DiscoverTrack track) async {
-    final results = List<DiscoverTrack>.of(_tracks);
+    var sourceTracks = _tracks;
+    for (final shelf in _homeShelves) {
+      if (shelf.tracks.any((item) => item.videoId == track.videoId)) {
+        sourceTracks = shelf.tracks;
+        break;
+      }
+    }
+    final results = List<DiscoverTrack>.of(sourceTracks);
     final selectedIndex = results.indexWhere((item) => item.videoId == track.videoId);
     final queueTracks = selectedIndex < 0 ? <DiscoverTrack>[track] : results;
     final startIndex = selectedIndex < 0 ? 0 : selectedIndex;
