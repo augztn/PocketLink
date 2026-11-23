@@ -301,8 +301,9 @@ internal object DiscoverBridge {
         if (initializedCountry == country) return
         synchronized(initLock) {
             if (initializedCountry == country) return
-            NewPipe.init(
-                object : Downloader() {
+            if (initializedCountry == null) {
+                NewPipe.init(
+                    object : Downloader() {
                     @Throws(IOException::class, ReCaptchaException::class)
                     override fun execute(request: Request): Response {
                         val method = request.httpMethod()
@@ -336,9 +337,15 @@ internal object DiscoverBridge {
                         }
                     }
                 },
-                Localization("en", country),
-                ContentCountry(country)
-            )
+                    Localization("en", country),
+                    ContentCountry(country)
+                )
+            } else {
+                NewPipe.setupLocalization(
+                    Localization("en", country),
+                    ContentCountry(country)
+                )
+            }
             initializedCountry = country
         }
     }
