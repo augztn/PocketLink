@@ -225,7 +225,7 @@ class AppSettings extends ChangeNotifier {
       _showMiniPlayer = preferences.getBool(_nowPlayingMiniPlayerKey) ?? true;
       _enableNowPlayingGestures = preferences.getBool(_nowPlayingGesturesKey) ?? true;
       _showStatsForNerds = preferences.getBool(_nowPlayingStatsForNerdsKey) ?? true;
-      _nowPlayingTheme = const {'apple', 'blur', 'blurCard', 'gradient'}
+      _nowPlayingTheme = const {'apple', 'blur', 'blurCard', 'gradient', 'aether'}
           .contains(preferences.getString(_nowPlayingThemeKey))
           ? preferences.getString(_nowPlayingThemeKey)!
           : 'apple';
