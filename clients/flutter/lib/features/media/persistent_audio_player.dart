@@ -162,13 +162,13 @@ class PersistentAudioPlayer extends ChangeNotifier {
     bool insertAtStart = false,
     int? expectedSession,
   }) async {
+    final requestedSession = expectedSession ?? _queueSession;
     await _serializeQueueMutation(() async {
-      if (!_active || _api == null ||
-          (expectedSession != null && expectedSession != _queueSession)) {
+      if (!_active || _api == null || requestedSession != _queueSession) {
         return;
       }
       final api = _api!;
-      final session = _queueSession;
+      final session = requestedSession;
       final media = Media(
         item.localPath ?? item.streamUrl ?? api.mediaStreamUrl(item.path, volume: item.volume),
         httpHeaders: item.localPath != null
