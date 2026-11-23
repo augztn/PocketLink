@@ -608,12 +608,12 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
         builder: (context, animatedChild) {
           final t = animation.value.clamp(0.0, 1.0).toDouble();
           final rect = Rect.lerp(origin, destination, t)!;
-          final radiusValue = t < 0.5
-              ? 24 * (t * 2)
-              : 24 * (1 - (t - 0.5) * 2);
-          final radius = BorderRadius.circular(
-            radiusValue + (isDragging ? 4 * (1 - t) : 0),
-          );
+          const miniPlayerRadius = 31.0;
+          final radius = BorderRadius.lerp(
+            BorderRadius.zero,
+            BorderRadius.circular(miniPlayerRadius),
+            1.0 - t,
+          )!;
           final glassIntensity =
               1.0 - (t * 2.5).clamp(0.0, 1.0).toDouble();
           final miniOpacity =
@@ -661,16 +661,27 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
                         Positioned.fill(
                           child: IgnorePointer(
                             ignoring: t < 0.35,
-                            child: animatedChild!,
+                            child: Opacity(
+                              opacity: const Interval(
+                                0.50,
+                                1.0,
+                                curve: Curves.easeOutCubic,
+                              ).transform(t),
+                              child: animatedChild!,
+                            ),
                           ),
                         ),
                         Positioned.fromRect(
                           rect: rect,
                           child: IgnorePointer(
-                            child: SmokedGlassSurface(
-                              radius: radius,
-                              intensity: glassIntensity,
-                              child: const SizedBox.expand(),
+                            child: ClipRRect(
+                              borderRadius: radius,
+                              clipBehavior: Clip.antiAlias,
+                              child: SmokedGlassSurface(
+                                radius: radius,
+                                intensity: glassIntensity,
+                                child: const SizedBox.expand(),
+                              ),
                             ),
                           ),
                         ),
