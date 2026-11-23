@@ -2,6 +2,9 @@ import 'dart:ui' as ui;
 
 import 'package:material_ui/material_ui.dart';
 
+final Future<ui.FragmentProgram> _progressiveBlurProgram =
+    ui.FragmentProgram.fromAsset('shaders/progressive_blur.frag');
+
 import '../settings/app_settings.dart';
 import 'pocketlink_scaffold.dart';
 
@@ -91,35 +94,10 @@ class _FeatheredGlassHeaderBackgroundState
                 fit: StackFit.expand,
                 children: [
                   if (useBlur) ...[
-                    _blurBand(
-                      top: 0,
-                      bottom: 0.35,
+                    _buildProgressiveBlur(
                       height: headerHeight,
-                      sigma: 18 * blurScale,
-                    ),
-                    _blurBand(
-                      top: 0.35,
-                      bottom: 0.55,
-                      height: headerHeight,
-                      sigma: 12 * blurScale,
-                    ),
-                    _blurBand(
-                      top: 0.55,
-                      bottom: 0.72,
-                      height: headerHeight,
-                      sigma: 7 * blurScale,
-                    ),
-                    _blurBand(
-                      top: 0.72,
-                      bottom: 0.86,
-                      height: headerHeight,
-                      sigma: 3.5 * blurScale,
-                    ),
-                    _blurBand(
-                      top: 0.86,
-                      bottom: 1,
-                      height: headerHeight,
-                      sigma: 1.2 * blurScale,
+                      blurScale: blurScale,
+                      devicePixelRatio: media.devicePixelRatio,
                     ),
                     IgnorePointer(
                       child: DecoratedBox(
@@ -181,6 +159,107 @@ class _FeatheredGlassHeaderBackgroundState
           ),
           child: const ColoredBox(color: Colors.transparent),
         ),
+      ),
+    );
+  }
+  Widget _buildProgressiveBlur({
+    required double height,
+    required double blurScale,
+    required double devicePixelRatio,
+  }) {
+    final fallback = _buildSteppedBlur(height: height, blurScale: blurScale);
+    if (!ui.ImageFilter.isShaderFilterSupported) return fallback;
+
+    return FutureBuilder<ui.FragmentProgram>(
+      future: _progressiveBlurProgram,
+      builder: (context, snapshot) {
+        final program = snapshot.data;
+        if (program == null) return fallback;
+        return _ProgressiveShaderBackdropFilter(
+          program: program,
+          maxSigma: 18 * blurScale * devicePixelRatio,
+          minSigma: 1.2 * blurScale * devicePixelRatio,
+        );
+      },
+    );
+  }
+
+  Widget _buildSteppedBlur({
+    required double height,
+    required double blurScale,
+  }) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        _blurBand(top: 0, bottom: 0.35, height: height, sigma: 18 * blurScale),
+        _blurBand(top: 0.35, bottom: 0.55, height: height, sigma: 12 * blurScale),
+        _blurBand(top: 0.55, bottom: 0.72, height: height, sigma: 7 * blurScale),
+        _blurBand(top: 0.72, bottom: 0.86, height: height, sigma: 3.5 * blurScale),
+        _blurBand(top: 0.86, bottom: 1, height: height, sigma: 1.2 * blurScale),
+      ],
+    );
+  }
+
+}
+
+
+/// Single-pass variable-radius backdrop blur for Impeller-capable renderers.
+/// The stepped implementation remains the compatibility path on other backends.
+class _ProgressiveShaderBackdropFilter extends StatefulWidget {
+  const _ProgressiveShaderBackdropFilter({
+    required this.program,
+    required this.maxSigma,
+    required this.minSigma,
+  });
+
+  final ui.FragmentProgram program;
+  final double maxSigma;
+  final double minSigma;
+
+  @override
+  State<_ProgressiveShaderBackdropFilter> createState() =>
+      _ProgressiveShaderBackdropFilterState();
+}
+
+class _ProgressiveShaderBackdropFilterState
+    extends State<_ProgressiveShaderBackdropFilter> {
+  late final ui.FragmentShader _shader;
+  late final ui.ImageFilter _filter;
+
+  @override
+  void initState() {
+    super.initState();
+    _shader = widget.program.fragmentShader();
+    _updateUniforms();
+    _filter = ui.ImageFilter.shader(_shader);
+  }
+
+  @override
+  void didUpdateWidget(covariant _ProgressiveShaderBackdropFilter oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.maxSigma != widget.maxSigma ||
+        oldWidget.minSigma != widget.minSigma) {
+      _updateUniforms();
+    }
+  }
+
+  void _updateUniforms() {
+    _shader.setFloat(2, widget.maxSigma);
+    _shader.setFloat(3, widget.minSigma);
+  }
+
+  @override
+  void dispose() {
+    _shader.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRect(
+      child: BackdropFilter(
+        filter: _filter,
+        child: const ColoredBox(color: Colors.transparent),
       ),
     );
   }
