@@ -70,6 +70,36 @@ class NativeDiagnosticsTest {
     }
 
     @Test
+    fun preservesApiRoutesAndOperationalFieldsWhileRedactingPrivatePaths() {
+        val directory = Files.createTempDirectory("pocketlink-native-route-privacy").toFile()
+        try {
+            val log = File(directory, "native.log")
+            NativeDiagnostics.initializeForTesting(log)
+            NativeDiagnostics.record(
+                level = "INFO",
+                category = "network",
+                component = "server_api",
+                message = "Request completed",
+                fields = mapOf(
+                    "path" to "/api/files/",
+                    "hostMode" to "tailscale",
+                    "serverStatus" to "online",
+                    "filePath" to "/sdcard/private.txt",
+                    "username" to "admin"
+                )
+            )
+            val fields = JSONObject(log.readLines().single()).getJSONObject("fields")
+            assertEquals("/api/files/", fields.getString("path"))
+            assertEquals("tailscale", fields.getString("hostMode"))
+            assertEquals("online", fields.getString("serverStatus"))
+            assertEquals("[REDACTED_PATH]", fields.getString("filePath"))
+            assertEquals("[REDACTED]", fields.getString("username"))
+        } finally {
+            directory.deleteRecursively()
+        }
+    }
+
+    @Test
     fun rotatesNativeJournalWithoutExceedingBackupLimit() {
         val directory = Files.createTempDirectory("pocketlink-native-rotation").toFile()
         try {
