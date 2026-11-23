@@ -205,7 +205,16 @@ String _diagnosticQueryKey(RequestOptions options) {
     return hash.toRadixString(16).padLeft(8, '0');
   }
 
-Future<T> _sharedRead<T>(
+String _stableDiagnosticHash(String value) {
+    var hash = 0x811c9dc5;
+    for (final unit in value.codeUnits) {
+      hash ^= unit;
+      hash = (hash * 0x01000193) & 0xffffffff;
+    }
+    return hash.toRadixString(16).padLeft(8, '0');
+  }
+
+  Future<T> _sharedRead<T>(
     String resourceKey,
     Future<T> Function() load,
   ) {
