@@ -20,6 +20,12 @@ void main() {
       builder: (_) => const SizedBox.shrink(),
     );
     observer.didPush(clientRoute, discoverRoute);
-    expect(observer.isStandaloneDiscoverVisible, isFalse);
+    expect(observer.isStandaloneDiscoverFlow, isTrue);
+
+    observer.didPop(clientRoute, discoverRoute);
+    expect(observer.isStandaloneDiscoverFlow, isTrue);
+
+    observer.didPop(discoverRoute, null);
+    expect(observer.isStandaloneDiscoverFlow, isFalse);
   });
 }
