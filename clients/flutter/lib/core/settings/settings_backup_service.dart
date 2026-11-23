@@ -44,7 +44,6 @@ class SettingsBackupService {
   };
 
   static const _numberKeys = <String>{
-    'settings_progressive_blur_strength',
     'settings_video_controls_timeout',
     'settings_video_default_speed',
     'settings_video_subtitle_font_size',
@@ -73,7 +72,6 @@ class SettingsBackupService {
     if (_booleanKeys.contains(key)) return value is bool;
     if (key == 'settings_download_concurrency') return value is int && const {1, 2, 3, 5}.contains(value);
     if (key == 'settings_video_seek_seconds') return value is int && const {5, 10, 15, 30}.contains(value);
-    if (key == 'settings_progressive_blur_strength') return value is num && value.isFinite && value >= 0 && value <= 100;
     if (key == 'settings_video_controls_timeout') return value is num && const [0.0, 2.0, 3.0, 3.5, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0].contains(value);
 
     if (key == 'settings_video_subtitle_font_size') return value is double && value >= 14 && value <= 32;
