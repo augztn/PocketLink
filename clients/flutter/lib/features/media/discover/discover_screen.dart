@@ -1089,7 +1089,7 @@ class _MoodsAndMomentsScreenState extends State<_MoodsAndMomentsScreen> {
               padding: EdgeInsets.fromLTRB(20, MediaQuery.paddingOf(context).top + kToolbarHeight + 12, 20, 18),
               child: TextField(
                 controller: _query,
-                autofocus: true,
+                autofocus: false,
                 textInputAction: TextInputAction.search,
                 onSubmitted: (_) => _submitSearch(),
                 decoration: InputDecoration(
