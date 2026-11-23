@@ -339,6 +339,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
                     curve: Curves.easeOutCubic,
                     child: _GlobalMiniPlayerBar(
                       visible: true,
+                      hasFloatingNavBar: onDashboard,
                       reduceMotion: reduceMotion,
                       player: player,
                       onOpen: _openNowPlaying,
@@ -714,6 +715,7 @@ class _AnimatedTrackDirection extends StatelessWidget {
 class _GlobalMiniPlayerBar extends StatelessWidget {
   const _GlobalMiniPlayerBar({
     required this.visible,
+    required this.hasFloatingNavBar,
     required this.reduceMotion,
     required this.player,
     required this.onOpen,
@@ -721,6 +723,7 @@ class _GlobalMiniPlayerBar extends StatelessWidget {
   });
 
   final bool visible;
+  final bool hasFloatingNavBar;
   final bool reduceMotion;
   final PersistentAudioPlayer player;
   final VoidCallback onOpen;
@@ -755,6 +758,7 @@ class _GlobalMiniPlayerBar extends StatelessWidget {
             onSkipPrevious: player.skipToPrevious,
             onSkipNext: player.skipToNext,
             surfaceKey: PocketLinkNavigation.miniPlayerKey,
+            hasFloatingNavBar: hasFloatingNavBar,
           ),
         ),
       ),
