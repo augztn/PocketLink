@@ -611,10 +611,25 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   }
 
   void _showStatsForNerds() {
+    final playerTheme = AppSettings.instance.nowPlayingTheme;
+    final palette = _trackPalette;
+    final surfaceColor = switch (playerTheme) {
+      'blur' => const Color(0xFF201C2B),
+      'blurCard' => const Color(0xFF25202F),
+      'gradient' => const Color(0xFF171923),
+      'aether' => Color.alphaBlend(
+          palette[1].withValues(alpha: 0.34),
+          const Color(0xFF17151F),
+        ),
+      _ => const Color(0xFF1C1C1E),
+    };
+    final accentColor = playerTheme == 'aether'
+        ? palette[0]
+        : Theme.of(context).colorScheme.primary;
     showModalBottomSheet<void>(
       context: context,
       useRootNavigator: true,
-      backgroundColor: const Color(0xFF1C1C1E),
+      backgroundColor: surfaceColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -630,7 +645,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                   width: 36,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.white24,
+                    color: accentColor.withValues(alpha: 0.42),
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
@@ -638,7 +653,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
               const SizedBox(height: 18),
               const Row(
                 children: [
-                  Icon(Icons.query_stats_rounded, color: Color(0xFFD8C9FF)),
+                  Icon(Icons.query_stats_rounded, color: accentColor),
                   SizedBox(width: 10),
                   Text(
                     'Stats for nerds',
@@ -1192,7 +1207,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   Widget _themeBackground(String theme) {
     final palette = _trackPalette;
     final hasArtwork = _artwork != null && _artworkKey == _trackKey;
-    if (theme == 'blur' || theme == 'blurCard') {
+    if (theme == 'blur' || theme == 'blurCard' || theme == 'aether') {
       return Stack(
         fit: StackFit.expand,
         children: [
@@ -1318,6 +1333,31 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
               child: SizedBox(
                 width: 210,
                 height: 210,
+                child: _artworkCard(),
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 4,
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
+              child: _playerDetails(glassCard: true),
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (theme == 'aether') {
+      return Column(
+        children: [
+          _header(),
+          Expanded(
+            flex: 5,
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
                 child: _artworkCard(),
               ),
             ),
