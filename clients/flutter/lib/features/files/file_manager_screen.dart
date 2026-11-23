@@ -878,7 +878,7 @@ tooltip: 'Choose storage location',
                 Widget emptyList(String message, {Widget? action}) => ListView(
                   controller: _scrollController,
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: EdgeInsets.fromLTRB(16, topInset + 12, 16, LayoutInsetsScope.of(context).bottomClearance),
+                  padding: EdgeInsets.fromLTRB(16, topInset, 16, LayoutInsetsScope.of(context).bottomClearance),
                   children: [
                     SizedBox(
                       height: 150,
@@ -909,7 +909,7 @@ tooltip: 'Choose storage location',
                                 ? GridView.builder(
                                     controller: _scrollController,
                                     physics: const AlwaysScrollableScrollPhysics(),
-                                    padding: EdgeInsets.fromLTRB(16, topInset + 12, 16, LayoutInsetsScope.of(context).bottomClearance),
+                                    padding: EdgeInsets.fromLTRB(16, topInset, 16, LayoutInsetsScope.of(context).bottomClearance),
                                     gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                                       maxCrossAxisExtent: 190,
                                       mainAxisExtent: 156,
@@ -975,7 +975,7 @@ tooltip: 'Choose storage location',
                                 : ListView.separated(
                                     controller: _scrollController,
                                     physics: const AlwaysScrollableScrollPhysics(),
-                                    padding: EdgeInsets.fromLTRB(16, topInset + 12, 16, LayoutInsetsScope.of(context).bottomClearance),
+                                    padding: EdgeInsets.fromLTRB(16, topInset, 16, LayoutInsetsScope.of(context).bottomClearance),
                                     itemCount: items.length,
                                     separatorBuilder: (_, __) => const SizedBox(height: 8),
                                     itemBuilder: (context, index) => fileTile(items[index]),
