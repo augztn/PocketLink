@@ -70,10 +70,8 @@ class _FeatheredGlassHeaderBackgroundState
         final theme = Theme.of(context);
         final isDark = theme.brightness == Brightness.dark;
         final settings = AppSettings.instance;
-        final blurScale = settings.progressiveBlurStrength / 55;
-        final useBlur = settings.progressiveBlurEnabled &&
-            settings.progressiveBlurStrength > 0 &&
-            _isScrolled;
+        const blurScale = 1.0;
+        final useBlur = settings.progressiveBlurEnabled && _isScrolled;
         final headerHeight =
             media.padding.top + widget.contentHeight + pocketLinkHeaderFadeTailHeight;
         final scrimBase = theme.scaffoldBackgroundColor;
@@ -410,9 +408,8 @@ class GlassCircleButton extends StatelessWidget {
       animation: settings,
       builder: (context, _) {
         final useBlur = settings.progressiveBlurEnabled &&
-            settings.progressiveBlurStrength > 0 &&
             !MediaQuery.of(context).disableAnimations;
-        final blurScale = settings.progressiveBlurStrength / 55;
+        const blurScale = 1.0;
         return RepaintBoundary(
           child: ClipOval(
             child: useBlur
