@@ -33,6 +33,9 @@ class LiquidGlassSurface extends StatelessWidget {
         final useGlass = AppSettings.instance.useLiquidGlass;
         final useRefraction = useGlass && refractive;
         final glassIntensity = intensity.clamp(0.0, 1.0).toDouble();
+        if (glassIntensity == 0) {
+          return ClipRRect(borderRadius: radius, child: child);
+        }
         final isDark = Theme.of(context).brightness == Brightness.dark;
         final colors = Theme.of(context).colorScheme;
 
@@ -59,10 +62,14 @@ class LiquidGlassSurface extends StatelessWidget {
                 borderRadius: radius,
               )
             : BoxDecoration(
-                color: colors.surfaceContainerLow,
+                color: colors.surfaceContainerLow.withValues(
+                  alpha: glassIntensity,
+                ),
                 borderRadius: radius,
                 border: Border.all(
-                  color: colors.outlineVariant.withValues(alpha: 0.62),
+                  color: colors.outlineVariant.withValues(
+                    alpha: 0.62 * glassIntensity,
+                  ),
                   width: 1,
                 ),
               );
@@ -138,6 +145,9 @@ class SmokedGlassSurface extends StatelessWidget {
       builder: (context, _) {
         final enabled = AppSettings.instance.useLiquidGlass;
         final glassIntensity = intensity.clamp(0.0, 1.0).toDouble();
+        if (glassIntensity == 0) {
+          return ClipRRect(borderRadius: radius, child: child);
+        }
         final isLight = Theme.of(context).brightness == Brightness.light;
         final content = enabled
             ? Stack(
@@ -207,10 +217,16 @@ class SmokedGlassSurface extends StatelessWidget {
                   ? child
                   : DecoratedBox(
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surfaceContainerLow,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerLow
+                            .withValues(alpha: glassIntensity),
                         borderRadius: radius,
                         border: Border.all(
-                          color: Theme.of(context).colorScheme.outlineVariant,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .outlineVariant
+                              .withValues(alpha: glassIntensity),
                         ),
                       ),
                       child: child,
