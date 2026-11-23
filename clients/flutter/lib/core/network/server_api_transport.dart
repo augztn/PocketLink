@@ -150,7 +150,7 @@ class _ServerApiTransport {
             'requestId': requestId,
             'operation': '${options.method.toUpperCase()} ${options.uri.path}',
             'endpoint': options.uri.path,
-          'route': options.uri.path,
+            'route': options.uri.path,
             'method': options.method,
             'path': options.uri.path,
             'nextAttempt': attempts + 1,
@@ -245,15 +245,15 @@ String _stableDiagnosticHash(String value) {
     return request;
   }
 
-String _networkFailureHint(DioException error) => switch (error.type) {
-  DioExceptionType.connectionTimeout => 'host_or_network_route_unreachable',
-  DioExceptionType.connectionError => 'network_route_or_server_unavailable',
-  DioExceptionType.receiveTimeout => 'server_response_timeout',
-  DioExceptionType.sendTimeout => 'request_send_timeout',
-  _ => 'http_or_transport_error',
-};
+  String _networkFailureHint(DioException error) => switch (error.type) {
+        DioExceptionType.connectionTimeout => 'host_or_network_route_unreachable',
+        DioExceptionType.connectionError => 'network_route_or_server_unavailable',
+        DioExceptionType.receiveTimeout => 'server_response_timeout',
+        DioExceptionType.sendTimeout => 'request_send_timeout',
+        _ => 'http_or_transport_error',
+      };
 
-Duration _retryDelay(DioException error, int attempts) {
+  Duration _retryDelay(DioException error, int attempts) {
     final retryAfter = error.response?.headers.value('retry-after')?.trim();
     Duration? serverDelay;
     if (retryAfter != null && retryAfter.isNotEmpty) {

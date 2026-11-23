@@ -628,6 +628,8 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
           correlationId: _activeMediaScanCorrelationId,
           fields: {
             'state': finalStatus.state,
+            'scanRunId': finalStatus.scanRunId,
+            'scanTrigger': finalStatus.scanTrigger,
             'scanned': finalStatus.scanned,
             'skipped': finalStatus.skipped,
             'photoCount': finalStatus.photoCount,
@@ -693,6 +695,8 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
         fields: {
           'state': status.state,
           'isScanning': status.isScanning,
+          'scanRunId': status.scanRunId,
+          'scanTrigger': status.scanTrigger,
           'scanned': status.scanned,
           'skipped': status.skipped,
         },
