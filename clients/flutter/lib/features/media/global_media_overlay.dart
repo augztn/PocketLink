@@ -84,6 +84,10 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     super.dispose();
   }
 
+  void _publishSharedArtwork(Uint8List? bytes) {
+    if (mounted) _sharedArtwork.value = bytes;
+  }
+
   void _onPlayerChanged() {
     final current = _player.currentItem;
     final previous = _lastTrack;
@@ -197,6 +201,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
           sourceArtworkRect: _miniArtworkOriginRect,
           artworkBytes: _sharedArtwork,
           artworkTargetKey: PocketLinkNavigation.nowPlayingArtworkKey,
+          onArtworkChanged: _publishSharedArtwork,
           player: player,
           api: player.api,
           isDragging: isDragging,
@@ -537,6 +542,7 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
     required this.sourceArtworkRect,
     required this.artworkBytes,
     required this.artworkTargetKey,
+    required this.onArtworkChanged,
     required this.isDragging,
     required this.player,
     required this.api,
@@ -552,6 +558,7 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
   final Rect? sourceArtworkRect;
   final ValueNotifier<Uint8List?> artworkBytes;
   final GlobalKey artworkTargetKey;
+  final ValueChanged<Uint8List?> onArtworkChanged;
   final bool isDragging;
   final PersistentAudioPlayer player;
   final ServerApi? api;
@@ -581,7 +588,7 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
           morphAnimation: animation,
           useSharedArtwork: true,
           artworkTargetKey: artworkTargetKey,
-          onArtworkChanged: (bytes) => artworkBytes.value = bytes,
+          onArtworkChanged: onArtworkChanged,
           onDismiss: onDismiss,
           onDismissDragStart: onDragStart,
           onDismissDragUpdate: onDragUpdate,
