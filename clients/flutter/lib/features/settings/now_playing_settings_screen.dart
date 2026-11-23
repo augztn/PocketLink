@@ -28,99 +28,80 @@ class NowPlayingSettingsScreen extends StatelessWidget {
           padding: settingsListPadding(context),
           children: [
             const SettingsSectionHeader('Music dock button'),
-            SettingsGroupCard(children: [Column(
-                children: [
-                  const ListTile(
-                    leading: Icon(Icons.touch_app_rounded),
-                    title: Text('Tap'),
-                    subtitle: Text('Open the current Now Playing screen'),
+            SettingsGroupCard(children: [
+              const ListTile(
+                leading: Icon(Icons.touch_app_rounded),
+                title: Text('Tap'),
+                subtitle: Text('Open the current Now Playing screen'),
+              ),
+              SwitchListTile(
+                secondary: const Icon(Icons.swipe_rounded),
+                title: const Text('Swipe to change tracks'),
+                subtitle: const Text('Swipe left or right on the Music button'),
+                value: settings.musicButtonSwipeEnabled,
+                onChanged: (value) => settings.setMusicButtonOptions(
+                  swipeEnabled: value,
+                ),
+              ),
+              if (settings.musicButtonSwipeEnabled) ...[
+                _SwipeActionTile(
+                  title: 'Swipe left',
+                  value: settings.musicButtonSwipeLeftAction,
+                  onChanged: (value) => settings.setMusicButtonOptions(
+                    swipeLeftAction: value,
                   ),
-                  const Divider(height: 1),
-                  SwitchListTile(
-                    secondary: const Icon(Icons.swipe_rounded),
-                    title: const Text('Swipe to change tracks'),
-                    subtitle: const Text('Swipe left or right on the Music button'),
-                    value: settings.musicButtonSwipeEnabled,
-                    onChanged: (value) => settings.setMusicButtonOptions(
-                      swipeEnabled: value,
-                    ),
+                ),
+                _SwipeActionTile(
+                  title: 'Swipe right',
+                  value: settings.musicButtonSwipeRightAction,
+                  onChanged: (value) => settings.setMusicButtonOptions(
+                    swipeRightAction: value,
                   ),
-                  if (settings.musicButtonSwipeEnabled) ...[
-                    const Divider(height: 1),
-                    _SwipeActionTile(
-                      title: 'Swipe left',
-                      value: settings.musicButtonSwipeLeftAction,
-                      onChanged: (value) => settings.setMusicButtonOptions(
-                        swipeLeftAction: value,
-                      ),
-                    ),
-                    const Divider(height: 1),
-                    _SwipeActionTile(
-                      title: 'Swipe right',
-                      value: settings.musicButtonSwipeRightAction,
-                      onChanged: (value) => settings.setMusicButtonOptions(
-                        swipeRightAction: value,
-                      ),
-                    ),
-                  ],
-                  const Divider(height: 1),
-                  SwitchListTile(
-                    secondary: const Icon(Icons.touch_app_outlined),
-                    title: const Text('Hold for shortcuts'),
-                    subtitle: const Text('Long-press the Music button to show quick destinations'),
-                    value: settings.musicButtonLongPressEnabled,
-                    onChanged: (value) => settings.setMusicButtonOptions(
-                      longPressEnabled: value,
-                    ),
+                ),
+              ],
+              SwitchListTile(
+                secondary: const Icon(Icons.touch_app_outlined),
+                title: const Text('Hold for shortcuts'),
+                subtitle: const Text('Long-press the Music button to show quick destinations'),
+                value: settings.musicButtonLongPressEnabled,
+                onChanged: (value) => settings.setMusicButtonOptions(
+                  longPressEnabled: value,
+                ),
+              ),
+              SettingsTile(
+                leading: const Icon(Icons.grid_view_rounded),
+                title: 'Customize shortcut destinations',
+                subtitle: '${settings.musicButtonShortcuts.length} destinations · reorder and choose what appears',
+                trailing: const Icon(Icons.chevron_right_rounded),
+                enabled: settings.musicButtonLongPressEnabled,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const MusicShortcutCustomizationScreen(),
                   ),
-                  const Divider(height: 1),
-                  ListTile(
-                    leading: const Icon(Icons.grid_view_rounded),
-                    title: const Text('Customize shortcut destinations'),
-                    subtitle: Text(
-                      '${settings.musicButtonShortcuts.length} destinations · reorder and choose what appears',
-                    ),
-                    trailing: const Icon(Icons.chevron_right_rounded),
-                    enabled: settings.musicButtonLongPressEnabled,
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const MusicShortcutCustomizationScreen(),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ]),
             const SizedBox(height: 20),
             const SettingsSectionHeader('Now Playing scrubber'),
-            SettingsGroupCard(children: [Column(
-                children: NowPlayingScrubberStyle.values.map((style) {
-                  final selected = settings.nowPlayingScrubberStyle == style.key;
-                  return Column(
-                    children: [
-                      RadioListTile<String>(
-                        value: style.key,
-                        groupValue: settings.nowPlayingScrubberStyle,
-                        onChanged: (value) {
-                          if (value != null) {
-                            settings.setNowPlayingScrubberStyle(value);
-                          }
-                        },
-                        title: Text(style.label),
-                        subtitle: Padding(
-                          padding: const EdgeInsets.only(top: 7, right: 12),
-                          child: NowPlayingScrubberPreview(style: style),
-                        ),
-                        selected: selected,
-                        dense: false,
-                      ),
-                      if (style != NowPlayingScrubberStyle.values.last)
-                        const Divider(height: 1),
-                    ],
-                  );
-                }).toList(growable: false),
-              ),
-            ]),
+            SettingsGroupCard(children: NowPlayingScrubberStyle.values.map((style) {
+              final selected = settings.nowPlayingScrubberStyle == style.key;
+              return RadioListTile<String>(
+                value: style.key,
+                groupValue: settings.nowPlayingScrubberStyle,
+                onChanged: (value) {
+                  if (value != null) {
+                    settings.setNowPlayingScrubberStyle(value);
+                  }
+                },
+                title: Text(style.label),
+                subtitle: Padding(
+                  padding: const EdgeInsets.only(top: 7, right: 12),
+                  child: NowPlayingScrubberPreview(style: style),
+                ),
+                selected: selected,
+                dense: false,
+              );
+            }).toList(growable: false)),
             const SizedBox(height: 20),
             const SettingsSectionHeader('Now Playing theme'),
             SizedBox(
@@ -161,38 +142,33 @@ class NowPlayingSettingsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             const SettingsSectionHeader('Mini-player and playback'),
-            SettingsGroupCard(children: [Column(
-                children: [
-                  SwitchListTile(
-                    secondary: const Icon(Icons.picture_in_picture_alt_rounded),
-                    title: const Text('Mini-player'),
-                    subtitle: const Text('Show the compact player above the navigation dock while music is playing'),
-                    value: settings.showMiniPlayer,
-                    onChanged: (value) => settings.setNowPlayingOptions(
-                      miniPlayer: value,
-                    ),
-                  ),
-                  const Divider(height: 1),
-                  SwitchListTile(
-                    secondary: const Icon(Icons.swipe_rounded),
-                    title: const Text('Now Playing screen gestures'),
-                    subtitle: const Text('Swipe down to close; swipe left or right to change tracks'),
-                    value: settings.enableNowPlayingGestures,
-                    onChanged: (value) => settings.setNowPlayingOptions(
-                      gestures: value,
-                    ),
-                  ),
-                  const Divider(height: 1),
-                  SwitchListTile(
-                    secondary: const Icon(Icons.query_stats_rounded),
-                    title: const Text('Show stats for nerds'),
-                    subtitle: const Text('Show audio codec, bitrate and sample rate in the player menu'),
-                    value: settings.showStatsForNerds,
-                    onChanged: (value) => settings.setNowPlayingOptions(
-                      statsForNerds: value,
-                    ),
-                  ),
-                ],
+            SettingsGroupCard(children: [
+              SwitchListTile(
+                secondary: const Icon(Icons.picture_in_picture_alt_rounded),
+                title: const Text('Mini-player'),
+                subtitle: const Text('Show the compact player above the navigation dock while music is playing'),
+                value: settings.showMiniPlayer,
+                onChanged: (value) => settings.setNowPlayingOptions(
+                  miniPlayer: value,
+                ),
+              ),
+              SwitchListTile(
+                secondary: const Icon(Icons.swipe_rounded),
+                title: const Text('Now Playing screen gestures'),
+                subtitle: const Text('Swipe down to close; swipe left or right to change tracks'),
+                value: settings.enableNowPlayingGestures,
+                onChanged: (value) => settings.setNowPlayingOptions(
+                  gestures: value,
+                ),
+              ),
+              SwitchListTile(
+                secondary: const Icon(Icons.query_stats_rounded),
+                title: const Text('Show stats for nerds'),
+                subtitle: const Text('Show audio codec, bitrate and sample rate in the player menu'),
+                value: settings.showStatsForNerds,
+                onChanged: (value) => settings.setNowPlayingOptions(
+                  statsForNerds: value,
+                ),
               ),
             ]),
             const SizedBox(height: 12),
