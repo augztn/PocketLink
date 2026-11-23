@@ -47,12 +47,22 @@ class DiscoverResolvedStream {
     required this.mimeType,
     required this.userAgent,
     this.bitrateBps = 0,
+    this.resolver = '',
+    this.codec = '',
+    this.quality = 'best_available',
+    this.qualityFallbackReason = '',
+    this.audioOnly = true,
   });
 
   final String url;
   final String mimeType;
   final String userAgent;
   final int bitrateBps;
+  final String resolver;
+  final String codec;
+  final String quality;
+  final String qualityFallbackReason;
+  final bool audioOnly;
 
   factory DiscoverResolvedStream.fromJson(Map<String, dynamic> json) =>
       DiscoverResolvedStream(
@@ -60,5 +70,10 @@ class DiscoverResolvedStream {
         mimeType: json['mimeType']?.toString() ?? 'audio/webm',
         userAgent: json['userAgent']?.toString() ?? '',
         bitrateBps: (json['bitrateBps'] as num?)?.toInt() ?? 0,
+        resolver: json['resolver']?.toString() ?? '',
+        codec: json['codec']?.toString() ?? '',
+        quality: json['quality']?.toString() ?? 'best_available',
+        qualityFallbackReason: json['qualityFallbackReason']?.toString() ?? '',
+        audioOnly: json['audioOnly'] as bool? ?? true,
       );
 }
