@@ -60,8 +60,12 @@ internal class YouTubeMusicCatalog(
             JSONObject().put("browseId", "FEmusic_moods_and_genres"),
             regionCode
         )
+        return parseMoodAndGenres(response)
+    }
+
+    internal fun parseMoodAndGenres(root: JSONObject): List<Map<String, Any>> {
         val sections = mutableListOf<Map<String, Any>>()
-        collectMoodSections(response, sections)
+        collectMoodSections(root, sections)
         return sections
     }
 
