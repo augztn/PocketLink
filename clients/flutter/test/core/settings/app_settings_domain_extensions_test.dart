@@ -88,7 +88,7 @@ void main() {
     await settings.setDownloadOptions(concurrency: 3, wifiOnly: true, autoResume: false);
     await settings.setNowPlayingOptions(miniPlayer: false, gestures: false, statsForNerds: false);
     await settings.setNowPlayingScrubberStyle('waveform');
-    await settings.setNowPlayingTheme('gradient');
+    await settings.setNowPlayingTheme('aether');
     await settings.setVideoPlayerOptions(
       controlsTimeoutSeconds: 5,
       seekSeconds: 15,
@@ -111,7 +111,7 @@ void main() {
     expect(settings.enableNowPlayingGestures, isFalse);
     expect(settings.showStatsForNerds, isFalse);
     expect(settings.nowPlayingScrubberStyle, 'waveform');
-    expect(settings.nowPlayingTheme, 'gradient');
+    expect(settings.nowPlayingTheme, 'aether');
     expect(settings.videoControlsTimeoutSeconds, 5);
     expect(settings.videoSeekSeconds, 15);
     expect(settings.videoDefaultSpeed, 1.5);
