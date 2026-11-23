@@ -2,11 +2,11 @@ import 'dart:ui' as ui;
 
 import 'package:material_ui/material_ui.dart';
 
-final Future<ui.FragmentProgram> _progressiveBlurProgram =
-    ui.FragmentProgram.fromAsset('shaders/progressive_blur.frag');
-
 import '../settings/app_settings.dart';
 import 'pocketlink_scaffold.dart';
+
+final Future<ui.FragmentProgram> _progressiveBlurProgram =
+    ui.FragmentProgram.fromAsset('shaders/progressive_blur.frag');
 
 /// Shared progressive blur and legibility surface for edge-to-edge screens.
 class FeatheredGlassHeaderBackground extends StatefulWidget {
@@ -162,6 +162,7 @@ class _FeatheredGlassHeaderBackgroundState
       ),
     );
   }
+
   Widget _buildProgressiveBlur({
     required double height,
     required double blurScale,
@@ -199,9 +200,7 @@ class _FeatheredGlassHeaderBackgroundState
       ],
     );
   }
-
 }
-
 
 /// Single-pass variable-radius backdrop blur for Impeller-capable renderers.
 /// The stepped implementation remains the compatibility path on other backends.
