@@ -383,14 +383,19 @@ class _OptionalGlassBackdropFilter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!AppSettings.instance.useLiquidGlass) return child;
-    return BackdropFilter(
-      filter: ui.ImageFilter.blur(
-        sigmaX: 20,
-        sigmaY: 20,
-        tileMode: ui.TileMode.clamp,
-      ),
-      child: child,
+    return AnimatedBuilder(
+      animation: AppSettings.instance,
+      builder: (context, _) {
+        if (!AppSettings.instance.useLiquidGlass) return child;
+        return BackdropFilter(
+          filter: ui.ImageFilter.blur(
+            sigmaX: 20,
+            sigmaY: 20,
+            tileMode: ui.TileMode.clamp,
+          ),
+          child: child,
+        );
+      },
     );
   }
 }
