@@ -304,39 +304,39 @@ internal object DiscoverBridge {
             if (initializedCountry == null) {
                 NewPipe.init(
                     object : Downloader() {
-                    @Throws(IOException::class, ReCaptchaException::class)
-                    override fun execute(request: Request): Response {
-                        val method = request.httpMethod()
-                        val data = request.dataToSend()
-                        val body = when {
-                            data != null -> data.toRequestBody(null, 0, data.size)
-                            method.equals("POST", true) || method.equals("PUT", true) ->
-                                ByteArray(0).toRequestBody(null, 0, 0)
-                            else -> null
-                        }
-                        val builder = okhttp3.Request.Builder()
-                            .url(request.url())
-                            .method(method, body)
-                            .header("User-Agent", BROWSER_USER_AGENT)
-                            .header("Accept-Language", "en-US,en;q=0.9")
-                        request.headers().forEach { (key, values) ->
-                            builder.removeHeader(key)
-                            values.forEach { value -> builder.addHeader(key, value) }
-                        }
-                        httpClient.newCall(builder.build()).execute().use { response ->
-                            if (response.code == 429) {
-                                throw ReCaptchaException("YouTube rate limited the request.", request.url())
+                        @Throws(IOException::class, ReCaptchaException::class)
+                        override fun execute(request: Request): Response {
+                            val method = request.httpMethod()
+                            val data = request.dataToSend()
+                            val body = when {
+                                data != null -> data.toRequestBody(null, 0, data.size)
+                                method.equals("POST", true) || method.equals("PUT", true) ->
+                                    ByteArray(0).toRequestBody(null, 0, 0)
+                                else -> null
                             }
-                            return Response(
-                                response.code,
-                                response.message,
-                                response.headers.toMultimap(),
-                                response.body?.string().orEmpty(),
-                                response.request.url.toString()
-                            )
+                            val builder = okhttp3.Request.Builder()
+                                .url(request.url())
+                                .method(method, body)
+                                .header("User-Agent", BROWSER_USER_AGENT)
+                                .header("Accept-Language", "en-US,en;q=0.9")
+                            request.headers().forEach { (key, values) ->
+                                builder.removeHeader(key)
+                                values.forEach { value -> builder.addHeader(key, value) }
+                            }
+                            httpClient.newCall(builder.build()).execute().use { response ->
+                                if (response.code == 429) {
+                                    throw ReCaptchaException("YouTube rate limited the request.", request.url())
+                                }
+                                return Response(
+                                    response.code,
+                                    response.message,
+                                    response.headers.toMultimap(),
+                                    response.body?.string().orEmpty(),
+                                    response.request.url.toString()
+                                )
+                            }
                         }
-                    }
-                },
+                    },
                     Localization("en", country),
                     ContentCountry(country)
                 )
