@@ -73,6 +73,16 @@ class PocketLinkSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
                     result
                 )
             }
+            "discoverHome" -> {
+                DiscoverBridge.home(call.argument<Number>("limit")?.toInt() ?: 30, result)
+            }
+            "discoverRadio" -> {
+                DiscoverBridge.radio(
+                    call.argument<String>("videoId").orEmpty(),
+                    call.argument<Number>("limit")?.toInt() ?: 25,
+                    result
+                )
+            }
             "discoverResolve" -> {
                 DiscoverBridge.resolve(call.argument<String>("videoId").orEmpty(), result)
             }
