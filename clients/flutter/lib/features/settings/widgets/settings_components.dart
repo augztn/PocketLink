@@ -70,9 +70,9 @@ class SettingsGroupCard extends StatelessWidget {
             thickness: 1,
             space: 1,
           ),
-          child: Container(
-            decoration: BoxDecoration(
-              color: settingsGroupColor,
+          child: Material(
+            color: settingsGroupColor,
+            shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(18),
             ),
             clipBehavior: Clip.antiAlias,
