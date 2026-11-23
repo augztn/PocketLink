@@ -135,14 +135,24 @@ class AppLogger {
     return _writeQueue;
   }
 
+  static String _normalizeFieldKey(String key) => key.replaceAllMapped(
+        RegExp(r'[A-Z]'),
+        (match) => '_' + match.group(0)!.toLowerCase(),
+      ).toLowerCase();
+
+  static bool _isSensitiveKey(String key) => RegExp(
+        r'password|passwd|authorization|token|secret|api[_-]?key|username|user|login|cookie|host|hostname|address|server',
+        caseSensitive: false,
+      ).hasMatch(key);
+
+  static bool _isSensitivePathKey(String key) => RegExp(
+        r'(^|[_-])(path|filename|file_name|directory|folder|uri|document_uri)([_-]|$)',
+        caseSensitive: false,
+      ).hasMatch(_normalizeFieldKey(key));
   static Map<String, Object?> _sanitizeFields(Map<String, Object?> fields) {
     return fields.map((key, value) {
-      if (RegExp(r'password|passwd|authorization|token|secret|api[_-]?key|username|user|login|cookie|host|hostname|address|server', caseSensitive: false).hasMatch(key)) {
-        return MapEntry(key, '[REDACTED]');
-      }
-      if (RegExp(r'(^|[_-])(path|filename|file_name|directory|folder|uri|document_uri)([_-]|$)', caseSensitive: false).hasMatch(key)) {
-        return MapEntry(key, '[REDACTED_PATH]');
-      }
+      if (_isSensitiveKey(key)) return MapEntry(key, '[REDACTED]');
+      if (_isSensitivePathKey(key)) return MapEntry(key, '[REDACTED_PATH]');
       return MapEntry(key, _sanitizeValue(value));
     });
   }
@@ -153,12 +163,8 @@ class AppLogger {
     if (value is Map) {
       return value.map((key, nestedValue) {
         final name = key.toString();
-        if (RegExp(r'password|passwd|authorization|token|secret|api[_-]?key|username|user|login|cookie|host|hostname|address|server', caseSensitive: false).hasMatch(name)) {
-          return MapEntry(name, '[REDACTED]');
-        }
-        if (RegExp(r'(^|[_-])(path|filename|file_name|directory|folder|uri|document_uri)([_-]|$)', caseSensitive: false).hasMatch(name)) {
-          return MapEntry(name, '[REDACTED_PATH]');
-        }
+        if (_isSensitiveKey(name)) return MapEntry(name, '[REDACTED]');
+        if (_isSensitivePathKey(name)) return MapEntry(name, '[REDACTED_PATH]');
         return MapEntry(name, _sanitizeValue(nestedValue));
       });
     }
