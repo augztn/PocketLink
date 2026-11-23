@@ -184,6 +184,10 @@ class PersistentAudioPlayer extends ChangeNotifier {
   Future<void> _handlePlaybackError(String message) async {
     final item = currentItem;
     if (item == null) return;
+    // Stop the playlist's automatic advance while a failed Discover stream is retried.
+    if (item.streamUrl != null && item.lyricsVideoId != null) {
+      await player.pause();
+    }
     await AppLogger.error(
       'Native media playback failed',
       category: 'media',
