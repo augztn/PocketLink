@@ -138,11 +138,12 @@ void main() {
       ),
     );
 
-    Future<void> verifyStable(Object nextRoute) async {
+    Future<void> verifyStable(Object nextRoute, double expectedTop) async {
       route.value = nextRoute;
       await tester.pump();
       await tester.pump();
       final initialTop = tester.getTopLeft(find.byKey(firstRowKey)).dy;
+      expect(initialTop, expectedTop);
       for (var frame = 0; frame < 10; frame++) {
         await tester.pump(const Duration(milliseconds: 16));
         expect(
@@ -153,12 +154,10 @@ void main() {
       }
     }
 
-    await verifyStable(routeA);
-    await verifyStable(routeB);
-    await verifyStable(routeC);
-    await verifyStable(routeA);
-
-    expect(tester.getTopLeft(find.byKey(firstRowKey)).dy, 102);
+    await verifyStable(routeA, 90);
+    await verifyStable(routeB, 114);
+    await verifyStable(routeC, 102);
+    await verifyStable(routeA, 90);
     route.dispose();
   });
 }
