@@ -428,6 +428,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final topClearance = LayoutInsetsScope.of(context).topClearance;
 
     return Scaffold(
@@ -623,5 +624,4 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       ),
     );
   }
-}
 }
