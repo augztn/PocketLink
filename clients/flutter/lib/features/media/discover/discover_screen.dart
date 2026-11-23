@@ -6,7 +6,8 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../core/network/server_api.dart';
 import '../../../core/settings/app_settings.dart';
-import '../../../core/widgets/pocketlink_app_bar.dart';
+import '../../../core/widgets/feathered_glass_header.dart';
+import '../../../core/widgets/pocketlink_scaffold.dart';
 import '../data/media_library_repository.dart';
 import '../media_library_catalog.dart';
 import '../now_playing_overlay_controller.dart';
@@ -428,144 +429,231 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final top = MediaQuery.paddingOf(context).top;
+    final topClearance = LayoutInsetsScope.of(context).topClearance;
+    final foreground = theme.brightness == Brightness.dark
+        ? Colors.white
+        : const Color(0xFF172033);
+
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: PocketLinkAppBar(
-        feathered: true,
-        showHome: false,
-        title: const Text('Discover'),
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-              child: TextField(
-                controller: _searchController,
-                textInputAction: TextInputAction.search,
-                onSubmitted: _search,
-                decoration: InputDecoration(
-                  hintText: 'Search songs, artists and albums',
-                  prefixIcon: const Icon(Icons.search_rounded),
-                  suffixIcon: IconButton(
-                    tooltip: 'Search',
-                    onPressed: () => _search(_searchController.text),
-                    icon: const Icon(Icons.arrow_forward_rounded),
-                  ),
-                  filled: true,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(18),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(
-              height: 38,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Padding(
+              padding: EdgeInsets.only(top: topClearance),
+              child: Column(
                 children: [
-                  _quickSearchChip('India', 'top songs India'),
-                  _quickSearchChip('Malayalam', 'popular Malayalam songs'),
-                  _quickSearchChip('Hindi', 'top Hindi songs'),
-                  _quickSearchChip('Tamil', 'popular Tamil songs'),
-                  _quickSearchChip('English', 'top English songs'),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 10),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(_sectionTitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                    child: TextField(
+                      controller: _searchController,
+                      textInputAction: TextInputAction.search,
+                      onSubmitted: _search,
+                      decoration: InputDecoration(
+                        hintText: 'Search songs, artists and albums',
+                        prefixIcon: const Icon(Icons.search_rounded),
+                        suffixIcon: IconButton(
+                          tooltip: 'Search',
+                          onPressed: () => _search(_searchController.text),
+                          icon: const Icon(Icons.arrow_forward_rounded),
+                        ),
+                        filled: true,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(18),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
                   ),
-                  if (_loadingLibrary)
-                    const Padding(
-                      padding: EdgeInsets.only(left: 8),
-                      child: SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
+                  SizedBox(
+                    height: 38,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      children: [
+                        _quickSearchChip('India', 'top songs India'),
+                        _quickSearchChip('Malayalam', 'popular Malayalam songs'),
+                        _quickSearchChip('Hindi', 'top Hindi songs'),
+                        _quickSearchChip('Tamil', 'popular Tamil songs'),
+                        _quickSearchChip('English', 'top English songs'),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 10),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _sectionTitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        if (_loadingLibrary)
+                          const Padding(
+                            padding: EdgeInsets.only(left: 8),
+                            child: SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (_loading && _tracks.isEmpty)
+                    const Expanded(
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  else if (_error != null && _tracks.isEmpty)
+                    Expanded(
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Text(_error!, textAlign: TextAlign.center),
+                        ),
+                      ),
+                    )
+                  else
+                    Expanded(
+                      child: RefreshIndicator(
+                        onRefresh: () => _searchController.text.isEmpty
+                            ? _loadHome()
+                            : _search(_searchController.text),
+                        child: ListView.separated(
+                          padding: EdgeInsets.fromLTRB(
+                            12,
+                            0,
+                            12,
+                            LayoutInsetsScope.of(context).bottomClearance,
+                          ),
+                          itemCount: _tracks.length,
+                          separatorBuilder: (_, __) =>
+                              const Divider(height: 1, indent: 68),
+                          itemBuilder: (context, index) {
+                            final track = _tracks[index];
+                            final local = AppSettings.instance.discoverLocalLossless
+                                ? DiscoverService.findLocalLosslessMatch(
+                                    track,
+                                    _localLibrary,
+                                  )
+                                : null;
+                            return ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              leading: ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: !AppSettings.instance.discoverArtwork ||
+                                        track.thumbnailUrl.isEmpty
+                                    ? Container(
+                                        width: 52,
+                                        height: 52,
+                                        color: theme.colorScheme.surfaceContainerHighest,
+                                        child: const Icon(Icons.music_note_rounded),
+                                      )
+                                    : Image.network(
+                                        track.thumbnailUrl,
+                                        width: 52,
+                                        height: 52,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => Container(
+                                          width: 52,
+                                          height: 52,
+                                          color: theme.colorScheme.surfaceContainerHighest,
+                                          child: const Icon(Icons.music_note_rounded),
+                                        ),
+                                      ),
+                              ),
+                              title: Text(
+                                track.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              subtitle: Text(
+                                '${track.artist}${track.durationText.isEmpty ? '' : ' · ${track.durationText}'}${local == null ? '' : ' · ${local.name.split('.').last.toUpperCase()} LOSSLESS'}',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              trailing: PopupMenuButton<String>(
+                                tooltip: 'Track options',
+                                onSelected: (value) {
+                                  if (value == 'lyrics') {
+                                    _showLyrics(track, local: local);
+                                  }
+                                  if (value == 'play') _play(track);
+                                  if (value == 'radio') _loadRadio(track);
+                                },
+                                itemBuilder: (_) => [
+                                  const PopupMenuItem(
+                                    value: 'play',
+                                    child: Text('Play'),
+                                  ),
+                                  const PopupMenuItem(
+                                    value: 'radio',
+                                    child: Text('Start radio'),
+                                  ),
+                                  if (AppSettings.instance.discoverLyrics)
+                                    const PopupMenuItem(
+                                      value: 'lyrics',
+                                      child: Text('Lyrics'),
+                                    ),
+                                ],
+                              ),
+                              onTap: () => _play(track),
+                            );
+                          },
+                        ),
+                      ),
                     ),
                 ],
               ),
             ),
-            if (_loading && _tracks.isEmpty)
-              const Expanded(child: Center(child: CircularProgressIndicator()))
-            else if (_error != null && _tracks.isEmpty)
-              Expanded(child: Center(child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(_error!, textAlign: TextAlign.center),
-              )))
-            else
-              Expanded(
-                child: RefreshIndicator(
-                  onRefresh: () => _searchController.text.isEmpty
-                      ? _loadHome()
-                      : _search(_searchController.text),
-                  child: ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 24),
-                    itemCount: _tracks.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1, indent: 68),
-                    itemBuilder: (context, index) {
-                      final track = _tracks[index];
-                      final local = AppSettings.instance.discoverLocalLossless
-                          ? DiscoverService.findLocalLosslessMatch(track, _localLibrary)
-                          : null;
-                      return ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        leading: ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: !AppSettings.instance.discoverArtwork || track.thumbnailUrl.isEmpty
-                              ? Container(
-                                  width: 52,
-                                  height: 52,
-                                  color: theme.colorScheme.surfaceContainerHighest,
-                                  child: const Icon(Icons.music_note_rounded),
-                                )
-                              : Image.network(
-                                  track.thumbnailUrl,
-                                  width: 52,
-                                  height: 52,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Container(
-                                    width: 52,
-                                    height: 52,
-                                    color: theme.colorScheme.surfaceContainerHighest,
-                                    child: const Icon(Icons.music_note_rounded),
-                                  ),
-                                ),
-                        ),
-                        title: Text(track.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-                        subtitle: Text(
-                          '${track.artist}${track.durationText.isEmpty ? '' : ' · ${track.durationText}'}${local == null ? '' : ' · ${local.name.split('.').last.toUpperCase()} LOSSLESS'}',
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        trailing: PopupMenuButton<String>(
-                          tooltip: 'Track options',
-                          onSelected: (value) {
-                            if (value == 'lyrics') _showLyrics(track, local: local);
-                            if (value == 'play') _play(track);
-                            if (value == 'radio') _loadRadio(track);
-                          },
-                          itemBuilder: (_) => [
-                            const PopupMenuItem(value: 'play', child: Text('Play')),
-                            const PopupMenuItem(value: 'radio', child: Text('Start radio')),
-                            if (AppSettings.instance.discoverLyrics)
-                              const PopupMenuItem(value: 'lyrics', child: Text('Lyrics')),
-                          ],
-                        ),
-                        onTap: () => _play(track),
-                      );
-                    },
-                  ),
+          ),
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: top + 88,
+            child: const IgnorePointer(
+              child: FeatheredGlassHeaderBackground(
+                contentHeight: 44,
+                darkTint: [
+                  Color(0xD9000000),
+                  Color(0x66000000),
+                  Colors.transparent,
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            top: top + 10,
+            left: 16,
+            right: 16,
+            height: 44,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Discover',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: foreground,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.5,
+                  height: 1.0,
                 ),
               ),
-          ],
-        ),
+            ),
+          ),
+        ],
       ),
     );
   }
