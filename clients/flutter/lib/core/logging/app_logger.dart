@@ -356,7 +356,12 @@ class AppLogger {
       current.clear();
     }
 
-    for (final line in await source.readAsLines()) {
+    var sourceText = await source.readAsString();
+    if (!sourceText.endsWith('\n')) {
+      final lastCompleteLine = sourceText.lastIndexOf('\n');
+      sourceText = lastCompleteLine < 0 ? '' : sourceText.substring(0, lastCompleteLine + 1);
+    }
+    for (final line in sourceText.split('\n')) {
       if (RegExp(r'^\d{4}-\d{2}-\d{2}T').hasMatch(line)) {
         finishEvent();
         includeEvent = line.contains('"session_id":"' + (_sessionId ?? 'uninitialized') + '"') ||
@@ -387,10 +392,16 @@ class AppLogger {
 
   static List<int> _latestCompleteDiagnosticLines(String content, int maxBytes) {
     final lines = content.split('\n');
+    if (!content.endsWith('\n')) lines.removeLast();
     final retained = <List<int>>[];
     var remaining = maxBytes;
     for (final line in lines.reversed) {
       if (line.isEmpty) continue;
+      try {
+        if (jsonDecode(line) is! Map) continue;
+      } on FormatException {
+        continue;
+      }
       final bytes = utf8.encode(_redact(line) + '\n');
       if (bytes.length > remaining) break;
       retained.add(bytes);
