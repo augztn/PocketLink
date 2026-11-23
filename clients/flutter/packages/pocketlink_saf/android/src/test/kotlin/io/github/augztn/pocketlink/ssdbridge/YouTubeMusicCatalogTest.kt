@@ -21,6 +21,39 @@ class YouTubeMusicCatalogTest {
         assertEquals("IN", context.optString("gl"))
     }
 
+
+    @Test
+    fun parsesDynamicMoodAndGenreSections() {
+        val json = JSONObject(
+            """
+            {
+              "contents": {"sectionListRenderer": {"contents": [
+                {"gridRenderer": {
+                  "header": {"gridHeaderRenderer": {"title": {"runs": [{"text": "Moods & moments"}]}}},
+                  "items": [
+                    {"musicNavigationButtonRenderer": {
+                      "buttonText": {"runs": [{"text": "Chill"}]},
+                      "solid": {"leftStripeColor": 4281545523},
+                      "clickCommand": {"browseEndpoint": {"browseId": "FEmusic_mood_chill", "params": "test-params"}}
+                    }}
+                  ]
+                }}
+              ]}}
+            }
+            """.trimIndent()
+        )
+
+        val sections = catalog.parseMoodAndGenres(json)
+        assertEquals(1, sections.size)
+        assertEquals("Moods & moments", sections.single()["title"])
+        @Suppress("UNCHECKED_CAST")
+        val item = (sections.single()["items"] as List<Map<String, Any>>).single()
+        assertEquals("Chill", item["title"])
+        assertEquals("FEmusic_mood_chill", item["browseId"])
+        assertEquals("test-params", item["params"])
+        assertEquals(4281545523L, item["stripeColor"])
+    }
+
     @Test
     fun parsesMusicResponsiveListItemsAndMetadata() {
         val json = JSONObject(
