@@ -333,6 +333,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       artworkUrl: track.thumbnailUrl,
       lyricsVideoId: track.videoId,
       durationText: track.durationText,
+      streamCodec: stream.codec,
+      streamResolver: stream.resolver,
+      streamBitrateBps: stream.bitrateBps,
       httpHeaders: {
         'User-Agent': stream.userAgent,
         'Accept': '*/*',
