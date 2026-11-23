@@ -59,7 +59,7 @@ class YouTubeMusicCatalogTest {
     }
 
     @Test
-    fun upgradesGoogleArtworkSizeWithoutChangingOtherCdnParameters() {
+    fun selectsLargestArtworkAndUpgradesItsResolution() {
         val json = JSONObject(
             """
             {
@@ -68,6 +68,7 @@ class YouTubeMusicCatalogTest {
                   "videoId": "abcdefghijk",
                   "title": {"simpleText": "Artwork test"},
                   "thumbnail": {"thumbnails": [
+                    {"url": "https://lh3.googleusercontent.com/art=w144-h144-l90-rj", "width": 144, "height": 144},
                     {"url": "https://lh3.googleusercontent.com/art=w544-h544-l90-rj", "width": 544, "height": 544}
                   ]}
                 }
