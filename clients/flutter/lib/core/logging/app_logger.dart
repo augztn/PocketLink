@@ -361,7 +361,8 @@ class AppLogger {
       final lastCompleteLine = sourceText.lastIndexOf('\n');
       sourceText = lastCompleteLine < 0 ? '' : sourceText.substring(0, lastCompleteLine + 1);
     }
-    for (final line in sourceText.split('\n')) {
+    final sourceLines = sourceText.split('\n')..removeLast();
+    for (final line in sourceLines) {
       if (RegExp(r'^\d{4}-\d{2}-\d{2}T').hasMatch(line)) {
         finishEvent();
         includeEvent = line.contains('"session_id":"' + (_sessionId ?? 'uninitialized') + '"') ||
