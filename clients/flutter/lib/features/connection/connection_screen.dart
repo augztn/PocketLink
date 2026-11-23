@@ -14,6 +14,7 @@ import '../diagnostics/diagnostics_screen.dart';
 import '../media/discover/discover_screen.dart';
 import '../home/home_screen.dart';
 import '../storage/local_storage_setup_screen.dart';
+import '../settings/settings_screen.dart';
 
 class ConnectionScreen extends StatefulWidget {
   const ConnectionScreen({super.key});
@@ -434,6 +435,15 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
         title: const Text('PocketLink'),
         showHome: false,
         actions: [
+          PocketLinkAppBarAction(
+            label: 'Settings',
+            icon: Icons.settings_outlined,
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const SettingsScreen(),
+              ),
+            ),
+          ),
           PocketLinkAppBarAction(
             label: 'Show Discover: ${AppSettings.instance.showDiscoverOnWelcome ? 'On' : 'Off'}',
             icon: AppSettings.instance.showDiscoverOnWelcome
