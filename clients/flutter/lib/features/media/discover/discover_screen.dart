@@ -15,6 +15,12 @@ import '../persistent_audio_player.dart';
 import 'discover_models.dart';
 import 'discover_service.dart';
 
+class _DiscoverShelf {
+  const _DiscoverShelf(this.title, this.tracks);
+  final String title;
+  final List<DiscoverTrack> tracks;
+}
+
 class DiscoverScreen extends StatefulWidget {
   const DiscoverScreen({this.api, this.embedded = false, super.key});
 
@@ -29,6 +35,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   final DiscoverService _service = DiscoverService();
   final TextEditingController _searchController = TextEditingController();
   List<DiscoverTrack> _tracks = const [];
+  List<_DiscoverShelf> _homeShelves = const [];
   List<IndexedFile> _localLibrary = const [];
   bool _loading = false;
   bool _loadingLibrary = false;
@@ -103,14 +110,38 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       _sectionTitle = 'Top charts in $_regionName';
     });
     try {
-      final results = await _service.home();
+      // Build a real discovery landing feed from independent editorial
+      // shelves. These are public charts/search feeds, not fabricated
+      // personalized recommendations.
+      final responses = await Future.wait<List<DiscoverTrack>>([
+        _service.home(limit: 24),
+        _service.search('popular Malayalam songs', limit: 18),
+        _service.search('popular Hindi songs', limit: 18),
+        _service.search('popular Tamil songs', limit: 18),
+      ]);
       if (!mounted || generation != _requestGeneration) return;
-      if (results.isEmpty) {
-        await _search('top songs $_regionName');
-        return;
+      final shelves = <_DiscoverShelf>[
+        if (responses[0].isNotEmpty)
+          _DiscoverShelf('Trending in $_regionName', responses[0]),
+        if (responses[1].isNotEmpty)
+          _DiscoverShelf('Malayalam hits', responses[1]),
+        if (responses[2].isNotEmpty)
+          _DiscoverShelf('Hindi hits', responses[2]),
+        if (responses[3].isNotEmpty)
+          _DiscoverShelf('Tamil hits', responses[3]),
+      ];
+      if (shelves.isEmpty) {
+        final fallback = await _service.search('top songs $_regionName');
+        if (!mounted || generation != _requestGeneration) return;
+        if (fallback.isEmpty) {
+          setState(() => _error = 'No music recommendations are available right now.');
+          return;
+        }
+        shelves.add(_DiscoverShelf('Popular in $_regionName', fallback));
       }
       setState(() {
-        _tracks = results;
+        _homeShelves = shelves;
+        _tracks = shelves.first.tracks;
         _error = null;
       });
     } on PlatformException catch (error) {
@@ -131,6 +162,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       _loading = true;
       _error = null;
       _sectionTitle = query.trim();
+      _homeShelves = const [];
     });
     try {
       final results = await _service.search(query);
@@ -156,6 +188,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       _loading = true;
       _error = null;
       _sectionTitle = 'Radio · ${track.title}';
+      _homeShelves = const [];
     });
     try {
       final results = await _service.radio(track);
@@ -494,6 +527,56 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     ));
   }
 
+  Widget _homeShelf(_DiscoverShelf shelf) {
+    final theme = Theme.of(context);
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.only(top: 22),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      shelf.title,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.35,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _tracks = shelf.tracks;
+                        _sectionTitle = shelf.title;
+                        _homeShelves = const [];
+                      });
+                    },
+                    child: const Text('See all'),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(
+              height: 214,
+              child: ListView.separated(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                scrollDirection: Axis.horizontal,
+                itemCount: shelf.tracks.length.clamp(0, 12),
+                separatorBuilder: (_, __) => const SizedBox(width: 14),
+                itemBuilder: (context, index) => _feedCard(shelf.tracks[index]),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _feedRow(DiscoverTrack track) {
     final local = AppSettings.instance.discoverLocalLossless
         ? DiscoverService.findLocalLosslessMatch(track, _localLibrary) : null;
@@ -588,71 +671,125 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               )))
             else if (hasTracks) ...[
               if (_loading) const SliverToBoxAdapter(child: LinearProgressIndicator(minHeight: 2)),
-              SliverToBoxAdapter(child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
-                child: Row(children: [
-                  Expanded(child: Text(_sectionTitle, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800))),
-                  if (_loadingLibrary) const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
-                ]),
-              )),
-              if (_tracks.length > 1)
-                SliverToBoxAdapter(child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 14),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(22),
-                    onTap: () => _play(_tracks.first),
-                    child: SizedBox(height: 204, child: ClipRRect(
-                      borderRadius: BorderRadius.circular(22),
-                      child: Stack(fit: StackFit.expand, children: [
-                        _art(_tracks.first, size: double.infinity),
-                        DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(
-                          begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                          colors: [Colors.black.withValues(alpha: .02), Colors.black.withValues(alpha: .88)],
-                        ))),
-                        Positioned(left: 18, right: 64, bottom: 18, child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            const Text('FEATURED TRACK', style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1.2)),
-                            const SizedBox(height: 6),
-                            Text(_tracks.first.title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.titleLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w900)),
-                            const SizedBox(height: 3),
-                            Text(_tracks.first.artist, maxLines: 1, overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white70)),
-                          ],
-                        )),
-                        Positioned(right: 16, bottom: 16, child: Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                          child: Icon(Icons.play_arrow_rounded, color: theme.colorScheme.onSurface, size: 25),
-                        )),
-                      ]),
-                    )),
+              if (_homeShelves.isNotEmpty) ...[
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                    child: Text(
+                      'Made for exploring',
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.6,
+                      ),
+                    ),
                   ),
-                )),
-              if (_tracks.length > 1) SliverToBoxAdapter(child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
-                child: Text('Explore more', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
-              )),
-              if (_tracks.length > 1) SliverToBoxAdapter(child: SizedBox(
-                height: 214,
-                child: ListView.separated(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  scrollDirection: Axis.horizontal,
-                  itemCount: (_tracks.length - 1).clamp(0, 8),
-                  separatorBuilder: (_, __) => const SizedBox(width: 14),
-                  itemBuilder: (context, index) => _feedCard(_tracks[index + 1]),
                 ),
-              )),
-              if (_tracks.length > 9) SliverToBoxAdapter(child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 22, 20, 8),
-                child: Text('More tracks', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
-              )),
-              if (_tracks.length > 9) SliverList(delegate: SliverChildBuilderDelegate(
-                (context, index) => _feedRow(_tracks[index + 9]),
-                childCount: _tracks.length - 9,
-              )),
-              if (_tracks.length == 1) SliverToBoxAdapter(child: _feedRow(_tracks.first)),
+                if (_homeShelves.first.tracks.isNotEmpty)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(22),
+                        onTap: () => _play(_homeShelves.first.tracks.first),
+                        child: SizedBox(
+                          height: 204,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(22),
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                _art(_homeShelves.first.tracks.first, size: double.infinity),
+                                DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [
+                                        Colors.black.withValues(alpha: .02),
+                                        Colors.black.withValues(alpha: .88),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  left: 18,
+                                  right: 64,
+                                  bottom: 18,
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _homeShelves.first.title.toUpperCase(),
+                                        style: const TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: 1.2,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        _homeShelves.first.tracks.first.title,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: theme.textTheme.titleLarge?.copyWith(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        _homeShelves.first.tracks.first.artist,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white70),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Positioned(
+                                  right: 16,
+                                  bottom: 16,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.white,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      Icons.play_arrow_rounded,
+                                      color: theme.colorScheme.onSurface,
+                                      size: 25,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                for (final shelf in _homeShelves) _homeShelf(shelf),
+              ] else ...[
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
+                    child: Text(
+                      _sectionTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ),
+                SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) => _feedRow(_tracks[index]),
+                    childCount: _tracks.length,
+                  ),
+                ),
+              ],
             ],
             SliverToBoxAdapter(child: SizedBox(height: bottom + 16)),
           ],
