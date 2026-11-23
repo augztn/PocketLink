@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter/physics.dart';
+import 'package:flutter/foundation.dart' show ValueListenable;
 
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/scheduler.dart' show TickerCanceled;
@@ -11,6 +12,7 @@ import '../../core/navigation/pocketlink_navigation.dart';
 import '../../core/network/server_api.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
+import '../../core/widgets/liquid_glass_pill.dart';
 import 'global_mini_player_bar.dart';
 import 'now_playing_screen.dart';
 import 'persistent_audio_player.dart';
@@ -247,7 +249,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
       _nowPlayingController.value = target;
       return;
     }
-    const spring = SpringDescription.withDampingRatio(
+    final spring = SpringDescription.withDampingRatio(
       mass: 1,
       stiffness: 520,
       ratio: 0.90,
@@ -323,7 +325,11 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   }
 
   void _updateNowPlayingDrag(double delta) {
-    if (!_nowPlayingOpen || MediaQuery.of(context).disableAnimations) return;
+    if (!_nowPlayingOpen) return;
+    if (MediaQuery.of(context).disableAnimations) {
+      _nowPlayingController.value = delta > 0 ? 0 : 1;
+      return;
+    }
     final height = MediaQuery.sizeOf(context).height;
     _nowPlayingController.value =
         PocketLinkNavigation.updateMorphProgress(
@@ -704,6 +710,7 @@ class _SharedMorphArtwork extends StatelessWidget {
               ? Image.network(
                   artworkUrl!,
                   fit: BoxFit.cover,
+                  gaplessPlayback: true,
                   errorBuilder: (_, __, ___) => fallback(),
                 )
               : fallback(),

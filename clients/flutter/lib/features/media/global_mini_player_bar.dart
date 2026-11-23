@@ -143,6 +143,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
                                       ? Image.network(
                                           item.artworkUrl!,
                                           fit: BoxFit.cover,
+                                          gaplessPlayback: true,
                                           errorBuilder: (_, __, ___) => Icon(
                                             Icons.graphic_eq_rounded,
                                             color: colors.primary,
