@@ -111,22 +111,31 @@ internal class YouTubeMusicCatalog(
         collectRenderers(root, renderers)
         val unique = LinkedHashMap<String, Map<String, Any>>()
         for (renderer in renderers) {
+            val watchEndpoint = renderer.optJSONObject("navigationEndpoint")?.optJSONObject("watchEndpoint")
             val videoId = renderer.optJSONObject("playlistItemData")?.optString("videoId")
                 ?.takeIf { VIDEO_ID.matches(it) }
+                ?: watchEndpoint?.optString("videoId")?.takeIf { VIDEO_ID.matches(it) }
                 ?: renderer.optString("videoId").takeIf { VIDEO_ID.matches(it) }
                 ?: continue
-            val columns = renderer.optJSONArray("flexColumns") ?: continue
-            val title = columnText(columns.optJSONObject(0)).ifBlank {
+            val columns = renderer.optJSONArray("flexColumns")
+            val title = if (columns != null && columns.length() > 0) {
+                columnText(columns.optJSONObject(0))
+            } else ""
+            val resolvedTitle = title.ifBlank {
                 renderer.optJSONObject("title")?.let(::textValue).orEmpty()
             }
-            if (title.isBlank()) continue
-            val artist = if (columns.length() > 1) columnText(columns.optJSONObject(1)) else ""
-            val duration = if (columns.length() > 2) columnText(columns.optJSONObject(2)) else ""
+            if (resolvedTitle.isBlank()) continue
+            val artist = if (columns != null && columns.length() > 1) {
+                columnText(columns.optJSONObject(1))
+            } else {
+                renderer.optJSONObject("subtitle")?.let(::textValue).orEmpty()
+            }
+            val duration = if (columns != null && columns.length() > 2) columnText(columns.optJSONObject(2)) else ""
             val thumbnail = findThumbnail(renderer)
                 ?: "https://i.ytimg.com/vi/$videoId/hqdefault.jpg"
             unique.putIfAbsent(videoId, mapOf(
                 "videoId" to videoId,
-                "title" to title,
+                "title" to resolvedTitle,
                 "artist" to artist.ifBlank { "YouTube Music" },
                 "durationText" to duration,
                 "thumbnailUrl" to thumbnail
@@ -140,6 +149,7 @@ internal class YouTubeMusicCatalog(
         when (value) {
             is JSONObject -> {
                 val renderer = value.optJSONObject("musicResponsiveListItemRenderer")
+                    ?: value.optJSONObject("musicTwoRowItemRenderer")
                 if (renderer != null) output.add(renderer)
                 val keys = value.keys()
                 while (keys.hasNext()) collectRenderers(value.opt(keys.next()), output)
