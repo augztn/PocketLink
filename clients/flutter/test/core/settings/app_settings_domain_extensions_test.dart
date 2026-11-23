@@ -11,6 +11,32 @@ void main() {
     await AppSettings.instance.reloadPreferences();
   });
 
+  test('Discover preferences persist and reload', () async {
+    final settings = AppSettings.instance;
+    await settings.setDiscoverOptions(
+      enabled: false,
+      localLossless: false,
+      lyrics: false,
+      autoQueue: false,
+      artwork: false,
+    );
+
+    final preferences = await SharedPreferences.getInstance();
+    expect(settings.discoverEnabled, isFalse);
+    expect(settings.discoverLocalLossless, isFalse);
+    expect(settings.discoverLyrics, isFalse);
+    expect(settings.discoverAutoQueue, isFalse);
+    expect(settings.discoverArtwork, isFalse);
+    expect(preferences.getBool('settings_discover_enabled'), isFalse);
+
+    await settings.reloadPreferences();
+    expect(settings.discoverEnabled, isFalse);
+    expect(settings.discoverLocalLossless, isFalse);
+    expect(settings.discoverLyrics, isFalse);
+    expect(settings.discoverAutoQueue, isFalse);
+    expect(settings.discoverArtwork, isFalse);
+  });
+
   test('appearance settings persist and validate through the facade', () async {
     final settings = AppSettings.instance;
 
