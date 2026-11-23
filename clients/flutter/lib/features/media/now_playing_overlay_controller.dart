@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/animation.dart';
+
 /// App-level entry point for opening the active music player without pushing a route.
 abstract final class NowPlayingOverlayController {
   static Future<void> Function()? _openHandler;
