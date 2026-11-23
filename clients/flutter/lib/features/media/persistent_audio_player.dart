@@ -119,13 +119,16 @@ class PersistentAudioPlayer extends ChangeNotifier {
   bool get showMiniPlayer => false;
 
   Future<void> openQueue({
-    required ServerApi api,
+    ServerApi? api,
     required List<MediaQueueItem> queue,
     required int initialIndex,
     required bool isMusic,
   }) async {
     if (queue.isEmpty) return;
     final session = ++_queueSession;
+    if (api == null && queue.any((item) => item.streamUrl == null && item.localPath == null)) {
+      throw StateError('A server connection is required for server-hosted media.');
+    }
     _api = api;
     _queue = List.unmodifiable(queue);
     _currentIndex = initialIndex.clamp(0, _queue.length - 1).toInt();
@@ -135,12 +138,12 @@ class PersistentAudioPlayer extends ChangeNotifier {
     notifyListeners();
 
     final tracks = _queue.map((item) => Media(
-      item.localPath ?? item.streamUrl ?? api.mediaStreamUrl(item.path, volume: item.volume),
+      item.localPath ?? item.streamUrl ?? api!.mediaStreamUrl(item.path, volume: item.volume),
       httpHeaders: item.localPath != null
           ? const {}
           : item.streamUrl != null
               ? item.httpHeaders
-              : api.mediaHeaders,
+              : api!.mediaHeaders,
       extras: {'title': item.title, if (item.artist != null) 'artist': item.artist},
     )).toList(growable: false);
     await _serializeQueueMutation(() async {
@@ -164,18 +167,19 @@ class PersistentAudioPlayer extends ChangeNotifier {
   }) async {
     final requestedSession = expectedSession ?? _queueSession;
     await _serializeQueueMutation(() async {
-      if (!_active || _api == null || requestedSession != _queueSession) {
+      if (!_active || requestedSession != _queueSession ||
+          (item.localPath == null && item.streamUrl == null && _api == null)) {
         return;
       }
-      final api = _api!;
+      final api = _api;
       final session = requestedSession;
       final media = Media(
-        item.localPath ?? item.streamUrl ?? api.mediaStreamUrl(item.path, volume: item.volume),
+        item.localPath ?? item.streamUrl ?? api!.mediaStreamUrl(item.path, volume: item.volume),
         httpHeaders: item.localPath != null
             ? const {}
             : item.streamUrl != null
                 ? item.httpHeaders
-                : api.mediaHeaders,
+                : api!.mediaHeaders,
         extras: {'title': item.title, if (item.artist != null) 'artist': item.artist},
       );
       final oldLength = _queue.length;
