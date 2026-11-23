@@ -11,6 +11,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/settings/settings_backup_service.dart';
+import 'widgets/settings_components.dart';
 import 'navigation_customization_screen.dart';
 import 'now_playing_settings_screen.dart';
 import 'video_player_settings_screen.dart';
@@ -225,38 +226,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _section(String title, List<Widget> children) => Padding(
-    padding: const EdgeInsets.only(bottom: 18),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
-          child: Text(title.toUpperCase(), style: Theme.of(context).textTheme.labelMedium?.copyWith(
-            color: Theme.of(context).colorScheme.primary,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1,
-          )),
-        ),
-        Card(
-          margin: EdgeInsets.zero,
-          clipBehavior: Clip.antiAlias,
-          child: Column(children: children),
-        ),
-      ],
-    ),
-  );
-
-  Widget _settingsGroupTitle(String title) => Padding(
-        padding: const EdgeInsets.fromLTRB(4, 18, 4, 9),
-        child: Text(
-          title.toUpperCase(),
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: Theme.of(context).colorScheme.primary,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.1,
-              ),
+        padding: const EdgeInsets.only(bottom: 18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SettingsSectionHeader(title),
+            SettingsGroupCard(children: children),
+          ],
         ),
       );
+
+  Widget _settingsGroupTitle(String title) => SettingsSectionHeader(title);
+
+  String _pageTitle(String? category) => switch (category) {
+        'Appearance' => 'Appearance',
+        'Dashboard & Shortcuts' => 'Dashboard',
+        'Connection & Diagnostics' => 'Diagnostics',
+        'Music / Now Playing Button' => 'Music & Player',
+        'Customize Navigation Bar' => 'Navigation',
+        _ => category ?? 'Settings',
+      };
 
   // Diagnostic isolation: Settings category routes temporarily bypass the
   // app-wide custom PageTransitionsTheme. If the pop hesitation disappears,
@@ -285,11 +274,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onOpenSavedServers: widget.onOpenSavedServers,
             category: switch (id) {
               'appearance' => 'Appearance',
-              'dashboard' => 'Dashboard & Shortcuts',
+              'dashboard' => 'Dashboard',
               'media' => 'Media & Storage',
               'discover' => 'Discover',
               'backup' => 'Backup & Restore',
-              _ => 'Connection & Diagnostics',
+              _ => 'Diagnostics',
             },
           ),
         ),
@@ -407,7 +396,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (context, _) => Scaffold(
         extendBodyBehindAppBar: true,
         appBar: PocketLinkAppBar(
-          title: Text(widget.category ?? 'Settings'),
+          title: Text(_pageTitle(widget.category), style: const TextStyle(fontSize: 20)),
           actions: [
             PocketLinkAppBarAction(
               label: 'Return to Home',
@@ -421,14 +410,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         body: Builder(
           builder: (bodyContext) {
-            final bottomClearance =
-                LayoutInsetsScope.of(bodyContext).bottomClearance;
+            final layoutInsets = LayoutInsetsScope.of(bodyContext);
+            final bottomClearance = settingsListBottomPadding(
+              bodyContext,
+              miniPlayerVisible: layoutInsets.hasActiveMiniPlayer,
+            );
+            final topClearance = layoutInsets.topClearance + 6;
             return Stack(
               children: [
                 ListView(
           padding: EdgeInsets.fromLTRB(
             16,
-            LayoutInsetsScope.of(bodyContext).topClearance,
+            topClearance,
             16,
             bottomClearance,
           ),
