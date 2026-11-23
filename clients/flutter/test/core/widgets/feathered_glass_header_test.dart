@@ -13,8 +13,8 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  test('progressive blur is disabled by default', () {
-    expect(AppSettings.instance.progressiveBlurEnabled, isFalse);
+  test('progressive blur is enabled by default', () {
+    expect(AppSettings.instance.progressiveBlurEnabled, isTrue);
   });
 
   test('progressive blur strength defaults to 55 percent', () {
@@ -119,7 +119,7 @@ void main() {
       ),
     );
 
-    expect(find.byType(BackdropFilter), findsNWidgets(2));
+    expect(find.byType(BackdropFilter), findsNWidgets(5));
   });
 
   testWidgets('progressive blur remains active when reduced motion is enabled', (tester) async {
