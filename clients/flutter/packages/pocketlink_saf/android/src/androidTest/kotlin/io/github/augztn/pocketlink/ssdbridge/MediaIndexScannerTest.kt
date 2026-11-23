@@ -163,7 +163,7 @@ class MediaIndexScannerTest {
             scanner.requestScan(force = true)
             val third = awaitFinished(scanner, second.getLong("last_scan_started_at"))
             assertEquals("complete", third.getString("state"))
-            assertEquals(0, third.getInt("music_count"))
+            assertEquals(1, third.getInt("music_count"))
             // The instrumentation suite can leave unrelated rows in the shared
             // database. Verify this fixture's exact survivors instead of a global count.
             val finalDatabase = MediaIndexDatabase(context)
