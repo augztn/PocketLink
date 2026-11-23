@@ -64,14 +64,16 @@ class GlobalMiniPlayerBar extends StatelessWidget {
     final secondaryForeground =
         isLight ? const Color(0xFF475569) : colors.onSurfaceVariant;
 
+    final safeInsets = MediaQuery.paddingOf(context);
+
     return Align(
       alignment: Alignment.centerLeft,
       child: Padding(
-        // Match the Home / Explore / Files capsule and leave Music outside it.
+        // Match the full 3+1 dock width, including the circular Music button.
         padding: EdgeInsets.fromLTRB(
-          hasFloatingNavBar ? 14 : 16,
+          safeInsets.left + 16.0,
           4,
-          hasFloatingNavBar ? 88 : 16,
+          safeInsets.right + 16.0,
           0,
         ),
         child: SmokedGlassSurface(
@@ -205,17 +207,18 @@ class GlobalMiniPlayerBar extends StatelessWidget {
                           ],
                         ),
                       ),
-                      ClipRRect(
-                        borderRadius: const BorderRadius.vertical(
-                          bottom: Radius.circular(22),
-                        ),
-                        child: LinearProgressIndicator(
-                          value: _progress,
-                          minHeight: 2.5,
-                          backgroundColor:
-                              colors.onSurface.withValues(alpha: 0.07),
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            colors.primary.withValues(alpha: 0.92),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(19, 0, 19, 3),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(2),
+                          child: LinearProgressIndicator(
+                            value: _progress,
+                            minHeight: 2.5,
+                            backgroundColor:
+                                colors.onSurface.withValues(alpha: 0.07),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              colors.primary.withValues(alpha: 0.92),
+                            ),
                           ),
                         ),
                       ),

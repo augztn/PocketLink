@@ -54,12 +54,6 @@ class LiquidGlassSurface extends StatelessWidget {
                         ],
                 ),
                 borderRadius: radius,
-                border: Border.all(
-                  color: isDark
-                      ? Colors.white.withValues(alpha: 0.22)
-                      : const Color(0xFF94A3B8).withValues(alpha: 0.30),
-                  width: 1,
-                ),
               )
             : BoxDecoration(
                 color: colors.surfaceContainerLow,
@@ -101,7 +95,7 @@ class LiquidGlassSurface extends StatelessWidget {
               : themedSurface,
         );
 
-        return useRefraction
+        return useGlass
             ? CustomPaint(
                 foregroundPainter: _RefractiveGlassRimPainter(radius: radius),
                 child: clippedSurface,
@@ -133,9 +127,6 @@ class SmokedGlassSurface extends StatelessWidget {
       builder: (context, _) {
         final enabled = AppSettings.instance.useLiquidGlass;
         final isLight = Theme.of(context).brightness == Brightness.light;
-        final borderColor = isLight
-            ? const Color(0x1A0F172A)
-            : Colors.white.withValues(alpha: 0.14);
         final content = enabled
             ? Stack(
                 fit: StackFit.passthrough,
@@ -186,7 +177,6 @@ class SmokedGlassSurface extends StatelessWidget {
                               ? Colors.white.withValues(alpha: 0.78)
                               : const Color(0xFF1C1E24).withValues(alpha: 0.68),
                       borderRadius: radius,
-                      border: Border.all(color: borderColor, width: 1),
                       boxShadow: isLight
                           ? const [
                               BoxShadow(
@@ -211,7 +201,7 @@ class SmokedGlassSurface extends StatelessWidget {
                   child: child,
                 ),
         );
-        return enabled && refractive
+        return enabled
             ? CustomPaint(
                 foregroundPainter: _RefractiveGlassRimPainter(radius: radius),
                 child: surface,
@@ -238,11 +228,11 @@ class _RefractiveGlassRimPainter extends CustomPainter {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          Color(0x73FFFFFF),
-          Color(0x16FFFFFF),
-          Color(0x52FFFFFF),
+          Colors.white.withValues(alpha: 0.28),
+          Colors.white.withValues(alpha: 0.10),
+          Colors.white.withValues(alpha: 0.05),
         ],
-        stops: [0, 0.52, 1],
+        stops: [0, 0.48, 1],
       ).createShader(rect);
     canvas.drawRRect(rrect, paint);
   }

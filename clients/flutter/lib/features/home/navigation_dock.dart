@@ -404,47 +404,37 @@ class _DockTab extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(26),
           onTap: () => onTap(index),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOutCubic,
-            margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-            decoration: BoxDecoration(
-              gradient: selected
-                  ? (Theme.of(context).brightness == Brightness.dark
+          child: Stack(
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+                margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                decoration: BoxDecoration(
+                  color: selected &&
+                          Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white.withValues(alpha: 0.16)
+                      : null,
+                  gradient: selected &&
+                          Theme.of(context).brightness == Brightness.light
                       ? LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [
-                            Colors.white.withValues(alpha: 0.14),
-                            Colors.white.withValues(alpha: 0.07),
+                            Color.alphaBlend(
+                              const Color(0x1A536DFE),
+                              Colors.white.withValues(alpha: 0.90),
+                            ),
+                            Color.alphaBlend(
+                              const Color(0x1A536DFE),
+                              Colors.white.withValues(alpha: 0.90),
+                            ),
                           ],
                         )
-                      : LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Color.alphaBlend(
-                              const Color(0x1A536DFE),
-                              Colors.white.withValues(alpha: 0.90),
-                            ),
-                            Color.alphaBlend(
-                              const Color(0x1A536DFE),
-                              Colors.white.withValues(alpha: 0.90),
-                            ),
-                          ],
-                        ))
-                  : null,
-              borderRadius: BorderRadius.circular(25),
-              border: selected
-                  ? Border.all(
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white.withValues(alpha: 0.22)
-                          : const Color(0xFF536DFE)
-                              .withValues(alpha: 0.25),
-                    )
-                  : null,
-            ),
-            child: Column(
+                      : null,
+                  borderRadius: BorderRadius.circular(25),
+                ),
+                child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
@@ -471,8 +461,36 @@ class _DockTab extends StatelessWidget {
                                 : const Color(0xFF475569),
                       ),
                 ),
-              ],
-            ),
+                ),
+              if (selected)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 2,
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(25),
+                        child: const DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Color(0x38FFFFFF),
+                                Color(0x0FFFFFFF),
+                                Color(0x00FFFFFF),
+                              ],
+                              stops: [0, 0.22, 1],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       ),
