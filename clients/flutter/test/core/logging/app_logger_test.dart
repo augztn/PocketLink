@@ -82,6 +82,24 @@ void main() {
     });
   });
   group('AppLogger.sanitizeDiagnosticFields additional privacy cases', () {
+    test('preserves API route fields and non-sensitive operational metadata', () {
+      final sanitized = AppLogger.sanitizeDiagnosticFields({
+        'path': '/api/files/',
+        'endpointPath': '/api/storage/volumes',
+        'filePath': '/sdcard/Documents/private.pdf',
+        'hostMode': 'tailscale',
+        'serverStatus': 'online',
+        'username': 'admin',
+      });
+
+      expect(sanitized['path'], '/api/files/');
+      expect(sanitized['endpointPath'], '/api/storage/volumes');
+      expect(sanitized['filePath'], '[REDACTED_PATH]');
+      expect(sanitized['hostMode'], 'tailscale');
+      expect(sanitized['serverStatus'], 'online');
+      expect(sanitized['username'], '[REDACTED]');
+    });
+
     test('redacts camelCase paths and private paths in nested values', () {
       final sanitized = AppLogger.sanitizeDiagnosticFields({
         'filePath': '/storage/emulated/0/Documents/report.pdf',
