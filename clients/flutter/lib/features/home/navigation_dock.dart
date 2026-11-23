@@ -63,34 +63,105 @@ class FloatingNavigationDock extends StatelessWidget {
       segments.add(
         Expanded(
           child: LiquidGlassPill(
+            key: const ValueKey('navigation-dock-tabs-capsule'),
             radius: BorderRadius.circular(32),
             refractive: true,
             child: Padding(
               padding: const EdgeInsets.all(5),
               child: SizedBox(
                 height: 54,
-                child: Row(
-                  children: [
-                  for (final id in ids)
-                    Expanded(
-                      child: _DockTab(
-                        index: _indices[id]!,
-                        selectedIndex: selectedIndex,
-                        icon: switch (id) {
-                          'home' => Icons.home_outlined,
-                          'explore' => Icons.explore_outlined,
-                          _ => Icons.folder_outlined,
-                        },
-                        activeIcon: switch (id) {
-                          'home' => Icons.home_rounded,
-                          'explore' => Icons.explore_rounded,
-                          _ => Icons.folder_rounded,
-                        },
-                        label: _labels[id]!,
-                        onTap: onSelect,
-                      ),
-                    ),
-                  ],
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final innerWidth = constraints.maxWidth;
+                    final slotWidth = innerWidth / ids.length;
+                    final activeIndex = ids.indexWhere(
+                      (id) => _indices[id] == selectedIndex,
+                    );
+
+                    return Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        if (activeIndex >= 0)
+                          AnimatedPositioned(
+                            key: const ValueKey('navigation-dock-active-lens'),
+                            duration: const Duration(milliseconds: 260),
+                            curve: Curves.easeOutCubic,
+                            left: activeIndex * slotWidth,
+                            top: 0,
+                            bottom: 0,
+                            width: slotWidth,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 2,
+                              ),
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? Colors.white.withValues(alpha: 0.14)
+                                      : Colors.white.withValues(alpha: 0.72),
+                                  borderRadius: BorderRadius.circular(25),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(
+                                      alpha: Theme.of(context).brightness ==
+                                              Brightness.dark
+                                          ? 0.20
+                                          : 0.58,
+                                    ),
+                                    width: 0.8,
+                                  ),
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: Theme.of(context).brightness ==
+                                            Brightness.dark
+                                        ? [
+                                            Colors.white.withValues(alpha: 0.17),
+                                            Colors.white.withValues(alpha: 0.07),
+                                          ]
+                                        : [
+                                            Colors.white.withValues(alpha: 0.88),
+                                            Colors.white.withValues(alpha: 0.58),
+                                          ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        Row(
+                          mainAxisSize: MainAxisSize.max,
+                          children: [
+                            for (final id in ids)
+                              Expanded(
+                                child: Center(
+                                  child: SizedBox(
+                                    width: slotWidth,
+                                    child: _DockTab(
+                                      key: ValueKey('navigation-dock-tab-$id'),
+                                      index: _indices[id]!,
+                                      selectedIndex: selectedIndex,
+                                      icon: switch (id) {
+                                        'home' => Icons.home_outlined,
+                                        'explore' => Icons.explore_outlined,
+                                        _ => Icons.folder_outlined,
+                                      },
+                                      activeIcon: switch (id) {
+                                        'home' => Icons.home_rounded,
+                                        'explore' => Icons.explore_rounded,
+                                        _ => Icons.folder_rounded,
+                                      },
+                                      label: _labels[id]!,
+                                      onTap: onSelect,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
             ),
@@ -405,100 +476,39 @@ class _DockTab extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(26),
+          borderRadius: BorderRadius.circular(25),
           onTap: () => onTap(index),
-          child: Stack(
-            children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeOutCubic,
-                margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                decoration: BoxDecoration(
-                  color: selected && isDark
-                      ? Colors.white.withValues(alpha: 0.16)
-                      : null,
-                  gradient: selected && !isDark
-                      ? LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Color.alphaBlend(
-                              const Color(0x1A536DFE),
-                              Colors.white.withValues(alpha: 0.90),
-                            ),
-                            Color.alphaBlend(
-                              const Color(0x1A536DFE),
-                              Colors.white.withValues(alpha: 0.90),
-                            ),
-                          ],
-                        )
-                      : null,
-                  borderRadius: BorderRadius.circular(25),
+          child: SizedBox.expand(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  selected ? activeIcon : icon,
+                  size: 21,
+                  color: isDark
+                      ? Colors.white.withValues(alpha: selected ? 1 : 0.65)
+                      : selected
+                          ? const Color(0xFF4355E8)
+                          : const Color(0xFF475569),
                 ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      selected ? activeIcon : icon,
-                      size: 21,
-                      color: isDark
-                          ? Colors.white.withValues(
-                              alpha: selected ? 1 : 0.65,
-                            )
-                          : selected
-                              ? const Color(0xFF4355E8)
-                              : const Color(0xFF475569),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            fontSize: 10,
-                            fontWeight:
-                                selected ? FontWeight.w800 : FontWeight.w600,
-                            color: isDark
-                                ? Colors.white.withValues(
-                                    alpha: selected ? 1 : 0.65,
-                                  )
-                                : selected
-                                    ? const Color(0xFF4355E8)
-                                    : const Color(0xFF475569),
-                          ),
-                    ),
-                  ],
-                ),
-              ),
-              if (selected)
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 2,
+                const SizedBox(height: 3),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        fontSize: 10,
+                        fontWeight:
+                            selected ? FontWeight.w800 : FontWeight.w600,
+                        color: isDark
+                            ? Colors.white.withValues(alpha: selected ? 1 : 0.65)
+                            : selected
+                                ? const Color(0xFF4355E8)
+                                : const Color(0xFF475569),
                       ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(25),
-                        child: const DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Color(0x38FFFFFF),
-                                Color(0x0FFFFFFF),
-                                Color(0x00FFFFFF),
-                              ],
-                              stops: [0, 0.22, 1],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
                 ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
