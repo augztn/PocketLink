@@ -46,7 +46,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
   Future<void> _loadLocalLibrary() async {
     if (_loadingLibrary) return;
-    _loadingLibrary = true;
+    setState(() => _loadingLibrary = true);
     try {
       final result = await MediaLibraryRepository(
         api: widget.api,
@@ -68,7 +68,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     } catch (_) {
       // Discovery remains usable when the host library is temporarily offline.
     } finally {
-      _loadingLibrary = false;
+      if (mounted) {
+        setState(() => _loadingLibrary = false);
+      } else {
+        _loadingLibrary = false;
+      }
     }
   }
 
@@ -190,6 +194,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       final lyrics = (local == null ? null : await _readSidecarLyrics(local)) ??
           await _service.lyrics(track);
       if (!mounted) return;
+      final currentItem = PersistentAudioPlayer.instance.currentItem;
+      final showActiveLine = currentItem?.path == track.videoId ||
+          (local != null && currentItem?.path == local.path);
       await showModalBottomSheet<void>(
         context: context,
         isScrollControlled: true,
@@ -228,7 +235,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                           builder: (context, snapshot) {
                             final positionMs = snapshot.data?.inMilliseconds ?? 0;
                             var activeIndex = -1;
-                            if (lyrics.isSynced) {
+                            if (lyrics.isSynced && showActiveLine) {
                               for (var index = 0; index < lyrics.lines.length; index++) {
                                 if (lyrics.lines[index].timeMs > positionMs) break;
                                 activeIndex = index;
