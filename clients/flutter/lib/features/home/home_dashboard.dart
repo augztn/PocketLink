@@ -65,6 +65,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
   MediaIndexStatus? _mediaScanStatus;
   bool _startingMediaScan = false;
   bool _watchingMediaScan = false;
+  String? _activeMediaScanCorrelationId;
   bool _savingMediaScanSettings = false;
   HostSystemTelemetry? _hostTelemetry;
   String? _telemetryError;
@@ -618,8 +619,34 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
         if (!mounted) return;
         setState(() => _mediaScanStatus = status);
       }
-      if (mounted) await _refreshStatus();
-    } catch (_) {
+      final finalStatus = _mediaScanStatus;
+      if (mounted && finalStatus != null) {
+        unawaited(AppLogger.info(
+          'Host media scan reached a terminal state',
+          category: 'media',
+          component: 'host_media_scan',
+          correlationId: _activeMediaScanCorrelationId,
+          fields: {
+            'state': finalStatus.state,
+            'scanned': finalStatus.scanned,
+            'skipped': finalStatus.skipped,
+            'photoCount': finalStatus.photoCount,
+            'videoCount': finalStatus.videoCount,
+            'musicCount': finalStatus.musicCount,
+            'fileCount': finalStatus.fileCount,
+          },
+        ));
+        await _refreshStatus();
+      }
+    } catch (error, stackTrace) {
+      unawaited(AppLogger.error(
+        'Host media scan progress polling failed',
+        error: error,
+        stackTrace: stackTrace,
+        category: 'media',
+        component: 'host_media_scan',
+        correlationId: _activeMediaScanCorrelationId,
+      ));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Could not update host scan progress.')),
@@ -644,6 +671,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
       return;
     }
     final scanCorrelationId = AppLogger.nextEventId('media-scan');
+    _activeMediaScanCorrelationId = scanCorrelationId;
     setState(() {
       _startingMediaScan = true;
       _mediaScanError = null;
@@ -653,7 +681,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
       category: 'media',
       component: 'host_media_scan',
       correlationId: scanCorrelationId,
-      fields: {'trigger': 'manual', 'serverOnline': _serverOnline == true},
+      fields: {'trigger': 'manual', 'connectionAvailable': _serverOnline == true},
     ));
     try {
       final status = await widget.api.startMediaIndexScan();
@@ -688,7 +716,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
         category: 'media',
         component: 'host_media_scan',
         correlationId: scanCorrelationId,
-        fields: {'serverOnline': _serverOnline == true},
+        fields: {'connectionAvailable': _serverOnline == true},
       ));
       if (mounted) {
         setState(() => _mediaScanError = 'Could not start the host scan. Check the host connection and storage permissions.');
