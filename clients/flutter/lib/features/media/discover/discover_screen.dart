@@ -22,6 +22,13 @@ class _DiscoverShelf {
   final List<DiscoverTrack> tracks;
 }
 
+class _DiscoverFeedSnapshot {
+  const _DiscoverFeedSnapshot(this.shelves, this.sectionTitle);
+
+  final List<_DiscoverShelf> shelves;
+  final String sectionTitle;
+}
+
 class DiscoverScreen extends StatefulWidget {
   const DiscoverScreen({this.api, this.embedded = false, super.key});
 
@@ -33,6 +40,8 @@ class DiscoverScreen extends StatefulWidget {
 }
 
 class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProviderStateMixin {
+  static final Map<String, _DiscoverFeedSnapshot> _feedCache = {};
+  static final Map<String, List<IndexedFile>> _localLibraryCache = {};
   final DiscoverService _service = DiscoverService();
   late final AnimationController _shimmerController;
   List<DiscoverTrack> _tracks = const [];
@@ -62,7 +71,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     final region = AppSettings.instance.discoverRegion;
     if (region == _lastRegion) return;
     _lastRegion = region;
-    if (mounted) unawaited(_loadHome());
+    if (mounted) unawaited(_loadHome(forceRefresh: true));
   }
 
   String get _regionName =>
@@ -96,12 +105,19 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     );
   }
 
-  Future<void> _loadLocalLibrary() async {
-    if (_loadingLibrary || widget.api == null) return;
+  Future<void> _loadLocalLibrary({bool forceRefresh = false}) async {
+    final api = widget.api;
+    if (_loadingLibrary || api == null) return;
+    final cacheKey = api.baseUrl;
+    final cached = _localLibraryCache[cacheKey];
+    if (!forceRefresh && cached != null) {
+      _localLibrary = cached;
+      return;
+    }
     setState(() => _loadingLibrary = true);
     try {
       final result = await MediaLibraryRepository(
-        api: widget.api!,
+        api: api,
         type: MediaLibraryType.music,
       ).readIndexedMedia();
       if (!mounted) return;
@@ -116,6 +132,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
           mime: '',
           category: 'music',
         )).toList(growable: false);
+        _localLibraryCache[cacheKey] = _localLibrary;
       });
     } catch (_) {
       // Discovery remains usable when the host library is temporarily offline.
@@ -128,7 +145,19 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     }
   }
 
-  Future<void> _loadHome() async {
+  Future<void> _loadHome({bool forceRefresh = false}) async {
+    final region = AppSettings.instance.discoverRegion;
+    final cached = _feedCache[region];
+    if (!forceRefresh && cached != null) {
+      _homeShelves = cached.shelves;
+      _tracks = cached.shelves.isEmpty
+          ? const []
+          : cached.shelves.first.tracks;
+      _sectionTitle = cached.sectionTitle;
+      _error = null;
+      _loading = false;
+      return;
+    }
     final generation = ++_requestGeneration;
     setState(() {
       _loading = true;
@@ -180,8 +209,13 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
         }
         shelves.add(_DiscoverShelf('Popular in $_regionName', fallback));
       }
+      final snapshot = _DiscoverFeedSnapshot(
+        List.unmodifiable(shelves),
+        'Top charts in $_regionName',
+      );
+      _feedCache[region] = snapshot;
       setState(() {
-        _homeShelves = shelves;
+        _homeShelves = snapshot.shelves;
         _tracks = shelves.first.tracks;
         _error = null;
       });
@@ -937,6 +971,18 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     );
   }
 
+  Future<void> _refreshDiscover() async {
+    await Future.wait([
+      _loadHome(forceRefresh: true),
+      _loadLocalLibrary(forceRefresh: true),
+    ]);
+    if (mounted && _error != null && _tracks.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not refresh Discover. Showing saved results.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final top = LayoutInsetsScope.of(context).topClearance;
@@ -959,8 +1005,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
           onPressed: _loading ? null : _loadHome,
         )],
       ),
-      body: CustomScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
+      body: RefreshIndicator(
+        onRefresh: _refreshDiscover,
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           // Keep the scrollable behind the transparent shared app bar so
           // content can feather through it exactly like the other sections.
@@ -1000,7 +1048,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
               ],
             ],
           SliverToBoxAdapter(child: SizedBox(height: bottom + 16)),
-        ],
+          ],
+        ),
       ),
     );
   }
