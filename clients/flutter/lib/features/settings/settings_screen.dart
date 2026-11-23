@@ -274,11 +274,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onOpenSavedServers: widget.onOpenSavedServers,
             category: switch (id) {
               'appearance' => 'Appearance',
-              'dashboard' => 'Dashboard',
+              'dashboard' => 'Dashboard & Shortcuts',
               'media' => 'Media & Storage',
               'discover' => 'Discover',
               'backup' => 'Backup & Restore',
-              _ => 'Diagnostics',
+              _ => 'Connection & Diagnostics',
             },
           ),
         ),
