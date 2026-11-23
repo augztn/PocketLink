@@ -415,7 +415,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               bodyContext,
               miniPlayerVisible: layoutInsets.hasActiveMiniPlayer,
             );
-            final topClearance = layoutInsets.topClearance + 6;
+            final topClearance = layoutInsets.topClearance;
             return Stack(
               children: [
                 ListView(
