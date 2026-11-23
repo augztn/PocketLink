@@ -31,6 +31,11 @@ class SettingsBackupService {
     'settings_now_playing_stats_for_nerds',
     'settings_home_search',
     'settings_home_transfers',
+    'settings_discover_enabled',
+    'settings_discover_local_lossless',
+    'settings_discover_lyrics',
+    'settings_discover_auto_queue',
+    'settings_discover_artwork',
   };
 
   static const _integerKeys = <String>{
