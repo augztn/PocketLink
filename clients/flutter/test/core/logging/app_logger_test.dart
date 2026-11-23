@@ -42,7 +42,7 @@ void main() {
       });
     });
 
-    test('tracks events dropped before logger initialization', () async {
+    test('exposes typed logger health counters', () async {
       // The test initializer resets counters; verify the health snapshot remains typed.
       expect(AppLogger.health, {'write_failures': 0, 'dropped_events': 0});
     });
