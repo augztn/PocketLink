@@ -780,6 +780,14 @@ class _MiniPlayerMorphContents extends StatelessWidget {
                     ],
                   ),
                 ),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  onPressed: player.queue.length > 1
+                      ? player.skipToPrevious
+                      : null,
+                  color: Colors.white,
+                  icon: const Icon(Icons.skip_previous_rounded),
+                ),
                 StreamBuilder<bool>(
                   stream: player.player.stream.buffering,
                   initialData: player.player.state.buffering,
@@ -821,7 +829,8 @@ class _MiniPlayerMorphContents extends StatelessWidget {
                 ),
                 IconButton(
                   visualDensity: VisualDensity.compact,
-                  onPressed: player.skipToNext,
+                  onPressed:
+                      player.queue.length > 1 ? player.skipToNext : null,
                   color: Colors.white,
                   icon: const Icon(Icons.skip_next_rounded),
                 ),
