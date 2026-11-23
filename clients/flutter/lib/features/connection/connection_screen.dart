@@ -189,7 +189,12 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
 
   Future<void> _openHost() async {
     await Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const LocalStorageSetupScreen()),
+      PageRouteBuilder<void>(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            const LocalStorageSetupScreen(),
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: Duration.zero,
+      ),
     );
   }
 
