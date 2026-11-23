@@ -357,7 +357,7 @@ class AppLogger {
     }
 
     for (final line in await source.readAsLines()) {
-      if (RegExp(r'^\\d{4}-\\d{2}-\\d{2}T').hasMatch(line)) {
+      if (RegExp(r'^\d{4}-\d{2}-\d{2}T').hasMatch(line)) {
         finishEvent();
         includeEvent = line.contains('"session_id":"' + (_sessionId ?? 'uninitialized') + '"') ||
             line.contains('session: ' + (_sessionId ?? 'uninitialized'));
@@ -369,20 +369,24 @@ class AppLogger {
     // Select from the newest event backwards so a full backup can never crowd
     // out the active session's latest diagnostics.
     final retained = <List<int>>[];
+    var complete = true;
     for (final event in events.reversed) {
       final bytes = utf8.encode(_redact(event));
-      if (bytes.length > remainingBytes) return (false, remainingBytes);
+      if (bytes.length > remainingBytes) {
+        complete = false;
+        break;
+      }
       retained.add(bytes);
       remainingBytes -= bytes.length;
     }
     for (final bytes in retained.reversed) {
       sink.add(bytes);
     }
-    return (true, remainingBytes);
+    return (complete, remainingBytes);
   }
 
   static List<int> _latestCompleteDiagnosticLines(String content, int maxBytes) {
-    final lines = content.split('\\n');
+    final lines = content.split('\n');
     final retained = <List<int>>[];
     var remaining = maxBytes;
     for (final line in lines.reversed) {
