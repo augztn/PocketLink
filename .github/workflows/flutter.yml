@@ -167,6 +167,35 @@ jobs:
           key: ${{ runner.os }}-android-ndk-28.2.13676358
       - name: Generate Android project
         run: flutter create --platforms=android --org io.github.augztn --project-name pocketlink .
+      - name: Add JitPack repository for NewPipeExtractor
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          candidates = [Path("android/settings.gradle"), Path("android/settings.gradle.kts")]
+          settings = next((path for path in candidates if path.exists()), None)
+          if settings is None:
+              raise SystemExit("Generated Android settings.gradle was not found")
+          content = settings.read_text()
+          if "jitpack.io" in content:
+              print("JitPack repository already configured")
+          else:
+              match = re.search(
+                  r"(dependencyResolutionManagement\\s*\\{[\\s\\S]*?repositories\\s*\\{)",
+                  content,
+              )
+              if match is None:
+                  raise SystemExit("Could not locate dependencyResolutionManagement repositories")
+              repository = (
+                  '        maven(url = "https://jitpack.io")\\n'
+                  if settings.suffix == ".kts"
+                  else '        maven { url "https://jitpack.io" }\\n'
+              )
+              content = content[:match.end()] + "\\n" + repository + content[match.end():]
+              settings.write_text(content)
+              print(f"Added JitPack to {settings}")
+          PY
       - name: Enable network access for HTTP and HTTPS servers
         run: |
           python3 - <<'PY'
