@@ -1717,8 +1717,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
       builder: (context, _) {
         final theme = AppSettings.instance.nowPlayingTheme;
         final progress = animation?.value ?? 1.0;
-        final contentOpacity =
-            ((progress - 0.30) / 0.70).clamp(0.0, 1.0).toDouble();
+        final contentOpacity = const Interval(
+          0.30,
+          1.0,
+          curve: Curves.easeOutCubic,
+        ).transform(progress);
         return Scaffold(
           backgroundColor: const Color(0xFF0A0B0E),
           body: Stack(
