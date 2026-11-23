@@ -586,6 +586,7 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
                                       return Card(
                                         margin: EdgeInsets.zero, elevation: 0,
                                         color: colors.surfaceContainerLow,
+                                        clipBehavior: Clip.antiAlias,
                                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                                         child: ListTile(
                                           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
