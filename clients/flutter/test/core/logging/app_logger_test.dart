@@ -84,6 +84,16 @@ void main() {
       expect(sanitized, isNot(contains('fd7a:115c:a1e0::1234')));
     });
 
+    test('redacts URL hostnames but preserves API routes and ports', () {
+      final sanitized = AppLogger.sanitizeDiagnosticContent(
+        'GET https://pocketlink.example:8000/api/files/ returned 200',
+      );
+
+      expect(sanitized, isNot(contains('pocketlink.example')));
+      expect(sanitized, contains('[REDACTED_HOST]')));
+      expect(sanitized, contains('/api/files/'));
+      expect(sanitized, contains('200'));
+    });
     test('preserves useful API paths and status codes', () {
       final sanitized = AppLogger.sanitizeDiagnosticContent(
         'GET /api/files/ returned 200',
