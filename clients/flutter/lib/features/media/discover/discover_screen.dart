@@ -608,45 +608,251 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     );
   }
 
+  Widget _shelfHeading(String title, {VoidCallback? onSeeAll}) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+        child: Row(children: [
+          Expanded(child: PocketLinkSectionHeader(title)),
+          if (onSeeAll != null)
+            TextButton(onPressed: onSeeAll, child: const Text('See all')),
+        ]),
+      );
+
+  void _showShelf(_DiscoverShelf shelf) {
+    setState(() {
+      _tracks = shelf.tracks;
+      _sectionTitle = shelf.title;
+      _homeShelves = const [];
+    });
+  }
+
+  Widget _heroShelf(List<_DiscoverShelf> shelves) {
+    final cards = <({DiscoverTrack track, String eyebrow})>[
+      for (final shelf in shelves.take(2))
+        if (shelf.tracks.isNotEmpty)
+          (track: shelf.tracks.first, eyebrow: shelf.title),
+    ];
+    if (cards.isEmpty) return const SizedBox.shrink();
+    final width = MediaQuery.sizeOf(context).width * .70;
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.only(top: 10),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          _shelfHeading('Featured'),
+          SizedBox(
+            height: 286,
+            child: ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              scrollDirection: Axis.horizontal,
+              itemCount: cards.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (context, index) {
+                final card = cards[index];
+                return SizedBox(
+                  width: width,
+                  child: Material(
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(18),
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      onTap: () => _play(card.track),
+                      child: Stack(fit: StackFit.expand, children: [
+                        _art(card.track, size: double.infinity),
+                        const DecoratedBox(decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [Colors.transparent, Color(0xE6000000)],
+                            stops: [0.32, 1],
+                          ),
+                        )),
+                        Positioned(left: 16, right: 16, bottom: 18, child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(card.eyebrow.toUpperCase(),
+                              maxLines: 1, overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(color: Colors.white70,
+                                fontSize: 10, fontWeight: FontWeight.w800,
+                                letterSpacing: 1.1)),
+                            const SizedBox(height: 7),
+                            Text(card.track.title, maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                color: Colors.white, fontWeight: FontWeight.w900)),
+                            const SizedBox(height: 3),
+                            Text(card.track.artist, maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Colors.white70)),
+                          ],
+                        )),
+                        Positioned(right: 14, top: 14, child: Material(
+                          color: Colors.black45, shape: const CircleBorder(),
+                          child: IconButton(
+                            tooltip: 'More options',
+                            onPressed: () => _showTrackMenu(card.track),
+                            icon: const Icon(Icons.more_horiz_rounded, color: Colors.white),
+                          ),
+                        )),
+                      ]),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  Widget _showTrackMenu(DiscoverTrack track) {
+    final local = AppSettings.instance.discoverLocalLossless
+        ? DiscoverService.findLocalLosslessMatch(track, _localLibrary) : null;
+    return PopupMenuButton<String>(
+      onSelected: (value) {
+        if (value == 'play') _play(track);
+        if (value == 'radio') _loadRadio(track);
+        if (value == 'lyrics') _showLyrics(track, local: local);
+      },
+      itemBuilder: (_) => [
+        const PopupMenuItem(value: 'play', child: Text('Play')),
+        const PopupMenuItem(value: 'radio', child: Text('Start radio')),
+        if (AppSettings.instance.discoverLyrics)
+          const PopupMenuItem(value: 'lyrics', child: Text('Lyrics')),
+      ],
+      icon: const Icon(Icons.more_horiz_rounded),
+    );
+  }
+
+  Widget _trackPager(_DiscoverShelf shelf) {
+    final tracks = shelf.tracks.take(20).toList(growable: false);
+    if (tracks.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
+    final width = MediaQuery.sizeOf(context).width * .86;
+    final pageCount = (tracks.length / 4).ceil();
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.only(top: 24),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          _shelfHeading(shelf.title, onSeeAll: () => _showShelf(shelf)),
+          SizedBox(
+            height: 4 * 66,
+            child: ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              scrollDirection: Axis.horizontal,
+              itemCount: pageCount,
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              itemBuilder: (context, page) {
+                final start = page * 4;
+                final end = (start + 4).clamp(0, tracks.length);
+                return SizedBox(
+                  width: width,
+                  child: Column(children: [
+                    for (var index = start; index < end; index++)
+                      Expanded(child: _compactTrackRow(tracks[index])),
+                  ]),
+                );
+              },
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  Widget _compactTrackRow(DiscoverTrack track) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: () => _play(track),
+      child: Row(children: [
+        _art(track, size: 50),
+        const SizedBox(width: 10),
+        Expanded(child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(track.title, maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 2),
+            Text(track.artist, maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          ],
+        )),
+        SizedBox(width: 36, child: _showTrackMenu(track)),
+      ]),
+    );
+  }
+
+  Widget _moodTiles() {
+    const moods = <({String title, String query, Color color, IconData icon})>[
+      (title: 'Energy', query: 'high energy dance workout songs', color: Color(0xFF236B50), icon: Icons.bolt_rounded),
+      (title: 'Relax', query: 'calm relaxing acoustic music', color: Color(0xFF315F91), icon: Icons.water_drop_outlined),
+      (title: 'Heartbreak', query: 'sad heartbreak songs', color: Color(0xFF9A5938), icon: Icons.cloud_outlined),
+      (title: 'Love', query: 'romantic love songs', color: Color(0xFF9A426C), icon: Icons.favorite_border_rounded),
+    ];
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.only(top: 24),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          _shelfHeading('Find your mood'),
+          SizedBox(
+            height: 112,
+            child: ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              scrollDirection: Axis.horizontal,
+              itemCount: moods.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              itemBuilder: (context, index) {
+                final mood = moods[index];
+                return SizedBox(
+                  width: (MediaQuery.sizeOf(context).width - 50) / 2,
+                  child: Material(
+                    color: mood.color,
+                    borderRadius: BorderRadius.circular(14),
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      onTap: () {
+                        _searchController.text = mood.query;
+                        _search(mood.query);
+                      },
+                      child: Stack(children: [
+                        Positioned(right: 12, top: 8,
+                          child: Icon(mood.icon, size: 42, color: Colors.white24)),
+                        Positioned(left: 14, bottom: 13,
+                          child: Text(mood.title, style: const TextStyle(
+                            color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800))),
+                        Positioned(right: 10, top: 9,
+                          child: Text('PL', style: TextStyle(
+                            color: Colors.white.withValues(alpha: .55),
+                            fontSize: 9, fontWeight: FontWeight.w900))),
+                      ]),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
+
   Widget _homeShelf(_DiscoverShelf shelf) {
     return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.only(top: 22),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: PocketLinkSectionHeader(shelf.title),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      setState(() {
-                        _tracks = shelf.tracks;
-                        _sectionTitle = shelf.title;
-                        _homeShelves = const [];
-                      });
-                    },
-                    child: const Text('See all'),
-                  ),
-                ],
-              ),
+        padding: const EdgeInsets.only(top: 24),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          _shelfHeading(shelf.title, onSeeAll: () => _showShelf(shelf)),
+          SizedBox(
+            height: 214,
+            child: ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              scrollDirection: Axis.horizontal,
+              itemCount: shelf.tracks.length.clamp(0, 12),
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (context, index) => _feedCard(shelf.tracks[index]),
             ),
-            SizedBox(
-              height: 214,
-              child: ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                scrollDirection: Axis.horizontal,
-                itemCount: shelf.tracks.length.clamp(0, 12),
-                separatorBuilder: (_, __) => const SizedBox(width: 14),
-                itemBuilder: (context, index) => _feedCard(shelf.tracks[index]),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ]),
       ),
     );
   }
@@ -702,9 +908,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           SliverToBoxAdapter(child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Find your', style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w500, height: 1.04)),
-                Text('next favourite.', style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w900, height: 1.04, letterSpacing: -0.8)),
-                const SizedBox(height: 18),
+                const SizedBox(height: 4),
                 TextField(
                   controller: _searchController, textInputAction: TextInputAction.search,
                   onSubmitted: _search,
@@ -747,125 +951,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             else if (hasTracks) ...[
               if (_loading) const SliverToBoxAdapter(child: LinearProgressIndicator(minHeight: 2)),
               if (_homeShelves.isNotEmpty) ...[
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-                    child: const PocketLinkSectionHeader('Made for exploring'),
-                  ),
-                ),
-                if (_homeShelves.first.tracks.isNotEmpty)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(22),
-                        onTap: () => _play(_homeShelves.first.tracks.first),
-                        child: SizedBox(
-                          height: 204,
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(22),
-                            child: Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                _art(_homeShelves.first.tracks.first, size: double.infinity),
-                                DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                      colors: [
-                                        Colors.black.withValues(alpha: .02),
-                                        Colors.black.withValues(alpha: .88),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                Positioned(
-                                  left: 18,
-                                  right: 64,
-                                  bottom: 18,
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        _homeShelves.first.title.toUpperCase(),
-                                        style: const TextStyle(
-                                          color: Colors.white70,
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w800,
-                                          letterSpacing: 1.2,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        _homeShelves.first.tracks.first.title,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: theme.textTheme.titleLarge?.copyWith(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w900,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 3),
-                                      Text(
-                                        _homeShelves.first.tracks.first.artist,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white70),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Positioned(
-                                  right: 16,
-                                  bottom: 16,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(10),
-                                    decoration: const BoxDecoration(
-                                      color: Colors.white,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Icon(
-                                      Icons.play_arrow_rounded,
-                                      color: theme.colorScheme.onSurface,
-                                      size: 25,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                if (_artistStationTracks.isNotEmpty)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 22),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Padding(
-                            padding: EdgeInsets.fromLTRB(20, 0, 20, 12),
-                            child: PocketLinkSectionHeader('Artist stations'),
-                          ),
-                          SizedBox(
-                            height: 178,
-                            child: ListView.separated(
-                              padding: const EdgeInsets.symmetric(horizontal: 20),
-                              scrollDirection: Axis.horizontal,
-                              itemCount: _artistStationTracks.length,
-                              separatorBuilder: (_, __) => const SizedBox(width: 14),
-                              itemBuilder: (context, index) =>
-                                  _artistStationCard(_artistStationTracks[index]),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                for (final shelf in _homeShelves) _homeShelf(shelf),
+                _heroShelf(_homeShelves),
+                if (_homeShelves.isNotEmpty) _trackPager(_homeShelves.first),
+                _moodTiles(),
+                for (final shelf in _homeShelves.skip(1)) _homeShelf(shelf),
               ] else ...[
                 SliverToBoxAdapter(
                   child: Padding(
