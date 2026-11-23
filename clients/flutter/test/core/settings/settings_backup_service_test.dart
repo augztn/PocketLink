@@ -14,6 +14,8 @@ void main() {
       'settings_use_liquid_glass': true,
       'settings_progressive_blur': true,
       'settings_progressive_blur_strength': 72.5,
+      'settings_discover_enabled': false,
+      'settings_discover_artwork': false,
       'saved_server_profiles': '[{"host":"private"}]',
     });
   });
@@ -26,6 +28,8 @@ void main() {
     expect(payload['app'], 'pocketlink');
     expect(payload['schemaVersion'], 1);
     expect(settings['settings_progressive_blur_strength'], 72.5);
+    expect(settings['settings_discover_enabled'], isFalse);
+    expect(settings['settings_discover_artwork'], isFalse);
     expect(settings.containsKey('saved_server_profiles'), isFalse);
   });
 
