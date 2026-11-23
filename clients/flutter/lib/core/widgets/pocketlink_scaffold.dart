@@ -1,5 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
+const double pocketLinkMiniPlayerHeight = 74.0;
+
 /// Route-level layout geometry shared by every PocketLink screen.
 class LayoutInsetsScope extends InheritedWidget {
   const LayoutInsetsScope({
@@ -129,7 +131,7 @@ class _PocketLinkScaffoldState extends State<PocketLinkScaffold> {
     final topClearance = statusBarHeight + headerContentHeight + 10;
     final bottomClearance = media.padding.bottom +
         (widget.hasFloatingNavBar ? 84.0 : 12.0) +
-        (widget.hasActiveMiniPlayer ? 74.0 : 0.0);
+        (widget.hasActiveMiniPlayer ? pocketLinkMiniPlayerHeight : 0.0);
 
     return LayoutInsetsScope(
       topClearance: topClearance,
