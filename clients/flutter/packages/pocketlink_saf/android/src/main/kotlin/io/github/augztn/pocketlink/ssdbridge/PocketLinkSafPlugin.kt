@@ -136,6 +136,7 @@ class PocketLinkSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
             }
             "status" -> result.success(status())
             "readNativeDiagnostics" -> result.success(NativeDiagnostics.read())
+            "nativeDiagnosticsSize" -> result.success(NativeDiagnostics.read().toByteArray(Charsets.UTF_8).size)
             "clearNativeDiagnostics" -> {
                 NativeDiagnostics.clear()
                 result.success(true)
