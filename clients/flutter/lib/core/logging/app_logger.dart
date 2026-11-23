@@ -208,7 +208,12 @@ class AppLogger {
       },
     );
 
-    return withCredentialsRedacted
+    final withUrlHostsRedacted = withCredentialsRedacted.replaceAllMapped(
+      RegExp(r'\b((?:https?|wss?)://)(?:[^/@\s]+@)?(?:\[[^\]]+\]|[^:/?#\s]+)(?::\d+)?', caseSensitive: false),
+      (match) => match.group(1)! + '[REDACTED_HOST]',
+    );
+
+    return withUrlHostsRedacted
         .replaceAll(
           RegExp(
             r'(?<![\d.])(?:25[0-5]|2[0-4]\d|1?\d?\d)(?:\.(?:25[0-5]|2[0-4]\d|1?\d?\d)){3}(?![\d.])',
