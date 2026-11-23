@@ -56,7 +56,7 @@ void main() {
     final restored = await SettingsBackupService.importBackup(bytes);
     final preferences = await SharedPreferences.getInstance();
 
-    expect(restored, 2);
+    expect(restored, 5);
     expect(preferences.getBool('settings_use_liquid_glass'), isFalse);
     expect(preferences.getDouble('settings_progressive_blur_strength'), 35.0);
     expect(preferences.getString('settings_discover_audio_quality'), 'data_saver');
