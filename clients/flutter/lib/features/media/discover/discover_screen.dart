@@ -1,13 +1,13 @@
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
-import '../../core/network/server_api.dart';
-import '../../core/network/server_api_models.dart';
-import '../../core/widgets/pocketlink_app_bar.dart';
-import '../media/data/media_library_repository.dart';
-import '../media/media_library_catalog.dart';
-import '../media/now_playing_overlay_controller.dart';
-import '../media/persistent_audio_player.dart';
+import '../../../core/network/server_api.dart';
+import '../../../core/network/server_api_models.dart';
+import '../../../core/widgets/pocketlink_app_bar.dart';
+import '../data/media_library_repository.dart';
+import '../media_library_catalog.dart';
+import '../now_playing_overlay_controller.dart';
+import '../persistent_audio_player.dart';
 import 'discover_models.dart';
 import 'discover_service.dart';
 
