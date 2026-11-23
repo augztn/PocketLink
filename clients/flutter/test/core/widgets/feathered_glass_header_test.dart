@@ -21,23 +21,6 @@ void main() {
     expect(AppSettings.instance.useLiquidGlass, isTrue);
   });
 
-  test('progressive blur strength defaults to 55 percent', () {
-    expect(AppSettings.instance.progressiveBlurStrength, 55);
-  });
-
-  test('progressive blur strength is clamped, persisted and validated', () async {
-    await AppSettings.instance.setProgressiveBlurStrength(72.5);
-    expect(AppSettings.instance.progressiveBlurStrength, 72.5);
-    expect(
-      (await SharedPreferences.getInstance()).getDouble('settings_progressive_blur_strength'),
-      72.5,
-    );
-    await expectLater(
-      AppSettings.instance.setProgressiveBlurStrength(101),
-      throwsArgumentError,
-    );
-  });
-
   test('progressive blur preference persists when toggled', () async {
     await AppSettings.instance.setProgressiveBlurEnabled(true);
     expect(AppSettings.instance.progressiveBlurEnabled, isTrue);
@@ -114,7 +97,6 @@ void main() {
   });
 
   testWidgets('progressive header uses shader blur or stepped fallback when enabled', (tester) async {
-    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurStrength(55));
     await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(true));
 
     final scrollController = ScrollController(initialScrollOffset: 1);
@@ -143,7 +125,6 @@ void main() {
   });
 
   testWidgets('progressive blur remains active when reduced motion is enabled', (tester) async {
-    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurStrength(55));
     await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(true));
 
     final scrollController = ScrollController(initialScrollOffset: 1);
@@ -209,21 +190,7 @@ void main() {
     );
   });
 
-  testWidgets('zero blur strength removes backdrop filters while enabled', (tester) async {
-    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(true));
-    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurStrength(0));
-
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(body: FeatheredGlassHeaderBackground()),
-      ),
-    );
-
-    expect(find.byType(BackdropFilter), findsNothing);
-  });
-
   testWidgets('progressive blur off removes backdrop filters immediately', (tester) async {
-    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurStrength(55));
     await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(true));
 
     final scrollController = ScrollController(initialScrollOffset: 1);
@@ -256,7 +223,6 @@ void main() {
   });
 
   testWidgets('glass header buttons disable their filter in fallback mode', (tester) async {
-    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurStrength(55));
     await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(false));
 
     await tester.pumpWidget(
