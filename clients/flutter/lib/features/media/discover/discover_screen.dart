@@ -105,6 +105,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               path: local.path,
               volume: local.volume == 'internal' ? null : local.volume,
               size: local.size,
+              artist: track.artist,
             )
           : await _remoteQueueItem(track);
       await PersistentAudioPlayer.instance.openQueue(
@@ -130,6 +131,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       title: track.title,
       path: track.videoId,
       streamUrl: stream.url,
+      artist: track.artist,
       httpHeaders: {
         'User-Agent': stream.userAgent,
         'Accept': '*/*',
@@ -196,6 +198,17 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     }
   }
 
+  Widget _quickSearchChip(String label, String query) => Padding(
+        padding: const EdgeInsets.only(right: 8),
+        child: ActionChip(
+          label: Text(label),
+          onPressed: () {
+            _searchController.text = query;
+            _search(query);
+          },
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -229,6 +242,20 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                     borderSide: BorderSide.none,
                   ),
                 ),
+              ),
+            ),
+            SizedBox(
+              height: 38,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                children: [
+                  _quickSearchChip('India', 'top songs India'),
+                  _quickSearchChip('Malayalam', 'popular Malayalam songs'),
+                  _quickSearchChip('Hindi', 'top Hindi songs'),
+                  _quickSearchChip('Tamil', 'popular Tamil songs'),
+                  _quickSearchChip('English', 'top English songs'),
+                ],
               ),
             ),
             Padding(
