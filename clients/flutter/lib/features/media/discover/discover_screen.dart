@@ -2,7 +2,6 @@ import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/network/server_api.dart';
-import '../../../core/network/server_api_models.dart';
 import '../../../core/widgets/pocketlink_app_bar.dart';
 import '../data/media_library_repository.dart';
 import '../media_library_catalog.dart';
