@@ -92,38 +92,42 @@ void main() {
     final routeB = Object();
     final routeC = Object();
     final activeRoutes = <Object>[routeA, routeB, routeC];
+    final route = ValueNotifier<Object>(routeA);
     final firstRowKey = GlobalKey();
 
-    Future<double> mountRoute(Object route, double headerHeight) async {
-      late double topClearance;
-      await tester.pumpWidget(
-        MaterialApp(
-          home: MediaQuery(
-            data: const MediaQueryData(
-              padding: EdgeInsets.only(top: 24, bottom: 34),
-            ),
-            child: PocketLinkScaffold(
-              routeIdentity: route,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(
+            padding: EdgeInsets.only(top: 24, bottom: 34),
+          ),
+          child: ValueListenableBuilder<Object>(
+            valueListenable: route,
+            builder: (context, currentRoute, _) => PocketLinkScaffold(
+              routeIdentity: currentRoute,
               activeRouteIdentities: activeRoutes,
               hasFloatingNavBar: false,
               hasActiveMiniPlayer: false,
               child: Builder(
                 builder: (context) {
+                  final headerHeight = identical(currentRoute, routeA)
+                      ? 104.0
+                      : identical(currentRoute, routeB)
+                          ? 128.0
+                          : 116.0;
                   LayoutInsetsScope.reportRenderedHeader(
                     context,
-                    route,
+                    currentRoute,
                     headerHeight,
                   );
-                  topClearance = LayoutInsetsScope.of(context).topClearance;
-                  return SizedBox(
-                    height: topClearance,
-                    child: Align(
-                      alignment: Alignment.bottomCenter,
-                      child: SizedBox(
-                        key: firstRowKey,
-                        height: 20,
-                        child: const Text('First row'),
-                      ),
+                  final topClearance =
+                      LayoutInsetsScope.of(context).topClearance;
+                  return Padding(
+                    padding: EdgeInsets.only(top: topClearance),
+                    child: SizedBox(
+                      key: firstRowKey,
+                      height: 20,
+                      child: const Text('First row'),
                     ),
                   );
                 },
@@ -131,17 +135,14 @@ void main() {
             ),
           ),
         ),
-      );
-      await tester.pump();
-      return tester.getTopLeft(find.byKey(firstRowKey)).dy;
-    }
+      ),
+    );
 
-    for (final entry in <(Object, double)>[
-      (routeA, 104),
-      (routeB, 128),
-      (routeC, 116),
-    ]) {
-      final initialTop = await mountRoute(entry.$1, entry.$2);
+    Future<void> verifyStable(Object nextRoute) async {
+      route.value = nextRoute;
+      await tester.pump();
+      await tester.pump();
+      final initialTop = tester.getTopLeft(find.byKey(firstRowKey)).dy;
       for (var frame = 0; frame < 10; frame++) {
         await tester.pump(const Duration(milliseconds: 16));
         expect(
@@ -152,8 +153,12 @@ void main() {
       }
     }
 
-    // Returning to an existing route reuses its own measurement.
-    final routeATop = await mountRoute(routeA, 104);
-    expect(routeATop, 24);
+    await verifyStable(routeA);
+    await verifyStable(routeB);
+    await verifyStable(routeC);
+    await verifyStable(routeA);
+
+    expect(tester.getTopLeft(find.byKey(firstRowKey)).dy, 98);
+    route.dispose();
   });
 }
