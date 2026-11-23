@@ -286,7 +286,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
       ]),
       builder: (context, _) => ValueListenableBuilder<List<Route<dynamic>>>(
         valueListenable: observer.routeStack,
-        builder: (context, _, __) {
+        builder: (context, routes, __) {
           final drawerOpen = PocketLinkNavigation.drawerOpen.value;
           final visible = _shouldShowMiniPlayer() &&
               !_nowPlayingOpen &&
@@ -312,6 +312,10 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
           // measured header and mounted-overlay geometry from this scope.
           final navigatorContent = PocketLinkScaffold(
             routeIdentity: observer.currentPageRoute,
+            activeRouteIdentities: routes
+                .whereType<PageRoute<dynamic>>()
+                .cast<Object>()
+                .toList(growable: false),
             hasFloatingNavBar: onDashboard,
             hasActiveMiniPlayer: visible,
             child: widget.child,

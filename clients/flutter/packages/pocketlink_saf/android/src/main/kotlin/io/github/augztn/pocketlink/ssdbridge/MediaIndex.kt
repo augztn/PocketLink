@@ -181,7 +181,7 @@ internal class MediaIndexScanner(
             val externalIds = if (volumeId != null && volumeReports.containsKey(volumeId)) {
                 mutableSetOf(volumeId)
             } else {
-                volumeReports.values.map { it.optString("volume") }
+                snapshotVolumeReports().map { it.optString("volume") }
                     .filter { it.isNotBlank() && it != "internal" }.toMutableSet()
             }
             currentSource?.takeIf { it != "internal" }?.let { externalIds.add(it) }
@@ -208,7 +208,7 @@ internal class MediaIndexScanner(
             if (volumeId == null) disconnectedVolumes.clear() else disconnectedVolumes.remove(volumeId)
             reportPrefs.edit().putStringSet("disconnected_volumes", disconnectedVolumes.toSet()).apply()
         }
-        val reconnectingIds = if (volumeId == null) volumeReports.keys.toList() else listOf(volumeId)
+        val reconnectingIds = if (volumeId == null) snapshotVolumeReports().map { it.optString("volume") } else listOf(volumeId)
         reconnectingIds.forEach { id ->
             volumeReports[id]?.let { previous ->
                 if (previous.optString("volume") != "internal" && previous.optString("state") == "unavailable") {
@@ -275,7 +275,7 @@ internal class MediaIndexScanner(
                 externalRoots()
                     .filterNot { (id, _) -> id in disconnectedVolumes || volumeReports[id]?.optString("state") == "unavailable" }
                     .forEach { (id, root) -> sources += id to root }
-                val previousVolumes = volumeReports.values.map { org.json.JSONObject(it.toString()) }
+                val previousVolumes = snapshotVolumeReports()
                 val activeVolumeIds = sources.map { it.first }.toSet()
                 volumeReports.clear()
                 previousVolumes.filter { it.optString("volume") !in activeVolumeIds }.forEach { previous ->
@@ -332,7 +332,7 @@ internal class MediaIndexScanner(
                         currentPath = null
                     }
                 }
-                val unavailableVolumes = volumeReports.values.any { it.optString("state") == "unavailable" }
+                val unavailableVolumes = snapshotVolumeReports().any { it.optString("state") == "unavailable" }
                 if (database.hasScanCheckpoints()) incompleteVolume = true
                 if (lastError == null && skipped > 0) lastError = "Some files or folders could not be indexed."
                 if (lastError == null && incompleteVolume) lastError = "One or more storage volumes could not be fully indexed; previous entries were retained."
@@ -659,6 +659,18 @@ internal class MediaIndexScanner(
         return complete && filesHealthy && mediaHealthy && !deferredDirectories && volume !in disconnectedVolumes
     }
 
+    /**
+     * Snapshot through ConcurrentHashMap.forEach: collection iterators can race
+     * between hasNext() and next() when a volume is removed concurrently.
+     */
+    private fun snapshotVolumeReports(): List<org.json.JSONObject> {
+        val snapshot = mutableListOf<org.json.JSONObject>()
+        volumeReports.forEach { _, report ->
+            snapshot += org.json.JSONObject(report.toString())
+        }
+        return snapshot
+    }
+
     fun status(): org.json.JSONObject {
         val stats = database.statsSnapshot()
         val counts = stats.counts
@@ -684,7 +696,7 @@ internal class MediaIndexScanner(
             .put("updated_files", updatedFiles)
             .put("scanned_bytes", scannedBytes)
             .put("volumes", org.json.JSONArray().also { items ->
-                volumeReports.values.sortedBy { it.optString("volume") }
+                snapshotVolumeReports().sortedBy { it.optString("volume") }
                     .forEach { items.put(org.json.JSONObject(it.toString())) }
             })
             .put("scan_history", readScanHistory())
@@ -774,7 +786,7 @@ internal class MediaIndexScanner(
             .put("scanned_bytes", scannedBytes)
             .put("last_error", lastError)
             .put("volumes", org.json.JSONArray().also { items ->
-                volumeReports.values.sortedBy { it.optString("volume") }
+                snapshotVolumeReports().sortedBy { it.optString("volume") }
                     .forEach { items.put(org.json.JSONObject(it.toString())) }
             })
             .put("skipped_items", org.json.JSONArray().also { items ->

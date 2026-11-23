@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
-/// A subtle shared-axis transition for pushed routes and reverse pops.
+/// A subtle shared-axis transition that keeps the incoming route fully opaque.
 class PocketLinkPageTransitionsBuilder extends PageTransitionsBuilder {
   const PocketLinkPageTransitionsBuilder();
 
@@ -17,25 +17,22 @@ class PocketLinkPageTransitionsBuilder extends PageTransitionsBuilder {
     final eased = CurvedAnimation(
       parent: animation,
       curve: Curves.easeOutCubic,
-      reverseCurve: Curves.easeInCubic,
-    );
-    final opacity = CurvedAnimation(
-      parent: animation,
-      curve: Curves.easeOut,
-      reverseCurve: Curves.easeIn,
+      // Keep reverse progress linear. Predictive-back gestures drive this
+      // animation interactively; easing it can distort the finger-tracked
+      // progress and make a partially completed pop feel hesitant on release.
+      reverseCurve: Curves.linear,
     );
 
-    return FadeTransition(
-      opacity: opacity,
-      child: SlideTransition(
-        position: Tween<Offset>(
-          begin: const Offset(0.035, 0),
-          end: Offset.zero,
-        ).animate(eased),
-        child: ScaleTransition(
-          scale: Tween<double>(begin: 0.99, end: 1).animate(eased),
-          child: child,
-        ),
+    // Do not fade the route: Settings pages use layered/glass surfaces, and
+    // fading exposes the previous route through them during push and pop.
+    return SlideTransition(
+      position: Tween<Offset>(
+        begin: const Offset(0.035, 0),
+        end: Offset.zero,
+      ).animate(eased),
+      child: ScaleTransition(
+        scale: Tween<double>(begin: 0.99, end: 1).animate(eased),
+        child: child,
       ),
     );
   }

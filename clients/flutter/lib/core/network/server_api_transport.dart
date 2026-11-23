@@ -73,8 +73,11 @@ class _ServerApiTransport {
         options.extra['pocketlink.queueWaitMs'] = queueStopwatch.elapsedMilliseconds;
         options.extra['pocketlink.queryKey'] = _diagnosticQueryKey(options);
         options.extra['pocketlink.requestStopwatch'] = Stopwatch()..start();
-        AppLogger.info('API request started', fields: {
+        AppLogger.info('API request started', category: 'network', component: 'server_api', correlationId: requestId, fields: {
           'requestId': requestId,
+          'operation': '${options.method.toUpperCase()} ${options.uri.path}',
+          'endpoint': options.uri.path,
+          'route': options.uri.path,
           'method': options.method,
           'path': options.uri.path,
           'queryKey': options.extra['pocketlink.queryKey'],
@@ -88,8 +91,12 @@ class _ServerApiTransport {
         _releaseRequestSlot(response.requestOptions);
         final options = response.requestOptions;
         final stopwatch = options.extra['pocketlink.requestStopwatch'] as Stopwatch?;
-        AppLogger.info('API request completed', fields: {
-          'requestId': options.extra['pocketlink.requestId'] ?? 'unknown',
+        final requestId = options.extra['pocketlink.requestId']?.toString() ?? 'unknown';
+        AppLogger.info('API request completed', category: 'network', component: 'server_api', correlationId: requestId, fields: {
+          'requestId': requestId,
+          'operation': '${options.method.toUpperCase()} ${options.uri.path}',
+          'endpoint': options.uri.path,
+          'route': options.uri.path,
           'method': options.method,
           'path': options.uri.path,
           'status': response.statusCode,
@@ -103,8 +110,13 @@ class _ServerApiTransport {
       onError: (error, handler) async {
         final failedOptions = error.requestOptions;
         final stopwatch = failedOptions.extra['pocketlink.requestStopwatch'] as Stopwatch?;
-        AppLogger.warning('API request failed', fields: {
-          'requestId': failedOptions.extra['pocketlink.requestId'] ?? 'unknown',
+        final requestId = failedOptions.extra['pocketlink.requestId']?.toString() ?? 'unknown';
+        AppLogger.warning('API request failed', category: 'network', component: 'server_api', correlationId: requestId, fields: {
+          'requestId': requestId,
+          'operation': '${failedOptions.method.toUpperCase()} ${failedOptions.uri.path}',
+          'endpoint': failedOptions.uri.path,
+          'route': failedOptions.uri.path,
+          'failureHint': _networkFailureHint(error),
           'method': failedOptions.method,
           'path': failedOptions.uri.path,
           'type': error.type.name,
@@ -133,13 +145,18 @@ class _ServerApiTransport {
           // Wi-Fi/mobile route. Force the retry onto a fresh TCP connection.
           options.headers['connection'] = 'close';
           final retryDelay = _retryDelay(error, attempts);
-          AppLogger.warning('API retry scheduled', fields: {
-            'requestId': options.extra['pocketlink.requestId'] ?? 'unknown',
+          final requestId = options.extra['pocketlink.requestId']?.toString() ?? 'unknown';
+          AppLogger.warning('API retry scheduled', category: 'network', component: 'server_api', correlationId: requestId, fields: {
+            'requestId': requestId,
+            'operation': '${options.method.toUpperCase()} ${options.uri.path}',
+            'endpoint': options.uri.path,
+            'route': options.uri.path,
             'method': options.method,
             'path': options.uri.path,
             'nextAttempt': attempts + 1,
             'delayMs': retryDelay.inMilliseconds,
             'freshConnection': true,
+            'failureHint': _networkFailureHint(error),
           });
           await Future<void>.delayed(retryDelay);
           if (options.cancelToken?.isCancelled ?? false) {
@@ -194,14 +211,29 @@ String _diagnosticQueryKey(RequestOptions options) {
     return hash.toRadixString(16).padLeft(8, '0');
   }
 
-Future<T> _sharedRead<T>(
+String _stableDiagnosticHash(String value) {
+    var hash = 0x811c9dc5;
+    for (final unit in value.codeUnits) {
+      hash ^= unit;
+      hash = (hash * 0x01000193) & 0xffffffff;
+    }
+    return hash.toRadixString(16).padLeft(8, '0');
+  }
+
+  Future<T> _sharedRead<T>(
     String resourceKey,
     Future<T> Function() load,
   ) {
     final authorization = _dio.options.headers['Authorization']?.toString() ?? '';
     final key = '${_dio.options.baseUrl}:$authorization:$resourceKey';
     final existing = _sharedReadRequests[key];
-    if (existing != null) return existing.then((value) => value as T);
+    if (existing != null) {
+      AppLogger.info('API read joined in-flight request', category: 'network', component: 'server_api', fields: {
+        'operation': 'shared_read_joined',
+        'resourceKeyHash': _stableDiagnosticHash(resourceKey),
+      });
+      return existing.then((value) => value as T);
+    }
 
     late final Future<T> request;
     request = load().whenComplete(() {
@@ -213,7 +245,15 @@ Future<T> _sharedRead<T>(
     return request;
   }
 
-Duration _retryDelay(DioException error, int attempts) {
+  String _networkFailureHint(DioException error) => switch (error.type) {
+        DioExceptionType.connectionTimeout => 'host_or_network_route_unreachable',
+        DioExceptionType.connectionError => 'network_route_or_server_unavailable',
+        DioExceptionType.receiveTimeout => 'server_response_timeout',
+        DioExceptionType.sendTimeout => 'request_send_timeout',
+        _ => 'http_or_transport_error',
+      };
+
+  Duration _retryDelay(DioException error, int attempts) {
     final retryAfter = error.response?.headers.value('retry-after')?.trim();
     Duration? serverDelay;
     if (retryAfter != null && retryAfter.isNotEmpty) {
