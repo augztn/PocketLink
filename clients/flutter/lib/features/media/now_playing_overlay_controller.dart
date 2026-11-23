@@ -9,7 +9,7 @@ abstract final class NowPlayingOverlayController {
 
   static void register(
     Future<void> Function() handler, {
-    required Animation<double> progress,
+    Animation<double>? progress,
   }) {
     _openHandler = handler;
     expandProgress = progress;
