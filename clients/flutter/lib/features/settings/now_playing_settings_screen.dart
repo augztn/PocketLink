@@ -90,7 +90,7 @@ class NowPlayingSettingsScreen extends StatelessWidget {
                   ),
                 ],
               ),
-            ),
+            ]),
             const SizedBox(height: 20),
             const SettingsSectionHeader('Now Playing scrubber'),
             SettingsGroupCard(children: [Column(
@@ -120,7 +120,7 @@ class NowPlayingSettingsScreen extends StatelessWidget {
                   );
                 }).toList(growable: false),
               ),
-            ),
+            ]),
             const SizedBox(height: 20),
             const SettingsSectionHeader('Now Playing theme'),
             SizedBox(
@@ -194,7 +194,7 @@ class NowPlayingSettingsScreen extends StatelessWidget {
                   ),
                 ],
               ),
-            ),
+            ]),
             const SizedBox(height: 12),
             Align(
               alignment: Alignment.centerRight,
