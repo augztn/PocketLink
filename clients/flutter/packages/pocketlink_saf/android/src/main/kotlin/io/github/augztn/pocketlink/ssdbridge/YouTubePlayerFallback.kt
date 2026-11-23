@@ -15,7 +15,8 @@ internal data class YouTubePlayerStream(
     val userAgent: String,
     val codec: String,
     val itag: Int,
-    val client: String
+    val client: String,
+    val audioOnly: Boolean
 )
 
 /**
@@ -29,23 +30,61 @@ internal class YouTubePlayerFallback(client: OkHttpClient) {
         .callTimeout(10, TimeUnit.SECONDS)
         .build()
 
-    fun resolve(videoId: String): YouTubePlayerStream? {
+    fun resolve(videoId: String, regionCode: String, quality: String): YouTubePlayerStream? {
         require(VIDEO_ID.matches(videoId)) { "Invalid YouTube video ID." }
+        var progressiveFallback: YouTubePlayerStream? = null
         for (profile in CLIENTS) {
-            val response = runCatching { requestPlayer(videoId, profile) }.getOrNull() ?: continue
-            val candidate = parseStreams(response, profile).firstOrNull()
-            if (candidate != null) return candidate
+            val response = runCatching {
+                requestPlayer(videoId, profile, regionCode)
+            }.getOrNull() ?: continue
+            val streams = parseStreams(response, profile)
+            val audio = streams.filter { it.audioOnly }
+            val selected = DiscoverPlaybackOptions.selectAudioFormat(
+                audio,
+                quality,
+                { it.bitrateBps },
+                { isOpus(it) }
+            )
+            if (selected != null) return selected
+            if (progressiveFallback == null) {
+                progressiveFallback = streams.firstOrNull { !it.audioOnly }
+            }
         }
-        return null
+        return progressiveFallback
     }
 
-    private fun requestPlayer(videoId: String, profile: PlayerClient): JSONObject {
+    internal fun buildClientContext(regionCode: String): JSONObject {
+        val utcOffsetMinutes = java.util.TimeZone.getDefault()
+            .getOffset(System.currentTimeMillis()) / 60_000
+        val profile = CLIENTS.first()
+        return JSONObject()
+            .put("clientName", profile.clientName)
+            .put("clientVersion", profile.version)
+            .put("hl", "en")
+            .put("gl", DiscoverPlaybackOptions.normalizeRegion(regionCode))
+            .put("utcOffsetMinutes", utcOffsetMinutes)
+            .apply {
+                profile.osName?.let { put("osName", it) }
+                profile.osVersion?.let { put("osVersion", it) }
+                profile.deviceMake?.let { put("deviceMake", it) }
+                profile.deviceModel?.let { put("deviceModel", it) }
+                profile.androidSdkVersion?.let { put("androidSdkVersion", it) }
+            }
+    }
+
+    private fun requestPlayer(
+        videoId: String,
+        profile: PlayerClient,
+        regionCode: String
+    ): JSONObject {
+        val utcOffsetMinutes = java.util.TimeZone.getDefault()
+            .getOffset(System.currentTimeMillis()) / 60_000
         val clientContext = JSONObject()
             .put("clientName", profile.clientName)
             .put("clientVersion", profile.version)
             .put("hl", "en")
-            .put("gl", "IN")
-            .put("utcOffsetMinutes", 330)
+            .put("gl", DiscoverPlaybackOptions.normalizeRegion(regionCode))
+            .put("utcOffsetMinutes", utcOffsetMinutes)
             .apply {
                 profile.osName?.let { put("osName", it) }
                 profile.osVersion?.let { put("osVersion", it) }
@@ -88,9 +127,9 @@ internal class YouTubePlayerFallback(client: OkHttpClient) {
         val status = player.optJSONObject("playabilityStatus")?.optString("status").orEmpty()
         if (status.isNotBlank() && status != "OK") return emptyList()
         val streaming = player.optJSONObject("streamingData") ?: return emptyList()
-        val audio = collect(streaming.optJSONArray("adaptiveFormats"), profile)
+        val audio = collect(streaming.optJSONArray("adaptiveFormats"), profile, audioOnly = true)
             .filter { it.mimeType.startsWith("audio/", ignoreCase = true) }
-        val progressive = collect(streaming.optJSONArray("formats"), profile)
+        val progressive = collect(streaming.optJSONArray("formats"), profile, audioOnly = false)
             .filter {
                 it.mimeType.startsWith("video/mp4", ignoreCase = true) ||
                     it.mimeType.startsWith("video/webm", ignoreCase = true)
@@ -101,7 +140,7 @@ internal class YouTubePlayerFallback(client: OkHttpClient) {
         ) + progressive.sortedByDescending { it.bitrateBps }
     }
 
-    private fun collect(formats: JSONArray?, profile: PlayerClient): List<YouTubePlayerStream> {
+    private fun collect(formats: JSONArray?, profile: PlayerClient, audioOnly: Boolean): List<YouTubePlayerStream> {
         if (formats == null) return emptyList()
         return buildList {
             for (index in 0 until formats.length()) {
@@ -122,7 +161,8 @@ internal class YouTubePlayerFallback(client: OkHttpClient) {
                         userAgent = profile.userAgent,
                         codec = codec,
                         itag = item.optInt("itag", 0),
-                        client = profile.id
+                        client = profile.id,
+                        audioOnly = audioOnly
                     )
                 )
             }
