@@ -32,8 +32,9 @@ class DiscoverScreen extends StatefulWidget {
   State<DiscoverScreen> createState() => _DiscoverScreenState();
 }
 
-class _DiscoverScreenState extends State<DiscoverScreen> {
+class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProviderStateMixin {
   final DiscoverService _service = DiscoverService();
+  late final AnimationController _shimmerController;
   final TextEditingController _searchController = TextEditingController();
   List<DiscoverTrack> _tracks = const [];
   List<_DiscoverShelf> _homeShelves = const [];
@@ -48,6 +49,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   @override
   void initState() {
     super.initState();
+    _shimmerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
     _lastRegion = AppSettings.instance.discoverRegion;
     AppSettings.instance.addListener(_onSettingsChanged);
     _loadLocalLibrary();
@@ -67,6 +72,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   @override
   void dispose() {
     AppSettings.instance.removeListener(_onSettingsChanged);
+    _shimmerController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -496,15 +502,182 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
   Widget _art(DiscoverTrack track, {double size = 56}) {
     final show = AppSettings.instance.discoverArtwork && track.thumbnailUrl.isNotEmpty;
+    final placeholder = _skeletonBlock(
+      width: size.isFinite ? size : null,
+      height: size.isFinite ? size : null,
+      radius: 13,
+    );
     return ClipRRect(
       borderRadius: BorderRadius.circular(13),
       child: SizedBox(
         width: size.isFinite ? size : null,
         height: size.isFinite ? size : null,
         child: show
-          ? Image.network(track.thumbnailUrl, fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => _artFallback(size))
-          : _artFallback(size)),
+            ? Image.network(
+                track.thumbnailUrl,
+                fit: BoxFit.cover,
+                frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                  if (wasSynchronouslyLoaded) return child;
+                  return AnimatedOpacity(
+                    opacity: frame == null ? 0 : 1,
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOut,
+                    child: frame == null
+                        ? placeholder
+                        : Stack(fit: StackFit.expand, children: [placeholder, child]),
+                  );
+                },
+                errorBuilder: (_, __, ___) => _artFallback(size),
+              )
+            : _artFallback(size),
+      ),
+    );
+  }
+
+  Widget _skeletonBlock({
+    double? width,
+    double? height,
+    double radius = 8,
+  }) {
+    return AnimatedBuilder(
+      animation: _shimmerController,
+      builder: (context, child) {
+        final shift = -1.4 + (_shimmerController.value * 2.8);
+        return ShaderMask(
+          blendMode: BlendMode.srcATop,
+          shaderCallback: (bounds) => LinearGradient(
+            begin: Alignment(shift, 0),
+            end: Alignment(shift + 1.2, 0),
+            colors: const [
+              Color(0xFF1A1A1E),
+              Color(0xFF2A2A30),
+              Color(0xFF1A1A1E),
+            ],
+            stops: const [0.25, 0.5, 0.75],
+          ).createShader(bounds),
+          child: child,
+        );
+      },
+      child: Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+          color: const Color(0xFF1A1A1E),
+          borderRadius: BorderRadius.circular(radius),
+        ),
+      ),
+    );
+  }
+
+  Widget _skeletonLine({required double width, double height = 10}) =>
+      _skeletonBlock(width: width, height: height, radius: 6);
+
+  Widget _discoverHomeSkeleton() {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    return SliverList(
+      delegate: SliverChildListDelegate([
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 2, 20, 12),
+          child: _skeletonLine(width: 86, height: 12),
+        ),
+        SizedBox(
+          height: 286,
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            scrollDirection: Axis.horizontal,
+            itemCount: 2,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (_, __) => _skeletonBlock(
+              width: screenWidth * .70,
+              height: 286,
+              radius: 18,
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+          child: _skeletonLine(width: 132, height: 12),
+        ),
+        SizedBox(
+          height: 4 * 66,
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            scrollDirection: Axis.horizontal,
+            itemCount: 2,
+            separatorBuilder: (_, __) => const SizedBox(width: 10),
+            itemBuilder: (_, __) => SizedBox(
+              width: screenWidth * .86,
+              child: Column(
+                children: List.generate(4, (_) => Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(children: [
+                      _skeletonBlock(width: 50, height: 50, radius: 10),
+                      const SizedBox(width: 10),
+                      Expanded(child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _skeletonLine(width: 150, height: 11),
+                          const SizedBox(height: 7),
+                          _skeletonLine(width: 92, height: 8),
+                        ],
+                      )),
+                      _skeletonBlock(width: 22, height: 22, radius: 11),
+                    ]),
+                  ),
+                )),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+          child: _skeletonLine(width: 112, height: 12),
+        ),
+        SizedBox(
+          height: 112,
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            scrollDirection: Axis.horizontal,
+            itemCount: 4,
+            separatorBuilder: (_, __) => const SizedBox(width: 10),
+            itemBuilder: (_, __) => _skeletonBlock(
+              width: (screenWidth - 50) / 2,
+              height: 112,
+              radius: 14,
+            ),
+          ),
+        ),
+        for (var shelf = 0; shelf < 3; shelf++) ...[
+          const SizedBox(height: 24),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+            child: _skeletonLine(width: 118 + shelf * 12, height: 12),
+          ),
+          SizedBox(
+            height: 214,
+            child: ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              scrollDirection: Axis.horizontal,
+              itemCount: 4,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (_, __) => SizedBox(
+                width: 148,
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Expanded(child: _skeletonBlock(width: 148, radius: 14)),
+                  const SizedBox(height: 9),
+                  _skeletonLine(width: 112, height: 10),
+                  const SizedBox(height: 6),
+                  _skeletonLine(width: 76, height: 8),
+                ]),
+              ),
+            ),
+          ),
+        ],
+      ]),
     );
   }
 
@@ -890,7 +1063,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               ]),
             )),
             if (_loading && !hasTracks)
-              const SliverFillRemaining(hasScrollBody: false, child: Center(child: CircularProgressIndicator()))
+              _discoverHomeSkeleton()
             else if (_error != null && !hasTracks)
               SliverFillRemaining(hasScrollBody: false, child: Center(child: Padding(
                 padding: const EdgeInsets.all(28),
