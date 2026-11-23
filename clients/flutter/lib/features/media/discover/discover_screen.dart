@@ -49,6 +49,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
   List<IndexedFile> _localLibrary = const [];
   bool _loading = false;
   bool _loadingLibrary = false;
+  bool _startingPlayback = false;
   String? _error;
   String _sectionTitle = 'Top charts in India';
   int _requestGeneration = 0;
@@ -257,6 +258,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
   }
 
   Future<void> _play(DiscoverTrack track) async {
+    // Ignore repeated taps while the first selection is resolving and opening.
+    // Otherwise each tap replaces the queue and starts another auto-queue pass.
+    if (_startingPlayback) return;
+    _startingPlayback = true;
     var sourceTracks = _tracks;
     for (final shelf in _homeShelves) {
       if (shelf.tracks.any((item) => item.videoId == track.videoId)) {
@@ -287,6 +292,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
             ? error.message ?? 'Could not resolve this track.'
             : 'Could not start playback. Try again later.')),
       );
+    } finally {
+      _startingPlayback = false;
     }
   }
 
