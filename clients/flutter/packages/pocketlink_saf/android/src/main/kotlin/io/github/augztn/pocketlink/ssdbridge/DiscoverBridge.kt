@@ -40,6 +40,7 @@ internal object DiscoverBridge {
         .build()
 
     private val catalog = YouTubeMusicCatalog(httpClient)
+    private val playerFallback = YouTubePlayerFallback(httpClient)
     @Volatile private var initialized = false
     private val initLock = Any()
 
@@ -141,32 +142,77 @@ internal object DiscoverBridge {
                 ensureInitialized()
                 val id = videoId.trim()
                 require(ID_PATTERN.matches(id)) { "Invalid YouTube video ID." }
-                val info = StreamInfo.getInfo(
-                    ServiceList.YouTube,
-                    "https://www.youtube.com/watch?v=$id"
-                )
-                val candidates = info.audioStreams.orEmpty()
-                    .filter { stream ->
-                        val url = stream.content.orEmpty()
-                        url.startsWith("https://") || url.startsWith("http://")
-                    }
-                val selected = candidates
-                    .sortedWith(
-                        compareByDescending<AudioStream> { isOpus(it) }
-                            .thenByDescending { it.averageBitrate }
+
+                var payload: Map<String, Any>? = null
+                var newPipeFailure: String? = null
+                val info = runCatching {
+                    StreamInfo.getInfo(
+                        ServiceList.YouTube,
+                        "https://www.youtube.com/watch?v=$id"
                     )
-                    .firstOrNull()
-                    ?: throw IOException("YouTube did not return a playable audio stream.")
-                val url = selected.content.orEmpty()
-                val payload = mapOf(
-                    "url" to url,
-                    "mimeType" to (selected.format?.mimeType ?: "audio/webm"),
-                    "bitrateBps" to selected.averageBitrate.toLong() * 1000L,
-                    "userAgent" to BROWSER_USER_AGENT,
-                    "codec" to (selected.codec ?: ""),
-                    "itag" to selected.itag
-                )
-                mainHandler.post { result.success(payload) }
+                }.onFailure { error ->
+                    // Keep diagnostics useful without logging signed URLs or request tokens.
+                    newPipeFailure = error.javaClass.simpleName
+                }.getOrNull()
+
+                if (info != null) {
+                    val audio = info.audioStreams.orEmpty()
+                        .filter { stream -> stream.content.orEmpty().startsWith("https://") }
+                        .sortedWith(
+                            compareByDescending<AudioStream> { isOpus(it) }
+                                .thenByDescending { it.averageBitrate }
+                        )
+                        .firstOrNull()
+                    if (audio != null) {
+                        payload = mapOf(
+                            "url" to audio.content.orEmpty(),
+                            "mimeType" to (audio.format?.mimeType ?: "audio/webm"),
+                            "bitrateBps" to audio.averageBitrate.toLong() * 1000L,
+                            "userAgent" to BROWSER_USER_AGENT,
+                            "codec" to (audio.codec ?: ""),
+                            "itag" to audio.itag,
+                            "resolver" to "NewPipe"
+                        )
+                    } else {
+                        // Some YouTube clients expose only muxed progressive streams.
+                        val progressive = info.videoStreams.orEmpty()
+                            .filter { !it.isVideoOnly && it.content.orEmpty().startsWith("https://") }
+                            .maxByOrNull { it.height }
+                        if (progressive != null) {
+                            payload = mapOf(
+                                "url" to progressive.content.orEmpty(),
+                                "mimeType" to (progressive.format?.mimeType ?: "video/mp4"),
+                                "bitrateBps" to 128_000L,
+                                "userAgent" to BROWSER_USER_AGENT,
+                                "codec" to (progressive.codec ?: ""),
+                                "itag" to progressive.itag,
+                                "resolver" to "NewPipe-progressive"
+                            )
+                        }
+                    }
+                }
+
+                if (payload == null) {
+                    val fallback = playerFallback.resolve(id)
+                    if (fallback != null) {
+                        payload = mapOf(
+                            "url" to fallback.url,
+                            "mimeType" to fallback.mimeType,
+                            "bitrateBps" to fallback.bitrateBps,
+                            "userAgent" to fallback.userAgent,
+                            "codec" to fallback.codec,
+                            "itag" to fallback.itag,
+                            "resolver" to fallback.client
+                        )
+                    }
+                }
+
+                val resolved = payload
+                    ?: throw IOException(
+                        "No playable stream was exposed by NewPipe or the alternate YouTube player clients." +
+                            (newPipeFailure?.let { " NewPipe: $it." } ?: "")
+                    )
+                mainHandler.post { result.success(resolved) }
             } catch (error: Exception) {
                 mainHandler.post {
                     result.error(
