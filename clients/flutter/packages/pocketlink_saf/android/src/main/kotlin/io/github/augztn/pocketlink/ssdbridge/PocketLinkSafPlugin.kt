@@ -70,21 +70,33 @@ class PocketLinkSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
                 DiscoverBridge.search(
                     call.argument<String>("query").orEmpty(),
                     call.argument<Number>("limit")?.toInt() ?: 30,
+                    call.argument<String>("region") ?: "IN",
                     result
                 )
             }
             "discoverHome" -> {
-                DiscoverBridge.home(call.argument<Number>("limit")?.toInt() ?: 30, result)
+                DiscoverBridge.home(
+                    call.argument<Number>("limit")?.toInt() ?: 30,
+                    call.argument<String>("region") ?: "IN",
+                    result
+                )
             }
             "discoverRadio" -> {
                 DiscoverBridge.radio(
                     call.argument<String>("videoId").orEmpty(),
                     call.argument<Number>("limit")?.toInt() ?: 25,
+                    call.argument<String>("region") ?: "IN",
                     result
                 )
             }
             "discoverResolve" -> {
-                DiscoverBridge.resolve(call.argument<String>("videoId").orEmpty(), result)
+                DiscoverBridge.resolve(
+                    call.argument<String>("videoId").orEmpty(),
+                    call.argument<String>("quality") ?: "best_available",
+                    call.argument<String>("resolverProfile") ?: "automatic",
+                    call.argument<String>("region") ?: "IN",
+                    result
+                )
             }
             "getVideoBrightness" -> {
                 val current = activity
