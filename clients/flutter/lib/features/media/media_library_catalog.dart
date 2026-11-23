@@ -42,7 +42,7 @@ class MediaLibraryCatalog {
   final String sortBy;
 
   static const _audioExtensions = {
-    'mp3', 'flac', 'm4a', 'wav', 'ogg', 'aac', 'opus', 'wma',
+    'mp3', 'flac', 'm4a', 'wav', 'ogg', 'aac', 'opus', 'wma',\n    'alac', 'aiff', 'aif', 'wv', 'ape', 'dsf', 'dff',
   };
   static const _videoExtensions = {
     'mp4', 'mkv', 'webm', 'mov', 'avi', 'm4v', '3gp', 'ts',
@@ -50,7 +50,7 @@ class MediaLibraryCatalog {
   static const _audioMimeTypes = {
     'audio/mpeg', 'audio/flac', 'audio/x-flac', 'audio/mp4', 'audio/x-m4a',
     'audio/wav', 'audio/x-wav', 'audio/ogg', 'audio/aac', 'audio/opus',
-    'audio/x-ms-wma',
+    'audio/x-ms-wma', 'audio/aiff', 'audio/x-aiff', 'audio/alac', 'audio/x-alac',
   };
   static const _videoMimeTypes = {
     'video/mp4', 'video/x-m4v', 'video/x-matroska', 'video/webm',
