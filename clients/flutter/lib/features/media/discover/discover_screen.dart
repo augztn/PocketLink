@@ -269,6 +269,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         volume: local.volume == 'internal' ? null : local.volume,
         size: local.size,
         artist: track.artist,
+        artworkUrl: track.thumbnailUrl,
       );
     }
     return _remoteQueueItem(track);
@@ -327,6 +328,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       path: track.videoId,
       streamUrl: stream.url,
       artist: track.artist,
+      artworkUrl: track.thumbnailUrl,
       httpHeaders: {
         'User-Agent': stream.userAgent,
         'Accept': '*/*',
