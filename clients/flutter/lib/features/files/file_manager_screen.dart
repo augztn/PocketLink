@@ -937,13 +937,8 @@ tooltip: 'Choose storage location',
                                                 : _isImage(item)
                                                     ? () => _previewImage(item)
                                                     : null,
-                                        child: Container(
+                                        child: Padding(
                                           padding: const EdgeInsets.all(14),
-                                          decoration: BoxDecoration(
-                                            color: colors.surfaceContainerLow,
-                                            borderRadius: BorderRadius.circular(20),
-                                            border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.32)),
-                                          ),
                                           child: Column(
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
