@@ -9,6 +9,19 @@ class YouTubeMusicCatalogTest {
     private val catalog = YouTubeMusicCatalog()
 
     @Test
+    fun requestContextUsesSelectedRegionAndDeviceTimezone() {
+        val context = catalog.buildClientContext("JP")
+        assertEquals("JP", context.optString("gl"))
+        assertTrue(context.optInt("utcOffsetMinutes") in -720..840)
+    }
+
+    @Test
+    fun invalidRegionFallsBackToIndia() {
+        val context = catalog.buildClientContext("not-a-country")
+        assertEquals("IN", context.optString("gl"))
+    }
+
+    @Test
     fun parsesMusicResponsiveListItemsAndMetadata() {
         val json = JSONObject(
             """
