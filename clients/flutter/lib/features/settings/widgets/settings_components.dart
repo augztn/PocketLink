@@ -119,13 +119,24 @@ class SettingsTile extends StatelessWidget {
 }
 
 /// Settings pages sit above the app-level mini-player, not the home dock.
+double settingsListBottomPadding(
+  BuildContext context, {
+  bool? miniPlayerVisible,
+}) {
+  final media = MediaQuery.of(context);
+  final visible = miniPlayerVisible ??
+      LayoutInsetsScope.maybeOf(context)?.hasActiveMiniPlayer ??
+      false;
+  return media.padding.bottom + (visible ? 74.0 + 24.0 : 24.0);
+}
+
 EdgeInsets settingsListPadding(
   BuildContext context, {
   double horizontal = 16,
-}) {
-  final media = MediaQuery.of(context);
-  final miniPlayerVisible =
-      LayoutInsetsScope.maybeOf(context)?.hasActiveMiniPlayer ?? false;
-  final bottom = media.padding.bottom + (miniPlayerVisible ? 74.0 + 24.0 : 24.0);
-  return EdgeInsets.fromLTRB(horizontal, 16, horizontal, bottom);
-}
+}) =>
+    EdgeInsets.fromLTRB(
+      horizontal,
+      16,
+      horizontal,
+      settingsListBottomPadding(context),
+    );
