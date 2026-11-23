@@ -20,6 +20,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
     required this.onSkipPrevious,
     required this.onSkipNext,
     this.surfaceKey,
+    this.hasFloatingNavBar = true,
     super.key,
   });
 
@@ -37,6 +38,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
   final VoidCallback onSkipPrevious;
   final VoidCallback onSkipNext;
   final Key? surfaceKey;
+  final bool hasFloatingNavBar;
 
   double get _progress {
     if (duration <= Duration.zero) return 0;
@@ -66,7 +68,12 @@ class GlobalMiniPlayerBar extends StatelessWidget {
       alignment: Alignment.centerLeft,
       child: Padding(
         // Match the Home / Explore / Files capsule and leave Music outside it.
-        padding: const EdgeInsets.fromLTRB(14, 4, 88, 0),
+        padding: EdgeInsets.fromLTRB(
+          hasFloatingNavBar ? 14 : 16,
+          4,
+          hasFloatingNavBar ? 88 : 16,
+          0,
+        ),
         child: SmokedGlassSurface(
           key: surfaceKey,
           radius: BorderRadius.circular(22),
