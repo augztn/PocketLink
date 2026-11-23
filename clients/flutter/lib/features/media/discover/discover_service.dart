@@ -31,14 +31,32 @@ class DiscoverService {
       'discoverSearch',
       {'query': clean, 'limit': limit.clamp(1, 50)},
     );
-    return (raw ?? const [])
-        .whereType<Map<Object?, Object?>>()
-        .map((item) => DiscoverTrack.fromJson(
-              item.map((key, value) => MapEntry(key.toString(), value)),
-            ))
-        .where((track) => track.videoId.isNotEmpty && track.title.isNotEmpty)
-        .toList(growable: false);
+    return _parseTracks(raw);
   }
+
+  Future<List<DiscoverTrack>> home({int limit = 30}) async {
+    final raw = await _channel.invokeListMethod<Object?>(
+      'discoverHome',
+      {'limit': limit.clamp(1, 50)},
+    );
+    return _parseTracks(raw);
+  }
+
+  Future<List<DiscoverTrack>> radio(DiscoverTrack track, {int limit = 25}) async {
+    final raw = await _channel.invokeListMethod<Object?>(
+      'discoverRadio',
+      {'videoId': track.videoId, 'limit': limit.clamp(1, 50)},
+    );
+    return _parseTracks(raw);
+  }
+
+  List<DiscoverTrack> _parseTracks(List<Object?>? raw) => (raw ?? const [])
+      .whereType<Map<Object?, Object?>>()
+      .map((item) => DiscoverTrack.fromJson(
+            item.map((key, value) => MapEntry(key.toString(), value)),
+          ))
+      .where((track) => track.videoId.isNotEmpty && track.title.isNotEmpty)
+      .toList(growable: false);
 
   Future<DiscoverResolvedStream> resolve(DiscoverTrack track) async {
     final raw = await _channel.invokeMapMethod<String, dynamic>(
