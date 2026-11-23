@@ -38,6 +38,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   bool _nowPlayingOpen = false;
   final ValueNotifier<bool> _isNowPlayingDragging = ValueNotifier<bool>(false);
   bool _closingNowPlaying = false;
+  bool _snapMiniPlayerVisibility = false;
   Rect? _nowPlayingOriginRect;
   Rect? _miniArtworkOriginRect;
   final ValueNotifier<Uint8List?> _sharedArtwork = ValueNotifier(null);
@@ -213,11 +214,16 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
       _closingNowPlaying = false;
       _openingNowPlaying = false;
       _nowPlayingController.value = 0;
+      _snapMiniPlayerVisibility = true;
       setState(() {
         _nowPlayingOpen = false;
         _isNowPlayingDragging.value = false;
         _nowPlayingOriginRect = null;
         _miniArtworkOriginRect = null;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_snapMiniPlayerVisibility) return;
+        setState(() => _snapMiniPlayerVisibility = false);
       });
     }));
   }
@@ -465,7 +471,8 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
                       child: _GlobalMiniPlayerBar(
                         visible: visible,
                         hasFloatingNavBar: onDashboard,
-                        reduceMotion: reduceMotion,
+                        reduceMotion:
+                            reduceMotion || _snapMiniPlayerVisibility,
                         player: player,
                         artworkBytes: _sharedArtwork,
                         surfaceIntensity: visible ? 1.0 : 0.0,
