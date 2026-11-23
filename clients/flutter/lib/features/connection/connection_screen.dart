@@ -8,8 +8,10 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../core/network/server_api.dart';
+import '../../core/settings/app_settings.dart';
 import '../../core/logging/app_logger.dart';
 import '../diagnostics/diagnostics_screen.dart';
+import '../media/discover/discover_screen.dart';
 import '../home/home_screen.dart';
 import '../storage/local_storage_setup_screen.dart';
 
@@ -183,6 +185,18 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     await _persistProfiles();
     if (!mounted) return;
     setState(() {});
+  }
+
+  Future<void> _openHost() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const LocalStorageSetupScreen()),
+    );
+  }
+
+  Future<void> _openDiscover() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const DiscoverScreen()),
+    );
   }
 
   Future<void> _connect() async {
@@ -416,6 +430,18 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
         showHome: false,
         actions: [
           PocketLinkAppBarAction(
+            label: 'Show Discover: ${AppSettings.instance.showDiscoverOnWelcome ? 'On' : 'Off'}',
+            icon: AppSettings.instance.showDiscoverOnWelcome
+                ? Icons.check_box_rounded
+                : Icons.check_box_outline_blank_rounded,
+            onPressed: () async {
+              await AppSettings.instance.setShowDiscoverOnWelcome(
+                !AppSettings.instance.showDiscoverOnWelcome,
+              );
+              if (mounted) setState(() {});
+            },
+          ),
+          PocketLinkAppBarAction(
             label: 'Diagnostics & logs',
             icon: Icons.bug_report_outlined,
             onPressed: () => Navigator.of(context).push(
@@ -424,11 +450,38 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 520),
+                child: SegmentedButton<String>(
+                  showSelectedIcon: false,
+                  segments: [
+                    const ButtonSegment(value: 'connect', label: Text('Connect')),
+                    const ButtonSegment(value: 'host', label: Text('Host')),
+                    if (AppSettings.instance.showDiscoverOnWelcome)
+                      const ButtonSegment(value: 'discover', label: Text('Discover')),
+                  ],
+                  selected: const {'connect'},
+                  onSelectionChanged: _isConnecting ? null : (selection) {
+                    switch (selection.first) {
+                      case 'host': unawaited(_openHost());
+                      case 'discover': unawaited(_openDiscover());
+                    }
+                  },
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         padding: EdgeInsets.fromLTRB(
           20,
-          media.padding.top + kToolbarHeight + 16,
+          8,
           20,
           media.padding.bottom + 24,
         ),
@@ -692,6 +745,9 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
             ),
           ),
         ),
+            ),
+          ),
+        ],
       ),
     );
   }
