@@ -29,7 +29,7 @@ void main() {
       ),
     );
 
-    expect(insets.topClearance, 90);
+    expect(insets.topClearance, 94);
     expect(insets.bottomClearance, 192);
     expect(insets.hasFloatingNavBar, isTrue);
     expect(insets.hasActiveMiniPlayer, isTrue);
@@ -158,7 +158,7 @@ void main() {
     await verifyStable(routeC);
     await verifyStable(routeA);
 
-    expect(tester.getTopLeft(find.byKey(firstRowKey)).dy, 98);
+    expect(tester.getTopLeft(find.byKey(firstRowKey)).dy, 102);
     route.dispose();
   });
 }
