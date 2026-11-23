@@ -20,6 +20,11 @@ void main() {
       autoQueue: false,
       artwork: false,
     );
+    await settings.setDiscoverPlaybackOptions(
+      audioQuality: 'data_saver',
+      resolverProfile: 'player_api_first',
+      region: 'JP',
+    );
 
     final preferences = await SharedPreferences.getInstance();
     expect(settings.discoverEnabled, isFalse);
@@ -27,7 +32,13 @@ void main() {
     expect(settings.discoverLyrics, isFalse);
     expect(settings.discoverAutoQueue, isFalse);
     expect(settings.discoverArtwork, isFalse);
+    expect(settings.discoverAudioQuality, 'data_saver');
+    expect(settings.discoverResolverProfile, 'player_api_first');
+    expect(settings.discoverRegion, 'JP');
     expect(preferences.getBool('settings_discover_enabled'), isFalse);
+    expect(preferences.getString('settings_discover_audio_quality'), 'data_saver');
+    expect(preferences.getString('settings_discover_resolver_profile'), 'player_api_first');
+    expect(preferences.getString('settings_discover_region'), 'JP');
 
     await settings.reloadPreferences();
     expect(settings.discoverEnabled, isFalse);
@@ -35,6 +46,21 @@ void main() {
     expect(settings.discoverLyrics, isFalse);
     expect(settings.discoverAutoQueue, isFalse);
     expect(settings.discoverArtwork, isFalse);
+    expect(settings.discoverAudioQuality, 'data_saver');
+    expect(settings.discoverResolverProfile, 'player_api_first');
+    expect(settings.discoverRegion, 'JP');
+    await expectLater(
+      settings.setDiscoverPlaybackOptions(audioQuality: 'lossless'),
+      throwsArgumentError,
+    );
+    await expectLater(
+      settings.setDiscoverPlaybackOptions(resolverProfile: 'fake'),
+      throwsArgumentError,
+    );
+    await expectLater(
+      settings.setDiscoverPlaybackOptions(region: 'ZZ'),
+      throwsArgumentError,
+    );
   });
 
   test('appearance settings persist and validate through the facade', () async {
