@@ -113,7 +113,7 @@ void main() {
     expect(find.byType(BackdropFilter), findsOneWidget);
   });
 
-  testWidgets('progressive header uses staged blur when enabled', (tester) async {
+  testWidgets('progressive header uses shader blur or stepped fallback when enabled', (tester) async {
     await tester.runAsync(() => AppSettings.instance.setProgressiveBlurStrength(55));
     await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(true));
 
@@ -138,7 +138,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byType(BackdropFilter), findsNWidgets(5));
+    expect(find.byType(BackdropFilter).evaluate().length, anyOf(1, 5));
     scrollController.dispose();
   });
 
@@ -172,7 +172,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byType(BackdropFilter), findsNWidgets(5));
+    expect(find.byType(BackdropFilter).evaluate().length, anyOf(1, 5));
     scrollController.dispose();
   });
 
@@ -246,7 +246,7 @@ void main() {
         )),
     );
     await tester.pump();
-    expect(find.byType(BackdropFilter), findsNWidgets(5));
+    expect(find.byType(BackdropFilter).evaluate().length, anyOf(1, 5));
 
     await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(false));
     await tester.pump();
