@@ -87,31 +87,73 @@ void main() {
     expect(insets.bottomClearance, 120);
   });
 
-  testWidgets('updates top clearance from the rendered header measurement', (tester) async {
-    late LayoutInsetsScope insets;
+  testWidgets('keeps header clearance stable and isolated per route', (tester) async {
+    final routeA = Object();
+    final routeB = Object();
+    final routeC = Object();
+    final activeRoutes = <Object>[routeA, routeB, routeC];
+    final firstRowKey = GlobalKey();
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: MediaQuery(
-          data: const MediaQueryData(
-            padding: EdgeInsets.only(top: 24, bottom: 34),
-          ),
-          child: PocketLinkScaffold(
-            hasFloatingNavBar: false,
-            hasActiveMiniPlayer: false,
-            child: Builder(
-              builder: (context) {
-                LayoutInsetsScope.reportRenderedHeader(context, 104);
-                insets = LayoutInsetsScope.of(context);
-                return const SizedBox.shrink();
-              },
+    Future<double> mountRoute(Object route, double headerHeight) async {
+      late double topClearance;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MediaQuery(
+            data: const MediaQueryData(
+              padding: EdgeInsets.only(top: 24, bottom: 34),
+            ),
+            child: PocketLinkScaffold(
+              routeIdentity: route,
+              activeRouteIdentities: activeRoutes,
+              hasFloatingNavBar: false,
+              hasActiveMiniPlayer: false,
+              child: Builder(
+                builder: (context) {
+                  LayoutInsetsScope.reportRenderedHeader(
+                    context,
+                    route,
+                    headerHeight,
+                  );
+                  topClearance = LayoutInsetsScope.of(context).topClearance;
+                  return SizedBox(
+                    height: topClearance,
+                    child: Align(
+                      alignment: Alignment.bottomCenter,
+                      child: SizedBox(
+                        key: firstRowKey,
+                        height: 20,
+                        child: const Text('First row'),
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
           ),
         ),
-      ),
-    );
-    await tester.pump();
+      );
+      await tester.pump();
+      return tester.getTopLeft(find.byKey(firstRowKey)).dy;
+    }
 
-    expect(insets.topClearance, 98);
+    for (final entry in <(Object, double)>[
+      (routeA, 104),
+      (routeB, 128),
+      (routeC, 116),
+    ]) {
+      final initialTop = await mountRoute(entry.$1, entry.$2);
+      for (var frame = 0; frame < 10; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(
+          tester.getTopLeft(find.byKey(firstRowKey)).dy,
+          initialTop,
+          reason: 'First-row position changed while idle on a route',
+        );
+      }
+    }
+
+    // Returning to an existing route reuses its own measurement.
+    final routeATop = await mountRoute(routeA, 104);
+    expect(routeATop, 24);
   });
 }
