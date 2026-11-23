@@ -550,7 +550,7 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
   final MediaQueryData media;
   final Rect? originRect;
   final Rect? sourceArtworkRect;
-  final ValueListenable<Uint8List?> artworkBytes;
+  final ValueNotifier<Uint8List?> artworkBytes;
   final GlobalKey artworkTargetKey;
   final bool isDragging;
   final PersistentAudioPlayer player;
@@ -791,7 +791,7 @@ class _MiniPlayerMorphContents extends StatelessWidget {
                               fontWeight: FontWeight.w800,
                             ),
                       ),
-                      const Text(
+                      Text(
                         'NOW PLAYING · SWIPE TO SKIP',
                         style: TextStyle(
                           color: secondaryForeground,
