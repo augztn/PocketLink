@@ -688,6 +688,14 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                   style: theme.textTheme.bodySmall,
                   textAlign: TextAlign.center,
                 ),
+                const SizedBox(height: 18),
+                DiagnosticsGuidanceCard(
+                  onOpen: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const DiagnosticsScreen(),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
