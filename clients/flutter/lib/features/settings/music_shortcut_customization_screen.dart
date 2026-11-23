@@ -124,20 +124,24 @@ class _MusicShortcutCustomizationScreenState
             itemBuilder: (context, index) {
               final id = _shortcuts[index];
               final detail = _details[id]!;
-              return ListTile(
+              return Column(
                 key: ValueKey(id),
-                leading: Icon(detail.icon, color: colors.primary),
-                title: Text(detail.label),
-                subtitle: Text(index == 0 ? 'First in shortcut list · ${detail.description}' : detail.description),
-                trailing: ReorderableDelayedDragStartListener(
-                  index: index,
-                  child: const Padding(
-                    padding: EdgeInsets.all(8),
-                    child: Icon(Icons.drag_handle_rounded),
+                children: [
+                  ListTile(
+                    leading: Icon(detail.icon, color: colors.primary),
+                    title: Text(detail.label),
+                    subtitle: Text(index == 0 ? 'First in shortcut list · ${detail.description}' : detail.description),
+                    trailing: ReorderableDelayedDragStartListener(
+                      index: index,
+                      child: const Padding(
+                        padding: EdgeInsets.all(8),
+                        child: Icon(Icons.drag_handle_rounded),
+                      ),
+                    ),
                   ),
-                ),
-                if (index != _shortcuts.length - 1)
-                  const Divider(height: 1, indent: 56),
+                  if (index != _shortcuts.length - 1)
+                    const Divider(height: 1, indent: 56),
+                ],
               );
             },
           ),
