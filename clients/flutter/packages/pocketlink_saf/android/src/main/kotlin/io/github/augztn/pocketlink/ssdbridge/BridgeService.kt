@@ -43,6 +43,13 @@ class BridgeService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        NativeDiagnostics.initialize(this)
+        NativeDiagnostics.record(
+            level = "INFO",
+            category = "lifecycle",
+            component = "bridge_service",
+            message = "Native host service creation started"
+        )
         val channelId = "pocketlink-ssd-bridge"
         if (Build.VERSION.SDK_INT >= 26) {
             val manager = getSystemService(NotificationManager::class.java)
@@ -78,6 +85,12 @@ class BridgeService : Service() {
             if (token.isNotBlank()) {
                 bridgeServer = SafHttpServer(this, token).also { it.start() }
                 bridgeRunning = true
+                NativeDiagnostics.record(
+                    level = "INFO",
+                    category = "service",
+                    component = "saf_http_server",
+                    message = "SAF bridge server started"
+                )
             }
 
             val credentials = ServerCredentials(this)
@@ -86,6 +99,13 @@ class BridgeService : Service() {
                     it.start()
                     activeApiServer = it
                     it.ensureMediaIndexStarted()
+                    NativeDiagnostics.record(
+                        level = "INFO",
+                        category = "service",
+                        component = "native_api_server",
+                        message = "Native API server started",
+                        fields = mapOf("port" to NativeApiServer.PORT)
+                    )
                 }
                 apiRunning = true
                 val filter = IntentFilter().apply {
@@ -107,7 +127,24 @@ class BridgeService : Service() {
             }
             lastError = null
             isRunning = true
+            NativeDiagnostics.record(
+                level = "INFO",
+                category = "lifecycle",
+                component = "bridge_service",
+                message = "Native host service started",
+                fields = mapOf(
+                    "api_running" to apiRunning,
+                    "bridge_running" to bridgeRunning
+                )
+            )
         } catch (error: Exception) {
+            NativeDiagnostics.record(
+                level = "ERROR",
+                category = "service",
+                component = "bridge_service",
+                message = "Native host service startup failed",
+                error = error
+            )
             stopServers()
             lastError = error.message ?: "Could not start the PocketLink service."
             stopForegroundCompat()
@@ -120,6 +157,12 @@ class BridgeService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
 
     override fun onDestroy() {
+        NativeDiagnostics.record(
+            level = "INFO",
+            category = "lifecycle",
+            component = "bridge_service",
+            message = "Native host service stopping"
+        )
         scanHandler.removeCallbacks(scanCheck)
         if (storageReceiverRegistered) {
             runCatching { unregisterReceiver(storageReceiver) }
