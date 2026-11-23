@@ -92,12 +92,10 @@ class GlobalMiniPlayerBar extends StatelessWidget {
           key: surfaceKey,
           radius: BorderRadius.circular(22),
           intensity: surfaceIntensity,
-          child: AnimatedOpacity(
+          // The overlay paints the shared morphing player while expanding.
+          // Hide this docked source immediately so two control sets never overlap.
+          child: Opacity(
             opacity: visible ? 1 : 0,
-            duration: reduceMotion
-                ? Duration.zero
-                : const Duration(milliseconds: 220),
-            curve: Curves.easeOut,
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onHorizontalDragEnd: _handleHorizontalDrag,
