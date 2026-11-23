@@ -40,6 +40,13 @@ class PocketLinkSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         context = binding.applicationContext
+        NativeDiagnostics.initialize(context)
+        NativeDiagnostics.record(
+            level = "INFO",
+            category = "lifecycle",
+            component = "saf_plugin",
+            message = "Native plugin attached to Flutter engine"
+        )
         channel = MethodChannel(binding.binaryMessenger, "pocketlink/saf")
         mediaChannel = MethodChannel(binding.binaryMessenger, "pocketlink/media")
         channel.setMethodCallHandler(this)
@@ -128,6 +135,11 @@ class PocketLinkSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
                 result.success(true)
             }
             "status" -> result.success(status())
+            "readNativeDiagnostics" -> result.success(NativeDiagnostics.read())
+            "clearNativeDiagnostics" -> {
+                NativeDiagnostics.clear()
+                result.success(true)
+            }
             "mediaIndexStatus" -> result.success(BridgeService.mediaIndexStatus())
             "refreshMediaIndex" -> {
                 val scanStatus = BridgeService.refreshMediaIndex()
@@ -460,6 +472,12 @@ class PocketLinkSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        NativeDiagnostics.record(
+            level = "INFO",
+            category = "lifecycle",
+            component = "saf_plugin",
+            message = "Native plugin detached from Flutter engine"
+        )
         MediaPlaybackBridge.commandHandler = null
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             try { storageManager?.unregisterStorageVolumeCallback(volumeCallback) } catch (_: RuntimeException) { }
