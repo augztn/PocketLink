@@ -134,7 +134,7 @@ extension AppSettingsMedia on AppSettings {
   }
 
   Future<void> setNowPlayingTheme(String theme) async {
-    if (!const {'apple', 'blur', 'blurCard', 'gradient'}.contains(theme)) {
+    if (!const {'apple', 'blur', 'blurCard', 'gradient', 'aether'}.contains(theme)) {
       throw ArgumentError.value(theme, 'theme');
     }
     if (_nowPlayingTheme == theme) return;
