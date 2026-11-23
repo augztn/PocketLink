@@ -69,6 +69,7 @@ class AppSettings extends ChangeNotifier {
   static const _videoAutoFullscreenKey = 'settings_video_auto_fullscreen';
   static const _videoFullscreenOrientationKey = 'settings_video_fullscreen_orientation';
   static const _discoverEnabledKey = 'settings_discover_enabled';
+  static const _showDiscoverOnWelcomeKey = 'settings_show_discover_on_welcome';
   static const _discoverLocalLosslessKey = 'settings_discover_local_lossless';
   static const _discoverLyricsKey = 'settings_discover_lyrics';
   static const _discoverAutoQueueKey = 'settings_discover_auto_queue';
@@ -148,6 +149,7 @@ class AppSettings extends ChangeNotifier {
   bool _videoAutoFullscreen = false;
   String _videoFullscreenOrientation = 'landscape';
   bool _discoverEnabled = true;
+  bool _showDiscoverOnWelcome = true;
   bool _discoverLocalLossless = true;
   bool _discoverLyrics = true;
   bool _discoverAutoQueue = true;
@@ -196,6 +198,7 @@ class AppSettings extends ChangeNotifier {
   bool get videoAutoFullscreen => _videoAutoFullscreen;
   String get videoFullscreenOrientation => _videoFullscreenOrientation;
   bool get discoverEnabled => _discoverEnabled;
+  bool get showDiscoverOnWelcome => _showDiscoverOnWelcome;
   bool get discoverLocalLossless => _discoverLocalLossless;
   bool get discoverLyrics => _discoverLyrics;
   bool get discoverAutoQueue => _discoverAutoQueue;
@@ -251,6 +254,7 @@ class AppSettings extends ChangeNotifier {
       _videoAutoFullscreen = preferences.getBool(_videoAutoFullscreenKey) ?? false;
       _videoFullscreenOrientation = preferences.getString(_videoFullscreenOrientationKey) ?? 'landscape';
       _discoverEnabled = preferences.getBool(_discoverEnabledKey) ?? true;
+      _showDiscoverOnWelcome = preferences.getBool(_showDiscoverOnWelcomeKey) ?? true;
       _discoverLocalLossless = preferences.getBool(_discoverLocalLosslessKey) ?? true;
       _discoverLyrics = preferences.getBool(_discoverLyricsKey) ?? true;
       _discoverAutoQueue = preferences.getBool(_discoverAutoQueueKey) ?? true;
