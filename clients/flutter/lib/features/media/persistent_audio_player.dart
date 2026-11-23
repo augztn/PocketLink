@@ -9,7 +9,7 @@ import '../../core/network/server_api.dart';
 import '../../core/storage/home_activity_store.dart';
 
 class MediaQueueItem {
-  const MediaQueueItem({required this.title, required this.path, this.volume, this.localPath, this.size, this.streamUrl, this.httpHeaders = const {}, this.artist});
+  const MediaQueueItem({required this.title, required this.path, this.volume, this.localPath, this.size, this.streamUrl, this.httpHeaders = const {}, this.artist, this.artworkUrl});
 
   final String title;
   final String path;
@@ -19,6 +19,7 @@ class MediaQueueItem {
   final String? streamUrl;
   final Map<String, String> httpHeaders;
   final String? artist;
+  final String? artworkUrl;
 
   /// Describes the origin of the media, not the device or cache used to play it.
   String get sourceLabel {
