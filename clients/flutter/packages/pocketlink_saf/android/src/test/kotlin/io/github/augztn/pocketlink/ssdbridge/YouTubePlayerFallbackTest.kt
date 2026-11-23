@@ -54,7 +54,17 @@ class YouTubePlayerFallbackTest {
         assertEquals("audio/webm", streams[0].mimeType)
         assertEquals(140, streams[1].itag)
         assertEquals(18, streams[2].itag)
+        assertTrue(streams[0].audioOnly)
+        assertTrue(streams[1].audioOnly)
+        assertTrue(!streams[2].audioOnly)
         assertTrue(streams.all { it.url.startsWith("https://") })
+    }
+
+    @Test
+    fun playerContextUsesSelectedRegionAndDeviceTimezone() {
+        val context = resolver.buildClientContext("GB")
+        assertEquals("GB", context.optString("gl"))
+        assertTrue(context.optInt("utcOffsetMinutes") in -720..840)
     }
 
     @Test
