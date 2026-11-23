@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
+import '../../core/widgets/pocketlink_scaffold.dart';
 import '../settings/widgets/settings_components.dart';
 
 import '../../core/logging/app_logger.dart';
@@ -86,13 +87,14 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final topPadding = LayoutInsetsScope.of(context).topClearance + 6;
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: const PocketLinkAppBar(title: Text('Diagnostics', style: TextStyle(fontSize: 20))),
       body: ListView(
         padding: EdgeInsets.fromLTRB(
           16,
-          MediaQuery.paddingOf(context).top + kToolbarHeight + 16,
+          topPadding,
           16,
           settingsListBottomPadding(context),
         ),
