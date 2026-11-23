@@ -201,13 +201,14 @@ void main() {
       final sessionId = (jsonDecode(current.substring(jsonStart)) as Map<String, dynamic>)['session_id'];
 
       final oldEvents = List.generate(2200, (index) {
-        return jsonEncode({
+        final event = jsonEncode({
           'event_id': 'old-$index',
           'session_id': sessionId,
           'timestamp': '2026-11-22T00:00:00.000Z',
           'level': 'INFO',
           'message': 'older event ${List.filled(1200, 'x').join()}',
         });
+        return '2026-11-22T00:00:00.000Z [INFO] $event';
       }).join('\n');
       await File('${directory.path}/pocketlink.log.1').writeAsString('$oldEvents\n');
 
