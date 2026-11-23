@@ -30,7 +30,8 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
             settings.progressiveBlurEnabled &&
             settings.progressiveBlurStrength > 0;
         final blurScale = settings.progressiveBlurStrength / 55;
-        final headerHeight = media.padding.top + contentHeight + 16;
+        final headerHeight =
+            media.padding.top + contentHeight + pocketLinkHeaderFadeTailHeight;
         final statusBlurHeight = media.padding.top + 12;
 
         final tint = isDark
