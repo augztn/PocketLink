@@ -20,7 +20,7 @@ void main() {
         home: Scaffold(body: FeatheredGlassHeaderBackground()),
       ),
     );
-    expect(find.byType(BackdropFilter), findsOneWidget)
+    expect(find.byType(BackdropFilter), findsOneWidget);
     expect(find.byType(ShaderMask), findsNothing);
   });
 
