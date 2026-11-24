@@ -31,6 +31,7 @@ class ExploreScreen extends StatefulWidget {
     this.onOpenFiles,
     this.onOpenLibrary,
     this.onCanPopChanged,
+    this.isActive = true,
     super.key,
   });
 
@@ -42,6 +43,7 @@ class ExploreScreen extends StatefulWidget {
   final VoidCallback? onOpenFiles;
   final ValueChanged<String>? onOpenLibrary;
   final ValueChanged<bool>? onCanPopChanged;
+  final bool isActive;
 
   @override
   State<ExploreScreen> createState() => _ExploreScreenState();
@@ -79,7 +81,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   @override
   Widget build(BuildContext context) {
     return NavigatorPopHandler<void>(
-      enabled: _navigatorKey.currentState?.canPop() ?? false,
+      enabled: widget.isActive && (_navigatorKey.currentState?.canPop() ?? false),
       onPopWithResult: (_) => _navigatorKey.currentState?.maybePop(),
       child: PocketLinkNavigationScope(
         onHome: () {
