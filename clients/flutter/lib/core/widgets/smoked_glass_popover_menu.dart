@@ -229,12 +229,6 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
                               ? const Color(0xFF141518).withValues(alpha: 0.68)
                               : Colors.white.withValues(alpha: 0.82),
                           borderRadius: BorderRadius.circular(22),
-                          border: Border(
-                            top: BorderSide(color: Colors.white.withValues(alpha: 0.13), width: 0.85),
-                            left: BorderSide(color: Colors.white.withValues(alpha: 0.07), width: 0.75),
-                            right: BorderSide(color: Colors.white.withValues(alpha: 0.07), width: 0.75),
-                            bottom: BorderSide(color: Colors.white.withValues(alpha: 0.04), width: 0.85),
-                          ),
                           boxShadow: const [
                             BoxShadow(
                               color: Colors.black26,
@@ -330,6 +324,11 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
                           ),
                         ),
                       ),
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          child: CustomPaint(painter: _PopoverRimPainter()),
+                        ),
+                      ),
                       Positioned(
                         top: 0,
                         left: 1,
@@ -398,4 +397,32 @@ class _OptionalGlassBackdropFilter extends StatelessWidget {
       },
     );
   }
+}
+
+class _PopoverRimPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final rrect = RRect.fromRectAndRadius(
+      rect.deflate(0.45),
+      const Radius.circular(22),
+    );
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.85
+      ..shader = const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          Color(0x23FFFFFF),
+          Color(0x12FFFFFF),
+          Color(0x0AFFFFFF),
+        ],
+        stops: [0, 0.55, 1],
+      ).createShader(rect);
+    canvas.drawRRect(rrect, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
