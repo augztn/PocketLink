@@ -382,6 +382,59 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  /// Resolves Back only after the root Navigator and active nested Navigator
+  /// have had the opportunity to pop their current routes.
+  void _handleSystemBack(double nowPlayingProgress) {
+    if (PocketLinkNavigation.observer.isModalRouteOnTop) return;
+
+    if (PocketLinkNavigation.shouldCollapseNowPlayingOnBack(
+      progress: nowPlayingProgress,
+    )) {
+      unawaited(NowPlayingOverlayController.collapse());
+      return;
+    }
+
+    if (PocketLinkNavigation.drawerOpen.value) {
+      _rootScaffoldKey.currentState?.closeDrawer();
+      return;
+    }
+    if (_libraryOpen) {
+      final handler = _libraryBackHandler;
+      if (handler != null) {
+        handler();
+      } else {
+        _closeLibrary();
+      }
+      return;
+    }
+    if (_hostSetupOpen) {
+      _closeHostSetup();
+      return;
+    }
+    if (_musicShortcutsExpanded) {
+      setState(() {
+        _musicShortcutsExpanded = false;
+        PocketLinkNavigation.quickShortcutsOpen.value = false;
+      });
+      return;
+    }
+
+    // NavigatorPopHandler owns pushed routes in the active Explore Navigator.
+    if (_selectedIndex == 1 && _exploreCanPop) return;
+
+    if (_selectedIndex == 2 &&
+        (_filesCanNavigateBack || _tabBackHandler != null)) {
+      _tabBackHandler?.call();
+      return;
+    }
+
+    if (_selectedIndex != 0) {
+      _openTab(0);
+      return;
+    }
+    // Home root: leave Back unhandled so Android performs its normal exit.
+  }
+
   @override
   Widget build(BuildContext context) {
     final player = PersistentAudioPlayer.instance;
@@ -629,27 +682,7 @@ class _HomeScreenState extends State<HomeScreen> {
               !PocketLinkNavigation.drawerOpen.value,
           onPopInvokedWithResult: (didPop, result) {
             if (didPop || nowPlayingProgress.value > 0.001) return;
-            if (PocketLinkNavigation.drawerOpen.value) {
-              _rootScaffoldKey.currentState?.closeDrawer();
-            } else if (_libraryOpen && _libraryBackHandler != null) {
-              _libraryBackHandler!.call();
-            } else if (_libraryOpen) {
-              _closeLibrary();
-            } else if (_hostSetupOpen) {
-              _closeHostSetup();
-            } else if (_musicShortcutsExpanded) {
-              setState(() {
-                _musicShortcutsExpanded = false;
-                PocketLinkNavigation.quickShortcutsOpen.value = false;
-              });
-            } else if (_selectedIndex == 1 && _exploreCanPop) {
-              // NavigatorPopHandler consumes this back event on the nested tab.
-            } else if (_selectedIndex == 2 &&
-                (_filesCanNavigateBack || _tabBackHandler != null)) {
-              _tabBackHandler?.call();
-            } else if (_selectedIndex != 0) {
-              _openTab(0);
-            }
+            _handleSystemBack(nowPlayingProgress.value);
           },
           child: child!,
         );
