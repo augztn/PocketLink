@@ -174,7 +174,10 @@ void main() {
       ),
     );
 
-    expect(tester.getSize(find.byType(FeatheredGlassHeaderBackground)).height, 96);
+    final headerBounds = find.byWidgetPredicate(
+      (widget) => widget is SizedBox && widget.height == 96,
+    );
+    expect(tester.getSize(headerBounds).height, 96);
     expect(find.byType(ShaderMask), findsNothing);
     final gradient = tester.widgetList<DecoratedBox>(find.byType(DecoratedBox))
         .map((box) => box.decoration)
