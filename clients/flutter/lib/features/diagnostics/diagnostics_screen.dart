@@ -148,7 +148,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
           const ListTile(
             leading: Icon(Icons.privacy_tip_outlined),
             title: Text('Privacy'),
-            subtitle: Text('Passwords, usernames, authentication headers, tokens, server addresses and IP addresses are redacted from exported logs. Device OS details, error messages and file-system details may still be present. Review the file before sending it.'),
+            subtitle: Text('Passwords, credentials, search text, filenames, media titles, authentication headers, tokens, server addresses, IP addresses and private filesystem paths are redacted from exported logs. Operational event metadata, device details and error categories may remain. Review the file before sending it.'),
             isThreeLine: true,
           ),
           const ListTile(
@@ -211,7 +211,7 @@ class DiagnosticsGuidanceCard extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             const Text(
-              'Exported logs redact passwords, usernames, authentication headers, tokens, server addresses and IP addresses. Device OS details, error messages and file-system details may still appear. Review the file before sharing it.',
+              'Exported logs redact credentials, search text, filenames, media titles, authentication headers, tokens, server addresses, IP addresses and private filesystem paths. Operational event metadata, device details and error categories may still appear. Review the file before sharing it.',
             ),
             const SizedBox(height: 12),
             const Text(
