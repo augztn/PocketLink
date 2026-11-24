@@ -620,7 +620,6 @@ class _HomeScreenState extends State<HomeScreen> {
               (_selectedIndex == 0 ||
                   (_selectedIndex == 1 && _exploreCanPop)) &&
               !_musicShortcutsExpanded &&
-              (!_libraryOpen || _libraryBackHandler == null) &&
               !PocketLinkNavigation.drawerOpen.value,
           onPopInvokedWithResult: (didPop, result) {
             if (didPop) return;
