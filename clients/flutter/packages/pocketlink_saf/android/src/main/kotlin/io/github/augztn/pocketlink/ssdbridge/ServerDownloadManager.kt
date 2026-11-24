@@ -149,18 +149,18 @@ internal class ServerDownloadManager(
     }
 
     fun remove(id: String, deleteFile: Boolean): Boolean {
+        var wasActive = false
         val job = synchronized(lock) {
             val value = jobs.remove(id) ?: return false
+            wasActive = value.status == DOWNLOADING
             persistLocked()
             value
         }
-        if (deleteFile) {
-            job.destinationPath?.let { path ->
-                runCatching { File(path).delete() }
-                runCatching { File("$path.part").delete() }
-            }
+        if (wasActive) activeCall?.cancel()
+        job.destinationPath?.let { path ->
+            runCatching { File("$path.part").delete() }
+            if (deleteFile) runCatching { File(path).delete() }
         }
-        if (job.status == DOWNLOADING) activeCall?.cancel()
         return true
     }
 
@@ -241,17 +241,19 @@ internal class ServerDownloadManager(
                         val count = input.read(buffer)
                         if (count < 0) break
                         output.write(buffer, 0, count)
-                        job.downloadedBytes += count
                         val now = System.nanoTime()
-                        if (now - sampleAt >= 500_000_000L) {
-                            job.speedBytesPerSecond = ((job.downloadedBytes - sampleBytes) * 1_000_000_000L /
-                                max(1L, now - sampleAt))
-                            sampleAt = now
-                            sampleBytes = job.downloadedBytes
-                        }
-                        if (now - lastPersistAt >= 1_000_000_000L) {
-                            synchronized(lock) { persistLocked() }
-                            lastPersistAt = now
+                        synchronized(lock) {
+                            job.downloadedBytes += count
+                            if (now - sampleAt >= 500_000_000L) {
+                                job.speedBytesPerSecond = ((job.downloadedBytes - sampleBytes) * 1_000_000_000L /
+                                    max(1L, now - sampleAt))
+                                sampleAt = now
+                                sampleBytes = job.downloadedBytes
+                            }
+                            if (now - lastPersistAt >= 1_000_000_000L) {
+                                persistLocked()
+                                lastPersistAt = now
+                            }
                         }
                     }
                     output.fd.sync()
@@ -419,7 +421,10 @@ internal class ServerDownloadManager(
             val host = address.hostAddress.lowercase(Locale.ROOT)
             return address.isAnyLocalAddress || address.isLoopbackAddress ||
                 address.isLinkLocalAddress || address.isSiteLocalAddress ||
-                address.isMulticastAddress || host.startsWith("fc") || host.startsWith("fd")
+                address.isMulticastAddress || host.startsWith("fc") || host.startsWith("fd") ||
+                (address.address.size == 4 &&
+                    (address.address[0].toInt() and 0xff) == 100 &&
+                    (address.address[1].toInt() and 0xff) in 64..127)
         }
 
         private fun validateUrl(value: String): URI {
@@ -468,7 +473,7 @@ internal class ServerDownloadManager(
             val ext = name.substringAfterLast('.', "").lowercase(Locale.ROOT)
             val type = mime?.substringBefore(';')?.lowercase(Locale.ROOT).orEmpty()
             return when {
-                ext in setOf("mp4", "mkv", "mov", "avi", "webm", "m4v", "3gp", "mpeg", "mpg") || type.startsWith("video/") -> "Videos"
+                ext in setOf("mp4", "mkv", "mov", "avi", "webm", "m4v", "3gp", "mpeg", "mpg", "ts", "m3u8") || type.startsWith("video/") -> "Videos"
                 ext in setOf("mp3", "m4a", "aac", "flac", "wav", "ogg", "opus", "alac", "aiff", "ape", "wv", "dsf", "dff") || type.startsWith("audio/") -> "Music"
                 ext in setOf("jpg", "jpeg", "png", "gif", "webp", "heic", "heif", "bmp", "tif", "tiff", "avif") || type.startsWith("image/") -> "Photos"
                 ext == "apk" || type == "application/vnd.android.package-archive" -> "APK"
