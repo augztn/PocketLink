@@ -618,18 +618,15 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
       builder: (context, child) {
-        final nowPlayingExpanded = nowPlayingProgress.value > 0.5;
         return PopScope(
-          canPop: !nowPlayingExpanded && !_libraryOpen && !_hostSetupOpen &&
+          canPop: !_libraryOpen && !_hostSetupOpen &&
               (_selectedIndex == 0 ||
                   (_selectedIndex == 1 && _exploreCanPop)) &&
               !_musicShortcutsExpanded &&
               !PocketLinkNavigation.drawerOpen.value,
           onPopInvokedWithResult: (didPop, result) {
-            if (didPop) return;
-            if (nowPlayingProgress.value > 0.5) {
-              unawaited(NowPlayingOverlayController.collapse());
-            } else if (PocketLinkNavigation.drawerOpen.value) {
+            if (didPop || nowPlayingProgress.value > 0.001) return;
+            if (PocketLinkNavigation.drawerOpen.value) {
               _rootScaffoldKey.currentState?.closeDrawer();
             } else if (_libraryOpen && _libraryBackHandler != null) {
               _libraryBackHandler!.call();
