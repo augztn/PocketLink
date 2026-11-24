@@ -63,6 +63,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Home root'), findsOneWidget);
       expect(find.text('Commute'), findsNothing);
+      expect(find.text('Explore canPop: true'), findsOneWidget);
+      expect(find.text('Nested Back calls: 0'), findsOneWidget);
 
       await tester.tap(find.text('Explore tab'));
       await tester.pumpAndSettle();
@@ -86,6 +88,7 @@ class _IndexedTabBackHarnessState extends State<_IndexedTabBackHarness> {
   final GlobalKey<NavigatorState> _exploreNavigatorKey =
       GlobalKey<NavigatorState>();
   int _activeTab = 2;
+  int _nestedBackCalls = 0;
   late final _BackStackObserver _observer;
 
   @override
@@ -143,6 +146,10 @@ class _IndexedTabBackHarnessState extends State<_IndexedTabBackHarness> {
       child: Scaffold(
         body: Column(
           children: [
+            Text(
+              'Explore canPop: ${_exploreNavigatorKey.currentState?.canPop() ?? false}',
+            ),
+            Text('Nested Back calls: $_nestedBackCalls'),
             Row(
               children: [
                 TextButton(
@@ -165,8 +172,11 @@ class _IndexedTabBackHarnessState extends State<_IndexedTabBackHarness> {
                       canPop: _exploreNavigatorKey.currentState?.canPop() ??
                           false,
                     ),
-                    onPopWithResult: (_) =>
-                        _exploreNavigatorKey.currentState?.maybePop(),
+                    onPopWithResult: (_) {
+                      _nestedBackCalls++;
+                      _exploreNavigatorKey.currentState?.maybePop();
+                      setState(() {});
+                    },
                     child: Navigator(
                       key: _exploreNavigatorKey,
                       observers: [_observer],
