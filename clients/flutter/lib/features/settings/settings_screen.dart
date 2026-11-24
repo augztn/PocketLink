@@ -448,7 +448,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     icon: Icons.palette_rounded,
                     tint: const Color(0xFF8D72E8),
                     title: 'Appearance & Theme',
-                    subtitle: 'Themes, Liquid Glass and Progressive Blur controls',
+                    subtitle: 'Themes, Liquid Glass and app-wide Header Blur controls',
                     badge: _settings.themeMode == ThemeMode.dark
                         ? (_settings.amoled ? 'AMOLED' : 'Dark')
                         : _settings.themeMode == ThemeMode.light
@@ -600,9 +600,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _section('Glass & Visual Effects', [
                     SwitchListTile(
                       secondary: const Icon(Icons.gradient_rounded),
-                      title: const Text('Progressive Blur'),
+                      title: const Text('App-wide Header Blur'),
                       subtitle: const Text(
-                        'Blur scrolling content smoothly behind the status bar and floating headers',
+                        'Keep the frosted blur consistent across screen headers, including before scrolling.',
                       ),
                       value: _settings.progressiveBlurEnabled,
                       onChanged: _settings.setProgressiveBlurEnabled,
