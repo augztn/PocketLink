@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:material_ui/material_ui.dart';
 
@@ -6,6 +7,8 @@ import '../../core/network/server_api.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
 import '../downloads/download_manager_service.dart';
+import '../downloads/download_task.dart';
+import '../downloads/downloads_screen.dart';
 import 'data/media_library_repository.dart';
 import 'media_browser_screen.dart';
 import 'media_library_catalog.dart';
@@ -116,6 +119,10 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
         initialSortBy: sort,
       ),
     ));
+  }
+
+  Future<void> _openDownloads() async {
+    await Navigator.of(context).push<void>(MaterialPageRoute<void>(builder: (_) => DownloadsScreen(api: widget.api)));
   }
 
   void _unavailable(String collection) {
@@ -295,7 +302,7 @@ class LibraryBentoCard extends StatelessWidget {
           Positioned(left: 14, top: 14, right: 12, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
             const SizedBox(height: 5),
-            Text(count.toString(), style: const TextStyle(color: Color(0xFF8C909B), fontSize: 31, height: 1, fontWeight: FontWeight.w700, fontFeatures: [FontFeature.tabularFigures()])),
+            Text(count.toString(), style: const TextStyle(color: Color(0xFF8C909B), fontSize: 31, height: 1, fontWeight: FontWeight.w700, fontFeatures: [ui.FontFeature.tabularFigures()])),
           ])),
           if (count == 0)
             Positioned(right: 8, bottom: 0, child: Icon(icon, size: wide ? 76 : 68, color: Colors.white.withValues(alpha: 0.08)))
