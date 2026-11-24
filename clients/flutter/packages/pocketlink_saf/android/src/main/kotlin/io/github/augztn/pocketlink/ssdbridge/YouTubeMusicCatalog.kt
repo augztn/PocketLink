@@ -60,7 +60,13 @@ internal class YouTubeMusicCatalog(
             JSONObject().put("browseId", "FEmusic_moods_and_genres"),
             regionCode
         )
-        return parseMoodAndGenres(response)
+        val sections = parseMoodAndGenres(response)
+        if (sections.isEmpty()) {
+            throw IOException(
+                "YouTube Music returned no supported mood sections; its browse response structure may have changed."
+            )
+        }
+        return sections
     }
 
     internal fun parseMoodAndGenres(root: JSONObject): List<Map<String, Any>> {
@@ -246,7 +252,7 @@ internal class YouTubeMusicCatalog(
             .put("utcOffsetMinutes", utcOffsetMinutes)
     }
 
-    private fun post(endpoint: String, payload: JSONObject, regionCode: String): JSONObject {
+    internal fun buildRequest(endpoint: String, payload: JSONObject, regionCode: String): Request {
         val context = JSONObject().put("client", buildClientContext(regionCode))
         val body = JSONObject().put("context", context)
         val iterator = payload.keys()
@@ -254,15 +260,22 @@ internal class YouTubeMusicCatalog(
             val key = iterator.next()
             body.put(key, payload.get(key))
         }
-        val request = Request.Builder()
+        return Request.Builder()
             .url("https://music.youtube.com/youtubei/v1/$endpoint?key=$PUBLIC_API_KEY&prettyPrint=false")
             .header("User-Agent", USER_AGENT)
             .header("Origin", "https://music.youtube.com")
             .header("Referer", "https://music.youtube.com/")
             .header("Content-Type", "application/json")
+            .header("X-Goog-Api-Format-Version", "1")
+            .header("X-YouTube-Client-Name", "67")
+            .header("X-YouTube-Client-Version", WEB_REMIX_VERSION)
             .apply { if (visitorData.isNotBlank()) header("X-Goog-Visitor-Id", visitorData) }
             .post(body.toString().toRequestBody(JSON_MEDIA))
             .build()
+    }
+
+    private fun post(endpoint: String, payload: JSONObject, regionCode: String): JSONObject {
+        val request = buildRequest(endpoint, payload, regionCode)
         client.newCall(request).execute().use { response ->
             val raw = response.body?.string().orEmpty()
             if (!response.isSuccessful) throw IOException("YouTube Music $endpoint returned HTTP ${response.code}")
@@ -424,9 +437,9 @@ internal class YouTubeMusicCatalog(
 
     companion object {
         private const val PUBLIC_API_KEY = "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8"
-        private const val WEB_REMIX_VERSION = "1.20250317.01.00"
+        private const val WEB_REMIX_VERSION = "1.20260707.12.00"
         private const val USER_AGENT =
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36"
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0"
         private val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
         private val VIDEO_ID = Regex("[A-Za-z0-9_-]{11}")
         private const val SONGS_FILTER = "EgWKAQIIAWoSEAMQBBAJEAoQBRAREAUYHRAF"
