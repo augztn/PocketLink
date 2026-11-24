@@ -179,6 +179,19 @@ internal class ServerDownloadManager(
     private fun runJob(job: Job) {
         var response: okhttp3.Response? = null
         try {
+            val existingTarget = job.destinationPath?.let(::File)
+            if (existingTarget?.isFile == true &&
+                job.totalBytes != null && existingTarget.length() == job.totalBytes) {
+                synchronized(lock) {
+                    job.status = COMPLETED
+                    job.downloadedBytes = existingTarget.length()
+                    job.speedBytesPerSecond = 0
+                    job.error = null
+                    persistLocked()
+                }
+                markMediaIndexDirty()
+                return
+            }
             var currentUrl = job.url
             var redirects = 0
             var call: okhttp3.Call
@@ -225,6 +238,14 @@ internal class ServerDownloadManager(
             target.parentFile?.let { if (!it.exists() && !it.mkdirs()) throw IOException("Cannot create download folder") }
             val offset = if (part.exists()) part.length() else 0L
             val partialResponse = result.code == 206
+            val rangeStart = result.header("Content-Range")
+                ?.substringAfter("bytes ")
+                ?.substringBefore('-')
+                ?.toLongOrNull()
+            if (offset > 0 && partialResponse && rangeStart != offset) {
+                part.delete()
+                throw IOException("Download server returned an invalid resume range")
+            }
             val append = offset > 0 && partialResponse
             if (offset > 0 && !partialResponse && !part.delete()) {
                 throw IOException("Cannot restart partial download")
@@ -474,7 +495,8 @@ internal class ServerDownloadManager(
         }
 
         private fun sanitizeFilename(value: String): String {
-            val safe = value.replace(Regex("[\\\\/:*?\"<>|\\x00-\\x1F]"), "_").trim()
+            val safe = value.replace(Regex("[\\\\/:*?\"<>|\\x00-\\x1F]"), "_")
+                .trim().trimStart('.').take(240)
             return safe.takeIf { it.isNotBlank() && it != "." && it != ".." } ?: "download"
         }
 
