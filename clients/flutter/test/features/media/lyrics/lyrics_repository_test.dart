@@ -125,4 +125,96 @@ void main() {
       'Song Title',
     );
   });
+  test('track identity ignores mutable metadata and preserves known artwork', () {
+    const original = MediaQueueItem(
+      title: 'Track',
+      path: '/music/track.flac',
+      artworkUrl: 'https://example.com/cover.jpg',
+      lyricsVideoId: 'video-1',
+      durationText: '3:20',
+    );
+    const partial = MediaQueueItem(
+      title: 'Track',
+      path: '/music/track.flac',
+      durationText: '3:21',
+    );
+
+    expect(original.stableTrackId, partial.stableTrackId);
+    final merged = original.mergeMetadata(partial);
+    expect(merged.artworkUrl, original.artworkUrl);
+    expect(merged.lyricsVideoId, original.lyricsVideoId);
+    expect(merged.durationText, '3:21');
+  });
+
+  test('lyrics lookup keeps the first active match when later providers miss', () async {
+    final first = _FakeLyricsProvider(
+      'lrclib',
+      Completer<LyricsDocument?>(),
+    );
+    final second = _FakeLyricsProvider(
+      'youtube_music',
+      Completer<LyricsDocument?>(),
+    );
+    final repository = LyricsRepository(providers: [first, second]);
+    const track = MediaQueueItem(
+      title: 'Track',
+      path: '/music/track.flac',
+      lyricsVideoId: 'video-1',
+    );
+    final query = LyricsTrackQuery(track: track, api: null);
+    final lookup = repository.lookup(query);
+    final document = LyricsDocument(
+      providerId: 'lrclib',
+      providerName: 'LRCLIB',
+      lines: const [LyricsLine(1000, 'A lyric line')],
+      synced: true,
+    );
+
+    first.completer.complete(document);
+    await Future<void>.delayed(Duration.zero);
+    expect(repository.current(query.key), same(document));
+
+    second.completer.complete(null);
+    await lookup;
+    expect(repository.current(query.key), same(document));
+    expect(repository.resultsFor(query.key)['youtube_music']?.status,
+        LyricsLookupStatus.notFound);
+  });
+
+  test('lyrics lookup deduplicates concurrent requests for one track ID', () async {
+    final provider = _FakeLyricsProvider(
+      'lrclib',
+      Completer<LyricsDocument?>(),
+    );
+    final repository = LyricsRepository(providers: [provider]);
+    const track = MediaQueueItem(
+      title: 'Track',
+      path: '/music/track.flac',
+      lyricsVideoId: 'video-2',
+    );
+    final query = LyricsTrackQuery(track: track, api: null);
+    final first = repository.lookup(query);
+    final second = repository.lookup(query);
+    expect(provider.calls, 1);
+    provider.completer.complete(null);
+    await Future.wait([first, second]);
+    expect(provider.calls, 1);
+  });
+
+}
+
+
+class _FakeLyricsProvider implements LyricsProvider {
+  _FakeLyricsProvider(this.id, this.completer);
+  @override
+  final String id;
+  final Completer<LyricsDocument?> completer;
+  int calls = 0;
+  @override
+  String get name => id;
+  @override
+  Future<LyricsDocument?> fetch(LyricsTrackQuery query) {
+    calls++;
+    return completer.future;
+  }
 }
