@@ -293,11 +293,15 @@ class ServerApi {
   }
 
   Future<ServerDownloadJob> enqueueServerDownload(
-    String url, {String? directory}
+    String url, {String? directory, String? fileName}
   ) async {
     final response = await _dio.post<Map<String, dynamic>>(
       '/api/downloads',
-      data: {'url': url, if (directory != null && directory.trim().isNotEmpty) 'directory': directory.trim()},
+      data: {
+        'url': url,
+        if (directory != null && directory.trim().isNotEmpty) 'directory': directory.trim(),
+        if (fileName != null && fileName.trim().isNotEmpty) 'filename': fileName.trim(),
+      },
     );
     return ServerDownloadJob.fromJson(response.data ?? const {});
   }
