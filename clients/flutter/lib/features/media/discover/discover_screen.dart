@@ -395,7 +395,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
 
     try {
       final item = await _queueItem(queueTracks[startIndex]);
-      if (!mounted || request != _playRequestGeneration ||
+      if (request != _playRequestGeneration ||
           session != player.queueSession) return;
 
       await player.openQueue(
