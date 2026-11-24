@@ -906,27 +906,36 @@ tooltip: 'Choose video view',
                     ),
                   )
                 : _loading && _media.isEmpty
-                    ? (_layoutMode == 'grid'
-                        ? PocketLinkSkeleton.videoGrid(
+                    ? isFolderView
+                        ? PocketLinkSkeleton.fileList(
                             padding: EdgeInsets.fromLTRB(
                               12,
-                              ((_searchExpanded && widget.showSearch) || isFolderView)
-                                  ? 8
-                                  : LayoutInsetsScope.of(context).topClearance,
+                              8,
                               12,
                               LayoutInsetsScope.of(context).bottomClearance,
                             ),
                           )
-                        : PocketLinkSkeleton.videoList(
-                            padding: EdgeInsets.fromLTRB(
-                              12,
-                              ((_searchExpanded && widget.showSearch) || isFolderView)
-                                  ? 8
-                                  : LayoutInsetsScope.of(context).topClearance,
-                              12,
-                              LayoutInsetsScope.of(context).bottomClearance,
-                            ),
-                          ))
+                        : _layoutMode == 'grid'
+                            ? PocketLinkSkeleton.videoGrid(
+                                padding: EdgeInsets.fromLTRB(
+                                  12,
+                                  widget.showSearch && _searchExpanded
+                                      ? 8
+                                      : LayoutInsetsScope.of(context).topClearance,
+                                  12,
+                                  LayoutInsetsScope.of(context).bottomClearance,
+                                ),
+                              )
+                            : PocketLinkSkeleton.videoList(
+                                padding: EdgeInsets.fromLTRB(
+                                  12,
+                                  widget.showSearch && _searchExpanded
+                                      ? 8
+                                      : LayoutInsetsScope.of(context).topClearance,
+                                  12,
+                                  LayoutInsetsScope.of(context).bottomClearance,
+                                ),
+                              )
                     : visibleMedia.isEmpty
                         ? Center(
                             child: Padding(
