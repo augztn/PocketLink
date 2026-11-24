@@ -1687,6 +1687,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
               opacity: 1 - lyricsProgress,
               child: Image.memory(
                 _artwork!,
+                cacheWidth: 544,
                 fit: BoxFit.cover,
                 gaplessPlayback: true,
               ),
@@ -1741,7 +1742,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                 imageFilter: ui.ImageFilter.blur(sigmaX: 44, sigmaY: 44),
                 child: Opacity(
                   opacity: 0.20,
-                  child: Image.memory(_artwork!, fit: BoxFit.cover, gaplessPlayback: true),
+                  child: Image.memory(_artwork!, cacheWidth: 544, fit: BoxFit.cover, gaplessPlayback: true),
                 ),
               ),
             ),
