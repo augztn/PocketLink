@@ -218,6 +218,8 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
         _pendingScrollOffset = 0;
         if (_scrollController.hasClients) _scrollController.jumpTo(0);
       });
+      widget.onCanNavigateBackChanged?.call(_path.isNotEmpty);
+      _syncBackHandler();
       _saveState(path: _path);
       await _load(_path);
     } catch (_) {
@@ -265,6 +267,8 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
           _pendingScrollOffset = 0;
         }
       });
+      widget.onCanNavigateBackChanged?.call(_path.isNotEmpty);
+      _syncBackHandler();
     } catch (_) {}
     await _load(_path);
   }
@@ -275,6 +279,8 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
       _pendingScrollOffset = 0;
       if (_scrollController.hasClients) _scrollController.jumpTo(0);
     });
+    widget.onCanNavigateBackChanged?.call(false);
+    _syncBackHandler();
     _saveState(path: '');
     await _load('');
   }
