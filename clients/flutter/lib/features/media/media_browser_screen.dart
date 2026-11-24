@@ -87,9 +87,9 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     _browserState = Provider.of<MediaBrowserStateStore>(context, listen: false);
     final saved = _browserState.stateFor(_stateKey, widget.type.name);
     _selectedVolume = saved.selectedVolume;
-    _libraryView = saved.view;
+    _libraryView = widget.initialView ?? saved.view;
     _layoutMode = saved.layoutMode;
-    _sortBy = saved.sortBy;
+    _sortBy = widget.initialSortBy ?? saved.sortBy;
     _currentFolderPath = saved.folderPath;
     _pendingScrollOffset = saved.scrollOffset;
     _contentScrollController.addListener(_saveScrollOffset);
@@ -1665,6 +1665,8 @@ class MediaBrowserScreen extends StatefulWidget {
     required this.api,
     required this.type,
     this.showSearch = true,
+    this.initialView,
+    this.initialSortBy,
     this.onHome,
     this.onBackHandlerChanged,
     super.key,
@@ -1673,6 +1675,8 @@ class MediaBrowserScreen extends StatefulWidget {
   final ServerApi api;
   final MediaLibraryType type;
   final bool showSearch;
+  final String? initialView;
+  final String? initialSortBy;
   final VoidCallback? onHome;
   final ValueChanged<VoidCallback?>? onBackHandlerChanged;
 
