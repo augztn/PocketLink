@@ -51,7 +51,7 @@ abstract final class DiscoverThumbnailCache {
         if (await file.exists()) {
           final bytes = await file.readAsBytes();
           if (bytes.isNotEmpty && bytes.length <= _maxBytes) {
-            _memory[url] = bytes;
+            _remember(url, bytes);
             return bytes;
           }
           await file.delete();
@@ -74,7 +74,7 @@ abstract final class DiscoverThumbnailCache {
           final bytes = builder.takeBytes();
           if (bytes.isEmpty) return null;
           await file.writeAsBytes(bytes, flush: true);
-          _memory[url] = bytes;
+          _remember(url, bytes);
           return bytes;
         } finally {
           client.close(force: true);
