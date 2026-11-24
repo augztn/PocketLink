@@ -1639,6 +1639,7 @@ class _DiscoverCategoryScreenState extends State<_DiscoverCategoryScreen> {
         title: Text(widget.mood.title),
       ),
       body: CustomScrollView(
+        cacheExtent: 600,
         slivers: [
           SliverToBoxAdapter(
             child: Padding(
