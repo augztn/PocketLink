@@ -21,6 +21,7 @@ void main() {
       ),
     );
     expect(find.byType(ProgressiveBlur), findsOneWidget);
+    expect(find.byType(BackdropGroup), findsOneWidget);
     expect(find.byType(BackdropFilter), findsNWidgets(14));
     expect(find.byType(ShaderMask), findsNothing);
   });
