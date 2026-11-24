@@ -74,7 +74,7 @@ class PocketLinkSkeleton extends StatefulWidget {
             child: PocketLinkSkeletonBlock(radius: 12, expand: true),
           ),
           const SizedBox(height: 10),
-          PocketLinkSkeletonBlock(width: index.isEven ? 148 : 116, height: 11, radius: 5),
+          PocketLinkSkeletonBlock(width: index.isEven ? 124 : 104, height: 11, radius: 5),
           const SizedBox(height: 7),
           const PocketLinkSkeletonBlock(width: 86, height: 9, radius: 5),
         ],
@@ -160,7 +160,7 @@ class PocketLinkSkeleton extends StatefulWidget {
           children: [
             const PocketLinkSkeletonBlock(width: 44, height: 44, radius: 14),
             const Spacer(),
-            PocketLinkSkeletonBlock(width: index.isEven ? 112 : 82, height: 11, radius: 5),
+            PocketLinkSkeletonBlock(width: index.isEven ? 100 : 76, height: 11, radius: 5),
             const SizedBox(height: 8),
             const PocketLinkSkeletonBlock(width: 58, height: 9, radius: 5),
           ],
