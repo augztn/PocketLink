@@ -761,7 +761,7 @@ class _SharedMorphArtwork extends StatelessWidget {
           )
         : artworkUrl?.isNotEmpty == true
             ? DiscoverThumbnail(
-                url: artworkUrl!,
+                url: DiscoverThumbnailCache.urlForSize(artworkUrl!, 544),
                 cacheWidth: 544,
                 fallback: fallback(),
               )
