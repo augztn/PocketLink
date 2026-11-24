@@ -98,6 +98,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       MaterialPageRoute(
         builder: (_) => _MoodsAndMomentsScreen(
           service: _service,
+          shimmerController: _shimmerController,
           onOpenTracks: (title, tracks) {
             if (!mounted) return;
             setState(() {
@@ -1221,10 +1222,12 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
 class _MoodsAndMomentsScreen extends StatefulWidget {
   const _MoodsAndMomentsScreen({
     required this.service,
+    required this.shimmerController,
     required this.onOpenTracks,
   });
 
   final DiscoverService service;
+  final AnimationController shimmerController;
   final void Function(String title, List<DiscoverTrack> tracks) onOpenTracks;
 
   @override
@@ -1246,6 +1249,80 @@ class _MoodsAndMomentsScreenState extends State<_MoodsAndMomentsScreen> {
   void dispose() {
     _query.dispose();
     super.dispose();
+  }
+
+  Widget _skeletonBlock({
+    required double width,
+    required double height,
+    double radius = 8,
+  }) {
+    return AnimatedBuilder(
+      animation: widget.shimmerController,
+      builder: (context, child) {
+        final shift = -1.4 + (widget.shimmerController.value * 2.8);
+        return ShaderMask(
+          blendMode: BlendMode.srcATop,
+          shaderCallback: (bounds) => LinearGradient(
+            begin: Alignment(shift, 0),
+            end: Alignment(shift + 1.2, 0),
+            colors: const [
+              Color(0xFF1A1A1E),
+              Color(0xFF2A2A30),
+              Color(0xFF1A1A1E),
+            ],
+            stops: const [0.25, 0.5, 0.75],
+          ).createShader(bounds),
+          child: child,
+        );
+      },
+      child: Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+          color: const Color(0xFF1A1A1E),
+          borderRadius: BorderRadius.circular(radius),
+        ),
+      ),
+    );
+  }
+
+  Widget _moodsSkeleton(ThemeData theme) {
+    return SliverList(
+      delegate: SliverChildListDelegate([
+        for (var section = 0; section < 3; section++) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+            child: _skeletonBlock(
+              width: 112 + section * 18,
+              height: 13,
+              radius: 6,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: GridView.builder(
+              padding: EdgeInsets.zero,
+              shrinkWrap: true,
+              primary: false,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: 4,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisExtent: 76,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+              ),
+              itemBuilder: (_, __) => _skeletonBlock(
+                width: double.infinity,
+                height: 76,
+                radius: 14,
+              ),
+            ),
+          ),
+          const SizedBox(height: 22),
+        ],
+      ]),
+    );
   }
 
   Future<void> _submitSearch() async {
@@ -1310,7 +1387,7 @@ class _MoodsAndMomentsScreenState extends State<_MoodsAndMomentsScreen> {
                     tooltip: 'Search',
                     onPressed: _submitSearch,
                     icon: _searching
-                        ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                        ? _skeletonBlock(width: 18, height: 18, radius: 9)
                         : const Icon(Icons.arrow_forward_rounded),
                   ),
                   filled: true,
@@ -1324,10 +1401,7 @@ class _MoodsAndMomentsScreenState extends State<_MoodsAndMomentsScreen> {
             future: _sections,
             builder: (context, snapshot) {
               if (snapshot.connectionState != ConnectionState.done) {
-                return const SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: Center(child: CircularProgressIndicator()),
-                );
+                return _moodsSkeleton(theme);
               }
               if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
                 return SliverFillRemaining(
