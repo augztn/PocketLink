@@ -1197,7 +1197,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
         initialData: _player.state.duration,
         builder: (context, durationSnapshot) {
           final playing = playingSnapshot.data ?? false;
-          final loading = (bufferingSnapshot.data ?? false) ||
+          final loading = _persistent.isSelectionLoading ||
+              (bufferingSnapshot.data ?? false) ||
               (durationSnapshot.data ?? Duration.zero) <= Duration.zero;
           final hasMultiple = _persistent.queue.length > 1;
           return Row(
@@ -1528,7 +1529,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                         stream: _player.stream.duration,
                         initialData: _player.state.duration,
                         builder: (context, durationSnapshot) {
-                          final loading =
+                          final loading = _persistent.isSelectionLoading ||
                               (bufferingSnapshot.data ?? false) ||
                               (durationSnapshot.data ?? Duration.zero) <=
                                   Duration.zero;
