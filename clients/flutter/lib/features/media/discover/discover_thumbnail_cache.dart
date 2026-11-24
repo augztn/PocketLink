@@ -118,7 +118,7 @@ class DiscoverThumbnail extends StatelessWidget {
           cacheWidth: cacheWidth,
           fit: fit,
           gaplessPlayback: true,
-          errorBuilder: (_, __, ___) => fallback,
+          errorBuilder: (_, __, ___) => errorFallback ?? fallback,
         );
       },
     );
