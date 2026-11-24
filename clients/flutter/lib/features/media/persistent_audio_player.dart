@@ -178,7 +178,9 @@ class PersistentAudioPlayer extends ChangeNotifier {
     _retriedDiscoverTracks.clear();
     _retryingDiscoverPlayback = false;
     notifyListeners();
-    unawaited(player.pause());
+    unawaited(_serializeQueueMutation(() async {
+      if (session == _queueSession) await player.pause();
+    }).catchError((Object _) {}));
     return session;
   }
 
