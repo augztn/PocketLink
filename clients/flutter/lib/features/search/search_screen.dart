@@ -661,6 +661,7 @@ class _SearchScreenState extends State<SearchScreen> {
       _quick == 'large' ? 'No files larger than 100 MB found.' : _quick == 'today' ? 'No files added today.' : 'No matching files found.',
       style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant))));
     return ListView.separated(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       shrinkWrap: shrink,
       physics: shrink ? const NeverScrollableScrollPhysics() : const AlwaysScrollableScrollPhysics(),
       padding: EdgeInsets.fromLTRB(12, topInset, 12, shrink ? 0 : LayoutInsetsScope.of(context).bottomClearance),
@@ -742,6 +743,7 @@ class _SearchScreenState extends State<SearchScreen> {
   );
 
   Widget _idle(ThemeData theme, {double topInset = 20}) => ListView(
+    keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
     padding: EdgeInsets.fromLTRB(16, topInset, 16, LayoutInsetsScope.of(context).bottomClearance),
     children: [
       if (_history.isNotEmpty) ...[
@@ -816,6 +818,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 ? _resultsList(theme, topInset: contentTop)
                 : query.isEmpty
                     ? ListView(
+                        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                         padding: EdgeInsets.fromLTRB(0, contentTop, 0, LayoutInsetsScope.of(context).bottomClearance),
                         children: [_resultsList(theme, shrink: true, topInset: 0)],
                       )
