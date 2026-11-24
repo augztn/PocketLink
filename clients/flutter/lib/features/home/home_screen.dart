@@ -235,7 +235,10 @@ class _HomeScreenState extends State<HomeScreen> {
       'videos' => MediaBrowserScreen(api: widget.api, type: MediaLibraryType.video, onHome: _closeLibrary, onBackHandlerChanged: _onLibraryBackHandlerChanged),
       'photos' => PhotoGalleryScreen(api: widget.api, onBackHandlerChanged: _onLibraryBackHandlerChanged),
       'favorites' => PhotoGalleryScreen(api: widget.api, initialTab: 2, onBackHandlerChanged: _onLibraryBackHandlerChanged),
-      'documents' => DocumentsBrowserScreen(api: widget.api),
+      'documents' => DocumentsBrowserScreen(
+          api: widget.api,
+          onBackHandlerChanged: _onLibraryBackHandlerChanged,
+        ),
       'downloads' => DownloadsScreen(api: widget.api),
       _ => null,
     };
