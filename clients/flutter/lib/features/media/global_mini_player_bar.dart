@@ -13,6 +13,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
     required this.visible,
     required this.reduceMotion,
     required this.isPlaying,
+    required this.isLoading,
     required this.position,
     required this.duration,
     required this.canSkipPrevious,
@@ -37,6 +38,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
   final bool visible;
   final bool reduceMotion;
   final bool isPlaying;
+  final bool isLoading;
   final Duration position;
   final Duration duration;
   final bool canSkipPrevious;
@@ -103,6 +105,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
             opacity: visible ? 1 : 0,
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
+              onTap: onOpen,
               onHorizontalDragEnd: _handleHorizontalDrag,
               onVerticalDragUpdate: onExpandDragUpdate == null
                   ? null
@@ -119,10 +122,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
               child: Material(
                 type: MaterialType.transparency,
                 borderRadius: BorderRadius.circular(22),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(22),
-                  onTap: onOpen,
-                  child: Column(
+                child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       SizedBox(
@@ -224,12 +224,21 @@ class GlobalMiniPlayerBar extends StatelessWidget {
                               ),
                               onPressed: onTogglePlayback,
                               color: foreground,
-                              icon: Icon(
-                                isPlaying
-                                    ? Icons.pause_rounded
-                                    : Icons.play_arrow_rounded,
-                                size: 22,
-                              ),
+                              icon: isLoading
+                                  ? const SizedBox(
+                                      width: 17,
+                                      height: 17,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                      ),
+                                    )
+                                  : Icon(
+                                      isPlaying
+                                          ? Icons.pause_rounded
+                                          : Icons.play_arrow_rounded,
+                                      size: 22,
+                                    ),
                             ),
                             IconButton(
                               tooltip: 'Next track',
@@ -267,7 +276,6 @@ class GlobalMiniPlayerBar extends StatelessWidget {
                       ),
                     ],
                   ),
-                ),
               ),
             ),
           ),
