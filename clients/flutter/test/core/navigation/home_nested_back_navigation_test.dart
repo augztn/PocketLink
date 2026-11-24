@@ -23,6 +23,41 @@ void main() {
     expect(find.text('Discover'), findsOneWidget);
   });
 
+  testWidgets('system Back navigates Files from Movies to its root', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: _IndexedTabBackHarness()));
+    await tester.tap(find.text('Files tab'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Open Movies'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Files: Movies'), findsOneWidget);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('Files root'), findsOneWidget);
+    expect(find.text('Home root'), findsNothing);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('Home root'), findsOneWidget);
+  });
+
+  testWidgets('Back collapses expanded Now Playing without leaving its page', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: _NowPlayingBackHarness()));
+
+    expect(find.text('Discover'), findsOneWidget);
+    expect(find.text('Now Playing expanded'), findsOneWidget);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Discover'), findsOneWidget);
+    expect(find.text('Mini Player'), findsOneWidget);
+    expect(find.text('Now Playing expanded'), findsNothing);
+  });
+
   testWidgets(
     'system Back pops Imported playlists to Library, then Library to Discover',
     (tester) async {
@@ -89,6 +124,7 @@ class _IndexedTabBackHarnessState extends State<_IndexedTabBackHarness> {
       GlobalKey<NavigatorState>();
   int _activeTab = 2;
   int _nestedBackCalls = 0;
+  String _filesPath = '';
   late final _BackStackObserver _observer;
 
   @override
@@ -141,7 +177,15 @@ class _IndexedTabBackHarnessState extends State<_IndexedTabBackHarness> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
-        if (_activeTab == 1) setState(() => _activeTab = 2);
+        if (_activeTab == 1) {
+          setState(() {
+            if (_filesPath.isNotEmpty) {
+              _filesPath = '';
+            } else {
+              _activeTab = 2;
+            }
+          });
+        }
       },
       child: Scaffold(
         body: Column(
@@ -197,13 +241,64 @@ class _IndexedTabBackHarnessState extends State<_IndexedTabBackHarness> {
                   PopScope<void>(
                     canPop: _activeTab != 1,
                     onPopInvokedWithResult: (didPop, result) {},
-                    child: const Center(child: Text('Files root')),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _filesPath.isEmpty ? 'Files root' : 'Files: $_filesPath',
+                          ),
+                          if (_filesPath.isEmpty)
+                            TextButton(
+                              onPressed: () => setState(() => _filesPath = 'Movies'),
+                              child: const Text('Open Movies'),
+                            ),
+                        ],
+                      ),
+                    ),
                   ),
                   const Center(child: Text('Home root')),
                 ],
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NowPlayingBackHarness extends StatefulWidget {
+  const _NowPlayingBackHarness();
+
+  @override
+  State<_NowPlayingBackHarness> createState() => _NowPlayingBackHarnessState();
+}
+
+class _NowPlayingBackHarnessState extends State<_NowPlayingBackHarness> {
+  bool _expanded = true;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope<void>(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (PocketLinkNavigation.shouldCollapseNowPlayingOnBack(
+          progress: _expanded ? 1 : 0,
+        )) {
+          setState(() => _expanded = false);
+        }
+      },
+      child: Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Discover'),
+              Text(_expanded ? 'Now Playing expanded' : 'Mini Player'),
+            ],
+          ),
         ),
       ),
     );
