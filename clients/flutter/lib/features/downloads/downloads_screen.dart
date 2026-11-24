@@ -694,6 +694,7 @@ class _NewDownloadSheet extends StatefulWidget {
 
 class _NewDownloadSheetState extends State<_NewDownloadSheet> {
   final _urlController = TextEditingController();
+  final _fileNameController = TextEditingController();
   final _serverDirectoryController = TextEditingController(text: 'Downloads/PocketLink');
   ResolvedDownload? _resolved;
   String _destination = 'local';
@@ -739,7 +740,14 @@ class _NewDownloadSheetState extends State<_NewDownloadSheet> {
     });
     try {
       final result = await widget.manager.resolveUrl(_urlController.text);
-      if (mounted) setState(() => _resolved = result);
+      if (mounted) {
+        setState(() {
+          _resolved = result;
+          if (_fileNameController.text.trim().isEmpty) {
+            _fileNameController.text = result.fileName;
+          }
+        });
+      }
     } catch (error) {
       if (mounted) setState(() => _error = error.toString());
     } finally {
@@ -764,9 +772,14 @@ class _NewDownloadSheetState extends State<_NewDownloadSheet> {
         await widget.api.enqueueServerDownload(
           _urlController.text.trim(),
           directory: _serverDirectoryController.text.trim(),
+          fileName: _fileNameController.text.trim(),
         );
       } else {
-        await widget.manager.enqueueUrl(resolved!, directoryPath: _directory);
+        await widget.manager.enqueueUrl(
+          resolved!,
+          directoryPath: _directory,
+          fileName: _fileNameController.text.trim(),
+        );
       }
       if (mounted) Navigator.of(context).pop();
     } catch (error) {
@@ -779,6 +792,7 @@ class _NewDownloadSheetState extends State<_NewDownloadSheet> {
   @override
   void dispose() {
     _urlController.dispose();
+    _fileNameController.dispose();
     _serverDirectoryController.dispose();
     super.dispose();
   }
@@ -861,8 +875,19 @@ class _NewDownloadSheetState extends State<_NewDownloadSheet> {
                 },
                 onChanged: (_) => setState(() {
                   _resolved = null;
+                  _fileNameController.clear();
                   _error = null;
                 }),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _fileNameController,
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(
+                  labelText: 'File name (optional)',
+                  hintText: 'Leave blank to detect automatically',
+                  border: OutlineInputBorder(),
+                ),
               ),
               const SizedBox(height: 10),
               if (_destination == 'local')
