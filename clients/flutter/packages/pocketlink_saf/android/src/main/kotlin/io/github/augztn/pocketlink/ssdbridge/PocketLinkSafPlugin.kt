@@ -114,6 +114,20 @@ class PocketLinkSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
                     result
                 )
             }
+            "discoverLyrics" -> {
+                DiscoverBridge.lyrics(
+                    call.argument<String>("videoId").orEmpty(),
+                    call.argument<String>("region") ?: "IN",
+                    result
+                )
+            }
+            "discoverCaptions" -> {
+                DiscoverBridge.captions(
+                    call.argument<String>("videoId").orEmpty(),
+                    call.argument<String>("region") ?: "IN",
+                    result
+                )
+            }
             "getVideoBrightness" -> {
                 val current = activity
                 if (current == null) {
