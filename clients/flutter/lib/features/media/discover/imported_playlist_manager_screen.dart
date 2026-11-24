@@ -136,18 +136,19 @@ class _ImportedPlaylistManagerScreenState extends State<ImportedPlaylistManagerS
       if (bytes == null) throw const FormatException('Could not read the selected playlist file.');
       final text = utf8.decode(bytes, allowMalformed: false);
       final extension = file.extension?.toLowerCase() ?? '';
-      final playlist = switch (extension) {
-        'm3u' || 'm3u8' => PlaylistImportService.parseM3u(
-            text,
-            fallbackPlaylistName: file.name.replaceFirst(RegExp(r'\.[^.]+$'), ''),
-          ),
-        'csv' => PlaylistImportService.parseCsv(
-            text,
-            fallbackPlaylistName: file.name.replaceFirst(RegExp(r'\.[^.]+$'), ''),
-          ),
+      final fallbackName = file.name.replaceFirst(RegExp(r'\\.[^.]+$'), '');
+      final playlists = switch (extension) {
+        'm3u' || 'm3u8' => [
+            PlaylistImportService.parseM3u(text, fallbackPlaylistName: fallbackName),
+          ],
+        'csv' => PlaylistImportService.parseCsvPlaylists(text, fallbackPlaylistName: fallbackName),
         _ => throw const FormatException('Choose a CSV or M3U playlist export.'),
       };
-      await _runImport(() => ImportedPlaylistStore.save(playlist));
+      await _runImport(() async {
+        for (final playlist in playlists) {
+          await ImportedPlaylistStore.save(playlist);
+        }
+      });
     } catch (error) {
       if (mounted) _message(error is FormatException ? error.message : 'Could not import this playlist file.');
     }
