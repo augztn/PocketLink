@@ -513,11 +513,15 @@ internal class ServerDownloadManager(
             val type = mime?.substringBefore(';')?.lowercase(Locale.ROOT).orEmpty()
             return when {
                 ext in setOf("mp4", "mkv", "mov", "avi", "webm", "m4v", "3gp", "mpeg", "mpg", "ts", "m3u8") || type.startsWith("video/") -> "Videos"
-                ext in setOf("mp3", "m4a", "aac", "flac", "wav", "ogg", "opus", "alac", "aiff", "ape", "wv", "dsf", "dff") || type.startsWith("audio/") -> "Music"
+                ext in setOf("mp3", "m4a", "aac", "flac", "wav", "ogg", "opus", "alac", "aiff", "aif", "ape", "wv", "dsf", "dff") || type.startsWith("audio/") -> "Music"
                 ext in setOf("jpg", "jpeg", "png", "gif", "webp", "heic", "heif", "bmp", "tif", "tiff", "avif") || type.startsWith("image/") -> "Photos"
                 ext == "apk" || type == "application/vnd.android.package-archive" -> "APK"
-                ext in setOf("zip", "7z", "rar", "tar", "gz", "bz2", "xz", "zst", "iso") -> "Archives"
-                ext in setOf("pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "rtf", "odt", "ods", "odp", "csv") || type.startsWith("text/") || type.startsWith("application/pdf") -> "Documents"
+                ext in setOf("zip", "7z", "rar", "tar", "gz", "bz2", "xz", "zst", "iso") ||
+                    type in setOf("application/zip", "application/x-7z-compressed", "application/vnd.rar", "application/x-tar", "application/gzip", "application/x-bzip2", "application/x-xz") -> "Archives"
+                ext in setOf("pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "rtf", "odt", "ods", "odp", "csv") ||
+                    type.startsWith("text/") || type.startsWith("application/pdf") ||
+                    type.startsWith("application/vnd.openxmlformats-officedocument.") ||
+                    type in setOf("application/msword", "application/vnd.ms-excel", "application/vnd.ms-powerpoint", "application/rtf", "application/vnd.oasis.opendocument.text", "application/vnd.oasis.opendocument.spreadsheet", "application/vnd.oasis.opendocument.presentation") -> "Documents"
                 else -> "Others"
             }
         }
