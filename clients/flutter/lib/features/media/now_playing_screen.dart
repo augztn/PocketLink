@@ -28,6 +28,8 @@ import 'track_options_sheet.dart';
 import '../downloads/download_manager_service.dart';
 import 'discover/discover_models.dart';
 import 'discover/discover_service.dart';
+import 'lyrics/lyrics_repository.dart';
+import 'lyrics/lyrics_viewport.dart';
 
 class NowPlayingScreen extends StatefulWidget {
   const NowPlayingScreen({
@@ -63,7 +65,7 @@ class NowPlayingScreen extends StatefulWidget {
   State<NowPlayingScreen> createState() => _NowPlayingScreenState();
 }
 
-class _NowPlayingScreenState extends State<NowPlayingScreen> {
+class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerProviderStateMixin {
   static const _secureStorage = FlutterSecureStorage();
 
   late final PersistentAudioPlayer _persistent;
@@ -76,6 +78,13 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   bool _cached = false;
   Set<String> _favorites = <String>{};
   double _trackSwipeDistance = 0;
+  late final AnimationController _lyricsController;
+  final LyricsRepository _lyricsRepository = LyricsRepository();
+  Map<String, LyricsProviderResult> _lyricsProviderStates = const {};
+  LyricsDocument? _activeLyrics;
+  String? _lyricsQueryKey;
+  bool _lyricsLoading = false;
+  bool _lyricsTranslationEnabled = false;
 
 
   MediaQueueItem get _track =>
@@ -192,6 +201,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   @override
   void initState() {
     super.initState();
+    _lyricsController = AnimationController(vsync: this, duration: const Duration(milliseconds: 350), reverseDuration: const Duration(milliseconds: 350));
+    unawaited(_loadLyricsPreference());
     _persistent = PersistentAudioPlayer.instance;
     _player = _persistent.player;
     unawaited(AppLogger.info('Now Playing screen initialized', fields: {
@@ -1227,86 +1238,184 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   );
 
   Future<void> _showTrackLyrics() async {
-    final videoId = _track.lyricsVideoId;
-    if (videoId == null || videoId.isEmpty) return;
-    final track = DiscoverTrack(
-      videoId: videoId,
-      title: _track.title,
-      artist: _track.artist ?? '',
-      durationText: _track.durationText,
-      thumbnailUrl: _track.artworkUrl ?? '',
-    );
+    if (_lyricsController.value > 0.5) { await _lyricsController.reverse(); return; }
+    unawaited(_lyricsController.forward());
+    await _loadTrackLyrics();
+  }
+
+  Future<void> _loadLyricsPreference() async {
     try {
-      final lyrics = await DiscoverService().lyrics(track);
-      if (!mounted) return;
-      await showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (sheetContext) => SafeArea(
-          child: Container(
-            height: MediaQuery.sizeOf(sheetContext).height * 0.72,
-            decoration: BoxDecoration(
-              color: _trackPalette[2].withValues(alpha: 0.96),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+      final value = await _secureStorage.read(key: 'pocketlink.lyrics.translation.enabled');
+      if (mounted) setState(() => _lyricsTranslationEnabled = value == 'true');
+    } catch (_) {}
+  }
+
+  Future<void> _loadTrackLyrics() async {
+    final query = LyricsTrackQuery(track: _track, api: widget.api);
+    if (_lyricsQueryKey == query.key && !_lyricsLoading) return;
+    setState(() {
+      _lyricsQueryKey = query.key;
+      _lyricsLoading = true;
+      _activeLyrics = null;
+      _lyricsProviderStates = {
+        for (final provider in _lyricsRepository.providers)
+          provider.id: const LyricsProviderResult(LyricsLookupStatus.loading),
+      };
+    });
+    try {
+      final states = await _lyricsRepository.lookup(query, onUpdate: (next) {
+        if (mounted && _lyricsQueryKey == query.key) setState(() => _lyricsProviderStates = next);
+      });
+      if (!mounted || _lyricsQueryKey != query.key) return;
+      setState(() {
+        _lyricsProviderStates = states;
+        _activeLyrics = _lyricsRepository.current(query.key);
+        _lyricsLoading = false;
+      });
+    } catch (_) {
+      if (mounted && _lyricsQueryKey == query.key) {
+        setState(() => _lyricsLoading = false);
+        _message('Could not load lyrics from available providers.');
+      }
+    }
+  }
+
+  Future<void> _chooseLyricsProvider() async {
+    final key = _lyricsQueryKey;
+    if (key == null) return;
+    final selected = await showLyricsProviderSheet(
+      context,
+      providers: _lyricsRepository.providers,
+      results: _lyricsProviderStates,
+      activeProvider: _activeLyrics?.providerId,
+    );
+    if (selected == null || !mounted) return;
+    final document = _lyricsRepository.select(key, selected);
+    if (document != null) setState(() => _activeLyrics = document);
+  }
+
+  Future<void> _toggleLyricsTranslation() async {
+    final next = !_lyricsTranslationEnabled;
+    setState(() => _lyricsTranslationEnabled = next);
+    try {
+      await _secureStorage.write(key: 'pocketlink.lyrics.translation.enabled', value: next.toString());
+    } catch (_) {
+      if (mounted) _message('Could not save the lyrics display preference.');
+    }
+    if (mounted) _message(next
+        ? 'Translation is enabled when a translated lyric source is available.'
+        : 'Original lyrics displayed.');
+  }
+
+  Widget _lyricsArtwork(double progress) {
+    final hasArtwork = _artwork != null && _artworkKey == _trackKey;
+    final palette = _trackPalette;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(26 - 18 * progress),
+      child: hasArtwork
+          ? Image.memory(_artwork!, fit: BoxFit.cover, gaplessPlayback: true)
+          : DecoratedBox(
+              decoration: BoxDecoration(gradient: LinearGradient(colors: [palette[0], palette[1], palette[2]])),
+              child: const Center(child: Icon(Icons.music_note_rounded, color: Colors.white, size: 34)),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(22, 18, 22, 14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+    );
+  }
+
+  Widget _lyricsMode(String theme, double progress) {
+    return IgnorePointer(
+      ignoring: progress < 0.02,
+      child: Opacity(
+        opacity: progress,
+        child: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final width = constraints.maxWidth;
+              final height = constraints.maxHeight;
+              final artSize = theme == 'gradient'
+                  ? width
+                  : math.min(320.0, width - 44).clamp(180.0, 320.0);
+              final startRect = theme == 'gradient'
+                  ? Rect.fromLTWH(0, 0, width, height * 0.55)
+                  : Rect.fromLTWH((width - artSize) / 2, height * 0.10, artSize, artSize);
+              final artRect = Rect.lerp(startRect, const Rect.fromLTWH(0, 0, 48, 48), progress)!;
+              return Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Positioned.fromRect(rect: artRect, child: IgnorePointer(child: _lyricsArtwork(progress))),
+                  Column(
                     children: [
-                      Text('Lyrics', style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(color: Colors.white)),
-                      const SizedBox(height: 4),
-                      Text('${track.title} · ${track.artist}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white60)),
-                      if (lyrics != null) ...[
-                        const SizedBox(height: 5),
-                        Text(lyrics.isSynced ? 'Synced lyrics · ${lyrics.source}' : 'Lyrics · ${lyrics.source}', style: const TextStyle(color: Colors.white54, fontSize: 12)),
-                      ],
-                    ],
-                  ),
-                ),
-                const Divider(height: 1, color: Colors.white24),
-                Expanded(
-                  child: lyrics == null
-                      ? const Center(child: Text('No matching lyrics were found.', style: TextStyle(color: Colors.white70)))
-                      : StreamBuilder<Duration>(
-                          stream: _player.stream.position,
-                          initialData: _player.state.position,
-                          builder: (context, snapshot) {
-                            final position = snapshot.data?.inMilliseconds ?? 0;
-                            final activeIndex = lyrics.isSynced
-                                ? lyrics.lines.lastIndexWhere((line) => line.timeMs <= position)
-                                : -1;
-                            return ListView.builder(
-                              padding: const EdgeInsets.fromLTRB(22, 16, 22, 28),
-                              itemCount: lyrics.lines.length,
-                              itemBuilder: (context, index) => Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 8),
-                                child: Text(
-                                  lyrics.lines[index].text,
-                                  style: TextStyle(
-                                    color: index == activeIndex ? Colors.white : Colors.white70,
-                                    fontSize: index == activeIndex ? 19 : 16,
-                                    fontWeight: index == activeIndex ? FontWeight.w700 : FontWeight.w400,
-                                  ),
+                      const SizedBox(height: 58),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 58, right: 12),
+                        child: SizedBox(
+                          height: 54,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(_fileName, maxLines: 1, overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700)),
+                                    Text(_track.artist ?? _folderName, maxLines: 1, overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(color: Colors.white60, fontSize: 12)),
+                                  ],
                                 ),
                               ),
-                            );
-                          },
+                              _roundAction(icon: _isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
+                                tooltip: 'Favorite', foreground: _isFavorite ? const Color(0xFFFFD66B) : Colors.white,
+                                onTap: () => unawaited(_toggleFavorite()), contentOpacity: progress),
+                              const SizedBox(width: 6),
+                              _roundAction(icon: Icons.more_horiz_rounded, tooltip: 'Track options',
+                                onTap: _showOptions, contentOpacity: progress),
+                            ],
+                          ),
                         ),
-                ),
-              ],
-            ),
+                      ),
+                      Expanded(
+                        child: StreamBuilder<Duration>(
+                          stream: _player.stream.position,
+                          initialData: _player.state.position,
+                          builder: (context, snapshot) => LyricsViewport(
+                            document: _activeLyrics,
+                            position: snapshot.data ?? Duration.zero,
+                            results: _lyricsProviderStates,
+                            providers: _lyricsRepository.providers,
+                            onSeek: (position) => unawaited(_player.seek(position)),
+                            onChooseProvider: _chooseLyricsProvider,
+                            onToggleTranslation: _toggleLyricsTranslation,
+                            translationEnabled: _lyricsTranslationEnabled,
+                          ),
+                        ),
+                      ),
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: _chooseLyricsProvider,
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Text(
+                            'Lyrics by ' + (_activeLyrics?.providerName ?? (_lyricsLoading ? 'Searching' : 'Unavailable')),
+                            style: const TextStyle(color: Colors.white70, fontSize: 12,
+                              decoration: TextDecoration.underline, decorationColor: Colors.white54),
+                          ),
+                        ),
+                      ),
+                      Padding(padding: const EdgeInsets.symmetric(horizontal: 22), child: _timeline()),
+                      const SizedBox(height: 10),
+                      Padding(padding: const EdgeInsets.symmetric(horizontal: 22), child: _transport()),
+                      const SizedBox(height: 6),
+                      _bottomUtilities(),
+                      const SizedBox(height: 8),
+                    ],
+                  ),
+                ],
+              );
+            },
           ),
         ),
-      );
-    } catch (_) {
-      if (mounted) _message('Could not load lyrics.');
-    }
+      ),
+    );
   }
 
   Widget _trackMetadata({double contentOpacity = 1}) {
@@ -1389,8 +1498,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             ),
           ),
           const SizedBox(width: 10),
-          if (AppSettings.instance.discoverLyrics &&
-              _track.lyricsVideoId?.isNotEmpty == true) ...[
+          if (AppSettings.instance.discoverLyrics) ...[
             _roundAction(
               icon: Icons.lyrics_rounded,
               tooltip: 'Lyrics',
@@ -1710,7 +1818,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   @override
   Widget build(BuildContext context) {
     final animation = widget.morphAnimation;
-    final listenables = <Listenable>[AppSettings.instance];
+    final listenables = <Listenable>[AppSettings.instance, _lyricsController];
     if (animation != null) listenables.add(animation);
     return AnimatedBuilder(
       animation: Listenable.merge(listenables),
@@ -1722,6 +1830,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
           1.0,
           curve: Curves.easeOutCubic,
         ).transform(progress);
+        final lyricsProgress = _lyricsController.value;
         return Scaffold(
           backgroundColor: const Color(0xFF0A0B0E),
           body: Stack(
@@ -1732,7 +1841,12 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
               ),
               Positioned.fill(child: _themeBackground(theme)),
               Positioned.fill(
-                child: GestureDetector(
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Opacity(
+                      opacity: 1 - lyricsProgress,
+                      child: GestureDetector(
                   behavior: HitTestBehavior.translucent,
                   onVerticalDragStart: AppSettings.instance.enableNowPlayingGestures
                       ? (_) => widget.onDismissDragStart()
@@ -1770,6 +1884,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                       child: _themeLayout(theme, contentOpacity),
                     ),
                   ),
+                    ),
+                    Positioned.fill(child: _lyricsMode(theme, lyricsProgress)),
+                  ],
                 ),
               ),
             ],
@@ -1782,6 +1899,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   @override
   void dispose() {
     unawaited(_playlistSubscription?.cancel());
+    _lyricsController.dispose();
     super.dispose();
   }
 }
