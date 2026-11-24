@@ -262,7 +262,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     setState(() {
       _loading = true;
       _error = null;
-      _media = const [];
+      if (!refresh) _media = const [];
       _scannedDirectories = 0;
       _skippedDirectories = 0;
       _scanLocation = '';
