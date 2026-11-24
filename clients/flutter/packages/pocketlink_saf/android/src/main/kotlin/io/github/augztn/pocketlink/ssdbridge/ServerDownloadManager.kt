@@ -498,6 +498,9 @@ internal class ServerDownloadManager(
                 val quoted = Regex("filename\\s*=\\s*\"([^\"]+)\"", RegexOption.IGNORE_CASE)
                     .find(disposition)?.groupValues?.getOrNull(1)
                 if (!quoted.isNullOrBlank()) return sanitizeFilename(quoted)
+                val plain = Regex("filename\\s*=\\s*([^;]+)", RegexOption.IGNORE_CASE)
+                    .find(disposition)?.groupValues?.getOrNull(1)?.trim()?.trim('"')
+                if (!plain.isNullOrBlank()) return sanitizeFilename(plain)
             }
             return filenameFromUrl(url)
         }
