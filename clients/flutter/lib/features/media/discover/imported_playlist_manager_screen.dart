@@ -136,7 +136,154 @@ class _ImportedPlaylistManagerScreenState extends State<ImportedPlaylistManagerS
       if (bytes == null) throw const FormatException('Could not read the selected playlist file.');
       final text = utf8.decode(bytes, allowMalformed: false);
       final extension = file.extension?.toLowerCase() ?? '';
-      final fallbackName = file.name.replaceFirst(RegExp(r'\\.[^.]+$'), '');
+      final fallbackName = file.name.replaceFirst(RegExp(r'\.[^.]+, '');
+      final playlists = switch (extension) {
+        'm3u' || 'm3u8' => [
+            PlaylistImportService.parseM3u(text, fallbackPlaylistName: fallbackName),
+          ],
+        'csv' => PlaylistImportService.parseCsvPlaylists(text, fallbackPlaylistName: fallbackName),
+        _ => throw const FormatException('Choose a CSV or M3U playlist export.'),
+      };
+      await _runImport(() async {
+        for (final playlist in playlists) {
+          await ImportedPlaylistStore.save(playlist);
+        }
+      });
+    } catch (error) {
+      if (mounted) _message(error is FormatException ? error.message : 'Could not import this playlist file.');
+    }
+  }
+
+  Future<void> _runImport(Future<void> Function() action) async {
+    setState(() => _working = true);
+    try {
+      await action();
+      await _reload();
+      if (mounted) _message('Playlist imported into Discover Library.');
+    } catch (error) {
+      if (mounted) _message(error is FormatException || error is StateError
+          ? error.toString().replaceFirst('FormatException: ', '')
+          : 'Playlist import failed. Check the link or file and try again.');
+    } finally {
+      if (mounted) setState(() => _working = false);
+    }
+  }
+
+  Future<void> _exportCsv() async {
+    if (_playlists.isEmpty || _working) return;
+    setState(() => _working = true);
+    try {
+      final rows = <({String playlist, ImportedTrack track})>[
+        for (final playlist in _playlists)
+          for (final track in playlist.tracks)
+            (playlist: playlist.name, track: track),
+      ];
+      final csv = PlaylistImportService.exportCsv(rows);
+      final directory = await getTemporaryDirectory();
+      final file = File('${directory.path}/pocketlink-discover-playlists.csv');
+      await file.writeAsString(csv, flush: true);
+      await SharePlus.instance.share(ShareParams(
+        files: [XFile(file.path, mimeType: 'text/csv')],
+        subject: 'PocketLink Discover playlists',
+      ));
+    } catch (_) {
+      if (mounted) _message('Could not export playlists.');
+    } finally {
+      if (mounted) setState(() => _working = false);
+    }
+  }
+
+  Future<void> _delete(ImportedPlaylist playlist) async {
+    await ImportedPlaylistStore.remove(playlist);
+    await _reload();
+  }
+
+  void _message(String value) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(value)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Imported playlists'),
+        actions: [
+          IconButton(
+            tooltip: 'Export playlists as CSV',
+            onPressed: _working || _playlists.isEmpty ? null : _exportCsv,
+            icon: const Icon(Icons.ios_share_rounded),
+          ),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+        children: [
+          Row(children: [
+            Expanded(child: OutlinedButton.icon(
+              onPressed: _working ? null : _importFromUrl,
+              icon: const Icon(Icons.link_rounded),
+              label: const Text('Import link'),
+            )),
+            const SizedBox(width: 10),
+            Expanded(child: FilledButton.icon(
+              onPressed: _working ? null : _importFile,
+              icon: const Icon(Icons.file_open_rounded),
+              label: const Text('Import file'),
+            )),
+          ]),
+          const SizedBox(height: 8),
+          const Text(
+            'Supports public YouTube / YouTube Music and Spotify playlist links, plus CSV and M3U exports from other music services.',
+            style: TextStyle(color: Colors.grey, fontSize: 12),
+          ),
+          if (_working) const Padding(
+            padding: EdgeInsets.only(top: 18),
+            child: LinearProgressIndicator(),
+          ),
+          const SizedBox(height: 18),
+          if (_loading)
+            const Center(child: CircularProgressIndicator())
+          else if (_playlists.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 42),
+              child: Column(children: [
+                Icon(Icons.queue_music_rounded, size: 42, color: Colors.grey),
+                SizedBox(height: 12),
+                Text('No imported playlists yet'),
+                SizedBox(height: 5),
+                Text('Import a playlist to keep it in Discover Library.', style: TextStyle(color: Colors.grey, fontSize: 12)),
+              ]),
+            )
+          else ...[
+            Text('${_playlists.length} PLAYLIST${_playlists.length == 1 ? '' : 'S'}',
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.1, color: Colors.grey)),
+            const SizedBox(height: 8),
+            for (final playlist in _playlists)
+              Card(
+                child: ListTile(
+                  leading: const CircleAvatar(child: Icon(Icons.queue_music_rounded)),
+                  title: Text(playlist.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  subtitle: Text('${playlist.tracks.length} tracks${playlist.provider == null ? '' : ' · ${playlist.provider}'}'),
+                  onTap: widget.onPlay == null ? null : () => widget.onPlay!(playlist),
+                  trailing: PopupMenuButton<String>(
+                    onSelected: (value) {
+                      if (value == 'play' && widget.onPlay != null) widget.onPlay!(playlist);
+                      if (value == 'delete') _delete(playlist);
+                    },
+                    itemBuilder: (_) => [
+                      if (widget.onPlay != null) const PopupMenuItem(value: 'play', child: Text('Play playlist')),
+                      const PopupMenuItem(value: 'delete', child: Text('Remove playlist')),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+), '');
       final playlists = switch (extension) {
         'm3u' || 'm3u8' => [
             PlaylistImportService.parseM3u(text, fallbackPlaylistName: fallbackName),
