@@ -596,9 +596,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                   ]),
-                if (widget.category == 'Appearance')
-                  _section('Glass & Visual Effects', [
-                    Switch                  ]),
                 if (widget.category == 'Dashboard & Shortcuts')
                   _section('Dashboard & Shortcuts', [
                     SwitchListTile(
