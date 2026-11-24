@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 import 'package:dio/dio.dart';
 
@@ -128,7 +127,7 @@ class PlaylistImportService {
         onProgress(PlaylistImportProgress(processed: done, total: tracks.length, localLossless: local, online: online, unmatched: unmatched));
       }
     }
-    await Future.wait(List.generate(maxConcurrency.clamp(1, 4), (_) => worker()));
+    await Future.wait(List.generate(maxConcurrency.clamp(1, 4).toInt(), (_) => worker()));
     return List.unmodifiable(results.whereType<PlaylistTrackMatch>());
   }
 
