@@ -204,10 +204,10 @@ class TransferManager extends ChangeNotifier {
         task.status = TransferStatus.failed;
         task.error = error.message ?? 'Network transfer failed.';
       }
-      AppLogger.warning('Transfer failed', category: 'transfer',
-        component: 'transfer_manager', correlationId: task.id,
-        fields: {'direction': direction, 'failure_type': error.runtimeType.toString(),
-          'transferred_bytes': task.transferred});
+      AppLogger.warning(task.status == TransferStatus.cancelled ? 'Transfer cancelled' : 'Transfer failed',
+        category: 'transfer', component: 'transfer_manager', correlationId: task.id,
+        fields: {'direction': direction, 'status': task.status.name,
+          'failure_type': error.runtimeType.toString(), 'transferred_bytes': task.transferred});
       await _persist();
       notifyListeners();
       return false;
