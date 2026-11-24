@@ -1750,6 +1750,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
           Expanded(
             flex: 4,
             child: NowPlayingScrollDismissDetector(
+              enabled: AppSettings.instance.enableNowPlayingGestures,
               onDismissDragStart: widget.onDismissDragStart,
               onDismissDragUpdate: widget.onDismissDragUpdate,
               onDismissDragEnd: widget.onDismissDragEnd,
@@ -1780,6 +1781,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
           Expanded(
             flex: 4,
             child: NowPlayingScrollDismissDetector(
+              enabled: AppSettings.instance.enableNowPlayingGestures,
               onDismissDragStart: widget.onDismissDragStart,
               onDismissDragUpdate: widget.onDismissDragUpdate,
               onDismissDragEnd: widget.onDismissDragEnd,
@@ -1813,6 +1815,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
           Expanded(
             flex: 4,
             child: NowPlayingScrollDismissDetector(
+              enabled: AppSettings.instance.enableNowPlayingGestures,
               onDismissDragStart: widget.onDismissDragStart,
               onDismissDragUpdate: widget.onDismissDragUpdate,
               onDismissDragEnd: widget.onDismissDragEnd,
@@ -1923,7 +1926,15 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                   ),
                     ),
                     ),
-                    Positioned.fill(child: _lyricsMode(theme, lyricsProgress)),
+                    Positioned.fill(
+                      child: NowPlayingScrollDismissDetector(
+                        enabled: AppSettings.instance.enableNowPlayingGestures,
+                        onDismissDragStart: widget.onDismissDragStart,
+                        onDismissDragUpdate: widget.onDismissDragUpdate,
+                        onDismissDragEnd: widget.onDismissDragEnd,
+                        child: _lyricsMode(theme, lyricsProgress),
+                      ),
+                    ),
                   ],
                 ),
               ),

@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 class NowPlayingScrollDismissDetector extends StatefulWidget {
   const NowPlayingScrollDismissDetector({
     required this.child,
+    this.enabled = true,
     required this.onDismissDragStart,
     required this.onDismissDragUpdate,
     required this.onDismissDragEnd,
@@ -13,6 +14,7 @@ class NowPlayingScrollDismissDetector extends StatefulWidget {
   });
 
   final Widget child;
+  final bool enabled;
   final VoidCallback onDismissDragStart;
   final ValueChanged<double> onDismissDragUpdate;
   final ValueChanged<double> onDismissDragEnd;
@@ -33,6 +35,7 @@ class _NowPlayingScrollDismissDetectorState
   VelocityTracker? _velocityTracker;
 
   void _handlePointerDown(PointerDownEvent event) {
+    if (!widget.enabled) return;
     _pointerStart = event.position;
     _scrollOffsetAtPointerDown = _scrollOffset;
     _velocityTracker = VelocityTracker.withKind(event.kind)
@@ -40,10 +43,11 @@ class _NowPlayingScrollDismissDetectorState
   }
 
   void _handlePointerMove(PointerMoveEvent event) {
-    _velocityTracker?.addPosition(event.timeStamp, event.position);
+    if (widget.enabled) _velocityTracker?.addPosition(event.timeStamp, event.position);
   }
 
   void _handlePointerUp(PointerUpEvent event) {
+    if (!widget.enabled) return;
     final start = _pointerStart;
     final tracker = _velocityTracker;
     _resetPointer();
@@ -72,7 +76,7 @@ class _NowPlayingScrollDismissDetectorState
   }
 
   bool _handleScrollNotification(ScrollNotification notification) {
-    if (notification.depth == 0) {
+    if (widget.enabled && notification.depth == 0) {
       _scrollOffset = notification.metrics.pixels;
     }
     return false;
