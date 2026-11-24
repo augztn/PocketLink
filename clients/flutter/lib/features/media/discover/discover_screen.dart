@@ -1752,10 +1752,16 @@ class _DiscoverCategoryScreenState extends State<_DiscoverCategoryScreen> {
                                 color: theme.colorScheme.surfaceContainerHighest,
                                 child: const Icon(Icons.music_note_rounded),
                               )
-                            : Image.network(
-                                track.thumbnailUrl,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => ColoredBox(
+                            : DiscoverThumbnail(
+                                url: DiscoverThumbnailCache.urlForSize(
+                                  track.thumbnailUrl,
+                                  160,
+                                ),
+                                cacheWidth: 160,
+                                fallback: const ColoredBox(
+                                  color: Color(0xFF1A1B20),
+                                ),
+                                errorFallback: ColoredBox(
                                   color: theme.colorScheme.surfaceContainerHighest,
                                   child: const Icon(Icons.music_note_rounded),
                                 ),
@@ -1917,8 +1923,15 @@ class _DiscoverMoodTileState extends State<_DiscoverMoodTile> {
       dimension: size,
       child: url.isEmpty
           ? const ColoredBox(color: Color(0xFF393941))
-          : Image.network(url, fit: BoxFit.cover, errorBuilder: (_, __, ___) =>
-              const ColoredBox(color: Color(0xFF393941))),
+          : DiscoverThumbnail(
+              url: DiscoverThumbnailCache.urlForSize(
+                url,
+                size <= 60 ? 160 : 400,
+              ),
+              cacheWidth: size <= 60 ? 160 : 400,
+              fallback: const ColoredBox(color: Color(0xFF1A1B20)),
+              errorFallback: const ColoredBox(color: Color(0xFF393941)),
+            ),
     ),
   );
 }
