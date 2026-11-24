@@ -35,7 +35,7 @@ class LyricsTrackQuery {
   const LyricsTrackQuery({required this.track, required this.api});
   final MediaQueueItem track;
   final ServerApi? api;
-  String get key => [track.lyricsVideoId ?? '', track.localPath ?? '', track.volume ?? '', track.path, track.title, track.artist ?? '', track.durationText, api?.baseUrl ?? ''].join('|');
+  String get key => (api?.baseUrl ?? 'discover') + '|' + track.stableTrackId;
   String get title => LyricsProvider.clean(track.title);
   String get artist => LyricsProvider.clean(track.artist ?? '');
   int get durationSeconds {
@@ -67,6 +67,7 @@ class LyricsRepository {
   final Map<String, Map<String, LyricsProviderResult>> _states = {};
   final Map<String, Future<Map<String, LyricsProviderResult>>> _pending = {};
   final Map<String, LyricsDocument?> _active = {};
+  final Set<String> _manualSelections = <String>{};
   static List<LyricsLine> parseLrc(String raw) {
     final stamp = RegExp(r'\[(\d{1,3}):(\d{2})(?:[.:](\d{1,3}))?\]');
     final lines = <LyricsLine>[];
@@ -200,37 +201,71 @@ class LyricsRepository {
     final r = _states[key]?[id];
     if (r?.status != LyricsLookupStatus.found) return null;
     _active[key] = r!.document;
+    _manualSelections.add(key);
     return r.document;
   }
-  Future<Map<String, LyricsProviderResult>> lookup(LyricsTrackQuery q, {void Function(Map<String, LyricsProviderResult>)? onUpdate}) {
+  Future<Map<String, LyricsProviderResult>> lookup(
+    LyricsTrackQuery q, {
+    void Function(Map<String, LyricsProviderResult>)? onUpdate,
+  }) {
     final old = _states[q.key];
-    if (old != null && old.values.every((v) => v.status != LyricsLookupStatus.loading)) {
-      onUpdate?.call(Map.unmodifiable(old)); return Future.value(Map.unmodifiable(old));
+    if (old != null && old.values.every((value) => value.status != LyricsLookupStatus.loading)) {
+      onUpdate?.call(Map.unmodifiable(old));
+      return Future.value(Map.unmodifiable(old));
     }
-    return _pending.putIfAbsent(q.key, () => _run(q, onUpdate));
+    final pending = _pending[q.key];
+    if (pending != null) return pending;
+    final future = _run(q, onUpdate);
+    _pending[q.key] = future;
+    return future;
   }
-  Future<Map<String, LyricsProviderResult>> _run(LyricsTrackQuery q, void Function(Map<String, LyricsProviderResult>)? notify) async {
-    final states = {for (final p in _providers) p.id: const LyricsProviderResult(LyricsLookupStatus.loading)};
-    _states[q.key] = states;
-    void publish() => notify?.call(Map.unmodifiable(Map.of(states)));
-    publish();
-    final jobs = {for (final p in _providers) p.id: p.fetch(q).timeout(const Duration(seconds: 12))};
-    LyricsDocument? wordSynced, synced, plain;
-    for (final p in _providers) {
-      try {
-        final doc = await jobs[p.id];
-        states[p.id] = LyricsProviderResult(doc == null ? LyricsLookupStatus.notFound : LyricsLookupStatus.found, document: doc);
-        if (doc != null && doc.lines.isNotEmpty) {
-          if (doc.wordSynced) wordSynced ??= doc;
-          else if (doc.synced) synced ??= doc;
-          else plain ??= doc;
-        }
-      } catch (e) {
-        states[p.id] = LyricsProviderResult(LyricsLookupStatus.error, error: e is TimeoutException ? 'Request timed out' : 'Provider unavailable');
-      }
-      publish();
+
+  int _quality(LyricsDocument document) {
+    if (document.wordSynced) return 3;
+    if (document.synced) return 2;
+    return 1;
+  }
+
+  void _considerActive(String key, LyricsDocument candidate) {
+    if (_manualSelections.contains(key)) return;
+    final current = _active[key];
+    if (current == null || _quality(candidate) > _quality(current)) {
+      _active[key] = candidate;
     }
-    _active[q.key] = wordSynced ?? synced ?? plain;
+  }
+
+  Future<Map<String, LyricsProviderResult>> _run(
+    LyricsTrackQuery q,
+    void Function(Map<String, LyricsProviderResult>)? notify,
+  ) async {
+    final states = {
+      for (final provider in _providers)
+        provider.id: const LyricsProviderResult(LyricsLookupStatus.loading),
+    };
+    _states[q.key] = states;
+    void publish() {
+      notify?.call(Map.unmodifiable(Map<String, LyricsProviderResult>.of(states)));
+    }
+    publish();
+
+    await Future.wait(_providers.map((provider) async {
+      try {
+        final document = await provider.fetch(q).timeout(const Duration(seconds: 12));
+        states[provider.id] = LyricsProviderResult(
+          document == null || document.lines.isEmpty ? LyricsLookupStatus.notFound : LyricsLookupStatus.found,
+          document: document,
+        );
+        if (document != null && document.lines.isNotEmpty) _considerActive(q.key, document);
+      } catch (error) {
+        states[provider.id] = LyricsProviderResult(
+          LyricsLookupStatus.error,
+          error: error is TimeoutException ? 'Request timed out' : 'Provider unavailable',
+        );
+      }
+      // A provider miss updates only its own status and cannot clear active lyrics.
+      publish();
+    }));
+
     _states[q.key] = Map.of(states);
     _pending.remove(q.key);
     return Map.unmodifiable(states);
