@@ -1218,7 +1218,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                   tooltip: playing ? 'Pause' : 'Play',
                   icon: playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
                   size: 48,
-                  enabled: true,
+                  enabled: !loading,
                   onTap: _player.playOrPause,
                 ),
               ),
