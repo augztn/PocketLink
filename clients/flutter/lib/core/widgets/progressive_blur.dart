@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:material_ui/material_ui.dart';
 
@@ -65,7 +66,7 @@ class ProgressiveBlur extends StatelessWidget {
               height: bandHeight,
               child: ClipRect(
                 child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
+                  filter: ui.ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
                   child: const ColoredBox(color: Colors.transparent),
                 ),
               ),
