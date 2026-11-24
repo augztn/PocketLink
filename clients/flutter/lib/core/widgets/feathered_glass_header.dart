@@ -29,13 +29,26 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
         final media = MediaQuery.of(context);
         final isDark = Theme.of(context).brightness == Brightness.dark;
         final settings = AppSettings.instance;
-        // Backdrop blur is a static rendering effect, not an animation.
-        // Keep it available when the OS requests reduced motion.
+        // This is a static rendering effect, so it remains safe with reduced motion.
         final useProgressiveBlur =
             settings.progressiveBlurEnabled &&
             settings.progressiveBlurStrength > 0;
         final blurScale = settings.progressiveBlurStrength / 55;
         final headerHeight = media.padding.top + contentHeight + 16;
+
+        // Preserve the existing no-blur gradient, including custom dark tints.
+        final fallbackTint = isDark
+            ? (darkTint ?? const [
+                Color(0xB8000000),
+                Color(0x40000000),
+                Colors.transparent,
+              ])
+            : const [
+                Color(0xCCFFFFFF),
+                Color(0x55FFFFFF),
+                Colors.transparent,
+              ];
+
         final scrimColor = isDark ? Colors.black : Colors.white;
         final progressiveScrim = [
           scrimColor.withValues(alpha: 0.92),
@@ -44,64 +57,65 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
           scrimColor.withValues(alpha: 0.16),
           scrimColor.withValues(alpha: 0),
         ];
-        final blurSigma = 24 * blurScale;
 
         return _HeaderHeightReporter(
           height: headerHeight,
           child: SizedBox(
-          width: double.infinity,
-          height: headerHeight,
-          child: ClipRect(
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                if (useProgressiveBlur) ...[
-                  Positioned.fill(
-                    child: ProgressiveBlur(
-                      maxSigma: blurSigma,
-                      steps: 14,
-                      exponent: 1.6,
-                      strongestAtBottom: strongestAtBottom,
+            width: double.infinity,
+            height: headerHeight,
+            child: ClipRect(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (useProgressiveBlur) ...[
+                    Positioned.fill(
+                      child: ProgressiveBlur(
+                        maxSigma: 24 * blurScale,
+                        steps: 14,
+                        exponent: 1.6,
+                        strongestAtBottom: strongestAtBottom,
+                      ),
                     ),
-                  ),
-                  Positioned.fill(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: strongestAtBottom
-                              ? Alignment.bottomCenter
-                              : Alignment.topCenter,
-                          end: strongestAtBottom
-                              ? Alignment.topCenter
-                              : Alignment.bottomCenter,
-                          colors: progressiveScrim,
-                          stops: const [0, 0.16, 0.38, 0.68, 1],
+                    Positioned.fill(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: strongestAtBottom
+                                ? Alignment.bottomCenter
+                                : Alignment.topCenter,
+                            end: strongestAtBottom
+                                ? Alignment.topCenter
+                                : Alignment.bottomCenter,
+                            colors: progressiveScrim,
+                            stops: const [0, 0.16, 0.38, 0.68, 1],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ] else
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: darkTint != null && isDark
-                            ? tint
-                            : [
-                                isDark
-                                    ? const Color(0xE6000000)
-                                    : const Color(0xF2FFFFFF),
-                                Colors.transparent,
-                              ],
-                        stops: darkTint != null && isDark
-                            ? const [0.0, 0.48, 1.0]
-                            : null,
+                  ] else
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: darkTint != null && isDark
+                              ? fallbackTint
+                              : [
+                                  isDark
+                                      ? const Color(0xE6000000)
+                                      : const Color(0xF2FFFFFF),
+                                  Colors.transparent,
+                                ],
+                          stops: darkTint != null && isDark
+                              ? const [0.0, 0.48, 1.0]
+                              : null,
+                        ),
                       ),
                     ),
-                  ),,
+                ],
+              ),
+            ),
           ),
-        ),
         );
       },
     );
