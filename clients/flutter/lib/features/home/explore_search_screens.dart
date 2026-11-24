@@ -81,7 +81,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
   @override
   Widget build(BuildContext context) {
     return NavigatorPopHandler<void>(
-      enabled: widget.isActive && (_navigatorKey.currentState?.canPop() ?? false),
+      enabled: PocketLinkNavigation.shouldHandleNestedBack(
+        isActive: widget.isActive,
+        canPop: _navigatorKey.currentState?.canPop() ?? false,
+      ),
       onPopWithResult: (_) => _navigatorKey.currentState?.maybePop(),
       child: PocketLinkNavigationScope(
         onHome: () {
