@@ -85,6 +85,17 @@ class AppLogger {
   }) => _write('INFO', message, category: category, component: component,
       correlationId: correlationId, fields: fields);
 
+  /// Writes a structured event. Pass operational metadata only; private fields
+  /// are removed by the diagnostic sanitizer before persistence and export.
+  static Future<void> event(
+    String name, {
+    required String category,
+    required String component,
+    String? correlationId,
+    Map<String, Object?> fields = const {},
+  }) => info(name, category: category, component: component,
+      correlationId: correlationId, fields: {'event_name': name, ...fields});
+
   static Future<void> warning(
     String message, {
     String category = 'app',
@@ -158,6 +169,12 @@ class AppLogger {
 
   static bool _isSensitiveKey(String key) {
     final normalized = _normalizeFieldKey(key);
+    const explicitlySensitiveFields = {
+      'query', 'search', 'search_term', 'search_text', 'filename',
+      'file_name', 'item_name', 'media_title', 'artist', 'track_title',
+      'display_name', 'content', 'request_body', 'response_body',
+    };
+    if (explicitlySensitiveFields.contains(normalized)) return true;
     const safeOperationalFields = {
       'host_mode', 'host_status', 'host_state', 'host_type',
       'server_status', 'server_state', 'server_type', 'server_mode',
@@ -171,7 +188,7 @@ class AppLogger {
 
   static bool _isSensitivePathKey(String key, [Object? value]) {
     final normalized = _normalizeFieldKey(key);
-    if (!RegExp(r'(^|_)(path|filename|directory|folder|uri)(_|$)')
+    if (!RegExp(r'(^|_)(path|filename|file_name|item_name|directory|folder|uri)(_|$)')
         .hasMatch(normalized)) return false;
     // API route templates are operational metadata, not user filesystem paths.
     if (value is String && RegExp(r'^/api/[a-zA-Z0-9_/{}/-]+/?$').hasMatch(value)) {
