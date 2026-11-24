@@ -13,7 +13,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
     required this.visible,
     required this.reduceMotion,
     required this.isPlaying,
-    required this.isLoading,
+    this.isLoading = false,
     required this.position,
     required this.duration,
     required this.canSkipPrevious,
