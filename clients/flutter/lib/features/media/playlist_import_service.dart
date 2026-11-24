@@ -86,6 +86,45 @@ class PlaylistImportService {
     return ImportedPlaylist(name: names.length == 1 ? names.single : fallbackPlaylistName, tracks: List.unmodifiable(tracks));
   }
 
+  static List<ImportedPlaylist> parseCsvPlaylists(String input, {String fallbackPlaylistName = 'Imported playlist'}) {
+    final rows = _parseCsvRows(input.replaceFirst('\\uFEFF', '')).where((row) => row.any((value) => value.trim().isNotEmpty)).toList();
+    if (rows.length < 2) throw const FormatException('The CSV does not contain any track rows.');
+    final header = rows.first.map(_normalizeHeader).toList();
+    int col(List<String> names) {
+      for (final name in names) {
+        final index = header.indexOf(_normalizeHeader(name));
+        if (index >= 0) return index;
+      }
+      return -1;
+    }
+    final titleIndex = col(_titleHeaders);
+    final artistIndex = col(_artistHeaders);
+    final albumIndex = col(_albumHeaders);
+    final playlistIndex = col(_playlistHeaders);
+    final isrcIndex = col(_isrcHeaders);
+    if (titleIndex < 0) throw const FormatException('Could not find a track title column in this CSV.');
+    String cell(List<String> row, int index) => index < 0 || index >= row.length ? '' : row[index].trim();
+    final grouped = <String, List<ImportedTrack>>{};
+    for (final row in rows.skip(1)) {
+      final title = cell(row, titleIndex);
+      if (title.isEmpty) continue;
+      final name = cell(row, playlistIndex);
+      final playlistName = name.isEmpty ? fallbackPlaylistName : name;
+      grouped.putIfAbsent(playlistName, () => <ImportedTrack>[]).add(ImportedTrack(
+        title: title,
+        artist: cell(row, artistIndex),
+        album: cell(row, albumIndex),
+        isrc: cell(row, isrcIndex).isEmpty ? null : cell(row, isrcIndex),
+      ));
+    }
+    if (grouped.isEmpty) throw const FormatException('No valid tracks were found in the CSV.');
+    return List.unmodifiable(grouped.entries.map((entry) => ImportedPlaylist(
+      name: entry.key,
+      tracks: List.unmodifiable(entry.value),
+      provider: 'CSV',
+    )));
+  }
+
   static ImportedPlaylist parseM3u(String input, {String fallbackPlaylistName = 'Imported playlist'}) {
     final tracks = <ImportedTrack>[];
     String? title, artist;
