@@ -98,7 +98,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
         _usernameController.text = username;
         _passwordController.text = password ?? '';
       }
-    } catch (error, stack) {
+    } catch (error) {
       await AppLogger.warning(
         'Could not restore saved server session',
         fields: {'error_type': error.runtimeType.toString()},
