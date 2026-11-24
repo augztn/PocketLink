@@ -199,6 +199,12 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
             feathered: true,
             showHome: false,
             automaticallyImplyLeading: false,
+            leading: IconButton(
+              tooltip: 'Back',
+              onPressed: () => Navigator.of(context).maybePop(),
+              icon: const Icon(Icons.arrow_back_rounded),
+            ),
+            leadingWidth: 56,
             title: TitleDropdownPopover<_DownloadFilter>(
 tooltip: 'Filter downloads',
               items: [
