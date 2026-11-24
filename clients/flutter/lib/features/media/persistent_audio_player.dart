@@ -137,6 +137,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
   int _currentIndex = 0;
   bool _active = false;
   bool _music = false;
+  bool _selectionLoading = false;
   bool _miniPlayerDismissed = false;
   int? _pendingTrackDirection;
   DateTime? _pendingTrackDirectionAt;
@@ -157,6 +158,35 @@ class PersistentAudioPlayer extends ChangeNotifier {
   int get currentIndex => _currentIndex;
   bool get isActive => _active;
   bool get isMusic => _music;
+  bool get isSelectionLoading => _selectionLoading;
+
+  /// Publishes track metadata immediately while its playable source resolves.
+  /// The returned session invalidates any older in-flight selection.
+  int beginQueueSelection({
+    required ServerApi? api,
+    required MediaQueueItem item,
+    required bool isMusic,
+  }) {
+    final session = ++_queueSession;
+    _api = api;
+    _queue = List.unmodifiable([item]);
+    _currentIndex = 0;
+    _music = isMusic;
+    _active = true;
+    _miniPlayerDismissed = false;
+    _selectionLoading = true;
+    _retriedDiscoverTracks.clear();
+    _retryingDiscoverPlayback = false;
+    notifyListeners();
+    unawaited(player.pause());
+    return session;
+  }
+
+  void failQueueSelection(int session) {
+    if (session != _queueSession || !_selectionLoading) return;
+    _selectionLoading = false;
+    notifyListeners();
+  }
   bool get isMiniPlayerDismissed => _miniPlayerDismissed;
   bool get shouldShowMiniPlayer =>
       _music && _active && currentItem != null && !_miniPlayerDismissed;
@@ -188,9 +218,11 @@ class PersistentAudioPlayer extends ChangeNotifier {
     required List<MediaQueueItem> queue,
     required int initialIndex,
     required bool isMusic,
+    int? expectedSession,
   }) async {
     if (queue.isEmpty) return;
-    final session = ++_queueSession;
+    final session = expectedSession ?? ++_queueSession;
+    if (session != _queueSession) return;
     if (api == null && queue.any((item) => item.streamUrl == null && item.localPath == null)) {
       throw StateError('A server connection is required for server-hosted media.');
     }
@@ -202,6 +234,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
     _music = isMusic;
     _active = true;
     _miniPlayerDismissed = false;
+    _selectionLoading = true;
     notifyListeners();
 
     final tracks = _queue.map((item) => Media(
@@ -213,11 +246,21 @@ class PersistentAudioPlayer extends ChangeNotifier {
               : api!.mediaHeaders,
       extras: {'title': item.title, if (item.artist != null) 'artist': item.artist},
     )).toList(growable: false);
-    await _serializeQueueMutation(() async {
-      if (session != _queueSession) return;
-      await player.open(Playlist(tracks, index: _currentIndex));
-    });
+    try {
+      await _serializeQueueMutation(() async {
+        if (session != _queueSession) return;
+        await player.open(Playlist(tracks, index: _currentIndex));
+      });
+    } catch (_) {
+      if (session == _queueSession) {
+        _selectionLoading = false;
+        notifyListeners();
+      }
+      rethrow;
+    }
     if (session != _queueSession) return;
+    _selectionLoading = false;
+    notifyListeners();
     final current = currentItem;
     if (current != null && current.localPath == null && current.streamUrl == null && _music && api != null) {
       unawaited(HomeActivityStore.instance.recordTrack(serverUrl: api.baseUrl, title: current.title, path: current.path, volume: current.volume));
