@@ -89,7 +89,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       animation: nowPlayingProgress,
       builder: (context, _) => NavigatorPopHandler<void>(
         enabled: PocketLinkNavigation.shouldHandleNestedBack(
-          isActive: widget.isActive && nowPlayingProgress.value <= 0.5,
+          isActive: widget.isActive && nowPlayingProgress.value <= 0.001,
           canPop: _navigatorKey.currentState?.canPop() ?? false,
         ),
         onPopWithResult: (_) => _navigatorKey.currentState?.maybePop(),
