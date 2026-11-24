@@ -32,9 +32,13 @@ class LyricsProviderResult {
   final String? error;
 }
 class LyricsTrackQuery {
-  const LyricsTrackQuery({required this.track, required this.api});
+  const LyricsTrackQuery({required this.track, required this.api, this.cancelToken});
   final MediaQueueItem track;
   final ServerApi? api;
+  final CancelToken? cancelToken;
+
+  LyricsTrackQuery withCancelToken(CancelToken token) =>
+      LyricsTrackQuery(track: track, api: api, cancelToken: token);
   String get key => (api?.baseUrl ?? 'discover') + '|' + track.stableTrackId;
   String get title => LyricsProvider.clean(track.title);
   String get artist => LyricsProvider.clean(track.artist ?? '');
@@ -58,16 +62,65 @@ abstract interface class LyricsProvider {
     .replaceAll(RegExp(r'\s+(feat\.?|ft\.?|featuring)\s+.*$', caseSensitive: false), '')
     .replaceAll(RegExp(r'\s+'), ' ').trim();
 }
+class _LyricsLookupSession {
+  final Map<String, CancelToken> providerTokens = {};
+  bool cancelled = false;
+
+  void cancel() {
+    if (cancelled) return;
+    cancelled = true;
+    for (final token in providerTokens.values) {
+      if (!token.isCancelled) token.cancel('Lyrics lookup no longer needed');
+    }
+  }
+}
+
 class LyricsRepository {
   LyricsRepository({Dio? dio, List<LyricsProvider>? providers}) : _dio = dio ?? Dio(BaseOptions(connectTimeout: const Duration(seconds: 7), receiveTimeout: const Duration(seconds: 10), headers: const {'User-Agent': 'PocketLink/1.0'})) {
-    _providers = providers ?? [_LocalProvider(), _LrclibProvider(_dio), _PlatformProvider('youtube_music', 'YouTube Music', 'discoverLyrics'), _PlatformProvider('youtube_captions', 'YouTube Captions', 'discoverCaptions'), _KugouProvider(_dio), _LyricsPlusProvider(_dio), _BetterLyricsProvider(_dio), _LrcRedProvider(_dio), _NoopProvider('musixmatch', 'Musixmatch'), _GeniusProvider(_dio)];
+    _providers = providers ?? [_LocalProvider(), _LrclibProvider(_dio), _PlatformProvider('youtube_music', 'YouTube Music', 'discoverLyrics'), _PlatformProvider('youtube_captions', 'YouTube Captions', 'discoverCaptions'), _KugouProvider(_dio), _LyricsPlusProvider(_dio), _BetterLyricsProvider(_dio), _LrcRedProvider(_dio), _GeniusProvider(_dio)];
   }
+  static const int _maxCachedTracks = 32;
+  static const int _maxConcurrentProviders = 4;
   final Dio _dio;
   late final List<LyricsProvider> _providers;
   final Map<String, Map<String, LyricsProviderResult>> _states = {};
   final Map<String, Future<Map<String, LyricsProviderResult>>> _pending = {};
+  final Map<String, _LyricsLookupSession> _sessions = {};
   final Map<String, LyricsDocument?> _active = {};
   final Set<String> _manualSelections = <String>{};
+
+  void cancel(String key) {
+    final session = _sessions[key];
+    if (session == null) return;
+    session.cancel();
+    _states.remove(key);
+    _active.remove(key);
+    _manualSelections.remove(key);
+  }
+
+  void cancelAll() {
+    for (final session in _sessions.values.toList()) {
+      session.cancel();
+    }
+    _sessions.clear();
+    _pending.clear();
+    _states.clear();
+    _active.clear();
+    _manualSelections.clear();
+  }
+
+  void _trimCaches() {
+    while (_states.length > _maxCachedTracks) {
+      final key = _states.keys.firstWhere(
+        (candidate) => !_pending.containsKey(candidate),
+        orElse: () => '',
+      );
+      if (key.isEmpty) break;
+      _states.remove(key);
+      _active.remove(key);
+      _manualSelections.remove(key);
+    }
+  }
   static List<LyricsLine> parseLrc(String raw) {
     final stamp = RegExp(r'\[(\d{1,3}):(\d{2})(?:[.:](\d{1,3}))?\]');
     final lines = <LyricsLine>[];
@@ -210,12 +263,19 @@ class LyricsRepository {
   }) {
     final old = _states[q.key];
     if (old != null && old.values.every((value) => value.status != LyricsLookupStatus.loading)) {
+      _states.remove(q.key);
+      _states[q.key] = old;
       onUpdate?.call(Map.unmodifiable(old));
       return Future.value(Map.unmodifiable(old));
     }
     final pending = _pending[q.key];
     if (pending != null) return pending;
-    final future = _run(q, onUpdate);
+    final session = _LyricsLookupSession();
+    _sessions[q.key] = session;
+    final future = _run(q, onUpdate, session).whenComplete(() {
+      if (identical(_sessions[q.key], session)) _sessions.remove(q.key);
+      _pending.remove(q.key);
+    });
     _pending[q.key] = future;
     return future;
   }
@@ -243,6 +303,7 @@ class LyricsRepository {
   Future<Map<String, LyricsProviderResult>> _run(
     LyricsTrackQuery q,
     void Function(Map<String, LyricsProviderResult>)? notify,
+    _LyricsLookupSession session,
   ) async {
     final states = {
       for (final provider in _providers)
@@ -250,38 +311,71 @@ class LyricsRepository {
     };
     _states[q.key] = states;
     void publish() {
+      if (session.cancelled) return;
       notify?.call(Map.unmodifiable(Map<String, LyricsProviderResult>.of(states)));
     }
     publish();
 
-    await Future.wait(_providers.map((provider) async {
-      try {
-        final document = await provider.fetch(q).timeout(const Duration(seconds: 12));
-        states[provider.id] = LyricsProviderResult(
-          document == null || document.lines.isEmpty ? LyricsLookupStatus.notFound : LyricsLookupStatus.found,
-          document: document,
-        );
-        if (document != null && document.lines.isNotEmpty) _considerActive(q.key, document);
-      } catch (error) {
-        states[provider.id] = LyricsProviderResult(
-          LyricsLookupStatus.error,
-          error: error is TimeoutException ? 'Request timed out' : 'Provider unavailable',
-        );
+    var nextProvider = 0;
+    Future<void> worker() async {
+      while (!session.cancelled) {
+        if (nextProvider >= _providers.length) return;
+        final provider = _providers[nextProvider++];
+        final token = CancelToken();
+        session.providerTokens[provider.id] = token;
+        try {
+          final providerQuery = q.withCancelToken(token);
+          final document = await runZoned<Future<LyricsDocument?>>(
+            () => provider.fetch(providerQuery),
+            zoneValues: {_lyricsCancelTokenZoneKey: token},
+          ).timeout(const Duration(seconds: 12));
+          if (session.cancelled) return;
+          states[provider.id] = LyricsProviderResult(
+            document == null || document.lines.isEmpty ? LyricsLookupStatus.notFound : LyricsLookupStatus.found,
+            document: document,
+          );
+          if (document != null && document.lines.isNotEmpty) _considerActive(q.key, document);
+        } catch (error) {
+          if (session.cancelled) return;
+          if (error is TimeoutException && !token.isCancelled) {
+            token.cancel('Lyrics provider timed out');
+          }
+          states[provider.id] = LyricsProviderResult(
+            LyricsLookupStatus.error,
+            error: error is TimeoutException ? 'Request timed out' : 'Provider unavailable',
+          );
+        } finally {
+          session.providerTokens.remove(provider.id);
+        }
+        // A provider miss updates only its own status and cannot clear active lyrics.
+        publish();
       }
-      // A provider miss updates only its own status and cannot clear active lyrics.
-      publish();
-    }));
+    }
 
+    await Future.wait(
+      List.generate(
+        _providers.length < _maxConcurrentProviders ? _providers.length : _maxConcurrentProviders,
+        (_) => worker(),
+      ),
+    );
+
+    if (session.cancelled) {
+      return Map.unmodifiable(states);
+    }
+    _states.remove(q.key);
     _states[q.key] = Map.of(states);
-    _pending.remove(q.key);
+    _trimCaches();
     return Map.unmodifiable(states);
   }
 }
+const Object _lyricsCancelTokenZoneKey = #pocketLinkLyricsCancelToken;
+
 abstract class _Provider implements LyricsProvider {
   _Provider(this.dio);
   final Dio dio;
-  Future<dynamic> _getJson(String url, [Map<String, dynamic>? params]) async => (await dio.get<dynamic>(url, queryParameters: params)).data;
-  Future<String?> text(String url, [Map<String, dynamic>? params]) async => (await dio.get<String>(url, queryParameters: params, options: Options(responseType: ResponseType.plain))).data;
+  CancelToken? get _cancelToken => Zone.current[_lyricsCancelTokenZoneKey] as CancelToken?;
+  Future<dynamic> _getJson(String url, [Map<String, dynamic>? params]) async => (await dio.get<dynamic>(url, queryParameters: params, cancelToken: _cancelToken)).data;
+  Future<String?> text(String url, [Map<String, dynamic>? params]) async => (await dio.get<String>(url, queryParameters: params, options: Options(responseType: ResponseType.plain), cancelToken: _cancelToken)).data;
   LyricsDocument? lrc(String? raw, String id, String name) {
     if (raw == null) return null;
     final out = LyricsRepository.parseLrc(raw);
@@ -302,7 +396,7 @@ class _LocalProvider extends _Provider {
     final side=(dot>path.lastIndexOf('/')?path.substring(0,dot):path)+'.lrc';
     String? raw;
     if(q.track.localPath!=null) { final f=File(side); if(await f.exists()) raw=await f.readAsString(); }
-    else if(q.api!=null) { try { final b=q.track.volume==null?await q.api!.downloadFile(side):await q.api!.downloadStorageFile(q.track.volume!,side); raw=utf8.decode(b,allowMalformed:true); } catch(_){} }
+    else if(q.api!=null) { try { final b=q.track.volume==null?await q.api!.downloadFile(side,cancelToken:_cancelToken):await q.api!.downloadStorageFile(q.track.volume!,side,cancelToken:_cancelToken); raw=utf8.decode(b,allowMalformed:true); } catch(_){} }
     // Embedded tag lyrics are not exposed by the current media metadata API.
     return LyricsRepository.parseRawLyricsText(raw ?? '', providerId: id, providerName: name);
   }
@@ -385,11 +479,6 @@ class _PlatformProvider implements LyricsProvider {
   }
 }
 
-class _NoopProvider implements LyricsProvider {
-  _NoopProvider(this.id,this.name);
-  @override final String id; @override final String name;
-  @override Future<LyricsDocument?> fetch(LyricsTrackQuery q) async => throw UnsupportedError('This provider is not connected to the current Android Discover bridge.');
-}
 class _KugouProvider extends _Provider {
   _KugouProvider(super.dio);
   @override String get id=>'kugou'; @override String get name=>'KuGou';
