@@ -450,6 +450,8 @@ class _HomeScreenState extends State<HomeScreen> {
         builder: (context, _) => Scaffold(
           key: _rootScaffoldKey,
           drawerScrimColor: Colors.black.withValues(alpha: 0.58),
+          drawerEnableOpenDragGesture:
+              _selectedIndex == 0 && !_libraryOpen && !_hostSetupOpen,
           drawer: PocketLinkHomeDrawer(
             serverName: drawerServerName,
             routeLabel: networkRouteLabel(serverHost),
