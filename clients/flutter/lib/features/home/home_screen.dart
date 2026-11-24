@@ -413,7 +413,11 @@ class _HomeScreenState extends State<HomeScreen> {
           onOpenFiles: () => _openTab(2),
           onOpenLibrary: _openLibrary,
           onCanPopChanged: _onExploreCanPopChanged,
-          isActive: _selectedIndex == 1 && !_libraryOpen && !_hostSetupOpen,
+          isActive: _selectedIndex == 1 &&
+              !_libraryOpen &&
+              !_hostSetupOpen &&
+              !_musicShortcutsExpanded &&
+              !PocketLinkNavigation.drawerOpen.value,
           onCategoryChanged: (category) => setState(() {
             _exploreCategory = category;
             if (category == ExploreCategory.files) _fileCategory = 'All';
