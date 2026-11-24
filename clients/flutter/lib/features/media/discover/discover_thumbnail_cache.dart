@@ -17,7 +17,7 @@ abstract final class DiscoverThumbnailCache {
   static void _remember(String url, Uint8List bytes) {
     final previous = _memory.remove(url);
     if (previous != null) _memoryBytes -= previous.length;
-    _remember(url, bytes);
+    _memory[url] = bytes;
     _memoryBytes += bytes.length;
     while (_memoryBytes > _maxMemoryBytes && _memory.isNotEmpty) {
       final oldestKey = _memory.keys.first;
