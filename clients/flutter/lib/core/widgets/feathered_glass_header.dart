@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:material_ui/material_ui.dart';
 
 import 'pocketlink_scaffold.dart';
+import 'progressive_blur.dart';
 
 /// Shared top-edge blur and legibility surface for edge-to-edge screens.
 class FeatheredGlassHeaderBackground extends StatelessWidget {
@@ -21,12 +22,26 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
     final headerHeight = media.padding.top + contentHeight + 16;
-    final scrimColor = Theme.of(context).scaffoldBackgroundColor;
-    final scrimColors = [
-      scrimColor.withValues(alpha: 0.90),
-      scrimColor.withValues(alpha: 0.55),
-      scrimColor.withValues(alpha: 0),
-    ];
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scrimColor = isDark ? Colors.black : Colors.white;
+    final customDarkTint = isDark && darkTint != null && darkTint!.length >= 3
+        ? darkTint!
+        : null;
+    final scrimColors = customDarkTint == null
+        ? [
+            scrimColor.withValues(alpha: 0.92),
+            scrimColor.withValues(alpha: 0.78),
+            scrimColor.withValues(alpha: 0.48),
+            scrimColor.withValues(alpha: 0.16),
+            scrimColor.withValues(alpha: 0),
+          ]
+        : [
+            customDarkTint[0],
+            Color.lerp(customDarkTint[0], customDarkTint[1], 0.5)!,
+            customDarkTint[1],
+            Color.lerp(customDarkTint[1], customDarkTint[2], 0.5)!,
+            customDarkTint[2],
+          ];
 
     return _HeaderHeightReporter(
       height: headerHeight,
@@ -38,13 +53,11 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
             fit: StackFit.expand,
             children: [
               Positioned.fill(
-                child: BackdropFilter(
-                  filter: ui.ImageFilter.blur(
-                    sigmaX: 13.0,
-                    sigmaY: 13.0,
-                    tileMode: ui.TileMode.clamp,
-                  ),
-                  child: const ColoredBox(color: Colors.transparent),
+                child: ProgressiveBlur(
+                  maxSigma: 24,
+                  steps: 14,
+                  exponent: 1.6,
+                  strongestAtBottom: strongestAtBottom,
                 ),
               ),
               Positioned.fill(
@@ -58,7 +71,7 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
                           ? Alignment.topCenter
                           : Alignment.bottomCenter,
                       colors: scrimColors,
-                      stops: const [0, 0.55, 1],
+                      stops: const [0, 0.16, 0.38, 0.68, 1],
                     ),
                   ),
                 ),
