@@ -43,10 +43,8 @@ void main() {
       expect(find.text('Discover'), findsOneWidget);
     },
   );
-}
 
-  testWidgets(
-    'Back on Files does not pop a hidden Explore stack',
+  testWidgets( does not pop a hidden Explore stack',
     (tester) async {
       await tester.pumpWidget(const MaterialApp(home: _IndexedTabBackHarness()));
       await tester.tap(find.text('Explore tab'));
@@ -74,6 +72,7 @@ void main() {
       expect(find.text('Discover'), findsNothing);
     },
   );
+}
 
 class _IndexedTabBackHarness extends StatefulWidget {
   const _IndexedTabBackHarness();
