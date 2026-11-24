@@ -33,6 +33,7 @@ internal class ServerDownloadManager(
         val url: String,
         var fileName: String,
         val requestedDirectory: String?,
+        val requestedFileName: String?,
         var destinationPath: String?,
         val createdAt: Long,
         var downloadedBytes: Long = 0,
@@ -78,15 +79,17 @@ internal class ServerDownloadManager(
         pump()
     }
 
-    fun enqueue(rawUrl: String, directory: String?): JSONObject {
+    fun enqueue(rawUrl: String, directory: String?, filenameOverride: String?): JSONObject {
         val url = validateUrl(rawUrl).toString()
         val normalizedDirectory = directory?.trim()?.trim('/')?.takeIf { it.isNotEmpty() }
         if (normalizedDirectory != null) resolveDirectory(normalizedDirectory)
+        val normalizedFileName = filenameOverride?.trim()?.takeIf { it.isNotEmpty() }?.let(::sanitizeFilename)
         val job = Job(
             id = UUID.randomUUID().toString(),
             url = url,
-            fileName = filenameFromUrl(url),
+            fileName = normalizedFileName ?: filenameFromUrl(url),
             requestedDirectory = normalizedDirectory,
+            requestedFileName = normalizedFileName,
             destinationPath = null,
             createdAt = System.currentTimeMillis()
         )
@@ -222,7 +225,8 @@ internal class ServerDownloadManager(
             val result = response!!
             if (!result.isSuccessful) throw IOException("Download server returned HTTP ${result.code}")
             val body = result.body ?: throw IOException("Download response was empty")
-            val name = filenameFromHeaders(result.header("Content-Disposition"), currentUrl)
+            val name = job.requestedFileName
+                ?: filenameFromHeaders(result.header("Content-Disposition"), currentUrl)
             if (job.destinationPath == null) {
                 val directory = destinationDirectory(job.requestedDirectory, name, result.header("Content-Type"))
                 val target = uniqueFile(directory, name)
@@ -369,6 +373,7 @@ internal class ServerDownloadManager(
                     url = value.getString("url"),
                     fileName = value.optString("file_name", "download"),
                     requestedDirectory = value.optString("requested_directory").takeIf { it.isNotBlank() },
+                    requestedFileName = value.optString("requested_file_name").takeIf { it.isNotBlank() },
                     destinationPath = value.optString("destination_path").takeIf { it.isNotBlank() },
                     createdAt = value.optLong("created_at"),
                     downloadedBytes = value.optLong("downloaded_bytes"),
@@ -389,6 +394,7 @@ internal class ServerDownloadManager(
                 .put("url", job.url)
                 .put("file_name", job.fileName)
                 .put("requested_directory", job.requestedDirectory)
+                .put("requested_file_name", job.requestedFileName)
                 .put("destination_path", job.destinationPath)
                 .put("created_at", job.createdAt)
                 .put("downloaded_bytes", job.downloadedBytes)
