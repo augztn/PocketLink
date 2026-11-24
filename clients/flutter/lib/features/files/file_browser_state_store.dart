@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-import '../logging/app_logger.dart';
+import '../../core/logging/app_logger.dart';
 
 /// App-scoped Files navigation and presentation state, isolated per server.
 class FileBrowserStateStore extends ChangeNotifier {
