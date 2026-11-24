@@ -150,11 +150,7 @@ class _ImportedPlaylistManagerScreenState extends State<ImportedPlaylistManagerS
         'json' => _decodePocketLinkBackup(text),
         _ => throw const FormatException('Choose a CSV, M3U or PocketLink JSON playlist export.'),
       };
-      await _runImport(() async {
-        for (final playlist in playlists) {
-          await ImportedPlaylistStore.save(playlist);
-        }
-      });
+      await _runImport(() => ImportedPlaylistStore.saveAll(playlists));
     } catch (error) {
       if (mounted) _message(error is FormatException ? error.message : 'Could not import this playlist file.');
     }
