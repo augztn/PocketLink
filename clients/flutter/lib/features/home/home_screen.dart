@@ -644,8 +644,9 @@ class _HomeScreenState extends State<HomeScreen> {
               });
             } else if (_selectedIndex == 1 && _exploreCanPop) {
               // NavigatorPopHandler consumes this back event on the nested tab.
-            } else if (_selectedIndex == 2 && _tabBackHandler != null) {
-              _tabBackHandler!.call();
+            } else if (_selectedIndex == 2 &&
+                (_filesCanNavigateBack || _tabBackHandler != null)) {
+              _tabBackHandler?.call();
             } else if (_selectedIndex != 0) {
               _openTab(0);
             }
