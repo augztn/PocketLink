@@ -166,6 +166,28 @@ internal object DiscoverBridge {
         }
     }
 
+    fun lyrics(videoId: String, regionCode: String, result: io.flutter.plugin.common.MethodChannel.Result) {
+        executor.execute {
+            try {
+                val payload = catalog.lyrics(videoId.trim(), regionCode)
+                mainHandler.post { result.success(payload) }
+            } catch (error: Exception) {
+                mainHandler.post { result.error("DISCOVER_LYRICS_FAILED", error.message ?: "YouTube Music lyrics are unavailable.", null) }
+            }
+        }
+    }
+
+    fun captions(videoId: String, regionCode: String, result: io.flutter.plugin.common.MethodChannel.Result) {
+        executor.execute {
+            try {
+                val payload = catalog.captions(videoId.trim(), regionCode)
+                mainHandler.post { result.success(payload) }
+            } catch (error: Exception) {
+                mainHandler.post { result.error("DISCOVER_CAPTIONS_FAILED", error.message ?: "YouTube captions are unavailable.", null) }
+            }
+        }
+    }
+
     fun resolve(
         videoId: String,
         quality: String,
