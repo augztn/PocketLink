@@ -129,11 +129,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     final pending = _localLibraryRequest;
     if (pending != null) {
       await pending;
-      final updated = _localLibraryCacheUpdated[cacheKey];
-      if (!forceRefresh && updated != null &&
-          DateTime.now().difference(updated) < const Duration(minutes: 2)) {
-        return;
-      }
+      if (!forceRefresh) return;
     }
 
     final request = () async {
