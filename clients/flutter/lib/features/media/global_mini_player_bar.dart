@@ -29,6 +29,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
     this.surfaceIntensity = 1.0,
     this.artworkBytes,
     this.artworkKey,
+    this.onExpandDragStart,
     this.onExpandDragUpdate,
     this.onExpandDragEnd,
     super.key,
@@ -54,6 +55,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
   final double surfaceIntensity;
   final Uint8List? artworkBytes;
   final Key? artworkKey;
+  final VoidCallback? onExpandDragStart;
   final ValueChanged<double>? onExpandDragUpdate;
   final ValueChanged<double>? onExpandDragEnd;
 
@@ -107,6 +109,9 @@ class GlobalMiniPlayerBar extends StatelessWidget {
               behavior: HitTestBehavior.opaque,
               onTap: onOpen,
               onHorizontalDragEnd: _handleHorizontalDrag,
+              onVerticalDragStart: onExpandDragStart == null
+                  ? null
+                  : (_) => onExpandDragStart!(),
               onVerticalDragUpdate: onExpandDragUpdate == null
                   ? null
                   : (details) =>
