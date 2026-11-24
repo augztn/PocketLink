@@ -147,29 +147,32 @@ class LyricsRepository {
           .map((s) => LyricsLine(0, s)).toList();
       final lines = syncedLines.isNotEmpty ? syncedLines : plainLines;
       if (lines.isEmpty) continue;
+      final candidateTitleTokens = trackName.split(' ').where((s) => s.length > 1).toSet();
+      final titleUnion = titleTokens.union(candidateTitleTokens).length;
+      final titleSimilarity = trackName == wantedTitle
+          ? 1.0
+          : trackName.contains(wantedTitle) || wantedTitle.contains(trackName)
+              ? .85
+              : titleUnion == 0 ? 0.0 : titleTokens.intersection(candidateTitleTokens).length / titleUnion;
+      final candidateArtistTokens = artistName.split(' ').where((s) => s.length > 1).toSet();
+      final artistUnion = artistTokens.union(candidateArtistTokens).length;
+      final artistSimilarity = artistName.isEmpty || wantedArtist.isEmpty
+          ? .5
+          : artistName == wantedArtist
+              ? 1.0
+              : artistName.contains(wantedArtist) || wantedArtist.contains(artistName)
+                  ? .85
+                  : artistUnion == 0 ? 0.0 : artistTokens.intersection(candidateArtistTokens).length / artistUnion;
+
+      // Do not accept a same-duration cover or an unrelated artist just because
+      // the candidate contains some overlapping title words.
+      if (titleSimilarity < .4) continue;
+      if (wantedArtist.isNotEmpty && artistName.isNotEmpty && artistSimilarity < .25) continue;
+
       var score = syncedLines.isNotEmpty ? 30.0 : 0.0;
-      if (wantedTitle.isNotEmpty && trackName.isNotEmpty) {
-        if (trackName == wantedTitle) {
-          score += 45;
-        } else if (trackName.contains(wantedTitle) || wantedTitle.contains(trackName)) {
-          score += 30;
-        } else {
-          final tokens = trackName.split(' ').where((s) => s.length > 1).toSet();
-          final union = titleTokens.union(tokens).length;
-          if (union > 0) score += titleTokens.intersection(tokens).length / union * 35;
-        }
-      }
+      score += titleSimilarity * 45;
       if (wantedArtist.isNotEmpty && artistName.isNotEmpty) {
-        if (artistName == wantedArtist) {
-          score += 32;
-        } else if (artistName.contains(wantedArtist) || wantedArtist.contains(artistName)) {
-          score += 24;
-        } else {
-          final tokens = artistName.split(' ').where((s) => s.length > 1).toSet();
-          final hits = artistTokens.intersection(tokens).length;
-          score += artistTokens.isEmpty ? 0 : hits / artistTokens.length * 26;
-          if (hits == 0) score -= 18;
-        }
+        score += artistSimilarity * 32;
       }
       final candidateDuration = (candidate['duration'] as num?)?.toInt();
       if (durationSeconds != null && candidateDuration != null) {
