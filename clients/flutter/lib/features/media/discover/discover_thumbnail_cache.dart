@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -7,9 +8,23 @@ import 'package:path_provider/path_provider.dart';
 
 /// Persistent disk + Flutter image-cache backed artwork shared by media surfaces.
 abstract final class DiscoverThumbnailCache {
-  static final Map<String, Uint8List> _memory = {};
+  static final LinkedHashMap<String, Uint8List> _memory = LinkedHashMap();
   static final Map<String, Future<Uint8List?>> _pending = {};
   static const int _maxBytes = 8 * 1024 * 1024;
+  static const int _maxMemoryBytes = 24 * 1024 * 1024;
+  static int _memoryBytes = 0;
+
+  static void _remember(String url, Uint8List bytes) {
+    final previous = _memory.remove(url);
+    if (previous != null) _memoryBytes -= previous.length;
+    _remember(url, bytes);
+    _memoryBytes += bytes.length;
+    while (_memoryBytes > _maxMemoryBytes && _memory.isNotEmpty) {
+      final oldestKey = _memory.keys.first;
+      final oldest = _memory.remove(oldestKey)!;
+      _memoryBytes -= oldest.length;
+    }
+  }
 
   /// Resizes Google-hosted YouTube Music artwork when its URL carries a
   /// size suffix; other providers keep their original URL unchanged.
@@ -20,8 +35,11 @@ abstract final class DiscoverThumbnailCache {
 
   static Future<Uint8List?> load(String url) {
     if (url.isEmpty) return Future.value(null);
-    final cached = _memory[url];
-    if (cached != null) return Future.value(cached);
+    final cached = _memory.remove(url);
+    if (cached != null) {
+      _memory[url] = cached;
+      return Future.value(cached);
+    }
     return _pending.putIfAbsent(url, () async {
       try {
         final directory = await getApplicationSupportDirectory();
