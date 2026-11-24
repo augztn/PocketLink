@@ -135,6 +135,13 @@ abstract final class PocketLinkNavigation {
   }) =>
       progress >= 0.08 || upwardVelocity < -350;
 
+  /// A nested tab navigator may consume Back only while its tab is visible.
+  static bool shouldHandleNestedBack({
+    required bool isActive,
+    required bool canPop,
+  }) =>
+      isActive && canPop;
+
   /// Captures the visible source surface for the Now Playing container transform.
   static Rect? resolveMediaOriginRect({required bool preferMiniPlayer}) {
     final keys = preferMiniPlayer
