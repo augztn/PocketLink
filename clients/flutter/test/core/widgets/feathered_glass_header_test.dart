@@ -249,12 +249,14 @@ void main() {
   testWidgets('progressive blur supports a strongest bottom edge', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
-        home: SizedBox(
-          height: 100,
-          child: ProgressiveBlur(
-            maxSigma: 22,
-            steps: 4,
-            strongestAtBottom: true,
+        home: Center(
+          child: SizedBox(
+            height: 100,
+            child: ProgressiveBlur(
+              maxSigma: 22,
+              steps: 4,
+              strongestAtBottom: true,
+            ),
           ),
         ),
       ),
