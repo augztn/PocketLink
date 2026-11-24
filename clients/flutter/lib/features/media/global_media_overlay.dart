@@ -614,19 +614,21 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
           final glassIntensity =
               1.0 - (t * 2.5).clamp(0.0, 1.0).toDouble();
           final miniOpacity =
-              (1.0 - t / 0.35).clamp(0.0, 1.0).toDouble();
-          final targetArt = PocketLinkNavigation.resolveMediaRect(
-                artworkTargetKey,
-              ) ??
-              Rect.fromCenter(
-                center: Offset(size.width / 2, size.height * 0.34),
-                width: 260,
-                height: 260,
-              );
+              (1.0 - t / 0.25).clamp(0.0, 1.0).toDouble();
+          final isGradientTheme =
+              AppSettings.instance.nowPlayingTheme == 'gradient';
+          final targetArt = isGradientTheme
+              ? Rect.fromLTWH(0, 0, size.width, size.height * 0.55)
+              : PocketLinkNavigation.resolveMediaRect(artworkTargetKey) ??
+                  Rect.fromCenter(
+                    center: Offset(size.width / 2, size.height * 0.34),
+                    width: 260,
+                    height: 260,
+                  );
           final artworkRect = Rect.lerp(sourceArt, targetArt, t)!;
           final artworkRadius = BorderRadius.lerp(
             BorderRadius.circular(11),
-            BorderRadius.circular(26),
+            isGradientTheme ? BorderRadius.zero : BorderRadius.circular(26),
             t,
           )!;
 
@@ -691,6 +693,7 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
                               item: player.currentItem,
                               bytes: bytes,
                               radius: artworkRadius,
+                              fadeBottom: isGradientTheme,
                             ),
                           ),
                         ),
@@ -722,11 +725,13 @@ class _SharedMorphArtwork extends StatelessWidget {
     required this.item,
     required this.bytes,
     required this.radius,
+    this.fadeBottom = false,
   });
 
   final MediaQueueItem? item;
   final Uint8List? bytes;
   final BorderRadius radius;
+  final bool fadeBottom;
 
   @override
   Widget build(BuildContext context) {
@@ -744,18 +749,30 @@ class _SharedMorphArtwork extends StatelessWidget {
           ),
         );
 
+    final artwork = bytes != null
+        ? Image.memory(bytes!, fit: BoxFit.cover, gaplessPlayback: true)
+        : artworkUrl?.isNotEmpty == true
+            ? Image.network(
+                artworkUrl!,
+                fit: BoxFit.cover,
+                gaplessPlayback: true,
+                errorBuilder: (_, __, ___) => fallback(),
+              )
+            : fallback();
     return ClipRRect(
       borderRadius: radius,
-      child: bytes != null
-          ? Image.memory(bytes!, fit: BoxFit.cover, gaplessPlayback: true)
-          : artworkUrl?.isNotEmpty == true
-              ? Image.network(
-                  artworkUrl!,
-                  fit: BoxFit.cover,
-                  gaplessPlayback: true,
-                  errorBuilder: (_, __, ___) => fallback(),
-                )
-              : fallback(),
+      child: fadeBottom
+          ? ShaderMask(
+              blendMode: BlendMode.dstIn,
+              shaderCallback: (bounds) => const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.white, Colors.white, Colors.transparent],
+                stops: [0, 0.56, 1],
+              ).createShader(bounds),
+              child: artwork,
+            )
+          : artwork,
     );
   }
 }
