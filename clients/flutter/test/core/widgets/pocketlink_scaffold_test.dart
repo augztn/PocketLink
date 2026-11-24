@@ -157,7 +157,7 @@ void main() {
     await verifyStable(routeA, 106);
     await verifyStable(routeB, 130);
     await verifyStable(routeC, 118);
-    await verifyStable(routeA, 90);
+    await verifyStable(routeA, 106);
     route.dispose();
   });
 }
