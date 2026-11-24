@@ -20,6 +20,8 @@ void main() {
     VoidCallback? onNext,
     Duration position = const Duration(seconds: 30),
     Duration duration = const Duration(seconds: 60),
+    ValueChanged<double>? onExpandDragUpdate,
+    ValueChanged<double>? onExpandDragEnd,
   }) {
     return tester.pumpWidget(
       MaterialApp(
@@ -39,6 +41,8 @@ void main() {
               onTogglePlayback: onTogglePlayback ?? () {},
               onSkipPrevious: onPrevious ?? () {},
               onSkipNext: onNext ?? () {},
+              onExpandDragUpdate: onExpandDragUpdate,
+              onExpandDragEnd: onExpandDragEnd,
             ),
           ),
         ),
@@ -136,6 +140,28 @@ void main() {
 
     expect(previous, 0);
     expect(next, 0);
+  });
+
+  testWidgets('upward swipe on mini-player requests Now Playing expansion', (tester) async {
+    final dragDeltas = <double>[];
+    double? releaseVelocity;
+    await pumpMiniPlayer(
+      tester,
+      onExpandDragUpdate: dragDeltas.add,
+      onExpandDragEnd: (velocity) => releaseVelocity = velocity,
+    );
+
+    await tester.fling(
+      find.byType(GlobalMiniPlayerBar),
+      const Offset(0, -140),
+      1000,
+    );
+    await tester.pump();
+
+    expect(dragDeltas, isNotEmpty);
+    expect(dragDeltas.any((delta) => delta < 0), isTrue);
+    expect(releaseVelocity, isNotNull);
+    expect(releaseVelocity, lessThan(0));
   });
 
   testWidgets('paused mini-player can be dismissed with a downward swipe only', (tester) async {

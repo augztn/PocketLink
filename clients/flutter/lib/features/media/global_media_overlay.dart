@@ -689,19 +689,20 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
                             ),
                           ),
                         ),
-                        Positioned.fromRect(
-                          rect: artworkRect,
-                          child: ValueListenableBuilder<Uint8List?>(
-                            valueListenable: artworkBytes,
-                            builder: (context, bytes, _) =>
-                                _SharedMorphArtwork(
-                              item: player.currentItem,
-                              bytes: bytes,
-                              radius: artworkRadius,
-                              fadeBottom: isGradientTheme,
+                        if (t < 0.999)
+                          Positioned.fromRect(
+                            rect: artworkRect,
+                            child: ValueListenableBuilder<Uint8List?>(
+                              valueListenable: artworkBytes,
+                              builder: (context, bytes, _) =>
+                                  _SharedMorphArtwork(
+                                item: player.currentItem,
+                                bytes: bytes,
+                                radius: artworkRadius,
+                                fadeBottom: isGradientTheme,
+                              ),
                             ),
                           ),
-                        ),
                         Positioned.fromRect(
                           rect: rect,
                           child: IgnorePointer(

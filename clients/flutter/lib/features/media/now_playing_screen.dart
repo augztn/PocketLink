@@ -94,6 +94,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   String get _trackKey =>
       '${widget.api?.baseUrl ?? 'discover'}|${_track.volume ?? 'internal'}:${_track.path}';
 
+  bool get _usesSharedArtwork =>
+      widget.useSharedArtwork && (widget.morphAnimation?.value ?? 1.0) < 0.999;
+
   String get _favoriteId => '${_track.volume ?? 'internal'}:${_track.path}';
 
   String get _favoriteStorageKey =>
@@ -1004,7 +1007,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
             ],
           ),
           clipBehavior: Clip.antiAlias,
-          child: widget.useSharedArtwork
+          child: _usesSharedArtwork
               ? const SizedBox.expand()
               : AnimatedSwitcher(
             duration: const Duration(milliseconds: 360),
@@ -1316,7 +1319,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     final hasArtwork = _artwork != null && _artworkKey == _trackKey;
     final palette = _trackPalette;
     return ClipRRect(
-      borderRadius: BorderRadius.circular(26 - 18 * progress),
+      borderRadius: BorderRadius.lerp(
+        BorderRadius.circular(26),
+        BorderRadius.circular(10),
+        progress,
+      )!,
       child: hasArtwork
           ? Image.memory(_artwork!, fit: BoxFit.cover, gaplessPlayback: true)
           : DecoratedBox(
@@ -1342,7 +1349,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
               final startRect = theme == 'gradient'
                   ? Rect.fromLTWH(0, 0, width, height * 0.55)
                   : Rect.fromLTWH((width - artSize) / 2, height * 0.10, artSize, artSize);
-              final artRect = Rect.lerp(startRect, const Rect.fromLTWH(0, 0, 48, 48), progress)!;
+              // SafeArea owns the status-bar inset; keep compact art in the
+              // same header row as the title and track actions.
+              const compactArtRect = Rect.fromLTWH(12, 3, 48, 48);
+              final artRect = Rect.lerp(startRect, compactArtRect, progress)!;
               return Stack(
                 clipBehavior: Clip.none,
                 children: [
@@ -1355,9 +1365,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                   ),
                   Column(
                     children: [
-                      const SizedBox(height: 58),
                       Padding(
-                        padding: const EdgeInsets.only(left: 58, right: 12),
+                        padding: const EdgeInsets.only(left: 68, right: 12),
                         child: SizedBox(
                           height: 54,
                           child: Row(
@@ -1585,7 +1594,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     );
   }
 
-  Widget _themeBackground(String theme) {
+  Widget _themeBackground(String theme, {double lyricsProgress = 0}) {
     final palette = _trackPalette;
     final hasArtwork = _artwork != null && _artworkKey == _trackKey;
     if (theme == 'aether') {
@@ -1648,10 +1657,13 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
             ),
           ),
           if (hasArtwork)
-            Image.memory(
-              _artwork!,
-              fit: BoxFit.cover,
-              gaplessPlayback: true,
+            Opacity(
+              opacity: 1 - lyricsProgress,
+              child: Image.memory(
+                _artwork!,
+                fit: BoxFit.cover,
+                gaplessPlayback: true,
+              ),
             ),
           if (hasArtwork)
             Positioned.fill(
@@ -1707,24 +1719,27 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                 ),
               ),
             ),
-          if (hasArtwork && !widget.useSharedArtwork)
+          if (hasArtwork && !_usesSharedArtwork)
             Positioned(
               top: 0,
               left: 0,
               right: 0,
               height: MediaQuery.sizeOf(context).height * 0.64,
-              child: ShaderMask(
-                blendMode: BlendMode.dstIn,
-                shaderCallback: (bounds) => const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Colors.white, Colors.white, Colors.transparent],
-                  stops: [0, 0.56, 1],
-                ).createShader(bounds),
-                child: Image.memory(
-                  _artwork!,
-                  fit: BoxFit.cover,
-                  gaplessPlayback: true,
+              child: Opacity(
+                opacity: 1 - lyricsProgress,
+                child: ShaderMask(
+                  blendMode: BlendMode.dstIn,
+                  shaderCallback: (bounds) => const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Colors.white, Colors.white, Colors.transparent],
+                    stops: [0, 0.56, 1],
+                  ).createShader(bounds),
+                  child: Image.memory(
+                    _artwork!,
+                    fit: BoxFit.cover,
+                    gaplessPlayback: true,
+                  ),
                 ),
               ),
             ),
@@ -1881,7 +1896,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
               const Positioned.fill(
                 child: ColoredBox(color: Color(0xFF0A0B0E)),
               ),
-              Positioned.fill(child: _themeBackground(theme)),
+              Positioned.fill(
+                child: _themeBackground(theme, lyricsProgress: lyricsProgress),
+              ),
               Positioned.fill(
                 child: Stack(
                   fit: StackFit.expand,
