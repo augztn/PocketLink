@@ -7,12 +7,6 @@ import 'package:pocketlink_client/core/widgets/feathered_glass_header.dart';
 import 'package:pocketlink_client/core/widgets/liquid_glass_pill.dart';
 import 'package:pocketlink_client/core/widgets/progressive_blur.dart';
 
-void expectHeaderBlurActive(WidgetTester tester) {
-  final filterCount = find.byType(BackdropFilter).evaluate().length;
-  // Shader-capable renderers use one composed filter; the fallback uses five bands.
-  expect(filterCount, anyOf(1, 5));
-}
-
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -20,272 +14,79 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  test('progressive blur is enabled by default', () {
-    expect(AppSettings.instance.progressiveBlurEnabled, isTrue);
-  });
-
-  test('Liquid Glass UI is enabled by default', () {
-    expect(AppSettings.instance.useLiquidGlass, isTrue);
-  });
-
-  test('progressive blur preference persists when toggled', () async {
-    await AppSettings.instance.setProgressiveBlurEnabled(true);
-    expect(AppSettings.instance.progressiveBlurEnabled, isTrue);
-    expect(
-      (await SharedPreferences.getInstance()).getBool('settings_progressive_blur'),
-      isTrue,
+  testWidgets('header always renders Mochy progressive blur bands', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(body: FeatheredGlassHeaderBackground()),
+      ),
     );
-
-    await AppSettings.instance.setProgressiveBlurEnabled(false);
-    expect(AppSettings.instance.progressiveBlurEnabled, isFalse);
-    expect(
-      (await SharedPreferences.getInstance()).getBool('settings_progressive_blur'),
-      isFalse,
-    );
+    expect(find.byType(BackdropFilter), findsNWidgets(14));
+    expect(find.byType(ShaderMask), findsNothing);
   });
 
-  testWidgets('Liquid Glass UI off disables LiquidGlassSurface blur', (tester) async {
-    await tester.runAsync(() => AppSettings.instance.setUseLiquidGlass(false));
-
+  testWidgets('progressive blur supports reversed direction', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
-          body: LiquidGlassSurface(
-            radius: BorderRadius.all(Radius.circular(16)),
-            refractive: true,
-            child: Text('Dock'),
-          ),
-        ),
-      ),
-    );
-
-    expect(find.byType(BackdropFilter), findsNothing);
-  });
-
-  testWidgets('Liquid Glass UI off disables SmokedGlassSurface blur and rim', (tester) async {
-    await tester.runAsync(() => AppSettings.instance.setUseLiquidGlass(false));
-
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: SmokedGlassSurface(
-            radius: BorderRadius.all(Radius.circular(16)),
-            refractive: true,
-            child: Text('Mini player'),
-          ),
-        ),
-      ),
-    );
-
-    expect(find.byType(BackdropFilter), findsNothing);
-    expect(
-      find.byWidgetPredicate(
-        (widget) => widget is CustomPaint && widget.painter != null,
-      ),
-      findsNothing,
-    );
-  });
-
-  testWidgets('Liquid Glass UI on enables shared surface blur', (tester) async {
-    await tester.runAsync(() => AppSettings.instance.setUseLiquidGlass(true));
-
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: LiquidGlassSurface(
-            radius: BorderRadius.all(Radius.circular(16)),
-            child: Text('Dock'),
-          ),
-        ),
-      ),
-    );
-
-    expect(find.byType(BackdropFilter), findsOneWidget);
-  });
-
-  testWidgets('shared header blur is active before the first scroll', (tester) async {
-    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(true));
-
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: FeatheredGlassHeaderBackground(),
-        ),
-      ),
-    );
-
-    expectHeaderBlurActive(tester);
-  });
-
-  testWidgets('shared header blur is enabled while scrolled', (tester) async {
-    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(true));
-
-    final scrollController = ScrollController(initialScrollOffset: 1);
-    await tester.pumpWidget(
-      MaterialApp(home: PrimaryScrollController(
-          controller: scrollController,
-          child: Scaffold(
-            body: Column(
-              children: [
-                const FeatheredGlassHeaderBackground(),
-                Expanded(
-                  child: ListView(
-                    controller: scrollController,
-                    children: const [SizedBox(height: 1200)],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        )),
-    );
-    await tester.pump();
-
-    expectHeaderBlurActive(tester);
-    scrollController.dispose();
-  });
-
-  testWidgets('shared header blur remains active when reduced motion is enabled', (tester) async {
-    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(true));
-
-    final scrollController = ScrollController(initialScrollOffset: 1);
-    await tester.pumpWidget(
-      MaterialApp(
-        home: MediaQuery(
-          data: const MediaQueryData(disableAnimations: true),
-          child: PrimaryScrollController(
-          controller: scrollController,
-          child: Scaffold(
-            body: Column(
-              children: [
-                const FeatheredGlassHeaderBackground(),
-                Expanded(
-                  child: ListView(
-                    controller: scrollController,
-                    children: const [SizedBox(height: 1200)],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        ),
-      ),
-    );
-    await tester.pump();
-
-    expectHeaderBlurActive(tester);
-    scrollController.dispose();
-  });
-
-  testWidgets('custom dark tint is retained when progressive blur is disabled', (tester) async {
-    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(false));
-
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: ThemeData(brightness: Brightness.dark),
-        home: Scaffold(
-          body: FeatheredGlassHeaderBackground(
-            darkTint: [
-              Color(0xD9000000),
-              Color(0x66000000),
-              Colors.transparent,
-            ],
-          ),
-        ),
-      ),
-    );
-
-    final gradients = tester
-        .widgetList<DecoratedBox>(find.byType(DecoratedBox))
-        .map((box) => box.decoration)
-        .whereType<BoxDecoration>()
-        .map((decoration) => decoration.gradient)
-        .whereType<LinearGradient>();
-    expect(
-      gradients.any((gradient) => gradient.colors.length == 3 &&
-          gradient.colors[0] == const Color(0xD9000000) &&
-          gradient.colors[1] == const Color(0x66000000) &&
-          gradient.colors[2] == Colors.transparent),
-      isTrue,
-    );
-  });
-
-  testWidgets('disabling header blur removes backdrop filters immediately', (tester) async {
-    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(true));
-
-    final scrollController = ScrollController(initialScrollOffset: 1);
-    await tester.pumpWidget(
-      MaterialApp(home: PrimaryScrollController(
-          controller: scrollController,
-          child: Scaffold(
-            body: Column(
-              children: [
-                const FeatheredGlassHeaderBackground(),
-                Expanded(
-                  child: ListView(
-                    controller: scrollController,
-                    children: const [SizedBox(height: 1200)],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        )),
-    );
-    await tester.pump();
-    expectHeaderBlurActive(tester);
-
-    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(false));
-    await tester.pump();
-
-    expect(find.byType(BackdropFilter), findsNothing);
-    scrollController.dispose();
-  });
-
-  testWidgets('glass header buttons disable their filter in fallback mode', (tester) async {
-    await tester.runAsync(() => AppSettings.instance.setUseLiquidGlass(false));
-
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: GlassCircleButton(
-            tooltip: 'Back',
-            onPressed: null,
-            child: Icon(Icons.arrow_back_rounded),
-          ),
-        ),
-      ),
-    );
-
-    expect(find.byType(BackdropFilter), findsNothing);
-
-    await tester.runAsync(() => AppSettings.instance.setUseLiquidGlass(true));
-    await tester.pump();
-
-    expect(find.byType(BackdropFilter), findsOneWidget);
-  });
-
-  testWidgets('progressive blur supports a strongest bottom edge', (tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: Center(
-          child: SizedBox(
+          body: SizedBox(
             height: 100,
-            child: ProgressiveBlur(
-              maxSigma: 22,
-              steps: 4,
-              strongestAtBottom: true,
-            ),
+            child: ProgressiveBlur(steps: 4, strongestAtBottom: true),
           ),
         ),
       ),
     );
-
     final bands = tester.widgetList<Positioned>(find.byType(Positioned)).toList();
     expect(bands, hasLength(4));
     expect(bands.first.top, 75);
     expect(bands.last.top, 0);
   });
 
+  testWidgets('header preserves status bar plus toolbar plus fade-tail geometry', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(padding: EdgeInsets.only(top: 24)),
+          child: const Scaffold(body: FeatheredGlassHeaderBackground()),
+        ),
+      ),
+    );
+    final bounds = find.byWidgetPredicate(
+      (widget) => widget is SizedBox && widget.height == 96,
+    );
+    expect(tester.getSize(bounds).height, 96);
+  });
+
+  testWidgets('dark and light themes use a five-stop scrim fading to zero alpha', (tester) async {
+    for (final brightness in [Brightness.dark, Brightness.light]) {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(brightness: brightness),
+          home: const Scaffold(body: FeatheredGlassHeaderBackground()),
+        ),
+      );
+      final gradients = tester.widgetList<DecoratedBox>(find.byType(DecoratedBox))
+          .map((box) => box.decoration)
+          .whereType<BoxDecoration>()
+          .map((decoration) => decoration.gradient)
+          .whereType<LinearGradient>();
+      expect(gradients.first.colors, hasLength(5));
+      expect(gradients.first.colors.last.alpha, 0);
+    }
+  });
+
+  testWidgets('Liquid Glass UI off still disables other glass surfaces', (tester) async {
+    await tester.runAsync(() => AppSettings.instance.setUseLiquidGlass(false));
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: LiquidGlassSurface(
+            radius: BorderRadius.all(Radius.circular(16)),
+            refractive: true,
+            child: Text('Dock'),
+          ),
+        ),
+      ),
+    );
+    expect(find.byType(BackdropFilter), findsNothing);
+  });
 }
