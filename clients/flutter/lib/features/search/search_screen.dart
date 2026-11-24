@@ -776,6 +776,7 @@ class _SearchScreenState extends State<SearchScreen> {
     final query = _controller.text.trim();
     final categories = const ['All','Files','Photos','Audio','Videos','Documents'];
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       extendBodyBehindAppBar: true,
       appBar: PocketLinkAppBar(
         feathered: true,
@@ -840,6 +841,7 @@ class _SearchScreenState extends State<SearchScreen> {
                           height: 48,
                           child: TextField(
                             controller: _controller,
+                            scrollPadding: const EdgeInsets.only(bottom: 120),
                             textInputAction: TextInputAction.search,
                             onSubmitted: (_) { _debounce?.cancel(); _scan(); },
                             decoration: InputDecoration(
