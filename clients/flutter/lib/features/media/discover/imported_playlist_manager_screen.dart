@@ -238,6 +238,11 @@ class _ImportedPlaylistManagerScreenState extends State<ImportedPlaylistManagerS
             (playlist: playlist.name, track: track),
       ];
       final csv = PlaylistImportService.exportCsv(rows);
+      await widget.api.uploadFile(
+        ImportedPlaylistStore.folderPath,
+        'playlists-export.csv',
+        Uint8List.fromList(utf8.encode(csv)),
+      );
       final directory = await getTemporaryDirectory();
       final file = File('${directory.path}/pocketlink-discover-playlists.csv');
       await file.writeAsString(csv, flush: true);
@@ -246,7 +251,7 @@ class _ImportedPlaylistManagerScreenState extends State<ImportedPlaylistManagerS
         subject: 'PocketLink Discover playlists',
       ));
     } catch (_) {
-      if (mounted) _message('Could not export playlists.');
+      if (mounted) _message('Could not save or export playlists from your server.');
     } finally {
       if (mounted) setState(() => _working = false);
     }
@@ -261,6 +266,11 @@ class _ImportedPlaylistManagerScreenState extends State<ImportedPlaylistManagerS
         'version': 1,
         'playlists': _playlists.map((playlist) => playlist.toJson()).toList(),
       });
+      await widget.api.uploadFile(
+        ImportedPlaylistStore.folderPath,
+        'playlists-backup.json',
+        Uint8List.fromList(utf8.encode(backup)),
+      );
       final directory = await getTemporaryDirectory();
       final file = File('${directory.path}/pocketlink-discover-playlists.json');
       await file.writeAsString(backup, flush: true);
@@ -269,7 +279,7 @@ class _ImportedPlaylistManagerScreenState extends State<ImportedPlaylistManagerS
         subject: 'PocketLink Discover playlist backup',
       ));
     } catch (_) {
-      if (mounted) _message('Could not export the PocketLink playlist backup.');
+      if (mounted) _message('Could not save or export the PocketLink playlist backup.');
     } finally {
       if (mounted) setState(() => _working = false);
     }
