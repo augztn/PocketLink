@@ -672,12 +672,13 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     }
   }
 
+  Widget snapshotFallback(Widget placeholder, double size) => placeholder;
   Widget _art(DiscoverTrack track, {double size = 56}) {
     final show = AppSettings.instance.discoverArtwork && track.thumbnailUrl.isNotEmpty;
-    final placeholder = _skeletonBlock(
+    final placeholder = Container(
       width: size.isFinite ? size : null,
       height: size.isFinite ? size : null,
-      radius: 13,
+      color: const Color(0xFF1A1B20),
     );
     return ClipRRect(
       borderRadius: BorderRadius.circular(13),
@@ -685,21 +686,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
         width: size.isFinite ? size : null,
         height: size.isFinite ? size : null,
         child: show
-            ? Image.network(
-                track.thumbnailUrl,
-                fit: BoxFit.cover,
-                frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-                  if (wasSynchronouslyLoaded) return child;
-                  return AnimatedOpacity(
-                    opacity: frame == null ? 0 : 1,
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeOut,
-                    child: frame == null
-                        ? placeholder
-                        : Stack(fit: StackFit.expand, children: [placeholder, child]),
-                  );
-                },
-                errorBuilder: (_, __, ___) => _artFallback(size),
+            ? DiscoverThumbnail(
+                url: track.thumbnailUrl,
+                cacheWidth: size <= 60 ? 160 : 400,
+                fallback: snapshotFallback(placeholder, size),
               )
             : _artFallback(size),
       ),
