@@ -586,6 +586,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
       hasFloatingNavBar: true,
       hasActiveMiniPlayer: activeMiniPlayer,
       child: Scaffold(
+      resizeToAvoidBottomInset: true,
       extendBody: true,
       appBar: PocketLinkAppBar(
         title: const Text('Host PocketLink'),
@@ -672,7 +673,9 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
         ],
       ),
       ),
-      bottomNavigationBar: SizedBox(
+      bottomNavigationBar: MediaQuery.viewInsetsOf(context).bottom > 0
+          ? null
+          : SizedBox(
         height: 64 + bottomSystemInset + 12,
         child: Padding(
           padding: EdgeInsets.fromLTRB(20, 0, 20, bottomSystemInset + 12),
