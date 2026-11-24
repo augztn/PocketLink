@@ -781,7 +781,6 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     }
 
     final embeddedTab = widget.onBackAtRoot != null;
-    final hasInternalBack = _searchExpanded || _path.isNotEmpty;
     return PopScope(
       // Embedded Files delegates all Back decisions to the HomeScreen shell.
       // Keep this local fallback only for standalone FileManager routes.
