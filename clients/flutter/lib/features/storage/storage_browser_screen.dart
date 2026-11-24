@@ -519,7 +519,7 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
             ),
             const SizedBox(width: 8),
           ])),
-          if (_loading) const LinearProgressIndicator(minHeight: 2),
+          if (_loading && _listing != null) const LinearProgressIndicator(minHeight: 2),
           if (_progress != null) LinearProgressIndicator(value: _progress),
           if (_error != null)
             Padding(
