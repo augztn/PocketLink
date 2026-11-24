@@ -198,6 +198,27 @@ void main() {
       );
     });
 
+    test('allows an exact title match when the provider has no artist credit', () {
+      final noArtist = DiscoverTrack(
+        videoId: 'noartist12345',
+        title: 'Dreams',
+      );
+      final files = [
+        IndexedFile(
+          volume: 'internal',
+          path: 'Music/Dreams.flac',
+          name: 'Dreams.flac',
+          type: 'file',
+          size: 12000000,
+          modified: '',
+          mime: 'audio/flac',
+          category: 'music',
+        ),
+      ];
+      expect(DiscoverService.findLocalLosslessMatch(noArtist, files)?.name,
+          'Dreams.flac');
+    });
+
     test('does not substitute a different recording with a different title', () {
       final files = [
         IndexedFile(
