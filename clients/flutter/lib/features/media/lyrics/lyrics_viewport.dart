@@ -45,7 +45,7 @@ class _LyricsViewportState extends State<LyricsViewport> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!_scroll.hasClients || !mounted) return;
         final target = (next * 66.0 - _scroll.position.viewportDimension * .42)
-            .clamp(0.0, _scroll.position.maxScrollExtent);
+            .clamp(0.0, _scroll.position.maxScrollExtent).toDouble();
         _scroll.animateTo(target, duration: const Duration(milliseconds: 420), curve: Curves.easeOutCubic);
       });
     }
