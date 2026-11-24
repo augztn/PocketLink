@@ -80,6 +80,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
     );
   }
 
+  void _handleHome() {
+    _navigatorKey.currentState?.popUntil((route) => route.isFirst);
+    widget.onBackAtRoot?.call();
+  }
+
   @override
   Widget build(BuildContext context) {
     final nowPlayingProgress =
@@ -94,10 +99,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
         ),
         onPopWithResult: (_) => _navigatorKey.currentState?.maybePop(),
         child: PocketLinkNavigationScope(
-          onHome: () {
-            _navigatorKey.currentState?.popUntil((route) => route.isFirst);
-            widget.onBackAtRoot?.call();
-          },
+          onHome: _handleHome,
           child: Navigator(
             key: _navigatorKey,
             observers: [_observer],
