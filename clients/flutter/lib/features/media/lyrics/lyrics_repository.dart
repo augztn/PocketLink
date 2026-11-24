@@ -147,7 +147,7 @@ class _LrclibProvider extends _Provider {
     for(final r in data.whereType<Map>()){
       final t=LyricsProvider.clean(r['trackName']?.toString()??'').toLowerCase();
       final a=LyricsProvider.clean(r['artistName']?.toString()??'').toLowerCase();
-      final s=_sim(q.title.toLowerCase(),t)*.7+(q.artist.isEmpty?.5:_sim(q.artist.toLowerCase(),a))*.3;
+      final s=_sim(q.title.toLowerCase(),t)*.7+(q.artist.isEmpty ? 0.5 : _sim(q.artist.toLowerCase(),a))*.3;
       if(s>top){top=s;best=r;}
     }
     if(best==null||top<.65)return null;
@@ -157,7 +157,7 @@ class _LrclibProvider extends _Provider {
 class _NoopProvider implements LyricsProvider {
   _NoopProvider(this.id,this.name);
   @override final String id; @override final String name;
-  @override Future<LyricsDocument?> fetch(LyricsTrackQuery q) async => null;
+  @override Future<LyricsDocument?> fetch(LyricsTrackQuery q) async => throw UnsupportedError('This provider is not connected to the current Android Discover bridge.');
 }
 class _KugouProvider extends _Provider {
   _KugouProvider(super.dio);
