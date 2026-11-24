@@ -22,6 +22,7 @@ import '../persistent_audio_player.dart';
 import 'discover_models.dart';
 import 'discover_service.dart';
 import 'discover_cache.dart';
+import 'discover_thumbnail_cache.dart';
 
 class _DiscoverShelf {
   const _DiscoverShelf(this.title, this.tracks);
