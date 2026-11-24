@@ -90,6 +90,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     _libraryView = widget.initialView ?? saved.view;
     _searchQuery = widget.initialSearchQuery ?? ''; 
     _searchController.text = _searchQuery;
+    _searchExpanded = _searchQuery.isNotEmpty;
     _layoutMode = saved.layoutMode;
     _sortBy = widget.initialSortBy ?? saved.sortBy;
     _currentFolderPath = saved.folderPath;
