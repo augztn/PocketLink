@@ -210,10 +210,15 @@ internal class ServerDownloadManager(
             val body = result.body ?: throw IOException("Download response was empty")
             val name = filenameFromHeaders(result.header("Content-Disposition"), currentUrl)
             if (job.destinationPath == null) {
-                job.fileName = name
                 val directory = destinationDirectory(job.requestedDirectory, name, result.header("Content-Type"))
                 val target = uniqueFile(directory, name)
-                job.destinationPath = target.canonicalPath
+                synchronized(lock) {
+                    if (job.destinationPath == null) {
+                        job.fileName = name
+                        job.destinationPath = target.canonicalPath
+                        persistLocked()
+                    }
+                }
             }
             val target = File(job.destinationPath!!)
             val part = File("${target.path}.part")
@@ -225,8 +230,11 @@ internal class ServerDownloadManager(
                 throw IOException("Cannot restart partial download")
             }
             val contentRangeTotal = result.header("Content-Range")?.substringAfterLast('/')?.toLongOrNull()
-            job.totalBytes = contentRangeTotal ?: body.contentLength().takeIf { it >= 0 }?.let { it + if (append) offset else 0L }
-            job.downloadedBytes = if (append) offset else 0L
+            synchronized(lock) {
+                job.totalBytes = contentRangeTotal ?: body.contentLength().takeIf { it >= 0 }?.let { it + if (append) offset else 0L }
+                job.downloadedBytes = if (append) offset else 0L
+                persistLocked()
+            }
             val startedAt = System.nanoTime()
             var sampleAt = startedAt
             var sampleBytes = job.downloadedBytes
@@ -431,7 +439,8 @@ internal class ServerDownloadManager(
             val uri = try { URI(value.trim()) } catch (_: Exception) {
                 throw IllegalArgumentException("Enter a valid HTTP or HTTPS URL")
             }
-            if (uri.scheme?.lowercase(Locale.ROOT) !in setOf("http", "https") ||
+            val scheme = uri.scheme?.lowercase(Locale.ROOT)
+            if ((scheme != "http" && scheme != "https") ||
                 uri.host.isNullOrBlank() || uri.rawUserInfo != null) {
                 throw IllegalArgumentException("Enter a valid HTTP or HTTPS URL without credentials")
             }
