@@ -106,15 +106,17 @@ internal class ServerDownloadManager(
     }
 
     fun pause(id: String): JSONObject? {
+        var wasActive = false
         val job = synchronized(lock) {
             val value = jobs[id] ?: return null
             if (value.status == COMPLETED || value.status == CANCELLED) return jobJson(value)
+            wasActive = value.status == DOWNLOADING
             value.status = PAUSED
             value.speedBytesPerSecond = 0
             persistLocked()
             jobJson(value)
         }
-        activeCall?.cancel()
+        if (wasActive) activeCall?.cancel()
         return job
     }
 
@@ -133,14 +135,16 @@ internal class ServerDownloadManager(
     }
 
     fun cancel(id: String): JSONObject? {
+        var wasActive = false
         val result = synchronized(lock) {
             val job = jobs[id] ?: return null
+            wasActive = job.status == DOWNLOADING
             if (job.status != COMPLETED) job.status = CANCELLED
             job.speedBytesPerSecond = 0
             persistLocked()
             jobJson(job)
         }
-        activeCall?.cancel()
+        if (wasActive) activeCall?.cancel()
         return result
     }
 
