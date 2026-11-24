@@ -18,6 +18,7 @@ import 'now_playing_screen.dart';
 import 'persistent_audio_player.dart';
 import 'now_playing_overlay_controller.dart';
 import 'now_playing_scrubber.dart';
+import 'discover/discover_thumbnail_cache.dart';
 
 class GlobalMediaOverlay extends StatefulWidget {
   const GlobalMediaOverlay({required this.child, super.key});
@@ -308,11 +309,9 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     }
     final height = MediaQuery.sizeOf(context).height;
     _nowPlayingController.value =
-        PocketLinkNavigation.updateMorphProgress(
-      current: _nowPlayingController.value,
-      dragDelta: delta,
-      extent: height,
-    );
+        (_nowPlayingController.value - delta / height)
+            .clamp(0.0, 1.0)
+            .toDouble();
   }
 
   void _endMiniPlayerDrag(double velocity) {
@@ -324,10 +323,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     }
     _openingNowPlaying = false;
     final height = math.max(1.0, MediaQuery.sizeOf(context).height);
-    final expand = PocketLinkNavigation.shouldExpandFromMiniPlayer(
-      progress: _nowPlayingController.value,
-      upwardVelocity: velocity,
-    );
+    final expand = velocity < -300 || _nowPlayingController.value > 0.25;
     if (expand) {
       unawaited(_animateNowPlayingTo(
         1,
@@ -757,13 +753,17 @@ class _SharedMorphArtwork extends StatelessWidget {
         );
 
     final artwork = bytes != null
-        ? Image.memory(bytes!, fit: BoxFit.cover, gaplessPlayback: true)
+        ? Image.memory(
+            bytes!,
+            cacheWidth: 544,
+            fit: BoxFit.cover,
+            gaplessPlayback: true,
+          )
         : artworkUrl?.isNotEmpty == true
-            ? Image.network(
-                artworkUrl!,
-                fit: BoxFit.cover,
-                gaplessPlayback: true,
-                errorBuilder: (_, __, ___) => fallback(),
+            ? DiscoverThumbnail(
+                url: artworkUrl!,
+                cacheWidth: 544,
+                fallback: fallback(),
               )
             : fallback();
     return ClipRRect(
