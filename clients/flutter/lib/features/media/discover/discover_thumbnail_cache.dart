@@ -69,6 +69,7 @@ class DiscoverThumbnail extends StatelessWidget {
     required this.cacheWidth,
     required this.fallback,
     this.fit = BoxFit.cover,
+    this.errorFallback,
     super.key,
   });
 
@@ -76,6 +77,7 @@ class DiscoverThumbnail extends StatelessWidget {
   final int cacheWidth;
   final Widget fallback;
   final BoxFit fit;
+  final Widget? errorFallback;
 
   @override
   Widget build(BuildContext context) {
@@ -84,7 +86,8 @@ class DiscoverThumbnail extends StatelessWidget {
       future: DiscoverThumbnailCache.load(url),
       builder: (context, snapshot) {
         final bytes = snapshot.data;
-        if (bytes == null || bytes.isEmpty) return fallback;
+        if (snapshot.connectionState != ConnectionState.done) return fallback;
+        if (bytes == null || bytes.isEmpty) return errorFallback ?? fallback;
         return Image.memory(
           bytes,
           cacheWidth: cacheWidth,
