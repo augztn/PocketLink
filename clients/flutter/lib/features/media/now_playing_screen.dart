@@ -1338,7 +1338,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
               final height = constraints.maxHeight;
               final artSize = theme == 'gradient'
                   ? width
-                  : math.min(320.0, width - 44).clamp(180.0, 320.0);
+                  : math.min(320.0, width - 44).clamp(180.0, 320.0).toDouble();
               final startRect = theme == 'gradient'
                   ? Rect.fromLTWH(0, 0, width, height * 0.55)
                   : Rect.fromLTWH((width - artSize) / 2, height * 0.10, artSize, artSize);
