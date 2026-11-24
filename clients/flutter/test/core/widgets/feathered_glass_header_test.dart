@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pocketlink_client/core/settings/app_settings.dart';
 import 'package:pocketlink_client/core/widgets/feathered_glass_header.dart';
 import 'package:pocketlink_client/core/widgets/liquid_glass_pill.dart';
+import 'package:pocketlink_client/core/widgets/progressive_blur.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -119,7 +120,8 @@ void main() {
       ),
     );
 
-    expect(find.byType(BackdropFilter), findsNWidgets(2));
+    expect(find.byType(BackdropFilter), findsNWidgets(13));
+    expect(find.byType(ShaderMask), findsNothing);
   });
 
   testWidgets('progressive blur remains active when reduced motion is enabled', (tester) async {
@@ -224,4 +226,25 @@ void main() {
 
     expect(find.byType(BackdropFilter), findsOneWidget);
   });
+
+  testWidgets('progressive blur supports a strongest bottom edge', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: SizedBox(
+          height: 100,
+          child: ProgressiveBlur(
+            maxSigma: 22,
+            steps: 4,
+            strongestAtBottom: true,
+          ),
+        ),
+      ),
+    );
+
+    final bands = tester.widgetList<Positioned>(find.byType(Positioned)).toList();
+    expect(bands, hasLength(4));
+    expect(bands.first.top, 75);
+    expect(bands.last.top, 0);
+  });
+
 }
