@@ -36,6 +36,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
   // This collection is mutated when servers are added, removed, or reordered.
   List<Map<String, String>> _profiles = <Map<String, String>>[];
   bool _isConnecting = false;
+  CancelToken? _authenticationCancelToken;
   String? _connectingProfileId;
   bool _obscurePassword = true;
   String? _message;
@@ -163,6 +164,12 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     }
   }
 
+  void _cancelConnection() {
+    final cancelToken = _authenticationCancelToken;
+    if (cancelToken == null || cancelToken.isCancelled) return;
+    cancelToken.cancel('Connection cancelled by user.');
+  }
+
   Future<void> _removeProfile(Map<String, String> profile) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -261,6 +268,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
 
     var authenticated = false;
     final authenticationCancelToken = CancelToken();
+    _authenticationCancelToken = authenticationCancelToken;
     try {
       await api.authenticate(cancelToken: authenticationCancelToken).timeout(
         const Duration(seconds: 55),
@@ -272,6 +280,16 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       await AppLogger.info('Server authentication succeeded', fields: {'host': host, 'port': port});
       authenticated = true;
     } on DioException catch (error) {
+      if (authenticationCancelToken.isCancelled ||
+          error.type == DioExceptionType.cancel) {
+        if (mounted) {
+          setState(() {
+            _message = 'Connection cancelled.';
+            _isConnecting = false;
+          });
+        }
+        return;
+      }
       await AppLogger.warning('Server authentication failed', fields: {'host': host, 'port': port, 'type': error.type.name, 'status': error.response?.statusCode});
       if (!mounted) return;
       final status = error.response?.statusCode;
@@ -312,6 +330,10 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       }
       return;
     } finally {
+      if (identical(_authenticationCancelToken, authenticationCancelToken)) {
+        _authenticationCancelToken = null;
+        if (mounted) setState(() {});
+      }
       if (!authenticated) api.close();
     }
 
@@ -664,16 +686,32 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                   ),
                 ),
                 const SizedBox(height: 18),
-                FilledButton.icon(
-                  onPressed: _isConnecting ? null : _connect,
-                  icon: _isConnecting
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.link),
-                  label: Text(_isConnecting ? 'Connecting…' : 'Connect & save server'),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: _isConnecting ? null : _connect,
+                        icon: _isConnecting
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.link),
+                        label: Text(_isConnecting ? 'Connecting…' : 'Connect & save server'),
+                      ),
+                    ),
+                    if (_authenticationCancelToken != null) ...[
+                      const SizedBox(width: 10),
+                      OutlinedButton.icon(
+                        onPressed: _authenticationCancelToken!.isCancelled
+                            ? null
+                            : _cancelConnection,
+                        icon: const Icon(Icons.close),
+                        label: const Text('Cancel'),
+                      ),
+                    ],
+                  ],
                 ),
                 if (_message != null) ...[
                   const SizedBox(height: 14),
