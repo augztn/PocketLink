@@ -1122,7 +1122,7 @@ tooltip: 'Choose storage location',
                         ),
                       ),
                     ),
-                    if (_loading) const LinearProgressIndicator(minHeight: 2),
+                    if (_loading && _listing != null) const LinearProgressIndicator(minHeight: 2),
                     if (_error != null)
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
