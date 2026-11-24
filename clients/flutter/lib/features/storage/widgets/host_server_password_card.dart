@@ -65,6 +65,9 @@ class HostServerPasswordCard extends StatelessWidget {
           TextField(
             controller: controller,
             obscureText: obscurePassword,
+            scrollPadding: const EdgeInsets.only(bottom: 120),
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => onSave(),
             enabled: !busy,
             decoration: InputDecoration(
               labelText: 'New server password',
