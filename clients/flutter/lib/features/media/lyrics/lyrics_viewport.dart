@@ -61,7 +61,7 @@ class _LyricsViewportState extends State<LyricsViewport> {
     final index = _activeIndex;
     if (index < 0 || !_scroll.hasClients || !mounted) return;
     final target = (index * 66.0 - _scroll.position.viewportDimension * .42)
-        .clamp(0.0, _scroll.position.maxScrollExtent);
+        .clamp(0.0, _scroll.position.maxScrollExtent).toDouble();
     _scroll.jumpTo(target);
     _lastActive = index;
   }
