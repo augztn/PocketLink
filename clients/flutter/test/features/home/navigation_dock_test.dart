@@ -124,7 +124,7 @@ void main() {
     expect(find.byKey(const ValueKey('navigation-dock-tabs-capsule')), findsNothing);
     expect(find.byKey(PocketLinkNavigation.musicButtonKey), findsOneWidget);
     expect(tester.getCenter(find.byKey(PocketLinkNavigation.musicButtonKey)).dx,
-        greaterThan(tester.viewSize.width / 2));
+        greaterThan(tester.getSize(find.byType(Scaffold)).width / 2));
 
     PocketLinkNavigation.discoverSearchVisible.value = false;
     await tester.pumpAndSettle();
