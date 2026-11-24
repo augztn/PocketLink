@@ -87,7 +87,7 @@ class PlaylistImportService {
   }
 
   static List<ImportedPlaylist> parseCsvPlaylists(String input, {String fallbackPlaylistName = 'Imported playlist'}) {
-    final rows = _parseCsvRows(input.replaceFirst('\\uFEFF', '')).where((row) => row.any((value) => value.trim().isNotEmpty)).toList();
+    final rows = _parseCsvRows(input.replaceFirst('\uFEFF', '')).where((row) => row.any((value) => value.trim().isNotEmpty)).toList();
     if (rows.length < 2) throw const FormatException('The CSV does not contain any track rows.');
     final header = rows.first.map(_normalizeHeader).toList();
     int col(List<String> names) {
