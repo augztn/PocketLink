@@ -20,6 +20,7 @@ void main() {
     VoidCallback? onNext,
     Duration position = const Duration(seconds: 30),
     Duration duration = const Duration(seconds: 60),
+    VoidCallback? onExpandDragStart,
     ValueChanged<double>? onExpandDragUpdate,
     ValueChanged<double>? onExpandDragEnd,
   }) {
@@ -41,6 +42,7 @@ void main() {
               onTogglePlayback: onTogglePlayback ?? () {},
               onSkipPrevious: onPrevious ?? () {},
               onSkipNext: onNext ?? () {},
+              onExpandDragStart: onExpandDragStart,
               onExpandDragUpdate: onExpandDragUpdate,
               onExpandDragEnd: onExpandDragEnd,
             ),
@@ -162,6 +164,25 @@ void main() {
     expect(dragDeltas.any((delta) => delta < 0), isTrue);
     expect(releaseVelocity, isNotNull);
     expect(releaseVelocity, lessThan(0));
+  });
+
+  testWidgets('vertical drag start is reported before expansion begins', (tester) async {
+    var started = 0;
+    await pumpMiniPlayer(
+      tester,
+      onExpandDragStart: () => started++,
+      onExpandDragUpdate: (_) {},
+      onExpandDragEnd: (_) {},
+    );
+
+    await tester.fling(
+      find.byType(GlobalMiniPlayerBar),
+      const Offset(0, -100),
+      700,
+    );
+    await tester.pump();
+
+    expect(started, 1);
   });
 
   testWidgets('vertical drag cancellation settles the morph gesture', (tester) async {
