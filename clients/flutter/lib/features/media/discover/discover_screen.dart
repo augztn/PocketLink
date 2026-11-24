@@ -14,6 +14,7 @@ import '../data/media_library_repository.dart';
 import '../media_library_catalog.dart';
 import '../now_playing_overlay_controller.dart';
 import '../music_library_screen.dart';
+import 'imported_playlist_manager_screen.dart';
 import '../persistent_audio_player.dart';
 import 'discover_models.dart';
 import 'discover_service.dart';
@@ -1005,9 +1006,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
         api: api,
         onOpenGenres: _openMoodsAndMoments,
         onOpenImported: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Playlist import is not connected to the Library screen yet.')),
-          );
+          Navigator.of(context).push<void>(MaterialPageRoute<void>(
+            builder: (_) => ImportedPlaylistManagerScreen(
+              onPlay: _playImportedPlaylist,
+            ),
+          ));
         },
       ),
     ));
