@@ -11,6 +11,13 @@ abstract final class DiscoverThumbnailCache {
   static final Map<String, Future<Uint8List?>> _pending = {};
   static const int _maxBytes = 8 * 1024 * 1024;
 
+  /// Resizes Google-hosted YouTube Music artwork when its URL carries a
+  /// size suffix; other providers keep their original URL unchanged.
+  static String urlForSize(String url, int size) => url.replaceFirst(
+        RegExp(r'=w\\d+-h\\d+(?:-[^?&]*)?(?=$|[?&])'),
+        '=w$size-h$size',
+      );
+
   static Future<Uint8List?> load(String url) {
     if (url.isEmpty) return Future.value(null);
     final cached = _memory[url];
