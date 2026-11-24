@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:flutter/services.dart';
+import '../../../core/settings/app_settings.dart';
 import '../../../core/network/server_api.dart';
 import '../persistent_audio_player.dart';
 
@@ -47,7 +49,7 @@ abstract interface class LyricsProvider {
 }
 class LyricsRepository {
   LyricsRepository({Dio? dio}) : _dio = dio ?? Dio(BaseOptions(connectTimeout: const Duration(seconds: 7), receiveTimeout: const Duration(seconds: 10), headers: const {'User-Agent': 'PocketLink/1.0'})) {
-    _providers = [_LocalProvider(), _LrclibProvider(_dio), _NoopProvider('youtube_music', 'YouTube Music'), _NoopProvider('youtube_captions', 'YouTube Captions'), _KugouProvider(_dio), _LyricsPlusProvider(_dio), _BetterLyricsProvider(_dio), _LrcRedProvider(_dio), _NoopProvider('musixmatch', 'Musixmatch'), _GeniusProvider(_dio)];
+    _providers = [_LocalProvider(), _LrclibProvider(_dio), _PlatformProvider('youtube_music', 'YouTube Music', 'discoverLyrics'), _PlatformProvider('youtube_captions', 'YouTube Captions', 'discoverCaptions'), _KugouProvider(_dio), _LyricsPlusProvider(_dio), _BetterLyricsProvider(_dio), _LrcRedProvider(_dio), _NoopProvider('musixmatch', 'Musixmatch'), _GeniusProvider(_dio)];
   }
   final Dio _dio;
   late final List<LyricsProvider> _providers;
@@ -154,6 +156,36 @@ class _LrclibProvider extends _Provider {
     return lrc(best['syncedLyrics']?.toString(),id,name)??plain(best['plainLyrics']?.toString(),id,name);
   }
 }
+class _PlatformProvider implements LyricsProvider {
+  _PlatformProvider(this.id, this.name, this.method);
+  static const MethodChannel _channel = MethodChannel('pocketlink/saf');
+  @override final String id;
+  @override final String name;
+  final String method;
+  @override
+  Future<LyricsDocument?> fetch(LyricsTrackQuery q) async {
+    final videoId = q.track.lyricsVideoId;
+    if (videoId == null || videoId.isEmpty) return null;
+    final payload = await _channel.invokeMapMethod<String, dynamic>(method, {
+      'videoId': videoId,
+      'region': AppSettings.instance.discoverRegion,
+    });
+    final rawLines = payload?['lines'];
+    if (rawLines is! List) return null;
+    final lines = rawLines.whereType<Map>().map((row) {
+      final time = (row['timeMs'] as num?)?.toInt();
+      final text = row['text']?.toString().trim() ?? '';
+      return time == null || text.isEmpty ? null : LyricsLine(time, text);
+    }).whereType<LyricsLine>().toList()..sort((a, b) => a.timeMs.compareTo(b.timeMs));
+    return lines.isEmpty ? null : LyricsDocument(
+      providerId: id,
+      providerName: name,
+      lines: lines,
+      synced: payload?['synced'] as bool? ?? lines.any((line) => line.timeMs > 0),
+    );
+  }
+}
+
 class _NoopProvider implements LyricsProvider {
   _NoopProvider(this.id,this.name);
   @override final String id; @override final String name;
