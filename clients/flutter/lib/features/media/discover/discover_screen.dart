@@ -53,6 +53,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
   List<_DiscoverShelf> _homeShelves = const [];
   List<IndexedFile> _localLibrary = const [];
   bool _loading = false;
+  bool _localLibraryLoading = false;
   Future<void>? _localLibraryRequest;
   bool _startingPlayback = false;
   bool _resolvingImportedPlaylist = false;
@@ -132,6 +133,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       if (!forceRefresh) return;
     }
 
+    if (mounted && !_localLibraryLoading) {
+      setState(() => _localLibraryLoading = true);
+    } else {
+      _localLibraryLoading = true;
+    }
     final request = () async {
       try {
         final result = await MediaLibraryRepository(
@@ -153,6 +159,12 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
         _localLibrary = items;
       } catch (_) {
         // Keep a previously indexed snapshot usable during temporary outages.
+      } finally {
+        if (mounted) {
+          setState(() => _localLibraryLoading = false);
+        } else {
+          _localLibraryLoading = false;
+        }
       }
     }();
     _localLibraryRequest = request;
@@ -377,12 +389,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
   }
 
   Future<MediaQueueItem> _queueItem(DiscoverTrack track) async {
-    // Wait for the server index before choosing NewPipe. The initial screen
-    // load is asynchronous; without this barrier an early tap always misses
-    // an available server-side lossless copy.
-    if (AppSettings.instance.discoverLocalLossless && widget.api != null) {
-      await _loadLocalLibrary();
-    }
+    // Never block playback on a library refresh. Discover warms the server
+    // index on screen entry; playback uses the latest cached snapshot and
+    // falls back to NewPipe while a cold index is still loading.
     final local = AppSettings.instance.discoverLocalLossless
         ? DiscoverService.findLocalLosslessMatch(track, _localLibrary)
         : null;
@@ -1142,6 +1151,28 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
           // Keep the scrollable behind the transparent shared app bar so
           // content can feather through it exactly like the other sections.
           SliverToBoxAdapter(child: SizedBox(height: top)),
+          if (_localLibraryLoading && AppSettings.instance.discoverLocalLossless && widget.api != null)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 10),
+                child: Row(
+                  children: [
+                    const SizedBox(
+                      width: 13,
+                      height: 13,
+                      child: CircularProgressIndicator(strokeWidth: 1.6),
+                    ),
+                    const SizedBox(width: 9),
+                    Text(
+                      'Checking server music library…',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
             if (_loading && !hasTracks)
               _discoverHomeSkeleton()
             else if (_error != null && !hasTracks)
