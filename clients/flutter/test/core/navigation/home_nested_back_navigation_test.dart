@@ -178,7 +178,11 @@ class _IndexedTabBackHarnessState extends State<_IndexedTabBackHarness> {
                       ],
                     ),
                   ),
-                  const Center(child: Text('Files root')),
+                  PopScope<void>(
+                    canPop: _activeTab != 1,
+                    onPopInvokedWithResult: (didPop, result) {},
+                    child: const Center(child: Text('Files root')),
+                  ),
                   const Center(child: Text('Home root')),
                 ],
               ),
