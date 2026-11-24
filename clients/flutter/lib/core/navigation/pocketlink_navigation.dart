@@ -142,6 +142,14 @@ abstract final class PocketLinkNavigation {
   }) =>
       isActive && canPop;
 
+  /// Dispatch a nested Back only while its tab is active and Now Playing is
+  /// fully collapsed; disabled PopScope callbacks can still be invoked.
+  static bool shouldDispatchNestedBack({
+    required bool isActive,
+    required double nowPlayingProgress,
+  }) =>
+      isActive && nowPlayingProgress <= 0.001;
+
   /// Captures the visible source surface for the Now Playing container transform.
   static Rect? resolveMediaOriginRect({required bool preferMiniPlayer}) {
     final keys = preferMiniPlayer
