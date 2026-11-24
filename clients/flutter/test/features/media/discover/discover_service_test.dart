@@ -202,6 +202,7 @@ void main() {
       final noArtist = DiscoverTrack(
         videoId: 'noartist12345',
         title: 'Dreams',
+        artist: '',
       );
       final files = [
         IndexedFile(
