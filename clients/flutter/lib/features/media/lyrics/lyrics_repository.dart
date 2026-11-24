@@ -68,7 +68,7 @@ class LyricsRepository {
   final Map<String, Future<Map<String, LyricsProviderResult>>> _pending = {};
   final Map<String, LyricsDocument?> _active = {};
   static List<LyricsLine> parseLrc(String raw) {
-    final stamp = RegExp(r'\[(\d{1,2}):(\d{2})(?:[.:](\d{1,3}))?\]');
+    final stamp = RegExp(r'\[(\d{1,3}):(\d{2})(?:[.:](\d{1,3}))?\]');
     final lines = <LyricsLine>[];
     for (final row in raw.split(RegExp(r'\r?\n'))) {
       final matches = stamp.allMatches(row).toList();
