@@ -239,6 +239,7 @@ void main() {
       lines: const [LyricsLine(1000, 'Stale result')],
       synced: true,
     ));
+    second.completer.complete(null);
     await lookup;
 
     expect(repository.current(query.key), isNull);
