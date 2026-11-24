@@ -138,6 +138,12 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     if (oldWidget.initialVolume != widget.initialVolume && widget.initialVolume != null) {
       _selectPartition(widget.initialVolume);
     }
+    if (oldWidget.isActive != widget.isActive ||
+        oldWidget.onBackHandlerChanged != widget.onBackHandlerChanged) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _syncBackHandler();
+      });
+    }
   }
 
   @override
@@ -150,7 +156,6 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       widget.onCanNavigateBackChanged?.call(_path.isNotEmpty);
-      _syncBackHandler();
       _syncBackHandler();
     });
     _category = widget.initialCategory != 'All' ? widget.initialCategory : saved.category;
@@ -677,17 +682,6 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
             ? _goUp
             : null;
     widget.onBackHandlerChanged?.call(handler);
-  }
-
-  @override
-  void didUpdateWidget(covariant FileManagerScreen oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.isActive != widget.isActive ||
-        oldWidget.onBackHandlerChanged != widget.onBackHandlerChanged) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _syncBackHandler();
-      });
-    }
   }
 
   void _setSearchExpanded(bool expanded) {
