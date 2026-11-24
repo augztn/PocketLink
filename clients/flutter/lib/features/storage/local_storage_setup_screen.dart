@@ -599,13 +599,9 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
             dimension: 38,
             child: GlassCircleButton(
               tooltip: 'Back',
-              onPressed: () {
-                final navigator = Navigator.of(context);
-                if (navigator.canPop()) {
-                  navigator.pop();
-                } else {
-                  widget.onHome?.call();
-                }
+              onPressed: () async {
+                final handled = await Navigator.of(context).maybePop();
+                if (!handled) widget.onHome?.call();
               },
               child: const Icon(Icons.arrow_back_rounded, size: 18),
             ),
