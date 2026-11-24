@@ -10,10 +10,7 @@ out vec4 fragColor;
 
 void main() {
   vec2 uv = FlutterFragCoord().xy / u_size;
-#ifdef IMPELLER_TARGET_OPENGLES
-  uv.y = 1.0 - uv.y;
-#endif
-
-  float blurOpacity = 1.0 - smoothstep(u_fade_start, u_fade_end, uv.y);
+  float t = clamp((uv.y - u_fade_start) / (u_fade_end - u_fade_start), 0.0, 1.0);
+  float blurOpacity = (1.0 - t) * (1.0 - t);
   fragColor = texture(u_texture, uv) * blurOpacity;
 }

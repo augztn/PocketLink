@@ -108,7 +108,7 @@ void main() {
       ),
     );
 
-    expect(find.byType(BackdropFilter).evaluate().length, inInclusiveRange(1, 5));
+    expect(find.byType(BackdropFilter), findsOneWidget);
   });
 
   testWidgets('shared header blur is enabled while scrolled', (tester) async {
@@ -135,7 +135,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byType(BackdropFilter).evaluate().length, inInclusiveRange(1, 5));
+    expect(find.byType(BackdropFilter).evaluate().length, 1);
     scrollController.dispose();
   });
 
@@ -168,7 +168,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byType(BackdropFilter).evaluate().length, inInclusiveRange(1, 5));
+    expect(find.byType(BackdropFilter).evaluate().length, 1);
     scrollController.dispose();
   });
 
@@ -228,7 +228,7 @@ void main() {
         )),
     );
     await tester.pump();
-    expect(find.byType(BackdropFilter).evaluate().length, inInclusiveRange(1, 5));
+    expect(find.byType(BackdropFilter).evaluate().length, 1);
 
     await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(false));
     await tester.pump();
@@ -257,7 +257,7 @@ void main() {
     await tester.runAsync(() => AppSettings.instance.setUseLiquidGlass(true));
     await tester.pump();
 
-    expect(find.byType(BackdropFilter).evaluate().length, inInclusiveRange(1, 5));
+    expect(find.byType(BackdropFilter), findsOneWidget);
   });
 
   testWidgets('progressive blur supports a strongest bottom edge', (tester) async {

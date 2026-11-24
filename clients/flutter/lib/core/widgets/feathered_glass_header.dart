@@ -1,12 +1,13 @@
 import 'dart:ui' as ui;
 
-final Future<ui.FragmentProgram> _progressiveBlurProgram =
-    ui.FragmentProgram.fromAsset('shaders/progressive_blur.frag');
-
 import 'package:material_ui/material_ui.dart';
 
 import '../settings/app_settings.dart';
 import 'pocketlink_scaffold.dart';
+
+final Future<ui.FragmentProgram> _progressiveBlurProgram =
+    ui.FragmentProgram.fromAsset('shaders/progressive_blur.frag');
+
 
 /// Shared app-wide glass blur and legibility surface for screen headers.
 class FeatheredGlassHeaderBackground extends StatefulWidget {
@@ -99,7 +100,6 @@ class _FeatheredGlassHeaderBackgroundState
     );
   }
 
-}
 
   Widget _blurBand({
     required double top,
