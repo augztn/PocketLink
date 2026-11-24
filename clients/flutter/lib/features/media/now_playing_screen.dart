@@ -319,7 +319,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     final key = _trackKey;
     if (_track.localPath == null && (_track.artworkUrl?.isNotEmpty ?? false)) {
       try {
-        final bytes = await DiscoverThumbnailCache.load(_track.artworkUrl!);
+        final bytes = await DiscoverThumbnailCache.load(
+          DiscoverThumbnailCache.urlForSize(_track.artworkUrl!, 544),
+        );
         if (!mounted || request != _artworkRequest) return;
         if (bytes != null && bytes.isNotEmpty) {
           final palette = await NowPlayingArtworkPalette.extract(bytes);
@@ -1047,7 +1049,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                 : (_track.artworkUrl?.isNotEmpty ?? false)
                     ? DiscoverThumbnail(
                         key: ValueKey('music-artwork-url:${_track.artworkUrl}'),
-                        url: _track.artworkUrl!,
+                        url: DiscoverThumbnailCache.urlForSize(_track.artworkUrl!, 544),
                         cacheWidth: 544,
                         fallback: DecoratedBox(
                           decoration: BoxDecoration(
