@@ -87,6 +87,21 @@ void main() {
     );
   });
 
+  test('Back collapses Now Playing only when expanded past halfway', () {
+    expect(
+      PocketLinkNavigation.shouldCollapseNowPlayingOnBack(progress: 0.5),
+      isFalse,
+    );
+    expect(
+      PocketLinkNavigation.shouldCollapseNowPlayingOnBack(progress: 0.5001),
+      isTrue,
+    );
+    expect(
+      PocketLinkNavigation.shouldCollapseNowPlayingOnBack(progress: 1),
+      isTrue,
+    );
+  });
+
   test('applies vertical morph drags one-to-one and clamps progress', () {
     expect(
       PocketLinkNavigation.updateMorphProgress(
