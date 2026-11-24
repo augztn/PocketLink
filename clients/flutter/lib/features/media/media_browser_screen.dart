@@ -61,10 +61,21 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   void _syncBackHandler() {
     final handler = _searchExpanded
         ? () => _setSearchExpanded(false)
-        : _libraryView == 'folders' && !_atFolderRoot
-            ? _goUpFolder
-            : null;
+        : _selectionMode
+            ? _clearSelectionMode
+            : _libraryView == 'folders' && !_atFolderRoot
+                ? _goUpFolder
+                : null;
     widget.onBackHandlerChanged?.call(handler);
+  }
+
+  void _clearSelectionMode() {
+    if (!_selectionMode) return;
+    setState(() {
+      _selectionMode = false;
+      _selectedTrackKeys.clear();
+    });
+    _syncBackHandler();
   }
 
   void _setSearchExpanded(bool expanded) {
@@ -1246,7 +1257,10 @@ tooltip: 'Choose video view',
             ? _toggleTrackSelection(media)
             : _openMedia(media, queueItems),
         onLongPress: () {
-          if (!_selectionMode) setState(() => _selectionMode = true);
+          if (!_selectionMode) {
+            setState(() => _selectionMode = true);
+            _syncBackHandler();
+          }
           _toggleTrackSelection(media);
         },
         child: SizedBox(
@@ -1492,6 +1506,12 @@ tooltip: 'Choose video view',
               right: 16,
               height: 44,
               child: Row(children: [
+                if (!_searchExpanded)
+                  IconButton(
+                    tooltip: 'Back',
+                    onPressed: () => Navigator.of(context).maybePop(),
+                    icon: Icon(Icons.arrow_back_rounded, size: 20, color: foreground),
+                  ),
                 if (_searchExpanded)
                   Expanded(
                     child: SizedBox(
@@ -1651,6 +1671,7 @@ tooltip: 'Choose music view',
                                 _selectionMode = true;
                                 _selectedTrackKeys.clear();
                               });
+                              _syncBackHandler();
                             }
                             if (value == 'scan' && !_loading) _scan(refresh: true);
                             if (value == 'settings') {
@@ -1686,10 +1707,7 @@ tooltip: 'Choose music view',
                         ),
                         IconButton(
                           tooltip: 'Done selecting',
-                          onPressed: () => setState(() {
-                            _selectionMode = false;
-                            _selectedTrackKeys.clear();
-                          }),
+                          onPressed: _clearSelectionMode,
                           icon: Icon(Icons.close_rounded, size: 18, color: foreground),
                         ),
                       ]),
