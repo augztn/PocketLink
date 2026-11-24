@@ -226,10 +226,16 @@ class LyricsRepository {
     return 1;
   }
 
+  int _rank(LyricsDocument document) {
+    final providerIndex = _providers.indexWhere((provider) => provider.id == document.providerId);
+    final providerPriority = providerIndex < 0 ? 0 : _providers.length - providerIndex;
+    return _quality(document) * 100 + providerPriority;
+  }
+
   void _considerActive(String key, LyricsDocument candidate) {
     if (_manualSelections.contains(key)) return;
     final current = _active[key];
-    if (current == null || _quality(candidate) > _quality(current)) {
+    if (current == null || _rank(candidate) > _rank(current)) {
       _active[key] = candidate;
     }
   }
