@@ -35,9 +35,68 @@ void main() {
     });
   });
 
+  test('duration parsing supports hour-long tracks', () {
+    final query = LyricsTrackQuery(
+      track: const MediaQueueItem(
+        title: 'Live Set',
+        path: '/music/live.flac',
+        durationText: '1:02:03',
+      ),
+      api: null,
+    );
+    expect(query.durationSeconds, 3723);
+  });
+
+  test('LRCLIB ranking rejects a wrong cover in favour of exact synced recording', () {
+    final result = LyricsRepository.selectBestLrclibCandidate(
+      [
+        {
+          'trackName': 'The Only Exception (Acoustic Cover)',
+          'artistName': 'Random Cover Band',
+          'duration': 190,
+          'plainLyrics': 'Wrong plain lyrics',
+        },
+        {
+          'trackName': 'The Only Exception',
+          'artistName': 'Paramore',
+          'albumName': 'Brand New Eyes',
+          'duration': 268,
+          'syncedLyrics': '[00:12.00]When I was younger I saw\n[00:16.50]My daddy cry and curse at the wind',
+        },
+      ],
+      title: 'The Only Exception',
+      artist: 'Paramore',
+      durationSeconds: 267,
+    );
+
+    expect(result, isNotNull);
+    expect(result!.synced, isTrue);
+    expect(result.lines, hasLength(2));
+    expect(result.lines.first.timeMs, 12000);
+    expect(result.lines.first.text, 'When I was younger I saw');
+  });
+
+  test('LRCLIB ranking rejects candidates with unrelated title and artist', () {
+    final result = LyricsRepository.selectBestLrclibCandidate(
+      [
+        {
+          'trackName': 'Completely Different Song',
+          'artistName': 'Unrelated Artist',
+          'duration': 200,
+          'syncedLyrics': '[00:01.00]Wrong lyrics',
+        },
+      ],
+      title: 'Song Title',
+      artist: 'Correct Artist',
+      durationSeconds: 201,
+    );
+
+    expect(result, isNull);
+  });
+
   test('lyrics search cleanup removes packaging noise and credits', () {
     expect(
-      LyricsProvider.clean('Song Title (Official Audio) feat. Guest'),
+      LyricsProvider.clean('03 - Song Title (Official Audio) feat. Guest.flac'),
       'Song Title',
     );
   });
