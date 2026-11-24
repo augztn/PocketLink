@@ -107,6 +107,7 @@ class _ImportedPlaylistManagerScreenState extends State<ImportedPlaylistManagerS
   List<ImportedPlaylist> _playlists = const [];
   bool _loading = true;
   bool _working = false;
+  String? _loadError;
 
   @override
   void initState() {
@@ -115,12 +116,22 @@ class _ImportedPlaylistManagerScreenState extends State<ImportedPlaylistManagerS
   }
 
   Future<void> _reload() async {
-    final playlists = await ImportedPlaylistStore.load(widget.api);
-    if (!mounted) return;
-    setState(() {
-      _playlists = playlists;
-      _loading = false;
-    });
+    if (mounted) setState(() { _loading = true; _loadError = null; });
+    try {
+      final playlists = await ImportedPlaylistStore.load(widget.api);
+      if (!mounted) return;
+      setState(() {
+        _playlists = playlists;
+        _loading = false;
+        _loadError = null;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _loadError = 'Could not read playlists from your PocketLink server.';
+      });
+    }
   }
 
   Future<void> _importFromUrl() async {
@@ -265,8 +276,12 @@ class _ImportedPlaylistManagerScreenState extends State<ImportedPlaylistManagerS
   }
 
   Future<void> _delete(ImportedPlaylist playlist) async {
-    await ImportedPlaylistStore.remove(widget.api, playlist);
-    await _reload();
+    try {
+      await ImportedPlaylistStore.remove(widget.api, playlist);
+      await _reload();
+    } catch (_) {
+      if (mounted) _message('Could not remove this playlist from your server.');
+    }
   }
 
   void _message(String value) {
@@ -321,6 +336,16 @@ class _ImportedPlaylistManagerScreenState extends State<ImportedPlaylistManagerS
           const SizedBox(height: 18),
           if (_loading)
             const Center(child: CircularProgressIndicator())
+          else if (_loadError != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 42),
+              child: Column(children: [
+                const Icon(Icons.cloud_off_rounded, size: 40, color: Colors.grey),
+                const SizedBox(height: 10),
+                Text(_loadError!, textAlign: TextAlign.center),
+                TextButton(onPressed: _reload, child: const Text('Retry')),
+              ]),
+            )
           else if (_playlists.isEmpty)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 42),
