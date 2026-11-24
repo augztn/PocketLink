@@ -1688,6 +1688,16 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
               ),
             ),
           ),
+          if (hasArtwork)
+            Positioned.fill(
+              child: ImageFiltered(
+                imageFilter: ui.ImageFilter.blur(sigmaX: 44, sigmaY: 44),
+                child: Opacity(
+                  opacity: 0.20,
+                  child: Image.memory(_artwork!, fit: BoxFit.cover, gaplessPlayback: true),
+                ),
+              ),
+            ),
           if (hasArtwork && !widget.useSharedArtwork)
             Positioned(
               top: 0,
@@ -1835,7 +1845,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
           1.0,
           curve: Curves.easeOutCubic,
         ).transform(progress);
-        final lyricsProgress = _lyricsController.value;
+        final lyricsProgress = Curves.easeOutCubic.transform(_lyricsController.value);
         return Scaffold(
           backgroundColor: const Color(0xFF0A0B0E),
           body: Stack(
