@@ -278,6 +278,9 @@ class _SearchScreenState extends State<SearchScreen> {
 
     final generation = ++_scanGeneration;
     final isNewScan = refresh || !_scanInitialized;
+    AppLogger.event('search.loading_started', category: 'search', component: 'search_screen',
+      fields: {'source': 'directory_scan', 'refresh': refresh,
+        'continue_existing': continueExisting, 'generation': generation});
     if (isNewScan) {
       _scanInitialized = true;
       _scanTruncated = false;
@@ -372,20 +375,37 @@ class _SearchScreenState extends State<SearchScreen> {
             ..addAll(_allFound);
           _scanned = !_scanTruncated;
         });
+        AppLogger.event('search.loading_completed', category: 'search',
+          component: 'search_screen',
+          fields: {'source': 'directory_scan', 'results_count': _results.length,
+            'folders_scanned': _scannedFolders, 'truncated': _scanTruncated});
         if (!_scanTruncated && query.isNotEmpty) _saveHistory(query);
       }
     } on DioException catch (e) {
+      AppLogger.warning('Directory search failed', category: 'search',
+        component: 'search_screen',
+        fields: {'failure_type': e.type.name, 'status_code': e.response?.statusCode,
+          'folders_scanned': _scannedFolders});
       if (mounted && generation == _scanGeneration) {
         setState(() => _error = e.response?.statusCode == 401
             ? 'Login expired or credentials are incorrect.'
             : e.message ?? 'Could not search server storage. Check the connection and try again.');
       }
-    } catch (_) {
+    } catch (error) {
+      AppLogger.warning('Directory search failed', category: 'search',
+        component: 'search_screen',
+        fields: {'failure_type': error.runtimeType.toString(), 'folders_scanned': _scannedFolders});
       if (mounted && generation == _scanGeneration) {
         setState(() => _error = 'Could not search server storage.');
       }
     } finally {
-      if (mounted && generation == _scanGeneration) setState(() => _loading = false);
+      if (mounted && generation == _scanGeneration) {
+        setState(() => _loading = false);
+        AppLogger.event('search.loading_finished', category: 'search',
+          component: 'search_screen',
+          fields: {'source': 'directory_scan', 'results_count': _results.length,
+            'folders_scanned': _scannedFolders, 'loading': _loading});
+      }
     }
   }
 
