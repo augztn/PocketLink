@@ -137,7 +137,7 @@ class _ExploreNavigatorObserver extends NavigatorObserver {
     AppLogger.event('explore_navigation.$action', category: 'navigation',
       component: 'explore_navigator',
       fields: {'route_type': _label(route), 'related_route_type': _label(related)});
-    onChanged();
+    WidgetsBinding.instance.addPostFrameCallback((_) => onChanged());
   }
 
   @override
