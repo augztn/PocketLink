@@ -53,7 +53,6 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
   List<_DiscoverShelf> _homeShelves = const [];
   List<IndexedFile> _localLibrary = const [];
   bool _loading = false;
-  bool _loadingLibrary = false;
   Future<void>? _localLibraryRequest;
   bool _startingPlayback = false;
   bool _resolvingImportedPlaylist = false;
@@ -137,7 +136,6 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       }
     }
 
-    if (mounted) setState(() => _loadingLibrary = true);
     final request = () async {
       try {
         final result = await MediaLibraryRepository(
@@ -160,7 +158,6 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       } catch (_) {
         // Keep a previously indexed snapshot usable during temporary outages.
       } finally {
-        if (mounted) setState(() => _loadingLibrary = false);
       }
     }();
     _localLibraryRequest = request;
