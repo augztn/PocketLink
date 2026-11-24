@@ -84,6 +84,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   String? _lyricsQueryKey;
   bool _lyricsLoading = false;
   bool _lyricsTranslationEnabled = false;
+  final GlobalKey _lyricsViewportKey = GlobalKey();
 
 
   MediaQueueItem get _track =>
@@ -1388,6 +1389,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                           stream: _player.stream.position,
                           initialData: _player.state.position,
                           builder: (context, snapshot) => LyricsViewport(
+                            key: _lyricsViewportKey,
                             document: _activeLyrics,
                             position: snapshot.data ?? Duration.zero,
                             loading: _lyricsLoading,
@@ -1932,6 +1934,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                         onDismissDragStart: widget.onDismissDragStart,
                         onDismissDragUpdate: widget.onDismissDragUpdate,
                         onDismissDragEnd: widget.onDismissDragEnd,
+                        scrollableKey: _lyricsViewportKey,
                         child: _lyricsMode(theme, lyricsProgress),
                       ),
                     ),

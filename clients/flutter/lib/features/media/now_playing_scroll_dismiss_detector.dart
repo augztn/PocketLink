@@ -7,6 +7,7 @@ class NowPlayingScrollDismissDetector extends StatefulWidget {
   const NowPlayingScrollDismissDetector({
     required this.child,
     this.enabled = true,
+    this.scrollableKey,
     required this.onDismissDragStart,
     required this.onDismissDragUpdate,
     required this.onDismissDragEnd,
@@ -15,6 +16,7 @@ class NowPlayingScrollDismissDetector extends StatefulWidget {
 
   final Widget child;
   final bool enabled;
+  final GlobalKey? scrollableKey;
   final VoidCallback onDismissDragStart;
   final ValueChanged<double> onDismissDragUpdate;
   final ValueChanged<double> onDismissDragEnd;
@@ -38,6 +40,16 @@ class _NowPlayingScrollDismissDetectorState
     if (!widget.enabled) return;
     _pointerStart = event.position;
     _scrollOffsetAtPointerDown = _scrollOffset;
+    final key = widget.scrollableKey;
+    if (key != null) {
+      final renderObject = key.currentContext?.findRenderObject();
+      if (renderObject is RenderBox && renderObject.hasSize) {
+        final bounds = renderObject.localToGlobal(Offset.zero) & renderObject.size;
+        if (!bounds.contains(event.position)) _scrollOffsetAtPointerDown = 0;
+      } else {
+        _scrollOffsetAtPointerDown = 0;
+      }
+    }
     _velocityTracker = VelocityTracker.withKind(event.kind)
       ..addPosition(event.timeStamp, event.position);
   }

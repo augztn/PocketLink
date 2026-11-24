@@ -50,6 +50,33 @@ void main() {
     expect(scrollable.position.pixels, lessThan(offsetBefore));
   });
 
+  testWidgets('gesture setting disables scroll dismissal', (tester) async {
+    var dismissals = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: NowPlayingScrollDismissDetector(
+            enabled: false,
+            onDismissDragStart: () {},
+            onDismissDragUpdate: (_) {},
+            onDismissDragEnd: (_) => dismissals++,
+            child: const SizedBox(
+              height: 300,
+              child: SingleChildScrollView(
+                child: SizedBox(height: 700),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.drag(find.byType(SingleChildScrollView), const Offset(0, 180));
+    await tester.pump();
+
+    expect(dismissals, 0);
+  });
+
   testWidgets('horizontal swipe does not dismiss Now Playing', (tester) async {
     var dismissals = 0;
     await tester.pumpWidget(buildSubject(onDismiss: () => dismissals++));
