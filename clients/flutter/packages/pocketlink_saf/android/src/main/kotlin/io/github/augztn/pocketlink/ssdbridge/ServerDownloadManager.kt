@@ -83,7 +83,7 @@ internal class ServerDownloadManager(
         val url = validateUrl(rawUrl).toString()
         val normalizedDirectory = directory?.trim()?.trim('/')?.takeIf { it.isNotEmpty() }
         if (normalizedDirectory != null) resolveDirectory(normalizedDirectory)
-        val normalizedFileName = filenameOverride?.trim()?.takeIf { it.isNotEmpty() }?.let(::sanitizeFilename)
+        val normalizedFileName = filenameOverride?.trim()?.takeIf { it.isNotEmpty() }?.let { sanitizeFilename(it) }
         val job = Job(
             id = UUID.randomUUID().toString(),
             url = url,
