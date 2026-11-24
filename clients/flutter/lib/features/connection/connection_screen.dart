@@ -526,7 +526,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
           20,
           8,
           20,
-          media.padding.bottom + 24,
+          24,
         ),
         child: Center(
           child: ConstrainedBox(
@@ -623,6 +623,8 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                 TextField(
                   controller: _serverNameController,
                   textCapitalization: TextCapitalization.words,
+                  scrollPadding: const EdgeInsets.only(bottom: 120),
+                  textInputAction: TextInputAction.next,
                   decoration: _inputDecoration(hint: 'Server name (optional)', icon: Icons.edit_location_alt_outlined),
                 ),
                 const SizedBox(height: 12),
@@ -633,6 +635,8 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                       child: TextField(
                         controller: _addressController,
                         keyboardType: TextInputType.url,
+                        scrollPadding: const EdgeInsets.only(bottom: 120),
+                        textInputAction: TextInputAction.next,
                         autocorrect: false,
                         decoration: _inputDecoration(
                           hint: 'Server address',
@@ -646,6 +650,8 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                       child: TextField(
                         controller: _portController,
                         keyboardType: TextInputType.number,
+                        scrollPadding: const EdgeInsets.only(bottom: 120),
+                        textInputAction: TextInputAction.next,
                         textAlign: TextAlign.start,
                         maxLength: 5,
                         buildCounter: (
@@ -666,12 +672,17 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                 TextField(
                   controller: _usernameController,
                   autocorrect: false,
+                  scrollPadding: const EdgeInsets.only(bottom: 120),
+                  textInputAction: TextInputAction.next,
                   decoration: _inputDecoration(hint: 'Username', icon: Icons.person_outline),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
+                  scrollPadding: const EdgeInsets.only(bottom: 120),
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => _connect(),
                   decoration: _inputDecoration(
                     hint: 'Password',
                     icon: Icons.lock_outline,
