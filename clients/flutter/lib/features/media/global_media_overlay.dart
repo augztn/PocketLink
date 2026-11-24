@@ -322,7 +322,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     }
     _openingNowPlaying = false;
     final height = math.max(1.0, MediaQuery.sizeOf(context).height);
-    final expand = velocity < -300 || _nowPlayingController.value > 0.25;
+    final expand = velocity < -200 || _nowPlayingController.value > 0.15;
     if (expand) {
       unawaited(_animateNowPlayingTo(
         1,
