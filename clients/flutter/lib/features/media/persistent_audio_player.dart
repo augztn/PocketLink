@@ -28,6 +28,39 @@ class MediaQueueItem {
   final String? streamResolver;
   final int? streamBitrateBps;
 
+  /// Stable identity for artwork, lyrics, and track-scoped UI state.
+  /// Mutable playback state is deliberately excluded.
+  String get stableTrackId {
+    final videoId = lyricsVideoId?.trim();
+    if (videoId != null && videoId.isNotEmpty) return 'discover:' + videoId;
+    final local = localPath?.trim();
+    if (local != null && local.isNotEmpty) return 'local:' + local;
+    final normalizedPath = path.trim().toLowerCase();
+    if (normalizedPath.isNotEmpty) {
+      return 'file:' + (volume ?? 'internal').trim().toLowerCase() + ':' + normalizedPath;
+    }
+    String normalize(String value) => value.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
+    return 'metadata:' + normalize(title) + '|' + normalize(artist ?? '');
+  }
+
+  /// Merge refreshed metadata without discarding known artwork or lyrics IDs.
+  MediaQueueItem mergeMetadata(MediaQueueItem update) => MediaQueueItem(
+        title: update.title.trim().isEmpty ? title : update.title,
+        path: update.path.trim().isEmpty ? path : update.path,
+        volume: update.volume ?? volume,
+        localPath: update.localPath ?? localPath,
+        size: update.size ?? size,
+        streamUrl: update.streamUrl ?? streamUrl,
+        httpHeaders: update.httpHeaders.isEmpty ? httpHeaders : update.httpHeaders,
+        artist: update.artist ?? artist,
+        artworkUrl: (update.artworkUrl?.trim().isNotEmpty ?? false) ? update.artworkUrl : artworkUrl,
+        lyricsVideoId: update.lyricsVideoId ?? lyricsVideoId,
+        durationText: update.durationText.isEmpty ? durationText : update.durationText,
+        streamCodec: update.streamCodec ?? streamCodec,
+        streamResolver: update.streamResolver ?? streamResolver,
+        streamBitrateBps: update.streamBitrateBps ?? streamBitrateBps,
+      );
+
   /// Describes the origin of the media, not the device or cache used to play it.
   String get sourceLabel {
     if (localPath != null) return 'Local';
@@ -275,7 +308,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
               queued.streamUrl == item.streamUrl,
         );
         if (retryIndex < 0 || session != _queueSession) return;
-        updated[retryIndex] = retryItem;
+        updated[retryIndex] = updated[retryIndex].mergeMetadata(retryItem);
         _queue = List.unmodifiable(updated);
         _currentIndex = retryIndex;
         final api = _api;
