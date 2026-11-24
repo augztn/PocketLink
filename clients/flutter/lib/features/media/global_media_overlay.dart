@@ -634,9 +634,16 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
           )!;
 
           return PopScope<void>(
-            canPop: false,
+            canPop: !PocketLinkNavigation.shouldCollapseNowPlayingOnBack(
+              progress: animation.value,
+            ),
             onPopInvokedWithResult: (didPop, result) {
-              if (!didPop) onDismiss();
+              if (!didPop &&
+                  PocketLinkNavigation.shouldCollapseNowPlayingOnBack(
+                    progress: animation.value,
+                  )) {
+                onDismiss();
+              }
             },
             child: Material(
               type: MaterialType.transparency,
