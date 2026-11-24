@@ -5,6 +5,7 @@ import 'dart:ui' as ui;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
+import '../../core/widgets/pocketlink_skeleton.dart';
 import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/compact_search_field.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
@@ -180,7 +181,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     setState(() {
       _loading = true;
       _error = null;
-      _media = const [];
+      if (!refresh) _media = const [];
       _scannedDirectories = 0;
       _skippedDirectories = 0;
       _scanLocation = '';
@@ -905,7 +906,27 @@ tooltip: 'Choose video view',
                     ),
                   )
                 : _loading && _media.isEmpty
-                    ? const Center(child: Text('Scanning storage for media…'))
+                    ? (_layoutMode == 'grid'
+                        ? PocketLinkSkeleton.videoGrid(
+                            padding: EdgeInsets.fromLTRB(
+                              12,
+                              ((_searchExpanded && widget.showSearch) || isFolderView)
+                                  ? 8
+                                  : LayoutInsetsScope.of(context).topClearance,
+                              12,
+                              LayoutInsetsScope.of(context).bottomClearance,
+                            ),
+                          )
+                        : PocketLinkSkeleton.videoList(
+                            padding: EdgeInsets.fromLTRB(
+                              12,
+                              ((_searchExpanded && widget.showSearch) || isFolderView)
+                                  ? 8
+                                  : LayoutInsetsScope.of(context).topClearance,
+                              12,
+                              LayoutInsetsScope.of(context).bottomClearance,
+                            ),
+                          ))
                     : visibleMedia.isEmpty
                         ? Center(
                             child: Padding(
@@ -1370,7 +1391,16 @@ tooltip: 'Choose video view',
                       padding: EdgeInsets.only(top: LayoutInsetsScope.of(context).topClearance),
                       child: RefreshIndicator(
                         onRefresh: _refreshMusic,
-                        child: _buildFolders(visible),
+                        child: _loading && _media.isEmpty
+                            ? PocketLinkSkeleton.fileList(
+                                padding: EdgeInsets.fromLTRB(
+                                  12,
+                                  8,
+                                  12,
+                                  LayoutInsetsScope.of(context).bottomClearance,
+                                ),
+                              )
+                            : _buildFolders(visible),
                       ),
                     )
                   : RefreshIndicator(
@@ -1386,9 +1416,9 @@ tooltip: 'Choose video view',
                                   child: Center(
                                     child: _error != null
                                         ? FilledButton(onPressed: _scan, child: const Text('Retry scan'))
-                                        : Text(_loading && _media.isEmpty
-                                            ? 'Scanning music library…'
-                                            : _libraryView == 'favorites'
+                                        : _loading && _media.isEmpty
+                                            ? PocketLinkSkeleton.musicList(rows: 5)
+                                            : Text(_libraryView == 'favorites'
                                                 ? 'No favourite tracks yet.'
                                                 : 'No music found. Scan storage to find tracks.'),
                                   ),
