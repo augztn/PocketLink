@@ -1344,7 +1344,13 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
               return Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  Positioned.fromRect(rect: artRect, child: IgnorePointer(child: _lyricsArtwork(progress))),
+                  Positioned.fromRect(
+                    rect: artRect,
+                    child: GestureDetector(
+                      onTap: () => unawaited(_showTrackLyrics()),
+                      child: _lyricsArtwork(progress),
+                    ),
+                  ),
                   Column(
                     children: [
                       const SizedBox(height: 58),
