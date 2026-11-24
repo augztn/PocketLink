@@ -59,7 +59,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   void _open(Widget screen) {
     _navigatorKey.currentState?.push(
-      MaterialPageRoute<void>(builder: (_) => screen),
+      MaterialPageRoute<void>(
+        settings: RouteSettings(name: screen.runtimeType.toString()),
+        builder: (_) => screen,
+      ),
     );
   }
 
