@@ -88,6 +88,8 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     final saved = _browserState.stateFor(_stateKey, widget.type.name);
     _selectedVolume = saved.selectedVolume;
     _libraryView = widget.initialView ?? saved.view;
+    _searchQuery = widget.initialSearchQuery ?? ''; 
+    _searchController.text = _searchQuery;
     _layoutMode = saved.layoutMode;
     _sortBy = widget.initialSortBy ?? saved.sortBy;
     _currentFolderPath = saved.folderPath;
@@ -1667,6 +1669,7 @@ class MediaBrowserScreen extends StatefulWidget {
     this.showSearch = true,
     this.initialView,
     this.initialSortBy,
+    this.initialSearchQuery,
     this.onHome,
     this.onBackHandlerChanged,
     super.key,
@@ -1677,6 +1680,7 @@ class MediaBrowserScreen extends StatefulWidget {
   final bool showSearch;
   final String? initialView;
   final String? initialSortBy;
+  final String? initialSearchQuery;
   final VoidCallback? onHome;
   final ValueChanged<VoidCallback?>? onBackHandlerChanged;
 
