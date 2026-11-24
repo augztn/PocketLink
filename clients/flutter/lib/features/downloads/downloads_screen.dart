@@ -31,9 +31,6 @@ class DownloadsScreen extends StatefulWidget {
 class _DownloadsScreenState extends State<DownloadsScreen> {
   final _manager = DownloadManagerService.instance;
   _DownloadFilter _filter = _DownloadFilter.all;
-  List<ServerDownloadJob> _serverJobs = const [];
-  Timer? _serverRefreshTimer;
-  bool _refreshingServerJobs = false;
 
   @override
   void initState() {
@@ -44,25 +41,6 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
   Future<void> _initialize() async {
     await _manager.initialize();
     _manager.bindServerApi(widget.api);
-    await _refreshServerJobs();
-    if (!mounted) return;
-    _serverRefreshTimer = Timer.periodic(
-      const Duration(seconds: 2),
-      (_) => _refreshServerJobs(),
-    );
-  }
-
-  Future<void> _refreshServerJobs() async {
-    if (_refreshingServerJobs) return;
-    _refreshingServerJobs = true;
-    try {
-      final jobs = await widget.api.listServerDownloads();
-      if (mounted) setState(() => _serverJobs = jobs);
-    } catch (_) {
-      // Keep the last host snapshot visible while the server is unreachable.
-    } finally {
-      _refreshingServerJobs = false;
-    }
   }
 
   Future<void> _newDownload() async {
@@ -71,7 +49,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
       useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _NewDownloadSheet(manager: _manager, api: widget.api),
+      builder: (_) => _NewDownloadSheet(manager: _manager),
     );
   }
 
@@ -116,135 +94,6 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     }
   }
 
-  List<ServerDownloadJob> _visibleServerJobs(List<ServerDownloadJob> jobs) {
-    return jobs.where((job) => switch (_filter) {
-      _DownloadFilter.all => true,
-      _DownloadFilter.active => job.status == 'downloading' ||
-          job.status == 'queued' || job.status == 'paused',
-      _DownloadFilter.completed => job.status == 'completed',
-      _DownloadFilter.failed => job.status == 'failed',
-    }).toList(growable: false);
-  }
-
-  Future<void> _pauseAll() async {
-    await _manager.pauseAll();
-    try {
-      await Future.wait(_serverJobs
-          .where((job) => job.status == 'queued' || job.status == 'downloading')
-          .map((job) => widget.api.pauseServerDownload(job.id)));
-      await _refreshServerJobs();
-    } catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not pause all server downloads: $error')),
-        );
-      }
-    }
-  }
-
-  Future<void> _resumeAll() async {
-    await _manager.resumeAll();
-    try {
-      await Future.wait(_serverJobs
-          .where((job) => job.status == 'paused' || job.status == 'failed')
-          .map((job) => widget.api.resumeServerDownload(job.id)));
-      await _refreshServerJobs();
-    } catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not resume all server downloads: $error')),
-        );
-      }
-    }
-  }
-
-  Future<void> _clearCompleted() async {
-    await _manager.clearCompleted();
-    try {
-      await Future.wait(_serverJobs
-          .where((job) => job.status == 'completed')
-          .map((job) => widget.api.removeServerDownload(job.id)));
-      await _refreshServerJobs();
-    } catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not clear completed server jobs: $error')),
-        );
-      }
-    }
-  }
-
-  Future<void> _serverJobAction(
-    Future<ServerDownloadJob> Function() action,
-  ) async {
-    try {
-      await action();
-      await _refreshServerJobs();
-    } catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Server download action failed: $error')),
-        );
-      }
-    }
-  }
-
-  Future<void> _removeServerJob(ServerDownloadJob job) async {
-    var deleteFile = false;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Remove server download?'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(job.fileName, maxLines: 2, overflow: TextOverflow.ellipsis),
-              const SizedBox(height: 8),
-              CheckboxListTile(
-                contentPadding: EdgeInsets.zero,
-                value: deleteFile,
-                onChanged: (value) => setDialogState(() => deleteFile = value ?? false),
-                title: const Text('Also delete file from server storage'),
-                controlAffinity: ListTileControlAffinity.leading,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Remove'),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (confirmed == true) {
-      try {
-        await widget.api.removeServerDownload(job.id, deleteFile: deleteFile);
-        await _refreshServerJobs();
-      } catch (error) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Could not remove server download: $error')),
-          );
-        }
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _serverRefreshTimer?.cancel();
-    _manager.releaseServerApi(widget.api);
-    super.dispose();
-  }
-
   List<DownloadTask> _visibleTasks(List<DownloadTask> tasks) {
     return tasks.where((task) => switch (_filter) {
       _DownloadFilter.all => true,
@@ -262,19 +111,13 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
       animation: _manager,
       builder: (context, _) {
         final tasks = _visibleTasks(_manager.tasks);
-        final serverJobs = _visibleServerJobs(_serverJobs);
         final theme = Theme.of(context);
         final colors = theme.colorScheme;
-        final serverActive = _serverJobs.where((job) => job.isActive).length;
-        final activeTotal = _manager.activeCount + _serverJobs.where((job) => job.status == 'downloading').length;
-        final queuedTotal = _manager.queuedCount + _serverJobs.where((job) => job.status == 'queued').length;
-        final subtitle = activeTotal > 0
-            ? '${_manager.activeCount > 0 ? _formatSpeed(_manager.totalSpeedBytesPerSecond) : 'Server active'} · $activeTotal active'
-            : queuedTotal > 0
-                ? '$queuedTotal queued'
-                : serverActive > 0
-                    ? '$serverActive server jobs'
-                    : 'Manage your downloads';
+        final subtitle = _manager.activeCount > 0
+            ? '${_formatSpeed(_manager.totalSpeedBytesPerSecond)} · ${_manager.activeCount} active'
+            : _manager.queuedCount > 0
+                ? '${_manager.queuedCount} queued'
+                : 'Manage your downloads';
 
         return Scaffold(
           extendBodyBehindAppBar: true,
@@ -305,10 +148,10 @@ tooltip: 'Filter downloads',
                       children: [
                         Text(
                           '${switch (filter) {
-                            _DownloadFilter.all => _manager.tasks.length + _serverJobs.length,
-                            _DownloadFilter.active => _manager.activeCount + _serverJobs.where((job) => job.status == 'downloading' || job.status == 'queued' || job.status == 'paused').length,
-                            _DownloadFilter.completed => _manager.tasks.where((task) => task.status == DownloadStatus.completed).length + _serverJobs.where((job) => job.status == 'completed').length,
-                            _DownloadFilter.failed => _manager.tasks.where((task) => task.status == DownloadStatus.failed).length + _serverJobs.where((job) => job.status == 'failed').length,
+                            _DownloadFilter.all => _manager.tasks.length,
+                            _DownloadFilter.active => _manager.activeCount,
+                            _DownloadFilter.completed => _manager.tasks.where((task) => task.status == DownloadStatus.completed).length,
+                            _DownloadFilter.failed => _manager.tasks.where((task) => task.status == DownloadStatus.failed).length,
                           }}',
                           style: const TextStyle(
                             fontFamily: 'monospace',
@@ -370,37 +213,29 @@ tooltip: 'Filter downloads',
               PocketLinkAppBarAction(
                 label: 'Pause all',
                 icon: Icons.pause_rounded,
-                enabled: _manager.activeCount > 0 || _manager.queuedCount > 0 ||
-                    _serverJobs.any((job) => job.status == 'downloading' || job.status == 'queued'),
-                onPressed: _manager.activeCount > 0 || _manager.queuedCount > 0 ||
-                    _serverJobs.any((job) => job.status == 'downloading' || job.status == 'queued')
-                    ? _pauseAll
-                    : null,
+                enabled: _manager.activeCount > 0 || _manager.queuedCount > 0,
+                onPressed: _manager.activeCount > 0 || _manager.queuedCount > 0 ? _manager.pauseAll : null,
               ),
               PocketLinkAppBarAction(
                 label: 'Resume all',
                 icon: Icons.play_arrow_rounded,
                 enabled: _manager.tasks.any((task) =>
                     task.status == DownloadStatus.paused ||
-                    task.status == DownloadStatus.failed) ||
-                    _serverJobs.any((job) => job.status == 'paused' || job.status == 'failed'),
+                    task.status == DownloadStatus.failed),
                 onPressed: _manager.tasks.any((task) =>
                     task.status == DownloadStatus.paused ||
-                    task.status == DownloadStatus.failed) ||
-                    _serverJobs.any((job) => job.status == 'paused' || job.status == 'failed')
-                    ? _resumeAll
+                    task.status == DownloadStatus.failed)
+                    ? _manager.resumeAll
                     : null,
               ),
               PocketLinkAppBarAction(
                 label: 'Clear completed',
                 icon: Icons.delete_sweep_outlined,
                 enabled: _manager.tasks.any(
-                    (task) => task.status == DownloadStatus.completed) ||
-                    _serverJobs.any((job) => job.status == 'completed'),
+                    (task) => task.status == DownloadStatus.completed),
                 onPressed: _manager.tasks.any(
-                    (task) => task.status == DownloadStatus.completed) ||
-                    _serverJobs.any((job) => job.status == 'completed')
-                    ? _clearCompleted
+                    (task) => task.status == DownloadStatus.completed)
+                    ? _manager.clearCompleted
                     : null,
                 dividerBefore: true,
               ),
@@ -413,9 +248,7 @@ tooltip: 'Filter downloads',
               16,
               LayoutInsetsScope.of(context).bottomClearance,
             ),
-            itemCount: tasks.isEmpty && serverJobs.isEmpty
-                ? 2
-                : 1 + tasks.length + serverJobs.length,
+            itemCount: tasks.isEmpty ? 2 : tasks.length + 1,
             itemBuilder: (context, index) {
               if (index == 0) {
                 return Padding(
@@ -437,8 +270,8 @@ tooltip: 'Filter downloads',
                   ),
                 );
               }
-              if (tasks.isEmpty && serverJobs.isEmpty) {
-                final hasAnyTasks = _manager.tasks.isNotEmpty || _serverJobs.isNotEmpty;
+              if (tasks.isEmpty) {
+                final hasAnyTasks = _manager.tasks.isNotEmpty;
                 return Padding(
                   padding: const EdgeInsets.only(top: 56),
                   child: Column(
@@ -461,7 +294,7 @@ tooltip: 'Filter downloads',
                       Text(
                         hasAnyTasks
                             ? 'Try another download filter.'
-                            : 'Add a URL and choose Local or Server as its destination.',
+                            : 'Paste an HTTP or HTTPS link to add your first download.',
                         textAlign: TextAlign.center,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: colors.onSurfaceVariant,
@@ -471,28 +304,15 @@ tooltip: 'Filter downloads',
                   ),
                 );
               }
-              if (index <= tasks.length) {
-                final task = tasks[index - 1];
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _DownloadTaskCard(
-                    task: task,
-                    onPause: () => _manager.pause(task.id),
-                    onResume: () => _manager.resume(task.id),
-                    onOpen: () => _manager.openFile(task),
-                    onDelete: () => _delete(task),
-                  ),
-                );
-              }
-              final job = serverJobs[index - tasks.length - 1];
+              final task = tasks[index - 1];
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: _ServerDownloadJobCard(
-                  job: job,
-                  onPause: () => _serverJobAction(() => widget.api.pauseServerDownload(job.id)),
-                  onResume: () => _serverJobAction(() => widget.api.resumeServerDownload(job.id)),
-                  onCancel: () => _serverJobAction(() => widget.api.cancelServerDownload(job.id)),
-                  onRemove: () => _removeServerJob(job),
+                child: _DownloadTaskCard(
+                  task: task,
+                  onPause: () => _manager.pause(task.id),
+                  onResume: () => _manager.resume(task.id),
+                  onOpen: () => _manager.openFile(task),
+                  onDelete: () => _delete(task),
                 ),
               );
             },
@@ -597,7 +417,7 @@ class _DownloadTaskCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        'LOCAL · $status',
+                        status,
                         style: TextStyle(
                           color: failed
                               ? const Color(0xFFFF7B86)
@@ -685,287 +505,10 @@ class _DownloadTaskCard extends StatelessWidget {
   }
 }
 
-class _ServerDownloadJobCard extends StatelessWidget {
-  const _ServerDownloadJobCard({
-    required this.job,
-    required this.onPause,
-    required this.onResume,
-    required this.onCancel,
-    required this.onRemove,
-  });
-
-  final ServerDownloadJob job;
-  final VoidCallback onPause;
-  final VoidCallback onResume;
-  final VoidCallback onCancel;
-  final VoidCallback onRemove;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final status = switch (job.status) {
-      'queued' => 'Queued on server',
-      'downloading' => 'Downloading on server',
-      'paused' => 'Paused',
-      'completed' => 'Saved to server',
-      'cancelled' => 'Cancelled',
-      _ => 'Failed',
-    };
-    final progress = job.progress;
-    final completed = job.status == 'completed';
-    final active = job.status == 'downloading';
-    final canPause = active || job.status == 'queued';
-    final failed = job.status == 'failed';
-    return SmokedGlassSurface(
-      radius: BorderRadius.circular(20),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.07),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Icon(Icons.cloud_download_outlined, color: Colors.white70),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        job.fileName,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        'SERVER  ·  $status',
-                        style: TextStyle(
-                          color: completed
-                              ? Colors.greenAccent.shade100
-                              : failed
-                                  ? colors.error
-                                  : Colors.white60,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (canPause)
-                  IconButton(
-                    tooltip: 'Pause server download',
-                    onPressed: onPause,
-                    icon: const Icon(Icons.pause_rounded, color: Colors.white),
-                  )
-                else if (!completed && job.status != 'cancelled')
-                  IconButton(
-                    tooltip: 'Resume server download',
-                    onPressed: onResume,
-                    icon: const Icon(Icons.play_arrow_rounded, color: Colors.white),
-                  ),
-                if (!completed && job.status != 'cancelled')
-                  IconButton(
-                    tooltip: 'Cancel server download',
-                    onPressed: onCancel,
-                    icon: const Icon(Icons.close_rounded, color: Colors.white70),
-                  ),
-                IconButton(
-                  tooltip: 'Remove server download',
-                  onPressed: onRemove,
-                  icon: const Icon(Icons.delete_outline_rounded, color: Colors.white70),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(99),
-              child: LinearProgressIndicator(
-                value: progress ?? (active ? null : 0),
-                minHeight: 4,
-                backgroundColor: Colors.white.withValues(alpha: 0.10),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    job.totalBytes == null
-                        ? _formatBytes(job.downloadedBytes)
-                        : '${_formatBytes(job.downloadedBytes)} / ${_formatBytes(job.totalBytes!)}',
-                    style: const TextStyle(color: Colors.white70, fontSize: 11),
-                  ),
-                ),
-                if (active && job.speedBytesPerSecond > 0)
-                  Text(
-                    _formatSpeed(job.speedBytesPerSecond),
-                    style: const TextStyle(color: Colors.white70, fontSize: 11),
-                  ),
-                if (progress != null) ...[
-                  const SizedBox(width: 8),
-                  Text(
-                    '${(progress * 100).round()}%',
-                    style: const TextStyle(color: Colors.white70, fontSize: 11),
-                  ),
-                ],
-              ],
-            ),
-            if (job.destinationPath != null) ...[
-              const SizedBox(height: 7),
-              Text(
-                job.destinationPath!,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Colors.white54, fontSize: 11),
-              ),
-            ],
-            if (job.error != null) ...[
-              const SizedBox(height: 7),
-              Text(
-                job.error!,
-                style: TextStyle(color: colors.error, fontSize: 12),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ServerDirectoryPicker extends StatefulWidget {
-  const _ServerDirectoryPicker({
-    required this.api,
-    required this.initialPath,
-  });
-
-  final ServerApi api;
-  final String initialPath;
-
-  @override
-  State<_ServerDirectoryPicker> createState() => _ServerDirectoryPickerState();
-}
-
-class _ServerDirectoryPickerState extends State<_ServerDirectoryPicker> {
-  String _path = '';
-  DirectoryListing? _listing;
-  String? _error;
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _initialLoad();
-  }
-
-  Future<void> _initialLoad() async {
-    final initial = widget.initialPath.trim().replaceAll(RegExp(r'^/+|/+
-    setState(() {
-      _path = path;
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final listing = await widget.api.listDirectory(path);
-      if (mounted) setState(() => _listing = listing);
-    } catch (error) {
-      if (mounted) setState(() => _error = error.toString());
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  String _parentPath() {
-    final separator = _path.lastIndexOf('/');
-    return separator < 0 ? '' : _path.substring(0, separator);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final folders = _listing?.items.where((item) => item.isDirectory).toList() ?? const <FileEntry>[];
-    return AlertDialog(
-      title: const Text('Choose server folder'),
-      content: SizedBox(
-        width: double.maxFinite,
-        height: 360,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                IconButton(
-                  tooltip: 'Parent folder',
-                  onPressed: _path.isEmpty || _loading ? null : () => _load(_parentPath()),
-                  icon: const Icon(Icons.arrow_upward_rounded),
-                ),
-                Expanded(
-                  child: Text(
-                    _path.isEmpty ? 'Internal storage' : _path,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ),
-              ],
-            ),
-            const Divider(height: 1),
-            Expanded(
-              child: _loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _error != null
-                      ? Center(child: Text(_error!, textAlign: TextAlign.center))
-                      : folders.isEmpty
-                          ? const Center(child: Text('No folders here'))
-                          : ListView.builder(
-                              itemCount: folders.length,
-                              itemBuilder: (context, index) {
-                                final folder = folders[index];
-                                final next = _path.isEmpty ? folder.name : '$_path/${folder.name}';
-                                return ListTile(
-                                  dense: true,
-                                  leading: const Icon(Icons.folder_outlined),
-                                  title: Text(folder.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-                                  trailing: const Icon(Icons.chevron_right_rounded),
-                                  onTap: () => _load(next),
-                                );
-                              },
-                            ),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: _loading || _error != null ? null : () => Navigator.pop(context, _path),
-          child: const Text('Select folder'),
-        ),
-      ],
-    );
-  }
-}
-
 class _NewDownloadSheet extends StatefulWidget {
-  const _NewDownloadSheet({required this.manager, required this.api});
+  const _NewDownloadSheet({required this.manager});
 
   final DownloadManagerService manager;
-  final ServerApi api;
 
   @override
   State<_NewDownloadSheet> createState() => _NewDownloadSheetState();
@@ -973,9 +516,7 @@ class _NewDownloadSheet extends StatefulWidget {
 
 class _NewDownloadSheetState extends State<_NewDownloadSheet> {
   final _urlController = TextEditingController();
-  final _serverDirectoryController = TextEditingController(text: 'Downloads/PocketLink');
   ResolvedDownload? _resolved;
-  String _destination = 'local';
   String? _directory;
   String? _error;
   bool _resolving = false;
@@ -1010,7 +551,7 @@ class _NewDownloadSheetState extends State<_NewDownloadSheet> {
   }
 
   Future<void> _resolve() async {
-    if (_resolving || _destination == 'server') return;
+    if (_resolving) return;
     setState(() {
       _resolving = true;
       _error = null;
@@ -1033,36 +574,15 @@ class _NewDownloadSheetState extends State<_NewDownloadSheet> {
     if (selected != null && mounted) setState(() => _directory = selected);
   }
 
-  Future<void> _chooseServerDirectory() async {
-    final selected = await showDialog<String>(
-      context: context,
-      builder: (_) => _ServerDirectoryPicker(
-        api: widget.api,
-        initialPath: _serverDirectoryController.text.trim(),
-      ),
-    );
-    if (selected != null && mounted) {
-      setState(() => _serverDirectoryController.text = selected);
-    }
-  }
-
   Future<void> _start() async {
     final resolved = _resolved;
-    if (_starting || (_destination == 'local' && resolved == null) ||
-        _urlController.text.trim().isEmpty) return;
+    if (resolved == null || _starting) return;
     setState(() => _starting = true);
     try {
-      if (_destination == 'server') {
-        await widget.api.enqueueServerDownload(
-          _urlController.text.trim(),
-          directory: _serverDirectoryController.text.trim(),
-        );
-      } else {
-        await widget.manager.enqueueUrl(
-          resolved!,
-          directoryPath: _directory,
-        );
-      }
+      await widget.manager.enqueueUrl(
+        resolved,
+        directoryPath: _directory,
+      );
       if (mounted) Navigator.of(context).pop();
     } catch (error) {
       if (mounted) setState(() => _error = error.toString());
@@ -1074,7 +594,6 @@ class _NewDownloadSheetState extends State<_NewDownloadSheet> {
   @override
   void dispose() {
     _urlController.dispose();
-    _serverDirectoryController.dispose();
     super.dispose();
   }
 
@@ -1110,34 +629,6 @@ class _NewDownloadSheetState extends State<_NewDownloadSheet> {
               const SizedBox(height: 18),
               Text('New download', style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 14),
-              Row(
-                children: [
-                  Expanded(
-                    child: ChoiceChip(
-                      label: const Text('Local'),
-                      selected: _destination == 'local',
-                      onSelected: (_) => setState(() {
-                        _destination = 'local';
-                        _resolved = null;
-                        _error = null;
-                      }),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: ChoiceChip(
-                      label: const Text('Server'),
-                      selected: _destination == 'server',
-                      onSelected: (_) => setState(() {
-                        _destination = 'server';
-                        _resolved = null;
-                        _error = null;
-                      }),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
               TextField(
                 controller: _urlController,
                 keyboardType: TextInputType.url,
@@ -1147,59 +638,27 @@ class _NewDownloadSheetState extends State<_NewDownloadSheet> {
                   hintText: 'https://example.com/file.zip',
                   border: OutlineInputBorder(),
                 ),
-                onSubmitted: (_) {
-                  if (_destination == 'local') {
-                    _resolve();
-                  } else {
-                    _start();
-                  }
-                },
+                onSubmitted: (_) => _resolve(),
                 onChanged: (_) => setState(() {
                   _resolved = null;
                   _error = null;
                 }),
               ),
               const SizedBox(height: 10),
-              if (_destination == 'local')
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton.icon(
-                    onPressed: _resolving ? null : _resolve,
-                    icon: _resolving
-                        ? const SizedBox.square(
-                            dimension: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.link_rounded),
-                    label: const Text('Resolve link'),
-                  ),
-                )
-              else
-                Padding(
-                  padding: const EdgeInsets.only(top: 10),
-                  child: Text(
-                    'PocketLink will fetch the URL directly on the host. The download continues if you close this screen.',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: _resolving ? null : _resolve,
+                  icon: _resolving
+                      ? const SizedBox.square(
+                          dimension: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.link_rounded),
+                  label: const Text('Resolve link'),
                 ),
-              if (_destination == 'server') ...[
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _serverDirectoryController,
-                  decoration: InputDecoration(
-                    labelText: 'Server destination folder',
-                    hintText: 'Downloads/PocketLink',
-                    helperText: 'Relative to shared storage. Default sorts into Videos, Music, Documents, Photos, Archives, APK or Others.',
-                    border: const OutlineInputBorder(),
-                    suffixIcon: IconButton(
-                      tooltip: 'Browse server folders',
-                      onPressed: _chooseServerDirectory,
-                      icon: const Icon(Icons.folder_open_rounded),
-                    ),
-                  ),
-                ),
-              ],
-              if (_destination == 'local' && _resolved != null) ...[
+              ),
+              if (_resolved != null) ...[
                 SmokedGlassSurface(
                   radius: BorderRadius.circular(16),
                   child: DefaultTextStyle.merge(
@@ -1262,481 +721,13 @@ class _NewDownloadSheetState extends State<_NewDownloadSheet> {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
-                  onPressed: _starting ||
-                          _urlController.text.trim().isEmpty ||
-                          (_destination == 'local' && _resolved == null)
-                      ? null
-                      : _start,
+                  onPressed: _resolved == null || _starting ? null : _start,
                   child: _starting
                       ? const SizedBox.square(
                           dimension: 18,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : Text(_destination == 'server' ? 'Download to server' : 'Start local download'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-String _formatBytes(int bytes) {
-  if (bytes < 1024) return '${bytes} B';
-  const units = ['KB', 'MB', 'GB', 'TB'];
-  var value = bytes / 1024;
-  var unit = 0;
-  while (value >= 1024 && unit < units.length - 1) {
-    value /= 1024;
-    unit++;
-  }
-  return '${value.toStringAsFixed(1)} ${units[unit]}';
-}
-
-String _formatSpeed(int bytesPerSecond) =>
-    '${_formatBytes(bytesPerSecond)}/s';
-
-IconData _fileIcon(String name) {
-  final extension = p.extension(name).toLowerCase();
-  if ({'.zip', '.7z', '.rar', '.tar', '.gz'}.contains(extension)) {
-    return Icons.folder_zip_outlined;
-  }
-  if ({'.jpg', '.jpeg', '.png', '.webp', '.gif', '.heic'}.contains(extension)) {
-    return Icons.image_outlined;
-  }
-  if ({'.mp4', '.mkv', '.mov', '.avi', '.webm'}.contains(extension)) {
-    return Icons.video_file_outlined;
-  }
-  if ({'.mp3', '.m4a', '.aac', '.flac', '.wav', '.ogg', '.opus'}.contains(extension)) {
-    return Icons.audio_file_outlined;
-  }
-  if ({'.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt'}.contains(extension)) {
-    return Icons.description_outlined;
-  }
-  return Icons.insert_drive_file_outlined;
-}
-), '');
-    if (initial.isNotEmpty) {
-      try {
-        final listing = await widget.api.listDirectory(initial);
-        if (mounted) {
-          setState(() {
-            _path = initial;
-            _listing = listing;
-            _loading = false;
-          });
-        }
-        return;
-      } catch (_) {
-        // The default folder may not exist until the first server download.
-      }
-    }
-    await _load('');
-  }
-
-  Future<void> _load(String path) async {
-    setState(() {
-      _path = path;
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final listing = await widget.api.listDirectory(path);
-      if (mounted) setState(() => _listing = listing);
-    } catch (error) {
-      if (mounted) setState(() => _error = error.toString());
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  String _parentPath() {
-    final separator = _path.lastIndexOf('/');
-    return separator < 0 ? '' : _path.substring(0, separator);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final folders = _listing?.items.where((item) => item.isDirectory).toList() ?? const <FileEntry>[];
-    return AlertDialog(
-      title: const Text('Choose server folder'),
-      content: SizedBox(
-        width: double.maxFinite,
-        height: 360,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                IconButton(
-                  tooltip: 'Parent folder',
-                  onPressed: _path.isEmpty || _loading ? null : () => _load(_parentPath()),
-                  icon: const Icon(Icons.arrow_upward_rounded),
-                ),
-                Expanded(
-                  child: Text(
-                    _path.isEmpty ? 'Internal storage' : _path,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ),
-              ],
-            ),
-            const Divider(height: 1),
-            Expanded(
-              child: _loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _error != null
-                      ? Center(child: Text(_error!, textAlign: TextAlign.center))
-                      : folders.isEmpty
-                          ? const Center(child: Text('No folders here'))
-                          : ListView.builder(
-                              itemCount: folders.length,
-                              itemBuilder: (context, index) {
-                                final folder = folders[index];
-                                final next = _path.isEmpty ? folder.name : '$_path/${folder.name}';
-                                return ListTile(
-                                  dense: true,
-                                  leading: const Icon(Icons.folder_outlined),
-                                  title: Text(folder.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-                                  trailing: const Icon(Icons.chevron_right_rounded),
-                                  onTap: () => _load(next),
-                                );
-                              },
-                            ),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: _loading || _error != null ? null : () => Navigator.pop(context, _path),
-          child: const Text('Select folder'),
-        ),
-      ],
-    );
-  }
-}
-
-class _NewDownloadSheet extends StatefulWidget {
-  const _NewDownloadSheet({required this.manager, required this.api});
-
-  final DownloadManagerService manager;
-  final ServerApi api;
-
-  @override
-  State<_NewDownloadSheet> createState() => _NewDownloadSheetState();
-}
-
-class _NewDownloadSheetState extends State<_NewDownloadSheet> {
-  final _urlController = TextEditingController();
-  final _serverDirectoryController = TextEditingController(text: 'Downloads/PocketLink');
-  ResolvedDownload? _resolved;
-  String _destination = 'local';
-  String? _directory;
-  String? _error;
-  bool _resolving = false;
-  bool _starting = false;
-
-  @override
-  void initState() {
-    super.initState();
-    unawaited(_loadClipboard());
-    unawaited(_loadDirectory());
-  }
-
-  Future<void> _loadClipboard() async {
-    try {
-      final data = await Clipboard.getData(Clipboard.kTextPlain);
-      final value = data?.text?.trim() ?? '';
-      final uri = Uri.tryParse(value);
-      if (mounted &&
-          _urlController.text.isEmpty &&
-          uri != null &&
-          const {'http', 'https'}.contains(uri.scheme)) {
-        _urlController.text = value;
-      }
-    } catch (_) {
-      // Clipboard access is optional.
-    }
-  }
-
-  Future<void> _loadDirectory() async {
-    final directory = await widget.manager.defaultDirectory();
-    if (mounted) setState(() => _directory = directory);
-  }
-
-  Future<void> _resolve() async {
-    if (_resolving || _destination == 'server') return;
-    setState(() {
-      _resolving = true;
-      _error = null;
-      _resolved = null;
-    });
-    try {
-      final result = await widget.manager.resolveUrl(_urlController.text);
-      if (mounted) setState(() => _resolved = result);
-    } catch (error) {
-      if (mounted) setState(() => _error = error.toString());
-    } finally {
-      if (mounted) setState(() => _resolving = false);
-    }
-  }
-
-  Future<void> _chooseDirectory() async {
-    final selected = await FilePicker.getDirectoryPath(
-      initialDirectory: _directory,
-    );
-    if (selected != null && mounted) setState(() => _directory = selected);
-  }
-
-  Future<void> _chooseServerDirectory() async {
-    final selected = await showDialog<String>(
-      context: context,
-      builder: (_) => _ServerDirectoryPicker(
-        api: widget.api,
-        initialPath: _serverDirectoryController.text.trim(),
-      ),
-    );
-    if (selected != null && mounted) {
-      setState(() => _serverDirectoryController.text = selected);
-    }
-  }
-
-  Future<void> _start() async {
-    final resolved = _resolved;
-    if (_starting || (_destination == 'local' && resolved == null) ||
-        _urlController.text.trim().isEmpty) return;
-    setState(() => _starting = true);
-    try {
-      if (_destination == 'server') {
-        await widget.api.enqueueServerDownload(
-          _urlController.text.trim(),
-          directory: _serverDirectoryController.text.trim(),
-        );
-      } else {
-        await widget.manager.enqueueUrl(
-          resolved!,
-          directoryPath: _directory,
-        );
-      }
-      if (mounted) Navigator.of(context).pop();
-    } catch (error) {
-      if (mounted) setState(() => _error = error.toString());
-    } finally {
-      if (mounted) setState(() => _starting = false);
-    }
-  }
-
-  @override
-  void dispose() {
-    _urlController.dispose();
-    _serverDirectoryController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return AnimatedPadding(
-      duration: const Duration(milliseconds: 180),
-      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-      child: SafeArea(
-        top: false,
-        child: Container(
-          decoration: BoxDecoration(
-            color: colors.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
-            border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.5)),
-          ),
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 22),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 38,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: colors.onSurface.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(99),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-              Text('New download', style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  Expanded(
-                    child: ChoiceChip(
-                      label: const Text('Local'),
-                      selected: _destination == 'local',
-                      onSelected: (_) => setState(() {
-                        _destination = 'local';
-                        _resolved = null;
-                        _error = null;
-                      }),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: ChoiceChip(
-                      label: const Text('Server'),
-                      selected: _destination == 'server',
-                      onSelected: (_) => setState(() {
-                        _destination = 'server';
-                        _resolved = null;
-                        _error = null;
-                      }),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: _urlController,
-                keyboardType: TextInputType.url,
-                textInputAction: TextInputAction.done,
-                decoration: const InputDecoration(
-                  labelText: 'HTTP or HTTPS URL',
-                  hintText: 'https://example.com/file.zip',
-                  border: OutlineInputBorder(),
-                ),
-                onSubmitted: (_) {
-                  if (_destination == 'local') {
-                    _resolve();
-                  } else {
-                    _start();
-                  }
-                },
-                onChanged: (_) => setState(() {
-                  _resolved = null;
-                  _error = null;
-                }),
-              ),
-              const SizedBox(height: 10),
-              if (_destination == 'local')
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton.icon(
-                    onPressed: _resolving ? null : _resolve,
-                    icon: _resolving
-                        ? const SizedBox.square(
-                            dimension: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.link_rounded),
-                    label: const Text('Resolve link'),
-                  ),
-                )
-              else
-                Padding(
-                  padding: const EdgeInsets.only(top: 10),
-                  child: Text(
-                    'PocketLink will fetch the URL directly on the host. The download continues if you close this screen.',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ),
-              if (_destination == 'server') ...[
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _serverDirectoryController,
-                  decoration: InputDecoration(
-                    labelText: 'Server destination folder',
-                    hintText: 'Downloads/PocketLink',
-                    helperText: 'Relative to shared storage. Default sorts into Videos, Music, Documents, Photos, Archives, APK or Others.',
-                    border: const OutlineInputBorder(),
-                    suffixIcon: IconButton(
-                      tooltip: 'Browse server folders',
-                      onPressed: _chooseServerDirectory,
-                      icon: const Icon(Icons.folder_open_rounded),
-                    ),
-                  ),
-                ),
-              ],
-              if (_destination == 'local' && _resolved != null) ...[
-                SmokedGlassSurface(
-                  radius: BorderRadius.circular(16),
-                  child: DefaultTextStyle.merge(
-                    style: const TextStyle(color: Colors.white),
-                    child: IconTheme.merge(
-                      data: const IconThemeData(color: Colors.white70),
-                      child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Row(
-                      children: [
-                        const Icon(Icons.insert_drive_file_outlined),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(_resolved!.fileName,
-                                  maxLines: 1, overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(fontWeight: FontWeight.w700)),
-                              const SizedBox(height: 3),
-                              Text(
-                                _resolved!.totalBytes == null
-                                    ? 'File size unavailable'
-                                    : _formatBytes(_resolved!.totalBytes!),
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                      ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.folder_outlined),
-                  title: const Text('Save location'),
-                  subtitle: Text(
-                    _directory ?? 'Loading download folder…',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  trailing: TextButton(
-                    onPressed: _chooseDirectory,
-                    child: const Text('Change'),
-                  ),
-                ),
-              ],
-              if (_error != null) ...[
-                const SizedBox(height: 8),
-                Text(_error!, style: TextStyle(color: colors.error)),
-              ],
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: _starting ||
-                          _urlController.text.trim().isEmpty ||
-                          (_destination == 'local' && _resolved == null)
-                      ? null
-                      : _start,
-                  child: _starting
-                      ? const SizedBox.square(
-                          dimension: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(_destination == 'server' ? 'Download to server' : 'Start local download'),
+                      : const Text('Start download'),
                 ),
               ),
             ],
