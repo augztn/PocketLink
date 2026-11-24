@@ -94,14 +94,30 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
   }
 
   void _syncBackHandler() {
-    widget.onBackHandlerChanged?.call(searchOpen
+    final handler = searchOpen
         ? () => _setSearchOpen(false)
-        : null);
+        : selected.isNotEmpty
+            ? _clearSelection
+            : null;
+    widget.onBackHandlerChanged?.call(handler);
   }
 
   void _setSearchOpen(bool open) {
     if (searchOpen == open) return;
     setState(() => searchOpen = open);
+    _syncBackHandler();
+  }
+
+  void _toggleSelection(_Photo photo) {
+    setState(() {
+      if (!selected.add(photo.id)) selected.remove(photo.id);
+    });
+    _syncBackHandler();
+  }
+
+  void _clearSelection() {
+    if (selected.isEmpty) return;
+    setState(selected.clear);
     _syncBackHandler();
   }
 
@@ -286,9 +302,9 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
       final p = items[i]; final isSelected = selected.contains(p.id);
       return GestureDetector(
         onTap: () => selected.isNotEmpty
-            ? setState(() { if (!selected.add(p.id)) selected.remove(p.id); })
+            ? _toggleSelection(p)
             : openViewer(items,i),
-        onLongPress: () => setState(() { if (!selected.add(p.id)) selected.remove(p.id); }),
+        onLongPress: () => _toggleSelection(p),
         child: Stack(fit: StackFit.expand, children: [
           image(p),
           if (isSelected) ColoredBox(color: Theme.of(context).colorScheme.primary.withValues(alpha: .35)),
