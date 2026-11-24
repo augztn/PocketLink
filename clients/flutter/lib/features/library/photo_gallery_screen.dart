@@ -94,12 +94,20 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
   }
 
   void _syncBackHandler() {
-    final handler = searchOpen
-        ? () => _setSearchOpen(false)
-        : selected.isNotEmpty
-            ? _clearSelection
-            : null;
+    final handler = _viewMenuOpen
+        ? () => _setViewMenuOpen(false)
+        : searchOpen
+            ? () => _setSearchOpen(false)
+            : selected.isNotEmpty
+                ? _clearSelection
+                : null;
     widget.onBackHandlerChanged?.call(handler);
+  }
+
+  void _setViewMenuOpen(bool open) {
+    if (_viewMenuOpen == open) return;
+    setState(() => _viewMenuOpen = open);
+    _syncBackHandler();
   }
 
   void _setSearchOpen(bool open) {
@@ -661,7 +669,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
               else
                 Expanded(child: Align(alignment: Alignment.centerLeft, child: TitleDropdownPopover<int>(
 tooltip: 'Choose photo view',
-                  onOpenChanged: (open) => setState(() => _viewMenuOpen = open),
+                  onOpenChanged: _setViewMenuOpen,
                   items: [
                     for (var index = 0; index < 3; index++)
                       SmokedGlassPopoverMenuItem(
