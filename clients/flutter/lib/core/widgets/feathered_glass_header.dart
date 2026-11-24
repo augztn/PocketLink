@@ -148,8 +148,7 @@ class _FeatheredGlassHeaderBackgroundState
   }
 }
 
-/// Reports a header's known geometry
-after layout, never during build.
+/// Reports a header's known geometry after layout, never during build.
 class _HeaderHeightReporter extends StatefulWidget {
   const _HeaderHeightReporter({
     required this.height,
