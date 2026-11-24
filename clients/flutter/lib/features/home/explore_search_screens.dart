@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../core/logging/app_logger.dart';
 import '../../core/navigation/pocketlink_navigation.dart';
+import '../media/now_playing_overlay_controller.dart';
 
 import '../../core/network/server_api.dart';
 import '../../core/settings/app_settings.dart';
@@ -81,33 +82,39 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return NavigatorPopHandler<void>(
-      enabled: PocketLinkNavigation.shouldHandleNestedBack(
-        isActive: widget.isActive,
-        canPop: _navigatorKey.currentState?.canPop() ?? false,
-      ),
-      onPopWithResult: (_) => _navigatorKey.currentState?.maybePop(),
-      child: PocketLinkNavigationScope(
-        onHome: () {
-          _navigatorKey.currentState?.popUntil((route) => route.isFirst);
-          widget.onBackAtRoot?.call();
-        },
-        child: Navigator(
-        key: _navigatorKey,
-        observers: [_observer],
-        onGenerateInitialRoutes: (navigator, initialRoute) => [
-          MaterialPageRoute<void>(
-            settings: const RouteSettings(name: '/'),
-            builder: (_) => _ExploreGrid(
-              api: widget.api,
-              onHome: widget.onBackAtRoot,
-              onOpen: _open,
-              onOpenFiles: widget.onOpenFiles,
-              onOpenLibrary: widget.onOpenLibrary,
-            ),
+    final nowPlayingProgress =
+        NowPlayingOverlayController.expandProgress ??
+            const AlwaysStoppedAnimation<double>(0);
+    return AnimatedBuilder(
+      animation: nowPlayingProgress,
+      builder: (context, _) => NavigatorPopHandler<void>(
+        enabled: PocketLinkNavigation.shouldHandleNestedBack(
+          isActive: widget.isActive && nowPlayingProgress.value <= 0.5,
+          canPop: _navigatorKey.currentState?.canPop() ?? false,
+        ),
+        onPopWithResult: (_) => _navigatorKey.currentState?.maybePop(),
+        child: PocketLinkNavigationScope(
+          onHome: () {
+            _navigatorKey.currentState?.popUntil((route) => route.isFirst);
+            widget.onBackAtRoot?.call();
+          },
+          child: Navigator(
+            key: _navigatorKey,
+            observers: [_observer],
+            onGenerateInitialRoutes: (navigator, initialRoute) => [
+              MaterialPageRoute<void>(
+                settings: const RouteSettings(name: '/'),
+                builder: (_) => _ExploreGrid(
+                  api: widget.api,
+                  onHome: widget.onBackAtRoot,
+                  onOpen: _open,
+                  onOpenFiles: widget.onOpenFiles,
+                  onOpenLibrary: widget.onOpenLibrary,
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
       ),
     );
   }
