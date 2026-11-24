@@ -72,6 +72,39 @@ void main() {
     expect(section.items.single.stripeColor, 4281545523);
   });
 
+  test('browseMood forwards both browseId and params to Android bridge', () async {
+    SharedPreferences.setMockInitialValues({});
+    await AppSettings.instance.reloadPreferences();
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      expect(call.method, 'discoverMoodBrowse');
+      expect(call.arguments, {
+        'browseId': 'FEmusic_moods_and_genres_category',
+        'params': 'category-params',
+        'limit': 30,
+        'region': AppSettings.instance.discoverRegion,
+      });
+      return [
+        {
+          'videoId': 'abcdefghijk',
+          'title': 'Focus track',
+          'artist': 'Test artist',
+        },
+      ];
+    });
+
+    final tracks = await DiscoverService().browseMood(
+      const DiscoverMood(
+        title: 'Focus',
+        browseId: 'FEmusic_moods_and_genres_category',
+        params: 'category-params',
+      ),
+    );
+
+    expect(tracks, hasLength(1));
+    expect(tracks.single.title, 'Focus track');
+    messenger.setMockMethodCallHandler(channel, null);
+  });
+
   group('DiscoverService.parseLrc', () {
     test('parses fractional timestamps and sorts lines', () {
       final lines = DiscoverService.parseLrc('[00:12.34]Second\n[00:02.1]First');
