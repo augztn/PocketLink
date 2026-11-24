@@ -36,6 +36,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   static const Duration _trackPopupDuration = Duration(milliseconds: 2300);
 
   bool _openingNowPlaying = false;
+  bool _miniPlayerGestureActive = false;
   bool _nowPlayingOpen = false;
   final ValueNotifier<bool> _isNowPlayingDragging = ValueNotifier<bool>(false);
   bool _closingNowPlaying = false;
@@ -157,6 +158,11 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
         PocketLinkNavigation.observer.isStandaloneDiscoverFlow;
     return player.shouldShowMiniPlayer &&
         (standaloneDiscover || AppSettings.instance.showMiniPlayer);
+  }
+
+  void _onMiniPlayerDragStart() {
+    if (_miniPlayerGestureActive || !mounted) return;
+    setState(() => _miniPlayerGestureActive = true);
   }
 
   void _prepareNowPlaying() {
@@ -316,6 +322,9 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   }
 
   void _endMiniPlayerDrag(double velocity) {
+    if (_miniPlayerGestureActive && mounted) {
+      setState(() => _miniPlayerGestureActive = false);
+    }
     if (!_nowPlayingOpen) {
       if (!_player.player.state.playing && velocity > 300) {
         _player.dismissMiniPlayer();
@@ -473,7 +482,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
                   bottom: bottomInset +
                       (onDashboard && !compactDiscoverControls ? _homeDockHeight : 10),
                   child: IgnorePointer(
-                    ignoring: !visible,
+                    ignoring: !visible && !_miniPlayerGestureActive,
                     child: AnimatedSlide(
                       offset: Offset.zero,
                       duration: reduceMotion || drawerOpen
@@ -492,6 +501,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
                         surfaceIntensity: visible ? 1.0 : 0.0,
                         onOpen: _openNowPlaying,
                         onDismiss: player.dismissMiniPlayer,
+                        onExpandDragStart: _onMiniPlayerDragStart,
                         onExpandDragUpdate: _updateMiniPlayerDrag,
                         onExpandDragEnd: _endMiniPlayerDrag,
                       ),
