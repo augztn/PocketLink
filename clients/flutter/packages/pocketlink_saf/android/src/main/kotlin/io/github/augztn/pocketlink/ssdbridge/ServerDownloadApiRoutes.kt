@@ -13,15 +13,20 @@ internal class ServerDownloadApiRoutes(
 ) {
     fun serve(session: NanoHTTPD.IHTTPSession): NanoHTTPD.Response? {
         if (!session.uri.startsWith("/api/downloads")) return null
-        manager.start()
         if (session.uri == "/api/downloads" && session.method == NanoHTTPD.Method.GET) {
+            manager.start()
             return json(manager.list())
         }
         if (session.uri == "/api/downloads" && session.method == NanoHTTPD.Method.POST) {
-            val body = parseJsonBody(session) ?: return bad("A JSON download request is required")
+            val body = try {
+                parseJsonBody(session)
+            } catch (_: Exception) {
+                return bad("Could not read the JSON download request")
+            } ?: return bad("A JSON download request is required")
             val url = body.optString("url").trim()
             if (url.isBlank()) return bad("A download URL is required")
             return try {
+                manager.start()
                 json(manager.enqueue(
                     url,
                     body.optString("directory").takeIf { it.isNotBlank() },
@@ -36,6 +41,7 @@ internal class ServerDownloadApiRoutes(
 
         val segments = session.uri.removePrefix("/api/downloads/").split('/')
         if (segments.size !in 1..2 || segments[0].isBlank()) return notFound("Download job not found")
+        manager.start()
         val id = segments[0]
         if (segments.size == 1 && session.method == NanoHTTPD.Method.DELETE) {
             val deleteFile = session.parameters["delete_file"]?.firstOrNull()?.toBooleanStrictOrNull() ?: false
