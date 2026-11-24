@@ -9,7 +9,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/network/server_api.dart';
 
-import 'playlist_import_service.dart';
+import '../playlist_import_service.dart';
 
 class ImportedPlaylistStore {
   static const folderPath = 'PocketLink/Discover/Playlists';
@@ -207,15 +207,12 @@ class _ImportedPlaylistManagerScreenState extends State<ImportedPlaylistManagerS
   Future<void> _importFile() async {
     if (_working) return;
     try {
-      final result = await file_picker.FilePicker.pickFiles(
+      final file = await file_picker.FilePicker.pickFile(
         type: file_picker.FileType.custom,
         allowedExtensions: const ['csv', 'm3u', 'm3u8', 'json'],
-        withData: true,
       );
-      if (result == null || result.files.isEmpty) return;
-      final file = result.files.single;
-      final bytes = file.bytes;
-      if (bytes == null) throw const FormatException('Could not read the selected playlist file.');
+      if (file == null) return;
+      final bytes = await file.readAsBytes();
       final text = utf8.decode(bytes, allowMalformed: false);
       final extension = file.extension?.toLowerCase() ?? '';
       final fallbackName = file.name.replaceFirst(RegExp(r'\.[^.]+$'), '');
