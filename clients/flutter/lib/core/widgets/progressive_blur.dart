@@ -59,7 +59,7 @@ class ProgressiveBlur extends StatelessWidget {
               right: 0,
               height: bandHeight + 1,
               child: ClipRect(
-                child: BackdropFilter(
+                child: BackdropFilter.grouped(
                   filter: ui.ImageFilter.blur(
                     sigmaX: sigma,
                     sigmaY: sigma,
@@ -71,9 +71,13 @@ class ProgressiveBlur extends StatelessWidget {
           );
         }
 
-        return Stack(
-          fit: StackFit.expand,
-          children: bands,
+        // All bands sample the same backdrop. Grouping lets the engine share
+        // the backdrop input instead of capturing it independently per band.
+        return BackdropGroup(
+          child: Stack(
+            fit: StackFit.expand,
+            children: bands,
+          ),
         );
       },
     );
