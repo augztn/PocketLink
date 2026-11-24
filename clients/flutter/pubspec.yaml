@@ -38,5 +38,3 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  shaders:
-    - shaders/progressive_blur.frag
