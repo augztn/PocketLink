@@ -128,7 +128,11 @@ void main() {
 
     PocketLinkNavigation.discoverSearchVisible.value = false;
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('navigation-dock-tabs-capsule')), findsOneWidget);
+    // The Music button separates the left and right navigation tab groups.
+    expect(find.byKey(const ValueKey('navigation-dock-tabs-capsule')), findsNWidgets(2));
+    expect(find.text('Home'), findsOneWidget);
+    expect(find.text('Explore'), findsOneWidget);
+    expect(find.text('Files'), findsOneWidget);
   });
 
   testWidgets('expanded shortcuts dismiss from Music button without an X icon', (tester) async {
