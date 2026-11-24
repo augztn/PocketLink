@@ -129,7 +129,7 @@ abstract class _Provider implements LyricsProvider {
   _Provider(this.dio);
   final Dio dio;
   Future<dynamic> json(String url, [Map<String, dynamic>? params]) async => (await dio.get<dynamic>(url, queryParameters: params)).data;
-  Future<String?> text(String url, [Map<String, dynamic>? params]) async => (await dio.get<String>(url, queryParameters: params)).data;
+  Future<String?> text(String url, [Map<String, dynamic>? params]) async => (await dio.get<String>(url, queryParameters: params, options: Options(responseType: ResponseType.plain))).data;
   LyricsDocument? lrc(String? raw, String id, String name) {
     if (raw == null) return null;
     final out = LyricsRepository.parseLrc(raw);
@@ -144,7 +144,7 @@ abstract class _Provider implements LyricsProvider {
 class _LocalProvider extends _Provider {
   _LocalProvider():super(Dio());
   @override String get id=>'local';
-  @override String get name=>'Embedded / Local LRC';
+  @override String get name=>'Local LRC (sidecar)';
   @override Future<LyricsDocument?> fetch(LyricsTrackQuery q) async {
     final path=q.track.localPath ?? q.track.path, dot=path.lastIndexOf('.');
     final side=(dot>path.lastIndexOf('/')?path.substring(0,dot):path)+'.lrc';
