@@ -63,6 +63,30 @@ void main() {
     );
   });
 
+  test('nested Back callbacks never dispatch from inactive tabs or player', () {
+    expect(
+      PocketLinkNavigation.shouldDispatchNestedBack(
+        isActive: true,
+        nowPlayingProgress: 0,
+      ),
+      isTrue,
+    );
+    expect(
+      PocketLinkNavigation.shouldDispatchNestedBack(
+        isActive: false,
+        nowPlayingProgress: 0,
+      ),
+      isFalse,
+    );
+    expect(
+      PocketLinkNavigation.shouldDispatchNestedBack(
+        isActive: true,
+        nowPlayingProgress: 0.01,
+      ),
+      isFalse,
+    );
+  });
+
   test('applies vertical morph drags one-to-one and clamps progress', () {
     expect(
       PocketLinkNavigation.updateMorphProgress(
