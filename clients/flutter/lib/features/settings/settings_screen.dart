@@ -17,6 +17,7 @@ import 'now_playing_settings_screen.dart';
 import 'video_player_settings_screen.dart';
 import '../about/about_screen.dart';
 import '../downloads/download_manager_service.dart';
+import '../media/discover/imported_playlist_manager_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({this.onOpenSavedServers, this.category, super.key});
@@ -34,6 +35,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _exportingLogs = false;
   bool _exportingSettings = false;
   bool _importingSettings = false;
+
+  Future<void> _openDiscoverPlaylists() async {
+    await Navigator.of(context).push<void>(MaterialPageRoute<void>(
+      builder: (_) => const ImportedPlaylistManagerScreen(),
+    ));
+  }
 
   Future<void> _chooseDownloadDirectory() async {
     try {
@@ -722,6 +729,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           }
                         },
                       ),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.playlist_add_rounded),
+                      title: const Text('Import / export playlists'),
+                      subtitle: const Text('Import YouTube Music, Spotify, CSV or M3U playlists and export your Discover collection'),
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      onTap: _openDiscoverPlaylists,
                     ),
                     const Divider(height: 1),
                     ListTile(
