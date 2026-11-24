@@ -140,6 +140,40 @@ void main() {
       expect(match?.name, 'Dreams.flac');
     });
 
+    test('finds artist from an ancestor when the immediate folder is an album', () {
+      final files = [
+        IndexedFile(
+          volume: 'internal',
+          path: 'Music/Fleetwood Mac/Rumours/Dreams.flac',
+          name: 'Dreams.flac',
+          type: 'file',
+          size: 12000000,
+          modified: '',
+          mime: 'audio/flac',
+          category: 'music',
+        ),
+      ];
+      expect(DiscoverService.findLocalLosslessMatch(track, files)?.path,
+          'Music/Fleetwood Mac/Rumours/Dreams.flac');
+    });
+
+    test('matches artist-title filenames outside an artist folder', () {
+      final files = [
+        IndexedFile(
+          volume: 'internal',
+          path: 'Music/Fleetwood Mac - Dreams.flac',
+          name: 'Fleetwood Mac - Dreams.flac',
+          type: 'file',
+          size: 12000000,
+          modified: '',
+          mime: 'audio/flac',
+          category: 'music',
+        ),
+      ];
+      expect(DiscoverService.findLocalLosslessMatch(track, files)?.name,
+          'Fleetwood Mac - Dreams.flac');
+    });
+
     test('matches Unicode regional-language titles without ASCII loss', () {
       final regionalTrack = DiscoverTrack(
         videoId: 'regional12345',
