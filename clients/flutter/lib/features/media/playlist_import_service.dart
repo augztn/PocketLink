@@ -172,7 +172,9 @@ class PlaylistImportService {
     s = s.replaceAll(RegExp(r'\s*[-–—]\s*(official|audio|video|lyrics?|visualizer)\b.*
   static bool isSameTrack(ImportedTrack a, ImportedTrack b) {
     final at = normalizeTrackText(a.title), bt = normalizeTrackText(b.title), aa = normalizeTrackText(a.artist), ba = normalizeTrackText(b.artist);
-    return at.isNotEmpty && at == bt && (aa.isEmpty || ba.isEmpty || aa == ba);
+    final artistMatches = aa.isEmpty || ba.isEmpty || aa == ba ||
+        aa.startsWith('$ba ') || ba.startsWith('$aa ');
+    return at.isNotEmpty && at == bt && artistMatches;
   }
 
   static Future<List<PlaylistTrackMatch>> matchTracks({required List<ImportedTrack> tracks, required Future<PlaylistTrackMatch?> Function(ImportedTrack) findLocal, required Future<PlaylistTrackMatch?> Function(ImportedTrack) findOnline, required bool Function() isCancelled, required void Function(PlaylistImportProgress) onProgress, int maxConcurrency = 3}) async {
@@ -285,7 +287,7 @@ class PlaylistImportService {
   static String _jsonString(String s) { try { return jsonDecode('"$s"') as String; } catch (_) { return s; } }
 }
 , caseSensitive: false), ' ');
-    s = s.replaceAll('&amp;', '&').replaceAll('&', ' and ').replaceAll(RegExp(r'[^a-z0-9]+'), ' ');
+    s = s.replaceAll('&amp;', '&').replaceAll('&', ' and ').replaceAll(RegExp(r'[^\p{L}\p{N}\s]+', unicode: true), ' ');
     return s.trim().replaceAll(RegExp(r'\s+'), ' ');
   }
   static bool isSameTrack(ImportedTrack a, ImportedTrack b) {
