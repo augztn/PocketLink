@@ -4,17 +4,22 @@ import 'package:material_ui/material_ui.dart';
 
 import '../settings/app_settings.dart';
 import 'pocketlink_scaffold.dart';
+import 'progressive_blur.dart';
 
 /// Shared top-edge blur and legibility surface for edge-to-edge screens.
 class FeatheredGlassHeaderBackground extends StatelessWidget {
   const FeatheredGlassHeaderBackground({
     this.darkTint,
     this.contentHeight = kToolbarHeight,
+    this.strongestAtBottom = false,
     super.key,
   });
 
   final List<Color>? darkTint;
   final double contentHeight;
+
+  /// Reverses the progressive blur direction for bottom-edge overlays.
+  final bool strongestAtBottom;
 
   @override
   Widget build(BuildContext context) {
@@ -31,19 +36,15 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
             settings.progressiveBlurStrength > 0;
         final blurScale = settings.progressiveBlurStrength / 55;
         final headerHeight = media.padding.top + contentHeight + 16;
-        final statusBlurHeight = media.padding.top + 12;
-
-        final tint = isDark
-            ? (darkTint ?? const [
-                Color(0xB8000000),
-                Color(0x40000000),
-                Colors.transparent,
-              ])
-            : const [
-                Color(0xCCFFFFFF),
-                Color(0x55FFFFFF),
-                Colors.transparent,
-              ];
+        final scrimColor = isDark ? Colors.black : Colors.white;
+        final progressiveScrim = [
+          scrimColor.withValues(alpha: 0.92),
+          scrimColor.withValues(alpha: 0.78),
+          scrimColor.withValues(alpha: 0.48),
+          scrimColor.withValues(alpha: 0.16),
+          scrimColor.withValues(alpha: 0),
+        ];
+        final blurSigma = 24 * blurScale;
 
         return _HeaderHeightReporter(
           height: headerHeight,
@@ -55,59 +56,27 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
               fit: StackFit.expand,
               children: [
                 if (useProgressiveBlur) ...[
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: statusBlurHeight,
-                    child: ClipRect(
-                      child: ShaderMask(
-                        blendMode: BlendMode.dstIn,
-                        shaderCallback: (bounds) => const LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.white,
-                            Colors.white,
-                            Colors.transparent,
-                          ],
-                          stops: [0.0, 0.68, 1.0],
-                        ).createShader(bounds),
-                        child: BackdropFilter(
-                          filter: ui.ImageFilter.blur(sigmaX: 24 * blurScale, sigmaY: 24 * blurScale),
-                          child: const ColoredBox(color: Colors.transparent),
-                        ),
-                      ),
+                  Positioned.fill(
+                    child: ProgressiveBlur(
+                      maxSigma: blurSigma,
+                      steps: 14,
+                      exponent: 1.6,
+                      strongestAtBottom: strongestAtBottom,
                     ),
                   ),
                   Positioned.fill(
-                    child: ClipRect(
-                      child: ShaderMask(
-                        blendMode: BlendMode.dstIn,
-                        shaderCallback: (bounds) => const LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.white,
-                            Colors.white,
-                            Colors.transparent,
-                          ],
-                          stops: [0.0, 0.55, 1.0],
-                        ).createShader(bounds),
-                        child: BackdropFilter(
-                          filter: ui.ImageFilter.blur(sigmaX: 10 * blurScale, sigmaY: 10 * blurScale),
-                          child: const ColoredBox(color: Colors.transparent),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: strongestAtBottom
+                              ? Alignment.bottomCenter
+                              : Alignment.topCenter,
+                          end: strongestAtBottom
+                              ? Alignment.topCenter
+                              : Alignment.bottomCenter,
+                          colors: progressiveScrim,
+                          stops: const [0, 0.16, 0.38, 0.68, 1],
                         ),
-                      ),
-                    ),
-                  ),
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: tint,
-                        stops: const [0.0, 0.48, 1.0],
                       ),
                     ),
                   ),
@@ -130,9 +99,7 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
                             : null,
                       ),
                     ),
-                  ),
-              ],
-            ),
+                  ),,
           ),
         ),
         );
