@@ -253,7 +253,7 @@ class DiscoverService {
           .toList();
 
       final filenameParts = basename
-          .split(RegExp(r'\s+[-–—]\\s+'))
+          .split(RegExp(r'\s+[-–—]\s+'))
           .map((part) => part.trim())
           .where((part) => part.isNotEmpty)
           .toList();
