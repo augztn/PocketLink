@@ -1372,19 +1372,21 @@ class _MoodsAndMomentsScreenState extends State<_MoodsAndMomentsScreen> {
 
   Future<void> _openMood(DiscoverMood mood) async {
     if (_searching) return;
-    setState(() => _searching = true);
-    try {
-      final tracks = await widget.service.browseMood(mood);
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      widget.onOpenTracks(mood.title, tracks);
-    } catch (error) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not load ${mood.title}: $error')),
-      );
-    } finally {
-      if (mounted) setState(() => _searching = false);
-    }
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => _DiscoverCategoryScreen(
+          mood: mood,
+          service: widget.service,
+          onPlay: (track, queue) => widget.onOpenTracks(mood.title, queue),
+          onTrackSelected: (track, queue) {
+            // The category destination owns its loading/results state. Playback
+            // is delegated to the parent Discover screen after it receives the
+            // selected queue.
+            widget.onOpenTracks(mood.title, queue);
+          },
+        ),
+      ),
+    );
   }
 
   @override
@@ -1489,6 +1491,234 @@ class _MoodsAndMomentsScreenState extends State<_MoodsAndMomentsScreen> {
             child: SizedBox(
               height: LayoutInsetsScope.of(context).bottomClearance + 24,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DiscoverCategoryScreen extends StatefulWidget {
+  const _DiscoverCategoryScreen({
+    required this.mood,
+    required this.service,
+    required this.onPlay,
+    required this.onTrackSelected,
+  });
+
+  final DiscoverMood mood;
+  final DiscoverService service;
+  final void Function(DiscoverTrack track, List<DiscoverTrack> queue) onPlay;
+  final void Function(DiscoverTrack track, List<DiscoverTrack> queue) onTrackSelected;
+
+  @override
+  State<_DiscoverCategoryScreen> createState() => _DiscoverCategoryScreenState();
+}
+
+class _DiscoverCategoryScreenState extends State<_DiscoverCategoryScreen> {
+  List<DiscoverTrack> _tracks = const [];
+  bool _loading = true;
+  bool _usedSearchFallback = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  String get _searchQuery {
+    final title = widget.mood.title.trim();
+    final musicSuffix = RegExp(r'\\b(music|songs|playlist|playlists)\\b', caseSensitive: false);
+    return musicSuffix.hasMatch(title) ? title : '$title music';
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+      _tracks = const [];
+      _usedSearchFallback = false;
+    });
+    try {
+      final mood = widget.mood;
+      final hasBrowseData = mood.browseId.trim().isNotEmpty &&
+          mood.params?.trim().isNotEmpty == true;
+      List<DiscoverTrack> tracks = const [];
+      if (hasBrowseData) {
+        try {
+          tracks = await widget.service.browseMood(mood);
+        } catch (_) {
+          // Fall through to a title search when the undocumented browse
+          // endpoint rejects this category's browse payload.
+        }
+      }
+      if (tracks.isEmpty) {
+        _usedSearchFallback = true;
+        tracks = await widget.service.search(_searchQuery, limit: 30);
+      }
+      if (!mounted) return;
+      setState(() {
+        _tracks = tracks;
+        if (tracks.isEmpty) {
+          _error = 'No results are available for ${widget.mood.title} right now.';
+        }
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Could not load ${widget.mood.title}. Check your connection and retry.';
+      });
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final tint = widget.mood.stripeColor == 0
+        ? theme.colorScheme.primary
+        : Color(widget.mood.stripeColor);
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: PocketLinkAppBar(
+        feathered: true,
+        title: Text(widget.mood.title),
+      ),
+      body: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                20,
+                MediaQuery.paddingOf(context).top + kToolbarHeight + 18,
+                20,
+                12,
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 4,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: tint,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(widget.mood.title,
+                          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+                        Text(
+                          _usedSearchFallback ? 'Discover search results' : 'YouTube Music category',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_loading)
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) => Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 54,
+                        height: 54,
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(height: 12, width: 180,
+                              decoration: BoxDecoration(color: theme.colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(6))),
+                            const SizedBox(height: 8),
+                            Container(height: 9, width: 110,
+                              decoration: BoxDecoration(color: theme.colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(6))),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                childCount: 7,
+              ),
+            )
+          else if (_error != null)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(28),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.music_off_rounded, size: 38),
+                      const SizedBox(height: 12),
+                      Text(_error!, textAlign: TextAlign.center),
+                      const SizedBox(height: 14),
+                      FilledButton.icon(
+                        onPressed: _load,
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )
+          else
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final track = _tracks[index];
+                  return ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 3),
+                    leading: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: SizedBox.square(
+                        dimension: 54,
+                        child: track.thumbnailUrl.isEmpty
+                            ? ColoredBox(
+                                color: theme.colorScheme.surfaceContainerHighest,
+                                child: const Icon(Icons.music_note_rounded),
+                              )
+                            : Image.network(
+                                track.thumbnailUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => ColoredBox(
+                                  color: theme.colorScheme.surfaceContainerHighest,
+                                  child: const Icon(Icons.music_note_rounded),
+                                ),
+                              ),
+                      ),
+                    ),
+                    title: Text(track.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    subtitle: Text(track.artist, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    onTap: () => widget.onPlay(track, _tracks),
+                  );
+                },
+                childCount: _tracks.length,
+              ),
+            ),
+          SliverToBoxAdapter(
+            child: SizedBox(height: LayoutInsetsScope.of(context).bottomClearance + 24),
           ),
         ],
       ),
