@@ -488,7 +488,7 @@ class _DownloadTaskCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        status,
+                        'LOCAL · ' + status,
                         style: TextStyle(
                           color: failed
                               ? const Color(0xFFFF7B86)
@@ -913,13 +913,16 @@ class _NewDownloadSheetState extends State<_NewDownloadSheet> {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
-                  onPressed: _resolved == null || _starting ? null : _start,
+                  onPressed: _starting || _urlController.text.trim().isEmpty ||
+                          (_destination == 'local' && _resolved == null)
+                      ? null
+                      : _start,
                   child: _starting
                       ? const SizedBox.square(
                           dimension: 18,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('Start download'),
+                      : Text(_destination == 'server' ? 'Download to server' : 'Start local download'),
                 ),
               ),
             ],
