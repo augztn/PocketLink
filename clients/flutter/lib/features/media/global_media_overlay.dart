@@ -30,7 +30,7 @@ class GlobalMediaOverlay extends StatefulWidget {
 }
 
 class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
-    with TickerProviderStateMixin, WidgetsBindingObserver {
+    with TickerProviderStateMixin {
   static const double _miniPlayerHeight = 62;
   static const double _homeDockHeight = 82;
   static const Duration _trackPopupDuration = Duration(milliseconds: 2300);
@@ -70,9 +70,6 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
       progress: _nowPlayingController,
       collapseHandler: _closeNowPlaying,
     );
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) WidgetsBinding.instance.addObserver(this);
-    });
     _player.addListener(_onPlayerChanged);
   }
 
@@ -80,7 +77,6 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   void dispose() {
     _player.removeListener(_onPlayerChanged);
     _trackPopupTimer?.cancel();
-    WidgetsBinding.instance.removeObserver(this);
     NowPlayingOverlayController.unregister();
     _nowPlayingRoute = null;
     _nowPlayingController.stop();
@@ -378,20 +374,6 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
         velocity: -velocity / height,
       ));
     }
-  }
-
-  @override
-  Future<bool> didPopRoute() async {
-    if (!_nowPlayingOpen ||
-        PocketLinkNavigation.observer.isModalRouteOnTop ||
-        !PocketLinkNavigation.observer.isNowPlayingVisible ||
-        !PocketLinkNavigation.shouldCollapseNowPlayingOnBack(
-          progress: _nowPlayingController.value,
-        )) {
-      return false;
-    }
-    await _closeNowPlaying();
-    return true;
   }
 
   @override
