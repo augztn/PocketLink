@@ -99,6 +99,7 @@ class BridgeService : Service() {
                     it.start()
                     activeApiServer = it
                     it.ensureMediaIndexStarted()
+                    it.ensureServerDownloadsStarted()
                     NativeDiagnostics.record(
                         level = "INFO",
                         category = "service",
@@ -174,6 +175,7 @@ class BridgeService : Service() {
 
     private fun stopServers() {
         try { apiServer?.stop() } catch (_: Exception) { }
+        try { apiServer?.closeServerDownloads() } catch (_: Exception) { }
         try { apiServer?.closeMediaIndex() } catch (_: Exception) { }
         try { bridgeServer?.stop() } catch (_: Exception) { }
         apiServer?.let { if (activeApiServer === it) activeApiServer = null }
