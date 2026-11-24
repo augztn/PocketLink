@@ -14,7 +14,7 @@ abstract final class DiscoverThumbnailCache {
   /// Resizes Google-hosted YouTube Music artwork when its URL carries a
   /// size suffix; other providers keep their original URL unchanged.
   static String urlForSize(String url, int size) => url.replaceFirst(
-        RegExp(r'=w\\d+-h\\d+(?:-[^?&]*)?(?=$|[?&])'),
+        RegExp(r'=w\d+-h\d+(?:-[^?&]*)?(?=$|[?&])'),
         '=w$size-h$size',
       );
 
