@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
+import '../../core/widgets/pocketlink_skeleton.dart';
 import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/pocketlink_file_icon.dart';
 import '../../core/widgets/smoked_glass_popover_menu.dart';
@@ -902,7 +903,19 @@ tooltip: 'Choose storage location',
                         ),
                       )
                     : _loading && _listing == null
-                        ? const SizedBox.shrink()
+                        ? (_gridView
+                            ? PocketLinkSkeleton.fileGrid(
+                                padding: EdgeInsets.fromLTRB(
+                                  16, topInset, 16,
+                                  LayoutInsetsScope.of(context).bottomClearance,
+                                ),
+                              )
+                            : PocketLinkSkeleton.fileList(
+                                padding: EdgeInsets.fromLTRB(
+                                  16, topInset, 16,
+                                  LayoutInsetsScope.of(context).bottomClearance,
+                                ),
+                              ))
                         : items.isEmpty
                             ? emptyList(allItems.isEmpty ? 'This folder is empty' : 'No matching files')
                             : _gridView
