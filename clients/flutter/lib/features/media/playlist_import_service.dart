@@ -9,9 +9,37 @@ class ImportedTrack {
   factory ImportedTrack.fromJson(Map<String, dynamic> json) => ImportedTrack(title: json['title']?.toString() ?? '', artist: json['artist']?.toString() ?? '', album: json['album']?.toString() ?? '', isrc: json['isrc']?.toString(), sourcePath: json['sourcePath']?.toString(), videoId: json['videoId']?.toString());
 }
 class ImportedPlaylist {
-  const ImportedPlaylist({required this.name, required this.tracks});
+  const ImportedPlaylist({
+    required this.name,
+    required this.tracks,
+    this.provider,
+    this.sourceUrl,
+  });
   final String name;
   final List<ImportedTrack> tracks;
+  final String? provider;
+  final String? sourceUrl;
+
+  Map<String, dynamic> toJson() => {
+    'name': name,
+    'tracks': tracks.map((track) => track.toJson()).toList(),
+    if (provider != null) 'provider': provider,
+    if (sourceUrl != null) 'sourceUrl': sourceUrl,
+  };
+
+  factory ImportedPlaylist.fromJson(Map<String, dynamic> json) {
+    final rawTracks = json['tracks'];
+    return ImportedPlaylist(
+      name: json['name']?.toString() ?? '',
+      tracks: rawTracks is List
+          ? rawTracks.whereType<Map>().map((track) => ImportedTrack.fromJson(
+              track.map((key, value) => MapEntry(key.toString(), value)),
+            )).where((track) => track.title.trim().isNotEmpty).toList(growable: false)
+          : const [],
+      provider: json['provider']?.toString(),
+      sourceUrl: json['sourceUrl']?.toString(),
+    );
+  }
 }
 enum PlaylistMatchSource { localLossless, online, unmatched }
 class PlaylistTrackMatch {
