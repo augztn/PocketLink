@@ -448,7 +448,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     icon: Icons.palette_rounded,
                     tint: const Color(0xFF8D72E8),
                     title: 'Appearance & Theme',
-                    subtitle: 'Themes, Liquid Glass and app-wide Header Blur controls',
+                    subtitle: 'Themes and Liquid Glass controls',
                     badge: _settings.themeMode == ThemeMode.dark
                         ? (_settings.amoled ? 'AMOLED' : 'Dark')
                         : _settings.themeMode == ThemeMode.light
@@ -598,16 +598,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ]),
                 if (widget.category == 'Appearance')
                   _section('Glass & Visual Effects', [
-                    SwitchListTile(
-                      secondary: const Icon(Icons.gradient_rounded),
-                      title: const Text('App-wide Header Blur'),
-                      subtitle: const Text(
-                        'Keep the frosted blur consistent across screen headers, including before scrolling.',
-                      ),
-                      value: _settings.progressiveBlurEnabled,
-                      onChanged: _settings.setProgressiveBlurEnabled,
-                    ),
-                  ]),
+                    Switch                  ]),
                 if (widget.category == 'Dashboard & Shortcuts')
                   _section('Dashboard & Shortcuts', [
                     SwitchListTile(
