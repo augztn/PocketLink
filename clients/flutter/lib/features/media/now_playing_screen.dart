@@ -298,12 +298,17 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
       _artwork = null;
       _artworkKey = null;
       _artworkPalette = null;
+      _lyricsQueryKey = null;
+      _activeLyrics = null;
+      _lyricsProviderStates = const {};
+      _lyricsLoading = false;
     });
     widget.onArtworkChanged?.call(null);
     await Future.wait([
       _refreshCacheStatus(),
       _loadArtwork(),
     ]);
+    if (_lyricsController.value > 0.5) await _loadTrackLyrics();
   }
 
   Future<void> _loadArtwork() async {
@@ -1380,6 +1385,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                           builder: (context, snapshot) => LyricsViewport(
                             document: _activeLyrics,
                             position: snapshot.data ?? Duration.zero,
+                            loading: _lyricsLoading,
                             results: _lyricsProviderStates,
                             providers: _lyricsRepository.providers,
                             onSeek: (position) => unawaited(_player.seek(position)),
@@ -1503,6 +1509,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
               icon: Icons.lyrics_rounded,
               tooltip: 'Lyrics',
               onTap: () => unawaited(_showTrackLyrics()),
+              foreground: _lyricsController.value > 0.5 ? Colors.white : Colors.white54,
               contentOpacity: contentOpacity,
             ),
             const SizedBox(width: 8),
