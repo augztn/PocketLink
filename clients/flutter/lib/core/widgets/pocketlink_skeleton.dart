@@ -177,6 +177,7 @@ class _PocketLinkSkeletonState extends State<PocketLinkSkeleton>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   bool _reduceMotion = false;
+  bool _visible = false;
 
   @override
   void initState() {
@@ -185,6 +186,9 @@ class _PocketLinkSkeletonState extends State<PocketLinkSkeleton>
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     )..repeat();
+    Future<void>.delayed(const Duration(milliseconds: 120), () {
+      if (mounted) setState(() => _visible = true);
+    });
   }
 
   @override
@@ -194,6 +198,7 @@ class _PocketLinkSkeletonState extends State<PocketLinkSkeleton>
     if (reduceMotion == _reduceMotion) return;
     _reduceMotion = reduceMotion;
     if (reduceMotion) {
+      _visible = true;
       _controller.stop();
     } else {
       _controller.repeat();
@@ -212,7 +217,10 @@ class _PocketLinkSkeletonState extends State<PocketLinkSkeleton>
     child: widget.child,
     builder: (context, child) {
       final shift = _reduceMotion ? 0.0 : _controller.value * 2.8;
-      return ShaderMask(
+      return AnimatedOpacity(
+        opacity: _visible ? 1 : 0,
+        duration: _reduceMotion ? Duration.zero : const Duration(milliseconds: 120),
+        child: ShaderMask(
         blendMode: BlendMode.srcATop,
         shaderCallback: (bounds) => LinearGradient(
           begin: Alignment(-1.4 + shift, 0),
@@ -225,6 +233,7 @@ class _PocketLinkSkeletonState extends State<PocketLinkSkeleton>
           stops: const [0.1, 0.5, 0.9],
         ).createShader(bounds),
         child: child,
+        ),
       );
     },
   );
