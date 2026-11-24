@@ -667,6 +667,10 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   }
 
   void _syncBackHandler() {
+    if (widget.onBackAtRoot != null && !widget.isActive) {
+      widget.onBackHandlerChanged?.call(null);
+      return;
+    }
     final handler = _searchExpanded
         ? () => _setSearchExpanded(false)
         : _path.isNotEmpty
