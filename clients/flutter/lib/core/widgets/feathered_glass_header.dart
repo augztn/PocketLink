@@ -4,230 +4,71 @@ import 'package:material_ui/material_ui.dart';
 
 import '../settings/app_settings.dart';
 import 'pocketlink_scaffold.dart';
+import 'progressive_blur.dart';
 
-final Future<ui.FragmentProgram> _progressiveBlurProgram =
-    ui.FragmentProgram.fromAsset('shaders/progressive_blur.frag');
-
-
-/// Shared app-wide glass blur and legibility surface for screen headers.
-class FeatheredGlassHeaderBackground extends StatefulWidget {
+/// Shared top-edge blur and legibility surface for edge-to-edge screens.
+class FeatheredGlassHeaderBackground extends StatelessWidget {
   const FeatheredGlassHeaderBackground({
     this.darkTint,
     this.contentHeight = kToolbarHeight,
+    this.strongestAtBottom = false,
     super.key,
   });
 
   final List<Color>? darkTint;
   final double contentHeight;
+  final bool strongestAtBottom;
 
-  @override
-  State<FeatheredGlassHeaderBackground> createState() =>
-      _FeatheredGlassHeaderBackgroundState();
-}
-
-class _FeatheredGlassHeaderBackgroundState
-    extends State<FeatheredGlassHeaderBackground> {
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: AppSettings.instance,
-      builder: (context, _) {
-        final media = MediaQuery.of(context);
-        final theme = Theme.of(context);
-        final isDark = theme.brightness == Brightness.dark;
-        final settings = AppSettings.instance;
-        final useBlur = settings.progressiveBlurEnabled;
-        final headerHeight =
-            media.padding.top + widget.contentHeight + pocketLinkHeaderFadeTailHeight;
-        final scrimBase = theme.scaffoldBackgroundColor;
-        final scrimColor = isDark ? Colors.black : Colors.white;
-        final scrimColors = [
-          scrimColor.withValues(alpha: 0.94),
-          scrimColor.withValues(alpha: 0.78),
-          scrimColor.withValues(alpha: 0.48),
-          scrimColor.withValues(alpha: 0.16),
-          scrimColor.withValues(alpha: 0),
-        ];
+    final media = MediaQuery.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final headerHeight = media.padding.top + contentHeight + 16;
+    final scrimColor = isDark ? Colors.black : Colors.white;
+    final scrimColors = [
+      scrimColor.withValues(alpha: 0.92),
+      scrimColor.withValues(alpha: 0.78),
+      scrimColor.withValues(alpha: 0.48),
+      scrimColor.withValues(alpha: 0.16),
+      scrimColor.withValues(alpha: 0),
+    ];
 
-        return _HeaderHeightReporter(
-          height: headerHeight,
-          child: SizedBox(
-            width: double.infinity,
-            height: headerHeight,
-            child: ClipRect(
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  if (useBlur) ...[
-                    _buildProgressiveBlur(headerHeight),
-                    IgnorePointer(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: scrimColors,
-                            stops: const [0.0, 0.18, 0.42, 0.72, 1.0],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ] else
-                    DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: widget.darkTint != null && isDark
-                              ? widget.darkTint!
-                              : [
-                                  scrimBase,
-                                  scrimBase.withValues(alpha: 0.72),
-                                  Colors.transparent,
-                                ],
-                          stops: widget.darkTint != null && isDark
-                              ? const [0, 0.48, 1]
-                              : const [0, 0.55, 1],
-                        ),
-                      ),
-                    ),
-                ],
+    return _HeaderHeightReporter(
+      height: headerHeight,
+      child: SizedBox(
+        width: double.infinity,
+        height: headerHeight,
+        child: ClipRect(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Positioned.fill(
+                child: ProgressiveBlur(
+                  maxSigma: 24,
+                  steps: 14,
+                  exponent: 1.6,
+                  strongestAtBottom: strongestAtBottom,
+                ),
               ),
-            ),
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: strongestAtBottom
+                          ? Alignment.bottomCenter
+                          : Alignment.topCenter,
+                      end: strongestAtBottom
+                          ? Alignment.topCenter
+                          : Alignment.bottomCenter,
+                      colors: scrimColors,
+                      stops: const [0, 0.16, 0.38, 0.68, 1],
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-        );
-      },
-    );
-  }
-
-
-  Widget _blurBand({
-    required double top,
-    required double bottom,
-    required double height,
-    required double sigma,
-  }) {
-    return Positioned(
-      top: height * top,
-      left: 0,
-      right: 0,
-      height: height * (bottom - top),
-      child: ClipRect(
-        child: BackdropFilter(
-          filter: ui.ImageFilter.blur(
-            sigmaX: sigma,
-            sigmaY: sigma,
-            tileMode: ui.TileMode.clamp,
-          ),
-          child: const ColoredBox(color: Colors.transparent),
         ),
-      ),
-    );
-  }
-
-  Widget _buildProgressiveBlur(double height) {
-    final fallback = _buildSteppedBlur(height);
-    if (!ui.ImageFilter.isShaderFilterSupported) return fallback;
-
-    return FutureBuilder<ui.FragmentProgram>(
-      future: _progressiveBlurProgram,
-      builder: (context, snapshot) {
-        final program = snapshot.data;
-        if (program == null) return fallback;
-        return _ProgressiveShaderBackdropFilter(
-          program: program,
-          sigma: 18,
-          fadeStart: 0.42,
-          fadeEnd: 1,
-        );
-      },
-    );
-  }
-
-  Widget _buildSteppedBlur(double height) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        _blurBand(top: 0, bottom: 0.35, height: height, sigma: 18),
-        _blurBand(top: 0.35, bottom: 0.55, height: height, sigma: 12),
-        _blurBand(top: 0.55, bottom: 0.72, height: height, sigma: 7),
-        _blurBand(top: 0.72, bottom: 0.86, height: height, sigma: 3.5),
-        _blurBand(top: 0.86, bottom: 1, height: height, sigma: 1.2),
-      ],
-    );
-  }
-}
-
-/// One Gaussian backdrop blur followed by Mochy's shader feather mask.
-class _ProgressiveShaderBackdropFilter extends StatefulWidget {
-  const _ProgressiveShaderBackdropFilter({
-    required this.program,
-    required this.sigma,
-    required this.fadeStart,
-    required this.fadeEnd,
-  });
-
-  final ui.FragmentProgram program;
-  final double sigma;
-  final double fadeStart;
-  final double fadeEnd;
-
-  @override
-  State<_ProgressiveShaderBackdropFilter> createState() =>
-      _ProgressiveShaderBackdropFilterState();
-}
-
-class _ProgressiveShaderBackdropFilterState
-    extends State<_ProgressiveShaderBackdropFilter> {
-  late final ui.FragmentShader _shader;
-  late ui.ImageFilter _filter;
-
-  @override
-  void initState() {
-    super.initState();
-    _shader = widget.program.fragmentShader();
-    _updateUniforms();
-    _filter = _createFilter();
-  }
-
-  @override
-  void didUpdateWidget(covariant _ProgressiveShaderBackdropFilter oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.fadeStart != widget.fadeStart ||
-        oldWidget.fadeEnd != widget.fadeEnd) {
-      _updateUniforms();
-    }
-    if (oldWidget.sigma != widget.sigma) {
-      _filter = _createFilter();
-    }
-  }
-
-  void _updateUniforms() {
-    _shader.setFloat(2, widget.fadeStart);
-    _shader.setFloat(3, widget.fadeEnd);
-  }
-
-  ui.ImageFilter _createFilter() => ui.ImageFilter.compose(
-        outer: ui.ImageFilter.shader(_shader),
-        inner: ui.ImageFilter.blur(
-          sigmaX: widget.sigma,
-          sigmaY: widget.sigma,
-          tileMode: ui.TileMode.clamp,
-        ),
-      );
-
-  @override
-  void dispose() {
-    _shader.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRect(
-      child: BackdropFilter(
-        filter: _filter,
-        child: const ColoredBox(color: Colors.transparent),
       ),
     );
   }
@@ -333,8 +174,14 @@ class GlassCircleButton extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: isDark
-                  ? const Color(0xFF141518).withValues(alpha: 0.66)
-                  : Colors.white.withValues(alpha: 0.68),
+                  ? const Color(0xFF1C1E24).withValues(alpha: 0.58)
+                  : Colors.white.withValues(alpha: 0.58),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.24)
+                    : const Color(0xFF94A3B8).withValues(alpha: 0.30),
+                width: 1.0,
+              ),
             ),
             child: Center(
               child: IconTheme(
@@ -351,16 +198,15 @@ class GlassCircleButton extends StatelessWidget {
     return AnimatedBuilder(
       animation: settings,
       builder: (context, _) {
-        final useBlur = settings.useLiquidGlass;
+        final useBlur = settings.progressiveBlurEnabled &&
+            settings.progressiveBlurStrength > 0 &&
+            !MediaQuery.of(context).disableAnimations;
+        final blurScale = settings.progressiveBlurStrength / 55;
         return RepaintBoundary(
           child: ClipOval(
             child: useBlur
                 ? BackdropFilter(
-                    filter: ui.ImageFilter.blur(
-                      sigmaX: 20,
-                      sigmaY: 20,
-                      tileMode: ui.TileMode.clamp,
-                    ),
+                    filter: ui.ImageFilter.blur(sigmaX: 24 * blurScale, sigmaY: 24 * blurScale),
                     child: button,
                   )
                 : button,
@@ -384,21 +230,21 @@ class _GlassCircleRimPainter extends CustomPainter {
     final rect = Offset.zero & size;
     final paint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.85
+      ..strokeWidth = 1
       ..isAntiAlias = true
       ..shader = LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: isDark
             ? const [
-                Color(0x23FFFFFF),
-                Color(0x12FFFFFF),
-                Color(0x0AFFFFFF),
+                Color(0x99FFFFFF),
+                Color(0x38FFFFFF),
+                Color(0x08FFFFFF),
               ]
             : const [
-                Color(0x23FFFFFF),
+                Color(0xAFFFFFFF),
+                Color(0x54FFFFFF),
                 Color(0x12FFFFFF),
-                Color(0x0AFFFFFF),
               ],
         stops: const [0, 0.52, 1],
       ).createShader(rect);
