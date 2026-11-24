@@ -4,9 +4,8 @@ import 'package:material_ui/material_ui.dart';
 
 import '../settings/app_settings.dart';
 import 'pocketlink_scaffold.dart';
-import 'progressive_blur.dart';
 
-/// Shared progressive blur and legibility surface for edge-to-edge screens.
+/// Shared app-wide glass blur and legibility surface for screen headers.
 class FeatheredGlassHeaderBackground extends StatefulWidget {
   const FeatheredGlassHeaderBackground({
     this.darkTint,
@@ -24,41 +23,6 @@ class FeatheredGlassHeaderBackground extends StatefulWidget {
 
 class _FeatheredGlassHeaderBackgroundState
     extends State<FeatheredGlassHeaderBackground> {
-  ScrollController? _scrollController;
-  bool _isScrolled = false;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final nextController = PrimaryScrollController.maybeOf(context);
-    if (identical(nextController, _scrollController)) return;
-    _scrollController?.removeListener(_handleScroll);
-    _scrollController = nextController;
-    _scrollController?.addListener(_handleScroll);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _updateScrollState();
-    });
-    _updateScrollState();
-  }
-
-  @override
-  void dispose() {
-    _scrollController?.removeListener(_handleScroll);
-    super.dispose();
-  }
-
-  void _handleScroll() => _updateScrollState();
-
-  void _updateScrollState() {
-    final controller = _scrollController;
-    final scrolled = controller != null &&
-        controller.hasClients &&
-        controller.positions.any((position) => position.pixels > 0);
-    if (scrolled != _isScrolled && mounted) {
-      setState(() => _isScrolled = scrolled);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -68,8 +32,7 @@ class _FeatheredGlassHeaderBackgroundState
         final theme = Theme.of(context);
         final isDark = theme.brightness == Brightness.dark;
         final settings = AppSettings.instance;
-        const blurScale = 1.0;
-        final useBlur = settings.progressiveBlurEnabled && _isScrolled;
+        final useBlur = settings.progressiveBlurEnabled;
         final headerHeight =
             media.padding.top + widget.contentHeight + pocketLinkHeaderFadeTailHeight;
         final scrimBase = theme.scaffoldBackgroundColor;
@@ -92,9 +55,15 @@ class _FeatheredGlassHeaderBackgroundState
                 fit: StackFit.expand,
                 children: [
                   if (useBlur) ...[
-                    _buildProgressiveBlur(
-                      height: headerHeight,
-                      blurScale: blurScale,
+                    Positioned.fill(
+                      child: BackdropFilter(
+                        filter: ui.ImageFilter.blur(
+                          sigmaX: 18,
+                          sigmaY: 18,
+                          tileMode: ui.TileMode.clamp,
+                        ),
+                        child: const ColoredBox(color: Colors.transparent),
+                      ),
                     ),
                     IgnorePointer(
                       child: DecoratedBox(
@@ -136,16 +105,6 @@ class _FeatheredGlassHeaderBackgroundState
     );
   }
 
-  Widget _buildProgressiveBlur({
-    required double height,
-    required double blurScale,
-  }) {
-    return ProgressiveBlur(
-      maxSigma: 22 * blurScale,
-      steps: 7,
-      exponent: 1.6,
-    );
-  }
 }
 
 /// Reports a header's known geometry after layout, never during build.
