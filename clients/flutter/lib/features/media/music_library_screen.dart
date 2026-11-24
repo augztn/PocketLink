@@ -186,6 +186,12 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
       appBar: PocketLinkAppBar(
         feathered: true,
         showHome: false,
+        leading: IconButton(
+          tooltip: 'Back',
+          onPressed: () => Navigator.of(context).maybePop(),
+          icon: const Icon(Icons.arrow_back_rounded),
+        ),
+        leadingWidth: 56,
         title: const Text('Library'),
         actions: [
           PocketLinkAppBarAction(label: 'Refresh library', icon: Icons.refresh_rounded, onPressed: _loading ? null : _load),
