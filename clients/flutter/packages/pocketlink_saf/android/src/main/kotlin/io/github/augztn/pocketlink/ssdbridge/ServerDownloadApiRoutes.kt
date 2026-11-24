@@ -22,7 +22,11 @@ internal class ServerDownloadApiRoutes(
             val url = body.optString("url").trim()
             if (url.isBlank()) return bad("A download URL is required")
             return try {
-                json(manager.enqueue(url, body.optString("directory").takeIf { it.isNotBlank() }))
+                json(manager.enqueue(
+                    url,
+                    body.optString("directory").takeIf { it.isNotBlank() },
+                    body.optString("filename").takeIf { it.isNotBlank() }
+                ))
             } catch (error: IllegalArgumentException) {
                 bad(error.message ?: "Invalid download request")
             } catch (error: Exception) {
