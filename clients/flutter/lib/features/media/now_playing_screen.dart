@@ -313,6 +313,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     }
 
     _observedTrackIdentity = identity;
+    final previousLyricsKey = _lyricsQueryKey;
+    if (previousLyricsKey != null) _lyricsRepository.cancel(previousLyricsKey);
     setState(() {
       _artwork = null;
       _artworkKey = null;
@@ -1288,7 +1290,12 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   );
 
   Future<void> _showTrackLyrics() async {
-    if (_lyricsController.value > 0.5) { await _lyricsController.reverse(); return; }
+    if (_lyricsController.value > 0.5) {
+      final key = _lyricsQueryKey;
+      if (key != null) _lyricsRepository.cancel(key);
+      await _lyricsController.reverse();
+      return;
+    }
     unawaited(_lyricsController.forward());
     await _loadTrackLyrics();
   }
@@ -2024,6 +2031,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   @override
   void dispose() {
     unawaited(_playlistSubscription?.cancel());
+    _lyricsRepository.cancelAll();
     _lyricsController.dispose();
     super.dispose();
   }
