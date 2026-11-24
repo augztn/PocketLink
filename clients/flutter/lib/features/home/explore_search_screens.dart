@@ -98,7 +98,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
           canPop: _navigatorKey.currentState?.canPop() ?? false,
         ),
         onPopWithResult: (_) {
-          if (!widget.isActive || nowPlayingProgress.value > 0.001) return;
+          if (!PocketLinkNavigation.shouldDispatchNestedBack(
+            isActive: widget.isActive,
+            nowPlayingProgress: nowPlayingProgress.value,
+          )) {
+            return;
+          }
           _navigatorKey.currentState?.maybePop();
         },
         child: PocketLinkNavigationScope(
