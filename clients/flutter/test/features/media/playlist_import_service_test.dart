@@ -43,6 +43,23 @@ void main() {
       expect(restored.map((item) => item.tracks.single.title), ['One', 'Two']);
     });
 
+    test('matches Unicode titles and partial multi-artist metadata', () {
+      expect(
+        PlaylistImportService.isSameTrack(
+          const ImportedTrack(title: 'നീലാകാശം', artist: 'Artist A, Artist B'),
+          const ImportedTrack(title: 'നീലാകാശം', artist: 'Artist A'),
+        ),
+        isTrue,
+      );
+      expect(
+        PlaylistImportService.isSameTrack(
+          const ImportedTrack(title: 'Song (Official Audio)', artist: 'Artist'),
+          const ImportedTrack(title: 'Song', artist: 'Artist'),
+        ),
+        isTrue,
+      );
+    });
+
     test('imports M3U entries with metadata and source paths', () {
       final playlist = PlaylistImportService.parseM3u(
         '#EXTM3U\n#EXTINF:210,Artist - Song\n/music/song.flac\n',
