@@ -144,7 +144,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
       }
     }
     if (!mounted) return;
-    setState(() { loading = true; error = null; photos = []; selected.clear(); });
+    setState(() { loading = true; error = null; if (!refresh) photos = []; selected.clear(); });
     try {
       volumes = await widget.api.listStorageVolumes();
       if (!mounted) return;
