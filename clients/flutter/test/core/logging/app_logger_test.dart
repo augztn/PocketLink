@@ -107,6 +107,7 @@ void main() {
         'fileName': 'personal-document.pdf',
         'item_name': 'private-folder',
         'media_title': 'private song title',
+        'title': 'private playback title',
         'status_code': 200,
         'result_count': 12,
       });
@@ -115,6 +116,7 @@ void main() {
       expect(sanitized['fileName'], '[REDACTED]');
       expect(sanitized['item_name'], '[REDACTED]');
       expect(sanitized['media_title'], '[REDACTED]');
+      expect(sanitized['title'], '[REDACTED]');
       expect(sanitized['status_code'], 200);
       expect(sanitized['result_count'], 12);
     });
@@ -176,6 +178,18 @@ void main() {
       expect(sanitized, contains('/api/files/'));
       expect(sanitized, contains('200'));
     });
+    test('redacts complete URL query strings including signed media parameters', () {
+      final sanitized = AppLogger.sanitizeDiagnosticContent(
+        'GET https://cdn.example/video/audio?expire=1790000000&sig=private-signature&X-Goog-Signature=another-secret',
+      );
+
+      expect(sanitized, contains('[REDACTED_HOST]'));
+      expect(sanitized, contains('?[REDACTED_QUERY]'));
+      expect(sanitized, isNot(contains('private-signature')));
+      expect(sanitized, isNot(contains('another-secret')));
+      expect(sanitized, isNot(contains('1790000000')));
+    });
+
     test('preserves useful API paths and status codes', () {
       final sanitized = AppLogger.sanitizeDiagnosticContent(
         'GET /api/files/ returned 200',
