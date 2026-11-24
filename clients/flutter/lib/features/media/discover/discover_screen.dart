@@ -129,8 +129,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
 
     final pending = _localLibraryRequest;
     if (pending != null) {
+      // The pending request already refreshes this server's snapshot. Reuse
+      // its result even when this caller requested a forced refresh.
       await pending;
-      if (!forceRefresh) return;
+      return;
     }
 
     if (mounted && !_localLibraryLoading) {
