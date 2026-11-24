@@ -161,6 +161,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     }
     if (!mounted) return;
     setState(() { loading = true; error = null; if (!refresh) photos = []; selected.clear(); });
+    _syncBackHandler();
     try {
       volumes = await widget.api.listStorageVolumes();
       if (!mounted) return;
@@ -201,6 +202,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     if (!mounted) return;
     if (refresh) widget.api.invalidateDirectoryCache();
     setState(() { loading = true; error = null; photos = []; selected.clear(); });
+    _syncBackHandler();
     final found = <_Photo>[];
     final pending = <({String path, String? volume, int depth})>[];
     final visited = <String>{};
@@ -442,6 +444,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
       photos=photos.where((p)=>!deletedIds.contains(p.id)).toList();
       favorites.removeAll(deletedIds);selected.clear();
     });
+    _syncBackHandler();
     if (deletedIds.isNotEmpty) await _persistFavorites();
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('Deleted $deleted of $count photos.')));
   }
@@ -453,6 +456,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
       }
       selected.clear();
     });
+    _syncBackHandler();
     await _persistFavorites();
   }
 
@@ -666,7 +670,10 @@ tooltip: 'Choose photo view',
                         ]),
                       ),
                   ],
-                  onSelected: (value) => setState(() { tab = value; selected.clear(); }),
+                  onSelected: (value) {
+                    setState(() { tab = value; selected.clear(); });
+                    _syncBackHandler();
+                  },
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 4),
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -727,10 +734,13 @@ tooltip: 'Choose photo view',
                     ));
                   }
                   if (value == 'home') PocketLinkAppBar.goToDashboard(context);
-                  if (value == 'select') setState(() {
-                    if (selected.isEmpty) selected.addAll(items.map((p) => p.id));
-                    else selected.clear();
-                  });
+                  if (value == 'select') {
+                    setState(() {
+                      if (selected.isEmpty) selected.addAll(items.map((p) => p.id));
+                      else selected.clear();
+                    });
+                    _syncBackHandler();
+                  }
                 },
                 child: GlassCircleButton(tooltip: 'Open more photo actions', onPressed: null,
                   child: const Icon(Icons.more_vert_rounded)),
