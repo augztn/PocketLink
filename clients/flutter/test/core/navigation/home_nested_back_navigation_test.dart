@@ -173,7 +173,12 @@ class _IndexedTabBackHarnessState extends State<_IndexedTabBackHarness> {
                           false,
                     ),
                     onPopWithResult: (_) {
-                      if (_activeTab != 0) return;
+                      if (!PocketLinkNavigation.shouldDispatchNestedBack(
+                        isActive: _activeTab == 0,
+                        nowPlayingProgress: 0,
+                      )) {
+                        return;
+                      }
                       _nestedBackCalls++;
                       _exploreNavigatorKey.currentState?.maybePop();
                       setState(() {});
