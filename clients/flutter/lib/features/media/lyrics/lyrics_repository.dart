@@ -40,7 +40,10 @@ class LyricsTrackQuery {
   String get artist => LyricsProvider.clean(track.artist ?? '');
   int get durationSeconds {
     final p = track.durationText.split(':').map(int.tryParse).toList();
-    return p.length == 2 && p.every((v) => v != null) ? p[0]! * 60 + p[1]! : 0;
+    if (p.any((v) => v == null)) return 0;
+    if (p.length == 2) return p[0]! * 60 + p[1]!;
+    if (p.length == 3) return p[0]! * 3600 + p[1]! * 60 + p[2]!;
+    return 0;
   }
 }
 abstract interface class LyricsProvider {
@@ -48,8 +51,10 @@ abstract interface class LyricsProvider {
   String get name;
   Future<LyricsDocument?> fetch(LyricsTrackQuery query);
   static String clean(String s) => s
-    .replaceAll(RegExp(r'\s*\([^)]*(official|audio|video|lyrics?|remaster)[^)]*\)', caseSensitive: false), '')
-    .replaceAll(RegExp(r'\s*\[[^]]*(official|audio|video|lyrics?|remaster)[^]]*\]', caseSensitive: false), '')
+    .replaceAll(RegExp(r'^\s*(?:\d{1,3}\s*[-._)]\s*|\d{2}\s+)'), '')
+    .replaceAll(RegExp(r'\.(flac|alac|wav|aiff|aif|mp3|m4a|opus|ogg|wv|ape|dsf|dff)$', caseSensitive: false), '')
+    .replaceAll(RegExp(r'\s*\([^)]*(official|audio|video|lyrics?|remaster|visualizer|live|acoustic|karaoke)[^)]*\)', caseSensitive: false), '')
+    .replaceAll(RegExp(r'\s*\[[^]]*(official|audio|video|lyrics?|remaster|visualizer|live|acoustic|karaoke)[^]]*\]', caseSensitive: false), '')
     .replaceAll(RegExp(r'\s+(feat\.?|ft\.?|featuring)\s+.*$', caseSensitive: false), '')
     .replaceAll(RegExp(r'\s+'), ' ').trim();
 }
@@ -81,6 +86,77 @@ class LyricsRepository {
     lines.sort((a, b) => a.timeMs.compareTo(b.timeMs));
     return lines;
   }
+
+  static LyricsDocument? selectBestLrclibCandidate(
+    List<Map> candidates, {
+    required String title,
+    required String artist,
+    int? durationSeconds,
+  }) {
+    String norm(String value) => LyricsProvider.clean(value)
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9\s]'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    final wantedTitle = norm(title);
+    final wantedArtist = norm(artist);
+    final titleTokens = wantedTitle.split(' ').where((s) => s.length > 1).toSet();
+    final artistTokens = wantedArtist.split(' ').where((s) => s.length > 1).toSet();
+    LyricsDocument? best;
+    var bestScore = double.negativeInfinity;
+    for (final candidate in candidates) {
+      final trackName = norm(candidate['trackName']?.toString() ?? candidate['name']?.toString() ?? '');
+      final artistName = norm(candidate['artistName']?.toString() ?? '');
+      final syncedRaw = candidate['syncedLyrics']?.toString() ?? '';
+      final plainRaw = candidate['plainLyrics']?.toString() ?? '';
+      final syncedLines = parseLrc(syncedRaw);
+      final plainLines = plainRaw.split(RegExp(r'\r?\n'))
+          .map((s) => s.trim()).where((s) => s.isNotEmpty)
+          .map((s) => LyricsLine(0, s)).toList();
+      final lines = syncedLines.isNotEmpty ? syncedLines : plainLines;
+      if (lines.isEmpty) continue;
+      var score = syncedLines.isNotEmpty ? 30.0 : 0.0;
+      if (wantedTitle.isNotEmpty && trackName.isNotEmpty) {
+        if (trackName == wantedTitle) {
+          score += 45;
+        } else if (trackName.contains(wantedTitle) || wantedTitle.contains(trackName)) {
+          score += 30;
+        } else {
+          final tokens = trackName.split(' ').where((s) => s.length > 1).toSet();
+          final union = titleTokens.union(tokens).length;
+          if (union > 0) score += titleTokens.intersection(tokens).length / union * 35;
+        }
+      }
+      if (wantedArtist.isNotEmpty && artistName.isNotEmpty) {
+        if (artistName == wantedArtist) {
+          score += 32;
+        } else if (artistName.contains(wantedArtist) || wantedArtist.contains(artistName)) {
+          score += 24;
+        } else {
+          final tokens = artistName.split(' ').where((s) => s.length > 1).toSet();
+          final hits = artistTokens.intersection(tokens).length;
+          score += artistTokens.isEmpty ? 0 : hits / artistTokens.length * 26;
+          if (hits == 0) score -= 18;
+        }
+      }
+      final candidateDuration = (candidate['duration'] as num?)?.toInt();
+      if (durationSeconds != null && candidateDuration != null) {
+        final diff = (durationSeconds - candidateDuration).abs();
+        score += diff <= 3 ? 25 : diff <= 8 ? 14 : diff <= 16 ? 5 : diff > 35 ? -25 : -6;
+      }
+      if (score > bestScore) {
+        bestScore = score;
+        best = LyricsDocument(
+          providerId: 'lrclib',
+          providerName: 'LRCLIB',
+          lines: lines,
+          synced: syncedLines.isNotEmpty,
+        );
+      }
+    }
+    return bestScore >= 15 ? best : null;
+  }
+
 
   List<LyricsProvider> get providers => List.unmodifiable(_providers);
   LyricsDocument? current(String key) => _active[key];
@@ -157,21 +233,51 @@ class _LocalProvider extends _Provider {
 }
 class _LrclibProvider extends _Provider {
   _LrclibProvider(super.dio);
-  @override String get id=>'lrclib'; @override String get name=>'LRCLIB';
+  @override String get id=>'lrclib';
+  @override String get name=>'LRCLIB';
+
   @override Future<LyricsDocument?> fetch(LyricsTrackQuery q) async {
-    if(q.title.isEmpty)return null;
-    final data=await json('https://lrclib.net/api/search',{'track_name':q.title,if(q.artist.isNotEmpty)'artist_name':q.artist});
-    if(data is! List)return null;
-    Map? best; var top=0.0;
-    for(final r in data.whereType<Map>()){
-      final t=LyricsProvider.clean(r['trackName']?.toString()??'').toLowerCase();
-      final a=LyricsProvider.clean(r['artistName']?.toString()??'').toLowerCase();
-      final s=_sim(q.title.toLowerCase(),t)*.7+(q.artist.isEmpty ? 0.5 : _sim(q.artist.toLowerCase(),a))*.3;
-      if(s>top){top=s;best=r;}
+    if (q.title.isEmpty) return null;
+    final candidates = <Map>[];
+    if (q.artist.isNotEmpty && q.durationSeconds > 0) {
+      try {
+        final exact = await json('https://lrclib.net/api/get', {
+          'track_name': q.title,
+          'artist_name': _primaryArtist(q.artist),
+          'duration': q.durationSeconds,
+        });
+        if (exact is Map) candidates.add(exact);
+      } on DioException {
+        // Exact lookup miss: continue with search.
+      }
     }
-    if(best==null||top<.65)return null;
-    return lrc(best['syncedLyrics']?.toString(),id,name)??plain(best['plainLyrics']?.toString(),id,name);
+    try {
+      final structured = await json('https://lrclib.net/api/search', {
+        'track_name': q.title,
+        if (q.artist.isNotEmpty) 'artist_name': _primaryArtist(q.artist),
+      });
+      if (structured is List) candidates.addAll(structured.whereType<Map>());
+    } on DioException {
+      // Continue to broad search below.
+    }
+    if (candidates.isEmpty) {
+      final broad = await json('https://lrclib.net/api/search', {
+        'q': [q.title, _primaryArtist(q.artist)].where((s) => s.isNotEmpty).join(' '),
+      });
+      if (broad is List) candidates.addAll(broad.whereType<Map>());
+    }
+    return LyricsRepository.selectBestLrclibCandidate(
+      candidates,
+      title: q.title,
+      artist: _primaryArtist(q.artist),
+      durationSeconds: q.durationSeconds > 0 ? q.durationSeconds : null,
+    );
   }
+
+  static String _primaryArtist(String artist) => artist
+      .split(RegExp(r'\s*(?:,|&|\bfeat\.?\b|\bft\.?\b|\bfeaturing\b|\bx\b|×|;|/)\s*', caseSensitive: false))
+      .firstWhere((part) => part.trim().isNotEmpty, orElse: () => '')
+      .trim();
 }
 class _PlatformProvider implements LyricsProvider {
   _PlatformProvider(this.id, this.name, this.method);
