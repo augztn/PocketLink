@@ -90,9 +90,10 @@ class LyricsRepository {
   final Set<String> _manualSelections = <String>{};
 
   void cancel(String key) {
-    final session = _sessions[key];
+    final session = _sessions.remove(key);
     if (session == null) return;
     session.cancel();
+    _pending.remove(key);
     _states.remove(key);
     _active.remove(key);
     _manualSelections.remove(key);
@@ -273,8 +274,10 @@ class LyricsRepository {
     final session = _LyricsLookupSession();
     _sessions[q.key] = session;
     final future = _run(q, onUpdate, session).whenComplete(() {
-      if (identical(_sessions[q.key], session)) _sessions.remove(q.key);
-      _pending.remove(q.key);
+      if (identical(_sessions[q.key], session)) {
+        _sessions.remove(q.key);
+        _pending.remove(q.key);
+      }
     });
     _pending[q.key] = future;
     return future;
