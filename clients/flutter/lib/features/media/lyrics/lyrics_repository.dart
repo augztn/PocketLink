@@ -8,10 +8,16 @@ import '../../../core/network/server_api.dart';
 import '../persistent_audio_player.dart';
 
 enum LyricsLookupStatus { loading, found, notFound, error }
+class LyricsWord {
+  const LyricsWord(this.startMs, this.endMs, this.text);
+  final int startMs, endMs;
+  final String text;
+}
 class LyricsLine {
-  const LyricsLine(this.timeMs, this.text);
+  const LyricsLine(this.timeMs, this.text, {this.words = const []});
   final int timeMs;
   final String text;
+  final List<LyricsWord> words;
 }
 class LyricsDocument {
   const LyricsDocument({required this.providerId, required this.providerName, required this.lines, required this.synced, this.wordSynced = false});
@@ -98,20 +104,22 @@ class LyricsRepository {
     void publish() => notify?.call(Map.unmodifiable(Map.of(states)));
     publish();
     final jobs = {for (final p in _providers) p.id: p.fetch(q).timeout(const Duration(seconds: 12))};
-    LyricsDocument? synced, plain;
+    LyricsDocument? wordSynced, synced, plain;
     for (final p in _providers) {
       try {
         final doc = await jobs[p.id];
         states[p.id] = LyricsProviderResult(doc == null ? LyricsLookupStatus.notFound : LyricsLookupStatus.found, document: doc);
         if (doc != null && doc.lines.isNotEmpty) {
-          if (doc.synced) synced ??= doc; else plain ??= doc;
+          if (doc.wordSynced) wordSynced ??= doc;
+          else if (doc.synced) synced ??= doc;
+          else plain ??= doc;
         }
       } catch (e) {
         states[p.id] = LyricsProviderResult(LyricsLookupStatus.error, error: e is TimeoutException ? 'Request timed out' : 'Provider unavailable');
       }
       publish();
     }
-    _active[q.key] = synced ?? plain;
+    _active[q.key] = wordSynced ?? synced ?? plain;
     _states[q.key] = Map.of(states);
     _pending.remove(q.key);
     return Map.unmodifiable(states);
@@ -229,8 +237,24 @@ class _LyricsPlusProvider extends _Provider {
       try{
         final d=await json('$host/v2/lyrics/get',{'title':q.title,'artist':q.artist,'duration':q.durationSeconds});
         final entries=d is Map?d['lyrics']:null;if(entries is! List)continue;
-        final lines=entries.whereType<Map>().map((e){final t=(e['time'] as num?)?.toInt();final s=e['text']?.toString().trim()??'';return t==null||s.isEmpty?null:LyricsLine(t,s);}).whereType<LyricsLine>().toList()..sort((a,b)=>a.timeMs.compareTo(b.timeMs));
-        if(lines.isNotEmpty)return LyricsDocument(providerId:id,providerName:name,lines:lines,synced:true);
+        final lines=entries.whereType<Map>().map((e){
+          final t=(e['time'] as num?)?.toInt();
+          final syllabus=e['syllabus'];
+          final words=syllabus is List ? syllabus.whereType<Map>().map((w) {
+            final start=(w['time'] as num?)?.toInt();
+            final duration=(w['duration'] as num?)?.toInt() ?? 0;
+            final text=w['text']?.toString() ?? '';
+            return start==null || text.isEmpty ? null : LyricsWord(start,start+duration,text);
+          }).whereType<LyricsWord>().toList() : <LyricsWord>[];
+          final s=e['text']?.toString().trim().isNotEmpty == true
+              ? e['text'].toString().trim()
+              : words.map((word)=>word.text).join();
+          return t==null||s.isEmpty?null:LyricsLine(t,s,words:words);
+        }).whereType<LyricsLine>().toList()..sort((a,b)=>a.timeMs.compareTo(b.timeMs));
+        if(lines.isNotEmpty)return LyricsDocument(
+          providerId:id,providerName:name,lines:lines,synced:true,
+          wordSynced:lines.any((line)=>line.words.isNotEmpty),
+        );
       }catch(_){}
     }return null;
   }
