@@ -445,9 +445,7 @@ class _HomeScreenState extends State<HomeScreen> {
       },
       child: AnimatedBuilder(
         animation: AppSettings.instance,
-        builder: (context, __) => AnimatedBuilder(
-        animation: player,
-        builder: (context, _) => Scaffold(
+        builder: (context, __) => Scaffold(
           key: _rootScaffoldKey,
           drawerScrimColor: Colors.black.withValues(alpha: 0.58),
           drawer: PocketLinkHomeDrawer(
@@ -568,7 +566,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   left: 0,
                   right: 0,
                   bottom: 0,
-                  child: FloatingNavigationDock(
+                  child: AnimatedBuilder(
+                    animation: player,
+                    builder: (context, _) => FloatingNavigationDock(
                     order: AppSettings.instance.navigationOrder,
                     visibleItems: AppSettings.instance.visibleNavigationItems,
                     selectedIndex: _selectedIndex,
@@ -593,12 +593,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       _openNowPlaying(player);
                     },
                   ),
+                  ),
                 ),
             ],
           ),
         ),
       ),
-        ),
     );
   }
 }
