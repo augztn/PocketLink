@@ -329,6 +329,17 @@ class _ImportedPlaylistManagerScreenState extends State<ImportedPlaylistManagerS
             'Supports public YouTube / YouTube Music and Spotify playlist links, plus CSV and M3U exports from other music services.',
             style: TextStyle(color: Colors.grey, fontSize: 12),
           ),
+          const SizedBox(height: 8),
+          const Row(children: [
+            Icon(Icons.cloud_done_rounded, size: 14, color: Colors.grey),
+            SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                'Saved on server: /sdcard/PocketLink/Discover/Playlists',
+                style: TextStyle(color: Colors.grey, fontSize: 11),
+              ),
+            ),
+          ]),
           if (_working) const Padding(
             padding: EdgeInsets.only(top: 18),
             child: LinearProgressIndicator(),
