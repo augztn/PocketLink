@@ -187,9 +187,23 @@ class PlaylistImportService {
 
   static String normalizeTrackText(String value) {
     var s = value.toLowerCase();
-    s = s.replaceAll(RegExp(r'\s*[\(\[]\s*(feat\.?|ft\.?|featuring)\b[^\)\]]*[\)\]]', caseSensitive: false), ' ');
-    s = s.replaceAll(RegExp(r'\s*[\(\[][^)\]]*(remaster(ed)?|mono|stereo|official|audio|video|lyrics?|visualizer)[^)\]]*[\)\]]', caseSensitive: false), ' ');
-    s = s.replaceAll(RegExp(r'\s*[-–—]\s*(official|audio|video|lyrics?|visualizer)\b.*
+    s = s.replaceAll(
+      RegExp(r'\s*[\(\[]\s*(feat\.?|ft\.?|featuring)\b[^\)\]]*[\)\]]', caseSensitive: false),
+      ' ',
+    );
+    s = s.replaceAll(
+      RegExp(r'\s*[\(\[][^)\]]*(remaster(ed)?|mono|stereo|official|audio|video|lyrics?|visualizer)[^)\]]*[\)\]]', caseSensitive: false),
+      ' ',
+    );
+    s = s.replaceAll(
+      RegExp(r'\s*[-–—]\s*(official|audio|video|lyrics?|visualizer)\b.*$', caseSensitive: false),
+      ' ',
+    );
+    s = s.replaceAll('&amp;', '&').replaceAll('&', ' and ');
+    s = s.replaceAll(RegExp(r'[^\p{L}\p{N}\s]+', unicode: true), ' ');
+    return s.trim().replaceAll(RegExp(r'\s+'), ' ');
+  }
+
   static bool isSameTrack(ImportedTrack a, ImportedTrack b) {
     final at = normalizeTrackText(a.title), bt = normalizeTrackText(b.title), aa = normalizeTrackText(a.artist), ba = normalizeTrackText(b.artist);
     final artistMatches = aa.isEmpty || ba.isEmpty || aa == ba ||
