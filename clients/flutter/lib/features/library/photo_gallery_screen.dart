@@ -586,7 +586,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                   ),
                 ),
               ),
-            if (loading) const LinearProgressIndicator(minHeight: 2),
+            if (loading && photos.isNotEmpty) const LinearProgressIndicator(minHeight: 2),
             if (error != null)
               Padding(padding: const EdgeInsets.all(12),
                 child: Text(error!, style: TextStyle(color: theme.colorScheme.error))),
