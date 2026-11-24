@@ -888,7 +888,7 @@ tooltip: 'Choose video view',
               child: CompactSearchField(controller: _searchController,
                 hintText: 'Search videos or folders',
                 onChanged: (value) => setState(() => _searchQuery = value))),
-          if (_loading) const LinearProgressIndicator(minHeight: 2),
+          if (_loading && _media.isNotEmpty) const LinearProgressIndicator(minHeight: 2),
           if (_error != null)
             Padding(
               padding: const EdgeInsets.all(16),
@@ -1448,7 +1448,7 @@ tooltip: 'Choose video view',
                             ),
                     ),
             ),
-            if (_loading)              Positioned(
+            if (_loading && _media.isNotEmpty)              Positioned(
                 top: top + 60,
                 left: 16,
                 right: 16,
