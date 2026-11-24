@@ -110,6 +110,19 @@ internal class NativeApiServer(
             videoThumbnail = ::videoThumbnail
         )
     }
+    private val serverDownloadsDelegate = lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        ServerDownloadManager(context, { internalRoot }, ::markMediaIndexDirty)
+    }
+    private val serverDownloads by serverDownloadsDelegate
+    private val serverDownloadRoutes by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        ServerDownloadApiRoutes(
+            manager = serverDownloads,
+            parseJsonBody = requestBodyParser::jsonBody,
+            json = { value -> json(value) },
+            bad = ::bad,
+            notFound = ::notFound
+        )
+    }
     private val mediaIndexRoutes by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
         MediaIndexApiRoutes(
             mediaIndex,
@@ -124,6 +137,14 @@ internal class NativeApiServer(
     }
 
     fun ensureMediaIndexStarted() = mediaIndex.ensureStarted()
+
+    fun ensureServerDownloadsStarted() {
+        serverDownloads.start()
+    }
+
+    fun closeServerDownloads() {
+        if (serverDownloadsDelegate.isInitialized()) serverDownloads.close()
+    }
 
     fun closeMediaIndex() {
         if (mediaIndexDelegate.isInitialized()) mediaIndex.close()
@@ -180,6 +201,7 @@ internal class NativeApiServer(
         return try {
             val query = session.parameters.mapValues { (_, values) -> values.firstOrNull().orEmpty() }
             val path = query["path"].orEmpty()
+            serverDownloadRoutes.serve(session)?.let { return it }
             if (session.uri.startsWith("/api/index/")) {
                 mediaIndexRoutes.serve(session, query)?.let { return it }
             }
