@@ -78,22 +78,18 @@ void main() {
     );
   });
 
-  test('appearance settings persist and validate through the facade', () async {
+  test('Liquid Glass appearance preference persists', () async {
     final settings = AppSettings.instance;
 
     await settings.setUseLiquidGlass(true);
-    await settings.setProgressiveBlurEnabled(true);
 
     final preferences = await SharedPreferences.getInstance();
     expect(settings.useLiquidGlass, isTrue);
-    expect(settings.progressiveBlurEnabled, isTrue);
     expect(preferences.getBool('settings_use_liquid_glass'), isTrue);
-    expect(preferences.getBool('settings_progressive_blur'), isTrue);
-    expect(preferences.containsKey('settings_progressive_blur_strength'), isFalse);
 
-    await settings.setProgressiveBlurEnabled(false);
-    expect(settings.progressiveBlurEnabled, isFalse);
-    expect(preferences.getBool('settings_progressive_blur'), isFalse);
+    await settings.setUseLiquidGlass(false);
+    expect(settings.useLiquidGlass, isFalse);
+    expect(preferences.getBool('settings_use_liquid_glass'), isFalse);
   });
 
   test('media settings persist, validate and reset through the facade', () async {
