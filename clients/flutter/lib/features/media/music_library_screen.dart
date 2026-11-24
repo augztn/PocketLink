@@ -35,7 +35,7 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
   final TextEditingController _search = TextEditingController();
   List<MediaFileItem> _tracks = const [];
   int _cachedCount = 0;
-  int _likedCount = 0;
+  Set<String> _favoriteKeys = <String>{};
   bool _loading = true;
   String? _error;
   _LibraryScope _scope = _LibraryScope.all;
@@ -75,7 +75,7 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
     final key = 'pocketlink.media.favorites.' + widget.api.baseUrl + '.music';
-    setState(() => _likedCount = prefs.getStringList(key)?.length ?? 0);
+    setState(() => _favoriteKeys = prefs.getStringList(key)?.toSet() ?? <String>{});
   }
 
   Future<void> _load() async {
@@ -100,6 +100,8 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
       item.path.toLowerCase().contains(query)
     ).toList(growable: false);
   }
+
+  int get _likedCount => _scope == _LibraryScope.cached ? 0 : _visibleTracks.where((item) => _favoriteKeys.contains((item.volume ?? 'internal') + ':' + item.path)).length;
 
   int get _songCount => switch (_scope) {
     _LibraryScope.all => _visibleTracks.length + _cachedCount,
