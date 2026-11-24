@@ -98,6 +98,35 @@ class _LyricsViewportState extends State<LyricsViewport> {
                 final instrumentalGap = active && nextLine != null &&
                     nextLine.timeMs - line.timeMs >= 12000 &&
                     widget.position.inMilliseconds - line.timeMs >= 6000;
+                final baseStyle = TextStyle(
+                  color: Colors.white,
+                  fontSize: active ? 27 : 24,
+                  height: 1.28,
+                  fontWeight: FontWeight.w700,
+                  shadows: active
+                      ? [Shadow(color: Colors.white.withValues(alpha: .18), blurRadius: 16)]
+                      : const [],
+                );
+                final lyricText = line.words.isEmpty
+                    ? Text(line.text, textAlign: TextAlign.left, style: baseStyle)
+                    : RichText(
+                        textAlign: TextAlign.left,
+                        text: TextSpan(
+                          style: baseStyle,
+                          children: [
+                            for (final word in line.words)
+                              TextSpan(
+                                text: word.text,
+                                style: TextStyle(
+                                  color: widget.position.inMilliseconds >= word.startMs &&
+                                          widget.position.inMilliseconds < word.endMs
+                                      ? Colors.white
+                                      : Colors.white.withValues(alpha: .58),
+                                ),
+                              ),
+                          ],
+                        ),
+                      );
                 return GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: doc.synced ? () => widget.onSeek(Duration(milliseconds: line.timeMs)) : null,
@@ -113,19 +142,7 @@ class _LyricsViewportState extends State<LyricsViewport> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                          line.text,
-                          textAlign: TextAlign.left,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: active ? 27 : 24,
-                            height: 1.28,
-                            fontWeight: FontWeight.w700,
-                            shadows: active
-                                ? [Shadow(color: Colors.white.withValues(alpha: .18), blurRadius: 16)]
-                                : const [],
-                          ),
-                            ),
+                            lyricText,
                             if (instrumentalGap)
                               const Padding(
                                 padding: EdgeInsets.only(top: 10),
