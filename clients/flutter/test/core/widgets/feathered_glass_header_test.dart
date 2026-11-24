@@ -7,6 +7,12 @@ import 'package:pocketlink_client/core/widgets/feathered_glass_header.dart';
 import 'package:pocketlink_client/core/widgets/liquid_glass_pill.dart';
 import 'package:pocketlink_client/core/widgets/progressive_blur.dart';
 
+void expectHeaderBlurActive(WidgetTester tester) {
+  final filterCount = find.byType(BackdropFilter).evaluate().length;
+  // Shader-capable renderers use one composed filter; the fallback uses five bands.
+  expect(filterCount, anyOf(1, 5));
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -108,7 +114,7 @@ void main() {
       ),
     );
 
-    expect(find.byType(BackdropFilter), findsOneWidget);
+    expectHeaderBlurActive(tester);
   });
 
   testWidgets('shared header blur is enabled while scrolled', (tester) async {
@@ -135,7 +141,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byType(BackdropFilter).evaluate().length, 1);
+    expectHeaderBlurActive(tester);
     scrollController.dispose();
   });
 
@@ -168,7 +174,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byType(BackdropFilter).evaluate().length, 1);
+    expectHeaderBlurActive(tester);
     scrollController.dispose();
   });
 
@@ -228,7 +234,7 @@ void main() {
         )),
     );
     await tester.pump();
-    expect(find.byType(BackdropFilter).evaluate().length, 1);
+    expectHeaderBlurActive(tester);
 
     await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(false));
     await tester.pump();
