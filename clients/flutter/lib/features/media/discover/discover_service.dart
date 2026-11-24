@@ -240,7 +240,7 @@ class DiscoverService {
     var bestScore = 0.0;
     for (final item in library) {
       if (!isLosslessFile(item.name)) continue;
-      final basename = item.name.replaceFirst(RegExp(r'\\.[^.]+$'), '');
+      final basename = item.name.replaceFirst(RegExp(r'\.[^.]+$'), '');
       final pathParts = item.path.split('/')..removeLast();
       final genericFolders = {
         'music', 'audio', 'songs', 'download', 'downloads',
@@ -253,7 +253,7 @@ class DiscoverService {
           .toList();
 
       final filenameParts = basename
-          .split(RegExp(r'\\s+[-–—]\\s+'))
+          .split(RegExp(r'\s+[-–—]\\s+'))
           .map((part) => part.trim())
           .where((part) => part.isNotEmpty)
           .toList();
