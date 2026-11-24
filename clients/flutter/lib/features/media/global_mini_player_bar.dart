@@ -119,6 +119,9 @@ class GlobalMiniPlayerBar extends StatelessWidget {
                   onDismiss();
                 }
               },
+              onVerticalDragCancel: onExpandDragEnd == null
+                  ? null
+                  : () => onExpandDragEnd!(0),
               child: Material(
                 type: MaterialType.transparency,
                 borderRadius: BorderRadius.circular(22),
