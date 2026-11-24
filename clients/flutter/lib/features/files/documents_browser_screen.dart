@@ -235,6 +235,12 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
         feathered: true,
         showHome: false,
         automaticallyImplyLeading: false,
+        leading: IconButton(
+          tooltip: 'Back',
+          onPressed: () => Navigator.of(context).maybePop(),
+          icon: const Icon(Icons.arrow_back_rounded),
+        ),
+        leadingWidth: 56,
         title: TitleDropdownPopover<String>(
 tooltip: 'Filter document types',
           onOpenChanged: (open) => setState(() => _filterMenuOpen = open),
