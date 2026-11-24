@@ -148,7 +148,10 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     final saved = _browserState.stateFor(_stateKey);
     _path = widget.locationRequest > 0 ? widget.requestedPath : (widget.initialPath.isNotEmpty ? widget.initialPath : saved.path);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) widget.onCanNavigateBackChanged?.call(_path.isNotEmpty);
+      if (!mounted) return;
+      widget.onCanNavigateBackChanged?.call(_path.isNotEmpty);
+      _syncBackHandler();
+      _syncBackHandler();
     });
     _category = widget.initialCategory != 'All' ? widget.initialCategory : saved.category;
     _sortBy = saved.sortBy;
@@ -664,9 +667,23 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   }
 
   void _syncBackHandler() {
-    widget.onBackHandlerChanged?.call(_searchExpanded
+    final handler = _searchExpanded
         ? () => _setSearchExpanded(false)
-        : null);
+        : _path.isNotEmpty
+            ? _goUp
+            : null;
+    widget.onBackHandlerChanged?.call(handler);
+  }
+
+  @override
+  void didUpdateWidget(covariant FileManagerScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isActive != widget.isActive ||
+        oldWidget.onBackHandlerChanged != widget.onBackHandlerChanged) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _syncBackHandler();
+      });
+    }
   }
 
   void _setSearchExpanded(bool expanded) {
@@ -759,14 +776,21 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
       );
     }
 
+    final embeddedTab = widget.onBackAtRoot != null;
+    final hasInternalBack = _searchExpanded || _path.isNotEmpty;
     return PopScope(
-      canPop: (_searchExpanded && widget.onBackHandlerChanged != null) ||
-          (!_searchExpanded && !widget.isActive && _path.isEmpty),
+      canPop: embeddedTab
+          ? (!widget.isActive ||
+              (widget.onBackHandlerChanged != null && hasInternalBack))
+          : (!_searchExpanded && _path.isEmpty),
       onPopInvokedWithResult: (didPop, result) {
-        if (didPop || (_searchExpanded && widget.onBackHandlerChanged != null)) return;
-        if (_path.isNotEmpty) {
+        if (didPop || (embeddedTab && !widget.isActive)) return;
+        if (embeddedTab && widget.onBackHandlerChanged != null) return;
+        if (_searchExpanded) {
+          _setSearchExpanded(false);
+        } else if (_path.isNotEmpty) {
           _goUp();
-        } else if (widget.isActive) {
+        } else if (embeddedTab) {
           widget.onBackAtRoot?.call();
         }
       },
