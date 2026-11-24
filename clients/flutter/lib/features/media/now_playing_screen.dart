@@ -21,6 +21,7 @@ import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
 import '../storage/storage_browser_screen.dart';
 import 'now_playing_scrubber.dart';
+import 'now_playing_scroll_dismiss_detector.dart';
 import 'persistent_audio_player.dart';
 import 'now_playing_artwork_palette.dart';
 import 'widgets/media_info_row.dart';
@@ -1748,10 +1749,15 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
           ),
           Expanded(
             flex: 4,
-            child: SingleChildScrollView(
+            child: NowPlayingScrollDismissDetector(
+              onDismissDragStart: widget.onDismissDragStart,
+              onDismissDragUpdate: widget.onDismissDragUpdate,
+              onDismissDragEnd: widget.onDismissDragEnd,
+              child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               child: _playerDetails(contentOpacity: contentOpacity),
             ),
+              ),
           ),
         ],
       );
@@ -1773,7 +1779,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
           ),
           Expanded(
             flex: 4,
-            child: SingleChildScrollView(
+            child: NowPlayingScrollDismissDetector(
+              onDismissDragStart: widget.onDismissDragStart,
+              onDismissDragUpdate: widget.onDismissDragUpdate,
+              onDismissDragEnd: widget.onDismissDragEnd,
+              child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
               child: _playerDetails(
@@ -1781,6 +1791,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                 contentOpacity: contentOpacity,
               ),
             ),
+              ),
           ),
         ],
       );
@@ -1801,7 +1812,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
           ),
           Expanded(
             flex: 4,
-            child: SingleChildScrollView(
+            child: NowPlayingScrollDismissDetector(
+              onDismissDragStart: widget.onDismissDragStart,
+              onDismissDragUpdate: widget.onDismissDragUpdate,
+              onDismissDragEnd: widget.onDismissDragEnd,
+              child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
               child: _playerDetails(
@@ -1809,6 +1824,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                 contentOpacity: contentOpacity,
               ),
             ),
+              ),
           ),
         ],
       );
