@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/settings/app_settings.dart';
+import '../../core/logging/app_logger.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
 import '../../core/navigation/pocketlink_navigation.dart';
 import 'navigation_dock.dart';
@@ -65,6 +66,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    AppLogger.event('screen.opened', category: 'screen', component: 'home',
+      fields: {'initial_tab': 'home'});
     unawaited(DownloadManagerService.instance.initialize());
     DownloadManagerService.instance.bindServerApi(widget.api);
     PocketLinkNavigation.drawerOpen.value = false;
@@ -121,6 +124,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    AppLogger.event('screen.closed', category: 'screen', component: 'home',
+      fields: {'selected_tab_index': _selectedIndex, 'library_open': _libraryOpen,
+        'host_setup_open': _hostSetupOpen});
     DownloadManagerService.instance.releaseServerApi(widget.api);
     AppSettings.instance.removeListener(_navigationSettingsChanged);
     PocketLinkNavigation.drawerOpen.value = false;
@@ -129,6 +135,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openTab(int index) {
+    AppLogger.event('navigation.tab_selected', category: 'navigation',
+      component: 'home_shell',
+      fields: {'tab': switch (index) { 0 => 'home', 1 => 'explore', 2 => 'files', _ => 'unknown' },
+        'previous_index': _selectedIndex, 'next_index': index});
     _libraryBackHandler?.call();
     _tabBackHandler?.call();
     setState(() {
@@ -180,6 +190,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openExplore(ExploreCategory category, {String? fileCategory}) {
+    AppLogger.event('navigation.explore_category_selected', category: 'navigation',
+      component: 'home_shell',
+      fields: {'category': category.name, 'file_category': fileCategory ?? 'all'});
     if (fileCategory == 'Documents') {
       _openLibrary('documents');
       return;
@@ -198,6 +211,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
 
   void _openLibrary(String id) {
+    AppLogger.event('navigation.library_opened', category: 'navigation',
+      component: 'home_shell', fields: {'library': id, 'from_tab': _selectedIndex});
     _libraryBackHandler?.call();
     _tabBackHandler?.call();
     _libraryBackHandler = null;
