@@ -97,7 +97,21 @@ void main() {
     expect(find.byType(BackdropFilter), findsOneWidget);
   });
 
-  testWidgets('progressive header uses shader blur or stepped fallback when enabled', (tester) async {
+  testWidgets('shared header blur is active before the first scroll', (tester) async {
+    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(true));
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: FeatheredGlassHeaderBackground(),
+        ),
+      ),
+    );
+
+    expect(find.byType(BackdropFilter), findsOneWidget);
+  });
+
+  testWidgets('shared header blur is enabled while scrolled', (tester) async {
     await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(true));
 
     final scrollController = ScrollController(initialScrollOffset: 1);
@@ -121,11 +135,11 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byType(BackdropFilter).evaluate().length, 6);
+    expect(find.byType(BackdropFilter).evaluate().length, 1);
     scrollController.dispose();
   });
 
-  testWidgets('progressive blur remains active when reduced motion is enabled', (tester) async {
+  testWidgets('shared header blur remains active when reduced motion is enabled', (tester) async {
     await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(true));
 
     final scrollController = ScrollController(initialScrollOffset: 1);
@@ -191,7 +205,7 @@ void main() {
     );
   });
 
-  testWidgets('progressive blur off removes backdrop filters immediately', (tester) async {
+  testWidgets('disabling header blur removes backdrop filters immediately', (tester) async {
     await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(true));
 
     final scrollController = ScrollController(initialScrollOffset: 1);
