@@ -11,8 +11,11 @@ class DiagnosticNavigatorObserver extends NavigatorObserver {
   static final instance = DiagnosticNavigatorObserver._();
   final List<Route<dynamic>> _routes = [];
 
-  String _routeLabel(Route<dynamic>? route) =>
-      route == null ? 'none' : route.runtimeType.toString();
+  String _routeLabel(Route<dynamic>? route) {
+    if (route == null) return 'none';
+    final name = route.settings.name;
+    return name == null || name.isEmpty ? route.runtimeType.toString() : name;
+  }
 
   void _recordNavigation(String action, Route<dynamic>? route, Route<dynamic>? related) {
     AppLogger.event('navigation.$action', category: 'navigation', component: 'navigator',
