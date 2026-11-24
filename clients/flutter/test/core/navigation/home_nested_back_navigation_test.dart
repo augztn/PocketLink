@@ -288,13 +288,17 @@ class _BackStackObserver extends NavigatorObserver {
 
   final VoidCallback onChanged;
 
+  void _notifyAfterBuild() {
+    WidgetsBinding.instance.addPostFrameCallback((_) => onChanged());
+  }
+
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    onChanged();
+    _notifyAfterBuild();
   }
 
   @override
   void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    onChanged();
+    _notifyAfterBuild();
   }
 }
