@@ -171,7 +171,7 @@ class AppLogger {
     final normalized = _normalizeFieldKey(key);
     const explicitlySensitiveFields = {
       'query', 'search', 'search_term', 'search_text', 'filename',
-      'file_name', 'item_name', 'media_title', 'artist', 'track_title',
+      'file_name', 'item_name', 'title', 'media_title', 'artist', 'track_title',
       'display_name', 'content', 'request_body', 'response_body',
     };
     if (explicitlySensitiveFields.contains(normalized)) return true;
@@ -259,8 +259,18 @@ class AppLogger {
       RegExp(r'\b((?:https?|wss?)://)(?:[^/@\s]+@)?(?:\[[^\]]+\]|[^:/?#\s]+)(?::\d+)?', caseSensitive: false),
       (match) => match.group(1)! + '[REDACTED_HOST]',
     );
+    // Signed media URLs commonly carry credentials in query parameters whose
+    // names vary by provider (sig, signature, X-Goog-Signature, etc.). Remove
+    // the complete query rather than trying to maintain a provider-specific list.
+    final withUrlQueriesRedacted = withUrlHostsRedacted.replaceAllMapped(
+      RegExp(
+        r'((?:https?|wss?)://\[REDACTED_HOST\](?::\d+)?(?:/[^\s?#]*)?)\?[^\s#]*',
+        caseSensitive: false,
+      ),
+      (match) => '${match.group(1)}?[REDACTED_QUERY]',
+    );
 
-    return withUrlHostsRedacted
+    return withUrlQueriesRedacted
         .replaceAll(
           RegExp(
             r'(?<![\d.])(?:25[0-5]|2[0-4]\d|1?\d?\d)(?:\.(?:25[0-5]|2[0-4]\d|1?\d?\d)){3}(?![\d.])',
