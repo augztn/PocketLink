@@ -27,7 +27,7 @@ class MusicLibraryScreen extends StatefulWidget {
 
   final ServerApi api;
   final VoidCallback? onOpenGenres;
-  final VoidCallback? onOpenImported;
+  final Future<void> Function()? onOpenImported;
 
   @override
   State<MusicLibraryScreen> createState() => _MusicLibraryScreenState();
@@ -82,9 +82,14 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
   }
 
   Future<void> _openImportedPlaylists() async {
-    await Navigator.of(context).push<void>(MaterialPageRoute<void>(
-      builder: (_) => const ImportedPlaylistManagerScreen(),
-    ));
+    final open = widget.onOpenImported;
+    if (open != null) {
+      await open();
+    } else {
+      await Navigator.of(context).push<void>(MaterialPageRoute<void>(
+        builder: (_) => const ImportedPlaylistManagerScreen(),
+      ));
+    }
     await _loadImportedPlaylistCount();
   }
 
@@ -222,7 +227,7 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
               const SizedBox(width: 8),
               _quickChip('Genres', Icons.category_rounded, widget.onOpenGenres ?? () => _unavailable('Genre')),
               const SizedBox(width: 8),
-              _quickChip('Imported', Icons.playlist_add_rounded, widget.onOpenImported ?? _openImportedPlaylists),
+              _quickChip('Imported', Icons.playlist_add_rounded, _openImportedPlaylists),
             ]),
             const SizedBox(height: 16),
             if (_error != null)
