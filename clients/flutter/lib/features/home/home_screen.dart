@@ -569,30 +569,30 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: AnimatedBuilder(
                     animation: player,
                     builder: (context, _) => FloatingNavigationDock(
-                    order: AppSettings.instance.navigationOrder,
-                    visibleItems: AppSettings.instance.visibleNavigationItems,
-                    selectedIndex: _selectedIndex,
-                    isPlaying: player.isMusic && player.isPlaying,
-                    hasMedia: player.isActive && player.currentItem != null,
-                    isVideo: player.isActive && !player.isMusic,
-                    onSelect: _openTab,
-                    musicShortcutsExpanded: _musicShortcutsExpanded,
-                    onMusicShortcutDismissed: () {
-                      if (_musicShortcutsExpanded) {
-                        setState(() {
-                          _musicShortcutsExpanded = false;
-                          PocketLinkNavigation.quickShortcutsOpen.value = false;
-                        });
-                      }
-                    },
-                    onMusicShortcutLongPress: _expandMusicShortcuts,
-                    onBrowseSwipeLeft: () => _handleMusicButtonSwipe(left: true),
-                    onBrowseSwipeRight: () => _handleMusicButtonSwipe(left: false),
-                    onBrowsePressed: () {
-                      _closeHostSetup();
-                      _openNowPlaying(player);
-                    },
-                  ),
+                      order: AppSettings.instance.navigationOrder,
+                      visibleItems: AppSettings.instance.visibleNavigationItems,
+                      selectedIndex: _selectedIndex,
+                      isPlaying: player.isMusic && player.isPlaying,
+                      hasMedia: player.isActive && player.currentItem != null,
+                      isVideo: player.isActive && !player.isMusic,
+                      onSelect: _openTab,
+                      musicShortcutsExpanded: _musicShortcutsExpanded,
+                      onMusicShortcutDismissed: () {
+                        if (_musicShortcutsExpanded) {
+                          setState(() {
+                            _musicShortcutsExpanded = false;
+                            PocketLinkNavigation.quickShortcutsOpen.value = false;
+                          });
+                        }
+                      },
+                      onMusicShortcutLongPress: _expandMusicShortcuts,
+                      onBrowseSwipeLeft: () => _handleMusicButtonSwipe(left: true),
+                      onBrowseSwipeRight: () => _handleMusicButtonSwipe(left: false),
+                      onBrowsePressed: () {
+                        _closeHostSetup();
+                        _openNowPlaying(player);
+                      },
+                    ),
                   ),
                 ),
             ],
