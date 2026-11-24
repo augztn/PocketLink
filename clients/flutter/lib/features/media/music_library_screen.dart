@@ -13,7 +13,7 @@ import '../downloads/downloads_screen.dart';
 import 'data/media_library_repository.dart';
 import 'media_browser_screen.dart';
 import 'media_library_catalog.dart';
-import 'discover/imported_playlist_manager_screen.dart';
+
 
 const _libraryCanvas = Color(0xFF000000);
 const _libraryCard = Color(0xFF15161B);
@@ -76,7 +76,7 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
   }
 
   Future<void> _loadImportedPlaylistCount() async {
-    final playlists = await ImportedPlaylistStore.load();
+    final playlists = await ImportedPlaylistStore.load(widget.api);
     if (!mounted) return;
     setState(() => _importedPlaylistCount = playlists.length);
   }
@@ -87,7 +87,7 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
       await open();
     } else {
       await Navigator.of(context).push<void>(MaterialPageRoute<void>(
-        builder: (_) => const ImportedPlaylistManagerScreen(),
+        builder: (_) => ImportedPlaylistManagerScreen(api: widget.api),
       ));
     }
     await _loadImportedPlaylistCount();
