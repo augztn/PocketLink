@@ -56,6 +56,26 @@ class LyricsRepository {
   final Map<String, Map<String, LyricsProviderResult>> _states = {};
   final Map<String, Future<Map<String, LyricsProviderResult>>> _pending = {};
   final Map<String, LyricsDocument?> _active = {};
+  static List<LyricsLine> parseLrc(String raw) {
+    final stamp = RegExp(r'\[(\d{1,2}):(\d{2})(?:[.:](\d{1,3}))?\]');
+    final lines = <LyricsLine>[];
+    for (final row in raw.split(RegExp(r'\r?\n'))) {
+      final matches = stamp.allMatches(row).toList();
+      final text = row.replaceAll(stamp, '').trim();
+      if (text.isEmpty) continue;
+      for (final match in matches) {
+        final fraction = (match.group(3) ?? '').padRight(3, '0');
+        lines.add(LyricsLine(
+          (int.parse(match.group(1)!) * 60 + int.parse(match.group(2)!)) * 1000 +
+              (int.tryParse(fraction) ?? 0),
+          text,
+        ));
+      }
+    }
+    lines.sort((a, b) => a.timeMs.compareTo(b.timeMs));
+    return lines;
+  }
+
   List<LyricsProvider> get providers => List.unmodifiable(_providers);
   LyricsDocument? current(String key) => _active[key];
   Map<String, LyricsProviderResult> resultsFor(String key) => Map.unmodifiable(_states[key] ?? const {});
@@ -104,18 +124,7 @@ abstract class _Provider implements LyricsProvider {
   Future<String?> text(String url, [Map<String, dynamic>? params]) async => (await dio.get<String>(url, queryParameters: params)).data;
   LyricsDocument? lrc(String? raw, String id, String name) {
     if (raw == null) return null;
-    final re = RegExp(r'\[(\d{1,2}):(\d{2})(?:[.:](\d{1,3}))?\]');
-    final out = <LyricsLine>[];
-    for (final row in raw.split(RegExp(r'\r?\n'))) {
-      final ms = re.allMatches(row).toList();
-      final value = row.replaceAll(re, '').trim();
-      if (value.isEmpty) continue;
-      for (final m in ms) {
-        final fraction = (m.group(3) ?? '').padRight(3, '0');
-        out.add(LyricsLine((int.parse(m.group(1)!) * 60 + int.parse(m.group(2)!)) * 1000 + (int.tryParse(fraction) ?? 0), value));
-      }
-    }
-    out.sort((a,b) => a.timeMs.compareTo(b.timeMs));
+    final out = LyricsRepository.parseLrc(raw);
     return out.isEmpty ? null : LyricsDocument(providerId:id, providerName:name, lines:out, synced:true);
   }
   LyricsDocument? plain(String? raw, String id, String name) {
