@@ -121,10 +121,9 @@ class PlaylistImportService {
       return PlaylistUrlResult(name: title, tracks: List.unmodifiable(tracks), provider: 'Spotify');
     }
     final title = _meta(html, 'og:title') ?? 'YouTube playlist';
-    final ids = <String>{};
-    for (final m in RegExp(r'"videoId"\s*:\s*"([A-Za-z0-9_-]{11})"').allMatches(html)) { ids.add(m.group(1)!); }
-    if (ids.isEmpty) throw const FormatException('Could not read tracks from this YouTube playlist. Try a public playlist URL or import a CSV export.');
-    return PlaylistUrlResult(name: title, tracks: List.unmodifiable(ids.map((id) => ImportedTrack(title: 'YouTube track', videoId: id))), provider: 'YouTube');
+    final tracks = _youtubeTracks(html);
+    if (tracks.isEmpty) throw const FormatException('Could not read tracks from this YouTube playlist. Try a public playlist URL or import a CSV export.');
+    return PlaylistUrlResult(name: title, tracks: List.unmodifiable(tracks), provider: 'YouTube');
   }
 
   static String normalizeTrackText(String value) {
@@ -199,6 +198,40 @@ class PlaylistImportService {
     }
     return null;
   }
+  static List<ImportedTrack> _youtubeTracks(String html) {
+    final starts = RegExp(r'"playlistVideoRenderer"\s*:\s*\{')
+        .allMatches(html)
+        .map((match) => match.start)
+        .toList(growable: false);
+    final tracks = <ImportedTrack>[];
+    final seen = <String>{};
+    for (var index = 0; index < starts.length; index++) {
+      final start = starts[index];
+      final end = index + 1 < starts.length
+          ? starts[index + 1]
+          : (start + 14000).clamp(0, html.length);
+      final block = html.substring(start, end);
+      final id = RegExp(r'"videoId"\s*:\s*"([A-Za-z0-9_-]{11})"')
+          .firstMatch(block)?.group(1);
+      if (id == null || !seen.add(id)) continue;
+      final titleRaw = RegExp(
+        r'"title"\s*:\s*\{\s*"runs"\s*:\s*\[\s*\{\s*"text"\s*:\s*"((?:\\.|[^"\\])*)"')
+          .firstMatch(block)?.group(1) ??
+          RegExp(r'"title"\s*:\s*\{\s*"simpleText"\s*:\s*"((?:\\.|[^"\\])*)"')
+              .firstMatch(block)?.group(1);
+      final artistRaw = RegExp(
+        r'"shortBylineText"\s*:\s*\{\s*"runs"\s*:\s*\[\s*\{\s*"text"\s*:\s*"((?:\\.|[^"\\])*)"')
+          .firstMatch(block)?.group(1) ??
+          RegExp(r'"longBylineText"\s*:\s*\{\s*"runs"\s*:\s*\[\s*\{\s*"text"\s*:\s*"((?:\\.|[^"\\])*)"')
+              .firstMatch(block)?.group(1);
+      final trackTitle = titleRaw == null ? '' : _jsonString(titleRaw);
+      final artist = artistRaw == null ? '' : _jsonString(artistRaw);
+      if (trackTitle.isEmpty) continue;
+      tracks.add(ImportedTrack(title: trackTitle, artist: artist, videoId: id));
+    }
+    return tracks;
+  }
+
   static List<ImportedTrack> _spotifyTracks(String html) {
     final found = <ImportedTrack>[], seen = <String>{};
     final p = RegExp(r'"track"\s*:\s*\{[^{}]{0,2000}?"name"\s*:\s*"((?:\\.|[^"\\])*)"');
