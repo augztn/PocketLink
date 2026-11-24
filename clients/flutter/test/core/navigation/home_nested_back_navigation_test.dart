@@ -86,6 +86,15 @@ class _IndexedTabBackHarnessState extends State<_IndexedTabBackHarness> {
   final GlobalKey<NavigatorState> _exploreNavigatorKey =
       GlobalKey<NavigatorState>();
   int _activeTab = 2;
+  late final _BackStackObserver _observer;
+
+  @override
+  void initState() {
+    super.initState();
+    _observer = _BackStackObserver(() {
+      if (mounted) setState(() {});
+    });
+  }
 
   void _push(String title, List<Widget> actions) {
     _exploreNavigatorKey.currentState?.push<void>(
@@ -160,6 +169,7 @@ class _IndexedTabBackHarnessState extends State<_IndexedTabBackHarness> {
                         _exploreNavigatorKey.currentState?.maybePop(),
                     child: Navigator(
                       key: _exploreNavigatorKey,
+                      observers: [_observer],
                       onGenerateInitialRoutes: (_, __) => [
                         MaterialPageRoute<void>(
                           settings: const RouteSettings(name: 'Discover'),
