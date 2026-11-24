@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:pocketlink_client/core/navigation/pocketlink_navigation.dart';
 
 void main() {
   testWidgets('system Back pops Commute to Search, then Search to Discover', (
@@ -42,6 +43,141 @@ void main() {
       expect(find.text('Discover'), findsOneWidget);
     },
   );
+}
+
+  testWidgets(
+    'Back on Files does not pop a hidden Explore stack',
+    (tester) async {
+      await tester.pumpWidget(const MaterialApp(home: _IndexedTabBackHarness()));
+      await tester.tap(find.text('Explore tab'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Open Search'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Open Commute'));
+      await tester.pumpAndSettle();
+      expect(find.text('Commute'), findsOneWidget);
+
+      await tester.tap(find.text('Files tab'));
+      await tester.pumpAndSettle();
+      expect(find.text('Files root'), findsOneWidget);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text('Home root'), findsOneWidget);
+      expect(find.text('Commute'), findsNothing);
+
+      await tester.tap(find.text('Explore tab'));
+      await tester.pumpAndSettle();
+      expect(find.text('Commute'), findsOneWidget);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text('Search'), findsOneWidget);
+      expect(find.text('Discover'), findsNothing);
+    },
+  );
+
+class _IndexedTabBackHarness extends StatefulWidget {
+  const _IndexedTabBackHarness();
+
+  @override
+  State<_IndexedTabBackHarness> createState() => _IndexedTabBackHarnessState();
+}
+
+class _IndexedTabBackHarnessState extends State<_IndexedTabBackHarness> {
+  final GlobalKey<NavigatorState> _exploreNavigatorKey =
+      GlobalKey<NavigatorState>();
+  int _activeTab = 2;
+
+  void _push(String title, List<Widget> actions) {
+    _exploreNavigatorKey.currentState?.push<void>(
+      MaterialPageRoute<void>(
+        settings: RouteSettings(name: title),
+        builder: (_) => Scaffold(
+          body: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [Text(title), ...actions],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _exploreRoot() => Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Discover'),
+              ElevatedButton(
+                onPressed: () => _push('Search', [
+                  ElevatedButton(
+                    onPressed: () => _push('Commute', const []),
+                    child: const Text('Open Commute'),
+                  ),
+                ]),
+                child: const Text('Open Search'),
+              ),
+            ],
+          ),
+        ),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope<void>(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (_activeTab == 1) setState(() => _activeTab = 2);
+      },
+      child: Scaffold(
+        body: Column(
+          children: [
+            Row(
+              children: [
+                TextButton(
+                  onPressed: () => setState(() => _activeTab = 0),
+                  child: const Text('Explore tab'),
+                ),
+                TextButton(
+                  onPressed: () => setState(() => _activeTab = 1),
+                  child: const Text('Files tab'),
+                ),
+              ],
+            ),
+            Expanded(
+              child: IndexedStack(
+                index: _activeTab,
+                children: [
+                  NavigatorPopHandler<void>(
+                    enabled: PocketLinkNavigation.shouldHandleNestedBack(
+                      isActive: _activeTab == 0,
+                      canPop: _exploreNavigatorKey.currentState?.canPop() ??
+                          false,
+                    ),
+                    onPopWithResult: (_) =>
+                        _exploreNavigatorKey.currentState?.maybePop(),
+                    child: Navigator(
+                      key: _exploreNavigatorKey,
+                      onGenerateInitialRoutes: (_, __) => [
+                        MaterialPageRoute<void>(
+                          settings: const RouteSettings(name: 'Discover'),
+                          builder: (_) => _exploreRoot(),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Center(child: Text('Files root')),
+                  const Center(child: Text('Home root')),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _NestedBackHarness extends StatefulWidget {
