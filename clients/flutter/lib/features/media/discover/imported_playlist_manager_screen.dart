@@ -31,13 +31,18 @@ class ImportedPlaylistStore {
     }
   }
 
-  static Future<void> save(ImportedPlaylist playlist) async {
+  static Future<void> save(ImportedPlaylist playlist) => saveAll([playlist]);
+
+  static Future<void> saveAll(Iterable<ImportedPlaylist> playlists) async {
     final current = await load();
-    final key = _identity(playlist);
-    final next = [
-      playlist,
-      ...current.where((item) => _identity(item) != key),
-    ];
+    final incoming = playlists.toList(growable: false);
+    final incomingKeys = <String>{};
+    final next = <ImportedPlaylist>[];
+    for (final playlist in incoming) {
+      final key = _identity(playlist);
+      if (incomingKeys.add(key)) next.add(playlist);
+    }
+    next.addAll(current.where((item) => !incomingKeys.contains(_identity(item))));
     if (next.length > 200) {
       throw StateError('PocketLink can store up to 200 imported playlists.');
     }
