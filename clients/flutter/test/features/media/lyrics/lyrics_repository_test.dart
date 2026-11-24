@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pocketlink_client/features/media/lyrics/lyrics_repository.dart';
 import 'package:pocketlink_client/features/media/persistent_audio_player.dart';
