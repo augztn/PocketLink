@@ -84,6 +84,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   String? _lyricsQueryKey;
   bool _lyricsLoading = false;
   bool _lyricsTranslationEnabled = false;
+  String? _observedTrackIdentity;
   final GlobalKey _lyricsViewportKey = GlobalKey();
 
 
@@ -91,8 +92,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
       _persistent.currentItem ??
       widget.queue[widget.initialIndex.clamp(0, widget.queue.length - 1).toInt()];
 
-  String get _trackKey =>
-      '${widget.api?.baseUrl ?? 'discover'}|${_track.volume ?? 'internal'}:${_track.path}';
+  String get _trackIdentity =>
+      (widget.api?.baseUrl ?? 'discover') + '|' + _track.stableTrackId;
+
+  String get _trackKey => _trackIdentity;
 
   bool get _usesSharedArtwork =>
       widget.useSharedArtwork && (widget.morphAnimation?.value ?? 1.0) < 0.999;
@@ -209,6 +212,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     unawaited(_loadLyricsPreference());
     _persistent = PersistentAudioPlayer.instance;
     _player = _persistent.player;
+    _observedTrackIdentity = _trackIdentity;
     unawaited(AppLogger.info('Now Playing screen initialized', fields: {
       'queueLength': widget.queue.length,
       'initialIndex': widget.initialIndex,
@@ -298,6 +302,17 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
 
   Future<void> _onTrackChanged() async {
     if (!mounted) return;
+    final identity = _trackIdentity;
+    if (identity == _observedTrackIdentity) {
+      // Playlist snapshots can be emitted for decoder/metadata changes.
+      // Preserve artwork, palette, and lyrics while the same song is active.
+      if (_artwork == null && (_track.artworkUrl?.trim().isNotEmpty ?? false)) {
+        unawaited(_loadArtwork());
+      }
+      return;
+    }
+
+    _observedTrackIdentity = identity;
     setState(() {
       _artwork = null;
       _artworkKey = null;
@@ -1286,19 +1301,31 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
 
   Future<void> _loadTrackLyrics() async {
     final query = LyricsTrackQuery(track: _track, api: widget.api);
-    if (_lyricsQueryKey == query.key && !_lyricsLoading) return;
+    if (_lyricsQueryKey == query.key &&
+        (_lyricsLoading || _activeLyrics != null || _lyricsProviderStates.isNotEmpty)) {
+      return;
+    }
+
     setState(() {
       _lyricsQueryKey = query.key;
       _lyricsLoading = true;
-      _activeLyrics = null;
-      _lyricsProviderStates = {
-        for (final provider in _lyricsRepository.providers)
-          provider.id: const LyricsProviderResult(LyricsLookupStatus.loading),
-      };
+      _activeLyrics = _lyricsRepository.current(query.key);
+      _lyricsProviderStates = _lyricsRepository.resultsFor(query.key);
+      if (_lyricsProviderStates.isEmpty) {
+        _lyricsProviderStates = {
+          for (final provider in _lyricsRepository.providers)
+            provider.id: const LyricsProviderResult(LyricsLookupStatus.loading),
+        };
+      }
     });
     try {
       final states = await _lyricsRepository.lookup(query, onUpdate: (next) {
-        if (mounted && _lyricsQueryKey == query.key) setState(() => _lyricsProviderStates = next);
+        if (!mounted || _lyricsQueryKey != query.key) return;
+        final active = _lyricsRepository.current(query.key);
+        setState(() {
+          _lyricsProviderStates = next;
+          if (active != null) _activeLyrics = active;
+        });
       });
       if (!mounted || _lyricsQueryKey != query.key) return;
       setState(() {
