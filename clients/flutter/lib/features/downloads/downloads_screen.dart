@@ -596,7 +596,7 @@ class _DownloadTaskCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        status,
+                        'LOCAL · $status',
                         style: TextStyle(
                           color: failed
                               ? const Color(0xFFFF7B86)
@@ -713,6 +713,7 @@ class _ServerDownloadJobCard extends StatelessWidget {
     final progress = job.progress;
     final completed = job.status == 'completed';
     final active = job.status == 'downloading';
+    final canPause = active || job.status == 'queued';
     final failed = job.status == 'failed';
     return SmokedGlassSurface(
       radius: BorderRadius.circular(20),
@@ -762,7 +763,7 @@ class _ServerDownloadJobCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (active)
+                if (canPause)
                   IconButton(
                     tooltip: 'Pause server download',
                     onPressed: onPause,
@@ -791,7 +792,7 @@ class _ServerDownloadJobCard extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(99),
               child: LinearProgressIndicator(
-                value: progress,
+                value: progress ?? (active ? null : 0),
                 minHeight: 4,
                 backgroundColor: Colors.white.withValues(alpha: 0.10),
               ),
@@ -840,6 +841,120 @@ class _ServerDownloadJobCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ServerDirectoryPicker extends StatefulWidget {
+  const _ServerDirectoryPicker({
+    required this.api,
+    required this.initialPath,
+  });
+
+  final ServerApi api;
+  final String initialPath;
+
+  @override
+  State<_ServerDirectoryPicker> createState() => _ServerDirectoryPickerState();
+}
+
+class _ServerDirectoryPickerState extends State<_ServerDirectoryPicker> {
+  String _path = '';
+  DirectoryListing? _listing;
+  String? _error;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load('');
+  }
+
+  Future<void> _load(String path) async {
+    setState(() {
+      _path = path;
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final listing = await widget.api.listDirectory(path);
+      if (mounted) setState(() => _listing = listing);
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  String _parentPath() {
+    final separator = _path.lastIndexOf('/');
+    return separator < 0 ? '' : _path.substring(0, separator);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final folders = _listing?.items.where((item) => item.isDirectory).toList() ?? const <FileEntry>[];
+    return AlertDialog(
+      title: const Text('Choose server folder'),
+      content: SizedBox(
+        width: double.maxFinite,
+        height: 360,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                IconButton(
+                  tooltip: 'Parent folder',
+                  onPressed: _path.isEmpty || _loading ? null : () => _load(_parentPath()),
+                  icon: const Icon(Icons.arrow_upward_rounded),
+                ),
+                Expanded(
+                  child: Text(
+                    _path.isEmpty ? 'Internal storage' : _path,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+              ],
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _error != null
+                      ? Center(child: Text(_error!, textAlign: TextAlign.center))
+                      : folders.isEmpty
+                          ? const Center(child: Text('No folders here'))
+                          : ListView.builder(
+                              itemCount: folders.length,
+                              itemBuilder: (context, index) {
+                                final folder = folders[index];
+                                final next = _path.isEmpty ? folder.name : '$_path/${folder.name}';
+                                return ListTile(
+                                  dense: true,
+                                  leading: const Icon(Icons.folder_outlined),
+                                  title: Text(folder.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                                  trailing: const Icon(Icons.chevron_right_rounded),
+                                  onTap: () => _load(next),
+                                );
+                              },
+                            ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _loading || _error != null ? null : () => Navigator.pop(context, _path),
+          child: const Text('Select folder'),
+        ),
+      ],
     );
   }
 }
@@ -914,6 +1029,19 @@ class _NewDownloadSheetState extends State<_NewDownloadSheet> {
       initialDirectory: _directory,
     );
     if (selected != null && mounted) setState(() => _directory = selected);
+  }
+
+  Future<void> _chooseServerDirectory() async {
+    final selected = await showDialog<String>(
+      context: context,
+      builder: (_) => _ServerDirectoryPicker(
+        api: widget.api,
+        initialPath: _serverDirectoryController.text.trim(),
+      ),
+    );
+    if (selected != null && mounted) {
+      setState(() => _serverDirectoryController.text = selected);
+    }
   }
 
   Future<void> _start() async {
@@ -1056,11 +1184,16 @@ class _NewDownloadSheetState extends State<_NewDownloadSheet> {
                 const SizedBox(height: 8),
                 TextField(
                   controller: _serverDirectoryController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Server destination folder',
                     hintText: 'Downloads/PocketLink',
-                    helperText: 'Relative to shared storage. Leave as default to sort into Videos, Music, Documents, Photos, Archives, APK or Others.',
-                    border: OutlineInputBorder(),
+                    helperText: 'Relative to shared storage. Default sorts into Videos, Music, Documents, Photos, Archives, APK or Others.',
+                    border: const OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      tooltip: 'Browse server folders',
+                      onPressed: _chooseServerDirectory,
+                      icon: const Icon(Icons.folder_open_rounded),
+                    ),
                   ),
                 ),
               ],
