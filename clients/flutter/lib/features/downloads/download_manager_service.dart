@@ -279,14 +279,16 @@ class DownloadManagerService extends ChangeNotifier {
   }
 
   Future<DownloadTask> enqueueUrl(
-    ResolvedDownload resolved, {String? directoryPath}
+    ResolvedDownload resolved, {String? directoryPath, String? fileName}
   ) async {
     await initialize();
     final directory = Directory(directoryPath ?? await defaultDirectory());
     await directory.create(recursive: true);
     final destination = await _uniqueDestination(
       directory.path,
-      sanitizeFileName(resolved.fileName),
+      sanitizeFileName(
+        fileName?.trim().isNotEmpty == true ? fileName!.trim() : resolved.fileName,
+      ),
     );
     final task = DownloadTask(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
