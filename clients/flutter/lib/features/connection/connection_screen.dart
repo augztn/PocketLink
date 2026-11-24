@@ -36,6 +36,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
   // This collection is mutated when servers are added, removed, or reordered.
   List<Map<String, String>> _profiles = <Map<String, String>>[];
   bool _isConnecting = false;
+  bool _isRestoringSession = true;
   CancelToken? _authenticationCancelToken;
   String? _connectingProfileId;
   bool _obscurePassword = true;
@@ -63,32 +64,50 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
         }).where((item) => item['id']!.isNotEmpty && item['address']!.isNotEmpty)
           .toList(growable: true);
       }
-    } catch (_) {
-      _profiles = [];
-    }
 
-    // Migrate the previous single-server credentials without losing them.
-    final saved = await _storage.read(key: 'last_server_address');
-    final username = await _storage.read(key: 'last_server_username') ?? 'admin';
-    final password = await _storage.read(key: 'last_server_password');
-    if (saved != null && password != null) {
-      final id = _profileId(saved, username);
-      if (!_profiles.any((profile) => profile['id'] == id)) {
-        _profiles.add({'id': id, 'address': saved, 'username': username});
-        await _storage.write(key: 'server_password_$id', value: password);
-        await _persistProfiles();
+      // Migrate the previous single-server credentials without losing them.
+      final saved = await _storage.read(key: 'last_server_address');
+      final username = await _storage.read(key: 'last_server_username') ?? 'admin';
+      final password = await _storage.read(key: 'last_server_password');
+      if (saved != null && password != null) {
+        final id = _profileId(saved, username);
+        if (!_profiles.any((profile) => profile['id'] == id)) {
+          _profiles.add({'id': id, 'address': saved, 'username': username});
+          await _storage.write(key: 'server_password_$id', value: password);
+          await _persistProfiles();
+        }
+      }
+
+      if (!mounted) return;
+      if (_profiles.isNotEmpty) {
+        // Prefer the last successfully connected server; fall back to the
+        // most recently used saved profile if legacy session data is absent.
+        var selectedProfile = _profiles.first;
+        for (final profile in _profiles) {
+          if (profile['address'] == saved && profile['username'] == username) {
+            selectedProfile = profile;
+            break;
+          }
+        }
+        await _selectProfile(selectedProfile, connect: false);
+        if (_passwordController.text.isNotEmpty) {
+          await _connect(restoringSession: true);
+        }
+      } else if (saved != null) {
+        _applyAddress(saved);
+        _usernameController.text = username;
+        _passwordController.text = password ?? '';
+      }
+    } catch (error, stack) {
+      await AppLogger.warning(
+        'Could not restore saved server session',
+        fields: {'error_type': error.runtimeType.toString()},
+      );
+    } finally {
+      if (mounted && _isRestoringSession) {
+        setState(() => _isRestoringSession = false);
       }
     }
-
-    if (!mounted) return;
-    if (_profiles.isNotEmpty) {
-      await _selectProfile(_profiles.first, connect: false);
-    } else if (saved != null) {
-      _applyAddress(saved);
-      _usernameController.text = username;
-      _passwordController.text = password ?? '';
-    }
-    if (mounted) setState(() {});
   }
 
   void _applyAddress(String address) {
@@ -191,6 +210,14 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     if (confirmed != true) return;
     _profiles.removeWhere((item) => item['id'] == profile['id']);
     await _storage.delete(key: 'server_password_${profile['id']}');
+    final lastAddress = await _storage.read(key: 'last_server_address');
+    final lastUsername = await _storage.read(key: 'last_server_username') ?? 'admin';
+    if (lastAddress == profile['address'] &&
+        lastUsername == profile['username']) {
+      await _storage.delete(key: 'last_server_address');
+      await _storage.delete(key: 'last_server_username');
+      await _storage.delete(key: 'last_server_password');
+    }
     await _persistProfiles();
     if (!mounted) return;
     setState(() {});
@@ -218,7 +245,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     );
   }
 
-  Future<void> _connect() async {
+  Future<void> _connect({bool restoringSession = false}) async {
     // Ignore repeated taps while an authentication or navigation attempt is active.
     if (_isConnecting) return;
     final host = _addressController.text.trim();
@@ -383,7 +410,9 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       api.close();
       return;
     }
-    setState(() {});
+    setState(() {
+      if (restoringSession) _isRestoringSession = false;
+    });
     try {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
@@ -454,6 +483,26 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     final theme = Theme.of(context);
 
     final media = MediaQuery.of(context);
+
+    if (_isRestoringSession) {
+      return Scaffold(
+        body: SafeArea(
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(height: 16),
+                Text(
+                  'Connecting to your server…',
+                  style: theme.textTheme.bodyMedium,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
