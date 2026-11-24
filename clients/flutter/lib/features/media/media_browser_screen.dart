@@ -59,14 +59,22 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   final Set<String> _selectedTrackKeys = <String>{};
 
   void _syncBackHandler() {
-    final handler = _searchExpanded
-        ? () => _setSearchExpanded(false)
-        : _selectionMode
-            ? _clearSelectionMode
-            : _libraryView == 'folders' && !_atFolderRoot
-                ? _goUpFolder
-                : null;
+    final handler = _musicMenuOpen
+        ? () => _setMusicMenuOpen(false)
+        : _searchExpanded
+            ? () => _setSearchExpanded(false)
+            : _selectionMode
+                ? _clearSelectionMode
+                : _libraryView == 'folders' && !_atFolderRoot
+                    ? _goUpFolder
+                    : null;
     widget.onBackHandlerChanged?.call(handler);
+  }
+
+  void _setMusicMenuOpen(bool open) {
+    if (_musicMenuOpen == open) return;
+    setState(() => _musicMenuOpen = open);
+    _syncBackHandler();
   }
 
   void _clearSelectionMode() {
@@ -823,7 +831,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
           leadingWidth: 56,
           title: TitleDropdownPopover<String>(
 tooltip: 'Choose video view',
-            onOpenChanged: (open) => setState(() => _musicMenuOpen = open),
+            onOpenChanged: _setMusicMenuOpen,
             items: [
               SmokedGlassPopoverMenuItem(
                 value: 'all',
@@ -1559,7 +1567,7 @@ tooltip: 'Choose video view',
                   Expanded(
                     child: TitleDropdownPopover<String>(
 tooltip: 'Choose music view',
-                      onOpenChanged: (open) => setState(() => _musicMenuOpen = open),
+                      onOpenChanged: _setMusicMenuOpen,
                       items: [
                         SmokedGlassPopoverMenuItem(value: 'all', label: 'Songs', icon: Icons.music_note_rounded,
                           trailing: Row(mainAxisSize: MainAxisSize.min, children: [
