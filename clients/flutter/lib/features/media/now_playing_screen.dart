@@ -1575,7 +1575,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
               ),
             ),
           ),
-          if (hasArtwork)
+          if (hasArtwork && !widget.useSharedArtwork)
             Positioned(
               top: 0,
               left: 0,
@@ -1718,7 +1718,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
         final theme = AppSettings.instance.nowPlayingTheme;
         final progress = animation?.value ?? 1.0;
         final contentOpacity = const Interval(
-          0.50,
+          0.55,
           1.0,
           curve: Curves.easeOutCubic,
         ).transform(progress);
