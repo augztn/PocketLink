@@ -815,6 +815,34 @@ class _NewDownloadSheetState extends State<_NewDownloadSheet> {
               const SizedBox(height: 18),
               Text('New download', style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: ChoiceChip(
+                      label: const Text('Local'),
+                      selected: _destination == 'local',
+                      onSelected: (_) => setState(() {
+                        _destination = 'local';
+                        _resolved = null;
+                        _error = null;
+                      }),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ChoiceChip(
+                      label: const Text('Server'),
+                      selected: _destination == 'server',
+                      onSelected: (_) => setState(() {
+                        _destination = 'server';
+                        _resolved = null;
+                        _error = null;
+                      }),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
               TextField(
                 controller: _urlController,
                 keyboardType: TextInputType.url,
@@ -824,7 +852,13 @@ class _NewDownloadSheetState extends State<_NewDownloadSheet> {
                   hintText: 'https://example.com/file.zip',
                   border: OutlineInputBorder(),
                 ),
-                onSubmitted: (_) => _resolve(),
+                onSubmitted: (_) {
+                  if (_destination == 'local') {
+                    _resolve();
+                  } else {
+                    _start();
+                  }
+                },
                 onChanged: (_) => setState(() {
                   _resolved = null;
                   _error = null;
