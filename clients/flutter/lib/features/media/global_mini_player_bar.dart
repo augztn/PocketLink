@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../core/widgets/liquid_glass_pill.dart';
 import 'persistent_audio_player.dart';
+import 'discover/discover_thumbnail_cache.dart';
 
 /// Compact, app-wide music controls shown above the navigation dock.
 class GlobalMiniPlayerBar extends StatelessWidget {
@@ -141,15 +142,15 @@ class GlobalMiniPlayerBar extends StatelessWidget {
                               child: artworkBytes != null
                                   ? Image.memory(
                                       artworkBytes!,
+                                      cacheWidth: 544,
                                       fit: BoxFit.cover,
                                       gaplessPlayback: true,
                                     )
                                   : item.artworkUrl?.isNotEmpty == true
-                                      ? Image.network(
-                                          item.artworkUrl!,
-                                          fit: BoxFit.cover,
-                                          gaplessPlayback: true,
-                                          errorBuilder: (_, __, ___) => Icon(
+                                      ? DiscoverThumbnail(
+                                          url: item.artworkUrl!,
+                                          cacheWidth: 544,
+                                          fallback: Icon(
                                             Icons.graphic_eq_rounded,
                                             color: colors.primary,
                                             size: 19,
