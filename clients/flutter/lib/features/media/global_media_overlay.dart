@@ -96,8 +96,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   void _onPlayerChanged() {
     final current = _player.currentItem;
     final previous = _lastTrack;
-    final changed = current?.path != previous?.path ||
-        current?.volume != previous?.volume;
+    final changed = current?.stableTrackId != previous?.stableTrackId;
     final currentIndex = _player.currentIndex;
     final previousIndex = _lastTrackIndex;
     _lastTrack = current;
