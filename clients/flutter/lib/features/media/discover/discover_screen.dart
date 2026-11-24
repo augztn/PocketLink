@@ -345,8 +345,17 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
   }
 
   Future<void> _play(DiscoverTrack track, {List<DiscoverTrack>? queueOverride}) async {
-    // Warm the shared persistent artwork cache before Now Playing opens.
-    unawaited(DiscoverThumbnailCache.load(track.thumbnailUrl));
+    // Warm and decode the high-resolution cover before Now Playing opens.
+    unawaited(DiscoverThumbnailCache.load(
+      DiscoverThumbnailCache.urlForSize(track.thumbnailUrl, 544),
+    ).then((bytes) {
+      if (mounted && bytes != null) {
+        precacheImage(
+          ResizeImage(MemoryImage(bytes), width: 544),
+          context,
+        );
+      }
+    }));
     // Ignore repeated taps while the first selection is resolving and opening.
     // Otherwise each tap replaces the queue and starts another auto-queue pass.
     if (_startingPlayback) return;
@@ -688,7 +697,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
         height: size.isFinite ? size : null,
         child: show
             ? DiscoverThumbnail(
-                url: track.thumbnailUrl,
+                url: DiscoverThumbnailCache.urlForSize(
+                  track.thumbnailUrl,
+                  size <= 60 ? 160 : 400,
+                ),
                 cacheWidth: size <= 60 ? 160 : 400,
                 fallback: placeholder,
                 errorFallback: _artFallback(size),
