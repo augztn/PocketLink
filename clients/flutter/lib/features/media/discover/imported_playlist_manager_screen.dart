@@ -1,40 +1,54 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart' as file_picker;
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/network/server_api.dart';
 
 import 'playlist_import_service.dart';
 
 class ImportedPlaylistStore {
-  static const _key = 'pocketlink.discover.imported_playlists.v1';
+  static const folderPath = 'PocketLink/Discover/Playlists';
+  static const filePath = '$folderPath/playlists.json';
+  static const _folderSegments = ['PocketLink', 'Discover', 'Playlists'];
 
-  static Future<List<ImportedPlaylist>> load() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_key);
-    if (raw == null || raw.isEmpty) return const [];
-    try {
-      final decoded = jsonDecode(raw);
-      if (decoded is! List) return const [];
-      return decoded
-          .whereType<Map>()
-          .map((item) => ImportedPlaylist.fromJson(
-                item.map((key, value) => MapEntry(key.toString(), value)),
-              ))
-          .where((playlist) => playlist.name.trim().isNotEmpty && playlist.tracks.isNotEmpty)
-          .toList(growable: false);
-    } on FormatException {
-      return const [];
+  static Future<void> ensureFolder(ServerApi api) async {
+    var parent = '';
+    for (final segment in _folderSegments) {
+      final listing = await api.listDirectory(parent);
+      if (!listing.items.any((item) => item.isDirectory && item.name == segment)) {
+        await api.createFolder(parent, segment);
+      }
+      parent = parent.isEmpty ? segment : '$parent/$segment';
     }
   }
 
-  static Future<void> save(ImportedPlaylist playlist) => saveAll([playlist]);
+  static Future<List<ImportedPlaylist>> load(ServerApi api) async {
+    await ensureFolder(api);
+    final listing = await api.listDirectory(folderPath);
+    if (!listing.items.any((item) => !item.isDirectory && item.name == 'playlists.json')) {
+      return const [];
+    }
+    final bytes = await api.downloadFile(filePath);
+    final decoded = jsonDecode(utf8.decode(bytes, allowMalformed: false));
+    if (decoded is! Map || decoded['format'] != 'pocketlink-discover-playlists' ||
+        decoded['version'] != 1 || decoded['playlists'] is! List) {
+      throw const FormatException('The server playlist library file is not a valid PocketLink backup.');
+    }
+    return (decoded['playlists'] as List)
+        .whereType<Map>()
+        .map((item) => ImportedPlaylist.fromJson(
+              item.map((key, value) => MapEntry(key.toString(), value)),
+            ))
+        .where((playlist) => playlist.name.trim().isNotEmpty && playlist.tracks.isNotEmpty)
+        .toList(growable: false);
+  }
 
-  static Future<void> saveAll(Iterable<ImportedPlaylist> playlists) async {
-    final current = await load();
+  static Future<void> saveAll(ServerApi api, Iterable<ImportedPlaylist> playlists) async {
+    final current = await load(api);
     final incoming = playlists.toList(growable: false);
     final incomingKeys = <String>{};
     final next = <ImportedPlaylist>[];
@@ -46,17 +60,31 @@ class ImportedPlaylistStore {
     if (next.length > 200) {
       throw StateError('PocketLink can store up to 200 imported playlists.');
     }
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_key, jsonEncode(next.map((item) => item.toJson()).toList()));
+    final backup = jsonEncode({
+      'format': 'pocketlink-discover-playlists',
+      'version': 1,
+      'playlists': next.map((item) => item.toJson()).toList(),
+    });
+    await api.uploadFile(
+      folderPath,
+      'playlists.json',
+      Uint8List.fromList(utf8.encode(backup)),
+    );
   }
 
-  static Future<void> remove(ImportedPlaylist playlist) async {
-    final current = await load();
+  static Future<void> remove(ServerApi api, ImportedPlaylist playlist) async {
+    final current = await load(api);
     final key = _identity(playlist);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      _key,
-      jsonEncode(current.where((item) => _identity(item) != key).map((item) => item.toJson()).toList()),
+    final next = current.where((item) => _identity(item) != key).toList(growable: false);
+    final backup = jsonEncode({
+      'format': 'pocketlink-discover-playlists',
+      'version': 1,
+      'playlists': next.map((item) => item.toJson()).toList(),
+    });
+    await api.uploadFile(
+      folderPath,
+      'playlists.json',
+      Uint8List.fromList(utf8.encode(backup)),
     );
   }
 
@@ -65,8 +93,9 @@ class ImportedPlaylistStore {
 }
 
 class ImportedPlaylistManagerScreen extends StatefulWidget {
-  const ImportedPlaylistManagerScreen({this.onPlay, super.key});
+  const ImportedPlaylistManagerScreen({required this.api, this.onPlay, super.key});
 
+  final ServerApi api;
   final ValueChanged<ImportedPlaylist>? onPlay;
 
   @override
@@ -86,7 +115,7 @@ class _ImportedPlaylistManagerScreenState extends State<ImportedPlaylistManagerS
   }
 
   Future<void> _reload() async {
-    final playlists = await ImportedPlaylistStore.load();
+    final playlists = await ImportedPlaylistStore.load(widget.api);
     if (!mounted) return;
     setState(() {
       _playlists = playlists;
@@ -118,12 +147,12 @@ class _ImportedPlaylistManagerScreenState extends State<ImportedPlaylistManagerS
     if (url == null || url.isEmpty || _working) return;
     await _runImport(() async {
       final result = await _importer.importPublicUrl(url);
-      await ImportedPlaylistStore.save(ImportedPlaylist(
+      await ImportedPlaylistStore.saveAll(widget.api, [ImportedPlaylist(
         name: result.name,
         tracks: result.tracks,
         provider: result.provider,
         sourceUrl: url,
-      ));
+      )]);
     });
   }
 
@@ -150,7 +179,7 @@ class _ImportedPlaylistManagerScreenState extends State<ImportedPlaylistManagerS
         'json' => _decodePocketLinkBackup(text),
         _ => throw const FormatException('Choose a CSV, M3U or PocketLink JSON playlist export.'),
       };
-      await _runImport(() => ImportedPlaylistStore.saveAll(playlists));
+      await _runImport(() => ImportedPlaylistStore.saveAll(widget.api, playlists));
     } catch (error) {
       if (mounted) _message(error is FormatException ? error.message : 'Could not import this playlist file.');
     }
@@ -178,7 +207,7 @@ class _ImportedPlaylistManagerScreenState extends State<ImportedPlaylistManagerS
     try {
       await action();
       await _reload();
-      if (mounted) _message('Playlist imported into Discover Library.');
+      if (mounted) _message('Playlist saved to your PocketLink server.');
     } catch (error) {
       if (mounted) _message(error is FormatException || error is StateError
           ? error.toString().replaceFirst('FormatException: ', '')
@@ -236,7 +265,7 @@ class _ImportedPlaylistManagerScreenState extends State<ImportedPlaylistManagerS
   }
 
   Future<void> _delete(ImportedPlaylist playlist) async {
-    await ImportedPlaylistStore.remove(playlist);
+    await ImportedPlaylistStore.remove(widget.api, playlist);
     await _reload();
   }
 
