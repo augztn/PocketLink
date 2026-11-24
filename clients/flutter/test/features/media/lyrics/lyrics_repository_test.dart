@@ -3,6 +3,30 @@ import 'package:pocketlink_client/features/media/lyrics/lyrics_repository.dart';
 import 'package:pocketlink_client/features/media/persistent_audio_player.dart';
 
 void main() {
+  test('raw lyrics parser accepts plain text and filters LRC metadata', () {
+    final result = LyricsRepository.parseRawLyricsText(
+      '[ar:Artist]\n[ti:Title]\nFirst line\nSecond line',
+      providerId: 'local',
+      providerName: 'Local LRC',
+    );
+
+    expect(result, isNotNull);
+    expect(result!.synced, isFalse);
+    expect(result.lines.map((line) => line.text), ['First line', 'Second line']);
+  });
+
+  test('raw lyrics parser keeps synchronized sidecar timestamps', () {
+    final result = LyricsRepository.parseRawLyricsText(
+      '[00:01.50]First line\n[00:02.25]Second line',
+      providerId: 'local',
+      providerName: 'Local LRC',
+    );
+
+    expect(result, isNotNull);
+    expect(result!.synced, isTrue);
+    expect(result.lines.map((line) => line.timeMs), [1500, 2250]);
+  });
+
   group('LyricsRepository.parseLrc', () {
     test('parses millisecond and centisecond timestamps', () {
       final lines = LyricsRepository.parseLrc(
