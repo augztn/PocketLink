@@ -63,6 +63,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
   String? _error;
   String _sectionTitle = 'Top charts in India';
   int _requestGeneration = 0;
+  int _playRequestGeneration = 0;
   late String _lastRegion;
 
   @override
@@ -346,7 +347,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
   }
 
   Future<void> _play(DiscoverTrack track, {List<DiscoverTrack>? queueOverride}) async {
-    // Warm and decode the high-resolution cover before Now Playing opens.
+    // Warm the cover independently; artwork decoding must never delay opening.
     unawaited(DiscoverThumbnailCache.load(
       DiscoverThumbnailCache.urlForSize(track.thumbnailUrl, 544),
     ).then((bytes) {
@@ -357,9 +358,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
         ));
       }
     }));
-    // Ignore repeated taps while the first selection is resolving and opening.
-    // Otherwise each tap replaces the queue and starts another auto-queue pass.
-    if (_startingPlayback) return;
+
+    final request = ++_playRequestGeneration;
     _startingPlayback = true;
     var sourceTracks = queueOverride ?? _tracks;
     if (queueOverride == null) {
@@ -374,27 +374,52 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     final selectedIndex = results.indexWhere((item) => item.videoId == track.videoId);
     final queueTracks = selectedIndex < 0 ? <DiscoverTrack>[track] : results;
     final startIndex = selectedIndex < 0 ? 0 : selectedIndex;
+    final player = PersistentAudioPlayer.instance;
+    final provisionalItem = MediaQueueItem(
+      title: track.title,
+      path: track.videoId,
+      artist: track.artist,
+      artworkUrl: track.thumbnailUrl,
+      lyricsVideoId: track.videoId,
+      durationText: track.durationText,
+    );
+    final session = player.beginQueueSelection(
+      api: widget.api,
+      item: provisionalItem,
+      isMusic: true,
+    );
+
+    // Publish the selected track and reveal Now Playing before resolving a
+    // remote stream or asking media_kit to open it.
+    NowPlayingOverlayController.open();
+
     try {
       final item = await _queueItem(queueTracks[startIndex]);
-      final player = PersistentAudioPlayer.instance;
+      if (!mounted || request != _playRequestGeneration ||
+          session != player.queueSession) return;
+
       await player.openQueue(
         api: widget.api,
         queue: [item],
         initialIndex: 0,
         isMusic: true,
+        expectedSession: session,
       );
-      final session = player.queueSession;
-      NowPlayingOverlayController.open();
-      unawaited(_populateQueue(queueTracks, startIndex, session).catchError((Object _) {}));
+      if (request != _playRequestGeneration ||
+          session != player.queueSession) return;
+
+      unawaited(_populateQueue(queueTracks, startIndex, session)
+          .catchError((Object _) {}));
     } catch (error) {
-      if (!mounted) return;
+      player.failQueueSelection(session);
+      if (!mounted || request != _playRequestGeneration) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(error is PlatformException
             ? error.message ?? 'Could not resolve this track.'
             : 'Could not start playback. Try again later.')),
       );
     } finally {
-      _startingPlayback = false;
+      if (request == _playRequestGeneration) _startingPlayback = false;
     }
   }
 
