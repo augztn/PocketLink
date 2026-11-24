@@ -154,9 +154,29 @@ class PlaylistImportService {
     if (!spotify && !youtube) throw const FormatException('Supported links are public YouTube Music, YouTube and Spotify playlists.');
     final html = (await _client.get<String>(uri.toString(), cancelToken: cancelToken, options: Options(responseType: ResponseType.plain))).data ?? '';
     if (spotify) {
-      final title = _meta(html, 'og:title') ?? 'Spotify playlist';
-      final tracks = _spotifyTracks(html);
-      if (tracks.isEmpty) throw const FormatException('Spotify did not expose this playlist. It may be private or rate-limited; export it as CSV with TuneMyMusic, Soundiiz or Exportify and import that file.');
+      var page = html;
+      var title = _meta(page, 'og:title') ?? 'Spotify playlist';
+      var tracks = _spotifyTracks(page);
+      if (tracks.isEmpty) {
+        final segments = uri.pathSegments;
+        final playlistIndex = segments.indexOf('playlist');
+        if (playlistIndex >= 0 && playlistIndex + 1 < segments.length) {
+          final playlistId = segments[playlistIndex + 1];
+          try {
+            final embedUrl = Uri.https('open.spotify.com', '/embed/playlist/$playlistId');
+            page = (await _client.get<String>(
+              embedUrl.toString(),
+              cancelToken: cancelToken,
+              options: Options(responseType: ResponseType.plain),
+            )).data ?? '';
+            title = _meta(page, 'og:title') ?? title;
+            tracks = _spotifyTracks(page);
+          } catch (_) {
+            // Fall through to the actionable public-playlist import error.
+          }
+        }
+      }
+      if (tracks.isEmpty) throw const FormatException('Spotify did not expose this public playlist. It may be private or rate-limited; export it as CSV with TuneMyMusic or Soundiiz and import that file.');
       return PlaylistUrlResult(name: title, tracks: List.unmodifiable(tracks), provider: 'Spotify');
     }
     final title = _meta(html, 'og:title') ?? 'YouTube playlist';
