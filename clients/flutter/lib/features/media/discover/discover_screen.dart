@@ -1530,7 +1530,7 @@ class _DiscoverCategoryScreenState extends State<_DiscoverCategoryScreen> {
 
   String get _searchQuery {
     final title = widget.mood.title.trim();
-    final musicSuffix = RegExp(r'\\b(music|songs|playlist|playlists)\\b', caseSensitive: false);
+    final musicSuffix = RegExp(r'\b(music|songs|playlist|playlists)\b', caseSensitive: false);
     return musicSuffix.hasMatch(title) ? title : '$title music';
   }
 
