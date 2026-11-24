@@ -18,7 +18,9 @@ import '../storage/local_storage_setup_screen.dart';
 import '../settings/settings_screen.dart';
 
 class ConnectionScreen extends StatefulWidget {
-  const ConnectionScreen({super.key});
+  const ConnectionScreen({super.key, this.autoConnect = true});
+
+  final bool autoConnect;
 
   @override
   State<ConnectionScreen> createState() => _ConnectionScreenState();
@@ -90,7 +92,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
           }
         }
         await _selectProfile(selectedProfile, connect: false);
-        if (_passwordController.text.isNotEmpty) {
+        if (widget.autoConnect && _passwordController.text.isNotEmpty) {
           await _connect(restoringSession: true);
         }
       } else if (saved != null) {
@@ -424,7 +426,9 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
             serverName: _serverNameController.text.trim(),
             onReturnToConnection: () {
               Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute<void>(builder: (_) => const ConnectionScreen()),
+                MaterialPageRoute<void>(
+                  builder: (_) => const ConnectionScreen(autoConnect: false),
+                ),
                 (route) => false,
               );
             },
