@@ -10,6 +10,7 @@ Browse files, work with USB/SSD storage, and play your original media over a pri
 
 - **File access:** browse internal storage and supported USB/SSD locations.
 - **File operations:** upload, download, create folders, rename and manage files.
+- **URL downloads:** download directly to this phone or let the connected host fetch URLs into organized server storage.
 - **Music and video:** play media directly from the host device, with HTTP byte-range support for seeking.
 - **Photos and documents:** browse your personal library from the app.
 - **Private remote access:** connect through Tailscale between devices you control.
