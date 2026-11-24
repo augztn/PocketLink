@@ -116,6 +116,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
               _loading = false;
             });
           },
+          onPlay: (track, queue) => _play(track, queueOverride: queue),
         ),
       ),
       );
@@ -1251,11 +1252,13 @@ class _MoodsAndMomentsScreen extends StatefulWidget {
     required this.service,
     required this.shimmerController,
     required this.onOpenTracks,
+    required this.onPlay,
   });
 
   final DiscoverService service;
   final AnimationController shimmerController;
   final void Function(String title, List<DiscoverTrack> tracks) onOpenTracks;
+  final void Function(DiscoverTrack track, List<DiscoverTrack> queue) onPlay;
 
   @override
   State<_MoodsAndMomentsScreen> createState() => _MoodsAndMomentsScreenState();
@@ -1377,13 +1380,7 @@ class _MoodsAndMomentsScreenState extends State<_MoodsAndMomentsScreen> {
         builder: (_) => _DiscoverCategoryScreen(
           mood: mood,
           service: widget.service,
-          onPlay: (track, queue) => widget.onOpenTracks(mood.title, queue),
-          onTrackSelected: (track, queue) {
-            // The category destination owns its loading/results state. Playback
-            // is delegated to the parent Discover screen after it receives the
-            // selected queue.
-            widget.onOpenTracks(mood.title, queue);
-          },
+          onPlay: widget.onPlay,
         ),
       ),
     );
@@ -1503,13 +1500,11 @@ class _DiscoverCategoryScreen extends StatefulWidget {
     required this.mood,
     required this.service,
     required this.onPlay,
-    required this.onTrackSelected,
   });
 
   final DiscoverMood mood;
   final DiscoverService service;
   final void Function(DiscoverTrack track, List<DiscoverTrack> queue) onPlay;
-  final void Function(DiscoverTrack track, List<DiscoverTrack> queue) onTrackSelected;
 
   @override
   State<_DiscoverCategoryScreen> createState() => _DiscoverCategoryScreenState();
