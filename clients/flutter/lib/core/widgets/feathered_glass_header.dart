@@ -2,7 +2,6 @@ import 'dart:ui' as ui;
 
 import 'package:material_ui/material_ui.dart';
 
-import '../settings/app_settings.dart';
 import 'pocketlink_scaffold.dart';
 import 'progressive_blur.dart';
 
@@ -154,69 +153,56 @@ class GlassCircleButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final settings = AppSettings.instance;
     final foreground = isDark ? Colors.white : const Color(0xFF0F172A);
     final button = CustomPaint(
       foregroundPainter: _GlassCircleRimPainter(isDark: isDark),
       child: Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onPressed,
-        customBorder: const CircleBorder(),
-        splashColor: foreground.withValues(alpha: 0.08),
-        highlightColor: Colors.transparent,
-        child: Tooltip(
-          message: tooltip,
-          child: Container(
-            width: size,
-            height: size,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isDark
-                  ? const Color(0xFF1C1E24).withValues(alpha: 0.58)
-                  : Colors.white.withValues(alpha: 0.58),
-              border: Border.all(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          customBorder: const CircleBorder(),
+          splashColor: foreground.withValues(alpha: 0.08),
+          highlightColor: Colors.transparent,
+          child: Tooltip(
+            message: tooltip,
+            child: Container(
+              width: size,
+              height: size,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
                 color: isDark
-                    ? Colors.white.withValues(alpha: 0.24)
-                    : const Color(0xFF94A3B8).withValues(alpha: 0.30),
-                width: 1.0,
+                    ? const Color(0xFF1C1E24).withValues(alpha: 0.58)
+                    : Colors.white.withValues(alpha: 0.58),
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.24)
+                      : const Color(0xFF94A3B8).withValues(alpha: 0.30),
+                  width: 1.0,
+                ),
               ),
-            ),
-            child: Center(
-              child: IconTheme(
-                data: IconThemeData(color: foreground, size: 18),
-                child: child,
+              child: Center(
+                child: IconTheme(
+                  data: IconThemeData(color: foreground, size: 18),
+                  child: child,
+                ),
               ),
             ),
           ),
         ),
       ),
-      ),
     );
 
-    return AnimatedBuilder(
-      animation: settings,
-      builder: (context, _) {
-        final useBlur = settings.progressiveBlurEnabled &&
-            settings.progressiveBlurStrength > 0 &&
-            !MediaQuery.of(context).disableAnimations;
-        final blurScale = settings.progressiveBlurStrength / 55;
-        return RepaintBoundary(
-          child: ClipOval(
-            child: useBlur
-                ? BackdropFilter(
-                    filter: ui.ImageFilter.blur(sigmaX: 24 * blurScale, sigmaY: 24 * blurScale),
-                    child: button,
-                  )
-                : button,
-          ),
-        );
-      },
+    return RepaintBoundary(
+      child: ClipOval(
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+          child: button,
+        ),
+      ),
     );
   }
 }
-
 
 class _GlassCircleRimPainter extends CustomPainter {
   const _GlassCircleRimPainter({required this.isDark});
