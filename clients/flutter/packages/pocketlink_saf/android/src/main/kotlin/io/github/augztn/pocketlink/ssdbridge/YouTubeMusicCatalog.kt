@@ -142,7 +142,7 @@ internal class YouTubeMusicCatalog(
         }.getOrNull()?.trim().orEmpty()
         if (plain.isNotEmpty()) return mapOf(
             "synced" to false,
-            "lines" to plain.split(Regex("\\\\r?\\\\n")).filter { it.isNotBlank() }
+            "lines" to plain.split(Regex("\\r?\\n")).filter { it.isNotBlank() }
                 .map { mapOf("timeMs" to 0, "text" to it.trim()) }
         )
         return null
