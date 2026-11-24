@@ -16,6 +16,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/network/server_api.dart';
+import '../../core/logging/app_logger.dart';
 import '../../core/network/offline_file_cache.dart';
 import 'dart:io';
 import '../files/file_manager_screen.dart';
@@ -76,6 +77,7 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   void initState() {
     super.initState();
+    AppLogger.event('screen.opened', category: 'screen', component: 'search');
     _controller.addListener(_queryChanged);
     _loadHistory();
     _loadVolumes();
@@ -83,6 +85,8 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   void dispose() {
+    AppLogger.event('screen.closed', category: 'screen', component: 'search',
+      fields: {'results_count': _results.length, 'loading': _loading});
     _debounce?.cancel();
     _controller.removeListener(_queryChanged);
     _controller.dispose();
@@ -196,6 +200,8 @@ class _SearchScreenState extends State<SearchScreen> {
     if (_loading) return;
     final query = _controller.text.trim();
     final generation = ++_scanGeneration;
+    AppLogger.event('search.loading_started', category: 'search', component: 'search_screen',
+      fields: {'source': 'indexed', 'refresh': refresh, 'generation': generation});
     setState(() { _loading = true; _error = null; if (refresh) _results.clear(); });
     try {
       if (refresh) await widget.api.startMediaIndexScan();
@@ -237,14 +243,21 @@ class _SearchScreenState extends State<SearchScreen> {
       }
       if (mounted && generation == _scanGeneration) {
         setState(() { _scanned = status.isUsable; _loading = false; });
+        AppLogger.event('search.loading_completed', category: 'search', component: 'search_screen',
+          fields: {'source': 'indexed', 'results_count': _results.length, 'usable': status.isUsable});
         if (query.isNotEmpty) _saveHistory(query);
       }
-    } on DioException {
+    } on DioException catch (error) {
+      AppLogger.warning('Indexed search failed; using directory scan', category: 'search',
+        component: 'search_screen', fields: {'failure_type': error.type.name,
+          'status_code': error.response?.statusCode});
       if (generation == _scanGeneration) {
         if (mounted) setState(() => _loading = false);
         await _scanLegacy(refresh: true);
       }
-    } catch (_) {
+    } catch (error) {
+      AppLogger.warning('Indexed search failed; using directory scan', category: 'search',
+        component: 'search_screen', fields: {'failure_type': error.runtimeType.toString()});
       if (generation == _scanGeneration) {
         if (mounted) setState(() => _loading = false);
         await _scanLegacy(refresh: true);
