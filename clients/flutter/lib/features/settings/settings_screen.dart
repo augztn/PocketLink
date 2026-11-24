@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/logging/app_logger.dart';
+import '../../core/network/server_api.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/settings/settings_backup_service.dart';
 import 'widgets/settings_components.dart';
@@ -20,7 +21,9 @@ import '../downloads/download_manager_service.dart';
 import '../media/discover/imported_playlist_manager_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({this.onOpenSavedServers, this.category, super.key});
+  const SettingsScreen({this.api, this.onOpenSavedServers, this.category, super.key});
+
+  final ServerApi? api;
 
   final VoidCallback? onOpenSavedServers;
   final String? category;
@@ -37,8 +40,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _importingSettings = false;
 
   Future<void> _openDiscoverPlaylists() async {
+    final api = widget.api;
+    if (api == null) {
+      _message('Connect to your PocketLink server to manage Discover playlists.');
+      return;
+    }
     await Navigator.of(context).push<void>(MaterialPageRoute<void>(
-      builder: (_) => const ImportedPlaylistManagerScreen(),
+      builder: (_) => ImportedPlaylistManagerScreen(api: api),
     ));
   }
 
