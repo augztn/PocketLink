@@ -244,7 +244,7 @@ class _PocketLinkSkeletonState extends State<PocketLinkSkeleton>
 class PocketLinkSkeletonBlock extends StatelessWidget {
   const PocketLinkSkeletonBlock({
     this.width,
-    required this.height,
+    this.height = 0,
     this.radius = 8,
     this.expand = false,
     super.key,
