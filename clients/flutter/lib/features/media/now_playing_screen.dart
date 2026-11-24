@@ -321,7 +321,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
       try {
         final bytes = await DiscoverThumbnailCache.load(_track.artworkUrl!);
         if (!mounted || request != _artworkRequest) return;
-        if (bytes.isNotEmpty) {
+        if (bytes != null && bytes.isNotEmpty) {
           final palette = await NowPlayingArtworkPalette.extract(bytes);
           if (!mounted || request != _artworkRequest) return;
           setState(() {
