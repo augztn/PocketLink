@@ -683,9 +683,10 @@ class _ServerDownloadJobCard extends StatelessWidget {
 }
 
 class _NewDownloadSheet extends StatefulWidget {
-  const _NewDownloadSheet({required this.manager});
+  const _NewDownloadSheet({required this.manager, required this.api});
 
   final DownloadManagerService manager;
+  final ServerApi api;
 
   @override
   State<_NewDownloadSheet> createState() => _NewDownloadSheetState();
@@ -693,7 +694,9 @@ class _NewDownloadSheet extends StatefulWidget {
 
 class _NewDownloadSheetState extends State<_NewDownloadSheet> {
   final _urlController = TextEditingController();
+  final _serverDirectoryController = TextEditingController(text: 'Downloads/PocketLink');
   ResolvedDownload? _resolved;
+  String _destination = 'local';
   String? _directory;
   String? _error;
   bool _resolving = false;
@@ -728,7 +731,7 @@ class _NewDownloadSheetState extends State<_NewDownloadSheet> {
   }
 
   Future<void> _resolve() async {
-    if (_resolving) return;
+    if (_resolving || _destination == 'server') return;
     setState(() {
       _resolving = true;
       _error = null;
@@ -753,13 +756,18 @@ class _NewDownloadSheetState extends State<_NewDownloadSheet> {
 
   Future<void> _start() async {
     final resolved = _resolved;
-    if (resolved == null || _starting) return;
+    if (_starting || (_destination == 'local' && resolved == null) ||
+        _urlController.text.trim().isEmpty) return;
     setState(() => _starting = true);
     try {
-      await widget.manager.enqueueUrl(
-        resolved,
-        directoryPath: _directory,
-      );
+      if (_destination == 'server') {
+        await widget.api.enqueueServerDownload(
+          _urlController.text.trim(),
+          directory: _serverDirectoryController.text.trim(),
+        );
+      } else {
+        await widget.manager.enqueueUrl(resolved!, directoryPath: _directory);
+      }
       if (mounted) Navigator.of(context).pop();
     } catch (error) {
       if (mounted) setState(() => _error = error.toString());
@@ -771,6 +779,7 @@ class _NewDownloadSheetState extends State<_NewDownloadSheet> {
   @override
   void dispose() {
     _urlController.dispose();
+    _serverDirectoryController.dispose();
     super.dispose();
   }
 
