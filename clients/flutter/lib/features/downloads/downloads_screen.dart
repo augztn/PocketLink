@@ -695,7 +695,7 @@ class _NewDownloadSheet extends StatefulWidget {
 class _NewDownloadSheetState extends State<_NewDownloadSheet> {
   final _urlController = TextEditingController();
   final _fileNameController = TextEditingController();
-  final _serverDirectoryController = TextEditingController(text: 'Downloads/PocketLink');
+  final _serverDirectoryController = TextEditingController();
   ResolvedDownload? _resolved;
   String _destination = 'local';
   String? _directory;
@@ -912,8 +912,8 @@ class _NewDownloadSheetState extends State<_NewDownloadSheet> {
                   controller: _serverDirectoryController,
                   decoration: const InputDecoration(
                     labelText: 'Server destination folder',
-                    hintText: 'Downloads/PocketLink',
-                    helperText: 'Relative to shared storage. Leave default to sort into media and file categories.',
+                    hintText: 'Default: Downloads/PocketLink',
+                    helperText: 'Leave blank for automatic category folders. Enter another relative folder to save there.',
                     border: OutlineInputBorder(),
                   ),
                 ),
