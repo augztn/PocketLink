@@ -126,6 +126,105 @@ internal class YouTubeMusicCatalog(
         return parseTracks(response, limit).filterNot { it["videoId"] == videoId }
     }
 
+    fun lyrics(videoId: String, regionCode: String): Map<String, Any>? {
+        if (!VIDEO_ID.matches(videoId)) return null
+        val next = post("next", JSONObject().put("videoId", videoId), regionCode)
+        val browseId = findLyricsBrowseId(next)
+        if (browseId != null) {
+            val browse = post("browse", JSONObject().put("browseId", browseId), regionCode)
+            val timed = mutableListOf<Map<String, Any>>()
+            collectTimedLyrics(browse, timed)
+            if (timed.isNotEmpty()) return mapOf("synced" to true, "lines" to timed)
+        }
+        val plain = runCatching {
+            val response = post("music/get_lyrics", JSONObject().put("videoId", videoId), regionCode)
+            findTextValue(response, "description")
+        }.getOrNull()?.trim().orEmpty()
+        if (plain.isNotEmpty()) return mapOf(
+            "synced" to false,
+            "lines" to plain.split(Regex("\\\\r?\\\\n")).filter { it.isNotBlank() }
+                .map { mapOf("timeMs" to 0, "text" to it.trim()) }
+        )
+        return null
+    }
+
+    fun captions(videoId: String, regionCode: String): Map<String, Any>? {
+        if (!VIDEO_ID.matches(videoId)) return null
+        val id = videoId.toByteArray(Charsets.UTF_8)
+        val bytes = byteArrayOf(10, id.size.toByte()) + id
+        val params = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+        val response = post("get_transcript", JSONObject().put("params", params), regionCode)
+        val lines = mutableListOf<Map<String, Any>>()
+        collectCaptions(response, lines)
+        return if (lines.isEmpty()) null else mapOf("synced" to true, "lines" to lines)
+    }
+
+    private fun findLyricsBrowseId(value: Any?): String? {
+        when (value) {
+            is JSONObject -> {
+                val browse = value.optString("browseId")
+                val pageType = value.optJSONObject("browseEndpointContextSupportedConfigs")
+                    ?.optJSONObject("browseEndpointContextMusicConfig")?.optString("pageType")
+                if (browse.isNotBlank() && pageType == "MUSIC_PAGE_TYPE_TRACK_LYRICS") return browse
+                val keys = value.keys()
+                while (keys.hasNext()) findLyricsBrowseId(value.opt(keys.next()))?.let { return it }
+            }
+            is JSONArray -> for (i in 0 until value.length()) findLyricsBrowseId(value.opt(i))?.let { return it }
+        }
+        return null
+    }
+
+    private fun collectTimedLyrics(value: Any?, output: MutableList<Map<String, Any>>) {
+        when (value) {
+            is JSONObject -> {
+                val entries = value.optJSONArray("timedLyricsData")
+                if (entries != null) for (i in 0 until entries.length()) {
+                    val entry = entries.optJSONObject(i) ?: continue
+                    val text = entry.optString("lyricLine").trim()
+                    val cue = entry.optJSONObject("cueRange") ?: continue
+                    val start = cue.optString("startTimeMilliseconds").toLongOrNull() ?: continue
+                    if (text.isNotEmpty()) output.add(mapOf(
+                        "timeMs" to start,
+                        "text" to text,
+                        "endTimeMs" to (cue.optString("endTimeMilliseconds").toLongOrNull() ?: start)
+                    ))
+                }
+                val keys = value.keys()
+                while (keys.hasNext()) collectTimedLyrics(value.opt(keys.next()), output)
+            }
+            is JSONArray -> for (i in 0 until value.length()) collectTimedLyrics(value.opt(i), output)
+        }
+    }
+
+    private fun collectCaptions(value: Any?, output: MutableList<Map<String, Any>>) {
+        when (value) {
+            is JSONObject -> {
+                val cue = value.optJSONObject("transcriptCueRenderer")
+                if (cue != null) {
+                    val start = cue.optString("startOffsetMs").toLongOrNull()
+                    val text = cue.optJSONObject("cue")?.let(::textValue).orEmpty().trim()
+                    if (start != null && text.isNotEmpty()) output.add(mapOf("timeMs" to start, "text" to text))
+                }
+                val keys = value.keys()
+                while (keys.hasNext()) collectCaptions(value.opt(keys.next()), output)
+            }
+            is JSONArray -> for (i in 0 until value.length()) collectCaptions(value.opt(i), output)
+        }
+    }
+
+    private fun findTextValue(value: Any?, wantedKey: String): String? {
+        when (value) {
+            is JSONObject -> {
+                val direct = value.optJSONObject(wantedKey)
+                if (direct != null) return textValue(direct)
+                val keys = value.keys()
+                while (keys.hasNext()) findTextValue(value.opt(keys.next()), wantedKey)?.let { return it }
+            }
+            is JSONArray -> for (i in 0 until value.length()) findTextValue(value.opt(i), wantedKey)?.let { return it }
+        }
+        return null
+    }
+
     fun suggestions(input: String): List<String> {
         val clean = input.trim()
         if (clean.length < 2) return emptyList()
