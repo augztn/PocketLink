@@ -602,7 +602,9 @@ class _HomeScreenState extends State<HomeScreen> {
         final nowPlayingExpanded = nowPlayingProgress.value > 0.5;
         return PopScope(
           canPop: !nowPlayingExpanded && !_libraryOpen && !_hostSetupOpen &&
-              _selectedIndex == 0 && !_musicShortcutsExpanded &&
+              (_selectedIndex == 0 ||
+                  (_selectedIndex == 1 && _exploreCanPop)) &&
+              !_musicShortcutsExpanded &&
               _libraryBackHandler == null &&
               !PocketLinkNavigation.drawerOpen.value,
           onPopInvokedWithResult: (didPop, result) {
