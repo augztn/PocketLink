@@ -39,6 +39,30 @@ void main() {
     expect(observer.isStandaloneDiscoverFlow, isFalse);
   });
 
+  test('nested Back handling is enabled only for the active tab', () {
+    expect(
+      PocketLinkNavigation.shouldHandleNestedBack(
+        isActive: true,
+        canPop: true,
+      ),
+      isTrue,
+    );
+    expect(
+      PocketLinkNavigation.shouldHandleNestedBack(
+        isActive: false,
+        canPop: true,
+      ),
+      isFalse,
+    );
+    expect(
+      PocketLinkNavigation.shouldHandleNestedBack(
+        isActive: true,
+        canPop: false,
+      ),
+      isFalse,
+    );
+  });
+
   test('applies vertical morph drags one-to-one and clamps progress', () {
     expect(
       PocketLinkNavigation.updateMorphProgress(
