@@ -804,7 +804,13 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
           feathered: true,
           showHome: false,
           automaticallyImplyLeading: false,
-            title: TitleDropdownPopover<String>(
+          leading: IconButton(
+            tooltip: 'Back',
+            onPressed: () => Navigator.of(context).maybePop(),
+            icon: const Icon(Icons.arrow_back_rounded),
+          ),
+          leadingWidth: 56,
+          title: TitleDropdownPopover<String>(
 tooltip: 'Choose video view',
             onOpenChanged: (open) => setState(() => _musicMenuOpen = open),
             items: [
