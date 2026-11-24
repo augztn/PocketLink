@@ -137,7 +137,7 @@ void main() {
       ),
     );
 
-    expect(find.byType(BackdropFilter), findsNWidgets(2));
+    expect(find.byType(BackdropFilter), findsNWidgets(13));
   });
 
   testWidgets('custom dark tint is retained when progressive blur is disabled', (tester) async {
@@ -195,7 +195,7 @@ void main() {
         home: Scaffold(body: FeatheredGlassHeaderBackground()),
       ),
     );
-    expect(find.byType(BackdropFilter), findsNWidgets(2));
+    expect(find.byType(BackdropFilter), findsNWidgets(13));
 
     await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(false));
     await tester.pump();
