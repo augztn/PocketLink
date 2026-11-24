@@ -384,7 +384,10 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   Future<bool> didPopRoute() async {
     if (!_nowPlayingOpen ||
         PocketLinkNavigation.observer.isModalRouteOnTop ||
-        !PocketLinkNavigation.observer.isNowPlayingVisible) {
+        !PocketLinkNavigation.observer.isNowPlayingVisible ||
+        !PocketLinkNavigation.shouldCollapseNowPlayingOnBack(
+          progress: _nowPlayingController.value,
+        )) {
       return false;
     }
     await _closeNowPlaying();
