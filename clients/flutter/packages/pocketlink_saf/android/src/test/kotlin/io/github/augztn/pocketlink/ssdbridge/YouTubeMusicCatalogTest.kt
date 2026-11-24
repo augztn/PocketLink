@@ -1,9 +1,9 @@
 package io.github.augztn.pocketlink.ssdbridge
 
+import okio.Buffer
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
-import okio.Buffer
 import org.junit.Test
 
 class YouTubeMusicCatalogTest {
@@ -45,7 +45,6 @@ class YouTubeMusicCatalogTest {
         assertEquals("FEmusic_moods_and_genres", body.optString("browseId"))
         assertEquals("IN", client.optString("gl"))
     }
-
 
     @Test
     fun parsesDynamicMoodAndGenreSections() {
