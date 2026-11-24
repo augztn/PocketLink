@@ -273,7 +273,7 @@ class PlaylistImportService {
 
   static List<ImportedTrack> _spotifyTracks(String html) {
     final found = <ImportedTrack>[], seen = <String>{};
-    final p = RegExp(r'"track"\s*:\s*\{[^{}]{0,2000}?"name"\s*:\s*"((?:\\.|[^"\\])*)"');
+    final p = RegExp(r'"track"\s*:\s*\{[\s\S]{0,8000}?"name"\s*:\s*"((?:\\.|[^"\\])*)"');
     for (final m in p.allMatches(html)) {
       final title = _jsonString(m.group(1)!); if (title.isEmpty) continue;
       final window = html.substring(m.start, (m.start + 2400).clamp(0, html.length));
