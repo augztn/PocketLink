@@ -59,8 +59,8 @@ abstract interface class LyricsProvider {
     .replaceAll(RegExp(r'\s+'), ' ').trim();
 }
 class LyricsRepository {
-  LyricsRepository({Dio? dio}) : _dio = dio ?? Dio(BaseOptions(connectTimeout: const Duration(seconds: 7), receiveTimeout: const Duration(seconds: 10), headers: const {'User-Agent': 'PocketLink/1.0'})) {
-    _providers = [_LocalProvider(), _LrclibProvider(_dio), _PlatformProvider('youtube_music', 'YouTube Music', 'discoverLyrics'), _PlatformProvider('youtube_captions', 'YouTube Captions', 'discoverCaptions'), _KugouProvider(_dio), _LyricsPlusProvider(_dio), _BetterLyricsProvider(_dio), _LrcRedProvider(_dio), _NoopProvider('musixmatch', 'Musixmatch'), _GeniusProvider(_dio)];
+  LyricsRepository({Dio? dio, List<LyricsProvider>? providers}) : _dio = dio ?? Dio(BaseOptions(connectTimeout: const Duration(seconds: 7), receiveTimeout: const Duration(seconds: 10), headers: const {'User-Agent': 'PocketLink/1.0'})) {
+    _providers = providers ?? [_LocalProvider(), _LrclibProvider(_dio), _PlatformProvider('youtube_music', 'YouTube Music', 'discoverLyrics'), _PlatformProvider('youtube_captions', 'YouTube Captions', 'discoverCaptions'), _KugouProvider(_dio), _LyricsPlusProvider(_dio), _BetterLyricsProvider(_dio), _LrcRedProvider(_dio), _NoopProvider('musixmatch', 'Musixmatch'), _GeniusProvider(_dio)];
   }
   final Dio _dio;
   late final List<LyricsProvider> _providers;
