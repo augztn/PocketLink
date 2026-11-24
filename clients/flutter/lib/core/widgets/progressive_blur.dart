@@ -47,7 +47,7 @@ class ProgressiveBlur extends StatelessWidget {
         for (var index = 0; index < steps; index++) {
           final distance = (index + 0.5) / steps;
           final sigma = maxSigma * math.pow(1 - distance, exponent);
-          if (sigma < 0.4) continue;
+          if (sigma < 0.1) continue;
 
           final top = strongestAtBottom
               ? height - (index + 1) * bandHeight
