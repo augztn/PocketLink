@@ -121,7 +121,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byType(BackdropFilter).evaluate().length, 13);
+    expect(find.byType(BackdropFilter).evaluate().length, 7);
     scrollController.dispose();
   });
 
@@ -154,7 +154,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byType(BackdropFilter).evaluate().length, 13);
+    expect(find.byType(BackdropFilter).evaluate().length, 7);
     scrollController.dispose();
   });
 
@@ -214,7 +214,7 @@ void main() {
         )),
     );
     await tester.pump();
-    expect(find.byType(BackdropFilter).evaluate().length, 13);
+    expect(find.byType(BackdropFilter).evaluate().length, 7);
 
     await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(false));
     await tester.pump();
