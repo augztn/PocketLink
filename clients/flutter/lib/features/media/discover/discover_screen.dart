@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/network/server_api.dart';
+import '../../../core/logging/app_logger.dart';
 import '../../../core/settings/app_settings.dart';
 import '../../../core/widgets/pocketlink_app_bar.dart';
 import '../../../core/widgets/pocketlink_scaffold.dart';
@@ -65,6 +66,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
   @override
   void initState() {
     super.initState();
+    AppLogger.event('screen.opened', category: 'screen', component: 'discover');
     _shimmerController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
@@ -87,6 +89,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
 
   @override
   void dispose() {
+    AppLogger.event('screen.closed', category: 'screen', component: 'discover',
+      fields: {'loading': _loading, 'track_count': _tracks.length, 'shelf_count': _homeShelves.length});
     AppSettings.instance.removeListener(_onSettingsChanged);
     _shimmerController.dispose();
     super.dispose();
@@ -194,6 +198,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       return;
     }
     final generation = ++_requestGeneration;
+    AppLogger.event('discover.home_loading_started', category: 'discover',
+      component: 'discover_screen',
+      fields: {'force_refresh': forceRefresh, 'generation': generation, 'cache_hit': false});
     setState(() {
       _loading = true;
       _error = null;
@@ -249,15 +256,25 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
         'Top charts in $_regionName',
       );
       _feedCache[region] = snapshot;
+      AppLogger.event('discover.home_loading_completed', category: 'discover',
+        component: 'discover_screen',
+        fields: {'generation': generation, 'shelf_count': snapshot.shelves.length,
+          'track_count': snapshot.shelves.fold<int>(0, (sum, shelf) => sum + shelf.tracks.length)});
       setState(() {
         _homeShelves = snapshot.shelves;
         _tracks = shelves.first.tracks;
         _error = null;
       });
     } on PlatformException catch (error) {
+      AppLogger.warning('Discover home loading failed', category: 'discover',
+        component: 'discover_screen',
+        fields: {'generation': generation, 'failure_type': 'platform', 'error_code': error.code});
       if (!mounted || generation != _requestGeneration) return;
       setState(() => _error = error.message ?? 'YouTube Music home is unavailable.');
-    } catch (_) {
+    } catch (error) {
+      AppLogger.warning('Discover home loading failed', category: 'discover',
+        component: 'discover_screen',
+        fields: {'generation': generation, 'failure_type': error.runtimeType.toString()});
       if (!mounted || generation != _requestGeneration) return;
       setState(() => _error = 'Could not load YouTube Music home. Check your connection and try again.');
     } finally {
