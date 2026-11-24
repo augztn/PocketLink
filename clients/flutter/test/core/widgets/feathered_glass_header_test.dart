@@ -223,7 +223,7 @@ void main() {
   });
 
   testWidgets('glass header buttons disable their filter in fallback mode', (tester) async {
-    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(false));
+    await tester.runAsync(() => AppSettings.instance.setUseLiquidGlass(false));
 
     await tester.pumpWidget(
       const MaterialApp(
@@ -239,7 +239,7 @@ void main() {
 
     expect(find.byType(BackdropFilter), findsNothing);
 
-    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(true));
+    await tester.runAsync(() => AppSettings.instance.setUseLiquidGlass(true));
     await tester.pump();
 
     expect(find.byType(BackdropFilter), findsOneWidget);
