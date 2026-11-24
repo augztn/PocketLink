@@ -239,7 +239,7 @@ class LyricsRepository {
 abstract class _Provider implements LyricsProvider {
   _Provider(this.dio);
   final Dio dio;
-  Future<dynamic> json(String url, [Map<String, dynamic>? params]) async => (await dio.get<dynamic>(url, queryParameters: params)).data;
+  Future<dynamic> _getJson(String url, [Map<String, dynamic>? params]) async => (await dio.get<dynamic>(url, queryParameters: params)).data;
   Future<String?> text(String url, [Map<String, dynamic>? params]) async => (await dio.get<String>(url, queryParameters: params, options: Options(responseType: ResponseType.plain))).data;
   LyricsDocument? lrc(String? raw, String id, String name) {
     if (raw == null) return null;
@@ -276,7 +276,7 @@ class _LrclibProvider extends _Provider {
     final candidates = <Map>[];
     if (q.artist.isNotEmpty && q.durationSeconds > 0) {
       try {
-        final exact = await json('https://lrclib.net/api/get', {
+        final exact = await _getJson('https://lrclib.net/api/get', {
           'track_name': q.title,
           'artist_name': _primaryArtist(q.artist),
           'duration': q.durationSeconds,
@@ -287,7 +287,7 @@ class _LrclibProvider extends _Provider {
       }
     }
     try {
-      final structured = await json('https://lrclib.net/api/search', {
+      final structured = await _getJson('https://lrclib.net/api/search', {
         'track_name': q.title,
         if (q.artist.isNotEmpty) 'artist_name': _primaryArtist(q.artist),
       });
@@ -296,7 +296,7 @@ class _LrclibProvider extends _Provider {
       // Continue to broad search below.
     }
     if (candidates.isEmpty) {
-      final broad = await json('https://lrclib.net/api/search', {
+      final broad = await _getJson('https://lrclib.net/api/search', {
         'q': [q.title, _primaryArtist(q.artist)].where((s) => s.isNotEmpty).join(' '),
       });
       if (broad is List) candidates.addAll(broad.whereType<Map>());
@@ -354,15 +354,15 @@ class _KugouProvider extends _Provider {
   @override String get id=>'kugou'; @override String get name=>'KuGou';
   @override Future<LyricsDocument?> fetch(LyricsTrackQuery q) async {
     if(q.title.isEmpty||q.artist.isEmpty)return null;
-    final songs=await json('https://mobileservice.kugou.com/api/v3/search/song',{'version':9108,'plat':0,'pagesize':8,'showtype':0,'keyword':q.title+' - '+q.artist});
-    final info=songs is Map?(songs['data'] as Map?)?['info']:null;
+    final songs=await _getJson('https://mobileservice.kugou.com/api/v3/search/song',{'version':9108,'plat':0,'pagesize':8,'showtype':0,'keyword':q.title+' - '+q.artist});
+    final info = songs is Map ? (songs['data'] as Map?)?['info'] : null;
     if(info is! List)return null;
     final rows=info.whereType<Map>().toList()..sort((a,b)=>(((a['duration'] as num?)?.toInt()??0)-q.durationSeconds).abs().compareTo((((b['duration'] as num?)?.toInt()??0)-q.durationSeconds).abs()));
     for(final row in rows){
-      final hit=await json('https://lyrics.kugou.com/search',{'ver':1,'man':'yes','client':'pc','hash':row['hash']});
+      final hit=await _getJson('https://lyrics.kugou.com/search',{'ver':1,'man':'yes','client':'pc','hash':row['hash']});
       final cs=hit is Map?hit['candidates']:null; if(cs is! List||cs.isEmpty)continue;
       final c=cs.first as Map;
-      final dl=await json('https://lyrics.kugou.com/download',{'fmt':'lrc','charset':'utf8','client':'pc','ver':1,'id':c['id'],'accesskey':c['accesskey']});
+      final dl=await _getJson('https://lyrics.kugou.com/download',{'fmt':'lrc','charset':'utf8','client':'pc','ver':1,'id':c['id'],'accesskey':c['accesskey']});
       final encoded=dl is Map?dl['content']?.toString():null; if(encoded==null)continue;
       final doc=lrc(utf8.decode(base64.decode(base64.normalize(encoded)),allowMalformed:true),id,name);
       if(doc!=null)return doc;
@@ -376,7 +376,7 @@ class _LyricsPlusProvider extends _Provider {
   @override Future<LyricsDocument?> fetch(LyricsTrackQuery q) async {
     for(final host in ['https://lyricsplus.prjktla.my.id','https://lyricsplus.binimum.org']){
       try{
-        final d=await json('$host/v2/lyrics/get',{'title':q.title,'artist':q.artist,'duration':q.durationSeconds});
+        final d=await _getJson('$host/v2/lyrics/get',{'title':q.title,'artist':q.artist,'duration':q.durationSeconds});
         final entries=d is Map?d['lyrics']:null;if(entries is! List)continue;
         final lines=entries.whereType<Map>().map((e){
           final t=(e['time'] as num?)?.toInt();
@@ -404,7 +404,7 @@ class _BetterLyricsProvider extends _Provider {
   _BetterLyricsProvider(super.dio);
   @override String get id=>'better_lyrics'; @override String get name=>'BetterLyrics';
   @override Future<LyricsDocument?> fetch(LyricsTrackQuery q) async {
-    final d=await json('https://lyrics-api.boidu.dev/getLyrics',{'s':q.title,'a':q.artist,'d':q.durationSeconds});
+    final d=await _getJson('https://lyrics-api.boidu.dev/getLyrics',{'s':q.title,'a':q.artist,'d':q.durationSeconds});
     if(d is String)return lrc(d,id,name)??plain(d,id,name);
     if(d is Map)return lrc((d['syncedLyrics']??d['lyrics']??d['lrc'])?.toString(),id,name)??plain((d['plainLyrics']??d['text'])?.toString(),id,name);
     return null;
@@ -414,7 +414,7 @@ class _LrcRedProvider extends _Provider {
   _LrcRedProvider(super.dio);
   @override String get id=>'lrc_red'; @override String get name=>'lrc.red';
   @override Future<LyricsDocument?> fetch(LyricsTrackQuery q) async {
-    final d=await json('https://lrc.red/search.json',{'q':q.title+' '+q.artist});
+    final d=await _getJson('https://lrc.red/search.json',{'q':q.title+' '+q.artist});
     final hits=d is Map?d['hits']:null;if(hits is! List)return null;
     for(final h in hits.whereType<Map>()){
       final code=h['isrc']?.toString().toUpperCase()??'';
