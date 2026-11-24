@@ -871,7 +871,7 @@ class _MiniPlayerMorphContents extends StatelessWidget {
                       stream: player.player.stream.playing,
                       initialData: player.player.state.playing,
                       builder: (context, playingSnapshot) {
-                        final loading =
+                        final loading = player.isSelectionLoading ||
                             (bufferingSnapshot.data ?? false) ||
                             (durationSnapshot.data ?? Duration.zero) <=
                                 Duration.zero;
@@ -1088,6 +1088,9 @@ class _GlobalMiniPlayerBar extends StatelessWidget {
               visible: visible,
               reduceMotion: reduceMotion,
               isPlaying: playingSnapshot.data ?? false,
+              isLoading: player.isSelectionLoading ||
+                  player.player.state.buffering ||
+                  (durationSnapshot.data ?? Duration.zero) <= Duration.zero,
               position: positionSnapshot.data ?? Duration.zero,
               duration: durationSnapshot.data ?? Duration.zero,
               canSkipPrevious: player.queue.length > 1,
