@@ -26,8 +26,6 @@ import 'now_playing_artwork_palette.dart';
 import 'widgets/media_info_row.dart';
 import 'track_options_sheet.dart';
 import '../downloads/download_manager_service.dart';
-import 'discover/discover_models.dart';
-import 'discover/discover_service.dart';
 import 'lyrics/lyrics_repository.dart';
 import 'lyrics/lyrics_viewport.dart';
 
