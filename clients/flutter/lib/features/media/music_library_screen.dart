@@ -13,6 +13,7 @@ import '../downloads/downloads_screen.dart';
 import 'data/media_library_repository.dart';
 import 'media_browser_screen.dart';
 import 'media_library_catalog.dart';
+import 'discover/imported_playlist_manager_screen.dart';
 
 
 const _libraryCanvas = Color(0xFF000000);
