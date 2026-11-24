@@ -157,7 +157,6 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
         _localLibrary = items;
       } catch (_) {
         // Keep a previously indexed snapshot usable during temporary outages.
-      } finally {
       }
     }();
     _localLibraryRequest = request;
