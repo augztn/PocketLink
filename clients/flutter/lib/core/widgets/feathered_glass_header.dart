@@ -142,7 +142,7 @@ class _FeatheredGlassHeaderBackgroundState
   }) {
     return ProgressiveBlur(
       maxSigma: 22 * blurScale,
-      steps: 14,
+      steps: 7,
       exponent: 1.6,
     );
   }
