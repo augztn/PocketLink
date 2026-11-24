@@ -225,7 +225,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
                               onPressed: isLoading ? null : onTogglePlayback,
                               color: foreground,
                               icon: isLoading
-                                  ? const SizedBox(
+                                  ? SizedBox(
                                       width: 17,
                                       height: 17,
                                       child: CircularProgressIndicator(
