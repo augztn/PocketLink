@@ -187,6 +187,27 @@ void main() {
     expect(gradient.colors.last, const Color(0x00000000));
   });
 
+  testWidgets('progressive scrim uses white in light theme', (tester) async {
+    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurStrength(55));
+    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(true));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(brightness: Brightness.light),
+        home: const Scaffold(body: FeatheredGlassHeaderBackground()),
+      ),
+    );
+
+    final gradient = tester.widgetList<DecoratedBox>(find.byType(DecoratedBox))
+        .map((box) => box.decoration)
+        .whereType<BoxDecoration>()
+        .map((decoration) => decoration.gradient)
+        .whereType<LinearGradient>()
+        .first;
+    expect(gradient.colors.first, const Color(0xEBFFFFFF));
+    expect(gradient.colors.last, const Color(0x00FFFFFF));
+  });
+
   testWidgets('progressive blur remains active when reduced motion is enabled', (tester) async {
     await tester.runAsync(() => AppSettings.instance.setProgressiveBlurStrength(55));
     await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(true));
@@ -200,7 +221,7 @@ void main() {
       ),
     );
 
-    expect(find.byType(BackdropFilter), findsNWidgets(2));
+    expect(find.byType(BackdropFilter), findsNWidgets(14));
   });
 
   testWidgets('custom dark tint is retained when progressive blur is disabled', (tester) async {
