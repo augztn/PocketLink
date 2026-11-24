@@ -201,9 +201,40 @@ void main() {
     await Future.wait([first, second]);
     expect(provider.calls, 1);
   });
+  test('higher-priority provider replaces an equal-quality later result', () async {
+    final lrclib = _FakeLyricsProvider('lrclib', Completer<LyricsDocument?>());
+    final youtube = _FakeLyricsProvider('youtube_music', Completer<LyricsDocument?>());
+    final repository = LyricsRepository(providers: [lrclib, youtube]);
+    const track = MediaQueueItem(
+      title: 'Track',
+      path: '/music/track.flac',
+      lyricsVideoId: 'video-priority',
+    );
+    final query = LyricsTrackQuery(track: track, api: null);
+    final lookup = repository.lookup(query);
+    final youtubeDocument = LyricsDocument(
+      providerId: 'youtube_music',
+      providerName: 'YouTube Music',
+      lines: const [LyricsLine(1000, 'YouTube lyric')],
+      synced: true,
+    );
+    final lrclibDocument = LyricsDocument(
+      providerId: 'lrclib',
+      providerName: 'LRCLIB',
+      lines: const [LyricsLine(1000, 'LRCLIB lyric')],
+      synced: true,
+    );
+
+    youtube.completer.complete(youtubeDocument);
+    await Future<void>.delayed(Duration.zero);
+    expect(repository.current(query.key), same(youtubeDocument));
+
+    lrclib.completer.complete(lrclibDocument);
+    await lookup;
+    expect(repository.current(query.key), same(lrclibDocument));
+  });
 
 }
-
 
 class _FakeLyricsProvider implements LyricsProvider {
   _FakeLyricsProvider(this.id, this.completer);
