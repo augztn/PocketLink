@@ -13,6 +13,7 @@ import '../downloads/downloads_screen.dart';
 import 'data/media_library_repository.dart';
 import 'media_browser_screen.dart';
 import 'media_library_catalog.dart';
+import 'discover/imported_playlist_manager_screen.dart';
 
 const _libraryCanvas = Color(0xFF000000);
 const _libraryCard = Color(0xFF15161B);
@@ -36,6 +37,7 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
   final TextEditingController _search = TextEditingController();
   List<MediaFileItem> _tracks = const [];
   int _cachedCount = 0;
+  int _importedPlaylistCount = 0;
   Set<String> _favoriteKeys = <String>{};
   bool _loading = true;
   String? _error;
@@ -46,6 +48,7 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
     super.initState();
     unawaited(_load());
     unawaited(_loadLikedCount());
+    unawaited(_loadImportedPlaylistCount());
     unawaited(DownloadManagerService.instance.initialize().then((_) {
       if (mounted) setState(() => _cachedCount = _completedAudioDownloads());
     }).catchError((Object _) {}));
@@ -70,6 +73,19 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
       final extension = dot < 0 ? '' : task.fileName.substring(dot + 1).toLowerCase();
       return task.status == DownloadStatus.completed && extensions.contains(extension);
     }).length;
+  }
+
+  Future<void> _loadImportedPlaylistCount() async {
+    final playlists = await ImportedPlaylistStore.load();
+    if (!mounted) return;
+    setState(() => _importedPlaylistCount = playlists.length);
+  }
+
+  Future<void> _openImportedPlaylists() async {
+    await Navigator.of(context).push<void>(MaterialPageRoute<void>(
+      builder: (_) => const ImportedPlaylistManagerScreen(),
+    ));
+    await _loadImportedPlaylistCount();
   }
 
   Future<void> _loadLikedCount() async {
@@ -206,7 +222,7 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
               const SizedBox(width: 8),
               _quickChip('Genres', Icons.category_rounded, widget.onOpenGenres ?? () => _unavailable('Genre')),
               const SizedBox(width: 8),
-              _quickChip('Imported', Icons.playlist_add_rounded, widget.onOpenImported ?? () => _unavailable('Imported playlist')),
+              _quickChip('Imported', Icons.playlist_add_rounded, widget.onOpenImported ?? _openImportedPlaylists),
             ]),
             const SizedBox(height: 16),
             if (_error != null)
@@ -228,7 +244,7 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
                 physics: const NeverScrollableScrollPhysics(),
                 children: [
                   LibraryBentoCard(title: 'Songs', count: songs, icon: Icons.music_note_rounded, art: LibraryBentoArt.album, onTap: () => _scope == _LibraryScope.cached ? _openDownloads() : _openSongs()),
-                  LibraryBentoCard(title: 'Playlists', count: 0, icon: Icons.queue_music_rounded, art: LibraryBentoArt.stack, onTap: () => _unavailable('Playlist')),
+                  LibraryBentoCard(title: 'Playlists', count: _importedPlaylistCount, icon: Icons.queue_music_rounded, art: LibraryBentoArt.stack, onTap: _openImportedPlaylists),
                   LibraryBentoCard(title: 'Albums', count: 0, icon: Icons.album_rounded, art: LibraryBentoArt.album, onTap: () => _unavailable('Album')),
                   LibraryBentoCard(title: 'Artists', count: 0, icon: Icons.person_rounded, art: LibraryBentoArt.artists, onTap: () => _unavailable('Artist')),
                 ],
