@@ -46,6 +46,7 @@ class DiscoverScreen extends StatefulWidget {
 class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProviderStateMixin {
   static final Map<String, _DiscoverFeedSnapshot> _feedCache = {};
   static final Map<String, List<IndexedFile>> _localLibraryCache = {};
+  static final Map<String, DateTime> _localLibraryCacheUpdated = {};
   final DiscoverService _service = DiscoverService();
   late final AnimationController _shimmerController;
   List<DiscoverTrack> _tracks = const [];
@@ -53,6 +54,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
   List<IndexedFile> _localLibrary = const [];
   bool _loading = false;
   bool _loadingLibrary = false;
+  Future<void>? _localLibraryRequest;
   bool _startingPlayback = false;
   bool _resolvingImportedPlaylist = false;
   String? _error;
@@ -113,22 +115,36 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
 
   Future<void> _loadLocalLibrary({bool forceRefresh = false}) async {
     final api = widget.api;
-    if (_loadingLibrary || api == null) return;
+    if (api == null) return;
     final cacheKey = api.baseUrl;
     final cached = _localLibraryCache[cacheKey];
-    if (!forceRefresh && cached != null) {
+    if (cached != null) {
       _localLibrary = cached;
-      return;
+      final updated = _localLibraryCacheUpdated[cacheKey];
+      if (!forceRefresh && updated != null &&
+          DateTime.now().difference(updated) < const Duration(minutes: 2)) {
+        return;
+      }
     }
-    setState(() => _loadingLibrary = true);
-    try {
-      final result = await MediaLibraryRepository(
-        api: api,
-        type: MediaLibraryType.music,
-      ).readIndexedMedia();
-      if (!mounted) return;
-      setState(() {
-        _localLibrary = result.items.map((item) => IndexedFile(
+
+    final pending = _localLibraryRequest;
+    if (pending != null) {
+      await pending;
+      final updated = _localLibraryCacheUpdated[cacheKey];
+      if (!forceRefresh && updated != null &&
+          DateTime.now().difference(updated) < const Duration(minutes: 2)) {
+        return;
+      }
+    }
+
+    if (mounted) setState(() => _loadingLibrary = true);
+    final request = () async {
+      try {
+        final result = await MediaLibraryRepository(
+          api: api,
+          type: MediaLibraryType.music,
+        ).readIndexedMedia();
+        final items = result.items.map((item) => IndexedFile(
           volume: item.volume ?? 'internal',
           path: item.path,
           name: item.entry.name,
@@ -138,15 +154,21 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
           mime: '',
           category: 'music',
         )).toList(growable: false);
-        _localLibraryCache[cacheKey] = _localLibrary;
-      });
-    } catch (_) {
-      // Discovery remains usable when the host library is temporarily offline.
+        _localLibraryCache[cacheKey] = items;
+        _localLibraryCacheUpdated[cacheKey] = DateTime.now();
+        _localLibrary = items;
+      } catch (_) {
+        // Keep a previously indexed snapshot usable during temporary outages.
+      } finally {
+        if (mounted) setState(() => _loadingLibrary = false);
+      }
+    }();
+    _localLibraryRequest = request;
+    try {
+      await request;
     } finally {
-      if (mounted) {
-        setState(() => _loadingLibrary = false);
-      } else {
-        _loadingLibrary = false;
+      if (identical(_localLibraryRequest, request)) {
+        _localLibraryRequest = null;
       }
     }
   }
@@ -363,6 +385,12 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
   }
 
   Future<MediaQueueItem> _queueItem(DiscoverTrack track) async {
+    // Wait for the server index before choosing NewPipe. The initial screen
+    // load is asynchronous; without this barrier an early tap always misses
+    // an available server-side lossless copy.
+    if (AppSettings.instance.discoverLocalLossless && widget.api != null) {
+      await _loadLocalLibrary();
+    }
     final local = AppSettings.instance.discoverLocalLossless
         ? DiscoverService.findLocalLosslessMatch(track, _localLibrary)
         : null;
