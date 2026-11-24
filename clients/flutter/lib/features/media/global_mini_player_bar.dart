@@ -148,7 +148,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
                                     )
                                   : item.artworkUrl?.isNotEmpty == true
                                       ? DiscoverThumbnail(
-                                          url: item.artworkUrl!,
+                                          url: DiscoverThumbnailCache.urlForSize(item.artworkUrl!, 544),
                                           cacheWidth: 544,
                                           fallback: Icon(
                                             Icons.graphic_eq_rounded,
