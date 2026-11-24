@@ -1,6 +1,7 @@
 import 'dart:io';
 import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
+import '../../core/widgets/pocketlink_skeleton.dart';
 
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
@@ -529,7 +530,19 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
             child: _error != null
                 ? Center(child: FilledButton.icon(onPressed: _refreshVolumes, icon: const Icon(Icons.refresh), label: const Text('Try again')))
                 : _loading && _listing == null
-                    ? const SizedBox.shrink()
+                    ? (_gridView
+                        ? PocketLinkSkeleton.fileGrid(
+                            padding: EdgeInsets.fromLTRB(
+                              16, 10, 16,
+                              LayoutInsetsScope.of(context).bottomClearance,
+                            ),
+                          )
+                        : PocketLinkSkeleton.fileList(
+                            padding: EdgeInsets.fromLTRB(
+                              16, 10, 16,
+                              LayoutInsetsScope.of(context).bottomClearance,
+                            ),
+                          ))
                     : items.isEmpty
                         ? RefreshIndicator(
                             onRefresh: _refreshDirectory,
