@@ -150,6 +150,12 @@ abstract final class PocketLinkNavigation {
   }) =>
       isActive && nowPlayingProgress <= 0.001;
 
+  /// Back collapses Now Playing only after it has crossed the expanded midpoint.
+  static bool shouldCollapseNowPlayingOnBack({
+    required double progress,
+  }) =>
+      progress > 0.5;
+
   /// Captures the visible source surface for the Now Playing container transform.
   static Rect? resolveMediaOriginRect({required bool preferMiniPlayer}) {
     final keys = preferMiniPlayer
