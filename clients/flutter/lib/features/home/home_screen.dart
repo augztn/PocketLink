@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
+import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/navigation/pocketlink_navigation.dart';
 import 'navigation_dock.dart';
 import 'music_shortcut_menu.dart';
@@ -80,6 +81,7 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _libraryOpen = false;
       _libraryBackHandler = null;
+      _tabBackHandler = null;
       _hostSetupInitialized = true;
       _hostSetupOpen = true;
       _musicShortcutsExpanded = false;
@@ -174,6 +176,7 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _libraryOpen = false;
       _libraryBackHandler = null;
+      _tabBackHandler = null;
       _hostSetupOpen = false;
       _musicShortcutsExpanded = false;
       PocketLinkNavigation.quickShortcutsOpen.value = false;
@@ -210,6 +213,7 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _libraryOpen = false;
       _libraryBackHandler = null;
+      _tabBackHandler = null;
       _hostSetupOpen = false;
       _musicShortcutsExpanded = false;
       PocketLinkNavigation.quickShortcutsOpen.value = false;
@@ -527,7 +531,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   child: IndexedStack(
                     index: _hostSetupOpen ? 3 : (_libraryOpen ? pages.length : _selectedIndex),
-                    children: [...pages, _libraryPage ?? const SizedBox.shrink()],
+                    children: [
+                      ...pages,
+                      PocketLinkNavigationScope(
+                        onHome: _closeLibrary,
+                        child: _libraryPage ?? const SizedBox.shrink(),
+                      ),
+                    ],
                   ),
                 ),
               ),
