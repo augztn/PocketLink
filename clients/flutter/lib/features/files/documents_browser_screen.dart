@@ -37,9 +37,14 @@ class _DocumentFile {
 }
 
 class DocumentsBrowserScreen extends StatefulWidget {
-  const DocumentsBrowserScreen({required this.api, super.key});
+  const DocumentsBrowserScreen({
+    required this.api,
+    this.onBackHandlerChanged,
+    super.key,
+  });
 
   final ServerApi api;
+  final ValueChanged<VoidCallback?>? onBackHandlerChanged;
 
   @override
   State<DocumentsBrowserScreen> createState() => _DocumentsBrowserScreenState();
@@ -71,8 +76,17 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
 
   @override
   void dispose() {
+    widget.onBackHandlerChanged?.call(null);
     _search.dispose();
     super.dispose();
+  }
+
+  void _setSearchExpanded(bool expanded) {
+    if (_searchExpanded == expanded) return;
+    setState(() => _searchExpanded = expanded);
+    widget.onBackHandlerChanged?.call(
+      _searchExpanded ? () => _setSearchExpanded(false) : null,
+    );
   }
 
   Future<void> _scan({bool refresh = false}) async {
@@ -259,7 +273,11 @@ tooltip: 'Filter document types',
           ]),
         ),
         actions: [
-          PocketLinkAppBarAction(label: 'Search documents', icon: Icons.search_rounded, onPressed: () => setState(() => _searchExpanded = !_searchExpanded)),
+          PocketLinkAppBarAction(
+            label: 'Search documents',
+            icon: Icons.search_rounded,
+            onPressed: () => _setSearchExpanded(!_searchExpanded),
+          ),
           PocketLinkAppBarAction(label: 'Sort by name', icon: Icons.sort_by_alpha_rounded,
             onPressed: () => setState(() => _sortBy = 'name')),
           PocketLinkAppBarAction(label: 'Sort by newest', icon: Icons.schedule_rounded,
