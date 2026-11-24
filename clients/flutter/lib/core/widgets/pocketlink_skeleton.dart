@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:material_ui/material_ui.dart';
 
 /// Shared PocketLink skeleton layouts with the same restrained shimmer used
@@ -186,9 +188,9 @@ class _PocketLinkSkeletonState extends State<PocketLinkSkeleton>
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     )..repeat();
-    Future<void>.delayed(const Duration(milliseconds: 120), () {
+    unawaited(Future<void>.delayed(const Duration(milliseconds: 120), () {
       if (mounted) setState(() => _visible = true);
-    });
+    }));
   }
 
   @override
