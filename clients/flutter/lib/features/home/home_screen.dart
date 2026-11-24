@@ -142,8 +142,10 @@ class _HomeScreenState extends State<HomeScreen> {
       fields: {'tab': switch (index) { 0 => 'home', 1 => 'explore', 2 => 'files', _ => 'unknown' },
         'previous_index': _selectedIndex, 'next_index': index});
     setState(() {
-      _libraryBackHandler = null;
-      _tabBackHandler = null;
+      if (index != _selectedIndex || _libraryOpen || _hostSetupOpen) {
+        _libraryBackHandler = null;
+        _tabBackHandler = null;
+      }
       _libraryOpen = false;
       _hostSetupOpen = false;
       _musicShortcutsExpanded = false;
@@ -186,6 +188,8 @@ class _HomeScreenState extends State<HomeScreen> {
   void _openExternalStorage() {
     setState(() {
       _libraryOpen = false;
+      _libraryBackHandler = null;
+      _tabBackHandler = null;
       _hostSetupOpen = false;
       _musicShortcutsExpanded = false;
       PocketLinkNavigation.quickShortcutsOpen.value = false;
