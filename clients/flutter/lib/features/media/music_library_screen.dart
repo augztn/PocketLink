@@ -85,25 +85,22 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
 
   List<MediaFileItem> get _visibleTracks {
     final query = _search.text.trim().toLowerCase();
-    final items = _tracks.where((item) {
-      final isCached = item.volume == 'cache';
-      if (_scope == _LibraryScope.cached && !isCached) return false;
-      if (_scope == _LibraryScope.local && isCached) return false;
-      if (query.isEmpty) return true;
-      return item.entry.name.toLowerCase().contains(query) || item.path.toLowerCase().contains(query);
-    }).toList(growable: false);
-    return items;
+    return _tracks.where((item) =>
+      query.isEmpty ||
+      item.entry.name.toLowerCase().contains(query) ||
+      item.path.toLowerCase().contains(query)
+    ).toList(growable: false);
   }
 
   int get _songCount => switch (_scope) {
-    _LibraryScope.all => _tracks.length + _cachedCount,
-    _LibraryScope.local => _tracks.where((item) => item.volume != 'cache').length,
+    _LibraryScope.all => _visibleTracks.length + _cachedCount,
+    _LibraryScope.local => _visibleTracks.length,
     _LibraryScope.cached => _cachedCount,
   };
 
   int get _recentCount {
     final cutoff = DateTime.now().subtract(const Duration(days: 30));
-    return _tracks.where((item) {
+    return _visibleTracks.where((item) {
       final modified = DateTime.tryParse(item.entry.modified);
       return modified != null && modified.isAfter(cutoff) &&
           (_scope != _LibraryScope.cached);
@@ -117,6 +114,7 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
         type: MediaLibraryType.music,
         initialView: view,
         initialSortBy: sort,
+        initialSearchQuery: _search.text.trim(),
       ),
     ));
   }
@@ -217,7 +215,7 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 children: [
-                  LibraryBentoCard(title: 'Songs', count: songs, icon: Icons.music_note_rounded, art: _BentoArt.album, onTap: () => _openSongs()),
+                  LibraryBentoCard(title: 'Songs', count: songs, icon: Icons.music_note_rounded, art: LibraryBentoArt.album, onTap: () => _openSongs()),
                   LibraryBentoCard(title: 'Playlists', count: 0, icon: Icons.queue_music_rounded, art: _BentoArt.stack, onTap: () => _unavailable('Playlist')),
                   LibraryBentoCard(title: 'Albums', count: 0, icon: Icons.album_rounded, art: _BentoArt.album, onTap: () => _unavailable('Album')),
                   LibraryBentoCard(title: 'Artists', count: 0, icon: Icons.person_rounded, art: _BentoArt.artists, onTap: () => _unavailable('Artist')),
@@ -278,7 +276,7 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
   );
 }
 
-enum _BentoArt { album, stack, artists, liked }
+enum LibraryBentoArt { album, stack, artists, liked }
 
 class LibraryBentoCard extends StatelessWidget {
   const LibraryBentoCard({required this.title, required this.count, required this.icon, required this.art, required this.onTap, this.wide = false, super.key});
@@ -286,7 +284,7 @@ class LibraryBentoCard extends StatelessWidget {
   final String title;
   final int count;
   final IconData icon;
-  final _BentoArt art;
+  final LibraryBentoArt art;
   final VoidCallback onTap;
   final bool wide;
 
