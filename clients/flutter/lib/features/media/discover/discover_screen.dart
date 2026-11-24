@@ -672,7 +672,6 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     }
   }
 
-  Widget snapshotFallback(Widget placeholder, double size) => placeholder;
   Widget _art(DiscoverTrack track, {double size = 56}) {
     final show = AppSettings.instance.discoverArtwork && track.thumbnailUrl.isNotEmpty;
     final placeholder = Container(
@@ -689,7 +688,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
             ? DiscoverThumbnail(
                 url: track.thumbnailUrl,
                 cacheWidth: size <= 60 ? 160 : 400,
-                fallback: snapshotFallback(placeholder, size),
+                fallback: placeholder,
+                errorFallback: _artFallback(size),
               )
             : _artFallback(size),
       ),
@@ -1192,6 +1192,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       body: RefreshIndicator(
         onRefresh: _refreshDiscover,
         child: CustomScrollView(
+          cacheExtent: 600,
           physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           // Keep the scrollable behind the transparent shared app bar so
@@ -1436,6 +1437,7 @@ class _MoodsAndMomentsScreenState extends State<_MoodsAndMomentsScreen> {
         actions: const [],
       ),
       body: CustomScrollView(
+        cacheExtent: 600,
         slivers: [
           SliverToBoxAdapter(
             child: Padding(
