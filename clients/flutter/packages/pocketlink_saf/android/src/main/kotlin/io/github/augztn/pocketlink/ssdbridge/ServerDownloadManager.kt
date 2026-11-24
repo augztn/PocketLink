@@ -446,12 +446,14 @@ internal class ServerDownloadManager(
         private const val FAILED = "failed"
         private const val CANCELLED = "cancelled"
 
-        private val ValidatingDns = Dns { hostname ->
-            val addresses = Dns.SYSTEM.lookup(hostname)
-            if (addresses.isEmpty() || addresses.any(::isUnsafeAddress)) {
-                throw IOException("Downloads to private or local network addresses are blocked")
+        private val ValidatingDns = object : Dns {
+            override fun lookup(hostname: String): List<InetAddress> {
+                val addresses = Dns.SYSTEM.lookup(hostname)
+                if (addresses.isEmpty() || addresses.any(::isUnsafeAddress)) {
+                    throw IOException("Downloads to private or local network addresses are blocked")
+                }
+                return addresses
             }
-            addresses
         }
 
         private fun isUnsafeAddress(address: InetAddress): Boolean {
