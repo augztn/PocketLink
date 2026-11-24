@@ -76,9 +76,13 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
   }
 
   Future<void> _loadImportedPlaylistCount() async {
-    final playlists = await ImportedPlaylistStore.load(widget.api);
-    if (!mounted) return;
-    setState(() => _importedPlaylistCount = playlists.length);
+    try {
+      final playlists = await ImportedPlaylistStore.load(widget.api);
+      if (!mounted) return;
+      setState(() => _importedPlaylistCount = playlists.length);
+    } catch (_) {
+      if (mounted) setState(() => _importedPlaylistCount = 0);
+    }
   }
 
   Future<void> _openImportedPlaylists() async {
