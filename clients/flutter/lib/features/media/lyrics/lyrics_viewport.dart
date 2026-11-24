@@ -184,7 +184,7 @@ class _InstrumentalDotsState extends State<_InstrumentalDots> with SingleTickerP
     builder: (context, _) => Row(
       mainAxisSize: MainAxisSize.min,
       children: List.generate(3, (index) {
-        final phase = (_pulse.value * 3 - index).clamp(0.0, 1.0);
+        final phase = (_pulse.value * 3 - index).clamp(0.0, 1.0).toDouble();
         return Padding(
           padding: const EdgeInsets.only(right: 5),
           child: Opacity(
