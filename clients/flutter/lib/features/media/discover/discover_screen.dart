@@ -1067,8 +1067,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       builder: (_) => MusicLibraryScreen(
         api: api,
         onOpenGenres: _openMoodsAndMoments,
-        onOpenImported: () {
-          Navigator.of(context).push<void>(MaterialPageRoute<void>(
+        onOpenImported: () async {
+          await Navigator.of(context).push<void>(MaterialPageRoute<void>(
             builder: (_) => ImportedPlaylistManagerScreen(
               onPlay: _playImportedPlaylist,
             ),
