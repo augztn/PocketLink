@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
-import 'package:pocketlink/features/media/music_library_screen.dart';
+import 'package:pocketlink_client/features/media/music_library_screen.dart';
 
 void main() {
   testWidgets('Library Bento card displays collection count and handles taps', (tester) async {
