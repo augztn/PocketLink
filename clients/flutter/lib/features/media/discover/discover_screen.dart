@@ -188,6 +188,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     final region = AppSettings.instance.discoverRegion;
     final cached = _feedCache[region];
     if (!forceRefresh && cached != null) {
+      AppLogger.event('discover.home_cache_restored', category: 'discover',
+        component: 'discover_screen',
+        fields: {'shelf_count': cached.shelves.length,
+          'track_count': cached.shelves.fold<int>(0, (sum, shelf) => sum + shelf.tracks.length)});
       _homeShelves = cached.shelves;
       _tracks = cached.shelves.isEmpty
           ? const []
