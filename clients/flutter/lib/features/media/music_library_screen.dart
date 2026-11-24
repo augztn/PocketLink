@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/network/server_api.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
+import '../../core/widgets/pocketlink_scaffold.dart';
 import '../downloads/download_manager_service.dart';
 import '../downloads/download_task.dart';
 import '../downloads/downloads_screen.dart';
