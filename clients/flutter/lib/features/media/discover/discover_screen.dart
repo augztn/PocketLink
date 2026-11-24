@@ -345,6 +345,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
   }
 
   Future<void> _play(DiscoverTrack track, {List<DiscoverTrack>? queueOverride}) async {
+    // Warm the shared persistent artwork cache before Now Playing opens.
+    unawaited(DiscoverThumbnailCache.load(track.thumbnailUrl));
     // Ignore repeated taps while the first selection is resolving and opening.
     // Otherwise each tap replaces the queue and starts another auto-queue pass.
     if (_startingPlayback) return;
