@@ -3,13 +3,13 @@ import 'dart:ui' as ui;
 
 import 'package:material_ui/material_ui.dart';
 
-/// Applies a variable-strength backdrop blur across a bounded region.
+/// Approximates a variable backdrop blur with clipped, stepped blur bands.
 ///
-/// The blur is strongest at one edge and falls away toward the opposite edge.
-/// Use [strongestAtBottom] for surfaces behind the floating navigation dock.
+/// Keep this widget inside a bounded Stack/ClipRect and do not put an
+/// Opacity, FadeTransition or ShaderMask above it.
 class ProgressiveBlur extends StatelessWidget {
   const ProgressiveBlur({
-    this.maxSigma = 22,
+    this.maxSigma = 24,
     this.steps = 14,
     this.exponent = 1.6,
     this.strongestAtBottom = false,
@@ -19,22 +19,19 @@ class ProgressiveBlur extends StatelessWidget {
   /// Blur sigma at the strongest edge.
   final double maxSigma;
 
-  /// Number of clipped blur bands. 12–16 gives a smooth falloff.
+  /// Number of clipped bands used to approximate the blur falloff.
   final int steps;
 
-  /// Falloff curve. Values above 1 concentrate blur near the strong edge.
+  /// Falloff exponent. Values above 1 concentrate blur near the strong edge.
   final double exponent;
 
-  /// When true, the strongest band is placed at the bottom edge.
+  /// When true, blur is strongest at the bottom instead of the top.
   final bool strongestAtBottom;
 
   @override
   Widget build(BuildContext context) {
-    if (!maxSigma.isFinite ||
-        maxSigma <= 0.1 ||
-        steps < 1 ||
-        !exponent.isFinite ||
-        exponent <= 0) {
+    if (!maxSigma.isFinite || maxSigma <= 0.1 ||
+        steps < 1 || !exponent.isFinite || exponent <= 0) {
       return const SizedBox.shrink();
     }
 
@@ -47,26 +44,26 @@ class ProgressiveBlur extends StatelessWidget {
 
         final bandHeight = height / steps;
         final bands = <Widget>[];
-
         for (var index = 0; index < steps; index++) {
           final distance = (index + 0.5) / steps;
-          final sigma =
-              maxSigma * math.pow(1 - distance, exponent).toDouble();
-          if (sigma < 0.4) continue;
+          final sigma = maxSigma * math.pow(1 - distance, exponent).toDouble();
+          if (sigma < 0.1) continue;
 
           final top = strongestAtBottom
               ? height - (index + 1) * bandHeight
               : index * bandHeight;
-
           bands.add(
             Positioned(
+              top: top,
               left: 0,
               right: 0,
-              top: top,
-              height: bandHeight,
+              height: bandHeight + 1,
               child: ClipRect(
                 child: BackdropFilter(
-                  filter: ui.ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
+                  filter: ui.ImageFilter.blur(
+                    sigmaX: sigma,
+                    sigmaY: sigma,
+                  ),
                   child: const ColoredBox(color: Colors.transparent),
                 ),
               ),
@@ -76,7 +73,6 @@ class ProgressiveBlur extends StatelessWidget {
 
         return Stack(
           fit: StackFit.expand,
-          clipBehavior: Clip.hardEdge,
           children: bands,
         );
       },
