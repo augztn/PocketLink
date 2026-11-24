@@ -804,7 +804,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
           feathered: true,
           showHome: false,
           automaticallyImplyLeading: false,
-          leading: _path.isEmpty
+          leading: _path.isEmpty && embeddedTab
               ? null
               : Align(
                   alignment: Alignment.centerLeft,
@@ -814,14 +814,16 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                       dimension: 38,
                       child: GlassCircleButton(
                         tooltip: 'Back',
-                        onPressed: _goUp,
+                        onPressed: _path.isEmpty
+                            ? () => Navigator.of(context).maybePop()
+                            : _goUp,
                         child: const Icon(Icons.arrow_back_rounded, size: 18),
                       ),
                     ),
                   ),
                 ),
-          leadingWidth: _path.isEmpty ? 0 : 62,
-          titleSpacing: _path.isEmpty ? 16 : 8,
+          leadingWidth: _path.isEmpty && embeddedTab ? 0 : 62,
+          titleSpacing: _path.isEmpty && embeddedTab ? 16 : 8,
           title: TitleDropdownPopover<String>(
 tooltip: 'Choose storage location',
             onOpenChanged: (open) => setState(() => _storageMenuOpen = open),
