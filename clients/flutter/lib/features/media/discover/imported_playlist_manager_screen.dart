@@ -97,10 +97,10 @@ class ImportedPlaylistStore {
     Iterable<ImportedPlaylist> incoming,
   ) {
     final byKey = <String, ImportedPlaylist>{};
-    for (final playlist in incoming) {
+    for (final playlist in existing) {
       byKey[_identity(playlist)] = playlist;
     }
-    for (final playlist in existing) {
+    for (final playlist in incoming) {
       byKey[_identity(playlist)] = playlist;
     }
     if (byKey.length > 200) {
