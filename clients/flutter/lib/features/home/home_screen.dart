@@ -79,6 +79,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _openHostSetup() {
     setState(() {
       _libraryOpen = false;
+      _libraryBackHandler = null;
       _hostSetupInitialized = true;
       _hostSetupOpen = true;
       _musicShortcutsExpanded = false;
@@ -140,8 +141,6 @@ class _HomeScreenState extends State<HomeScreen> {
       component: 'home_shell',
       fields: {'tab': switch (index) { 0 => 'home', 1 => 'explore', 2 => 'files', _ => 'unknown' },
         'previous_index': _selectedIndex, 'next_index': index});
-    _libraryBackHandler?.call();
-    _tabBackHandler?.call();
     setState(() {
       _libraryBackHandler = null;
       _tabBackHandler = null;
@@ -172,6 +171,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _openFileLocation(String? volume, String path) {
     setState(() {
       _libraryOpen = false;
+      _libraryBackHandler = null;
       _hostSetupOpen = false;
       _musicShortcutsExpanded = false;
       PocketLinkNavigation.quickShortcutsOpen.value = false;
@@ -205,6 +205,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     setState(() {
       _libraryOpen = false;
+      _libraryBackHandler = null;
       _hostSetupOpen = false;
       _musicShortcutsExpanded = false;
       PocketLinkNavigation.quickShortcutsOpen.value = false;
@@ -219,8 +220,6 @@ class _HomeScreenState extends State<HomeScreen> {
   void _openLibrary(String id) {
     AppLogger.event('navigation.library_opened', category: 'navigation',
       component: 'home_shell', fields: {'library': id, 'from_tab': _selectedIndex});
-    _libraryBackHandler?.call();
-    _tabBackHandler?.call();
     _libraryBackHandler = null;
     _tabBackHandler = null;
     final page = switch (id) {
@@ -244,7 +243,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _closeLibrary() {
     if (!_libraryOpen) return;
-    _libraryBackHandler?.call();
     setState(() {
       _libraryBackHandler = null;
       _libraryOpen = false;
@@ -275,6 +273,8 @@ class _HomeScreenState extends State<HomeScreen> {
       case 'upload':
         setState(() {
           _libraryOpen = false;
+          _libraryBackHandler = null;
+          _tabBackHandler = null;
           _initializedTabs.add(2);
           _selectedIndex = 2;
           _uploadRequest++;
@@ -405,6 +405,7 @@ class _HomeScreenState extends State<HomeScreen> {
           onOpenFiles: () => _openTab(2),
           onOpenLibrary: _openLibrary,
           onCanPopChanged: _onExploreCanPopChanged,
+          isActive: _selectedIndex == 1 && !_libraryOpen && !_hostSetupOpen,
           onCategoryChanged: (category) => setState(() {
             _exploreCategory = category;
             if (category == ExploreCategory.files) _fileCategory = 'All';
@@ -416,7 +417,7 @@ class _HomeScreenState extends State<HomeScreen> {
         FileManagerScreen(
           key: PageStorageKey<String>('pocketlink-files-${widget.api.baseUrl}'),
           api: widget.api,
-          isActive: true,
+          isActive: _selectedIndex == 2 && !_libraryOpen && !_hostSetupOpen,
           onBackAtRoot: () => _openTab(0),
           onCanNavigateBackChanged: (canNavigateBack) {
             if (_filesCanNavigateBack != canNavigateBack) {
@@ -605,7 +606,7 @@ class _HomeScreenState extends State<HomeScreen> {
               (_selectedIndex == 0 ||
                   (_selectedIndex == 1 && _exploreCanPop)) &&
               !_musicShortcutsExpanded &&
-              _libraryBackHandler == null &&
+              (!_libraryOpen || _libraryBackHandler == null) &&
               !PocketLinkNavigation.drawerOpen.value,
           onPopInvokedWithResult: (didPop, result) {
             if (didPop) return;
@@ -613,7 +614,7 @@ class _HomeScreenState extends State<HomeScreen> {
               unawaited(NowPlayingOverlayController.collapse());
             } else if (PocketLinkNavigation.drawerOpen.value) {
               _rootScaffoldKey.currentState?.closeDrawer();
-            } else if (_libraryBackHandler != null) {
+            } else if (_libraryOpen && _libraryBackHandler != null) {
               _libraryBackHandler!.call();
             } else if (_libraryOpen) {
               _closeLibrary();
@@ -626,8 +627,8 @@ class _HomeScreenState extends State<HomeScreen> {
               });
             } else if (_selectedIndex == 1 && _exploreCanPop) {
               // NavigatorPopHandler consumes this back event on the nested tab.
-            } else if (_selectedIndex == 2 && _filesCanNavigateBack) {
-              _tabBackHandler?.call();
+            } else if (_selectedIndex == 2 && _tabBackHandler != null) {
+              _tabBackHandler!.call();
             } else if (_selectedIndex != 0) {
               _openTab(0);
             }
