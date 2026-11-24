@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:material_ui/material_ui.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/network/server_api.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
@@ -34,6 +35,7 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
   final TextEditingController _search = TextEditingController();
   List<MediaFileItem> _tracks = const [];
   int _cachedCount = 0;
+  int _likedCount = 0;
   bool _loading = true;
   String? _error;
   _LibraryScope _scope = _LibraryScope.all;
@@ -42,6 +44,7 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
   void initState() {
     super.initState();
     unawaited(_load());
+    unawaited(_loadLikedCount());
     unawaited(DownloadManagerService.instance.initialize().then((_) {
       if (mounted) setState(() => _cachedCount = _completedAudioDownloads());
     }).catchError((Object _) {}));
@@ -66,6 +69,13 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
       final extension = dot < 0 ? '' : task.fileName.substring(dot + 1).toLowerCase();
       return task.status == DownloadStatus.completed && extensions.contains(extension);
     }).length;
+  }
+
+  Future<void> _loadLikedCount() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    final key = 'pocketlink.media.favorites.' + widget.api.baseUrl + '.music';
+    setState(() => _likedCount = prefs.getStringList(key)?.length ?? 0);
   }
 
   Future<void> _load() async {
@@ -214,7 +224,7 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 children: [
-                  LibraryBentoCard(title: 'Songs', count: songs, icon: Icons.music_note_rounded, art: LibraryBentoArt.album, onTap: () => _openSongs()),
+                  LibraryBentoCard(title: 'Songs', count: songs, icon: Icons.music_note_rounded, art: LibraryBentoArt.album, onTap: () => _scope == _LibraryScope.cached ? _openDownloads() : _openSongs()),
                   LibraryBentoCard(title: 'Playlists', count: 0, icon: Icons.queue_music_rounded, art: LibraryBentoArt.stack, onTap: () => _unavailable('Playlist')),
                   LibraryBentoCard(title: 'Albums', count: 0, icon: Icons.album_rounded, art: LibraryBentoArt.album, onTap: () => _unavailable('Album')),
                   LibraryBentoCard(title: 'Artists', count: 0, icon: Icons.person_rounded, art: LibraryBentoArt.artists, onTap: () => _unavailable('Artist')),
@@ -223,7 +233,7 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
               const SizedBox(height: 12),
               LibraryBentoCard(title: 'Recently added', count: recent, icon: Icons.fiber_new_rounded, wide: true, art: LibraryBentoArt.stack, onTap: () => _openSongs(sort: 'newest')),
               const SizedBox(height: 12),
-              LibraryBentoCard(title: 'Liked', count: 0, icon: Icons.favorite_rounded, wide: true, art: LibraryBentoArt.liked, onTap: () => _openSongs(view: 'favorites')),
+              LibraryBentoCard(title: 'Liked', count: _likedCount, icon: Icons.favorite_rounded, wide: true, art: LibraryBentoArt.liked, onTap: () => _openSongs(view: 'favorites')),
               if (_scope == _LibraryScope.cached && _cachedCount > 0) ...[
                 const SizedBox(height: 12),
                 _messageCard('Cached audio downloads are counted here. Open Downloads to manage or play them.', Icons.download_done_rounded),
