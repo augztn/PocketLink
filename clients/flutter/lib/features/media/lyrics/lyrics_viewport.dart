@@ -8,6 +8,7 @@ class LyricsViewport extends StatefulWidget {
   const LyricsViewport({
     required this.document,
     required this.position,
+    this.loading = false,
     required this.results,
     required this.providers,
     required this.onSeek,
@@ -19,6 +20,7 @@ class LyricsViewport extends StatefulWidget {
 
   final LyricsDocument? document;
   final Duration position;
+  final bool loading;
   final Map<String, LyricsProviderResult> results;
   final List<LyricsProvider> providers;
   final ValueChanged<Duration> onSeek;
@@ -67,7 +69,7 @@ class _LyricsViewportState extends State<LyricsViewport> {
     if (doc == null) {
       return Center(
         child: Text(
-          'Searching lyrics…',
+          widget.loading ? 'Searching lyrics…' : 'No matching lyrics were found.',
           style: TextStyle(color: Colors.white.withValues(alpha: .62), fontSize: 15),
         ),
       );
@@ -92,6 +94,10 @@ class _LyricsViewportState extends State<LyricsViewport> {
                 final line = doc.lines[index];
                 final active = index == _activeIndex;
                 final past = _activeIndex >= 0 && index < _activeIndex;
+                final nextLine = index + 1 < doc.lines.length ? doc.lines[index + 1] : null;
+                final instrumentalGap = active && nextLine != null &&
+                    nextLine.timeMs - line.timeMs >= 12000 &&
+                    widget.position.inMilliseconds - line.timeMs >= 6000;
                 return GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: doc.synced ? () => widget.onSeek(Duration(milliseconds: line.timeMs)) : null,
@@ -104,7 +110,10 @@ class _LyricsViewportState extends State<LyricsViewport> {
                       alignment: Alignment.centerLeft,
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 12),
-                        child: Text(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
                           line.text,
                           textAlign: TextAlign.left,
                           style: TextStyle(
@@ -116,6 +125,13 @@ class _LyricsViewportState extends State<LyricsViewport> {
                                 ? [Shadow(color: Colors.white.withValues(alpha: .18), blurRadius: 16)]
                                 : const [],
                           ),
+                            ),
+                            if (instrumentalGap)
+                              const Padding(
+                                padding: EdgeInsets.only(top: 10),
+                                child: _InstrumentalDots(),
+                              ),
+                          ],
                         ),
                       ),
                     ),
@@ -147,6 +163,38 @@ class _LyricsViewportState extends State<LyricsViewport> {
       ],
     );
   }
+}
+
+class _InstrumentalDots extends StatefulWidget {
+  const _InstrumentalDots();
+  @override
+  State<_InstrumentalDots> createState() => _InstrumentalDotsState();
+}
+
+class _InstrumentalDotsState extends State<_InstrumentalDots> with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..repeat();
+  @override
+  void dispose() { _pulse.dispose(); super.dispose(); }
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _pulse,
+    builder: (context, _) => Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(3, (index) {
+        final phase = (_pulse.value * 3 - index).clamp(0.0, 1.0);
+        return Padding(
+          padding: const EdgeInsets.only(right: 5),
+          child: Opacity(
+            opacity: .28 + phase * .72,
+            child: const Text('•', style: TextStyle(color: Colors.white70, fontSize: 19)),
+          ),
+        );
+      }),
+    ),
+  );
 }
 
 class _LyricsFloatingButton extends StatelessWidget {
