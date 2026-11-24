@@ -12,6 +12,7 @@ import '../../../core/widgets/pocketlink_section_header.dart';
 import '../data/media_library_repository.dart';
 import '../media_library_catalog.dart';
 import '../now_playing_overlay_controller.dart';
+import '../music_library_screen.dart';
 import '../persistent_audio_player.dart';
 import 'discover_models.dart';
 import 'discover_service.dart';
@@ -990,6 +991,26 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     }
   }
 
+  Future<void> _openMusicLibrary() async {
+    final api = widget.api;
+    if (api == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Connect to a PocketLink server to open your music library.')),
+      );
+      return;
+    }
+    await Navigator.of(context).push<void>(MaterialPageRoute<void>(
+      builder: (_) => MusicLibraryScreen(
+        api: api,
+        onOpenGenres: _openMoodsAndMoments,
+        onOpenImported: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Playlist import is not connected to the Library screen yet.')),
+          );
+        },
+      ),
+    ));
+  }
   @override
   Widget build(BuildContext context) {
     final top = LayoutInsetsScope.of(context).topClearance;
@@ -999,7 +1020,21 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       extendBodyBehindAppBar: true,
       appBar: PocketLinkAppBar(
         feathered: true, showHome: false, automaticallyImplyLeading: true,
-        title: const Text('Discover'),
+        title: TitleDropdownPopover<String>(
+          tooltip: 'Discover navigation',
+          items: const [
+            SmokedGlassPopoverMenuItem(value: 'discover', label: 'Discover', icon: Icons.explore_rounded),
+            SmokedGlassPopoverMenuItem(value: 'library', label: 'Library', icon: Icons.library_music_rounded),
+          ],
+          onSelected: (value) {
+            if (value == 'library') _openMusicLibrary();
+          },
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            const Text('Discover'),
+            const SizedBox(width: 2),
+            const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
+          ]),
+        ),
         actionsBeforeHome: [
           IconButton(
             tooltip: 'Search moods and genres',
