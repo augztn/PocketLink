@@ -201,6 +201,50 @@ void main() {
     await Future.wait([first, second]);
     expect(provider.calls, 1);
   });
+  test('lyrics lookup runs no more than four providers concurrently', () async {
+    final providers = List.generate(
+      7,
+      (index) => _GateLyricsProvider('provider_$index'),
+    );
+    final repository = LyricsRepository(providers: providers);
+    const track = MediaQueueItem(title: 'Track', path: '/music/track.flac');
+    final lookup = repository.lookup(LyricsTrackQuery(track: track, api: null));
+
+    await Future<void>.delayed(Duration.zero);
+    expect(providers.where((provider) => provider.started).length, 4);
+    for (final provider in providers.take(4)) {
+      provider.completer.complete(null);
+    }
+    await Future<void>.delayed(Duration.zero);
+    expect(providers.where((provider) => provider.started).length, 7);
+    for (final provider in providers.skip(4)) {
+      provider.completer.complete(null);
+    }
+    await lookup;
+  });
+
+  test('cancelling a lookup prevents late providers from replacing active lyrics', () async {
+    final first = _GateLyricsProvider('first');
+    final second = _GateLyricsProvider('second');
+    final repository = LyricsRepository(providers: [first, second]);
+    const track = MediaQueueItem(title: 'Track', path: '/music/track.flac');
+    final query = LyricsTrackQuery(track: track, api: null);
+    final lookup = repository.lookup(query);
+
+    await Future<void>.delayed(Duration.zero);
+    repository.cancel(query.key);
+    first.completer.complete(LyricsDocument(
+      providerId: 'first',
+      providerName: 'First',
+      lines: const [LyricsLine(1000, 'Stale result')],
+      synced: true,
+    ));
+    await lookup;
+
+    expect(repository.current(query.key), isNull);
+    expect(repository.resultsFor(query.key), isEmpty);
+  });
+
   test('higher-priority provider replaces an equal-quality later result', () async {
     final lrclib = _FakeLyricsProvider('lrclib', Completer<LyricsDocument?>());
     final youtube = _FakeLyricsProvider('youtube_music', Completer<LyricsDocument?>());
@@ -234,6 +278,21 @@ void main() {
     expect(repository.current(query.key), same(lrclibDocument));
   });
 
+}
+
+class _GateLyricsProvider implements LyricsProvider {
+  _GateLyricsProvider(this.id);
+  @override
+  final String id;
+  final Completer<LyricsDocument?> completer = Completer<LyricsDocument?>();
+  bool started = false;
+  @override
+  String get name => id;
+  @override
+  Future<LyricsDocument?> fetch(LyricsTrackQuery query) {
+    started = true;
+    return completer.future;
+  }
 }
 
 class _FakeLyricsProvider implements LyricsProvider {
