@@ -1293,6 +1293,12 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     if (_lyricsController.value > 0.5) {
       final key = _lyricsQueryKey;
       if (key != null) _lyricsRepository.cancel(key);
+      setState(() {
+        _lyricsQueryKey = null;
+        _lyricsLoading = false;
+        _lyricsProviderStates = const {};
+        _activeLyrics = null;
+      });
       await _lyricsController.reverse();
       return;
     }
