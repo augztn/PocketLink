@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart' as file_picker;
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/network/server_api.dart';
 
 import 'playlist_import_service.dart';
@@ -13,6 +14,7 @@ import 'playlist_import_service.dart';
 class ImportedPlaylistStore {
   static const folderPath = 'PocketLink/Discover/Playlists';
   static const filePath = '$folderPath/playlists.json';
+  static const _legacyLocalKey = 'pocketlink.discover.imported_playlists.v1';
   static const _folderSegments = ['PocketLink', 'Discover', 'Playlists'];
 
   static Future<void> ensureFolder(ServerApi api) async {
@@ -32,6 +34,49 @@ class ImportedPlaylistStore {
     if (!listing.items.any((item) => !item.isDirectory && item.name == 'playlists.json')) {
       return const [];
     }
+    final serverPlaylists = await _readServerFile(api, listing.items.any(
+      (item) => !item.isDirectory && item.name == 'playlists.json',
+    ));
+    final prefs = await SharedPreferences.getInstance();
+    final legacyRaw = prefs.getString(_legacyLocalKey);
+    if (legacyRaw == null || legacyRaw.isEmpty) return serverPlaylists;
+
+    // Migrate the old on-device collection only after the server write succeeds.
+    try {
+      final decoded = jsonDecode(legacyRaw);
+      if (decoded is! List) return serverPlaylists;
+      final localPlaylists = decoded
+          .whereType<Map>()
+          .map((item) => ImportedPlaylist.fromJson(
+                item.map((key, value) => MapEntry(key.toString(), value)),
+              ))
+          .where((playlist) => playlist.name.trim().isNotEmpty && playlist.tracks.isNotEmpty)
+          .toList(growable: false);
+      if (localPlaylists.isEmpty) return serverPlaylists;
+      final merged = _merge(serverPlaylists, localPlaylists);
+      await _writeServerFile(api, merged);
+      await prefs.remove(_legacyLocalKey);
+      return merged;
+    } on FormatException {
+      return serverPlaylists;
+    }
+  }
+
+  static Future<void> saveAll(ServerApi api, Iterable<ImportedPlaylist> playlists) async {
+    final current = await load(api);
+    final next = _merge(current, playlists);
+    await _writeServerFile(api, next);
+  }
+
+  static Future<void> remove(ServerApi api, ImportedPlaylist playlist) async {
+    final current = await load(api);
+    final key = _identity(playlist);
+    final next = current.where((item) => _identity(item) != key).toList(growable: false);
+    await _writeServerFile(api, next);
+  }
+
+  static Future<List<ImportedPlaylist>> _readServerFile(ServerApi api, bool exists) async {
+    if (!exists) return const [];
     final bytes = await api.downloadFile(filePath);
     final decoded = jsonDecode(utf8.decode(bytes, allowMalformed: false));
     if (decoded is! Map || decoded['format'] != 'pocketlink-discover-playlists' ||
@@ -47,39 +92,31 @@ class ImportedPlaylistStore {
         .toList(growable: false);
   }
 
-  static Future<void> saveAll(ServerApi api, Iterable<ImportedPlaylist> playlists) async {
-    final current = await load(api);
-    final incoming = playlists.toList(growable: false);
-    final incomingKeys = <String>{};
-    final next = <ImportedPlaylist>[];
+  static List<ImportedPlaylist> _merge(
+    Iterable<ImportedPlaylist> existing,
+    Iterable<ImportedPlaylist> incoming,
+  ) {
+    final byKey = <String, ImportedPlaylist>{};
     for (final playlist in incoming) {
-      final key = _identity(playlist);
-      if (incomingKeys.add(key)) next.add(playlist);
+      byKey[_identity(playlist)] = playlist;
     }
-    next.addAll(current.where((item) => !incomingKeys.contains(_identity(item))));
-    if (next.length > 200) {
+    for (final playlist in existing) {
+      byKey[_identity(playlist)] = playlist;
+    }
+    if (byKey.length > 200) {
       throw StateError('PocketLink can store up to 200 imported playlists.');
     }
-    final backup = jsonEncode({
-      'format': 'pocketlink-discover-playlists',
-      'version': 1,
-      'playlists': next.map((item) => item.toJson()).toList(),
-    });
-    await api.uploadFile(
-      folderPath,
-      'playlists.json',
-      Uint8List.fromList(utf8.encode(backup)),
-    );
+    return List.unmodifiable(byKey.values);
   }
 
-  static Future<void> remove(ServerApi api, ImportedPlaylist playlist) async {
-    final current = await load(api);
-    final key = _identity(playlist);
-    final next = current.where((item) => _identity(item) != key).toList(growable: false);
+  static Future<void> _writeServerFile(
+    ServerApi api,
+    List<ImportedPlaylist> playlists,
+  ) async {
     final backup = jsonEncode({
       'format': 'pocketlink-discover-playlists',
       'version': 1,
-      'playlists': next.map((item) => item.toJson()).toList(),
+      'playlists': playlists.map((item) => item.toJson()).toList(),
     });
     await api.uploadFile(
       folderPath,
