@@ -5,7 +5,6 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../core/network/server_api.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
-import '../../core/widgets/pocketlink_scaffold.dart';
 import '../downloads/download_manager_service.dart';
 import '../downloads/download_task.dart';
 import '../downloads/downloads_screen.dart';
@@ -94,7 +93,7 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
 
   int get _songCount => switch (_scope) {
     _LibraryScope.all => _visibleTracks.length + _cachedCount,
-    _LibraryScope.local => _visibleTracks.length,
+    _LibraryScope.local => _visibleTracks.length + _cachedCount,
     _LibraryScope.cached => _cachedCount,
   };
 
@@ -133,7 +132,7 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
   Widget build(BuildContext context) {
     final layout = LayoutInsetsScope.of(context);
     final media = MediaQuery.of(context);
-    final bottom = layout.bottomClearance + 24;
+    final bottom = layout.bottomClearance + (layout.hasActiveMiniPlayer ? 12.0 : 0.0) + 24.0;
     final songs = _songCount;
     final recent = _recentCount;
     final scopeLabel = switch (_scope) {
@@ -216,15 +215,15 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
                 physics: const NeverScrollableScrollPhysics(),
                 children: [
                   LibraryBentoCard(title: 'Songs', count: songs, icon: Icons.music_note_rounded, art: LibraryBentoArt.album, onTap: () => _openSongs()),
-                  LibraryBentoCard(title: 'Playlists', count: 0, icon: Icons.queue_music_rounded, art: _BentoArt.stack, onTap: () => _unavailable('Playlist')),
-                  LibraryBentoCard(title: 'Albums', count: 0, icon: Icons.album_rounded, art: _BentoArt.album, onTap: () => _unavailable('Album')),
-                  LibraryBentoCard(title: 'Artists', count: 0, icon: Icons.person_rounded, art: _BentoArt.artists, onTap: () => _unavailable('Artist')),
+                  LibraryBentoCard(title: 'Playlists', count: 0, icon: Icons.queue_music_rounded, art: LibraryBentoArt.stack, onTap: () => _unavailable('Playlist')),
+                  LibraryBentoCard(title: 'Albums', count: 0, icon: Icons.album_rounded, art: LibraryBentoArt.album, onTap: () => _unavailable('Album')),
+                  LibraryBentoCard(title: 'Artists', count: 0, icon: Icons.person_rounded, art: LibraryBentoArt.artists, onTap: () => _unavailable('Artist')),
                 ],
               ),
               const SizedBox(height: 12),
-              LibraryBentoCard(title: 'Recently added', count: recent, icon: Icons.fiber_new_rounded, wide: true, art: _BentoArt.stack, onTap: () => _openSongs(sort: 'newest')),
+              LibraryBentoCard(title: 'Recently added', count: recent, icon: Icons.fiber_new_rounded, wide: true, art: LibraryBentoArt.stack, onTap: () => _openSongs(sort: 'newest')),
               const SizedBox(height: 12),
-              LibraryBentoCard(title: 'Liked', count: 0, icon: Icons.favorite_rounded, wide: true, art: _BentoArt.liked, onTap: () => _openSongs(view: 'favorites')),
+              LibraryBentoCard(title: 'Liked', count: 0, icon: Icons.favorite_rounded, wide: true, art: LibraryBentoArt.liked, onTap: () => _openSongs(view: 'favorites')),
               if (_scope == _LibraryScope.cached && _cachedCount > 0) ...[
                 const SizedBox(height: 12),
                 _messageCard('Cached audio downloads are counted here. Open Downloads to manage or play them.', Icons.download_done_rounded),
@@ -290,7 +289,9 @@ class LibraryBentoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
+    return SizedBox(
+      height: wide ? 124 : null,
+      child: Material(
       color: _libraryCard,
       borderRadius: BorderRadius.circular(20),
       clipBehavior: Clip.antiAlias,
@@ -306,7 +307,7 @@ class LibraryBentoCard extends StatelessWidget {
             Positioned(right: 8, bottom: 0, child: Icon(icon, size: wide ? 76 : 68, color: Colors.white.withValues(alpha: 0.08)))
           else
             _artwork(),
-          if (art == _BentoArt.liked)
+          if (art == LibraryBentoArt.liked)
             Positioned(right: 12, bottom: 12, child: Container(
               padding: const EdgeInsets.all(7),
               decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.12), shape: BoxShape.circle, border: Border.all(color: Colors.white.withValues(alpha: 0.08))),
@@ -314,12 +315,12 @@ class LibraryBentoCard extends StatelessWidget {
             )),
         ]),
       ),
-    );
+    ));
   }
 
   Widget _artwork() {
     final size = wide ? 76.0 : 66.0;
-    if (art == _BentoArt.artists) {
+    if (art == LibraryBentoArt.artists) {
       return Positioned(right: 12, bottom: 10, child: SizedBox(width: size + 28, height: size, child: Stack(children: [
         Positioned(right: 30, child: _artTile(size, const Color(0xFF655A8F), Icons.person_rounded, true)),
         Positioned(right: 0, child: _artTile(size, const Color(0xFF3E6874), Icons.person_rounded, true)),
