@@ -350,10 +350,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       DiscoverThumbnailCache.urlForSize(track.thumbnailUrl, 544),
     ).then((bytes) {
       if (mounted && bytes != null) {
-        precacheImage(
+        unawaited(precacheImage(
           ResizeImage(MemoryImage(bytes), width: 544),
           context,
-        );
+        ));
       }
     }));
     // Ignore repeated taps while the first selection is resolving and opening.
