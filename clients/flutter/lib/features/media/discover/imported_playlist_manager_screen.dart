@@ -127,7 +127,7 @@ class _ImportedPlaylistManagerScreenState extends State<ImportedPlaylistManagerS
     try {
       final result = await file_picker.FilePicker.pickFiles(
         type: file_picker.FileType.custom,
-        allowedExtensions: const ['csv', 'm3u', 'm3u8'],
+        allowedExtensions: const ['csv', 'm3u', 'm3u8', 'json'],
         withData: true,
       );
       if (result == null || result.files.isEmpty) return;
@@ -142,7 +142,8 @@ class _ImportedPlaylistManagerScreenState extends State<ImportedPlaylistManagerS
             PlaylistImportService.parseM3u(text, fallbackPlaylistName: fallbackName),
           ],
         'csv' => PlaylistImportService.parseCsvPlaylists(text, fallbackPlaylistName: fallbackName),
-        _ => throw const FormatException('Choose a CSV or M3U playlist export.'),
+        'json' => _decodePocketLinkBackup(text),
+        _ => throw const FormatException('Choose a CSV, M3U or PocketLink JSON playlist export.'),
       };
       await _runImport(() async {
         for (final playlist in playlists) {
@@ -152,6 +153,23 @@ class _ImportedPlaylistManagerScreenState extends State<ImportedPlaylistManagerS
     } catch (error) {
       if (mounted) _message(error is FormatException ? error.message : 'Could not import this playlist file.');
     }
+  }
+
+  List<ImportedPlaylist> _decodePocketLinkBackup(String input) {
+    final decoded = jsonDecode(input);
+    if (decoded is! Map || decoded['format'] != 'pocketlink-discover-playlists' ||
+        decoded['version'] != 1 || decoded['playlists'] is! List) {
+      throw const FormatException('This is not a supported PocketLink Discover playlist backup.');
+    }
+    final playlists = (decoded['playlists'] as List)
+        .whereType<Map>()
+        .map((item) => ImportedPlaylist.fromJson(
+              item.map((key, value) => MapEntry(key.toString(), value)),
+            ))
+        .where((playlist) => playlist.name.trim().isNotEmpty && playlist.tracks.isNotEmpty)
+        .toList(growable: false);
+    if (playlists.isEmpty) throw const FormatException('The backup contains no valid playlists.');
+    return playlists;
   }
 
   Future<void> _runImport(Future<void> Function() action) async {
@@ -193,6 +211,29 @@ class _ImportedPlaylistManagerScreenState extends State<ImportedPlaylistManagerS
     }
   }
 
+  Future<void> _exportJson() async {
+    if (_playlists.isEmpty || _working) return;
+    setState(() => _working = true);
+    try {
+      final backup = jsonEncode({
+        'format': 'pocketlink-discover-playlists',
+        'version': 1,
+        'playlists': _playlists.map((playlist) => playlist.toJson()).toList(),
+      });
+      final directory = await getTemporaryDirectory();
+      final file = File('${directory.path}/pocketlink-discover-playlists.json');
+      await file.writeAsString(backup, flush: true);
+      await SharePlus.instance.share(ShareParams(
+        files: [XFile(file.path, mimeType: 'application/json')],
+        subject: 'PocketLink Discover playlist backup',
+      ));
+    } catch (_) {
+      if (mounted) _message('Could not export the PocketLink playlist backup.');
+    } finally {
+      if (mounted) setState(() => _working = false);
+    }
+  }
+
   Future<void> _delete(ImportedPlaylist playlist) async {
     await ImportedPlaylistStore.remove(playlist);
     await _reload();
@@ -208,10 +249,17 @@ class _ImportedPlaylistManagerScreenState extends State<ImportedPlaylistManagerS
       appBar: AppBar(
         title: const Text('Imported playlists'),
         actions: [
-          IconButton(
-            tooltip: 'Export playlists as CSV',
-            onPressed: _working || _playlists.isEmpty ? null : _exportCsv,
-            icon: const Icon(Icons.ios_share_rounded),
+          PopupMenuButton<String>(
+            tooltip: 'Export playlists',
+            enabled: !_working && _playlists.isNotEmpty,
+            onSelected: (value) {
+              if (value == 'csv') _exportCsv();
+              if (value == 'json') _exportJson();
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'csv', child: Text('Export CSV')),
+              PopupMenuItem(value: 'json', child: Text('Export PocketLink backup')),
+            ],
           ),
         ],
       ),
