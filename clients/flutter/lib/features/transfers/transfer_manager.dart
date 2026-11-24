@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 import 'transfer_history_store.dart';
+import '../../core/logging/app_logger.dart';
 
 typedef TransferOperation = Future<void> Function(
   CancelToken token,
@@ -164,6 +165,10 @@ class TransferManager extends ChangeNotifier {
     _tasks.insert(0, task);
     await _persist();
     notifyListeners();
+    AppLogger.event('transfer.started', category: 'transfer', component: 'transfer_manager',
+      correlationId: task.id,
+      fields: {'direction': direction,
+        'active_count': _tasks.where((t) => t.status == TransferStatus.running).length});
 
     try {
       await operation(task.cancelToken, (transferred, total) {
@@ -175,11 +180,18 @@ class TransferManager extends ChangeNotifier {
       });
       if (task.cancelToken.isCancelled) {
         task.status = TransferStatus.cancelled;
+        AppLogger.event('transfer.cancelled', category: 'transfer', component: 'transfer_manager',
+          correlationId: task.id,
+          fields: {'direction': direction, 'transferred_bytes': task.transferred});
         await _persist();
         notifyListeners();
         return false;
       }
       task.status = TransferStatus.completed;
+      AppLogger.event('transfer.completed', category: 'transfer', component: 'transfer_manager',
+        correlationId: task.id,
+        fields: {'direction': direction, 'transferred_bytes': task.transferred,
+          'total_bytes': task.total});
       task.operation = null;
       if (task.total > 0) task.transferred = task.total;
       await _persist();
@@ -192,6 +204,10 @@ class TransferManager extends ChangeNotifier {
         task.status = TransferStatus.failed;
         task.error = error.message ?? 'Network transfer failed.';
       }
+      AppLogger.warning('Transfer failed', category: 'transfer',
+        component: 'transfer_manager', correlationId: task.id,
+        fields: {'direction': direction, 'failure_type': error.runtimeType.toString(),
+          'transferred_bytes': task.transferred});
       await _persist();
       notifyListeners();
       return false;
@@ -202,6 +218,10 @@ class TransferManager extends ChangeNotifier {
       task.error = task.status == TransferStatus.failed
           ? error.toString()
           : null;
+      AppLogger.warning(task.status == TransferStatus.cancelled ? 'Transfer cancelled' : 'Transfer failed',
+        category: 'transfer', component: 'transfer_manager', correlationId: task.id,
+        fields: {'direction': direction, 'status': task.status.name,
+          'failure_type': error.runtimeType.toString(), 'transferred_bytes': task.transferred});
       await _persist();
       notifyListeners();
       return false;
@@ -251,6 +271,9 @@ class TransferManager extends ChangeNotifier {
         task.status != TransferStatus.running ||
         task.cancelToken.isCancelled) return;
     task.cancelToken.cancel('Cancelled by user');
+    AppLogger.event('transfer.cancel_requested', category: 'transfer',
+      component: 'transfer_manager', correlationId: task.id,
+      fields: {'direction': task.direction, 'transferred_bytes': task.transferred});
     notifyListeners();
   }
 
