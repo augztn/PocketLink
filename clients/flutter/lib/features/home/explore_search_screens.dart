@@ -1,5 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../../core/logging/app_logger.dart';
+
 import '../../core/network/server_api.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
@@ -97,19 +99,31 @@ class _ExploreNavigatorObserver extends NavigatorObserver {
 
   final VoidCallback onChanged;
 
-  @override
-  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    if (previousRoute != null) onChanged();
+  String _label(Route<dynamic>? route) =>
+      route == null ? 'none' : route.runtimeType.toString();
+
+  void _record(String action, Route<dynamic>? route, Route<dynamic>? related) {
+    AppLogger.event('explore_navigation.$action', category: 'navigation',
+      component: 'explore_navigator',
+      fields: {'route_type': _label(route), 'related_route_type': _label(related)});
+    onChanged();
   }
 
   @override
-  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) => onChanged();
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) =>
+      _record('push', route, previousRoute);
 
   @override
-  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) => onChanged();
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) =>
+      _record('pop', route, previousRoute);
 
   @override
-  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) => onChanged();
+  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) =>
+      _record('remove', route, previousRoute);
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) =>
+      _record('replace', newRoute, oldRoute);
 }
 
 class _ExploreGrid extends StatefulWidget {
