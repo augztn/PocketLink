@@ -8,7 +8,6 @@ import 'dart:ui' as ui;
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:media_kit/media_kit.dart';
-import 'package:flutter/services.dart' show NetworkAssetBundle;
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/network/offline_file_cache.dart';
@@ -24,6 +23,7 @@ import 'now_playing_scrubber.dart';
 import 'now_playing_scroll_dismiss_detector.dart';
 import 'persistent_audio_player.dart';
 import 'now_playing_artwork_palette.dart';
+import 'discover/discover_thumbnail_cache.dart';
 import 'widgets/media_info_row.dart';
 import 'track_options_sheet.dart';
 import '../downloads/download_manager_service.dart';
@@ -319,8 +319,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     final key = _trackKey;
     if (_track.localPath == null && (_track.artworkUrl?.isNotEmpty ?? false)) {
       try {
-        final data = await NetworkAssetBundle(Uri.parse(_track.artworkUrl!)).load('');
-        final bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+        final bytes = await DiscoverThumbnailCache.load(_track.artworkUrl!);
         if (!mounted || request != _artworkRequest) return;
         if (bytes.isNotEmpty) {
           final palette = await NowPlayingArtworkPalette.extract(bytes);
@@ -1027,6 +1026,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                     children: [
                       Image.memory(
                         _artwork!,
+                        cacheWidth: 544,
                         fit: BoxFit.cover,
                         gaplessPlayback: true,
                       ),
@@ -1044,7 +1044,29 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                       ),
                     ],
                   )
-                : DecoratedBox(
+                : (_track.artworkUrl?.isNotEmpty ?? false)
+                    ? DiscoverThumbnail(
+                        key: ValueKey('music-artwork-url:${_track.artworkUrl}'),
+                        url: _track.artworkUrl!,
+                        cacheWidth: 544,
+                        fallback: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                palette[0].withValues(alpha: 0.92),
+                                palette[1].withValues(alpha: 0.78),
+                                palette[2],
+                              ],
+                            ),
+                          ),
+                          child: const Center(
+                            child: Icon(Icons.music_note_rounded, size: 92, color: Colors.white),
+                          ),
+                        ),
+                      )
+                    : DecoratedBox(
                     key: const ValueKey('music-artwork-fallback'),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
