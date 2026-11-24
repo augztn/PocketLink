@@ -4,6 +4,7 @@ import 'photo_favorites_store.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
+import '../../core/widgets/pocketlink_skeleton.dart';
 import '../../core/widgets/smoked_glass_popover_menu.dart';
 import '../downloads/download_manager_service.dart';
 import '../transfers/transfer_manager_screen.dart';
@@ -593,7 +594,16 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
               child: error != null
                   ? Center(child: FilledButton(onPressed: scan, child: const Text('Retry scan')))
                   : loading && photos.isEmpty
-                      ? const Center(child: Text('Scanning photos…'))
+                      ? PocketLinkSkeleton.photoGrid(
+                          crossAxisCount: tab == 1 ? 2 : gridColumns,
+                          childAspectRatio: tab == 1 ? .92 : 1,
+                          padding: EdgeInsets.fromLTRB(
+                            2,
+                            searchOpen ? 2 : contentTop,
+                            2,
+                            LayoutInsetsScope.of(context).bottomClearance,
+                          ),
+                        )
                       : AnimatedSwitcher(
                           duration: const Duration(milliseconds: 220),
                           switchInCurve: Curves.easeOutCubic,
