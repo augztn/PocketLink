@@ -4,9 +4,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../settings/app_settings.dart';
 import 'pocketlink_scaffold.dart';
-
-final Future<ui.FragmentProgram> _progressiveBlurProgram =
-    ui.FragmentProgram.fromAsset('shaders/progressive_blur.frag');
+import 'progressive_blur.dart';
 
 /// Shared progressive blur and legibility surface for edge-to-edge screens.
 class FeatheredGlassHeaderBackground extends StatefulWidget {
@@ -70,15 +68,19 @@ class _FeatheredGlassHeaderBackgroundState
         final theme = Theme.of(context);
         final isDark = theme.brightness == Brightness.dark;
         final settings = AppSettings.instance;
-        const blurScale = 1.0;
-        final useBlur = settings.progressiveBlurEnabled && _isScrolled;
+        final blurScale = settings.progressiveBlurStrength / 55;
+        final useBlur = settings.progressiveBlurEnabled &&
+            settings.progressiveBlurStrength > 0 && _isScrolled;
         final headerHeight =
             media.padding.top + widget.contentHeight + pocketLinkHeaderFadeTailHeight;
         final scrimBase = theme.scaffoldBackgroundColor;
+        final scrimColor = isDark ? Colors.black : Colors.white;
         final scrimColors = [
-          Colors.black.withValues(alpha: 0.45),
-          Colors.black.withValues(alpha: 0.22),
-          Colors.transparent,
+          scrimColor.withValues(alpha: 0.94),
+          scrimColor.withValues(alpha: 0.78),
+          scrimColor.withValues(alpha: 0.48),
+          scrimColor.withValues(alpha: 0.16),
+          scrimColor.withValues(alpha: 0),
         ];
 
         return _HeaderHeightReporter(
@@ -102,7 +104,7 @@ class _FeatheredGlassHeaderBackgroundState
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                             colors: scrimColors,
-                            stops: const [0, 0.55, 1],
+                            stops: const [0.0, 0.18, 0.42, 0.72, 1.0],
                           ),
                         ),
                       ),
@@ -135,159 +137,20 @@ class _FeatheredGlassHeaderBackgroundState
     );
   }
 
-  Widget _blurBand({
-    required double top,
-    required double bottom,
-    required double height,
-    required double sigma,
-  }) {
-    return Positioned(
-      top: height * top,
-      left: 0,
-      right: 0,
-      height: height * (bottom - top),
-      child: ClipRect(
-        child: BackdropFilter(
-          filter: ui.ImageFilter.blur(
-            sigmaX: sigma,
-            sigmaY: sigma,
-            tileMode: ui.TileMode.clamp,
-          ),
-          child: const ColoredBox(color: Colors.transparent),
-        ),
-      ),
-    );
-  }
-
   Widget _buildProgressiveBlur({
     required double height,
     required double blurScale,
   }) {
-    final fallback = _buildSteppedBlur(height: height, blurScale: blurScale);
-    if (!ui.ImageFilter.isShaderFilterSupported) return fallback;
-
-    return FutureBuilder<ui.FragmentProgram>(
-      future: _progressiveBlurProgram,
-      builder: (context, snapshot) {
-        final program = snapshot.data;
-        if (program == null) return fallback;
-        return _ProgressiveShaderBackdropFilter(
-          program: program,
-          sigma: 18 * blurScale,
-          fadeStart: 0.42,
-          fadeEnd: 1.0,
-        );
-      },
-    );
-  }
-
-  Widget _buildSteppedBlur({
-    required double height,
-    required double blurScale,
-  }) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        for (var i = 0; i < 9; i++)
-          _blurBand(
-            top: i / 9,
-            bottom: (i + 1) / 9,
-            height: height,
-            sigma: (18 * blurScale *
-                    (1 - ((i + 0.5) / 9)).clamp(0.0, 1.0) *
-                    (1 - ((i + 0.5) / 9)).clamp(0.0, 1.0))
-                .clamp(0.4, 18.0),
-          ),
-      ],
+    return ProgressiveBlur(
+      maxSigma: 22 * blurScale,
+      steps: 14,
+      exponent: 1.6,
     );
   }
 }
 
-/// One native Gaussian blur followed by a shader feather mask. This mirrors
-/// Mochy's blur-then-mask pipeline without a multi-tap custom blur kernel.
-class _ProgressiveShaderBackdropFilter extends StatefulWidget {
-  const _ProgressiveShaderBackdropFilter({
-    required this.program,
-    required this.sigma,
-    required this.fadeStart,
-    required this.fadeEnd,
-  });
-
-  final ui.FragmentProgram program;
-  final double sigma;
-  final double fadeStart;
-  final double fadeEnd;
-
-  @override
-  State<_ProgressiveShaderBackdropFilter> createState() =>
-      _ProgressiveShaderBackdropFilterState();
-}
-
-class _ProgressiveShaderBackdropFilterState
-    extends State<_ProgressiveShaderBackdropFilter> {
-  late final ui.FragmentShader _shader;
-  late ui.ImageFilter _filter;
-
-  @override
-  void initState() {
-    super.initState();
-    _shader = widget.program.fragmentShader();
-    _updateUniforms();
-    _filter = _createFilter();
-  }
-
-  @override
-  void didUpdateWidget(covariant _ProgressiveShaderBackdropFilter oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.fadeStart != widget.fadeStart ||
-        oldWidget.fadeEnd != widget.fadeEnd) {
-      _updateUniforms();
-    }
-    if (oldWidget.sigma != widget.sigma) {
-      _filter = _createFilter();
-    }
-  }
-
-  void _updateUniforms() {
-    _shader.setFloat(2, widget.fadeStart);
-    _shader.setFloat(3, widget.fadeEnd);
-  }
-
-  ui.ImageFilter _createFilter() => ui.ImageFilter.compose(
-        outer: ui.ImageFilter.shader(_shader),
-        inner: ui.ImageFilter.blur(
-          sigmaX: widget.sigma,
-          sigmaY: widget.sigma,
-          tileMode: ui.TileMode.clamp,
-        ),
-      );
-
-  @override
-  void dispose() {
-    _shader.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final pixelRatio = MediaQuery.devicePixelRatioOf(context);
-        _shader.setFloat(0, constraints.maxWidth * pixelRatio);
-        _shader.setFloat(1, constraints.maxHeight * pixelRatio);
-
-        return ClipRect(
-          child: BackdropFilter(
-            filter: _filter,
-            child: const ColoredBox(color: Colors.transparent),
-          ),
-        );
-      },
-    );
-  }
-}
-
-/// Reports a header's known geometry after layout, never during build.
+/// Reports a header's known geometry
+after layout, never during build.
 class _HeaderHeightReporter extends StatefulWidget {
   const _HeaderHeightReporter({
     required this.height,
