@@ -178,6 +178,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                 opacity: 0.34,
                 child: Image.memory(
                   _artwork!,
+                  cacheWidth: 544,
                   fit: BoxFit.cover,
                   gaplessPlayback: true,
                 ),
@@ -1011,7 +1012,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
           child: _usesSharedArtwork
               ? const SizedBox.expand()
               : AnimatedSwitcher(
-            duration: const Duration(milliseconds: 360),
+            duration: Duration.zero,
+            reverseDuration: Duration.zero,
             switchInCurve: Curves.easeOutCubic,
             switchOutCurve: Curves.easeInCubic,
             transitionBuilder: (child, animation) => FadeTransition(
@@ -1349,7 +1351,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
         progress,
       )!,
       child: hasArtwork
-          ? Image.memory(_artwork!, fit: BoxFit.cover, gaplessPlayback: true)
+          ? Image.memory(_artwork!, cacheWidth: 544, fit: BoxFit.cover, gaplessPlayback: true)
           : DecoratedBox(
               decoration: BoxDecoration(gradient: LinearGradient(colors: [palette[0], palette[1], palette[2]])),
               child: const Center(child: Icon(Icons.music_note_rounded, color: Colors.white, size: 34)),
@@ -1761,6 +1763,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                   ).createShader(bounds),
                   child: Image.memory(
                     _artwork!,
+                    cacheWidth: 544,
                     fit: BoxFit.cover,
                     gaplessPlayback: true,
                   ),
