@@ -87,6 +87,38 @@ class LyricsRepository {
     return lines;
   }
 
+  static LyricsDocument? parseRawLyricsText(
+    String rawText, {
+    required String providerId,
+    required String providerName,
+  }) {
+    final raw = rawText.trim();
+    if (raw.isEmpty) return null;
+    final syncedLines = parseLrc(raw);
+    if (syncedLines.isNotEmpty) {
+      return LyricsDocument(
+        providerId: providerId,
+        providerName: providerName,
+        lines: syncedLines,
+        synced: true,
+      );
+    }
+    final plainLines = raw.split(RegExp(r'\r?\n'))
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty &&
+            !RegExp(r'^\[(ti|ar|al|by|length|re|ve):', caseSensitive: false).hasMatch(line))
+        .map((line) => LyricsLine(0, line))
+        .toList();
+    if (plainLines.isEmpty) return null;
+    return LyricsDocument(
+      providerId: providerId,
+      providerName: providerName,
+      lines: plainLines,
+      synced: false,
+    );
+  }
+
+
   static LyricsDocument? selectBestLrclibCandidate(
     List<Map> candidates, {
     required String title,
@@ -228,7 +260,7 @@ class _LocalProvider extends _Provider {
     if(q.track.localPath!=null) { final f=File(side); if(await f.exists()) raw=await f.readAsString(); }
     else if(q.api!=null) { try { final b=q.track.volume==null?await q.api!.downloadFile(side):await q.api!.downloadStorageFile(q.track.volume!,side); raw=utf8.decode(b,allowMalformed:true); } catch(_){} }
     // Embedded tag lyrics are not exposed by the current media metadata API.
-    return lrc(raw,id,name);
+    return LyricsRepository.parseRawLyricsText(raw ?? '', providerId: id, providerName: name);
   }
 }
 class _LrclibProvider extends _Provider {
