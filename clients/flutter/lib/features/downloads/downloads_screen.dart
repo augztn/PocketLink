@@ -241,6 +241,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
   @override
   void dispose() {
     _serverRefreshTimer?.cancel();
+    _manager.releaseServerApi(widget.api);
     super.dispose();
   }
 
@@ -867,7 +868,472 @@ class _ServerDirectoryPickerState extends State<_ServerDirectoryPicker> {
   @override
   void initState() {
     super.initState();
-    _load('');
+    _initialLoad();
+  }
+
+  Future<void> _initialLoad() async {
+    final initial = widget.initialPath.trim().replaceAll(RegExp(r'^/+|/+
+    setState(() {
+      _path = path;
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final listing = await widget.api.listDirectory(path);
+      if (mounted) setState(() => _listing = listing);
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  String _parentPath() {
+    final separator = _path.lastIndexOf('/');
+    return separator < 0 ? '' : _path.substring(0, separator);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final folders = _listing?.items.where((item) => item.isDirectory).toList() ?? const <FileEntry>[];
+    return AlertDialog(
+      title: const Text('Choose server folder'),
+      content: SizedBox(
+        width: double.maxFinite,
+        height: 360,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                IconButton(
+                  tooltip: 'Parent folder',
+                  onPressed: _path.isEmpty || _loading ? null : () => _load(_parentPath()),
+                  icon: const Icon(Icons.arrow_upward_rounded),
+                ),
+                Expanded(
+                  child: Text(
+                    _path.isEmpty ? 'Internal storage' : _path,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+              ],
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _error != null
+                      ? Center(child: Text(_error!, textAlign: TextAlign.center))
+                      : folders.isEmpty
+                          ? const Center(child: Text('No folders here'))
+                          : ListView.builder(
+                              itemCount: folders.length,
+                              itemBuilder: (context, index) {
+                                final folder = folders[index];
+                                final next = _path.isEmpty ? folder.name : '$_path/${folder.name}';
+                                return ListTile(
+                                  dense: true,
+                                  leading: const Icon(Icons.folder_outlined),
+                                  title: Text(folder.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                                  trailing: const Icon(Icons.chevron_right_rounded),
+                                  onTap: () => _load(next),
+                                );
+                              },
+                            ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _loading || _error != null ? null : () => Navigator.pop(context, _path),
+          child: const Text('Select folder'),
+        ),
+      ],
+    );
+  }
+}
+
+class _NewDownloadSheet extends StatefulWidget {
+  const _NewDownloadSheet({required this.manager, required this.api});
+
+  final DownloadManagerService manager;
+  final ServerApi api;
+
+  @override
+  State<_NewDownloadSheet> createState() => _NewDownloadSheetState();
+}
+
+class _NewDownloadSheetState extends State<_NewDownloadSheet> {
+  final _urlController = TextEditingController();
+  final _serverDirectoryController = TextEditingController(text: 'Downloads/PocketLink');
+  ResolvedDownload? _resolved;
+  String _destination = 'local';
+  String? _directory;
+  String? _error;
+  bool _resolving = false;
+  bool _starting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadClipboard());
+    unawaited(_loadDirectory());
+  }
+
+  Future<void> _loadClipboard() async {
+    try {
+      final data = await Clipboard.getData(Clipboard.kTextPlain);
+      final value = data?.text?.trim() ?? '';
+      final uri = Uri.tryParse(value);
+      if (mounted &&
+          _urlController.text.isEmpty &&
+          uri != null &&
+          const {'http', 'https'}.contains(uri.scheme)) {
+        _urlController.text = value;
+      }
+    } catch (_) {
+      // Clipboard access is optional.
+    }
+  }
+
+  Future<void> _loadDirectory() async {
+    final directory = await widget.manager.defaultDirectory();
+    if (mounted) setState(() => _directory = directory);
+  }
+
+  Future<void> _resolve() async {
+    if (_resolving || _destination == 'server') return;
+    setState(() {
+      _resolving = true;
+      _error = null;
+      _resolved = null;
+    });
+    try {
+      final result = await widget.manager.resolveUrl(_urlController.text);
+      if (mounted) setState(() => _resolved = result);
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
+    } finally {
+      if (mounted) setState(() => _resolving = false);
+    }
+  }
+
+  Future<void> _chooseDirectory() async {
+    final selected = await FilePicker.getDirectoryPath(
+      initialDirectory: _directory,
+    );
+    if (selected != null && mounted) setState(() => _directory = selected);
+  }
+
+  Future<void> _chooseServerDirectory() async {
+    final selected = await showDialog<String>(
+      context: context,
+      builder: (_) => _ServerDirectoryPicker(
+        api: widget.api,
+        initialPath: _serverDirectoryController.text.trim(),
+      ),
+    );
+    if (selected != null && mounted) {
+      setState(() => _serverDirectoryController.text = selected);
+    }
+  }
+
+  Future<void> _start() async {
+    final resolved = _resolved;
+    if (_starting || (_destination == 'local' && resolved == null) ||
+        _urlController.text.trim().isEmpty) return;
+    setState(() => _starting = true);
+    try {
+      if (_destination == 'server') {
+        await widget.api.enqueueServerDownload(
+          _urlController.text.trim(),
+          directory: _serverDirectoryController.text.trim(),
+        );
+      } else {
+        await widget.manager.enqueueUrl(
+          resolved!,
+          directoryPath: _directory,
+        );
+      }
+      if (mounted) Navigator.of(context).pop();
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
+    } finally {
+      if (mounted) setState(() => _starting = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _urlController.dispose();
+    _serverDirectoryController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 180),
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: SafeArea(
+        top: false,
+        child: Container(
+          decoration: BoxDecoration(
+            color: colors.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+            border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.5)),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 38,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: colors.onSurface.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text('New download', style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: ChoiceChip(
+                      label: const Text('Local'),
+                      selected: _destination == 'local',
+                      onSelected: (_) => setState(() {
+                        _destination = 'local';
+                        _resolved = null;
+                        _error = null;
+                      }),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ChoiceChip(
+                      label: const Text('Server'),
+                      selected: _destination == 'server',
+                      onSelected: (_) => setState(() {
+                        _destination = 'server';
+                        _resolved = null;
+                        _error = null;
+                      }),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: _urlController,
+                keyboardType: TextInputType.url,
+                textInputAction: TextInputAction.done,
+                decoration: const InputDecoration(
+                  labelText: 'HTTP or HTTPS URL',
+                  hintText: 'https://example.com/file.zip',
+                  border: OutlineInputBorder(),
+                ),
+                onSubmitted: (_) {
+                  if (_destination == 'local') {
+                    _resolve();
+                  } else {
+                    _start();
+                  }
+                },
+                onChanged: (_) => setState(() {
+                  _resolved = null;
+                  _error = null;
+                }),
+              ),
+              const SizedBox(height: 10),
+              if (_destination == 'local')
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: _resolving ? null : _resolve,
+                    icon: _resolving
+                        ? const SizedBox.square(
+                            dimension: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.link_rounded),
+                    label: const Text('Resolve link'),
+                  ),
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Text(
+                    'PocketLink will fetch the URL directly on the host. The download continues if you close this screen.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+              if (_destination == 'server') ...[
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _serverDirectoryController,
+                  decoration: InputDecoration(
+                    labelText: 'Server destination folder',
+                    hintText: 'Downloads/PocketLink',
+                    helperText: 'Relative to shared storage. Default sorts into Videos, Music, Documents, Photos, Archives, APK or Others.',
+                    border: const OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      tooltip: 'Browse server folders',
+                      onPressed: _chooseServerDirectory,
+                      icon: const Icon(Icons.folder_open_rounded),
+                    ),
+                  ),
+                ),
+              ],
+              if (_destination == 'local' && _resolved != null) ...[
+                SmokedGlassSurface(
+                  radius: BorderRadius.circular(16),
+                  child: DefaultTextStyle.merge(
+                    style: const TextStyle(color: Colors.white),
+                    child: IconTheme.merge(
+                      data: const IconThemeData(color: Colors.white70),
+                      child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                      children: [
+                        const Icon(Icons.insert_drive_file_outlined),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(_resolved!.fileName,
+                                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontWeight: FontWeight.w700)),
+                              const SizedBox(height: 3),
+                              Text(
+                                _resolved!.totalBytes == null
+                                    ? 'File size unavailable'
+                                    : _formatBytes(_resolved!.totalBytes!),
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.folder_outlined),
+                  title: const Text('Save location'),
+                  subtitle: Text(
+                    _directory ?? 'Loading download folder…',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: TextButton(
+                    onPressed: _chooseDirectory,
+                    child: const Text('Change'),
+                  ),
+                ),
+              ],
+              if (_error != null) ...[
+                const SizedBox(height: 8),
+                Text(_error!, style: TextStyle(color: colors.error)),
+              ],
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: _starting ||
+                          _urlController.text.trim().isEmpty ||
+                          (_destination == 'local' && _resolved == null)
+                      ? null
+                      : _start,
+                  child: _starting
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(_destination == 'server' ? 'Download to server' : 'Start local download'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+String _formatBytes(int bytes) {
+  if (bytes < 1024) return '${bytes} B';
+  const units = ['KB', 'MB', 'GB', 'TB'];
+  var value = bytes / 1024;
+  var unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit++;
+  }
+  return '${value.toStringAsFixed(1)} ${units[unit]}';
+}
+
+String _formatSpeed(int bytesPerSecond) =>
+    '${_formatBytes(bytesPerSecond)}/s';
+
+IconData _fileIcon(String name) {
+  final extension = p.extension(name).toLowerCase();
+  if ({'.zip', '.7z', '.rar', '.tar', '.gz'}.contains(extension)) {
+    return Icons.folder_zip_outlined;
+  }
+  if ({'.jpg', '.jpeg', '.png', '.webp', '.gif', '.heic'}.contains(extension)) {
+    return Icons.image_outlined;
+  }
+  if ({'.mp4', '.mkv', '.mov', '.avi', '.webm'}.contains(extension)) {
+    return Icons.video_file_outlined;
+  }
+  if ({'.mp3', '.m4a', '.aac', '.flac', '.wav', '.ogg', '.opus'}.contains(extension)) {
+    return Icons.audio_file_outlined;
+  }
+  if ({'.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt'}.contains(extension)) {
+    return Icons.description_outlined;
+  }
+  return Icons.insert_drive_file_outlined;
+}
+), '');
+    if (initial.isNotEmpty) {
+      try {
+        final listing = await widget.api.listDirectory(initial);
+        if (mounted) {
+          setState(() {
+            _path = initial;
+            _listing = listing;
+            _loading = false;
+          });
+        }
+        return;
+      } catch (_) {
+        // The default folder may not exist until the first server download.
+      }
+    }
+    await _load('');
   }
 
   Future<void> _load(String path) async {
