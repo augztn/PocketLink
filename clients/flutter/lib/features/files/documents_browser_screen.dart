@@ -81,12 +81,25 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
     super.dispose();
   }
 
+  void _syncBackHandler() {
+    final handler = _filterMenuOpen
+        ? () => _setFilterMenuOpen(false)
+        : _searchExpanded
+            ? () => _setSearchExpanded(false)
+            : null;
+    widget.onBackHandlerChanged?.call(handler);
+  }
+
+  void _setFilterMenuOpen(bool open) {
+    if (_filterMenuOpen == open) return;
+    setState(() => _filterMenuOpen = open);
+    _syncBackHandler();
+  }
+
   void _setSearchExpanded(bool expanded) {
     if (_searchExpanded == expanded) return;
     setState(() => _searchExpanded = expanded);
-    widget.onBackHandlerChanged?.call(
-      _searchExpanded ? () => _setSearchExpanded(false) : null,
-    );
+    _syncBackHandler();
   }
 
   Future<void> _scan({bool refresh = false}) async {
@@ -243,7 +256,7 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
         leadingWidth: 56,
         title: TitleDropdownPopover<String>(
 tooltip: 'Filter document types',
-          onOpenChanged: (open) => setState(() => _filterMenuOpen = open),
+          onOpenChanged: _setFilterMenuOpen,
           items: filterLabels.entries.map((entry) {
             final icon = switch (entry.key) {
               'pdf' => Icons.picture_as_pdf_rounded,
