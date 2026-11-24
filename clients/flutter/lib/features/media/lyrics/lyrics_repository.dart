@@ -355,7 +355,11 @@ class _KugouProvider extends _Provider {
   @override Future<LyricsDocument?> fetch(LyricsTrackQuery q) async {
     if(q.title.isEmpty||q.artist.isEmpty)return null;
     final songs=await _getJson('https://mobileservice.kugou.com/api/v3/search/song',{'version':9108,'plat':0,'pagesize':8,'showtype':0,'keyword':q.title+' - '+q.artist});
-    final info = songs is Map ? (songs['data'] as Map?)?['info'] : null;
+    dynamic info;
+    if (songs is Map) {
+      final data = songs['data'];
+      if (data is Map) info = data['info'];
+    }
     if(info is! List)return null;
     final rows=info.whereType<Map>().toList()..sort((a,b)=>(((a['duration'] as num?)?.toInt()??0)-q.durationSeconds).abs().compareTo((((b['duration'] as num?)?.toInt()??0)-q.durationSeconds).abs()));
     for(final row in rows){
@@ -443,4 +447,3 @@ class _GeniusProvider extends _Provider {
     return plain(lyrics,id,name);
   }
 }
-double _sim(String a,String b){if(a==b&&a.isNotEmpty)return 1;if(a.isEmpty||b.isEmpty)return 0;final x=a.split(' ').toSet(),y=b.split(' ').toSet();return x.intersection(y).length/x.union(y).length;}
