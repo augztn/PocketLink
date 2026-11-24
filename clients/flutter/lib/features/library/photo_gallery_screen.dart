@@ -647,6 +647,11 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
           Positioned(
             top: headerTop + 8, left: 16, right: 16, height: 52,
             child: Row(children: [
+              IconButton(
+                tooltip: 'Back',
+                onPressed: () => Navigator.of(context).maybePop(),
+                icon: Icon(Icons.arrow_back_rounded, color: foreground),
+              ),
               if (selecting)
                 Expanded(child: Align(
                   alignment: Alignment.centerLeft,
