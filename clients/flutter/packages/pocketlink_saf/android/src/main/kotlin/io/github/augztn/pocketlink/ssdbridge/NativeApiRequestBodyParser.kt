@@ -39,7 +39,9 @@ internal class NativeApiRequestBodyParser {
         } else {
             val files = HashMap<String, String>()
             session.parseBody(files)
-            files["postData"]?.let { File(it).readText() }
+            // NanoHTTPD exposes ordinary JSON POST bodies directly as "postData".
+            // Treating that value as a temp-file path throws before URL validation.
+            files["postData"]
                 ?: files["content"]?.let { File(it).readText() }
                 ?: return null
         }
