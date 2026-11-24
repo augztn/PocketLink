@@ -822,20 +822,35 @@ class _NewDownloadSheetState extends State<_NewDownloadSheet> {
                 }),
               ),
               const SizedBox(height: 10),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton.icon(
-                  onPressed: _resolving ? null : _resolve,
-                  icon: _resolving
-                      ? const SizedBox.square(
-                          dimension: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.link_rounded),
-                  label: const Text('Resolve link'),
+              if (_destination == 'local')
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: _resolving ? null : _resolve,
+                    icon: _resolving
+                        ? const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.link_rounded),
+                    label: const Text('Resolve link'),
+                  ),
+                )
+              else
+                const Padding(
+                  padding: EdgeInsets.only(top: 10),
+                  child: Text('The host fetches this URL directly and continues when this screen is closed.'),
                 ),
-              ),
-              if (_resolved != null) ...[
+              if (_destination == 'server') ...[
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _serverDirectoryController,
+                  decoration: const InputDecoration(
+                    labelText: 'Server destination folder',
+                    hintText: 'Downloads/PocketLink',
+                    helperText: 'Relative to shared storage. Leave default to sort into media and file categories.',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+              if (_destination == 'local' && _resolved != null) ...[
                 SmokedGlassSurface(
                   radius: BorderRadius.circular(16),
                   child: DefaultTextStyle.merge(
