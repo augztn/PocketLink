@@ -387,6 +387,18 @@ class _HomeScreenState extends State<HomeScreen> {
   void _handleSystemBack(double nowPlayingProgress) {
     if (PocketLinkNavigation.observer.isModalRouteOnTop) return;
 
+    if (PocketLinkNavigation.drawerOpen.value) {
+      _rootScaffoldKey.currentState?.closeDrawer();
+      return;
+    }
+    if (_musicShortcutsExpanded) {
+      setState(() {
+        _musicShortcutsExpanded = false;
+        PocketLinkNavigation.quickShortcutsOpen.value = false;
+      });
+      return;
+    }
+
     if (PocketLinkNavigation.shouldCollapseNowPlayingOnBack(
       progress: nowPlayingProgress,
     )) {
@@ -394,10 +406,6 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    if (PocketLinkNavigation.drawerOpen.value) {
-      _rootScaffoldKey.currentState?.closeDrawer();
-      return;
-    }
     if (_libraryOpen) {
       final handler = _libraryBackHandler;
       if (handler != null) {
@@ -411,14 +419,6 @@ class _HomeScreenState extends State<HomeScreen> {
       _closeHostSetup();
       return;
     }
-    if (_musicShortcutsExpanded) {
-      setState(() {
-        _musicShortcutsExpanded = false;
-        PocketLinkNavigation.quickShortcutsOpen.value = false;
-      });
-      return;
-    }
-
     // NavigatorPopHandler owns pushed routes in the active Explore Navigator.
     if (_selectedIndex == 1 && _exploreCanPop) return;
 
