@@ -133,7 +133,7 @@ abstract final class PocketLinkNavigation {
     required double progress,
     required double upwardVelocity,
   }) =>
-      progress >= 0.18 || upwardVelocity < -650;
+      progress >= 0.08 || upwardVelocity < -350;
 
   /// Captures the visible source surface for the Now Playing container transform.
   static Rect? resolveMediaOriginRect({required bool preferMiniPlayer}) {
