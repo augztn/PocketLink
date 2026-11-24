@@ -1066,6 +1066,7 @@ class _GlobalMiniPlayerBar extends StatelessWidget {
     required this.surfaceIntensity,
     required this.onOpen,
     required this.onDismiss,
+    required this.onExpandDragStart,
     required this.onExpandDragUpdate,
     required this.onExpandDragEnd,
   });
@@ -1079,6 +1080,7 @@ class _GlobalMiniPlayerBar extends StatelessWidget {
   final double surfaceIntensity;
   final VoidCallback onOpen;
   final VoidCallback onDismiss;
+  final VoidCallback onExpandDragStart;
   final ValueChanged<double> onExpandDragUpdate;
   final ValueChanged<double> onExpandDragEnd;
 
@@ -1121,6 +1123,7 @@ class _GlobalMiniPlayerBar extends StatelessWidget {
               surfaceIntensity: surfaceIntensity,
               artworkBytes: artwork,
               artworkKey: PocketLinkNavigation.miniArtworkKey,
+              onExpandDragStart: onExpandDragStart,
               onExpandDragUpdate: onExpandDragUpdate,
               onExpandDragEnd: onExpandDragEnd,
             ),
