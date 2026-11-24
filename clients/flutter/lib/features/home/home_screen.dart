@@ -465,6 +465,7 @@ class _HomeScreenState extends State<HomeScreen> {
             onOpenSettings: () => Navigator.of(context).push<void>(
               MaterialPageRoute<void>(
                 builder: (_) => SettingsScreen(
+                  api: widget.api,
                   onOpenSavedServers: widget.onReturnToConnection,
                 ),
               ),
