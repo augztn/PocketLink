@@ -55,15 +55,25 @@ class PersistentAudioPlayer extends ChangeNotifier {
       unawaited(_syncMediaSession());
     });
     _playingSubscription = player.stream.playing.listen((playing) {
+      AppLogger.event(playing ? 'playback.started' : 'playback.paused',
+        category: 'media', component: 'persistent_player',
+        fields: {'queue_length': _queue.length, 'queue_index': _currentIndex,
+          'source': currentItem?.sourceLabel ?? 'unknown'});
       if (playing) _miniPlayerDismissed = false;
       notifyListeners();
       unawaited(_syncMediaSession());
     });
     _completedSubscription = player.stream.completed.listen((_) {
+      AppLogger.event('playback.completed', category: 'media',
+        component: 'persistent_player',
+        fields: {'queue_length': _queue.length, 'queue_index': _currentIndex});
       notifyListeners();
       unawaited(_syncMediaSession());
     });
     _errorSubscription = player.stream.error.listen((message) {
+      AppLogger.warning('Playback engine reported an error', category: 'media',
+        component: 'persistent_player',
+        fields: {'error_present': message.isNotEmpty, 'queue_index': _currentIndex});
       unawaited(_handlePlaybackError(message));
     });
     // Do not publish every decoder position/duration tick over the platform
