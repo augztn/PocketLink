@@ -140,7 +140,7 @@ class _PocketLinkScaffoldState extends State<PocketLinkScaffold> {
       hasFloatingNavBar: widget.hasFloatingNavBar,
       hasActiveMiniPlayer: widget.hasActiveMiniPlayer,
       reportHeaderHeight: reportHeaderHeight,
-      child: widget.child,
+      child: RepaintBoundary(child: widget.child),
     );
   }
 }

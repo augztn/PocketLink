@@ -30,6 +30,7 @@ class ExploreScreen extends StatefulWidget {
     this.onBackAtRoot,
     this.onOpenFiles,
     this.onOpenLibrary,
+    this.onCanPopChanged,
     super.key,
   });
 
@@ -40,6 +41,7 @@ class ExploreScreen extends StatefulWidget {
   final VoidCallback? onBackAtRoot;
   final VoidCallback? onOpenFiles;
   final ValueChanged<String>? onOpenLibrary;
+  final ValueChanged<bool>? onCanPopChanged;
 
   @override
   State<ExploreScreen> createState() => _ExploreScreenState();
@@ -53,8 +55,16 @@ class _ExploreScreenState extends State<ExploreScreen> {
   void initState() {
     super.initState();
     _observer = _ExploreNavigatorObserver(() {
-      if (mounted) setState(() {});
+      if (!mounted) return;
+      setState(() {});
+      widget.onCanPopChanged?.call(_navigatorKey.currentState?.canPop() ?? false);
     });
+  }
+
+  @override
+  void dispose() {
+    widget.onCanPopChanged?.call(false);
+    super.dispose();
   }
 
   void _open(Widget screen) {

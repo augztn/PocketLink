@@ -21,6 +21,7 @@ import '../playlist_import_service.dart';
 import '../persistent_audio_player.dart';
 import 'discover_models.dart';
 import 'discover_service.dart';
+import 'discover_cache.dart';
 
 class _DiscoverShelf {
   const _DiscoverShelf(this.title, this.tracks);
@@ -46,7 +47,6 @@ class DiscoverScreen extends StatefulWidget {
 }
 
 class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProviderStateMixin {
-  static final Map<String, _DiscoverFeedSnapshot> _feedCache = {};
   static final Map<String, List<IndexedFile>> _localLibraryCache = {};
   static final Map<String, DateTime> _localLibraryCacheUpdated = {};
   final DiscoverService _service = DiscoverService();
@@ -193,34 +193,60 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
 
   Future<void> _loadHome({bool forceRefresh = false}) async {
     final region = AppSettings.instance.discoverRegion;
-    final cached = _feedCache[region];
-    if (!forceRefresh && cached != null) {
+    final cacheKey = 'home:$region';
+    final cached = DiscoverCache.instance.read<_DiscoverFeedSnapshot>(cacheKey);
+    if (cached != null) {
+      void restore() {
+        _homeShelves = cached.value.shelves;
+        _tracks = cached.value.shelves.isEmpty
+            ? const []
+            : cached.value.shelves.first.tracks;
+        _sectionTitle = cached.value.sectionTitle;
+        _error = null;
+        _loading = false;
+      }
+
+      if (mounted) {
+        setState(restore);
+      } else {
+        restore();
+      }
       AppLogger.event('discover.home_cache_restored', category: 'discover',
         component: 'discover_screen',
-        fields: {'shelf_count': cached.shelves.length,
-          'track_count': cached.shelves.fold<int>(0, (sum, shelf) => sum + shelf.tracks.length)});
-      _homeShelves = cached.shelves;
-      _tracks = cached.shelves.isEmpty
-          ? const []
-          : cached.shelves.first.tracks;
-      _sectionTitle = cached.sectionTitle;
-      _error = null;
-      _loading = false;
-      return;
+        fields: {'shelf_count': cached.value.shelves.length,
+          'track_count': cached.value.shelves.fold<int>(0, (sum, shelf) => sum + shelf.tracks.length),
+          'stale': DiscoverCache.instance.isStale(cached)});
+      if (!forceRefresh && !DiscoverCache.instance.isStale(cached)) return;
+      if (!forceRefresh) {
+        unawaited(_fetchHome(cacheKey, showLoading: false));
+        return;
+      }
+    } else if (_homeShelves.isNotEmpty && mounted) {
+      setState(() {
+        _homeShelves = const [];
+        _tracks = const [];
+      });
     }
+    await _fetchHome(cacheKey, showLoading: true);
+  }
+
+  Future<void> _fetchHome(
+    String cacheKey, {
+    required bool showLoading,
+  }) async {
     final generation = ++_requestGeneration;
     AppLogger.event('discover.home_loading_started', category: 'discover',
       component: 'discover_screen',
-      fields: {'force_refresh': forceRefresh, 'generation': generation, 'cache_hit': false});
-    setState(() {
-      _loading = true;
-      _error = null;
-      _sectionTitle = 'Top charts in $_regionName';
-    });
+      fields: {'show_loading': showLoading, 'generation': generation,
+        'cache_hit': _homeShelves.isNotEmpty});
+    if (showLoading) {
+      setState(() {
+        _loading = true;
+        _error = null;
+        if (_homeShelves.isEmpty) _sectionTitle = 'Top charts in $_regionName';
+      });
+    }
     try {
-      // Build a real discovery landing feed from independent editorial
-      // shelves. These are public charts/search feeds, not fabricated
-      // personalized recommendations.
       final responses = await Future.wait<List<DiscoverTrack>>([
         _service.home(limit: 24).catchError((Object _) => <DiscoverTrack>[]),
         _service.search('new music releases ${DateTime.now().year} $_regionName', limit: 18).catchError((Object _) => <DiscoverTrack>[]),
@@ -234,30 +260,23 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       ]);
       if (!mounted || generation != _requestGeneration) return;
       final shelves = <_DiscoverShelf>[
-        if (responses[0].isNotEmpty)
-          _DiscoverShelf('Trending in $_regionName', responses[0]),
-        if (responses[1].isNotEmpty)
-          _DiscoverShelf('New releases', responses[1]),
-        if (responses[2].isNotEmpty)
-          _DiscoverShelf('Malayalam hits', responses[2]),
-        if (responses[3].isNotEmpty)
-          _DiscoverShelf('Hindi hits', responses[3]),
-        if (responses[4].isNotEmpty)
-          _DiscoverShelf('Tamil hits', responses[4]),
-        if (responses[5].isNotEmpty)
-          _DiscoverShelf('Chill & unwind', responses[5]),
-        if (responses[6].isNotEmpty)
-          _DiscoverShelf('Workout energy', responses[6]),
-        if (responses[7].isNotEmpty)
-          _DiscoverShelf('Party starters', responses[7]),
-        if (responses[8].isNotEmpty)
-          _DiscoverShelf('Popular mixes', responses[8]),
+        if (responses[0].isNotEmpty) _DiscoverShelf('Trending in $_regionName', responses[0]),
+        if (responses[1].isNotEmpty) _DiscoverShelf('New releases', responses[1]),
+        if (responses[2].isNotEmpty) _DiscoverShelf('Malayalam hits', responses[2]),
+        if (responses[3].isNotEmpty) _DiscoverShelf('Hindi hits', responses[3]),
+        if (responses[4].isNotEmpty) _DiscoverShelf('Tamil hits', responses[4]),
+        if (responses[5].isNotEmpty) _DiscoverShelf('Chill & unwind', responses[5]),
+        if (responses[6].isNotEmpty) _DiscoverShelf('Workout energy', responses[6]),
+        if (responses[7].isNotEmpty) _DiscoverShelf('Party starters', responses[7]),
+        if (responses[8].isNotEmpty) _DiscoverShelf('Popular mixes', responses[8]),
       ];
       if (shelves.isEmpty) {
         final fallback = await _service.search('top songs $_regionName');
         if (!mounted || generation != _requestGeneration) return;
         if (fallback.isEmpty) {
-          setState(() => _error = 'No music recommendations are available right now.');
+          if (_homeShelves.isEmpty) {
+            setState(() => _error = 'No music recommendations are available right now.');
+          }
           return;
         }
         shelves.add(_DiscoverShelf('Popular in $_regionName', fallback));
@@ -266,7 +285,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
         List.unmodifiable(shelves),
         'Top charts in $_regionName',
       );
-      _feedCache[region] = snapshot;
+      DiscoverCache.instance.write(cacheKey, snapshot);
       AppLogger.event('discover.home_loading_completed', category: 'discover',
         component: 'discover_screen',
         fields: {'generation': generation, 'shelf_count': snapshot.shelves.length,
@@ -281,15 +300,21 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
         component: 'discover_screen',
         fields: {'generation': generation, 'failure_type': 'platform', 'error_code': error.code});
       if (!mounted || generation != _requestGeneration) return;
-      setState(() => _error = error.message ?? 'YouTube Music home is unavailable.');
+      if (_homeShelves.isEmpty) {
+        setState(() => _error = error.message ?? 'YouTube Music home is unavailable.');
+      }
     } catch (error) {
       AppLogger.warning('Discover home loading failed', category: 'discover',
         component: 'discover_screen',
         fields: {'generation': generation, 'failure_type': error.runtimeType.toString()});
       if (!mounted || generation != _requestGeneration) return;
-      setState(() => _error = 'Could not load YouTube Music home. Check your connection and try again.');
+      if (_homeShelves.isEmpty) {
+        setState(() => _error = 'Could not load YouTube Music home. Check your connection and try again.');
+      }
     } finally {
-      if (mounted && generation == _requestGeneration) setState(() => _loading = false);
+      if (mounted && generation == _requestGeneration && showLoading) {
+        setState(() => _loading = false);
+      }
     }
   }
 
@@ -1269,11 +1294,29 @@ class _MoodsAndMomentsScreenState extends State<_MoodsAndMomentsScreen> {
   final TextEditingController _query = TextEditingController();
   bool _searching = false;
   bool _openingMood = false;
+  List<DiscoverMoodSection>? _cachedSections;
+  late final String _cacheKey;
 
   @override
   void initState() {
     super.initState();
-    _sections = widget.service.moodsAndGenres();
+    _cacheKey = 'moods:${AppSettings.instance.discoverRegion}';
+    final cached = DiscoverCache.instance.read<List<DiscoverMoodSection>>(_cacheKey);
+    _cachedSections = cached?.value;
+    _sections = cached == null ? _loadSections() : Future.value(cached.value);
+    if (cached != null && DiscoverCache.instance.isStale(cached)) {
+      _sections = _loadSections();
+    }
+  }
+
+  Future<List<DiscoverMoodSection>> _loadSections() async {
+    final sections = await widget.service.moodsAndGenres();
+    if (sections.isNotEmpty) {
+      DiscoverCache.instance.write(_cacheKey, sections);
+      _cachedSections = sections;
+      return sections;
+    }
+    return _cachedSections ?? sections;
   }
 
   @override
@@ -1431,11 +1474,13 @@ class _MoodsAndMomentsScreenState extends State<_MoodsAndMomentsScreen> {
           ),
           FutureBuilder<List<DiscoverMoodSection>>(
             future: _sections,
+            initialData: _cachedSections,
             builder: (context, snapshot) {
-              if (snapshot.connectionState != ConnectionState.done) {
+              final sections = snapshot.data ?? _cachedSections;
+              if (sections == null && snapshot.connectionState != ConnectionState.done) {
                 return _moodsSkeleton();
               }
-              if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+              if (sections == null || sections.isEmpty) {
                 return SliverFillRemaining(
                   hasScrollBody: false,
                   child: Center(
@@ -1447,7 +1492,7 @@ class _MoodsAndMomentsScreenState extends State<_MoodsAndMomentsScreen> {
                           const Text('Moods & Moments are unavailable right now.'),
                           const SizedBox(height: 12),
                           FilledButton(
-                            onPressed: () => setState(() => _sections = widget.service.moodsAndGenres()),
+                            onPressed: () => setState(() => _sections = _loadSections()),
                             child: const Text('Try again'),
                           ),
                         ],
@@ -1458,7 +1503,7 @@ class _MoodsAndMomentsScreenState extends State<_MoodsAndMomentsScreen> {
               }
               return SliverList(
                 delegate: SliverChildListDelegate([
-                  for (final section in snapshot.data!) ...[
+                  for (final section in sections) ...[
                     Padding(
                       padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
                       child: Text(section.title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
@@ -1745,10 +1790,37 @@ class _DiscoverMoodTile extends StatefulWidget {
 class _DiscoverMoodTileState extends State<_DiscoverMoodTile> {
   late Future<List<DiscoverTrack>> _covers;
 
+  String get _coverCacheKey =>
+      'mood-cover:${AppSettings.instance.discoverRegion}:${widget.mood.browseId}:${widget.mood.params ?? ''}';
+
+  Future<List<DiscoverTrack>> _loadCovers() async {
+    final cached = DiscoverCache.instance.read<List<DiscoverTrack>>(_coverCacheKey);
+    if (cached != null) {
+      if (DiscoverCache.instance.isStale(cached)) {
+        unawaited(widget.service.browseMood(widget.mood, limit: 2).then((tracks) {
+          if (tracks.isNotEmpty) DiscoverCache.instance.write(_coverCacheKey, tracks);
+        }).catchError((Object _) {}));
+      }
+      return cached.value;
+    }
+    final tracks = await widget.service.browseMood(widget.mood, limit: 2);
+    if (tracks.isNotEmpty) DiscoverCache.instance.write(_coverCacheKey, tracks);
+    return tracks;
+  }
+
   @override
   void initState() {
     super.initState();
-    _covers = widget.service.browseMood(widget.mood, limit: 2);
+    _covers = _loadCovers();
+  }
+
+  @override
+  void didUpdateWidget(covariant _DiscoverMoodTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.mood.browseId != widget.mood.browseId ||
+        oldWidget.mood.params != widget.mood.params) {
+      _covers = _loadCovers();
+    }
   }
 
   Color _tint(int argb) {

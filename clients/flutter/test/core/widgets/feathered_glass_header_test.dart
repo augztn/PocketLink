@@ -14,13 +14,13 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  testWidgets('header always renders Mochy progressive blur bands', (tester) async {
+  testWidgets('header uses one clipped blur pass', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(body: FeatheredGlassHeaderBackground()),
       ),
     );
-    expect(find.byType(BackdropFilter), findsNWidgets(14));
+    expect(find.byType(BackdropFilter), findsOneWidget)
     expect(find.byType(ShaderMask), findsNothing);
   });
 
@@ -56,7 +56,7 @@ void main() {
     expect(tester.getSize(bounds).height, 96);
   });
 
-  testWidgets('dark and light themes use a five-stop scrim fading to zero alpha', (tester) async {
+  testWidgets('dark and light themes use a three-stop scrim fading to zero alpha', (tester) async {
     for (final brightness in [Brightness.dark, Brightness.light]) {
       await tester.pumpWidget(
         MaterialApp(
@@ -69,7 +69,9 @@ void main() {
           .whereType<BoxDecoration>()
           .map((decoration) => decoration.gradient)
           .whereType<LinearGradient>();
-      expect(gradients.first.colors, hasLength(5));
+      expect(gradients.first.colors, hasLength(3));
+      expect(gradients.first.colors.first.alpha, greaterThan(200));
+      expect(gradients.first.colors[1].alpha, greaterThan(100));
       expect(gradients.first.colors.last.alpha, 0);
     }
   });

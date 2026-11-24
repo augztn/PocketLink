@@ -66,6 +66,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     NowPlayingOverlayController.register(
       _openNowPlaying,
       progress: _nowPlayingController,
+      collapseHandler: _closeNowPlaying,
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) WidgetsBinding.instance.addObserver(this);
