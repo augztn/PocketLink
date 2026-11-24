@@ -297,7 +297,9 @@ class DiscoverService {
         if (artistScore < 0.55) continue;
       }
 
-      final score = titleScore * 0.78 + artistScore * 0.22;
+      final score = targetArtist.isEmpty
+          ? titleScore
+          : titleScore * 0.78 + artistScore * 0.22;
       if (score > bestScore) {
         bestScore = score;
         best = item;
