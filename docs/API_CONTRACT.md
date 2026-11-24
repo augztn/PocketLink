@@ -34,7 +34,7 @@ This document describes the native Android implementation in `clients/flutter/pa
 | POST | `/api/files/mkdir` | JSON: `{path, name}` | Create internal directory |
 | PATCH | `/api/files/rename` | JSON: `{path, new_name}` | Rename internal file/directory |
 | DELETE | `/api/files/item` | Query: `path` | Delete internal file or empty directory |
-| POST | `/api/downloads` | JSON: `{url, directory?}` | Queue a URL for direct download by the host |
+| POST | `/api/downloads` | JSON: `{url, directory?, filename?}` | Queue a URL for direct download by the host |
 | GET | `/api/downloads` | — | List persistent host-side URL download jobs |
 | POST | `/api/downloads/{id}/pause` | — | Pause a host-side download |
 | POST | `/api/downloads/{id}/resume` | — | Resume or retry a host-side download |
