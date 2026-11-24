@@ -102,8 +102,11 @@ class _ExploreNavigatorObserver extends NavigatorObserver {
 
   final VoidCallback onChanged;
 
-  String _label(Route<dynamic>? route) =>
-      route == null ? 'none' : route.runtimeType.toString();
+  String _label(Route<dynamic>? route) {
+    if (route == null) return 'none';
+    final name = route.settings.name;
+    return name == null || name.isEmpty ? route.runtimeType.toString() : name;
+  }
 
   void _record(String action, Route<dynamic>? route, Route<dynamic>? related) {
     AppLogger.event('explore_navigation.$action', category: 'navigation',
