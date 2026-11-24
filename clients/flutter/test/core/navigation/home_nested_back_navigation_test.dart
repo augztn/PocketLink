@@ -44,7 +44,8 @@ void main() {
     },
   );
 
-  testWidgets( does not pop a hidden Explore stack',
+  testWidgets(
+    'Back on Files does not pop a hidden Explore stack',
     (tester) async {
       await tester.pumpWidget(const MaterialApp(home: _IndexedTabBackHarness()));
       await tester.tap(find.text('Explore tab'));
