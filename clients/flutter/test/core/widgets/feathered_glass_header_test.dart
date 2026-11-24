@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pocketlink_client/core/settings/app_settings.dart';
 import 'package:pocketlink_client/core/widgets/feathered_glass_header.dart';
 import 'package:pocketlink_client/core/widgets/liquid_glass_pill.dart';
+import 'package:pocketlink_client/core/widgets/progressive_blur.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -119,7 +120,71 @@ void main() {
       ),
     );
 
-    expect(find.byType(BackdropFilter), findsNWidgets(2));
+    expect(find.byType(BackdropFilter), findsNWidgets(14));
+  });
+
+  testWidgets('progressive blur uses clipped bands without shader masks', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            height: 140,
+            child: ProgressiveBlur(steps: 14),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(BackdropFilter), findsNWidgets(14));
+    expect(find.byType(ShaderMask), findsNothing);
+  });
+
+  testWidgets('progressive blur reverses its strongest edge', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            height: 140,
+            child: ProgressiveBlur(steps: 14, strongestAtBottom: true),
+          ),
+        ),
+      ),
+    );
+
+    final bands = tester.widgetList<Positioned>(find.byType(Positioned)).toList();
+    expect(bands, hasLength(14));
+    expect(bands.first.top, 130);
+    expect(bands.last.top, 0);
+  });
+
+  testWidgets('header keeps its reported geometry and uses progressive scrim', (tester) async {
+    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurStrength(55));
+    await tester.runAsync(() => AppSettings.instance.setProgressiveBlurEnabled(true));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(
+            padding: EdgeInsets.only(top: 24),
+          ),
+          child: const Scaffold(
+            body: FeatheredGlassHeaderBackground(),
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.getSize(find.byType(FeatheredGlassHeaderBackground)).height, 96);
+    expect(find.byType(ShaderMask), findsNothing);
+    final gradient = tester.widgetList<DecoratedBox>(find.byType(DecoratedBox))
+        .map((box) => box.decoration)
+        .whereType<BoxDecoration>()
+        .map((decoration) => decoration.gradient)
+        .whereType<LinearGradient>()
+        .first;
+    expect(gradient.colors, hasLength(5));
+    expect(gradient.colors.first, const Color(0xEB000000));
+    expect(gradient.colors.last, const Color(0x00000000));
   });
 
   testWidgets('progressive blur remains active when reduced motion is enabled', (tester) async {
