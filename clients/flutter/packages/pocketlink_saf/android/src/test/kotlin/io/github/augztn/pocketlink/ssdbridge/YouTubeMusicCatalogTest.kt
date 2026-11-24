@@ -3,6 +3,7 @@ package io.github.augztn.pocketlink.ssdbridge
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import okio.Buffer
 import org.junit.Test
 
 class YouTubeMusicCatalogTest {
@@ -19,6 +20,30 @@ class YouTubeMusicCatalogTest {
     fun invalidRegionFallsBackToIndia() {
         val context = catalog.buildClientContext("not-a-country")
         assertEquals("IN", context.optString("gl"))
+    }
+
+    @Test
+    fun innerTubeBrowseRequestUsesWebRemixIdentityHeadersAndContext() {
+        val request = catalog.buildRequest(
+            "browse",
+            JSONObject().put("browseId", "FEmusic_moods_and_genres"),
+            "IN"
+        )
+
+        assertEquals("1", request.header("X-Goog-Api-Format-Version"))
+        assertEquals("67", request.header("X-YouTube-Client-Name"))
+        assertEquals("1.20260707.12.00", request.header("X-YouTube-Client-Version"))
+        assertTrue(request.header("User-Agent")!!.contains("Firefox/140.0"))
+        assertEquals("https://music.youtube.com", request.header("Origin"))
+
+        val buffer = Buffer()
+        request.body!!.writeTo(buffer)
+        val body = JSONObject(buffer.readUtf8())
+        val client = body.getJSONObject("context").getJSONObject("client")
+        assertEquals("WEB_REMIX", client.optString("clientName"))
+        assertEquals("1.20260707.12.00", client.optString("clientVersion"))
+        assertEquals("FEmusic_moods_and_genres", body.optString("browseId"))
+        assertEquals("IN", client.optString("gl"))
     }
 
 
