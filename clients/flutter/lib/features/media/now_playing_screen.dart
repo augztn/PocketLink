@@ -1906,6 +1906,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                     ),
                   ),
                     ),
+                    ),
                     Positioned.fill(child: _lyricsMode(theme, lyricsProgress)),
                   ],
                 ),
