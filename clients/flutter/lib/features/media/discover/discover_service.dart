@@ -260,9 +260,6 @@ class DiscoverService {
       final titleCandidates = <String>[basename];
       if (filenameParts.length >= 2) {
         titleCandidates.addAll(filenameParts);
-        for (var i = 0; i < filenameParts.length; i++) {
-          final otherParts = filenameParts.where((_,) => true);
-        }
       }
 
       var titleScore = 0.0;
