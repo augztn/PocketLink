@@ -164,6 +164,25 @@ void main() {
     expect(releaseVelocity, lessThan(0));
   });
 
+  testWidgets('vertical drag cancellation settles the morph gesture', (tester) async {
+    double? releaseVelocity;
+    await pumpMiniPlayer(
+      tester,
+      onExpandDragUpdate: (_) {},
+      onExpandDragEnd: (velocity) => releaseVelocity = velocity,
+    );
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(GlobalMiniPlayerBar)),
+    );
+    await gesture.moveBy(const Offset(0, -48));
+    await tester.pump();
+    await gesture.cancel();
+    await tester.pump();
+
+    expect(releaseVelocity, 0);
+  });
+
   testWidgets('paused mini-player can be dismissed with a downward swipe only', (tester) async {
     var dismissed = 0;
     await pumpMiniPlayer(
