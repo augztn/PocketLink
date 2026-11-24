@@ -627,6 +627,166 @@ class _DownloadTaskCard extends StatelessWidget {
   }
 }
 
+class _ServerDownloadJobCard extends StatelessWidget {
+  const _ServerDownloadJobCard({
+    required this.job,
+    required this.onPause,
+    required this.onResume,
+    required this.onCancel,
+    required this.onRemove,
+  });
+
+  final ServerDownloadJob job;
+  final VoidCallback onPause;
+  final VoidCallback onResume;
+  final VoidCallback onCancel;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final status = switch (job.status) {
+      'queued' => 'Queued on server',
+      'downloading' => 'Downloading on server',
+      'paused' => 'Paused',
+      'completed' => 'Saved to server',
+      'cancelled' => 'Cancelled',
+      _ => 'Failed',
+    };
+    final progress = job.progress;
+    final completed = job.status == 'completed';
+    final active = job.status == 'downloading';
+    final failed = job.status == 'failed';
+    return SmokedGlassSurface(
+      radius: BorderRadius.circular(20),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.07),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(Icons.cloud_download_outlined, color: Colors.white70),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        job.fileName,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        'SERVER  ·  $status',
+                        style: TextStyle(
+                          color: completed
+                              ? Colors.greenAccent.shade100
+                              : failed
+                                  ? colors.error
+                                  : Colors.white60,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (active)
+                  IconButton(
+                    tooltip: 'Pause server download',
+                    onPressed: onPause,
+                    icon: const Icon(Icons.pause_rounded, color: Colors.white),
+                  )
+                else if (!completed && job.status != 'cancelled')
+                  IconButton(
+                    tooltip: 'Resume server download',
+                    onPressed: onResume,
+                    icon: const Icon(Icons.play_arrow_rounded, color: Colors.white),
+                  ),
+                if (!completed && job.status != 'cancelled')
+                  IconButton(
+                    tooltip: 'Cancel server download',
+                    onPressed: onCancel,
+                    icon: const Icon(Icons.close_rounded, color: Colors.white70),
+                  ),
+                IconButton(
+                  tooltip: 'Remove server download',
+                  onPressed: onRemove,
+                  icon: const Icon(Icons.delete_outline_rounded, color: Colors.white70),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(99),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 4,
+                backgroundColor: Colors.white.withValues(alpha: 0.10),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    job.totalBytes == null
+                        ? _formatBytes(job.downloadedBytes)
+                        : '${_formatBytes(job.downloadedBytes)} / ${_formatBytes(job.totalBytes!)}',
+                    style: const TextStyle(color: Colors.white70, fontSize: 11),
+                  ),
+                ),
+                if (active && job.speedBytesPerSecond > 0)
+                  Text(
+                    _formatSpeed(job.speedBytesPerSecond),
+                    style: const TextStyle(color: Colors.white70, fontSize: 11),
+                  ),
+                if (progress != null) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    '${(progress * 100).round()}%',
+                    style: const TextStyle(color: Colors.white70, fontSize: 11),
+                  ),
+                ],
+              ],
+            ),
+            if (job.destinationPath != null) ...[
+              const SizedBox(height: 7),
+              Text(
+                job.destinationPath!,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.white54, fontSize: 11),
+              ),
+            ],
+            if (job.error != null) ...[
+              const SizedBox(height: 7),
+              Text(
+                job.error!,
+                style: TextStyle(color: colors.error, fontSize: 12),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _NewDownloadSheet extends StatefulWidget {
   const _NewDownloadSheet({required this.manager, required this.api});
 
