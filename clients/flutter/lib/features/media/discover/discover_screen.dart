@@ -1286,7 +1286,7 @@ class _MoodsAndMomentsScreenState extends State<_MoodsAndMomentsScreen> {
     );
   }
 
-  Widget _moodsSkeleton(ThemeData theme) {
+  Widget _moodsSkeleton() {
     return SliverList(
       delegate: SliverChildListDelegate([
         for (var section = 0; section < 3; section++) ...[
@@ -1401,7 +1401,7 @@ class _MoodsAndMomentsScreenState extends State<_MoodsAndMomentsScreen> {
             future: _sections,
             builder: (context, snapshot) {
               if (snapshot.connectionState != ConnectionState.done) {
-                return _moodsSkeleton(theme);
+                return _moodsSkeleton();
               }
               if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
                 return SliverFillRemaining(
