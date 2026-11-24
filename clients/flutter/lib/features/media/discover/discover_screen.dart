@@ -15,6 +15,7 @@ import '../media_library_catalog.dart';
 import '../now_playing_overlay_controller.dart';
 import '../music_library_screen.dart';
 import 'imported_playlist_manager_screen.dart';
+import '../playlist_import_service.dart';
 import '../persistent_audio_player.dart';
 import 'discover_models.dart';
 import 'discover_service.dart';
@@ -53,6 +54,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
   bool _loading = false;
   bool _loadingLibrary = false;
   bool _startingPlayback = false;
+  bool _resolvingImportedPlaylist = false;
   String? _error;
   String _sectionTitle = 'Top charts in India';
   int _requestGeneration = 0;
@@ -260,16 +262,18 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     }
   }
 
-  Future<void> _play(DiscoverTrack track) async {
+  Future<void> _play(DiscoverTrack track, {List<DiscoverTrack>? queueOverride}) async {
     // Ignore repeated taps while the first selection is resolving and opening.
     // Otherwise each tap replaces the queue and starts another auto-queue pass.
     if (_startingPlayback) return;
     _startingPlayback = true;
-    var sourceTracks = _tracks;
-    for (final shelf in _homeShelves) {
-      if (shelf.tracks.any((item) => item.videoId == track.videoId)) {
-        sourceTracks = shelf.tracks;
-        break;
+    var sourceTracks = queueOverride ?? _tracks;
+    if (queueOverride == null) {
+      for (final shelf in _homeShelves) {
+        if (shelf.tracks.any((item) => item.videoId == track.videoId)) {
+          sourceTracks = shelf.tracks;
+          break;
+        }
       }
     }
     final results = List<DiscoverTrack>.of(sourceTracks);
@@ -297,6 +301,64 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       );
     } finally {
       _startingPlayback = false;
+    }
+  }
+
+  Future<void> _playImportedPlaylist(ImportedPlaylist playlist) async {
+    if (_resolvingImportedPlaylist || _startingPlayback) return;
+    _resolvingImportedPlaylist = true;
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Preparing ${playlist.name}…')),
+      );
+    }
+    try {
+      final resolved = List<DiscoverTrack?>.filled(playlist.tracks.length, null);
+      var next = 0;
+      Future<void> worker() async {
+        while (true) {
+          final index = next++;
+          if (index >= playlist.tracks.length) return;
+          final source = playlist.tracks[index];
+          if (source.videoId != null && source.videoId!.isNotEmpty &&
+              source.title.trim().isNotEmpty && source.title != 'YouTube track') {
+            resolved[index] = DiscoverTrack(
+              videoId: source.videoId!,
+              title: source.title,
+              artist: source.artist.isEmpty ? 'YouTube' : source.artist,
+            );
+            continue;
+          }
+          try {
+            final query = '${source.title} ${source.artist}'.trim();
+            final candidates = await _service.search(query, limit: 10);
+            for (final candidate in candidates) {
+              if (PlaylistImportService.isSameTrack(
+                source,
+                ImportedTrack(title: candidate.title, artist: candidate.artist),
+              )) {
+                resolved[index] = candidate;
+                break;
+              }
+            }
+          } catch (_) {
+            // Preserve playlist order and skip tracks that cannot be resolved.
+          }
+        }
+      }
+      await Future.wait(List.generate(3, (_) => worker()));
+      final queue = resolved.whereType<DiscoverTrack>().toList(growable: false);
+      if (queue.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No tracks from this playlist could be matched in YouTube Music.')),
+          );
+        }
+        return;
+      }
+      await _play(queue.first, queueOverride: queue);
+    } finally {
+      _resolvingImportedPlaylist = false;
     }
   }
 
