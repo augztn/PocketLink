@@ -31,12 +31,12 @@ class MediaQueueItem {
   /// Stable identity for artwork, lyrics, and track-scoped UI state.
   /// Mutable playback state is deliberately excluded.
   String get stableTrackId {
-    final local = localPath?.trim();
-    if (local != null && local.isNotEmpty) return 'local:' + local;
     final normalizedPath = path.trim().toLowerCase();
     if (normalizedPath.isNotEmpty) {
       return 'file:' + (volume ?? 'internal').trim().toLowerCase() + ':' + normalizedPath;
     }
+    final local = localPath?.trim();
+    if (local != null && local.isNotEmpty) return 'local:' + local;
     final videoId = lyricsVideoId?.trim();
     if (videoId != null && videoId.isNotEmpty) return 'discover:' + videoId;
     String normalize(String value) => value.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
