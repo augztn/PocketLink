@@ -1268,6 +1268,7 @@ class _MoodsAndMomentsScreenState extends State<_MoodsAndMomentsScreen> {
   late Future<List<DiscoverMoodSection>> _sections;
   final TextEditingController _query = TextEditingController();
   bool _searching = false;
+  bool _openingMood = false;
 
   @override
   void initState() {
@@ -1374,16 +1375,21 @@ class _MoodsAndMomentsScreenState extends State<_MoodsAndMomentsScreen> {
   }
 
   Future<void> _openMood(DiscoverMood mood) async {
-    if (_searching) return;
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(
-        builder: (_) => _DiscoverCategoryScreen(
-          mood: mood,
-          service: widget.service,
-          onPlay: widget.onPlay,
+    if (_searching || _openingMood) return;
+    _openingMood = true;
+    try {
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) => _DiscoverCategoryScreen(
+            mood: mood,
+            service: widget.service,
+            onPlay: widget.onPlay,
+          ),
         ),
-      ),
-    );
+      );
+    } finally {
+      _openingMood = false;
+    }
   }
 
   @override
