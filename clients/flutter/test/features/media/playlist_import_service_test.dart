@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:pocketlink_client/features/media/playlist_import_service.dart';
 import 'package:pocketlink_client/features/media/discover/imported_playlist_manager_screen.dart';
@@ -73,29 +72,33 @@ void main() {
     });
   });
 
-  group('ImportedPlaylistStore', () {
-    setUp(() {
-      SharedPreferences.setMockInitialValues({});
-    });
-
-    test('persists, reloads and removes imported playlists', () async {
+  group('ImportedPlaylist server backup format', () {
+    test('round-trips playlist metadata and track identifiers', () {
       const playlist = ImportedPlaylist(
         name: 'Saved playlist',
-        provider: 'Spotify',
-        sourceUrl: 'https://open.spotify.com/playlist/example',
-        tracks: [ImportedTrack(title: 'Song', artist: 'Artist')],
+        provider: 'YouTube',
+        sourceUrl: 'https://music.youtube.com/playlist?list=example',
+        tracks: [
+          ImportedTrack(
+            title: 'Song',
+            artist: 'Artist',
+            videoId: 'abcdefghijk',
+            sourcePath: '/music/song.flac',
+          ),
+        ],
       );
 
-      await ImportedPlaylistStore.save(playlist);
-      final loaded = await ImportedPlaylistStore.load();
+      final restored = ImportedPlaylist.fromJson(playlist.toJson());
+      expect(restored.name, playlist.name);
+      expect(restored.provider, playlist.provider);
+      expect(restored.sourceUrl, playlist.sourceUrl);
+      expect(restored.tracks.single.videoId, 'abcdefghijk');
+      expect(restored.tracks.single.sourcePath, '/music/song.flac');
+    });
 
-      expect(loaded, hasLength(1));
-      expect(loaded.single.provider, 'Spotify');
-      expect(loaded.single.sourceUrl, playlist.sourceUrl);
-      expect(loaded.single.tracks.single.title, 'Song');
-
-      await ImportedPlaylistStore.remove(playlist);
-      expect(await ImportedPlaylistStore.load(), isEmpty);
+    test('uses a dedicated folder on the PocketLink server', () {
+      expect(ImportedPlaylistStore.folderPath, 'PocketLink/Discover/Playlists');
+      expect(ImportedPlaylistStore.filePath, 'PocketLink/Discover/Playlists/playlists.json');
     });
   });
 }
