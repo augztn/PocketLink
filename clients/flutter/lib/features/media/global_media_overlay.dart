@@ -308,9 +308,11 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     }
     final height = MediaQuery.sizeOf(context).height;
     _nowPlayingController.value =
-        (_nowPlayingController.value - delta / height)
-            .clamp(0.0, 1.0)
-            .toDouble();
+        PocketLinkNavigation.updateMorphProgress(
+      current: _nowPlayingController.value,
+      dragDelta: delta,
+      extent: height,
+    );
   }
 
   void _endMiniPlayerDrag(double velocity) {
@@ -322,7 +324,10 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     }
     _openingNowPlaying = false;
     final height = math.max(1.0, MediaQuery.sizeOf(context).height);
-    final expand = velocity < -200 || _nowPlayingController.value > 0.15;
+    final expand = PocketLinkNavigation.shouldExpandFromMiniPlayer(
+      progress: _nowPlayingController.value,
+      upwardVelocity: velocity,
+    );
     if (expand) {
       unawaited(_animateNowPlayingTo(
         1,
