@@ -181,7 +181,8 @@ internal class ServerDownloadManager(
         try {
             val existingTarget = job.destinationPath?.let(::File)
             if (existingTarget?.isFile == true &&
-                job.totalBytes != null && existingTarget.length() == job.totalBytes) {
+                ((job.totalBytes != null && existingTarget.length() == job.totalBytes) ||
+                    (job.downloadedBytes > 0 && existingTarget.length() >= job.downloadedBytes))) {
                 synchronized(lock) {
                     job.status = COMPLETED
                     job.downloadedBytes = existingTarget.length()
@@ -290,6 +291,7 @@ internal class ServerDownloadManager(
             }
             synchronized(lock) {
                 if (job.status != DOWNLOADING || closed) throw InterruptedDownload()
+                persistLocked()
             }
             if (target.exists()) throw IOException("A file with this name already exists")
             if (!part.renameTo(target)) throw IOException("Could not finalize downloaded file")
