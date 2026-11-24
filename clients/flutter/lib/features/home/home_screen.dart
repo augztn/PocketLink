@@ -5,7 +5,9 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/settings/app_settings.dart';
+import '../../core/logging/app_logger.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
+import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/navigation/pocketlink_navigation.dart';
 import 'navigation_dock.dart';
 import 'music_shortcut_menu.dart';
@@ -58,6 +60,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _libraryOpen = false;
   VoidCallback? _libraryBackHandler;
   VoidCallback? _tabBackHandler;
+  bool _exploreCanPop = false;
   Widget? _libraryPage;
   String? _requestedVolume;
   String _requestedPath = '';
@@ -65,6 +68,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    AppLogger.event('screen.opened', category: 'screen', component: 'home',
+      fields: {'initial_tab': 'home'});
     unawaited(DownloadManagerService.instance.initialize());
     DownloadManagerService.instance.bindServerApi(widget.api);
     PocketLinkNavigation.drawerOpen.value = false;
@@ -75,6 +80,8 @@ class _HomeScreenState extends State<HomeScreen> {
   void _openHostSetup() {
     setState(() {
       _libraryOpen = false;
+      _libraryBackHandler = null;
+      _tabBackHandler = null;
       _hostSetupInitialized = true;
       _hostSetupOpen = true;
       _musicShortcutsExpanded = false;
@@ -121,6 +128,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    AppLogger.event('screen.closed', category: 'screen', component: 'home',
+      fields: {'selected_tab_index': _selectedIndex, 'library_open': _libraryOpen,
+        'host_setup_open': _hostSetupOpen});
     DownloadManagerService.instance.releaseServerApi(widget.api);
     AppSettings.instance.removeListener(_navigationSettingsChanged);
     PocketLinkNavigation.drawerOpen.value = false;
@@ -129,11 +139,15 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openTab(int index) {
-    _libraryBackHandler?.call();
-    _tabBackHandler?.call();
+    AppLogger.event('navigation.tab_selected', category: 'navigation',
+      component: 'home_shell',
+      fields: {'tab': switch (index) { 0 => 'home', 1 => 'explore', 2 => 'files', _ => 'unknown' },
+        'previous_index': _selectedIndex, 'next_index': index});
     setState(() {
-      _libraryBackHandler = null;
-      _tabBackHandler = null;
+      if (index != _selectedIndex || _libraryOpen || _hostSetupOpen) {
+        _libraryBackHandler = null;
+        _tabBackHandler = null;
+      }
       _libraryOpen = false;
       _hostSetupOpen = false;
       _musicShortcutsExpanded = false;
@@ -153,9 +167,16 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _tabBackHandler = handler);
   }
 
+  void _onExploreCanPopChanged(bool canPop) {
+    if (!mounted || _exploreCanPop == canPop) return;
+    setState(() => _exploreCanPop = canPop);
+  }
+
   void _openFileLocation(String? volume, String path) {
     setState(() {
       _libraryOpen = false;
+      _libraryBackHandler = null;
+      _tabBackHandler = null;
       _hostSetupOpen = false;
       _musicShortcutsExpanded = false;
       PocketLinkNavigation.quickShortcutsOpen.value = false;
@@ -170,6 +191,8 @@ class _HomeScreenState extends State<HomeScreen> {
   void _openExternalStorage() {
     setState(() {
       _libraryOpen = false;
+      _libraryBackHandler = null;
+      _tabBackHandler = null;
       _hostSetupOpen = false;
       _musicShortcutsExpanded = false;
       PocketLinkNavigation.quickShortcutsOpen.value = false;
@@ -180,12 +203,17 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openExplore(ExploreCategory category, {String? fileCategory}) {
+    AppLogger.event('navigation.explore_category_selected', category: 'navigation',
+      component: 'home_shell',
+      fields: {'category': category.name, 'file_category': fileCategory ?? 'all'});
     if (fileCategory == 'Documents') {
       _openLibrary('documents');
       return;
     }
     setState(() {
       _libraryOpen = false;
+      _libraryBackHandler = null;
+      _tabBackHandler = null;
       _hostSetupOpen = false;
       _musicShortcutsExpanded = false;
       PocketLinkNavigation.quickShortcutsOpen.value = false;
@@ -198,8 +226,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
 
   void _openLibrary(String id) {
-    _libraryBackHandler?.call();
-    _tabBackHandler?.call();
+    AppLogger.event('navigation.library_opened', category: 'navigation',
+      component: 'home_shell', fields: {'library': id, 'from_tab': _selectedIndex});
     _libraryBackHandler = null;
     _tabBackHandler = null;
     final page = switch (id) {
@@ -207,7 +235,10 @@ class _HomeScreenState extends State<HomeScreen> {
       'videos' => MediaBrowserScreen(api: widget.api, type: MediaLibraryType.video, onHome: _closeLibrary, onBackHandlerChanged: _onLibraryBackHandlerChanged),
       'photos' => PhotoGalleryScreen(api: widget.api, onBackHandlerChanged: _onLibraryBackHandlerChanged),
       'favorites' => PhotoGalleryScreen(api: widget.api, initialTab: 2, onBackHandlerChanged: _onLibraryBackHandlerChanged),
-      'documents' => DocumentsBrowserScreen(api: widget.api),
+      'documents' => DocumentsBrowserScreen(
+          api: widget.api,
+          onBackHandlerChanged: _onLibraryBackHandlerChanged,
+        ),
       'downloads' => DownloadsScreen(api: widget.api),
       _ => null,
     };
@@ -223,7 +254,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _closeLibrary() {
     if (!_libraryOpen) return;
-    _libraryBackHandler?.call();
     setState(() {
       _libraryBackHandler = null;
       _libraryOpen = false;
@@ -254,6 +284,8 @@ class _HomeScreenState extends State<HomeScreen> {
       case 'upload':
         setState(() {
           _libraryOpen = false;
+          _libraryBackHandler = null;
+          _tabBackHandler = null;
           _initializedTabs.add(2);
           _selectedIndex = 2;
           _uploadRequest++;
@@ -350,6 +382,59 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  /// Resolves Back only after the root Navigator and active nested Navigator
+  /// have had the opportunity to pop their current routes.
+  void _handleSystemBack(double nowPlayingProgress) {
+    if (PocketLinkNavigation.observer.isModalRouteOnTop) return;
+
+    if (PocketLinkNavigation.drawerOpen.value) {
+      _rootScaffoldKey.currentState?.closeDrawer();
+      return;
+    }
+    if (_musicShortcutsExpanded) {
+      setState(() {
+        _musicShortcutsExpanded = false;
+        PocketLinkNavigation.quickShortcutsOpen.value = false;
+      });
+      return;
+    }
+
+    if (PocketLinkNavigation.shouldCollapseNowPlayingOnBack(
+      progress: nowPlayingProgress,
+    )) {
+      unawaited(NowPlayingOverlayController.collapse());
+      return;
+    }
+
+    if (_libraryOpen) {
+      final handler = _libraryBackHandler;
+      if (handler != null) {
+        handler();
+      } else {
+        _closeLibrary();
+      }
+      return;
+    }
+    if (_hostSetupOpen) {
+      _closeHostSetup();
+      return;
+    }
+    // NavigatorPopHandler owns pushed routes in the active Explore Navigator.
+    if (_selectedIndex == 1 && _exploreCanPop) return;
+
+    if (_selectedIndex == 2 &&
+        (_filesCanNavigateBack || _tabBackHandler != null)) {
+      _tabBackHandler?.call();
+      return;
+    }
+
+    if (_selectedIndex != 0) {
+      _openTab(0);
+      return;
+    }
+    // Home root: leave Back unhandled so Android performs its normal exit.
+  }
+
   @override
   Widget build(BuildContext context) {
     final player = PersistentAudioPlayer.instance;
@@ -383,6 +468,12 @@ class _HomeScreenState extends State<HomeScreen> {
           onBackAtRoot: () => _openTab(0),
           onOpenFiles: () => _openTab(2),
           onOpenLibrary: _openLibrary,
+          onCanPopChanged: _onExploreCanPopChanged,
+          isActive: _selectedIndex == 1 &&
+              !_libraryOpen &&
+              !_hostSetupOpen &&
+              !_musicShortcutsExpanded &&
+              !PocketLinkNavigation.drawerOpen.value,
           onCategoryChanged: (category) => setState(() {
             _exploreCategory = category;
             if (category == ExploreCategory.files) _fileCategory = 'All';
@@ -394,7 +485,7 @@ class _HomeScreenState extends State<HomeScreen> {
         FileManagerScreen(
           key: PageStorageKey<String>('pocketlink-files-${widget.api.baseUrl}'),
           api: widget.api,
-          isActive: true,
+          isActive: _selectedIndex == 2 && !_libraryOpen && !_hostSetupOpen,
           onBackAtRoot: () => _openTab(0),
           onCanNavigateBackChanged: (canNavigateBack) {
             if (_filesCanNavigateBack != canNavigateBack) {
@@ -416,38 +507,13 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox.shrink(),
     ];
 
-    return PopScope(
-      canPop: !_libraryOpen && !_hostSetupOpen && _selectedIndex == 0 &&
-          !_musicShortcutsExpanded && _libraryBackHandler == null &&
-          _tabBackHandler == null && !PocketLinkNavigation.drawerOpen.value,
-      onPopInvokedWithResult: (didPop, result) {
-        if (didPop) return;
-        if (PocketLinkNavigation.drawerOpen.value) {
-          _rootScaffoldKey.currentState?.closeDrawer();
-        } else if (_tabBackHandler != null) {
-          _tabBackHandler!.call();
-        } else if (_libraryBackHandler != null) {
-          _libraryBackHandler!.call();
-        } else if (_libraryOpen) {
-          _closeLibrary();
-        } else if (_hostSetupOpen) {
-          _closeHostSetup();
-        } else if (_musicShortcutsExpanded) {
-          setState(() {
-            _musicShortcutsExpanded = false;
-            PocketLinkNavigation.quickShortcutsOpen.value = false;
-          });
-        } else if (_selectedIndex == 2 && _filesCanNavigateBack) {
-          // FileManagerScreen handles folder-level back navigation.
-        } else if (_selectedIndex != 0) {
-          _openTab(0);
-        }
-      },
+    final nowPlayingProgress = NowPlayingOverlayController.expandProgress ??
+        const AlwaysStoppedAnimation<double>(0);
+    return AnimatedBuilder(
+      animation: nowPlayingProgress,
       child: AnimatedBuilder(
         animation: AppSettings.instance,
-        builder: (context, __) => AnimatedBuilder(
-        animation: player,
-        builder: (context, _) => Scaffold(
+        builder: (context, __) => Scaffold(
           key: _rootScaffoldKey,
           drawerScrimColor: Colors.black.withValues(alpha: 0.58),
           drawerEnableOpenDragGesture:
@@ -467,6 +533,7 @@ class _HomeScreenState extends State<HomeScreen> {
             onOpenSettings: () => Navigator.of(context).push<void>(
               MaterialPageRoute<void>(
                 builder: (_) => SettingsScreen(
+                  api: widget.api,
                   onOpenSavedServers: widget.onReturnToConnection,
                 ),
               ),
@@ -526,7 +593,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   child: IndexedStack(
                     index: _hostSetupOpen ? 3 : (_libraryOpen ? pages.length : _selectedIndex),
-                    children: [...pages, _libraryPage ?? const SizedBox.shrink()],
+                    children: [
+                      ...pages,
+                      PocketLinkNavigationScope(
+                        onHome: _closeLibrary,
+                        child: _libraryPage ?? const SizedBox.shrink(),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -569,37 +642,58 @@ class _HomeScreenState extends State<HomeScreen> {
                   left: 0,
                   right: 0,
                   bottom: 0,
-                  child: FloatingNavigationDock(
-                    order: AppSettings.instance.navigationOrder,
-                    visibleItems: AppSettings.instance.visibleNavigationItems,
-                    selectedIndex: _selectedIndex,
-                    isPlaying: player.isMusic && player.isPlaying,
-                    hasMedia: player.isActive && player.currentItem != null,
-                    isVideo: player.isActive && !player.isMusic,
-                    onSelect: _openTab,
-                    musicShortcutsExpanded: _musicShortcutsExpanded,
-                    onMusicShortcutDismissed: () {
-                      if (_musicShortcutsExpanded) {
-                        setState(() {
-                          _musicShortcutsExpanded = false;
-                          PocketLinkNavigation.quickShortcutsOpen.value = false;
-                        });
-                      }
-                    },
-                    onMusicShortcutLongPress: _expandMusicShortcuts,
-                    onBrowseSwipeLeft: () => _handleMusicButtonSwipe(left: true),
-                    onBrowseSwipeRight: () => _handleMusicButtonSwipe(left: false),
-                    onBrowsePressed: () {
-                      _closeHostSetup();
-                      _openNowPlaying(player);
-                    },
+                  child: AnimatedBuilder(
+                    animation: player,
+                    builder: (context, _) => FloatingNavigationDock(
+                      order: AppSettings.instance.navigationOrder,
+                      visibleItems: AppSettings.instance.visibleNavigationItems,
+                      selectedIndex: _selectedIndex,
+                      isPlaying: player.isMusic && player.isPlaying,
+                      hasMedia: player.isActive && player.currentItem != null,
+                      isVideo: player.isActive && !player.isMusic,
+                      onSelect: _openTab,
+                      musicShortcutsExpanded: _musicShortcutsExpanded,
+                      onMusicShortcutDismissed: () {
+                        if (_musicShortcutsExpanded) {
+                          setState(() {
+                            _musicShortcutsExpanded = false;
+                            PocketLinkNavigation.quickShortcutsOpen.value = false;
+                          });
+                        }
+                      },
+                      onMusicShortcutLongPress: _expandMusicShortcuts,
+                      onBrowseSwipeLeft: () => _handleMusicButtonSwipe(left: true),
+                      onBrowseSwipeRight: () => _handleMusicButtonSwipe(left: false),
+                      onBrowsePressed: () {
+                        _closeHostSetup();
+                        _openNowPlaying(player);
+                      },
+                    ),
                   ),
                 ),
             ],
           ),
         ),
       ),
-        ),
+      builder: (context, child) {
+        return PopScope(
+          canPop: !_libraryOpen && !_hostSetupOpen &&
+              (_selectedIndex == 0 ||
+                  (_selectedIndex == 1 && _exploreCanPop)) &&
+              !_musicShortcutsExpanded &&
+              !PocketLinkNavigation.drawerOpen.value,
+          onPopInvokedWithResult: (didPop, result) {
+            if (didPop) return;
+            if (nowPlayingProgress.value > 0.5) {
+              _handleSystemBack(nowPlayingProgress.value);
+              return;
+            }
+            if (nowPlayingProgress.value > 0.001) return;
+            _handleSystemBack(nowPlayingProgress.value);
+          },
+          child: child!,
+        );
+      },
     );
   }
 }

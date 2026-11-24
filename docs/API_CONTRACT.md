@@ -34,6 +34,12 @@ This document describes the native Android implementation in `clients/flutter/pa
 | POST | `/api/files/mkdir` | JSON: `{path, name}` | Create internal directory |
 | PATCH | `/api/files/rename` | JSON: `{path, new_name}` | Rename internal file/directory |
 | DELETE | `/api/files/item` | Query: `path` | Delete internal file or empty directory |
+| POST | `/api/downloads` | JSON: `{url, directory?, filename?}` | Queue a URL for direct download by the host |
+| GET | `/api/downloads` | — | List persistent host-side URL download jobs |
+| POST | `/api/downloads/{id}/pause` | — | Pause a host-side download |
+| POST | `/api/downloads/{id}/resume` | — | Resume or retry a host-side download |
+| POST | `/api/downloads/{id}/cancel` | — | Cancel a host-side download |
+| DELETE | `/api/downloads/{id}` | Query: optional `delete_file` | Remove a job and optionally its completed file |
 | GET | `/api/storage/volumes` | — | List SAF volumes and availability |
 | GET | `/api/system/telemetry` | — | Read host device, CPU utilization, memory, shared-storage, and battery telemetry |
 | GET | `/api/storage/list` | Query: `volume`, `path` | List external directory |
@@ -75,6 +81,15 @@ Mutation and upload success responses return `{"ok":true,"name":"..."}` (delete 
 ## Upload and download behavior
 
 PocketLink does not impose an application-level upload or download size limit. Actual maximum sizes depend on available device storage, Android filesystem/SAF provider behavior, memory and OS constraints, and connection stability. Uploads are staged before finalization; clients should treat a non-2xx response as failure and refresh the listing before retrying.
+
+## Host-side URL downloads
+
+- The host fetches the supplied HTTP(S) URL directly; file bytes do not pass through the Flutter client.
+- Jobs and progress are persisted in app-private preferences. Queued and interrupted jobs are rehydrated when the foreground host service restarts.
+- Downloads stream to a hidden partial file and are finalized only after the response completes. Supported origins resume with HTTP byte ranges.
+- The default destination is `Downloads/PocketLink` under internal shared storage. Files are grouped into `Videos`, `Music`, `Documents`, `Photos`, `Archives`, `APK`, or `Others`. Supplying `directory` writes directly to that relative folder instead.
+- The host rejects non-HTTP(S) URLs, embedded URL credentials, local/private IP addresses, and redirects to those addresses to reduce server-side request forgery risk.
+- URL downloads are not size-limited by PocketLink. Available storage, origin behavior, Android lifecycle and network stability still apply.
 
 ## Original media and byte ranges
 

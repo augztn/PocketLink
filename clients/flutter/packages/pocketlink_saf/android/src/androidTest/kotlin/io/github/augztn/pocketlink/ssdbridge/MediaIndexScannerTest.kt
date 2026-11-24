@@ -117,8 +117,8 @@ class MediaIndexScannerTest {
             assertEquals(0, first.getInt("updated_files"))
             assertTrue(first.getLong("scanned_bytes") >= 18L)
             assertEquals(18L, first.getLong("indexed_bytes"))
-            assertEquals(9L, first.getLong("media_bytes"))
-            assertEquals(3, first.getInt("other_file_count"))
+            assertEquals(12L, first.getLong("media_bytes"))
+            assertEquals(2, first.getInt("other_file_count"))
             assertTrue(first.getLong("last_successful_at") > 0L)
             assertEquals(first.getLong("last_completed_at"), first.getLong("last_attempt_finished_at"))
             assertTrue(first.getString("scan_run_id").isNotBlank())
@@ -142,13 +142,13 @@ class MediaIndexScannerTest {
             assertEquals(10, first.getInt("file_count"))
             assertEquals(4, first.getInt("directory_count"))
             assertEquals(6, first.getInt("regular_file_count"))
-            assertEquals(1, first.getInt("music_count"))
+            assertEquals(2, first.getInt("music_count"))
             assertEquals(1, first.getInt("video_count"))
             assertEquals(1, first.getInt("photo_count"))
             assertEquals(5, first.getInt("scanned_directories"))
-            assertEquals("track.mp3", scanner.media("music", "", 10, 0).single().name)
+            assertEquals(setOf("track.mp3", "legacy.aiff"), scanner.media("music", "", 10, 0).map { it.name }.toSet())
             assertEquals("clip.ts", scanner.media("video", "", 10, 0).single().name)
-            assertEquals("audio/mpeg", scanner.media("music", "", 10, 0).single().mime)
+            assertEquals("audio/mpeg", scanner.media("music", "", 10, 0).first { it.name == "track.mp3" }.mime)
             assertEquals("application/pdf", scanner.files("report.pdf", 10, 0).single().mime)
 
             SystemClock.sleep(5)
@@ -163,8 +163,25 @@ class MediaIndexScannerTest {
             scanner.requestScan(force = true)
             val third = awaitFinished(scanner, second.getLong("last_scan_started_at"))
             assertEquals("complete", third.getString("state"))
-            assertEquals(0, third.getInt("music_count"))
-            assertEquals(9, third.getInt("file_count"))
+            assertEquals(1, third.getInt("music_count"))
+            // The instrumentation suite can leave unrelated rows in the shared
+            // database. Verify this fixture's exact survivors instead of a global count.
+            val finalDatabase = MediaIndexDatabase(context)
+            try {
+                val paths = finalDatabase.fileSnapshot("internal").keys
+                val expectedSurvivors = setOf(
+                    "Music", "Music/legacy.aiff",
+                    "Documents", "Documents/report.pdf",
+                    "Photos", "Photos/cover.heic",
+                    "Videos", "Videos/clip.ts", "Videos/legacy.wmv"
+                )
+                assertTrue("All non-deleted fixture entries must remain indexed",
+                    paths.containsAll(expectedSurvivors))
+                assertTrue("Deleted media entry must be pruned",
+                    "Music/track.mp3" !in paths)
+            } finally {
+                finalDatabase.close()
+            }
         } finally {
             scanner.close()
             root.deleteRecursively()

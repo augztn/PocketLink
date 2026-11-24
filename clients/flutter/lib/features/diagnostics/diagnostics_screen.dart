@@ -1,6 +1,8 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
+import '../../core/widgets/pocketlink_scaffold.dart';
+import '../settings/widgets/settings_components.dart';
 
 import '../../core/logging/app_logger.dart';
 
@@ -85,19 +87,21 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final topPadding = LayoutInsetsScope.of(context).topClearance;
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: const PocketLinkAppBar(title: Text('Diagnostics & logs')),
+      appBar: const PocketLinkAppBar(title: Text('Diagnostics', style: TextStyle(fontSize: 20))),
       body: ListView(
         padding: EdgeInsets.fromLTRB(
-          20,
-          MediaQuery.paddingOf(context).top + kToolbarHeight + 20,
-          20,
-          20 + MediaQuery.paddingOf(context).bottom,
+          16,
+          topPadding,
+          16,
+          settingsListBottomPadding(context),
         ),
         children: [
-          Card(
-            child: Padding(
+          const SettingsSectionHeader('Diagnostics'),
+          SettingsGroupCard(children: [
+            Padding(
               padding: const EdgeInsets.all(18),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -141,12 +145,10 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                 ],
               ),
             ),
-          ),
-          const SizedBox(height: 12),
           const ListTile(
             leading: Icon(Icons.privacy_tip_outlined),
             title: Text('Privacy'),
-            subtitle: Text('Passwords, usernames, authentication headers, tokens, server addresses and IP addresses are redacted from exported logs. Device OS details, error messages and file-system details may still be present. Review the file before sending it.'),
+            subtitle: Text('Passwords, credentials, search text, filenames, media titles, authentication headers, tokens, server addresses, IP addresses and private filesystem paths are redacted from exported logs. Operational event metadata, device details and error categories may remain. Review the file before sending it.'),
             isThreeLine: true,
           ),
           const ListTile(
@@ -155,6 +157,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
             subtitle: Text('Share the exported log together with the time the issue occurred, the screen you were using and the action that triggered it. Never send your server password or private keys.'),
             isThreeLine: true,
           ),
+          ]),
         ],
       ),
     );
@@ -208,7 +211,7 @@ class DiagnosticsGuidanceCard extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             const Text(
-              'Exported logs redact passwords, usernames, authentication headers, tokens, server addresses and IP addresses. Device OS details, error messages and file-system details may still appear. Review the file before sharing it.',
+              'Exported logs redact credentials, search text, filenames, media titles, authentication headers, tokens, server addresses, IP addresses and private filesystem paths. Operational event metadata, device details and error categories may still appear. Review the file before sharing it.',
             ),
             const SizedBox(height: 12),
             const Text(

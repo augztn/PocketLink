@@ -292,6 +292,55 @@ class ServerApi {
     invalidateDirectoryCache();
   }
 
+  Future<ServerDownloadJob> enqueueServerDownload(
+    String url, {String? directory, String? fileName}
+  ) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/api/downloads',
+      data: {
+        'url': url,
+        if (directory != null && directory.trim().isNotEmpty) 'directory': directory.trim(),
+        if (fileName != null && fileName.trim().isNotEmpty) 'filename': fileName.trim(),
+      },
+    );
+    return ServerDownloadJob.fromJson(response.data ?? const {});
+  }
+
+  Future<List<ServerDownloadJob>> listServerDownloads() async {
+    final response = await _dio.get<Map<String, dynamic>>('/api/downloads');
+    return (response.data?['items'] as List<dynamic>? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(ServerDownloadJob.fromJson)
+        .toList(growable: false);
+  }
+
+  Future<ServerDownloadJob> _serverDownloadAction(
+    String id, String action,
+  ) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/api/downloads/$id/$action',
+    );
+    return ServerDownloadJob.fromJson(response.data ?? const {});
+  }
+
+  Future<ServerDownloadJob> pauseServerDownload(String id) =>
+      _serverDownloadAction(id, 'pause');
+
+  Future<ServerDownloadJob> resumeServerDownload(String id) =>
+      _serverDownloadAction(id, 'resume');
+
+  Future<ServerDownloadJob> cancelServerDownload(String id) =>
+      _serverDownloadAction(id, 'cancel');
+
+  Future<void> removeServerDownload(
+    String id, {bool deleteFile = false}
+  ) async {
+    await _dio.delete<void>(
+      '/api/downloads/$id',
+      queryParameters: {'delete_file': deleteFile},
+    );
+  }
+
   /// Downloads an original file directly to disk without buffering it in memory.
   Future<void> downloadToFile(
     String path,

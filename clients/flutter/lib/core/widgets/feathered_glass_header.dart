@@ -2,141 +2,84 @@ import 'dart:ui' as ui;
 
 import 'package:material_ui/material_ui.dart';
 
-import '../settings/app_settings.dart';
 import 'pocketlink_scaffold.dart';
+import 'progressive_blur.dart';
 
 /// Shared top-edge blur and legibility surface for edge-to-edge screens.
 class FeatheredGlassHeaderBackground extends StatelessWidget {
   const FeatheredGlassHeaderBackground({
     this.darkTint,
     this.contentHeight = kToolbarHeight,
+    this.strongestAtBottom = false,
     super.key,
   });
 
   final List<Color>? darkTint;
   final double contentHeight;
+  final bool strongestAtBottom;
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: AppSettings.instance,
-      builder: (context, _) {
-        final media = MediaQuery.of(context);
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        final settings = AppSettings.instance;
-        // Backdrop blur is a static rendering effect, not an animation.
-        // Keep it available when the OS requests reduced motion.
-        final useProgressiveBlur =
-            settings.progressiveBlurEnabled &&
-            settings.progressiveBlurStrength > 0;
-        final blurScale = settings.progressiveBlurStrength / 55;
-        final headerHeight = media.padding.top + contentHeight + 16;
-        final statusBlurHeight = media.padding.top + 12;
+    final media = MediaQuery.of(context);
+    final headerHeight = media.padding.top + contentHeight + 16;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scrimColor = isDark ? Colors.black : Colors.white;
+    final customDarkTint = isDark && darkTint != null && darkTint!.length >= 3
+        ? darkTint!
+        : null;
+    final scrimColors = customDarkTint == null
+        ? [
+            scrimColor.withValues(alpha: 0.92),
+            scrimColor.withValues(alpha: 0.78),
+            scrimColor.withValues(alpha: 0.48),
+            scrimColor.withValues(alpha: 0.16),
+            scrimColor.withValues(alpha: 0),
+          ]
+        : [
+            customDarkTint[0],
+            Color.lerp(customDarkTint[0], customDarkTint[1], 0.5)!,
+            customDarkTint[1],
+            Color.lerp(customDarkTint[1], customDarkTint[2], 0.5)!,
+            customDarkTint[2],
+          ];
 
-        final tint = isDark
-            ? (darkTint ?? const [
-                Color(0xB8000000),
-                Color(0x40000000),
-                Colors.transparent,
-              ])
-            : const [
-                Color(0xCCFFFFFF),
-                Color(0x55FFFFFF),
-                Colors.transparent,
-              ];
-
-        return _HeaderHeightReporter(
-          height: headerHeight,
-          child: SizedBox(
-          width: double.infinity,
-          height: headerHeight,
-          child: ClipRect(
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                if (useProgressiveBlur) ...[
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: statusBlurHeight,
-                    child: ClipRect(
-                      child: ShaderMask(
-                        blendMode: BlendMode.dstIn,
-                        shaderCallback: (bounds) => const LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.white,
-                            Colors.white,
-                            Colors.transparent,
-                          ],
-                          stops: [0.0, 0.68, 1.0],
-                        ).createShader(bounds),
-                        child: BackdropFilter(
-                          filter: ui.ImageFilter.blur(sigmaX: 24 * blurScale, sigmaY: 24 * blurScale),
-                          child: const ColoredBox(color: Colors.transparent),
-                        ),
-                      ),
+    return _HeaderHeightReporter(
+      height: headerHeight,
+      child: SizedBox(
+        width: double.infinity,
+        height: headerHeight,
+        child: ClipRect(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Positioned.fill(
+                child: ProgressiveBlur(
+                  maxSigma: 24,
+                  steps: 14,
+                  exponent: 1.6,
+                  strongestAtBottom: strongestAtBottom,
+                ),
+              ),
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: strongestAtBottom
+                          ? Alignment.bottomCenter
+                          : Alignment.topCenter,
+                      end: strongestAtBottom
+                          ? Alignment.topCenter
+                          : Alignment.bottomCenter,
+                      colors: scrimColors,
+                      stops: const [0, 0.16, 0.38, 0.68, 1],
                     ),
                   ),
-                  Positioned.fill(
-                    child: ClipRect(
-                      child: ShaderMask(
-                        blendMode: BlendMode.dstIn,
-                        shaderCallback: (bounds) => const LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.white,
-                            Colors.white,
-                            Colors.transparent,
-                          ],
-                          stops: [0.0, 0.55, 1.0],
-                        ).createShader(bounds),
-                        child: BackdropFilter(
-                          filter: ui.ImageFilter.blur(sigmaX: 10 * blurScale, sigmaY: 10 * blurScale),
-                          child: const ColoredBox(color: Colors.transparent),
-                        ),
-                      ),
-                    ),
-                  ),
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: tint,
-                        stops: const [0.0, 0.48, 1.0],
-                      ),
-                    ),
-                  ),
-                ] else
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: darkTint != null && isDark
-                            ? tint
-                            : [
-                                isDark
-                                    ? const Color(0xE6000000)
-                                    : const Color(0xF2FFFFFF),
-                                Colors.transparent,
-                              ],
-                        stops: darkTint != null && isDark
-                            ? const [0.0, 0.48, 1.0]
-                            : null,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+                ),
+              ),
+            ],
           ),
         ),
-        );
-      },
+      ),
     );
   }
 }
@@ -221,69 +164,56 @@ class GlassCircleButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final settings = AppSettings.instance;
     final foreground = isDark ? Colors.white : const Color(0xFF0F172A);
     final button = CustomPaint(
       foregroundPainter: _GlassCircleRimPainter(isDark: isDark),
       child: Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onPressed,
-        customBorder: const CircleBorder(),
-        splashColor: foreground.withValues(alpha: 0.08),
-        highlightColor: Colors.transparent,
-        child: Tooltip(
-          message: tooltip,
-          child: Container(
-            width: size,
-            height: size,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isDark
-                  ? const Color(0xFF1C1E24).withValues(alpha: 0.58)
-                  : Colors.white.withValues(alpha: 0.58),
-              border: Border.all(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          customBorder: const CircleBorder(),
+          splashColor: foreground.withValues(alpha: 0.08),
+          highlightColor: Colors.transparent,
+          child: Tooltip(
+            message: tooltip,
+            child: Container(
+              width: size,
+              height: size,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
                 color: isDark
-                    ? Colors.white.withValues(alpha: 0.24)
-                    : const Color(0xFF94A3B8).withValues(alpha: 0.30),
-                width: 1.0,
+                    ? const Color(0xFF1C1E24).withValues(alpha: 0.58)
+                    : Colors.white.withValues(alpha: 0.58),
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.24)
+                      : const Color(0xFF94A3B8).withValues(alpha: 0.30),
+                  width: 1.0,
+                ),
               ),
-            ),
-            child: Center(
-              child: IconTheme(
-                data: IconThemeData(color: foreground, size: 18),
-                child: child,
+              child: Center(
+                child: IconTheme(
+                  data: IconThemeData(color: foreground, size: 18),
+                  child: child,
+                ),
               ),
             ),
           ),
         ),
       ),
-      ),
     );
 
-    return AnimatedBuilder(
-      animation: settings,
-      builder: (context, _) {
-        final useBlur = settings.progressiveBlurEnabled &&
-            settings.progressiveBlurStrength > 0 &&
-            !MediaQuery.of(context).disableAnimations;
-        final blurScale = settings.progressiveBlurStrength / 55;
-        return RepaintBoundary(
-          child: ClipOval(
-            child: useBlur
-                ? BackdropFilter(
-                    filter: ui.ImageFilter.blur(sigmaX: 24 * blurScale, sigmaY: 24 * blurScale),
-                    child: button,
-                  )
-                : button,
-          ),
-        );
-      },
+    return RepaintBoundary(
+      child: ClipOval(
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+          child: button,
+        ),
+      ),
     );
   }
 }
-
 
 class _GlassCircleRimPainter extends CustomPainter {
   const _GlassCircleRimPainter({required this.isDark});

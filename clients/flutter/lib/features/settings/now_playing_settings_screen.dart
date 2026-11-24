@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
 import 'music_shortcut_customization_screen.dart';
+import 'widgets/settings_components.dart';
 import '../media/now_playing_scrubber.dart';
 
 class NowPlayingSettingsScreen extends StatelessWidget {
@@ -22,210 +23,166 @@ class NowPlayingSettingsScreen extends StatelessWidget {
     return AnimatedBuilder(
       animation: settings,
       builder: (context, _) => Scaffold(
-        appBar: PocketLinkAppBar(title: const Text('Music / Now Playing Button')),
+        appBar: PocketLinkAppBar(title: const Text('Music & Player', style: TextStyle(fontSize: 20))),
         body: ListView(
-          padding: EdgeInsets.fromLTRB(
-            16, 12, 16, 32 + MediaQuery.paddingOf(context).bottom,
-          ),
+          padding: settingsListPadding(context),
           children: [
-            Text(
-              'Music dock button',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w800,
+            const SettingsSectionHeader('Music dock button'),
+            SettingsGroupCard(children: [
+              const ListTile(
+                leading: Icon(Icons.touch_app_rounded),
+                title: Text('Tap'),
+                subtitle: Text('Open the current Now Playing screen'),
               ),
-            ),
-            const SizedBox(height: 8),
-            Card(
-              clipBehavior: Clip.antiAlias,
-              child: Column(
-                children: [
-                  const ListTile(
-                    leading: Icon(Icons.touch_app_rounded),
-                    title: Text('Tap'),
-                    subtitle: Text('Open the current Now Playing screen'),
-                  ),
-                  const Divider(height: 1),
-                  SwitchListTile(
-                    secondary: const Icon(Icons.swipe_rounded),
-                    title: const Text('Swipe to change tracks'),
-                    subtitle: const Text('Swipe left or right on the Music button'),
-                    value: settings.musicButtonSwipeEnabled,
-                    onChanged: (value) => settings.setMusicButtonOptions(
-                      swipeEnabled: value,
-                    ),
-                  ),
-                  if (settings.musicButtonSwipeEnabled) ...[
-                    const Divider(height: 1),
-                    _SwipeActionTile(
-                      title: 'Swipe left',
-                      value: settings.musicButtonSwipeLeftAction,
-                      onChanged: (value) => settings.setMusicButtonOptions(
-                        swipeLeftAction: value,
-                      ),
-                    ),
-                    const Divider(height: 1),
-                    _SwipeActionTile(
-                      title: 'Swipe right',
-                      value: settings.musicButtonSwipeRightAction,
-                      onChanged: (value) => settings.setMusicButtonOptions(
-                        swipeRightAction: value,
-                      ),
-                    ),
-                  ],
-                  const Divider(height: 1),
-                  SwitchListTile(
-                    secondary: const Icon(Icons.touch_app_outlined),
-                    title: const Text('Hold for shortcuts'),
-                    subtitle: const Text('Long-press the Music button to show quick destinations'),
-                    value: settings.musicButtonLongPressEnabled,
-                    onChanged: (value) => settings.setMusicButtonOptions(
-                      longPressEnabled: value,
-                    ),
-                  ),
-                  const Divider(height: 1),
-                  ListTile(
-                    leading: const Icon(Icons.grid_view_rounded),
-                    title: const Text('Customize shortcut destinations'),
-                    subtitle: Text(
-                      '${settings.musicButtonShortcuts.length} destinations · reorder and choose what appears',
-                    ),
-                    trailing: const Icon(Icons.chevron_right_rounded),
-                    enabled: settings.musicButtonLongPressEnabled,
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const MusicShortcutCustomizationScreen(),
-                      ),
-                    ),
-                  ),
-                ],
+              SwitchListTile(
+                secondary: const Icon(Icons.swipe_rounded),
+                title: const Text('Swipe to change tracks'),
+                subtitle: const Text('Swipe left or right on the Music button'),
+                value: settings.musicButtonSwipeEnabled,
+                onChanged: (value) => settings.setMusicButtonOptions(
+                  swipeEnabled: value,
+                ),
               ),
-            ),
+              if (settings.musicButtonSwipeEnabled) ...[
+                _SwipeActionTile(
+                  title: 'Swipe left',
+                  value: settings.musicButtonSwipeLeftAction,
+                  onChanged: (value) => settings.setMusicButtonOptions(
+                    swipeLeftAction: value,
+                  ),
+                ),
+                _SwipeActionTile(
+                  title: 'Swipe right',
+                  value: settings.musicButtonSwipeRightAction,
+                  onChanged: (value) => settings.setMusicButtonOptions(
+                    swipeRightAction: value,
+                  ),
+                ),
+              ],
+              SwitchListTile(
+                secondary: const Icon(Icons.touch_app_outlined),
+                title: const Text('Hold for shortcuts'),
+                subtitle: const Text('Long-press the Music button to show quick destinations'),
+                value: settings.musicButtonLongPressEnabled,
+                onChanged: (value) => settings.setMusicButtonOptions(
+                  longPressEnabled: value,
+                ),
+              ),
+              SettingsTile(
+                leading: const Icon(Icons.grid_view_rounded),
+                title: 'Customize shortcut destinations',
+                subtitle: '${settings.musicButtonShortcuts.length} destinations · reorder and choose what appears',
+                trailing: const Icon(Icons.chevron_right_rounded),
+                enabled: settings.musicButtonLongPressEnabled,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const MusicShortcutCustomizationScreen(),
+                  ),
+                ),
+              ),
+            ]),
             const SizedBox(height: 20),
-            Text(
-              'Now Playing scrubber',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Card(
-              clipBehavior: Clip.antiAlias,
-              child: Column(
-                children: NowPlayingScrubberStyle.values.map((style) {
-                  final selected = settings.nowPlayingScrubberStyle == style.key;
-                  return Column(
+            const SettingsSectionHeader('Now Playing scrubber'),
+            SettingsGroupCard(children: NowPlayingScrubberStyle.values.map((style) {
+              final selected = settings.nowPlayingScrubberStyle == style.key;
+              return RadioListTile<String>(
+                value: style.key,
+                groupValue: settings.nowPlayingScrubberStyle,
+                onChanged: (value) {
+                  if (value != null) {
+                    settings.setNowPlayingScrubberStyle(value);
+                  }
+                },
+                title: Text(style.label),
+                subtitle: Padding(
+                  padding: const EdgeInsets.only(top: 7, right: 12),
+                  child: NowPlayingScrubberPreview(style: style),
+                ),
+                selected: selected,
+                dense: false,
+              );
+            }).toList(growable: false)),
+            const SizedBox(height: 20),
+            const SettingsSectionHeader('Now Playing theme'),
+            SettingsGroupCard(
+              padding: const EdgeInsets.all(8),
+              children: [
+                SizedBox(
+                  height: 132,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
                     children: [
-                      RadioListTile<String>(
-                        value: style.key,
-                        groupValue: settings.nowPlayingScrubberStyle,
-                        onChanged: (value) {
-                          if (value != null) {
-                            settings.setNowPlayingScrubberStyle(value);
-                          }
-                        },
-                        title: Text(style.label),
-                        subtitle: Padding(
-                          padding: const EdgeInsets.only(top: 7, right: 12),
-                          child: NowPlayingScrubberPreview(style: style),
-                        ),
-                        selected: selected,
-                        dense: false,
+                      _NowPlayingThemeOption(
+                        value: 'apple',
+                        label: 'Apple Glass',
+                        description: 'Default',
+                        selected: settings.nowPlayingTheme == 'apple',
+                        onTap: () => settings.setNowPlayingTheme('apple'),
                       ),
-                      if (style != NowPlayingScrubberStyle.values.last)
-                        const Divider(height: 1),
+                      _NowPlayingThemeOption(
+                        value: 'blur',
+                        label: 'Blur',
+                        description: 'Full-screen blur',
+                        selected: settings.nowPlayingTheme == 'blur',
+                        onTap: () => settings.setNowPlayingTheme('blur'),
+                      ),
+                      _NowPlayingThemeOption(
+                        value: 'blurCard',
+                        label: 'Blur Card',
+                        description: 'Floating glass card',
+                        selected: settings.nowPlayingTheme == 'blurCard',
+                        onTap: () => settings.setNowPlayingTheme('blurCard'),
+                      ),
+                      _NowPlayingThemeOption(
+                        value: 'gradient',
+                        label: 'Gradient',
+                        description: 'Artwork fade',
+                        selected: settings.nowPlayingTheme == 'gradient',
+                        onTap: () => settings.setNowPlayingTheme('gradient'),
+                      ),
+                      _NowPlayingThemeOption(
+                        value: 'aether',
+                        label: 'Aether',
+                        description: 'Artwork glass',
+                        selected: settings.nowPlayingTheme == 'aether',
+                        onTap: () => settings.setNowPlayingTheme('aether'),
+                      ),
                     ],
-                  );
-                }).toList(growable: false),
-              ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 20),
-            Text(
-              'Now Playing theme',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w800,
+            const SettingsSectionHeader('Mini-player and playback'),
+            SettingsGroupCard(children: [
+              SwitchListTile(
+                secondary: const Icon(Icons.picture_in_picture_alt_rounded),
+                title: const Text('Mini-player'),
+                subtitle: const Text('Show the compact player above the navigation dock while music is playing'),
+                value: settings.showMiniPlayer,
+                onChanged: (value) => settings.setNowPlayingOptions(
+                  miniPlayer: value,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 132,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: [
-                  _NowPlayingThemeOption(
-                    value: 'apple',
-                    label: 'Apple Glass',
-                    description: 'Default',
-                    selected: settings.nowPlayingTheme == 'apple',
-                    onTap: () => settings.setNowPlayingTheme('apple'),
-                  ),
-                  _NowPlayingThemeOption(
-                    value: 'blur',
-                    label: 'Blur',
-                    description: 'Full-screen blur',
-                    selected: settings.nowPlayingTheme == 'blur',
-                    onTap: () => settings.setNowPlayingTheme('blur'),
-                  ),
-                  _NowPlayingThemeOption(
-                    value: 'blurCard',
-                    label: 'Blur Card',
-                    description: 'Floating glass card',
-                    selected: settings.nowPlayingTheme == 'blurCard',
-                    onTap: () => settings.setNowPlayingTheme('blurCard'),
-                  ),
-                  _NowPlayingThemeOption(
-                    value: 'gradient',
-                    label: 'Gradient',
-                    description: 'Artwork fade',
-                    selected: settings.nowPlayingTheme == 'gradient',
-                    onTap: () => settings.setNowPlayingTheme('gradient'),
-                  ),
-                ],
+              SwitchListTile(
+                secondary: const Icon(Icons.swipe_rounded),
+                title: const Text('Now Playing screen gestures'),
+                subtitle: const Text('Swipe down to close; swipe left or right to change tracks'),
+                value: settings.enableNowPlayingGestures,
+                onChanged: (value) => settings.setNowPlayingOptions(
+                  gestures: value,
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Mini-player and playback',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w800,
+              SwitchListTile(
+                secondary: const Icon(Icons.query_stats_rounded),
+                title: const Text('Show stats for nerds'),
+                subtitle: const Text('Show audio codec, bitrate and sample rate in the player menu'),
+                value: settings.showStatsForNerds,
+                onChanged: (value) => settings.setNowPlayingOptions(
+                  statsForNerds: value,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Card(
-              clipBehavior: Clip.antiAlias,
-              child: Column(
-                children: [
-                  SwitchListTile(
-                    secondary: const Icon(Icons.picture_in_picture_alt_rounded),
-                    title: const Text('Mini-player'),
-                    subtitle: const Text('Show the compact player above the navigation dock while music is playing'),
-                    value: settings.showMiniPlayer,
-                    onChanged: (value) => settings.setNowPlayingOptions(
-                      miniPlayer: value,
-                    ),
-                  ),
-                  const Divider(height: 1),
-                  SwitchListTile(
-                    secondary: const Icon(Icons.swipe_rounded),
-                    title: const Text('Now Playing screen gestures'),
-                    subtitle: const Text('Swipe down to close; swipe left or right to change tracks'),
-                    value: settings.enableNowPlayingGestures,
-                    onChanged: (value) => settings.setNowPlayingOptions(
-                      gestures: value,
-                    ),
-                  ),
-                  const Divider(height: 1),
-                  SwitchListTile(
-                    secondary: const Icon(Icons.query_stats_rounded),
-                    title: const Text('Show stats for nerds'),
-                    subtitle: const Text('Show audio codec, bitrate and sample rate in the player menu'),
-                    value: settings.showStatsForNerds,
-                    onChanged: (value) => settings.setNowPlayingOptions(
-                      statsForNerds: value,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            ]),
             const SizedBox(height: 12),
             Align(
               alignment: Alignment.centerRight,
@@ -258,8 +215,8 @@ class _SwipeActionTile extends StatelessWidget {
   final ValueChanged<String> onChanged;
 
   @override
-  Widget build(BuildContext context) => ListTile(
-    title: Text(title),
+  Widget build(BuildContext context) => SettingsTile(
+    title: title,
     trailing: DropdownButton<String>(
       value: NowPlayingSettingsScreen._swipeActions.containsKey(value)
           ? value
@@ -421,6 +378,24 @@ class _NowPlayingThemeOption extends StatelessWidget {
           if (theme == 'blur')
             const Center(
               child: Icon(Icons.play_circle_fill_rounded, color: Colors.white, size: 25),
+            ),
+          if (theme == 'aether')
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Padding(
+                padding: const EdgeInsets.all(7),
+                child: Container(
+                  height: 25,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.20),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.28)),
+                  ),
+                  child: const Center(
+                    child: Icon(Icons.graphic_eq_rounded, color: Colors.white, size: 15),
+                  ),
+                ),
+              ),
             ),
         ],
       ),

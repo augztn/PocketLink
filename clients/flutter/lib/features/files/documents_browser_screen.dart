@@ -37,9 +37,14 @@ class _DocumentFile {
 }
 
 class DocumentsBrowserScreen extends StatefulWidget {
-  const DocumentsBrowserScreen({required this.api, super.key});
+  const DocumentsBrowserScreen({
+    required this.api,
+    this.onBackHandlerChanged,
+    super.key,
+  });
 
   final ServerApi api;
+  final ValueChanged<VoidCallback?>? onBackHandlerChanged;
 
   @override
   State<DocumentsBrowserScreen> createState() => _DocumentsBrowserScreenState();
@@ -71,8 +76,30 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
 
   @override
   void dispose() {
+    widget.onBackHandlerChanged?.call(null);
     _search.dispose();
     super.dispose();
+  }
+
+  void _syncBackHandler() {
+    final handler = _filterMenuOpen
+        ? () => _setFilterMenuOpen(false)
+        : _searchExpanded
+            ? () => _setSearchExpanded(false)
+            : null;
+    widget.onBackHandlerChanged?.call(handler);
+  }
+
+  void _setFilterMenuOpen(bool open) {
+    if (_filterMenuOpen == open) return;
+    setState(() => _filterMenuOpen = open);
+    _syncBackHandler();
+  }
+
+  void _setSearchExpanded(bool expanded) {
+    if (_searchExpanded == expanded) return;
+    setState(() => _searchExpanded = expanded);
+    _syncBackHandler();
   }
 
   Future<void> _scan({bool refresh = false}) async {
@@ -221,9 +248,15 @@ class _DocumentsBrowserScreenState extends State<DocumentsBrowserScreen> {
         feathered: true,
         showHome: false,
         automaticallyImplyLeading: false,
+        leading: IconButton(
+          tooltip: 'Back',
+          onPressed: () => Navigator.of(context).maybePop(),
+          icon: const Icon(Icons.arrow_back_rounded),
+        ),
+        leadingWidth: 56,
         title: TitleDropdownPopover<String>(
 tooltip: 'Filter document types',
-          onOpenChanged: (open) => setState(() => _filterMenuOpen = open),
+          onOpenChanged: _setFilterMenuOpen,
           items: filterLabels.entries.map((entry) {
             final icon = switch (entry.key) {
               'pdf' => Icons.picture_as_pdf_rounded,
@@ -259,7 +292,11 @@ tooltip: 'Filter document types',
           ]),
         ),
         actions: [
-          PocketLinkAppBarAction(label: 'Search documents', icon: Icons.search_rounded, onPressed: () => setState(() => _searchExpanded = !_searchExpanded)),
+          PocketLinkAppBarAction(
+            label: 'Search documents',
+            icon: Icons.search_rounded,
+            onPressed: () => _setSearchExpanded(!_searchExpanded),
+          ),
           PocketLinkAppBarAction(label: 'Sort by name', icon: Icons.sort_by_alpha_rounded,
             onPressed: () => setState(() => _sortBy = 'name')),
           PocketLinkAppBarAction(label: 'Sort by newest', icon: Icons.schedule_rounded,

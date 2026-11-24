@@ -461,6 +461,51 @@ class NativeApiServerIntegrationTest {
         }
     }
 
+    @Test
+    fun serverDownloadApiRequiresAuthenticationAndRejectsPrivateNetworkTargets() {
+        val appContext = ApplicationProvider.getApplicationContext<Context>()
+        val context = object : ContextWrapper(appContext) {
+            override fun getSharedPreferences(name: String, mode: Int): SharedPreferences =
+                appContext.getSharedPreferences("server-download-test-$name", mode)
+        }
+        val root = File(context.cacheDir, "server-download-test-${UUID.randomUUID()}").apply {
+            check(mkdirs())
+        }
+        val credentials = ServerCredentials(context)
+        val password = "server-download-test-password"
+        credentials.setPassword(password)
+        val authorization = "Basic " + Base64.encodeToString(
+            "admin:$password".toByteArray(), Base64.NO_WRAP
+        )
+        val server = NativeApiServer(context, credentials, 0, "0.0.0.0", root)
+        server.start(30_000, false)
+        try {
+            val port = server.listeningPort
+            assertEquals(401, request(port, "/api/downloads").first)
+            val blocked = request(
+                port,
+                "/api/downloads",
+                authorization,
+                method = "POST",
+                body = """{"url":"http://127.0.0.1/private.txt"}""".toByteArray(),
+                contentType = "application/json"
+            )
+            assertEquals(400, blocked.first)
+            assertTrue(blocked.second.contains("private or local"))
+            val queue = request(port, "/api/downloads", authorization)
+            assertEquals(200, queue.first)
+            assertTrue(queue.second.contains("\"items\":[]"))
+        } finally {
+            server.closeServerDownloads()
+            server.stop()
+            root.deleteRecursively()
+            context.getSharedPreferences("server-download-test-server-downloads", Context.MODE_PRIVATE)
+                .edit().clear().commit()
+            context.getSharedPreferences("server-download-test-pocketlink-auth", Context.MODE_PRIVATE)
+                .edit().clear().commit()
+        }
+    }
+
     private fun multipartBody(name: String, content: ByteArray): ByteArray {
         val prefix = (
             "--pocketlink-test-boundary\r\n" +

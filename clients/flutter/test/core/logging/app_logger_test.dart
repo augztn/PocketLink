@@ -100,6 +100,25 @@ void main() {
       expect(sanitized['username'], '[REDACTED]');
     });
 
+    test('redacts search text, filenames and media metadata', () {
+      final sanitized = AppLogger.sanitizeDiagnosticFields({
+        'query': 'private search phrase',
+        'searchText': 'another private phrase',
+        'fileName': 'personal-document.pdf',
+        'item_name': 'private-folder',
+        'media_title': 'private song title',
+        'status_code': 200,
+        'result_count': 12,
+      });
+      expect(sanitized['query'], '[REDACTED]');
+      expect(sanitized['searchText'], '[REDACTED]');
+      expect(sanitized['fileName'], '[REDACTED]');
+      expect(sanitized['item_name'], '[REDACTED]');
+      expect(sanitized['media_title'], '[REDACTED]');
+      expect(sanitized['status_code'], 200);
+      expect(sanitized['result_count'], 12);
+    });
+
     test('redacts camelCase paths and private paths in nested values', () {
       final sanitized = AppLogger.sanitizeDiagnosticFields({
         'filePath': '/storage/emulated/0/Documents/report.pdf',

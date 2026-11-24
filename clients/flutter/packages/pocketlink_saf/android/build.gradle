@@ -11,6 +11,7 @@ android {
     defaultConfig {
         minSdk 21
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+        consumerProguardFiles 'consumer-rules.pro'
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
@@ -24,12 +25,15 @@ kotlin {
     }
 }
 
-repositories { google(); mavenCentral() }
+repositories { google(); mavenCentral(); maven { url 'https://jitpack.io' } }
 dependencies {
     implementation 'androidx.documentfile:documentfile:1.0.1'
     implementation 'org.nanohttpd:nanohttpd:2.3.1'
     implementation 'androidx.core:core-ktx:1.15.0'
     implementation 'androidx.media:media:1.7.0'
+    implementation 'com.github.TeamNewPipe:NewPipeExtractor:v0.27.1'
+    implementation 'com.squareup.okhttp3:okhttp:4.10.0'
+    implementation 'com.google.re2j:re2j:1.7'
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.json:json:20240303'
     androidTestImplementation 'androidx.test:runner:1.6.2'

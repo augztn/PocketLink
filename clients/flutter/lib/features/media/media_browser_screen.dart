@@ -5,6 +5,7 @@ import 'dart:ui' as ui;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
+import '../../core/widgets/pocketlink_skeleton.dart';
 import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/compact_search_field.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
@@ -58,12 +59,31 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   final Set<String> _selectedTrackKeys = <String>{};
 
   void _syncBackHandler() {
-    final handler = _searchExpanded
-        ? () => _setSearchExpanded(false)
-        : _libraryView == 'folders' && !_atFolderRoot
-            ? _goUpFolder
-            : null;
+    final handler = _musicMenuOpen
+        ? () => _setMusicMenuOpen(false)
+        : _searchExpanded
+            ? () => _setSearchExpanded(false)
+            : _selectionMode
+                ? _clearSelectionMode
+                : _libraryView == 'folders' && !_atFolderRoot
+                    ? _goUpFolder
+                    : null;
     widget.onBackHandlerChanged?.call(handler);
+  }
+
+  void _setMusicMenuOpen(bool open) {
+    if (_musicMenuOpen == open) return;
+    setState(() => _musicMenuOpen = open);
+    _syncBackHandler();
+  }
+
+  void _clearSelectionMode() {
+    if (!_selectionMode) return;
+    setState(() {
+      _selectionMode = false;
+      _selectedTrackKeys.clear();
+    });
+    _syncBackHandler();
   }
 
   void _setSearchExpanded(bool expanded) {
@@ -87,9 +107,12 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     _browserState = Provider.of<MediaBrowserStateStore>(context, listen: false);
     final saved = _browserState.stateFor(_stateKey, widget.type.name);
     _selectedVolume = saved.selectedVolume;
-    _libraryView = saved.view;
+    _libraryView = widget.initialView ?? saved.view;
+    _searchQuery = widget.initialSearchQuery ?? ''; 
+    _searchController.text = _searchQuery;
+    _searchExpanded = _searchQuery.isNotEmpty;
     _layoutMode = saved.layoutMode;
-    _sortBy = saved.sortBy;
+    _sortBy = widget.initialSortBy ?? saved.sortBy;
     _currentFolderPath = saved.folderPath;
     _pendingScrollOffset = saved.scrollOffset;
     _contentScrollController.addListener(_saveScrollOffset);
@@ -177,7 +200,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     setState(() {
       _loading = true;
       _error = null;
-      _media = const [];
+      if (!refresh) _media = const [];
       _scannedDirectories = 0;
       _skippedDirectories = 0;
       _scanLocation = '';
@@ -258,7 +281,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     setState(() {
       _loading = true;
       _error = null;
-      _media = const [];
+      if (!refresh) _media = const [];
       _scannedDirectories = 0;
       _skippedDirectories = 0;
       _scanLocation = '';
@@ -800,9 +823,15 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
           feathered: true,
           showHome: false,
           automaticallyImplyLeading: false,
-            title: TitleDropdownPopover<String>(
+          leading: IconButton(
+            tooltip: 'Back',
+            onPressed: () => Navigator.of(context).maybePop(),
+            icon: const Icon(Icons.arrow_back_rounded),
+          ),
+          leadingWidth: 56,
+          title: TitleDropdownPopover<String>(
 tooltip: 'Choose video view',
-            onOpenChanged: (open) => setState(() => _musicMenuOpen = open),
+            onOpenChanged: _setMusicMenuOpen,
             items: [
               SmokedGlassPopoverMenuItem(
                 value: 'all',
@@ -878,13 +907,13 @@ tooltip: 'Choose video view',
         ),
         body: Column(children: [
           if ((_searchExpanded && widget.showSearch) || isFolderView)
-            SizedBox(height: LayoutInsetsScope.of(context).topClearance - 6),
+            SizedBox(height: LayoutInsetsScope.of(context).topClearance),
           if (_searchExpanded && widget.showSearch)
             Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: CompactSearchField(controller: _searchController,
                 hintText: 'Search videos or folders',
                 onChanged: (value) => setState(() => _searchQuery = value))),
-          if (_loading) const LinearProgressIndicator(minHeight: 2),
+          if (_loading && _media.isNotEmpty) const LinearProgressIndicator(minHeight: 2),
           if (_error != null)
             Padding(
               padding: const EdgeInsets.all(16),
@@ -902,7 +931,36 @@ tooltip: 'Choose video view',
                     ),
                   )
                 : _loading && _media.isEmpty
-                    ? const Center(child: Text('Scanning storage for media…'))
+                    ? isFolderView
+                        ? PocketLinkSkeleton.fileList(
+                            padding: EdgeInsets.fromLTRB(
+                              12,
+                              8,
+                              12,
+                              LayoutInsetsScope.of(context).bottomClearance,
+                            ),
+                          )
+                        : _layoutMode == 'grid'
+                            ? PocketLinkSkeleton.videoGrid(
+                                padding: EdgeInsets.fromLTRB(
+                                  12,
+                                  widget.showSearch && _searchExpanded
+                                      ? 8
+                                      : LayoutInsetsScope.of(context).topClearance,
+                                  12,
+                                  LayoutInsetsScope.of(context).bottomClearance,
+                                ),
+                              )
+                            : PocketLinkSkeleton.videoList(
+                                padding: EdgeInsets.fromLTRB(
+                                  12,
+                                  widget.showSearch && _searchExpanded
+                                      ? 8
+                                      : LayoutInsetsScope.of(context).topClearance,
+                                  12,
+                                  LayoutInsetsScope.of(context).bottomClearance,
+                                ),
+                              )
                     : visibleMedia.isEmpty
                         ? Center(
                             child: Padding(
@@ -1207,7 +1265,10 @@ tooltip: 'Choose video view',
             ? _toggleTrackSelection(media)
             : _openMedia(media, queueItems),
         onLongPress: () {
-          if (!_selectionMode) setState(() => _selectionMode = true);
+          if (!_selectionMode) {
+            setState(() => _selectionMode = true);
+            _syncBackHandler();
+          }
           _toggleTrackSelection(media);
         },
         child: SizedBox(
@@ -1367,7 +1428,16 @@ tooltip: 'Choose video view',
                       padding: EdgeInsets.only(top: LayoutInsetsScope.of(context).topClearance),
                       child: RefreshIndicator(
                         onRefresh: _refreshMusic,
-                        child: _buildFolders(visible),
+                        child: _loading && _media.isEmpty
+                            ? PocketLinkSkeleton.fileList(
+                                padding: EdgeInsets.fromLTRB(
+                                  12,
+                                  8,
+                                  12,
+                                  LayoutInsetsScope.of(context).bottomClearance,
+                                ),
+                              )
+                            : _buildFolders(visible),
                       ),
                     )
                   : RefreshIndicator(
@@ -1383,9 +1453,9 @@ tooltip: 'Choose video view',
                                   child: Center(
                                     child: _error != null
                                         ? FilledButton(onPressed: _scan, child: const Text('Retry scan'))
-                                        : Text(_loading && _media.isEmpty
-                                            ? 'Scanning music library…'
-                                            : _libraryView == 'favorites'
+                                        : _loading && _media.isEmpty
+                                            ? PocketLinkSkeleton.musicList(rows: 5)
+                                            : Text(_libraryView == 'favorites'
                                                 ? 'No favourite tracks yet.'
                                                 : 'No music found. Scan storage to find tracks.'),
                                   ),
@@ -1406,7 +1476,7 @@ tooltip: 'Choose video view',
                             ),
                     ),
             ),
-            if (_loading)              Positioned(
+            if (_loading && _media.isNotEmpty)              Positioned(
                 top: top + 60,
                 left: 16,
                 right: 16,
@@ -1444,6 +1514,12 @@ tooltip: 'Choose video view',
               right: 16,
               height: 44,
               child: Row(children: [
+                if (!_searchExpanded)
+                  IconButton(
+                    tooltip: 'Back',
+                    onPressed: () => Navigator.of(context).maybePop(),
+                    icon: Icon(Icons.arrow_back_rounded, size: 20, color: foreground),
+                  ),
                 if (_searchExpanded)
                   Expanded(
                     child: SizedBox(
@@ -1491,7 +1567,7 @@ tooltip: 'Choose video view',
                   Expanded(
                     child: TitleDropdownPopover<String>(
 tooltip: 'Choose music view',
-                      onOpenChanged: (open) => setState(() => _musicMenuOpen = open),
+                      onOpenChanged: _setMusicMenuOpen,
                       items: [
                         SmokedGlassPopoverMenuItem(value: 'all', label: 'Songs', icon: Icons.music_note_rounded,
                           trailing: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -1603,6 +1679,7 @@ tooltip: 'Choose music view',
                                 _selectionMode = true;
                                 _selectedTrackKeys.clear();
                               });
+                              _syncBackHandler();
                             }
                             if (value == 'scan' && !_loading) _scan(refresh: true);
                             if (value == 'settings') {
@@ -1638,10 +1715,7 @@ tooltip: 'Choose music view',
                         ),
                         IconButton(
                           tooltip: 'Done selecting',
-                          onPressed: () => setState(() {
-                            _selectionMode = false;
-                            _selectedTrackKeys.clear();
-                          }),
+                          onPressed: _clearSelectionMode,
                           icon: Icon(Icons.close_rounded, size: 18, color: foreground),
                         ),
                       ]),
@@ -1665,6 +1739,9 @@ class MediaBrowserScreen extends StatefulWidget {
     required this.api,
     required this.type,
     this.showSearch = true,
+    this.initialView,
+    this.initialSortBy,
+    this.initialSearchQuery,
     this.onHome,
     this.onBackHandlerChanged,
     super.key,
@@ -1673,6 +1750,9 @@ class MediaBrowserScreen extends StatefulWidget {
   final ServerApi api;
   final MediaLibraryType type;
   final bool showSearch;
+  final String? initialView;
+  final String? initialSortBy;
+  final String? initialSearchQuery;
   final VoidCallback? onHome;
   final ValueChanged<VoidCallback?>? onBackHandlerChanged;
 

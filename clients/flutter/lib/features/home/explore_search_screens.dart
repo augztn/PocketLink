@@ -1,12 +1,18 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../../core/logging/app_logger.dart';
+import '../../core/navigation/pocketlink_navigation.dart';
+import '../media/now_playing_overlay_controller.dart';
+
 import '../../core/network/server_api.dart';
+import '../../core/settings/app_settings.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
 import '../files/file_manager_screen.dart';
 import '../files/documents_browser_screen.dart';
 import '../library/photo_gallery_screen.dart';
 import '../media/media_browser_screen.dart';
+import '../media/discover/discover_screen.dart';
 import '../media/media_library_catalog.dart';
 import '../search/search_screen.dart';
 import '../downloads/download_manager_service.dart';
@@ -26,6 +32,8 @@ class ExploreScreen extends StatefulWidget {
     this.onBackAtRoot,
     this.onOpenFiles,
     this.onOpenLibrary,
+    this.onCanPopChanged,
+    this.isActive = true,
     super.key,
   });
 
@@ -36,6 +44,8 @@ class ExploreScreen extends StatefulWidget {
   final VoidCallback? onBackAtRoot;
   final VoidCallback? onOpenFiles;
   final ValueChanged<String>? onOpenLibrary;
+  final ValueChanged<bool>? onCanPopChanged;
+  final bool isActive;
 
   @override
   State<ExploreScreen> createState() => _ExploreScreenState();
@@ -49,42 +59,72 @@ class _ExploreScreenState extends State<ExploreScreen> {
   void initState() {
     super.initState();
     _observer = _ExploreNavigatorObserver(() {
-      if (mounted) setState(() {});
+      if (!mounted) return;
+      setState(() {});
+      widget.onCanPopChanged?.call(_navigatorKey.currentState?.canPop() ?? false);
     });
+  }
+
+  @override
+  void dispose() {
+    widget.onCanPopChanged?.call(false);
+    super.dispose();
   }
 
   void _open(Widget screen) {
     _navigatorKey.currentState?.push(
-      MaterialPageRoute<void>(builder: (_) => screen),
+      MaterialPageRoute<void>(
+        settings: RouteSettings(name: screen.runtimeType.toString()),
+        builder: (_) => screen,
+      ),
     );
+  }
+
+  void _handleHome() {
+    _navigatorKey.currentState?.popUntil((route) => route.isFirst);
+    widget.onBackAtRoot?.call();
   }
 
   @override
   Widget build(BuildContext context) {
-    return NavigatorPopHandler<void>(
-      enabled: _navigatorKey.currentState?.canPop() ?? false,
-      onPopWithResult: (_) => _navigatorKey.currentState?.maybePop(),
-      child: PocketLinkNavigationScope(
-        onHome: () {
-          _navigatorKey.currentState?.popUntil((route) => route.isFirst);
-          widget.onBackAtRoot?.call();
+    final nowPlayingProgress =
+        NowPlayingOverlayController.expandProgress ??
+            const AlwaysStoppedAnimation<double>(0);
+    return AnimatedBuilder(
+      animation: nowPlayingProgress,
+      builder: (context, _) => NavigatorPopHandler<void>(
+        enabled: PocketLinkNavigation.shouldHandleNestedBack(
+          isActive: widget.isActive && nowPlayingProgress.value <= 0.001,
+          canPop: _navigatorKey.currentState?.canPop() ?? false,
+        ),
+        onPopWithResult: (_) {
+          if (!PocketLinkNavigation.shouldDispatchNestedBack(
+            isActive: widget.isActive,
+            nowPlayingProgress: nowPlayingProgress.value,
+          )) {
+            return;
+          }
+          _navigatorKey.currentState?.maybePop();
         },
-        child: Navigator(
-        key: _navigatorKey,
-        observers: [_observer],
-        onGenerateInitialRoutes: (navigator, initialRoute) => [
-          MaterialPageRoute<void>(
-            settings: const RouteSettings(name: '/'),
-            builder: (_) => _ExploreGrid(
-              api: widget.api,
-              onHome: widget.onBackAtRoot,
-              onOpen: _open,
-              onOpenFiles: widget.onOpenFiles,
-              onOpenLibrary: widget.onOpenLibrary,
-            ),
+        child: PocketLinkNavigationScope(
+          onHome: _handleHome,
+          child: Navigator(
+            key: _navigatorKey,
+            observers: [_observer],
+            onGenerateInitialRoutes: (navigator, initialRoute) => [
+              MaterialPageRoute<void>(
+                settings: const RouteSettings(name: '/'),
+                builder: (_) => _ExploreGrid(
+                  api: widget.api,
+                  onHome: widget.onBackAtRoot,
+                  onOpen: _open,
+                  onOpenFiles: widget.onOpenFiles,
+                  onOpenLibrary: widget.onOpenLibrary,
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
       ),
     );
   }
@@ -95,19 +135,34 @@ class _ExploreNavigatorObserver extends NavigatorObserver {
 
   final VoidCallback onChanged;
 
-  @override
-  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    if (previousRoute != null) onChanged();
+  String _label(Route<dynamic>? route) {
+    if (route == null) return 'none';
+    final name = route.settings.name;
+    return name == null || name.isEmpty ? route.runtimeType.toString() : name;
+  }
+
+  void _record(String action, Route<dynamic>? route, Route<dynamic>? related) {
+    AppLogger.event('explore_navigation.$action', category: 'navigation',
+      component: 'explore_navigator',
+      fields: {'route_type': _label(route), 'related_route_type': _label(related)});
+    WidgetsBinding.instance.addPostFrameCallback((_) => onChanged());
   }
 
   @override
-  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) => onChanged();
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) =>
+      _record('push', route, previousRoute);
 
   @override
-  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) => onChanged();
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) =>
+      _record('pop', route, previousRoute);
 
   @override
-  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) => onChanged();
+  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) =>
+      _record('remove', route, previousRoute);
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) =>
+      _record('replace', newRoute, oldRoute);
 }
 
 class _ExploreGrid extends StatefulWidget {
@@ -328,7 +383,7 @@ class _ExploreGridState extends State<_ExploreGrid>
         ],
       ),
       body: GridView.count(
-        padding: EdgeInsets.fromLTRB(16, LayoutInsetsScope.of(context).topClearance + 2, 16, LayoutInsetsScope.of(context).bottomClearance),
+        padding: EdgeInsets.fromLTRB(16, LayoutInsetsScope.of(context).topClearance, 16, LayoutInsetsScope.of(context).bottomClearance),
         crossAxisCount: 2,
         crossAxisSpacing: 14,
         mainAxisSpacing: 14,
@@ -350,6 +405,13 @@ class _ExploreGridState extends State<_ExploreGrid>
               onHome: () => Navigator.of(context).maybePop(),
             )),
           ),
+          if (AppSettings.instance.discoverEnabled)
+            card(
+              index: 7,
+              title: 'Discover', subtitle: 'YouTube Music and local lossless',
+              icon: Icons.explore_rounded, tint: const Color(0xFFDB79A8),
+              onTap: () => onOpen(DiscoverScreen(api: api)),
+            ),
           card(
             index: 2,
             title: 'Videos', subtitle: 'Movies and clips',

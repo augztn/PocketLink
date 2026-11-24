@@ -1,5 +1,9 @@
 import 'package:material_ui/material_ui.dart';
 
+const double pocketLinkMiniPlayerHeight = 74.0;
+const double pocketLinkHeaderFadeTailHeight = 12.0;
+const double pocketLinkTopContentGap = 14.0;
+
 /// Route-level layout geometry shared by every PocketLink screen.
 class LayoutInsetsScope extends InheritedWidget {
   const LayoutInsetsScope({
@@ -37,7 +41,7 @@ class LayoutInsetsScope extends InheritedWidget {
     final safeTop = media?.padding.top ?? 0.0;
     final safeBottom = media?.padding.bottom ?? 0.0;
     return LayoutInsetsScope(
-      topClearance: safeTop + kToolbarHeight + 10,
+      topClearance: safeTop + kToolbarHeight + pocketLinkTopContentGap,
       bottomClearance: safeBottom + 12,
       hasFloatingNavBar: false,
       hasActiveMiniPlayer: false,
@@ -119,17 +123,16 @@ class _PocketLinkScaffoldState extends State<PocketLinkScaffold> {
     final renderedHeaderHeight = widget.routeIdentity == null
         ? null
         : _renderedHeaderHeights[widget.routeIdentity];
-    final headerContentHeight =
-        renderedHeaderHeight == null
-            ? kToolbarHeight
-            : (renderedHeaderHeight - statusBarHeight - 16).clamp(
-                kToolbarHeight,
-                200.0,
-              ).toDouble();
-    final topClearance = statusBarHeight + headerContentHeight + 10;
+    // The header reporter includes the feathered fade tail. Remove that
+    // decorative tail, then add the one shared resting content gap.
+    final topClearance = renderedHeaderHeight == null
+        ? statusBarHeight + kToolbarHeight + pocketLinkTopContentGap
+        : renderedHeaderHeight -
+            pocketLinkHeaderFadeTailHeight +
+            pocketLinkTopContentGap;
     final bottomClearance = media.padding.bottom +
         (widget.hasFloatingNavBar ? 84.0 : 12.0) +
-        (widget.hasActiveMiniPlayer ? 74.0 : 0.0);
+        (widget.hasActiveMiniPlayer ? pocketLinkMiniPlayerHeight : 0.0);
 
     return LayoutInsetsScope(
       topClearance: topClearance,
@@ -137,7 +140,7 @@ class _PocketLinkScaffoldState extends State<PocketLinkScaffold> {
       hasFloatingNavBar: widget.hasFloatingNavBar,
       hasActiveMiniPlayer: widget.hasActiveMiniPlayer,
       reportHeaderHeight: reportHeaderHeight,
-      child: widget.child,
+      child: RepaintBoundary(child: widget.child),
     );
   }
 }

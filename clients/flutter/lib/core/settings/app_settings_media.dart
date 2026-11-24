@@ -1,6 +1,65 @@
 part of 'app_settings.dart';
 
 extension AppSettingsMedia on AppSettings {
+  Future<void> setShowDiscoverOnWelcome(bool value) async {
+    if (_showDiscoverOnWelcome == value) return;
+    _showDiscoverOnWelcome = value;
+    _notifySettingsChanged();
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(AppSettings._showDiscoverOnWelcomeKey, value);
+  }
+
+  Future<void> setDiscoverOptions({
+    bool? enabled,
+    bool? localLossless,
+    bool? lyrics,
+    bool? autoQueue,
+    bool? artwork,
+  }) async {
+    if (enabled != null) _discoverEnabled = enabled;
+    if (localLossless != null) _discoverLocalLossless = localLossless;
+    if (lyrics != null) _discoverLyrics = lyrics;
+    if (autoQueue != null) _discoverAutoQueue = autoQueue;
+    if (artwork != null) _discoverArtwork = artwork;
+    _notifySettingsChanged();
+    final preferences = await SharedPreferences.getInstance();
+    await Future.wait([
+      if (enabled != null) preferences.setBool(AppSettings._discoverEnabledKey, enabled),
+      if (localLossless != null) preferences.setBool(AppSettings._discoverLocalLosslessKey, localLossless),
+      if (lyrics != null) preferences.setBool(AppSettings._discoverLyricsKey, lyrics),
+      if (autoQueue != null) preferences.setBool(AppSettings._discoverAutoQueueKey, autoQueue),
+      if (artwork != null) preferences.setBool(AppSettings._discoverArtworkKey, artwork),
+    ]);
+  }
+
+  Future<void> setDiscoverPlaybackOptions({
+    String? audioQuality,
+    String? resolverProfile,
+    String? region,
+  }) async {
+    if (audioQuality != null &&
+        !const {'best_available', 'balanced', 'data_saver'}.contains(audioQuality)) {
+      throw ArgumentError.value(audioQuality, 'audioQuality');
+    }
+    if (resolverProfile != null &&
+        !const {'automatic', 'newpipe_first', 'player_api_first'}.contains(resolverProfile)) {
+      throw ArgumentError.value(resolverProfile, 'resolverProfile');
+    }
+    if (region != null && !AppSettings.discoverRegions.containsKey(region)) {
+      throw ArgumentError.value(region, 'region');
+    }
+    if (audioQuality != null) _discoverAudioQuality = audioQuality;
+    if (resolverProfile != null) _discoverResolverProfile = resolverProfile;
+    if (region != null) _discoverRegion = region;
+    _notifySettingsChanged();
+    final preferences = await SharedPreferences.getInstance();
+    await Future.wait([
+      if (audioQuality != null) preferences.setString(AppSettings._discoverAudioQualityKey, audioQuality),
+      if (resolverProfile != null) preferences.setString(AppSettings._discoverResolverProfileKey, resolverProfile),
+      if (region != null) preferences.setString(AppSettings._discoverRegionKey, region),
+    ]);
+  }
+
   Future<void> setDownloadDirectory(String? value) async {
     _downloadDirectory = value;
     _notifySettingsChanged();
@@ -83,7 +142,7 @@ extension AppSettingsMedia on AppSettings {
   }
 
   Future<void> setNowPlayingTheme(String theme) async {
-    if (!const {'apple', 'blur', 'blurCard', 'gradient'}.contains(theme)) {
+    if (!const {'apple', 'blur', 'blurCard', 'gradient', 'aether'}.contains(theme)) {
       throw ArgumentError.value(theme, 'theme');
     }
     if (_nowPlayingTheme == theme) return;

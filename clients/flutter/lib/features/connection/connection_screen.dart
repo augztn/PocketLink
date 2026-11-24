@@ -7,14 +7,20 @@ import 'package:dio/dio.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../../core/navigation/pocketlink_navigation.dart';
 import '../../core/network/server_api.dart';
+import '../../core/settings/app_settings.dart';
 import '../../core/logging/app_logger.dart';
 import '../diagnostics/diagnostics_screen.dart';
+import '../media/discover/discover_screen.dart';
 import '../home/home_screen.dart';
 import '../storage/local_storage_setup_screen.dart';
+import '../settings/settings_screen.dart';
 
 class ConnectionScreen extends StatefulWidget {
-  const ConnectionScreen({super.key});
+  const ConnectionScreen({super.key, this.autoConnect = true});
+
+  final bool autoConnect;
 
   @override
   State<ConnectionScreen> createState() => _ConnectionScreenState();
@@ -32,6 +38,8 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
   // This collection is mutated when servers are added, removed, or reordered.
   List<Map<String, String>> _profiles = <Map<String, String>>[];
   bool _isConnecting = false;
+  bool _isRestoringSession = true;
+  CancelToken? _authenticationCancelToken;
   String? _connectingProfileId;
   bool _obscurePassword = true;
   String? _message;
@@ -58,32 +66,50 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
         }).where((item) => item['id']!.isNotEmpty && item['address']!.isNotEmpty)
           .toList(growable: true);
       }
-    } catch (_) {
-      _profiles = [];
-    }
 
-    // Migrate the previous single-server credentials without losing them.
-    final saved = await _storage.read(key: 'last_server_address');
-    final username = await _storage.read(key: 'last_server_username') ?? 'admin';
-    final password = await _storage.read(key: 'last_server_password');
-    if (saved != null && password != null) {
-      final id = _profileId(saved, username);
-      if (!_profiles.any((profile) => profile['id'] == id)) {
-        _profiles.add({'id': id, 'address': saved, 'username': username});
-        await _storage.write(key: 'server_password_$id', value: password);
-        await _persistProfiles();
+      // Migrate the previous single-server credentials without losing them.
+      final saved = await _storage.read(key: 'last_server_address');
+      final username = await _storage.read(key: 'last_server_username') ?? 'admin';
+      final password = await _storage.read(key: 'last_server_password');
+      if (saved != null && password != null) {
+        final id = _profileId(saved, username);
+        if (!_profiles.any((profile) => profile['id'] == id)) {
+          _profiles.add({'id': id, 'address': saved, 'username': username});
+          await _storage.write(key: 'server_password_$id', value: password);
+          await _persistProfiles();
+        }
+      }
+
+      if (!mounted) return;
+      if (_profiles.isNotEmpty) {
+        // Prefer the last successfully connected server; fall back to the
+        // most recently used saved profile if legacy session data is absent.
+        var selectedProfile = _profiles.first;
+        for (final profile in _profiles) {
+          if (profile['address'] == saved && profile['username'] == username) {
+            selectedProfile = profile;
+            break;
+          }
+        }
+        await _selectProfile(selectedProfile, connect: false);
+        if (widget.autoConnect && _passwordController.text.isNotEmpty) {
+          await _connect(restoringSession: true);
+        }
+      } else if (saved != null) {
+        _applyAddress(saved);
+        _usernameController.text = username;
+        _passwordController.text = password ?? '';
+      }
+    } catch (error) {
+      await AppLogger.warning(
+        'Could not restore saved server session',
+        fields: {'error_type': error.runtimeType.toString()},
+      );
+    } finally {
+      if (mounted && _isRestoringSession) {
+        setState(() => _isRestoringSession = false);
       }
     }
-
-    if (!mounted) return;
-    if (_profiles.isNotEmpty) {
-      await _selectProfile(_profiles.first, connect: false);
-    } else if (saved != null) {
-      _applyAddress(saved);
-      _usernameController.text = username;
-      _passwordController.text = password ?? '';
-    }
-    if (mounted) setState(() {});
   }
 
   void _applyAddress(String address) {
@@ -159,6 +185,12 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     }
   }
 
+  void _cancelConnection() {
+    final cancelToken = _authenticationCancelToken;
+    if (cancelToken == null || cancelToken.isCancelled) return;
+    cancelToken.cancel('Connection cancelled by user.');
+  }
+
   Future<void> _removeProfile(Map<String, String> profile) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -180,12 +212,42 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     if (confirmed != true) return;
     _profiles.removeWhere((item) => item['id'] == profile['id']);
     await _storage.delete(key: 'server_password_${profile['id']}');
+    final lastAddress = await _storage.read(key: 'last_server_address');
+    final lastUsername = await _storage.read(key: 'last_server_username') ?? 'admin';
+    if (lastAddress == profile['address'] &&
+        lastUsername == profile['username']) {
+      await _storage.delete(key: 'last_server_address');
+      await _storage.delete(key: 'last_server_username');
+      await _storage.delete(key: 'last_server_password');
+    }
     await _persistProfiles();
     if (!mounted) return;
     setState(() {});
   }
 
-  Future<void> _connect() async {
+  Future<void> _openHost() async {
+    await Navigator.of(context).push(
+      PageRouteBuilder<void>(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            const LocalStorageSetupScreen(),
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: Duration.zero,
+      ),
+    );
+  }
+
+  Future<void> _openDiscover() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        settings: const RouteSettings(
+          name: PocketLinkRouteNames.standaloneDiscover,
+        ),
+        builder: (_) => const DiscoverScreen(),
+      ),
+    );
+  }
+
+  Future<void> _connect({bool restoringSession = false}) async {
     // Ignore repeated taps while an authentication or navigation attempt is active.
     if (_isConnecting) return;
     final host = _addressController.text.trim();
@@ -235,9 +297,10 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
 
     var authenticated = false;
     final authenticationCancelToken = CancelToken();
+    _authenticationCancelToken = authenticationCancelToken;
     try {
       await api.authenticate(cancelToken: authenticationCancelToken).timeout(
-        const Duration(seconds: 55),
+        Duration(seconds: restoringSession ? 20 : 55),
         onTimeout: () {
           authenticationCancelToken.cancel('Authentication deadline exceeded.');
           throw TimeoutException('Server authentication timed out.');
@@ -246,6 +309,16 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       await AppLogger.info('Server authentication succeeded', fields: {'host': host, 'port': port});
       authenticated = true;
     } on DioException catch (error) {
+      if (authenticationCancelToken.isCancelled ||
+          error.type == DioExceptionType.cancel) {
+        if (mounted) {
+          setState(() {
+            _message = 'Connection cancelled.';
+            _isConnecting = false;
+          });
+        }
+        return;
+      }
       await AppLogger.warning('Server authentication failed', fields: {'host': host, 'port': port, 'type': error.type.name, 'status': error.response?.statusCode});
       if (!mounted) return;
       final status = error.response?.statusCode;
@@ -286,6 +359,10 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       }
       return;
     } finally {
+      if (identical(_authenticationCancelToken, authenticationCancelToken)) {
+        _authenticationCancelToken = null;
+        if (mounted) setState(() {});
+      }
       if (!authenticated) api.close();
     }
 
@@ -335,7 +412,9 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       api.close();
       return;
     }
-    setState(() {});
+    setState(() {
+      if (restoringSession) _isRestoringSession = false;
+    });
     try {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
@@ -347,7 +426,9 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
             serverName: _serverNameController.text.trim(),
             onReturnToConnection: () {
               Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute<void>(builder: (_) => const ConnectionScreen()),
+                MaterialPageRoute<void>(
+                  builder: (_) => const ConnectionScreen(autoConnect: false),
+                ),
                 (route) => false,
               );
             },
@@ -407,6 +488,26 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
 
     final media = MediaQuery.of(context);
 
+    if (_isRestoringSession) {
+      return Scaffold(
+        body: SafeArea(
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(height: 16),
+                Text(
+                  'Connecting to your server…',
+                  style: theme.textTheme.bodyMedium,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       resizeToAvoidBottomInset: true,
       extendBodyBehindAppBar: true,
@@ -416,6 +517,27 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
         showHome: false,
         actions: [
           PocketLinkAppBarAction(
+            label: 'Settings',
+            icon: Icons.settings_outlined,
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const SettingsScreen(),
+              ),
+            ),
+          ),
+          PocketLinkAppBarAction(
+            label: 'Show Discover: ${AppSettings.instance.showDiscoverOnWelcome ? 'On' : 'Off'}',
+            icon: AppSettings.instance.showDiscoverOnWelcome
+                ? Icons.check_box_rounded
+                : Icons.check_box_outline_blank_rounded,
+            onPressed: () async {
+              await AppSettings.instance.setShowDiscoverOnWelcome(
+                !AppSettings.instance.showDiscoverOnWelcome,
+              );
+              if (mounted) setState(() {});
+            },
+          ),
+          PocketLinkAppBarAction(
             label: 'Diagnostics & logs',
             icon: Icons.bug_report_outlined,
             onPressed: () => Navigator.of(context).push(
@@ -424,13 +546,40 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
+      body: Column(
+        children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(20, media.padding.top + kToolbarHeight + 4, 20, 8),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 520),
+                child: SegmentedButton<String>(
+                  showSelectedIcon: false,
+                  segments: [
+                    const ButtonSegment(value: 'connect', label: Text('Connect')),
+                    const ButtonSegment(value: 'host', label: Text('Host')),
+                    if (AppSettings.instance.showDiscoverOnWelcome)
+                      const ButtonSegment(value: 'discover', label: Text('Discover')),
+                  ],
+                  selected: const {'connect'},
+                  onSelectionChanged: _isConnecting ? null : (selection) {
+                    switch (selection.first) {
+                      case 'host': unawaited(_openHost());
+                      case 'discover': unawaited(_openDiscover());
+                    }
+                  },
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         padding: EdgeInsets.fromLTRB(
           20,
-          media.padding.top + kToolbarHeight + 16,
+          8,
           20,
-          media.padding.bottom + 24,
+          24,
         ),
         child: Center(
           child: ConstrainedBox(
@@ -527,6 +676,8 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                 TextField(
                   controller: _serverNameController,
                   textCapitalization: TextCapitalization.words,
+                  scrollPadding: const EdgeInsets.only(bottom: 120),
+                  textInputAction: TextInputAction.next,
                   decoration: _inputDecoration(hint: 'Server name (optional)', icon: Icons.edit_location_alt_outlined),
                 ),
                 const SizedBox(height: 12),
@@ -537,6 +688,8 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                       child: TextField(
                         controller: _addressController,
                         keyboardType: TextInputType.url,
+                        scrollPadding: const EdgeInsets.only(bottom: 120),
+                        textInputAction: TextInputAction.next,
                         autocorrect: false,
                         decoration: _inputDecoration(
                           hint: 'Server address',
@@ -550,6 +703,8 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                       child: TextField(
                         controller: _portController,
                         keyboardType: TextInputType.number,
+                        scrollPadding: const EdgeInsets.only(bottom: 120),
+                        textInputAction: TextInputAction.next,
                         textAlign: TextAlign.start,
                         maxLength: 5,
                         buildCounter: (
@@ -570,12 +725,17 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                 TextField(
                   controller: _usernameController,
                   autocorrect: false,
+                  scrollPadding: const EdgeInsets.only(bottom: 120),
+                  textInputAction: TextInputAction.next,
                   decoration: _inputDecoration(hint: 'Username', icon: Icons.person_outline),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
+                  scrollPadding: const EdgeInsets.only(bottom: 120),
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => _connect(),
                   decoration: _inputDecoration(
                     hint: 'Password',
                     icon: Icons.lock_outline,
@@ -590,16 +750,32 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                   ),
                 ),
                 const SizedBox(height: 18),
-                FilledButton.icon(
-                  onPressed: _isConnecting ? null : _connect,
-                  icon: _isConnecting
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.link),
-                  label: Text(_isConnecting ? 'Connecting…' : 'Connect & save server'),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: _isConnecting ? null : _connect,
+                        icon: _isConnecting
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.link),
+                        label: Text(_isConnecting ? 'Connecting…' : 'Connect & save server'),
+                      ),
+                    ),
+                    if (_authenticationCancelToken != null) ...[
+                      const SizedBox(width: 10),
+                      OutlinedButton.icon(
+                        onPressed: _authenticationCancelToken!.isCancelled
+                            ? null
+                            : _cancelConnection,
+                        icon: const Icon(Icons.close),
+                        label: const Text('Cancel'),
+                      ),
+                    ],
+                  ],
                 ),
                 if (_message != null) ...[
                   const SizedBox(height: 14),
@@ -613,76 +789,6 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                   ),
                 ],
                 const SizedBox(height: 14),
-                Card(
-                  clipBehavior: Clip.antiAlias,
-                  margin: EdgeInsets.zero,
-                  color: colors.surfaceContainerLow.withValues(alpha: 0.76),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
-                    side: BorderSide(
-                      color: colors.outlineVariant.withValues(alpha: 0.52),
-                      width: 1,
-                    ),
-                  ),
-                  child: InkWell(
-                    onTap: _isConnecting
-                        ? null
-                        : () => Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => const LocalStorageSetupScreen(),
-                              ),
-                            ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: colors.primaryContainer,
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                            child: Icon(
-                              Icons.phone_android_rounded,
-                              color: colors.onPrimaryContainer,
-                              size: 25,
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Host PocketLink on this device',
-                                  style: theme.textTheme.titleSmall?.copyWith(
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Turn this phone into your server and configure storage access.',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: colors.onSurfaceVariant,
-                                    height: 1.35,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Icon(
-                            Icons.arrow_forward_ios_rounded,
-                            size: 16,
-                            color: colors.onSurfaceVariant,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 18),
                 Text(
                   'Saved passwords are kept in Android secure storage. Use HTTPS on untrusted networks.',
                   style: theme.textTheme.bodySmall,
@@ -692,6 +798,9 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
             ),
           ),
         ),
+            ),
+          ),
+        ],
       ),
     );
   }

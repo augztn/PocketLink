@@ -11,38 +11,36 @@ class DiagnosticNavigatorObserver extends NavigatorObserver {
   static final instance = DiagnosticNavigatorObserver._();
   final List<Route<dynamic>> _routes = [];
 
-  String _routeLabel(Route<dynamic>? route) =>
-      route == null ? 'none' : route.runtimeType.toString();
+  String _routeLabel(Route<dynamic>? route) {
+    if (route == null) return 'none';
+    final name = route.settings.name;
+    return name == null || name.isEmpty ? route.runtimeType.toString() : name;
+  }
+
+  void _recordNavigation(String action, Route<dynamic>? route, Route<dynamic>? related) {
+    AppLogger.event('navigation.$action', category: 'navigation', component: 'navigator',
+      fields: {'route_type': _routeLabel(route), 'related_route_type': _routeLabel(related),
+        'stack_depth': _routes.length});
+  }
 
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
     _routes.add(route);
-    AppLogger.info('Navigation route pushed', fields: {
-      'route': _routeLabel(route),
-      'previousRoute': _routeLabel(previousRoute),
-      'stackDepth': _routes.length,
-    });
+    _recordNavigation('push', route, previousRoute);
     super.didPush(route, previousRoute);
   }
 
   @override
   void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
     _routes.remove(route);
-    AppLogger.info('Navigation route popped', fields: {
-      'route': _routeLabel(route),
-      'revealedRoute': _routeLabel(previousRoute),
-      'stackDepth': _routes.length,
-    });
+    _recordNavigation('pop', route, previousRoute);
     super.didPop(route, previousRoute);
   }
 
   @override
   void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
     _routes.remove(route);
-    AppLogger.info('Navigation route removed', fields: {
-      'route': _routeLabel(route),
-      'stackDepth': _routes.length,
-    });
+    _recordNavigation('remove', route, previousRoute);
     super.didRemove(route, previousRoute);
   }
 
@@ -54,11 +52,7 @@ class DiagnosticNavigatorObserver extends NavigatorObserver {
     } else if (newRoute != null) {
       _routes.add(newRoute);
     }
-    AppLogger.info('Navigation route replaced', fields: {
-      'oldRoute': _routeLabel(oldRoute),
-      'newRoute': _routeLabel(newRoute),
-      'stackDepth': _routes.length,
-    });
+    _recordNavigation('replace', newRoute, oldRoute);
     super.didReplace(newRoute: newRoute, oldRoute: oldRoute);
   }
 }

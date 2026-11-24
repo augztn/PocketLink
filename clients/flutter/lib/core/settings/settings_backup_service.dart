@@ -31,6 +31,11 @@ class SettingsBackupService {
     'settings_now_playing_stats_for_nerds',
     'settings_home_search',
     'settings_home_transfers',
+    'settings_discover_enabled',
+    'settings_discover_local_lossless',
+    'settings_discover_lyrics',
+    'settings_discover_auto_queue',
+    'settings_discover_artwork',
   };
 
   static const _integerKeys = <String>{
@@ -39,7 +44,6 @@ class SettingsBackupService {
   };
 
   static const _numberKeys = <String>{
-    'settings_progressive_blur_strength',
     'settings_video_controls_timeout',
     'settings_video_default_speed',
     'settings_video_subtitle_font_size',
@@ -56,6 +60,9 @@ class SettingsBackupService {
     'settings_now_playing_theme',
     'settings_video_fit_mode',
     'settings_video_fullscreen_orientation',
+    'settings_discover_audio_quality',
+    'settings_discover_resolver_profile',
+    'settings_discover_region',
   };
 
   static Set<String> get _allowedKeys =>
@@ -65,7 +72,6 @@ class SettingsBackupService {
     if (_booleanKeys.contains(key)) return value is bool;
     if (key == 'settings_download_concurrency') return value is int && const {1, 2, 3, 5}.contains(value);
     if (key == 'settings_video_seek_seconds') return value is int && const {5, 10, 15, 30}.contains(value);
-    if (key == 'settings_progressive_blur_strength') return value is num && value.isFinite && value >= 0 && value <= 100;
     if (key == 'settings_video_controls_timeout') return value is num && const [0.0, 2.0, 3.0, 3.5, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0].contains(value);
 
     if (key == 'settings_video_subtitle_font_size') return value is double && value >= 14 && value <= 32;
@@ -85,6 +91,18 @@ class SettingsBackupService {
     if (key == 'settings_video_fit_mode') return const {'contain', 'cover', 'fill'}.contains(value);
     if (key == 'settings_video_fullscreen_orientation') {
       return const {'landscape', 'portrait', 'auto'}.contains(value);
+    }
+    if (key == 'settings_discover_audio_quality') {
+      return const {'best_available', 'balanced', 'data_saver'}.contains(value);
+    }
+    if (key == 'settings_discover_resolver_profile') {
+      return const {'automatic', 'newpipe_first', 'player_api_first'}.contains(value);
+    }
+    if (key == 'settings_discover_region') {
+      return const {
+        'IN', 'US', 'GB', 'CA', 'AU', 'JP', 'KR', 'DE', 'FR', 'BR',
+        'MX', 'ID', 'PH', 'SG', 'MY', 'TH', 'AE', 'SA', 'ZA', 'NG',
+      }.contains(value);
     }
 
     if (const {

@@ -11,23 +11,85 @@ void main() {
     await AppSettings.instance.reloadPreferences();
   });
 
-  test('appearance settings persist and validate through the facade', () async {
+  test('first-screen Discover visibility defaults on and persists', () async {
+    final settings = AppSettings.instance;
+    expect(settings.showDiscoverOnWelcome, isTrue);
+
+    await settings.setShowDiscoverOnWelcome(false);
+    expect(settings.showDiscoverOnWelcome, isFalse);
+    final preferences = await SharedPreferences.getInstance();
+    expect(preferences.getBool('settings_show_discover_on_welcome'), isFalse);
+
+    await settings.reloadPreferences();
+    expect(settings.showDiscoverOnWelcome, isFalse);
+    await settings.setShowDiscoverOnWelcome(true);
+    expect(settings.showDiscoverOnWelcome, isTrue);
+  });
+
+  test('Discover preferences persist and reload', () async {
+    final settings = AppSettings.instance;
+    await settings.setDiscoverOptions(
+      enabled: false,
+      localLossless: false,
+      lyrics: false,
+      autoQueue: false,
+      artwork: false,
+    );
+    await settings.setDiscoverPlaybackOptions(
+      audioQuality: 'data_saver',
+      resolverProfile: 'player_api_first',
+      region: 'JP',
+    );
+
+    final preferences = await SharedPreferences.getInstance();
+    expect(settings.discoverEnabled, isFalse);
+    expect(settings.discoverLocalLossless, isFalse);
+    expect(settings.discoverLyrics, isFalse);
+    expect(settings.discoverAutoQueue, isFalse);
+    expect(settings.discoverArtwork, isFalse);
+    expect(settings.discoverAudioQuality, 'data_saver');
+    expect(settings.discoverResolverProfile, 'player_api_first');
+    expect(settings.discoverRegion, 'JP');
+    expect(preferences.getBool('settings_discover_enabled'), isFalse);
+    expect(preferences.getString('settings_discover_audio_quality'), 'data_saver');
+    expect(preferences.getString('settings_discover_resolver_profile'), 'player_api_first');
+    expect(preferences.getString('settings_discover_region'), 'JP');
+
+    await settings.reloadPreferences();
+    expect(settings.discoverEnabled, isFalse);
+    expect(settings.discoverLocalLossless, isFalse);
+    expect(settings.discoverLyrics, isFalse);
+    expect(settings.discoverAutoQueue, isFalse);
+    expect(settings.discoverArtwork, isFalse);
+    expect(settings.discoverAudioQuality, 'data_saver');
+    expect(settings.discoverResolverProfile, 'player_api_first');
+    expect(settings.discoverRegion, 'JP');
+    await expectLater(
+      settings.setDiscoverPlaybackOptions(audioQuality: 'lossless'),
+      throwsArgumentError,
+    );
+    await expectLater(
+      settings.setDiscoverPlaybackOptions(resolverProfile: 'fake'),
+      throwsArgumentError,
+    );
+    await expectLater(
+      settings.setDiscoverPlaybackOptions(region: 'ZZ'),
+      throwsArgumentError,
+    );
+  });
+
+  test('Liquid Glass appearance preference persists', () async {
     final settings = AppSettings.instance;
 
     await settings.setUseLiquidGlass(true);
-    await settings.setProgressiveBlurEnabled(true);
-    await settings.setProgressiveBlurStrength(72.5);
 
     final preferences = await SharedPreferences.getInstance();
     expect(settings.useLiquidGlass, isTrue);
-    expect(settings.progressiveBlurEnabled, isTrue);
-    expect(settings.progressiveBlurStrength, 72.5);
     expect(preferences.getBool('settings_use_liquid_glass'), isTrue);
-    expect(preferences.getBool('settings_progressive_blur'), isTrue);
-    expect(preferences.getDouble('settings_progressive_blur_strength'), 72.5);
 
-    await expectLater(settings.setProgressiveBlurStrength(-1), throwsArgumentError);
-    await expectLater(settings.setProgressiveBlurStrength(double.nan), throwsArgumentError);
+    await settings.setUseLiquidGlass(false);
+    expect(settings.useLiquidGlass, isFalse);
+    expect(preferences.getBool('settings_use_liquid_glass'), isFalse);
   });
 
   test('media settings persist, validate and reset through the facade', () async {
@@ -36,7 +98,7 @@ void main() {
     await settings.setDownloadOptions(concurrency: 3, wifiOnly: true, autoResume: false);
     await settings.setNowPlayingOptions(miniPlayer: false, gestures: false, statsForNerds: false);
     await settings.setNowPlayingScrubberStyle('waveform');
-    await settings.setNowPlayingTheme('gradient');
+    await settings.setNowPlayingTheme('aether');
     await settings.setVideoPlayerOptions(
       controlsTimeoutSeconds: 5,
       seekSeconds: 15,
@@ -59,7 +121,7 @@ void main() {
     expect(settings.enableNowPlayingGestures, isFalse);
     expect(settings.showStatsForNerds, isFalse);
     expect(settings.nowPlayingScrubberStyle, 'waveform');
-    expect(settings.nowPlayingTheme, 'gradient');
+    expect(settings.nowPlayingTheme, 'aether');
     expect(settings.videoControlsTimeoutSeconds, 5);
     expect(settings.videoSeekSeconds, 15);
     expect(settings.videoDefaultSpeed, 1.5);
@@ -72,7 +134,7 @@ void main() {
     expect(settings.videoAutoFullscreen, isTrue);
     expect(settings.videoFullscreenOrientation, 'portrait');
     expect(preferences.getInt('settings_download_concurrency'), 3);
-    expect(preferences.getString('settings_now_playing_theme'), 'gradient');
+    expect(preferences.getString('settings_now_playing_theme'), 'aether');
     expect(preferences.getString('settings_video_fit_mode'), 'cover');
 
     await expectLater(settings.setDownloadOptions(concurrency: 4), throwsArgumentError);

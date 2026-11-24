@@ -16,6 +16,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/network/server_api.dart';
+import '../../core/logging/app_logger.dart';
 import '../../core/network/offline_file_cache.dart';
 import 'dart:io';
 import '../files/file_manager_screen.dart';
@@ -76,6 +77,7 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   void initState() {
     super.initState();
+    AppLogger.event('screen.opened', category: 'screen', component: 'search');
     _controller.addListener(_queryChanged);
     _loadHistory();
     _loadVolumes();
@@ -83,6 +85,8 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   void dispose() {
+    AppLogger.event('screen.closed', category: 'screen', component: 'search',
+      fields: {'results_count': _results.length, 'loading': _loading});
     _debounce?.cancel();
     _controller.removeListener(_queryChanged);
     _controller.dispose();
@@ -196,6 +200,8 @@ class _SearchScreenState extends State<SearchScreen> {
     if (_loading) return;
     final query = _controller.text.trim();
     final generation = ++_scanGeneration;
+    AppLogger.event('search.loading_started', category: 'search', component: 'search_screen',
+      fields: {'source': 'indexed', 'refresh': refresh, 'generation': generation});
     setState(() { _loading = true; _error = null; if (refresh) _results.clear(); });
     try {
       if (refresh) await widget.api.startMediaIndexScan();
@@ -237,14 +243,21 @@ class _SearchScreenState extends State<SearchScreen> {
       }
       if (mounted && generation == _scanGeneration) {
         setState(() { _scanned = status.isUsable; _loading = false; });
+        AppLogger.event('search.loading_completed', category: 'search', component: 'search_screen',
+          fields: {'source': 'indexed', 'results_count': _results.length, 'usable': status.isUsable});
         if (query.isNotEmpty) _saveHistory(query);
       }
-    } on DioException {
+    } on DioException catch (error) {
+      AppLogger.warning('Indexed search failed; using directory scan', category: 'search',
+        component: 'search_screen', fields: {'failure_type': error.type.name,
+          'status_code': error.response?.statusCode});
       if (generation == _scanGeneration) {
         if (mounted) setState(() => _loading = false);
         await _scanLegacy(refresh: true);
       }
-    } catch (_) {
+    } catch (error) {
+      AppLogger.warning('Indexed search failed; using directory scan', category: 'search',
+        component: 'search_screen', fields: {'failure_type': error.runtimeType.toString()});
       if (generation == _scanGeneration) {
         if (mounted) setState(() => _loading = false);
         await _scanLegacy(refresh: true);
@@ -265,6 +278,9 @@ class _SearchScreenState extends State<SearchScreen> {
 
     final generation = ++_scanGeneration;
     final isNewScan = refresh || !_scanInitialized;
+    AppLogger.event('search.loading_started', category: 'search', component: 'search_screen',
+      fields: {'source': 'directory_scan', 'refresh': refresh,
+        'continue_existing': continueExisting, 'generation': generation});
     if (isNewScan) {
       _scanInitialized = true;
       _scanTruncated = false;
@@ -359,20 +375,37 @@ class _SearchScreenState extends State<SearchScreen> {
             ..addAll(_allFound);
           _scanned = !_scanTruncated;
         });
+        AppLogger.event('search.loading_completed', category: 'search',
+          component: 'search_screen',
+          fields: {'source': 'directory_scan', 'results_count': _results.length,
+            'folders_scanned': _scannedFolders, 'truncated': _scanTruncated});
         if (!_scanTruncated && query.isNotEmpty) _saveHistory(query);
       }
     } on DioException catch (e) {
+      AppLogger.warning('Directory search failed', category: 'search',
+        component: 'search_screen',
+        fields: {'failure_type': e.type.name, 'status_code': e.response?.statusCode,
+          'folders_scanned': _scannedFolders});
       if (mounted && generation == _scanGeneration) {
         setState(() => _error = e.response?.statusCode == 401
             ? 'Login expired or credentials are incorrect.'
             : e.message ?? 'Could not search server storage. Check the connection and try again.');
       }
-    } catch (_) {
+    } catch (error) {
+      AppLogger.warning('Directory search failed', category: 'search',
+        component: 'search_screen',
+        fields: {'failure_type': error.runtimeType.toString(), 'folders_scanned': _scannedFolders});
       if (mounted && generation == _scanGeneration) {
         setState(() => _error = 'Could not search server storage.');
       }
     } finally {
-      if (mounted && generation == _scanGeneration) setState(() => _loading = false);
+      if (mounted && generation == _scanGeneration) {
+        setState(() => _loading = false);
+        AppLogger.event('search.loading_finished', category: 'search',
+          component: 'search_screen',
+          fields: {'source': 'directory_scan', 'results_count': _results.length,
+            'folders_scanned': _scannedFolders, 'loading': _loading});
+      }
     }
   }
 
@@ -628,6 +661,7 @@ class _SearchScreenState extends State<SearchScreen> {
       _quick == 'large' ? 'No files larger than 100 MB found.' : _quick == 'today' ? 'No files added today.' : 'No matching files found.',
       style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant))));
     return ListView.separated(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       shrinkWrap: shrink,
       physics: shrink ? const NeverScrollableScrollPhysics() : const AlwaysScrollableScrollPhysics(),
       padding: EdgeInsets.fromLTRB(12, topInset, 12, shrink ? 0 : LayoutInsetsScope.of(context).bottomClearance),
@@ -709,6 +743,7 @@ class _SearchScreenState extends State<SearchScreen> {
   );
 
   Widget _idle(ThemeData theme, {double topInset = 20}) => ListView(
+    keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
     padding: EdgeInsets.fromLTRB(16, topInset, 16, LayoutInsetsScope.of(context).bottomClearance),
     children: [
       if (_history.isNotEmpty) ...[
@@ -743,11 +778,18 @@ class _SearchScreenState extends State<SearchScreen> {
     final query = _controller.text.trim();
     final categories = const ['All','Files','Photos','Audio','Videos','Documents'];
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       extendBodyBehindAppBar: true,
       appBar: PocketLinkAppBar(
         feathered: true,
         showHome: false,
         automaticallyImplyLeading: false,
+        leading: IconButton(
+          tooltip: 'Back',
+          onPressed: () => Navigator.of(context).maybePop(),
+          icon: const Icon(Icons.arrow_back_rounded),
+        ),
+        leadingWidth: 56,
         title: const Text('Search'),
         actions: [
           PocketLinkAppBarAction(
@@ -782,6 +824,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 ? _resultsList(theme, topInset: contentTop)
                 : query.isEmpty
                     ? ListView(
+                        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                         padding: EdgeInsets.fromLTRB(0, contentTop, 0, LayoutInsetsScope.of(context).bottomClearance),
                         children: [_resultsList(theme, shrink: true, topInset: 0)],
                       )
@@ -807,6 +850,7 @@ class _SearchScreenState extends State<SearchScreen> {
                           height: 48,
                           child: TextField(
                             controller: _controller,
+                            scrollPadding: const EdgeInsets.only(bottom: 120),
                             textInputAction: TextInputAction.search,
                             onSubmitted: (_) { _debounce?.cancel(); _scan(); },
                             decoration: InputDecoration(

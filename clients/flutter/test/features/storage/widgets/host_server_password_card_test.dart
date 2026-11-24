@@ -25,12 +25,19 @@ void main() {
     expect(find.text('Native server password'), findsOneWidget);
     expect(find.text('Choose a password with at least 12 characters.'), findsOneWidget);
     expect(find.text('Save password'), findsOneWidget);
-    expect(tester.widget<TextField>(find.byType(TextField)).obscureText, isTrue);
+    final passwordField = tester.widget<TextField>(find.byType(TextField));
+    expect(passwordField.obscureText, isTrue);
+    expect(passwordField.scrollPadding, const EdgeInsets.only(bottom: 120));
+    expect(passwordField.textInputAction, TextInputAction.done);
 
     await tester.tap(find.byTooltip('Show password'));
     await tester.tap(find.text('Save password'));
     expect(visibilityToggles, 1);
     expect(saveCalls, 1);
+
+    await tester.tap(find.byType(TextField));
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    expect(saveCalls, 2);
   });
 
   testWidgets('shows configured state and disables editing while busy', (tester) async {

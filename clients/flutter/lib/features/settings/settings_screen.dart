@@ -9,16 +9,21 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/logging/app_logger.dart';
+import '../../core/network/server_api.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/settings/settings_backup_service.dart';
+import 'widgets/settings_components.dart';
 import 'navigation_customization_screen.dart';
 import 'now_playing_settings_screen.dart';
 import 'video_player_settings_screen.dart';
 import '../about/about_screen.dart';
 import '../downloads/download_manager_service.dart';
+import '../media/discover/imported_playlist_manager_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({this.onOpenSavedServers, this.category, super.key});
+  const SettingsScreen({this.api, this.onOpenSavedServers, this.category, super.key});
+
+  final ServerApi? api;
 
   final VoidCallback? onOpenSavedServers;
   final String? category;
@@ -33,6 +38,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _exportingLogs = false;
   bool _exportingSettings = false;
   bool _importingSettings = false;
+
+  Future<void> _openDiscoverPlaylists() async {
+    final api = widget.api;
+    if (api == null) {
+      _message('Connect to your PocketLink server to manage Discover playlists.');
+      return;
+    }
+    await Navigator.of(context).push<void>(MaterialPageRoute<void>(
+      builder: (_) => ImportedPlaylistManagerScreen(api: api),
+    ));
+  }
 
   Future<void> _chooseDownloadDirectory() async {
     try {
@@ -225,38 +241,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _section(String title, List<Widget> children) => Padding(
-    padding: const EdgeInsets.only(bottom: 18),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
-          child: Text(title.toUpperCase(), style: Theme.of(context).textTheme.labelMedium?.copyWith(
-            color: Theme.of(context).colorScheme.primary,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1,
-          )),
-        ),
-        Card(
-          margin: EdgeInsets.zero,
-          clipBehavior: Clip.antiAlias,
-          child: Column(children: children),
-        ),
-      ],
-    ),
-  );
-
-  Widget _settingsGroupTitle(String title) => Padding(
-        padding: const EdgeInsets.fromLTRB(4, 18, 4, 9),
-        child: Text(
-          title.toUpperCase(),
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: Theme.of(context).colorScheme.primary,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.1,
-              ),
+        padding: const EdgeInsets.only(bottom: 18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SettingsSectionHeader(title),
+            SettingsGroupCard(children: children),
+          ],
         ),
       );
+
+  Widget _settingsGroupTitle(String title) => SettingsSectionHeader(title);
+
+  String _pageTitle(String? category) => switch (category) {
+        'Appearance' => 'Appearance',
+        'Dashboard & Shortcuts' => 'Dashboard',
+        'Connection & Diagnostics' => 'Diagnostics',
+        'Music / Now Playing Button' => 'Music & Player',
+        'Customize Navigation Bar' => 'Navigation',
+        _ => category ?? 'Settings',
+      };
 
   // Diagnostic isolation: Settings category routes temporarily bypass the
   // app-wide custom PageTransitionsTheme. If the pop hesitation disappears,
@@ -287,6 +291,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               'appearance' => 'Appearance',
               'dashboard' => 'Dashboard & Shortcuts',
               'media' => 'Media & Storage',
+              'discover' => 'Discover',
               'backup' => 'Backup & Restore',
               _ => 'Connection & Diagnostics',
             },
@@ -406,7 +411,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (context, _) => Scaffold(
         extendBodyBehindAppBar: true,
         appBar: PocketLinkAppBar(
-          title: Text(widget.category ?? 'Settings'),
+          title: Text(_pageTitle(widget.category), style: const TextStyle(fontSize: 20)),
           actions: [
             PocketLinkAppBarAction(
               label: 'Return to Home',
@@ -420,14 +425,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         body: Builder(
           builder: (bodyContext) {
-            final bottomClearance =
-                LayoutInsetsScope.of(bodyContext).bottomClearance;
+            final layoutInsets = LayoutInsetsScope.of(bodyContext);
+            final bottomClearance = settingsListBottomPadding(
+              bodyContext,
+              miniPlayerVisible: layoutInsets.hasActiveMiniPlayer,
+            );
+            final topClearance = layoutInsets.topClearance;
             return Stack(
               children: [
                 ListView(
           padding: EdgeInsets.fromLTRB(
             16,
-            LayoutInsetsScope.of(bodyContext).topClearance,
+            topClearance,
             16,
             bottomClearance,
           ),
@@ -439,7 +448,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     icon: Icons.palette_rounded,
                     tint: const Color(0xFF8D72E8),
                     title: 'Appearance & Theme',
-                    subtitle: 'Themes, Liquid Glass and Progressive Blur controls',
+                    subtitle: 'Themes and Liquid Glass controls',
                     badge: _settings.themeMode == ThemeMode.dark
                         ? (_settings.amoled ? 'AMOLED' : 'Dark')
                         : _settings.themeMode == ThemeMode.light
@@ -469,6 +478,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title: 'Audio & Now Playing',
                     subtitle: 'Music button gestures, shortcuts and mini-player',
                     badge: _settings.showMiniPlayer ? 'Mini On' : 'Mini Off',
+                  ),
+                  _categoryTile(
+                    id: 'discover',
+                    icon: Icons.explore_rounded,
+                    tint: const Color(0xFFDB79A8),
+                    title: 'Discover',
+                    subtitle: 'YouTube Music, local lossless matching and lyrics',
                   ),
                   _categoryTile(
                     id: 'video',
@@ -580,56 +596,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                   ]),
-                if (widget.category == 'Appearance')
-                  _section('Glass & Visual Effects', [
-                    SwitchListTile(
-                      secondary: const Icon(Icons.gradient_rounded),
-                      title: const Text('Progressive Blur'),
-                      subtitle: const Text(
-                        'Blur scrolling content smoothly behind the status bar and floating headers',
-                      ),
-                      value: _settings.progressiveBlurEnabled,
-                      onChanged: _settings.setProgressiveBlurEnabled,
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Text(
-                                'Blur strength',
-                                style: Theme.of(context).textTheme.bodyMedium,
-                              ),
-                              const Spacer(),
-                              Text(
-                                '${_settings.progressiveBlurStrength.round()}%',
-                                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ),
-                          Slider(
-                            min: 0,
-                            max: 100,
-                            divisions: 20,
-                            value: _settings.progressiveBlurStrength,
-                            onChanged: _settings.progressiveBlurEnabled
-                                ? _settings.setProgressiveBlurStrength
-                                : null,
-                          ),
-                          Text(
-                            'Subtle at 0% · Strong at 100%',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ]),
                 if (widget.category == 'Dashboard & Shortcuts')
                   _section('Dashboard & Shortcuts', [
                     SwitchListTile(
@@ -677,6 +643,117 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       subtitle: const Text('Choose the order of dashboard sections'),
                       trailing: const Icon(Icons.chevron_right_rounded),
                       onTap: _customizeDashboardOrder,
+                    ),
+                  ]),
+                if (widget.category == 'Discover')
+                  _section('Discover Customisation', [
+                    SwitchListTile(
+                      secondary: const Icon(Icons.explore_rounded),
+                      title: const Text('Enable Discover'),
+                      subtitle: const Text('Show YouTube Music Discover in Explore'),
+                      value: _settings.discoverEnabled,
+                      onChanged: (value) => _settings.setDiscoverOptions(enabled: value),
+                    ),
+                    const Divider(height: 1),
+                    SwitchListTile(
+                      secondary: const Icon(Icons.high_quality_rounded),
+                      title: const Text('Local lossless matching'),
+                      subtitle: const Text('Prefer matching FLAC, ALAC, WAV and other lossless files'),
+                      value: _settings.discoverLocalLossless,
+                      onChanged: (value) => _settings.setDiscoverOptions(localLossless: value),
+                    ),
+                    const Divider(height: 1),
+                    SwitchListTile(
+                      secondary: const Icon(Icons.lyrics_rounded),
+                      title: const Text('Lyrics'),
+                      subtitle: const Text('Show synced or plain lyrics when available'),
+                      value: _settings.discoverLyrics,
+                      onChanged: (value) => _settings.setDiscoverOptions(lyrics: value),
+                    ),
+                    const Divider(height: 1),
+                    SwitchListTile(
+                      secondary: const Icon(Icons.queue_music_rounded),
+                      title: const Text('Auto-queue remaining results'),
+                      subtitle: const Text('Resolve the loaded Discover list progressively after playback starts'),
+                      value: _settings.discoverAutoQueue,
+                      onChanged: (value) => _settings.setDiscoverOptions(autoQueue: value),
+                    ),
+                    const Divider(height: 1),
+                    SwitchListTile(
+                      secondary: const Icon(Icons.image_outlined),
+                      title: const Text('Show artwork'),
+                      subtitle: const Text('Display YouTube Music thumbnails in Discover'),
+                      value: _settings.discoverArtwork,
+                      onChanged: (value) => _settings.setDiscoverOptions(artwork: value),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.graphic_eq_rounded),
+                      title: const Text('Audio quality'),
+                      subtitle: const Text('Balanced targets 160 kbps; Data saver targets 96 kbps when available.'),
+                      trailing: DropdownButton<String>(
+                        value: _settings.discoverAudioQuality,
+                        underline: const SizedBox.shrink(),
+                        items: const [
+                          DropdownMenuItem(value: 'best_available', child: Text('Best available')),
+                          DropdownMenuItem(value: 'balanced', child: Text('Balanced')),
+                          DropdownMenuItem(value: 'data_saver', child: Text('Data saver')),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            _settings.setDiscoverPlaybackOptions(audioQuality: value);
+                          }
+                        },
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.route_rounded),
+                      title: const Text('Resolver profile'),
+                      subtitle: const Text('Choose which stream resolver is tried first'),
+                      trailing: DropdownButton<String>(
+                        value: _settings.discoverResolverProfile,
+                        underline: const SizedBox.shrink(),
+                        items: const [
+                          DropdownMenuItem(value: 'automatic', child: Text('Automatic')),
+                          DropdownMenuItem(value: 'newpipe_first', child: Text('NewPipe first')),
+                          DropdownMenuItem(value: 'player_api_first', child: Text('Player API first')),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            _settings.setDiscoverPlaybackOptions(resolverProfile: value);
+                          }
+                        },
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.playlist_add_rounded),
+                      title: const Text('Import / export playlists'),
+                      subtitle: const Text('Import YouTube Music, Spotify, CSV or M3U playlists and export your Discover collection'),
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      onTap: _openDiscoverPlaylists,
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.public_rounded),
+                      title: const Text('Content region'),
+                      subtitle: const Text('Changes YouTube Music catalogue and playback region'),
+                      trailing: DropdownButton<String>(
+                        value: _settings.discoverRegion,
+                        underline: const SizedBox.shrink(),
+                        items: AppSettings.discoverRegions.entries
+                            .map((entry) => DropdownMenuItem(
+                                  value: entry.key,
+                                  child: Text(entry.value),
+                                ))
+                            .toList(growable: false),
+                        onChanged: (value) {
+                          if (value != null) {
+                            _settings.setDiscoverPlaybackOptions(region: value);
+                          }
+                        },
+                      ),
                     ),
                   ]),
                 if (widget.category == 'Media & Storage')

@@ -3,8 +3,138 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:pocketlink_client/core/navigation/pocketlink_navigation.dart';
 import 'package:pocketlink_client/features/home/navigation_dock.dart';
+import 'package:pocketlink_client/features/media/now_playing_overlay_controller.dart';
 
 void main() {
+  testWidgets(
+    'three navigation tabs are centered in equal slots with one active lens',
+    (tester) async {
+      for (var activeIndex = 0; activeIndex < 3; activeIndex++) {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              bottomNavigationBar: FloatingNavigationDock(
+                order: const ['home', 'explore', 'files'],
+                visibleItems: const {'home', 'explore', 'files'},
+                selectedIndex: activeIndex,
+                onSelect: (_) {},
+                onBrowsePressed: () {},
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final capsule = tester.getRect(
+          find.byKey(const ValueKey('navigation-dock-tabs-capsule')),
+        );
+        final lens = tester.getRect(
+          find.byKey(const ValueKey('navigation-dock-active-lens')),
+        );
+        expect(find.byType(BackdropFilter), findsOneWidget);
+
+        final innerWidth = capsule.width - 10;
+        final slotWidth = innerWidth / 3;
+        final expectedCenter =
+            capsule.left + 5 + (activeIndex + 0.5) * slotWidth;
+        final activeLabel = tester.getCenter(
+          find.text(['Home', 'Explore', 'Files'][activeIndex]),
+        );
+
+        expect(activeLabel.dx, closeTo(expectedCenter, 0.5));
+        expect(lens.center.dx, closeTo(expectedCenter, 0.5));
+        expect(lens.width, closeTo(slotWidth, 0.5));
+        expect(
+          find.byKey(const ValueKey('navigation-dock-active-lens')),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: find.byKey(const ValueKey('navigation-dock-tabs-capsule')),
+            matching: find.byType(AnimatedContainer),
+          ),
+          findsNothing,
+        );
+      }
+    },
+  );
+
+  testWidgets(
+    'navigation dock follows the shared Now Playing expansion progress',
+    (tester) async {
+      final controller = AnimationController(
+        vsync: const TestVSync(),
+        duration: const Duration(milliseconds: 380),
+      );
+      NowPlayingOverlayController.expandProgress = controller;
+      var selections = 0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            bottomNavigationBar: FloatingNavigationDock(
+              order: const ['home', 'explore', 'files'],
+              visibleItems: const {'home', 'explore', 'files'},
+              selectedIndex: 0,
+              onSelect: (_) => selections++,
+              onBrowsePressed: () {},
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final capsule = find.byKey(
+        const ValueKey('navigation-dock-tabs-capsule'),
+      );
+      final dockedTop = tester.getTopLeft(capsule).dy;
+
+      controller.value = 0.45;
+      await tester.pump();
+      final hiddenTop = tester.getTopLeft(capsule).dy;
+      expect(hiddenTop - dockedTop, closeTo(82, 0.5));
+
+      await tester.tap(find.text('Explore'), warnIfMissed: false);
+      expect(selections, 0);
+
+      controller.value = 0;
+      await tester.pump();
+      expect(tester.getTopLeft(capsule).dy, closeTo(dockedTop, 0.5));
+
+      NowPlayingOverlayController.expandProgress = null;
+      controller.dispose();
+    },
+  );
+
+  testWidgets('Discover search keeps Music button and mini-player dock lane while hiding tabs', (tester) async {
+    PocketLinkNavigation.discoverSearchVisible.value = true;
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        bottomNavigationBar: FloatingNavigationDock(
+          order: const ['home', 'browse', 'explore', 'files'],
+          visibleItems: const {'home', 'browse', 'explore', 'files'},
+          selectedIndex: 1,
+          onSelect: (_) {},
+          onBrowsePressed: () {},
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('navigation-dock-tabs-capsule')), findsNothing);
+    expect(find.byKey(PocketLinkNavigation.musicButtonKey), findsOneWidget);
+    expect(tester.getCenter(find.byKey(PocketLinkNavigation.musicButtonKey)).dx,
+        greaterThan(tester.getSize(find.byType(Scaffold)).width / 2));
+
+    PocketLinkNavigation.discoverSearchVisible.value = false;
+    await tester.pumpAndSettle();
+    // The Music button separates the left and right navigation tab groups.
+    expect(find.byKey(const ValueKey('navigation-dock-tabs-capsule')), findsNWidgets(2));
+    expect(find.text('Home'), findsOneWidget);
+    expect(find.text('Explore'), findsOneWidget);
+    expect(find.text('Files'), findsOneWidget);
+  });
+
   testWidgets('expanded shortcuts dismiss from Music button without an X icon', (tester) async {
     var opens = 0;
     var dismisses = 0;

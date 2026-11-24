@@ -1166,7 +1166,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
           physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.fromLTRB(
             18,
-            LayoutInsetsScope.of(context).topClearance + 2,
+            LayoutInsetsScope.of(context).topClearance,
             18,
             LayoutInsetsScope.of(context).bottomClearance,
           ),

@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../../core/logging/app_logger.dart';
+
 /// App-scoped Files navigation and presentation state, isolated per server.
 class FileBrowserStateStore extends ChangeNotifier {
   final Map<String, FileBrowserState> _states = {};
@@ -8,6 +10,10 @@ class FileBrowserStateStore extends ChangeNotifier {
       _states.putIfAbsent(serverKey, FileBrowserState.new);
 
   void update(String serverKey, FileBrowserState state) {
+    AppLogger.event('files.browser_state_updated', category: 'files',
+      component: 'file_browser_state',
+      fields: {'has_selected_volume': state.selectedVolume != null,
+        'category': state.category, 'sort_by': state.sortBy, 'grid_view': state.gridView});
     _states[serverKey] = state;
     notifyListeners();
   }

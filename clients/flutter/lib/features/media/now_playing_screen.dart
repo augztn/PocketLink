@@ -20,18 +20,26 @@ import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
 import '../storage/storage_browser_screen.dart';
 import 'now_playing_scrubber.dart';
+import 'now_playing_scroll_dismiss_detector.dart';
 import 'persistent_audio_player.dart';
 import 'now_playing_artwork_palette.dart';
+import 'discover/discover_thumbnail_cache.dart';
 import 'widgets/media_info_row.dart';
 import 'track_options_sheet.dart';
 import '../downloads/download_manager_service.dart';
+import 'lyrics/lyrics_repository.dart';
+import 'lyrics/lyrics_viewport.dart';
 
 class NowPlayingScreen extends StatefulWidget {
   const NowPlayingScreen({
-    required this.api,
+    this.api,
     required this.queue,
     this.initialIndex = 0,
     this.resumeExisting = false,
+    this.morphAnimation,
+    this.useSharedArtwork = false,
+    this.artworkTargetKey,
+    this.onArtworkChanged,
     required this.onDismiss,
     required this.onDismissDragStart,
     required this.onDismissDragUpdate,
@@ -39,7 +47,7 @@ class NowPlayingScreen extends StatefulWidget {
     super.key,
   });
 
-  final ServerApi api;
+  final ServerApi? api;
   final VoidCallback onDismiss;
   final VoidCallback onDismissDragStart;
   final ValueChanged<double> onDismissDragUpdate;
@@ -47,12 +55,16 @@ class NowPlayingScreen extends StatefulWidget {
   final List<MediaQueueItem> queue;
   final int initialIndex;
   final bool resumeExisting;
+  final Animation<double>? morphAnimation;
+  final bool useSharedArtwork;
+  final GlobalKey? artworkTargetKey;
+  final ValueChanged<Uint8List?>? onArtworkChanged;
 
   @override
   State<NowPlayingScreen> createState() => _NowPlayingScreenState();
 }
 
-class _NowPlayingScreenState extends State<NowPlayingScreen> {
+class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerProviderStateMixin {
   static const _secureStorage = FlutterSecureStorage();
 
   late final PersistentAudioPlayer _persistent;
@@ -65,22 +77,36 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   bool _cached = false;
   Set<String> _favorites = <String>{};
   double _trackSwipeDistance = 0;
+  late final AnimationController _lyricsController;
+  final LyricsRepository _lyricsRepository = LyricsRepository();
+  Map<String, LyricsProviderResult> _lyricsProviderStates = const {};
+  LyricsDocument? _activeLyrics;
+  String? _lyricsQueryKey;
+  bool _lyricsLoading = false;
+  bool _lyricsTranslationEnabled = false;
+  String? _observedTrackIdentity;
+  final GlobalKey _lyricsViewportKey = GlobalKey();
 
 
   MediaQueueItem get _track =>
       _persistent.currentItem ??
       widget.queue[widget.initialIndex.clamp(0, widget.queue.length - 1).toInt()];
 
-  String get _trackKey =>
-      '${widget.api.baseUrl}|${_track.volume ?? 'internal'}:${_track.path}';
+  String get _trackIdentity =>
+      (widget.api?.baseUrl ?? 'discover') + '|' + _track.stableTrackId;
+
+  String get _trackKey => _trackIdentity;
+
+  bool get _usesSharedArtwork =>
+      widget.useSharedArtwork && (widget.morphAnimation?.value ?? 1.0) < 0.999;
 
   String get _favoriteId => '${_track.volume ?? 'internal'}:${_track.path}';
 
   String get _favoriteStorageKey =>
-      'pocketlink.music.favorites.${Uri.encodeComponent(widget.api.baseUrl)}';
+      'pocketlink.music.favorites.${Uri.encodeComponent(widget.api?.baseUrl ?? 'discover')}';
 
   String get _legacyFavoriteStorageKey =>
-      'homeserver.music.favorites.${Uri.encodeComponent(widget.api.baseUrl)}';
+      'homeserver.music.favorites.${Uri.encodeComponent(widget.api?.baseUrl ?? 'discover')}';
 
   bool get _isFavorite => _favorites.contains(_favoriteId);
 
@@ -155,6 +181,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                 opacity: 0.34,
                 child: Image.memory(
                   _artwork!,
+                  cacheWidth: 544,
                   fit: BoxFit.cover,
                   gaplessPlayback: true,
                 ),
@@ -181,8 +208,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   @override
   void initState() {
     super.initState();
+    _lyricsController = AnimationController(vsync: this, duration: const Duration(milliseconds: 350), reverseDuration: const Duration(milliseconds: 350));
+    unawaited(_loadLyricsPreference());
     _persistent = PersistentAudioPlayer.instance;
     _player = _persistent.player;
+    _observedTrackIdentity = _trackIdentity;
     unawaited(AppLogger.info('Now Playing screen initialized', fields: {
       'queueLength': widget.queue.length,
       'initialIndex': widget.initialIndex,
@@ -257,8 +287,13 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   }
 
   Future<void> _refreshCacheStatus() async {
+    final api = widget.api;
+    if (api == null || _track.streamUrl != null || _track.localPath != null) {
+      if (mounted) setState(() => _cached = false);
+      return;
+    }
     final cached = await OfflineFileCache().find(
-      OfflineFileCache().serverId(widget.api),
+      OfflineFileCache().serverId(api),
       _track.volume,
       _track.path,
     );
@@ -267,36 +302,86 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
 
   Future<void> _onTrackChanged() async {
     if (!mounted) return;
+    final identity = _trackIdentity;
+    if (identity == _observedTrackIdentity) {
+      // Playlist snapshots can be emitted for decoder/metadata changes.
+      // Preserve artwork, palette, and lyrics while the same song is active.
+      if (_artwork == null && (_track.artworkUrl?.trim().isNotEmpty ?? false)) {
+        unawaited(_loadArtwork());
+      }
+      return;
+    }
+
+    _observedTrackIdentity = identity;
     setState(() {
       _artwork = null;
       _artworkKey = null;
       _artworkPalette = null;
+      _lyricsQueryKey = null;
+      _activeLyrics = null;
+      _lyricsProviderStates = const {};
+      _lyricsLoading = false;
     });
+    widget.onArtworkChanged?.call(null);
     await Future.wait([
       _refreshCacheStatus(),
       _loadArtwork(),
     ]);
+    if (_lyricsController.value > 0.5) await _loadTrackLyrics();
   }
 
   Future<void> _loadArtwork() async {
     final request = ++_artworkRequest;
     final key = _trackKey;
+    if (_track.localPath == null && (_track.artworkUrl?.isNotEmpty ?? false)) {
+      try {
+        final bytes = await DiscoverThumbnailCache.load(
+          DiscoverThumbnailCache.urlForSize(_track.artworkUrl!, 544),
+        );
+        if (!mounted || request != _artworkRequest) return;
+        if (bytes != null && bytes.isNotEmpty) {
+          final palette = await NowPlayingArtworkPalette.extract(bytes);
+          if (!mounted || request != _artworkRequest) return;
+          setState(() {
+            _artwork = bytes;
+            _artworkKey = key;
+            _artworkPalette = palette;
+          });
+          widget.onArtworkChanged?.call(bytes);
+          return;
+        }
+      } catch (_) {
+        // Continue to server folder artwork when a remote thumbnail is unavailable.
+      }
+    }
+
     if (_track.localPath != null || _folder.isEmpty) {
       if (mounted) setState(() {
         _artwork = null;
         _artworkKey = key;
         _artworkPalette = null;
       });
+      widget.onArtworkChanged?.call(null);
       return;
     }
 
     // PocketLink currently exposes raw files, not embedded-artwork metadata.
     // Use an existing folder cover file when present; otherwise show the
     // compact artwork fallback rather than a blank full-height region.
+    final api = widget.api;
+    if (api == null) {
+      if (mounted && request == _artworkRequest) setState(() {
+        _artwork = null;
+        _artworkKey = key;
+        _artworkPalette = null;
+      });
+      widget.onArtworkChanged?.call(null);
+      return;
+    }
     try {
       final listing = _track.volume == null
-          ? await widget.api.listDirectory(_folder)
-          : await widget.api.listStorageDirectory(_track.volume!, _folder);
+          ? await api.listDirectory(_folder)
+          : await api.listStorageDirectory(_track.volume!, _folder);
       const candidates = {
         'cover.jpg', 'cover.jpeg', 'cover.png', 'cover.webp',
         'folder.jpg', 'folder.png', 'album.jpg', 'album.png', 'front.jpg',
@@ -311,8 +396,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
       if (cover != null) {
         final path = '$_folder/${cover.name}';
         final bytes = _track.volume == null
-            ? await widget.api.downloadFile(path)
-            : await widget.api.downloadStorageFile(_track.volume!, path);
+            ? await api.downloadFile(path)
+            : await api.downloadStorageFile(_track.volume!, path);
         if (!mounted || request != _artworkRequest) return;
         if (bytes.isNotEmpty) {
           final palette = await NowPlayingArtworkPalette.extract(bytes);
@@ -322,6 +407,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             _artworkKey = key;
             _artworkPalette = palette;
           });
+          widget.onArtworkChanged?.call(bytes);
           return;
         }
       }
@@ -334,6 +420,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
         _artworkKey = key;
         _artworkPalette = null;
       });
+      widget.onArtworkChanged?.call(null);
     }
   }
 
@@ -366,8 +453,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
         await _chooseSleepTimer();
         break;
       case TrackOptionAction.removeFromCache:
+        final api = widget.api;
+        if (api == null) break;
         await OfflineFileCache().remove(
-          OfflineFileCache().serverId(widget.api),
+          OfflineFileCache().serverId(api),
           _track.volume,
           _track.path,
         );
@@ -381,9 +470,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     if (_track.localPath != null) {
       return File(_track.localPath!).readAsBytes();
     }
+    final api = widget.api;
+    if (api == null) throw StateError('This Discover stream is not a server file.');
     final bytes = _track.volume == null
-        ? await widget.api.downloadFile(_track.path)
-        : await widget.api.downloadStorageFile(_track.volume!, _track.path);
+        ? await api.downloadFile(_track.path)
+        : await api.downloadStorageFile(_track.volume!, _track.path);
     if (bytes.isEmpty) throw StateError('The server returned an empty file.');
     return bytes;
   }
@@ -393,9 +484,14 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
       _message('This track is already stored on this device.');
       return;
     }
+    final api = widget.api;
+    if (api == null) {
+      _message('Downloads are unavailable for Discover streams.');
+      return;
+    }
     try {
       await DownloadManagerService.instance.enqueueServerFile(
-        api: widget.api,
+        api: api,
         name: _track.path.split('/').last,
         sourcePath: _track.path,
         volume: _track.volume,
@@ -430,10 +526,12 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
         return null;
       }
     }
+    final api = widget.api;
+    if (api == null) return null;
     try {
       final listing = _track.volume == null
-          ? await widget.api.listDirectory(_folder)
-          : await widget.api.listStorageDirectory(_track.volume!, _folder);
+          ? await api.listDirectory(_folder)
+          : await api.listStorageDirectory(_track.volume!, _folder);
       final name = _track.path.split('/').last;
       for (final entry in listing.items) {
         if (!entry.isDirectory && entry.name == name) return entry.size;
@@ -519,14 +617,19 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   }
 
   void _showInFolder() {
+    final api = widget.api;
+    if (api == null) {
+      _message('Discover tracks do not have a server folder.');
+      return;
+    }
     if (_track.volume == null) {
       Navigator.of(context).push(MaterialPageRoute<void>(
-        builder: (_) => FileManagerScreen(api: widget.api, initialPath: _folder),
+        builder: (_) => FileManagerScreen(api: api, initialPath: _folder),
       ));
     } else {
       Navigator.of(context).push(MaterialPageRoute<void>(
         builder: (_) => StorageBrowserScreen(
-          api: widget.api,
+          api: api,
           initialVolume: _track.volume,
           initialPath: _folder,
         ),
@@ -606,15 +709,31 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
       context,
       isFavorite: _isFavorite,
       isCached: _cached,
+      serverActionsEnabled: widget.api != null,
       onAction: (action) => unawaited(_runOption(action)),
     );
   }
 
   void _showStatsForNerds() {
+    final playerTheme = AppSettings.instance.nowPlayingTheme;
+    final palette = _trackPalette;
+    final surfaceColor = switch (playerTheme) {
+      'blur' => const Color(0xFF201C2B),
+      'blurCard' => const Color(0xFF25202F),
+      'gradient' => const Color(0xFF171923),
+      'aether' => Color.alphaBlend(
+          palette[1].withValues(alpha: 0.34),
+          const Color(0xFF17151F),
+        ),
+      _ => const Color(0xFF1C1C1E),
+    };
+    final accentColor = playerTheme == 'aether'
+        ? palette[0]
+        : Theme.of(context).colorScheme.primary;
     showModalBottomSheet<void>(
       context: context,
       useRootNavigator: true,
-      backgroundColor: const Color(0xFF1C1C1E),
+      backgroundColor: surfaceColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -630,16 +749,16 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                   width: 36,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.white24,
+                    color: accentColor.withValues(alpha: 0.42),
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
               ),
               const SizedBox(height: 18),
-              const Row(
+              Row(
                 children: [
-                  Icon(Icons.query_stats_rounded, color: Color(0xFFD8C9FF)),
-                  SizedBox(width: 10),
+                  Icon(Icons.query_stats_rounded, color: accentColor),
+                  const SizedBox(width: 10),
                   Text(
                     'Stats for nerds',
                     style: TextStyle(
@@ -753,52 +872,125 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     return '${value.toStringAsFixed(1)} ${units[unit]}';
   }
 
-  Widget _header() => SizedBox(
+  Widget _header({double contentOpacity = 1}) => SizedBox(
     height: 64,
     child: Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(children: [
-        _roundAction(icon: Icons.keyboard_arrow_down_rounded, tooltip: 'Minimize player',
-          onTap: widget.onDismiss),
-        const SizedBox(width: 12),
-        Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Container(width: 34, height: 4, decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.42), borderRadius: BorderRadius.circular(99))),
-          const SizedBox(height: 7),
-          Text('PLAYING FROM ${_folderName.toUpperCase()}', textAlign: TextAlign.center,
-            maxLines: 1, overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: Colors.white54, fontSize: 10, letterSpacing: 1.2, fontWeight: FontWeight.w700)),
-        ])),
-        const SizedBox(width: 12),
-        SizedBox(width: 38, height: 38, child: LiquidGlassPill(
-          radius: BorderRadius.circular(19),
-          child: SmokedGlassPopoverMenu<String>(
-            tooltip: 'Quick destinations',
-            items: [
-              const SmokedGlassPopoverMenuItem(value: 'home', label: 'Home', icon: Icons.home_outlined),
-              const SmokedGlassPopoverMenuItem(value: 'queue', label: 'Queue', icon: Icons.queue_music_rounded),
-              if (AppSettings.instance.showStatsForNerds)
-                const SmokedGlassPopoverMenuItem(value: 'stats', label: 'Stats for nerds', icon: Icons.query_stats_rounded),
-              const SmokedGlassPopoverMenuItem(value: 'download', label: 'Download track', icon: Icons.download_rounded, dividerBefore: true),
-              const SmokedGlassPopoverMenuItem(value: 'track_options', label: 'Track options', icon: Icons.more_horiz_rounded),
-            ],
-            onSelected: (value) {
-              switch (value) {
-                case 'home': PocketLinkAppBar.goToDashboard(context); break;
-                case 'stats': _showStatsForNerds(); break;
-                case 'download': unawaited(_downloadTrack()); break;
-                case 'track_options': _showOptions(); break;
-                case 'queue': _showQueue(); break;
-              }
-            },
-            child: const SizedBox(
-              width: 38,
-              height: 38,
-              child: Icon(Icons.more_vert_rounded, color: Colors.white, size: 19),
+      child: Row(
+        children: [
+          _roundAction(
+            icon: Icons.keyboard_arrow_down_rounded,
+            tooltip: 'Minimize player',
+            onTap: widget.onDismiss,
+            contentOpacity: contentOpacity,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Opacity(
+              opacity: contentOpacity,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 34,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.42),
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                  ),
+                  const SizedBox(height: 7),
+                  Text(
+                    'PLAYING FROM ${_track.sourceLabel.toUpperCase()}',
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white54,
+                      fontSize: 10,
+                      letterSpacing: 1.2,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        )),
-      ]),
+          const SizedBox(width: 12),
+          SizedBox(
+            width: 38,
+            height: 38,
+            child: LiquidGlassPill(
+              radius: BorderRadius.circular(19),
+              intensity: contentOpacity,
+              child: Opacity(
+                opacity: contentOpacity,
+                child: SmokedGlassPopoverMenu<String>(
+                  tooltip: 'Quick destinations',
+                  items: [
+                    const SmokedGlassPopoverMenuItem(
+                      value: 'home',
+                      label: 'Home',
+                      icon: Icons.home_outlined,
+                    ),
+                    const SmokedGlassPopoverMenuItem(
+                      value: 'queue',
+                      label: 'Queue',
+                      icon: Icons.queue_music_rounded,
+                    ),
+                    if (AppSettings.instance.showStatsForNerds)
+                      const SmokedGlassPopoverMenuItem(
+                        value: 'stats',
+                        label: 'Stats for nerds',
+                        icon: Icons.query_stats_rounded,
+                      ),
+                    if (widget.api != null)
+                      const SmokedGlassPopoverMenuItem(
+                        value: 'download',
+                        label: 'Download track',
+                        icon: Icons.download_rounded,
+                        dividerBefore: true,
+                      ),
+                    const SmokedGlassPopoverMenuItem(
+                      value: 'track_options',
+                      label: 'Track options',
+                      icon: Icons.more_horiz_rounded,
+                    ),
+                  ],
+                  onSelected: (value) {
+                    switch (value) {
+                      case 'home':
+                        PocketLinkAppBar.goToDashboard(context);
+                        break;
+                      case 'stats':
+                        _showStatsForNerds();
+                        break;
+                      case 'download':
+                        unawaited(_downloadTrack());
+                        break;
+                      case 'track_options':
+                        _showOptions();
+                        break;
+                      case 'queue':
+                        _showQueue();
+                        break;
+                    }
+                  },
+                  child: const SizedBox(
+                    width: 38,
+                    height: 38,
+                    child: Icon(
+                      Icons.more_vert_rounded,
+                      color: Colors.white,
+                      size: 19,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     ),
   );
 
@@ -811,6 +1003,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
         final height = (constraints.maxHeight - 18).clamp(0.0, 380.0).toDouble();
         final dimension = math.min(width, height).clamp(0.0, 360.0).toDouble();
         return Container(
+          key: widget.artworkTargetKey,
           width: dimension,
           height: dimension,
           decoration: BoxDecoration(
@@ -831,8 +1024,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             ],
           ),
           clipBehavior: Clip.antiAlias,
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 360),
+          child: _usesSharedArtwork
+              ? const SizedBox.expand()
+              : AnimatedSwitcher(
+            duration: Duration.zero,
+            reverseDuration: Duration.zero,
             switchInCurve: Curves.easeOutCubic,
             switchOutCurve: Curves.easeInCubic,
             transitionBuilder: (child, animation) => FadeTransition(
@@ -849,6 +1045,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                     children: [
                       Image.memory(
                         _artwork!,
+                        cacheWidth: 544,
                         fit: BoxFit.cover,
                         gaplessPlayback: true,
                       ),
@@ -866,7 +1063,29 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                       ),
                     ],
                   )
-                : DecoratedBox(
+                : (_track.artworkUrl?.isNotEmpty ?? false)
+                    ? DiscoverThumbnail(
+                        key: ValueKey('music-artwork-url:${_track.artworkUrl}'),
+                        url: DiscoverThumbnailCache.urlForSize(_track.artworkUrl!, 544),
+                        cacheWidth: 544,
+                        fallback: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                palette[0].withValues(alpha: 0.92),
+                                palette[1].withValues(alpha: 0.78),
+                                palette[2],
+                              ],
+                            ),
+                          ),
+                          child: const Center(
+                            child: Icon(Icons.music_note_rounded, size: 92, color: Colors.white),
+                          ),
+                        ),
+                      )
+                    : DecoratedBox(
                     key: const ValueKey('music-artwork-fallback'),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -898,13 +1117,17 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     required String tooltip,
     required VoidCallback onTap,
     Color foreground = Colors.white,
+    double contentOpacity = 1,
   }) {
     return SizedBox(
       width: 40,
       height: 40,
       child: LiquidGlassPill(
         radius: BorderRadius.circular(20),
-        child: IconButton(
+        intensity: contentOpacity,
+        child: Opacity(
+          opacity: contentOpacity,
+          child: IconButton(
           tooltip: tooltip,
           onPressed: onTap,
           padding: EdgeInsets.zero,
@@ -916,6 +1139,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             foregroundColor: foreground,
           ),
           icon: Icon(icon),
+          ),
         ),
       ),
     );
@@ -973,7 +1197,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
         initialData: _player.state.duration,
         builder: (context, durationSnapshot) {
           final playing = playingSnapshot.data ?? false;
-          final loading = (bufferingSnapshot.data ?? false) ||
+          final loading = _persistent.isSelectionLoading ||
+              (bufferingSnapshot.data ?? false) ||
               (durationSnapshot.data ?? Duration.zero) <= Duration.zero;
           final hasMultiple = _persistent.queue.length > 1;
           return Row(
@@ -993,7 +1218,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                   tooltip: playing ? 'Pause' : 'Play',
                   icon: playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
                   size: 48,
-                  enabled: true,
+                  enabled: !loading,
                   onTap: _player.playOrPause,
                 ),
               ),
@@ -1062,14 +1287,223 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     ],
   );
 
-  Widget _trackMetadata() {
+  Future<void> _showTrackLyrics() async {
+    if (_lyricsController.value > 0.5) { await _lyricsController.reverse(); return; }
+    unawaited(_lyricsController.forward());
+    await _loadTrackLyrics();
+  }
+
+  Future<void> _loadLyricsPreference() async {
+    try {
+      final value = await _secureStorage.read(key: 'pocketlink.lyrics.translation.enabled');
+      if (mounted) setState(() => _lyricsTranslationEnabled = value == 'true');
+    } catch (_) {}
+  }
+
+  Future<void> _loadTrackLyrics() async {
+    final query = LyricsTrackQuery(track: _track, api: widget.api);
+    if (_lyricsQueryKey == query.key &&
+        (_lyricsLoading || _activeLyrics != null || _lyricsProviderStates.isNotEmpty)) {
+      return;
+    }
+
+    setState(() {
+      _lyricsQueryKey = query.key;
+      _lyricsLoading = true;
+      _activeLyrics = _lyricsRepository.current(query.key);
+      _lyricsProviderStates = _lyricsRepository.resultsFor(query.key);
+      if (_lyricsProviderStates.isEmpty) {
+        _lyricsProviderStates = {
+          for (final provider in _lyricsRepository.providers)
+            provider.id: const LyricsProviderResult(LyricsLookupStatus.loading),
+        };
+      }
+    });
+    try {
+      final states = await _lyricsRepository.lookup(query, onUpdate: (next) {
+        if (!mounted || _lyricsQueryKey != query.key) return;
+        final active = _lyricsRepository.current(query.key);
+        setState(() {
+          _lyricsProviderStates = next;
+          if (active != null) _activeLyrics = active;
+        });
+      });
+      if (!mounted || _lyricsQueryKey != query.key) return;
+      setState(() {
+        _lyricsProviderStates = states;
+        _activeLyrics = _lyricsRepository.current(query.key);
+        _lyricsLoading = false;
+      });
+    } catch (_) {
+      if (mounted && _lyricsQueryKey == query.key) {
+        setState(() => _lyricsLoading = false);
+        _message('Could not load lyrics from available providers.');
+      }
+    }
+  }
+
+  Future<void> _chooseLyricsProvider() async {
+    final key = _lyricsQueryKey;
+    if (key == null) return;
+    final selected = await showLyricsProviderSheet(
+      context,
+      providers: _lyricsRepository.providers,
+      results: _lyricsProviderStates,
+      activeProvider: _activeLyrics?.providerId,
+    );
+    if (selected == null || !mounted) return;
+    final document = _lyricsRepository.select(key, selected);
+    if (document != null) setState(() => _activeLyrics = document);
+  }
+
+  Future<void> _toggleLyricsTranslation() async {
+    final next = !_lyricsTranslationEnabled;
+    setState(() => _lyricsTranslationEnabled = next);
+    try {
+      await _secureStorage.write(key: 'pocketlink.lyrics.translation.enabled', value: next.toString());
+    } catch (_) {
+      if (mounted) _message('Could not save the lyrics display preference.');
+    }
+    if (mounted) _message(next
+        ? 'Translation is enabled when a translated lyric source is available.'
+        : 'Original lyrics displayed.');
+  }
+
+  Widget _lyricsArtwork(double progress) {
+    final hasArtwork = _artwork != null && _artworkKey == _trackKey;
+    final palette = _trackPalette;
+    return ClipRRect(
+      borderRadius: BorderRadius.lerp(
+        BorderRadius.circular(26),
+        BorderRadius.circular(10),
+        progress,
+      )!,
+      child: hasArtwork
+          ? Image.memory(_artwork!, cacheWidth: 544, fit: BoxFit.cover, gaplessPlayback: true)
+          : DecoratedBox(
+              decoration: BoxDecoration(gradient: LinearGradient(colors: [palette[0], palette[1], palette[2]])),
+              child: const Center(child: Icon(Icons.music_note_rounded, color: Colors.white, size: 34)),
+            ),
+    );
+  }
+
+  Widget _lyricsMode(String theme, double progress) {
+    return IgnorePointer(
+      ignoring: progress < 0.02,
+      child: Opacity(
+        opacity: progress,
+        child: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final width = constraints.maxWidth;
+              final height = constraints.maxHeight;
+              final artSize = theme == 'gradient'
+                  ? width
+                  : math.min(320.0, width - 44).clamp(180.0, 320.0).toDouble();
+              final startRect = theme == 'gradient'
+                  ? Rect.fromLTWH(0, 0, width, height * 0.55)
+                  : Rect.fromLTWH((width - artSize) / 2, height * 0.10, artSize, artSize);
+              // SafeArea owns the status-bar inset; keep compact art in the
+              // same header row as the title and track actions.
+              const compactArtRect = Rect.fromLTWH(12, 3, 48, 48);
+              final artRect = Rect.lerp(startRect, compactArtRect, progress)!;
+              return Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Positioned.fromRect(
+                    rect: artRect,
+                    child: GestureDetector(
+                      onTap: () => unawaited(_showTrackLyrics()),
+                      child: _lyricsArtwork(progress),
+                    ),
+                  ),
+                  Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(left: 68, right: 12),
+                        child: SizedBox(
+                          height: 54,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(_fileName, maxLines: 1, overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700)),
+                                    Text(_track.artist ?? _folderName, maxLines: 1, overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(color: Colors.white60, fontSize: 12)),
+                                  ],
+                                ),
+                              ),
+                              _roundAction(icon: _isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
+                                tooltip: 'Favorite', foreground: _isFavorite ? const Color(0xFFFFD66B) : Colors.white,
+                                onTap: () => unawaited(_toggleFavorite()), contentOpacity: progress),
+                              const SizedBox(width: 6),
+                              _roundAction(icon: Icons.more_horiz_rounded, tooltip: 'Track options',
+                                onTap: _showOptions, contentOpacity: progress),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: StreamBuilder<Duration>(
+                          stream: _player.stream.position,
+                          initialData: _player.state.position,
+                          builder: (context, snapshot) => LyricsViewport(
+                            key: _lyricsViewportKey,
+                            document: _activeLyrics,
+                            position: snapshot.data ?? Duration.zero,
+                            loading: _lyricsLoading,
+                            results: _lyricsProviderStates,
+                            providers: _lyricsRepository.providers,
+                            onSeek: (position) => unawaited(_player.seek(position)),
+                            onChooseProvider: _chooseLyricsProvider,
+                            onToggleTranslation: _toggleLyricsTranslation,
+                            translationEnabled: _lyricsTranslationEnabled,
+                          ),
+                        ),
+                      ),
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: _chooseLyricsProvider,
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Text(
+                            'Lyrics by ' + (_activeLyrics?.providerName ?? (_lyricsLoading ? 'Searching' : 'Unavailable')),
+                            style: const TextStyle(color: Colors.white70, fontSize: 12,
+                              decoration: TextDecoration.underline, decorationColor: Colors.white54),
+                          ),
+                        ),
+                      ),
+                      Padding(padding: const EdgeInsets.symmetric(horizontal: 22), child: _timeline()),
+                      const SizedBox(height: 10),
+                      Padding(padding: const EdgeInsets.symmetric(horizontal: 22), child: _transport()),
+                      const SizedBox(height: 6),
+                      _bottomUtilities(),
+                      const SizedBox(height: 8),
+                    ],
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _trackMetadata({double contentOpacity = 1}) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(22, 8, 22, 0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
-            child: Column(
+            child: Opacity(
+              opacity: contentOpacity,
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -1095,7 +1529,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                         stream: _player.stream.duration,
                         initialData: _player.state.duration,
                         builder: (context, durationSnapshot) {
-                          final loading =
+                          final loading = _persistent.isSelectionLoading ||
                               (bufferingSnapshot.data ?? false) ||
                               (durationSnapshot.data ?? Duration.zero) <=
                                   Duration.zero;
@@ -1130,15 +1564,26 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  _folderName,
+                  _track.sourceLabel,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(color: Colors.white54, fontSize: 13),
                 ),
               ],
             ),
+            ),
           ),
           const SizedBox(width: 10),
+          if (AppSettings.instance.discoverLyrics) ...[
+            _roundAction(
+              icon: Icons.lyrics_rounded,
+              tooltip: 'Lyrics',
+              onTap: () => unawaited(_showTrackLyrics()),
+              foreground: _lyricsController.value > 0.5 ? Colors.white : Colors.white54,
+              contentOpacity: contentOpacity,
+            ),
+            const SizedBox(width: 8),
+          ],
           _roundAction(
             icon: _isFavorite
                 ? Icons.star_rounded
@@ -1148,29 +1593,42 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                 ? const Color(0xFFFFD66B)
                 : Colors.white,
             onTap: () => unawaited(_toggleFavorite()),
+            contentOpacity: contentOpacity,
           ),
         ],
       ),
     );
   }
 
-  Widget _playerDetails({bool glassCard = false}) {
+  Widget _playerDetails({
+    bool glassCard = false,
+    double contentOpacity = 1,
+  }) {
     final content = Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _trackMetadata(),
+        _trackMetadata(contentOpacity: contentOpacity),
         const SizedBox(height: 16),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 22),
-          child: _timeline(),
+        Opacity(
+          opacity: contentOpacity,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 22),
+            child: _timeline(),
+          ),
         ),
         const SizedBox(height: 14),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 22),
-          child: _transport(),
+        Opacity(
+          opacity: contentOpacity,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 22),
+            child: _transport(),
+          ),
         ),
         const SizedBox(height: 8),
-        _bottomUtilities(),
+        Opacity(
+          opacity: contentOpacity,
+          child: _bottomUtilities(),
+        ),
         const SizedBox(height: 2),
         const Text(
           'This device',
@@ -1182,6 +1640,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     if (!glassCard) return content;
     return SmokedGlassSurface(
       radius: BorderRadius.circular(28),
+      intensity: contentOpacity,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(0, 12, 0, 4),
         child: content,
@@ -1189,9 +1648,55 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     );
   }
 
-  Widget _themeBackground(String theme) {
+  Widget _themeBackground(String theme, {double lyricsProgress = 0}) {
     final palette = _trackPalette;
     final hasArtwork = _artwork != null && _artworkKey == _trackKey;
+    if (theme == 'aether') {
+      return AnimatedContainer(
+        duration: const Duration(milliseconds: 700),
+        curve: Curves.easeInOut,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color.lerp(palette[0], Colors.white, 0.08)!,
+              Color.lerp(palette[1], palette[0], 0.28)!,
+              Color.lerp(palette[2], Colors.black, 0.42)!,
+              const Color(0xFF090910),
+            ],
+            stops: const [0, 0.36, 0.72, 1],
+          ),
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (hasArtwork)
+              ImageFiltered(
+                imageFilter: ui.ImageFilter.blur(sigmaX: 44, sigmaY: 44),
+                child: Opacity(
+                  opacity: 0.52,
+                  child: Image.memory(_artwork!, cacheWidth: 544, fit: BoxFit.cover, gaplessPlayback: true),
+                ),
+              ),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    palette[0].withValues(alpha: 0.22),
+                    palette[1].withValues(alpha: 0.34),
+                    Colors.black.withValues(alpha: 0.82),
+                  ],
+                  stops: const [0, 0.48, 1],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     if (theme == 'blur' || theme == 'blurCard') {
       return Stack(
         fit: StackFit.expand,
@@ -1206,10 +1711,14 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             ),
           ),
           if (hasArtwork)
-            Image.memory(
-              _artwork!,
-              fit: BoxFit.cover,
-              gaplessPlayback: true,
+            Opacity(
+              opacity: 1 - lyricsProgress,
+              child: Image.memory(
+                _artwork!,
+                cacheWidth: 544,
+                fit: BoxFit.cover,
+                gaplessPlayback: true,
+              ),
             ),
           if (hasArtwork)
             Positioned.fill(
@@ -1256,23 +1765,37 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             ),
           ),
           if (hasArtwork)
+            Positioned.fill(
+              child: ImageFiltered(
+                imageFilter: ui.ImageFilter.blur(sigmaX: 44, sigmaY: 44),
+                child: Opacity(
+                  opacity: 0.20,
+                  child: Image.memory(_artwork!, cacheWidth: 544, fit: BoxFit.cover, gaplessPlayback: true),
+                ),
+              ),
+            ),
+          if (hasArtwork && !_usesSharedArtwork)
             Positioned(
               top: 0,
               left: 0,
               right: 0,
               height: MediaQuery.sizeOf(context).height * 0.64,
-              child: ShaderMask(
-                blendMode: BlendMode.dstIn,
-                shaderCallback: (bounds) => const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Colors.white, Colors.white, Colors.transparent],
-                  stops: [0, 0.56, 1],
-                ).createShader(bounds),
-                child: Image.memory(
-                  _artwork!,
-                  fit: BoxFit.cover,
-                  gaplessPlayback: true,
+              child: Opacity(
+                opacity: 1 - lyricsProgress,
+                child: ShaderMask(
+                  blendMode: BlendMode.dstIn,
+                  shaderCallback: (bounds) => const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Colors.white, Colors.white, Colors.transparent],
+                    stops: [0, 0.56, 1],
+                  ).createShader(bounds),
+                  child: Image.memory(
+                    _artwork!,
+                    cacheWidth: 544,
+                    fit: BoxFit.cover,
+                    gaplessPlayback: true,
+                  ),
                 ),
               ),
             ),
@@ -1282,11 +1805,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     return _ambientBackground();
   }
 
-  Widget _themeLayout(String theme) {
+  Widget _themeLayout(String theme, double contentOpacity) {
     if (theme == 'blur') {
       return Column(
         children: [
-          _header(),
+          _header(contentOpacity: contentOpacity),
           Expanded(
             flex: 3,
             child: Center(
@@ -1299,10 +1822,16 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
           ),
           Expanded(
             flex: 4,
-            child: SingleChildScrollView(
+            child: NowPlayingScrollDismissDetector(
+              enabled: AppSettings.instance.enableNowPlayingGestures,
+              onDismissDragStart: widget.onDismissDragStart,
+              onDismissDragUpdate: widget.onDismissDragUpdate,
+              onDismissDragEnd: widget.onDismissDragEnd,
+              child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
-              child: _playerDetails(),
+              child: _playerDetails(contentOpacity: contentOpacity),
             ),
+              ),
           ),
         ],
       );
@@ -1311,7 +1840,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     if (theme == 'blurCard') {
       return Column(
         children: [
-          _header(),
+          _header(contentOpacity: contentOpacity),
           Expanded(
             flex: 2,
             child: Center(
@@ -1324,11 +1853,54 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
           ),
           Expanded(
             flex: 4,
-            child: SingleChildScrollView(
+            child: NowPlayingScrollDismissDetector(
+              enabled: AppSettings.instance.enableNowPlayingGestures,
+              onDismissDragStart: widget.onDismissDragStart,
+              onDismissDragUpdate: widget.onDismissDragUpdate,
+              onDismissDragEnd: widget.onDismissDragEnd,
+              child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
-              child: _playerDetails(glassCard: true),
+              child: _playerDetails(
+                glassCard: true,
+                contentOpacity: contentOpacity,
+              ),
             ),
+              ),
+          ),
+        ],
+      );
+    }
+
+    if (theme == 'aether') {
+      return Column(
+        children: [
+          _header(contentOpacity: contentOpacity),
+          Expanded(
+            flex: 5,
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                child: _artworkCard(),
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 4,
+            child: NowPlayingScrollDismissDetector(
+              enabled: AppSettings.instance.enableNowPlayingGestures,
+              onDismissDragStart: widget.onDismissDragStart,
+              onDismissDragUpdate: widget.onDismissDragUpdate,
+              onDismissDragEnd: widget.onDismissDragEnd,
+              child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
+              child: _playerDetails(
+                glassCard: true,
+                contentOpacity: contentOpacity,
+              ),
+            ),
+              ),
           ),
         ],
       );
@@ -1337,9 +1909,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     if (theme == 'gradient') {
       return Column(
         children: [
-          _header(),
+          _header(contentOpacity: contentOpacity),
           const Expanded(child: SizedBox.expand()),
-          _playerDetails(),
+          _playerDetails(contentOpacity: contentOpacity),
         ],
       );
     }
@@ -1347,21 +1919,31 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     // Apple Glass remains the default layout.
     return Column(
       children: [
-        _header(),
+        _header(contentOpacity: contentOpacity),
         Expanded(
           child: Center(child: _artworkCard()),
         ),
-        _playerDetails(),
+        _playerDetails(contentOpacity: contentOpacity),
       ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final animation = widget.morphAnimation;
+    final listenables = <Listenable>[AppSettings.instance, _lyricsController];
+    if (animation != null) listenables.add(animation);
     return AnimatedBuilder(
-      animation: AppSettings.instance,
+      animation: Listenable.merge(listenables),
       builder: (context, _) {
         final theme = AppSettings.instance.nowPlayingTheme;
+        final progress = animation?.value ?? 1.0;
+        final contentOpacity = const Interval(
+          0.55,
+          1.0,
+          curve: Curves.easeOutCubic,
+        ).transform(progress);
+        final lyricsProgress = Curves.easeOutCubic.transform(_lyricsController.value);
         return Scaffold(
           backgroundColor: const Color(0xFF0A0B0E),
           body: Stack(
@@ -1370,9 +1952,16 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
               const Positioned.fill(
                 child: ColoredBox(color: Color(0xFF0A0B0E)),
               ),
-              Positioned.fill(child: _themeBackground(theme)),
               Positioned.fill(
-                child: GestureDetector(
+                child: _themeBackground(theme, lyricsProgress: lyricsProgress),
+              ),
+              Positioned.fill(
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Opacity(
+                      opacity: 1 - lyricsProgress,
+                      child: GestureDetector(
                   behavior: HitTestBehavior.translucent,
                   onVerticalDragStart: AppSettings.instance.enableNowPlayingGestures
                       ? (_) => widget.onDismissDragStart()
@@ -1405,8 +1994,24 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                         }
                       : null,
                   child: SafeArea(
-                    child: _themeLayout(theme),
+                    child: Transform.translate(
+                      offset: Offset(0, 12 * (1 - contentOpacity)),
+                      child: _themeLayout(theme, contentOpacity),
+                    ),
                   ),
+                    ),
+                    ),
+                    Positioned.fill(
+                      child: NowPlayingScrollDismissDetector(
+                        enabled: AppSettings.instance.enableNowPlayingGestures,
+                        onDismissDragStart: widget.onDismissDragStart,
+                        onDismissDragUpdate: widget.onDismissDragUpdate,
+                        onDismissDragEnd: widget.onDismissDragEnd,
+                        scrollableKey: _lyricsViewportKey,
+                        child: _lyricsMode(theme, lyricsProgress),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -1419,6 +2024,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   @override
   void dispose() {
     unawaited(_playlistSubscription?.cancel());
+    _lyricsController.dispose();
     super.dispose();
   }
 }

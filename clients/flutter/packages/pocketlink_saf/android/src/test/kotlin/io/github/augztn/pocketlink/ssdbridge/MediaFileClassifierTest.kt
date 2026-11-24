@@ -15,6 +15,14 @@ class MediaFileClassifierTest {
     }
 
     @Test
+    fun classifiesAdditionalLosslessAudioFormats() {
+        listOf("alac", "aiff", "aif", "wv", "ape", "dsf", "dff").forEach { extension ->
+            assertEquals("music", MediaFileClassifier.categoryFor("track.$extension", "application/octet-stream"))
+        }
+        assertEquals("music", MediaFileClassifier.categoryFor("track.aiff", "audio/aiff"))
+    }
+
+    @Test
     fun classifiesPhotoAndCameraRawExtensionsIndependentlyOfMime() {
         assertEquals("photo", MediaFileClassifier.categoryFor("cover.heic", "image/heic"))
         assertEquals("photo", MediaFileClassifier.categoryFor("camera.dng", "application/octet-stream"))

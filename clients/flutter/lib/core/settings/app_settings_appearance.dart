@@ -26,33 +26,4 @@ extension AppSettingsAppearance on AppSettings {
     await preferences.setBool(AppSettings._liquidGlassKey, value);
   }
 
-  Future<void> setProgressiveBlurEnabled(bool value) async {
-    _progressiveBlurEnabled = value;
-    _notifySettingsChanged();
-    final snapshot = value;
-    final write = _progressiveBlurWrite.catchError((_) {}).then((_) async {
-      final preferences = await SharedPreferences.getInstance();
-      await preferences.setBool(AppSettings._progressiveBlurKey, snapshot);
-    });
-    _progressiveBlurWrite = write;
-    await write;
-  }
-
-  Future<void> setProgressiveBlurStrength(double value) async {
-    if (!value.isFinite || value < 0 || value > 100) {
-      throw ArgumentError.value(value, 'value', 'Must be between 0 and 100');
-    }
-    if (_progressiveBlurStrength == value) return;
-    _progressiveBlurStrength = value;
-    _notifySettingsChanged();
-    final snapshot = value;
-    final write = _progressiveBlurWrite.catchError((_) {}).then((_) async {
-      final preferences = await SharedPreferences.getInstance();
-      await preferences.setDouble(AppSettings._progressiveBlurStrengthKey, snapshot);
-    });
-    _progressiveBlurWrite = write;
-    await write;
-  }
-
-
 }

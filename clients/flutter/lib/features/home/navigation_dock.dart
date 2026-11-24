@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../core/navigation/pocketlink_navigation.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
+import '../media/now_playing_overlay_controller.dart';
 
 class FloatingNavigationDock extends StatelessWidget {
   const FloatingNavigationDock({
@@ -17,6 +18,7 @@ class FloatingNavigationDock extends StatelessWidget {
     this.hasMedia = false,
     this.isVideo = false,
     this.preview = false,
+    this.showNavigationTabs = true,
     this.musicShortcutsExpanded = false,
     this.onMusicShortcutLongPress,
     this.onMusicShortcutDismissed,
@@ -34,6 +36,7 @@ class FloatingNavigationDock extends StatelessWidget {
   final bool hasMedia;
   final bool isVideo;
   final bool preview;
+  final bool showNavigationTabs;
   final bool musicShortcutsExpanded;
   final VoidCallback? onMusicShortcutLongPress;
   final VoidCallback? onMusicShortcutDismissed;
@@ -53,7 +56,42 @@ class FloatingNavigationDock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeItems = order.where(visibleItems.contains).toList(growable: false);
+    final progress = preview ? null : NowPlayingOverlayController.expandProgress;
+    return ValueListenableBuilder<bool>(
+      valueListenable: PocketLinkNavigation.discoverSearchVisible,
+      builder: (context, searchVisible, _) {
+        final showTabs = showNavigationTabs && !searchVisible;
+        if (progress == null) {
+          return _buildDock(context, 0, showNavigationTabs: showTabs);
+        }
+        return AnimatedBuilder(
+          animation: progress,
+          builder: (context, _) {
+            final value = progress.value.clamp(0.0, 1.0).toDouble();
+            final dockT = (value / 0.45).clamp(0.0, 1.0).toDouble();
+            final dockTotalHeight = 82.0 + MediaQuery.paddingOf(context).bottom;
+            return IgnorePointer(
+              ignoring: value > 0.05,
+              child: Transform.translate(
+                offset: Offset(0, dockTotalHeight * dockT),
+                child: _buildDock(context, dockT, showNavigationTabs: showTabs),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildDock(
+    BuildContext context,
+    double dockT, {
+    required bool showNavigationTabs,
+  }) {
+    final activeItems = order
+        .where((id) => visibleItems.contains(id) &&
+            (showNavigationTabs || id == 'browse'))
+        .toList(growable: false);
     final segments = <Widget>[];
     var tabGroup = <String>[];
 
@@ -65,32 +103,80 @@ class FloatingNavigationDock extends StatelessWidget {
           child: LiquidGlassPill(
             radius: BorderRadius.circular(32),
             refractive: true,
+            intensity: 1.0 - dockT,
             child: Padding(
+              key: const ValueKey('navigation-dock-tabs-capsule'),
               padding: const EdgeInsets.all(5),
               child: SizedBox(
                 height: 54,
-                child: Row(
-                  children: [
-                  for (final id in ids)
-                    Expanded(
-                      child: _DockTab(
-                        index: _indices[id]!,
-                        selectedIndex: selectedIndex,
-                        icon: switch (id) {
-                          'home' => Icons.home_outlined,
-                          'explore' => Icons.explore_outlined,
-                          _ => Icons.folder_outlined,
-                        },
-                        activeIcon: switch (id) {
-                          'home' => Icons.home_rounded,
-                          'explore' => Icons.explore_rounded,
-                          _ => Icons.folder_rounded,
-                        },
-                        label: _labels[id]!,
-                        onTap: onSelect,
-                      ),
-                    ),
-                  ],
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final innerWidth = constraints.maxWidth;
+                    final slotWidth = innerWidth / ids.length;
+                    final activeIndex = ids.indexWhere(
+                      (id) => _indices[id] == selectedIndex,
+                    );
+
+                    return Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        if (activeIndex >= 0)
+                          AnimatedPositioned(
+                            duration: const Duration(milliseconds: 260),
+                            curve: Curves.easeOutCubic,
+                            left: activeIndex * slotWidth,
+                            top: 0,
+                            bottom: 0,
+                            width: slotWidth,
+                            child: SizedBox.expand(
+                              key: const ValueKey('navigation-dock-active-lens'),
+                              child: Padding(
+                                padding: const EdgeInsets.all(4),
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).brightness ==
+                                            Brightness.dark
+                                        ? Colors.white.withValues(alpha: 0.15)
+                                        : Colors.black.withValues(alpha: 0.08),
+                                    borderRadius: BorderRadius.circular(25),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        Row(
+                          mainAxisSize: MainAxisSize.max,
+                          children: [
+                            for (final id in ids)
+                              Expanded(
+                                child: Center(
+                                  child: SizedBox(
+                                    width: slotWidth,
+                                    child: _DockTab(
+                                      key: ValueKey('navigation-dock-tab-$id'),
+                                      index: _indices[id]!,
+                                      selectedIndex: selectedIndex,
+                                      icon: switch (id) {
+                                        'home' => Icons.home_outlined,
+                                        'explore' => Icons.explore_outlined,
+                                        _ => Icons.folder_outlined,
+                                      },
+                                      activeIcon: switch (id) {
+                                        'home' => Icons.home_rounded,
+                                        'explore' => Icons.explore_rounded,
+                                        _ => Icons.folder_rounded,
+                                      },
+                                      label: _labels[id]!,
+                                      onTap: onSelect,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
             ),
@@ -114,6 +200,7 @@ class FloatingNavigationDock extends StatelessWidget {
                  Positioned.fill(
                   child: _MusicDockButton(
                     preview: preview,
+                    glassIntensity: 1.0 - dockT,
                     isPlaying: isPlaying,
                     hasMedia: hasMedia,
                     isVideo: isVideo,
@@ -137,6 +224,9 @@ class FloatingNavigationDock extends StatelessWidget {
     addTabGroup();
 
     final content = Row(
+      mainAxisAlignment: showNavigationTabs
+          ? MainAxisAlignment.start
+          : MainAxisAlignment.end,
       children: [
         for (var index = 0; index < segments.length; index++) ...[
           if (index > 0) const SizedBox(width: 10),
@@ -164,6 +254,7 @@ class FloatingNavigationDock extends StatelessWidget {
 class _MusicDockButton extends StatefulWidget {
   const _MusicDockButton({
     required this.preview,
+    required this.glassIntensity,
     required this.isPlaying,
     required this.hasMedia,
     required this.isVideo,
@@ -175,6 +266,7 @@ class _MusicDockButton extends StatefulWidget {
   });
 
   final bool preview;
+  final double glassIntensity;
   final bool isPlaying;
   final bool hasMedia;
   final bool isVideo;
@@ -284,6 +376,7 @@ class _MusicDockButtonState extends State<_MusicDockButton> {
           child: LiquidGlassPill(
             radius: BorderRadius.circular(32),
             refractive: true,
+            intensity: widget.glassIntensity,
             child: Material(
               color: Colors.transparent,
               shape: const CircleBorder(),
@@ -384,6 +477,7 @@ class _DockTab extends StatelessWidget {
     required this.activeIcon,
     required this.label,
     required this.onTap,
+    super.key,
   });
 
   final int index;
@@ -392,9 +486,12 @@ class _DockTab extends StatelessWidget {
   final IconData activeIcon;
   final String label;
   final ValueChanged<int> onTap;
+
   @override
   Widget build(BuildContext context) {
     final selected = selectedIndex == index;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Semantics(
       button: true,
       selected: selected,
@@ -402,55 +499,16 @@ class _DockTab extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(26),
+          borderRadius: BorderRadius.circular(25),
           onTap: () => onTap(index),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOutCubic,
-            margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-            decoration: BoxDecoration(
-              gradient: selected
-                  ? (Theme.of(context).brightness == Brightness.dark
-                      ? LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.white.withValues(alpha: 0.14),
-                            Colors.white.withValues(alpha: 0.07),
-                          ],
-                        )
-                      : LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Color.alphaBlend(
-                              const Color(0x1A536DFE),
-                              Colors.white.withValues(alpha: 0.90),
-                            ),
-                            Color.alphaBlend(
-                              const Color(0x1A536DFE),
-                              Colors.white.withValues(alpha: 0.90),
-                            ),
-                          ],
-                        ))
-                  : null,
-              borderRadius: BorderRadius.circular(25),
-              border: selected
-                  ? Border.all(
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white.withValues(alpha: 0.22)
-                          : const Color(0xFF536DFE)
-                              .withValues(alpha: 0.25),
-                    )
-                  : null,
-            ),
+          child: SizedBox.expand(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
                   selected ? activeIcon : icon,
                   size: 21,
-                  color: Theme.of(context).brightness == Brightness.dark
+                  color: isDark
                       ? Colors.white.withValues(alpha: selected ? 1 : 0.65)
                       : selected
                           ? const Color(0xFF4355E8)
@@ -463,8 +521,9 @@ class _DockTab extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         fontSize: 10,
-                        fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                        color: Theme.of(context).brightness == Brightness.dark
+                        fontWeight:
+                            selected ? FontWeight.w800 : FontWeight.w600,
+                        color: isDark
                             ? Colors.white.withValues(alpha: selected ? 1 : 0.65)
                             : selected
                                 ? const Color(0xFF4355E8)

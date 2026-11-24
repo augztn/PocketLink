@@ -227,7 +227,9 @@ internal class MediaIndexScanner(
     }
 
     fun retryFailedScan() {
-        if (running.get()) return
+        // requestScan coalesces a retry if the previous scan is still unwinding.
+        // Do not drop the retry during the small window after state becomes partial
+        // but before the worker clears its running flag.
         requestScan(force = true, trigger = "manual")
     }
 

@@ -1,6 +1,7 @@
 import 'dart:io';
 import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
+import '../../core/widgets/pocketlink_skeleton.dart';
 
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
@@ -518,7 +519,7 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
             ),
             const SizedBox(width: 8),
           ])),
-          if (_loading) const LinearProgressIndicator(minHeight: 2),
+          if (_loading && _listing != null) const LinearProgressIndicator(minHeight: 2),
           if (_progress != null) LinearProgressIndicator(value: _progress),
           if (_error != null)
             Padding(
@@ -529,7 +530,19 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
             child: _error != null
                 ? Center(child: FilledButton.icon(onPressed: _refreshVolumes, icon: const Icon(Icons.refresh), label: const Text('Try again')))
                 : _loading && _listing == null
-                    ? const SizedBox.shrink()
+                    ? (_gridView
+                        ? PocketLinkSkeleton.fileGrid(
+                            padding: EdgeInsets.fromLTRB(
+                              16, 10, 16,
+                              LayoutInsetsScope.of(context).bottomClearance,
+                            ),
+                          )
+                        : PocketLinkSkeleton.fileList(
+                            padding: EdgeInsets.fromLTRB(
+                              16, 10, 16,
+                              LayoutInsetsScope.of(context).bottomClearance,
+                            ),
+                          ))
                     : items.isEmpty
                         ? RefreshIndicator(
                             onRefresh: _refreshDirectory,
@@ -550,13 +563,18 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
                                     itemCount: items.length,
                                     itemBuilder: (context, index) {
                                       final item = items[index];
-                                      return InkWell(
+                                      return Material(
+                                        color: colors.surfaceContainerLow,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(20),
+                                        ),
+                                        clipBehavior: Clip.antiAlias,
+                                        child: InkWell(
                                         borderRadius: BorderRadius.circular(20),
                                         onTap: item.isDirectory ? () => _loadDirectory(_itemPath(item.name))
                                             : () => _isAudio(item) ? _openAudio(item) : _openFile(item),
-                                        child: Container(
+                                        child: Padding(
                                           padding: const EdgeInsets.all(14),
-                                          decoration: BoxDecoration(color: colors.surfaceContainerLow, borderRadius: BorderRadius.circular(20)),
                                           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                                             Row(children: [iconFor(item), const Spacer(), menu(item)]),
                                             const Spacer(),
@@ -566,6 +584,7 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
                                             Text(item.isDirectory ? 'Folder' : _formatSize(item.size),
                                               style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
                                           ]),
+                                        ),
                                         ),
                                       );
                                     },
@@ -580,6 +599,7 @@ class _StorageBrowserScreenState extends State<StorageBrowserScreen> {
                                       return Card(
                                         margin: EdgeInsets.zero, elevation: 0,
                                         color: colors.surfaceContainerLow,
+                                        clipBehavior: Clip.antiAlias,
                                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                                         child: ListTile(
                                           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),

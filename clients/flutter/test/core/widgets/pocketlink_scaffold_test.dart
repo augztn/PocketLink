@@ -29,7 +29,7 @@ void main() {
       ),
     );
 
-    expect(insets.topClearance, 90);
+    expect(insets.topClearance, 94);
     expect(insets.bottomClearance, 192);
     expect(insets.hasFloatingNavBar, isTrue);
     expect(insets.hasActiveMiniPlayer, isTrue);
@@ -138,11 +138,12 @@ void main() {
       ),
     );
 
-    Future<void> verifyStable(Object nextRoute) async {
+    Future<void> verifyStable(Object nextRoute, double expectedTop) async {
       route.value = nextRoute;
       await tester.pump();
       await tester.pump();
       final initialTop = tester.getTopLeft(find.byKey(firstRowKey)).dy;
+      expect(initialTop, expectedTop);
       for (var frame = 0; frame < 10; frame++) {
         await tester.pump(const Duration(milliseconds: 16));
         expect(
@@ -153,12 +154,10 @@ void main() {
       }
     }
 
-    await verifyStable(routeA);
-    await verifyStable(routeB);
-    await verifyStable(routeC);
-    await verifyStable(routeA);
-
-    expect(tester.getTopLeft(find.byKey(firstRowKey)).dy, 98);
+    await verifyStable(routeA, 106);
+    await verifyStable(routeB, 130);
+    await verifyStable(routeC, 118);
+    await verifyStable(routeA, 106);
     route.dispose();
   });
 }

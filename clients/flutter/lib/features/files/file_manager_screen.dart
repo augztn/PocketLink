@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
+import '../../core/widgets/pocketlink_skeleton.dart';
 import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/pocketlink_file_icon.dart';
 import '../../core/widgets/smoked_glass_popover_menu.dart';
@@ -137,6 +138,12 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     if (oldWidget.initialVolume != widget.initialVolume && widget.initialVolume != null) {
       _selectPartition(widget.initialVolume);
     }
+    if (oldWidget.isActive != widget.isActive ||
+        oldWidget.onBackHandlerChanged != widget.onBackHandlerChanged) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _syncBackHandler();
+      });
+    }
   }
 
   @override
@@ -147,7 +154,9 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     final saved = _browserState.stateFor(_stateKey);
     _path = widget.locationRequest > 0 ? widget.requestedPath : (widget.initialPath.isNotEmpty ? widget.initialPath : saved.path);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) widget.onCanNavigateBackChanged?.call(_path.isNotEmpty);
+      if (!mounted) return;
+      widget.onCanNavigateBackChanged?.call(_path.isNotEmpty);
+      _syncBackHandler();
     });
     _category = widget.initialCategory != 'All' ? widget.initialCategory : saved.category;
     _sortBy = saved.sortBy;
@@ -209,6 +218,8 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
         _pendingScrollOffset = 0;
         if (_scrollController.hasClients) _scrollController.jumpTo(0);
       });
+      widget.onCanNavigateBackChanged?.call(_path.isNotEmpty);
+      _syncBackHandler();
       _saveState(path: _path);
       await _load(_path);
     } catch (_) {
@@ -256,6 +267,8 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
           _pendingScrollOffset = 0;
         }
       });
+      widget.onCanNavigateBackChanged?.call(_path.isNotEmpty);
+      _syncBackHandler();
     } catch (_) {}
     await _load(_path);
   }
@@ -266,6 +279,8 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
       _pendingScrollOffset = 0;
       if (_scrollController.hasClients) _scrollController.jumpTo(0);
     });
+    widget.onCanNavigateBackChanged?.call(false);
+    _syncBackHandler();
     _saveState(path: '');
     await _load('');
   }
@@ -663,9 +678,16 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   }
 
   void _syncBackHandler() {
-    widget.onBackHandlerChanged?.call(_searchExpanded
+    if (widget.onBackAtRoot != null && !widget.isActive) {
+      widget.onBackHandlerChanged?.call(null);
+      return;
+    }
+    final handler = _searchExpanded
         ? () => _setSearchExpanded(false)
-        : null);
+        : _path.isNotEmpty
+            ? _goUp
+            : null;
+    widget.onBackHandlerChanged?.call(handler);
   }
 
   void _setSearchExpanded(bool expanded) {
@@ -758,14 +780,18 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
       );
     }
 
+    final embeddedTab = widget.onBackAtRoot != null;
     return PopScope(
-      canPop: (_searchExpanded && widget.onBackHandlerChanged != null) ||
-          (!_searchExpanded && !widget.isActive && _path.isEmpty),
+      // Embedded Files delegates all Back decisions to the HomeScreen shell.
+      // Keep this local fallback only for standalone FileManager routes.
+      canPop: embeddedTab || (!_searchExpanded && _path.isEmpty),
       onPopInvokedWithResult: (didPop, result) {
-        if (didPop || (_searchExpanded && widget.onBackHandlerChanged != null)) return;
-        if (_path.isNotEmpty) {
+        if (didPop || embeddedTab) return;
+        if (_searchExpanded) {
+          _setSearchExpanded(false);
+        } else if (_path.isNotEmpty) {
           _goUp();
-        } else if (widget.isActive) {
+        } else if (embeddedTab) {
           widget.onBackAtRoot?.call();
         }
       },
@@ -775,7 +801,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
           feathered: true,
           showHome: false,
           automaticallyImplyLeading: false,
-          leading: _path.isEmpty
+          leading: _path.isEmpty && embeddedTab
               ? null
               : Align(
                   alignment: Alignment.centerLeft,
@@ -785,14 +811,16 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                       dimension: 38,
                       child: GlassCircleButton(
                         tooltip: 'Back',
-                        onPressed: _goUp,
+                        onPressed: _path.isEmpty
+                            ? () => Navigator.of(context).maybePop()
+                            : _goUp,
                         child: const Icon(Icons.arrow_back_rounded, size: 18),
                       ),
                     ),
                   ),
                 ),
-          leadingWidth: _path.isEmpty ? 0 : 62,
-          titleSpacing: _path.isEmpty ? 16 : 8,
+          leadingWidth: _path.isEmpty && embeddedTab ? 0 : 62,
+          titleSpacing: _path.isEmpty && embeddedTab ? 16 : 8,
           title: TitleDropdownPopover<String>(
 tooltip: 'Choose storage location',
             onOpenChanged: (open) => setState(() => _storageMenuOpen = open),
@@ -878,7 +906,7 @@ tooltip: 'Choose storage location',
                 Widget emptyList(String message, {Widget? action}) => ListView(
                   controller: _scrollController,
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: EdgeInsets.fromLTRB(16, topInset + 12, 16, LayoutInsetsScope.of(context).bottomClearance),
+                  padding: EdgeInsets.fromLTRB(16, topInset, 16, LayoutInsetsScope.of(context).bottomClearance),
                   children: [
                     SizedBox(
                       height: 150,
@@ -902,14 +930,26 @@ tooltip: 'Choose storage location',
                         ),
                       )
                     : _loading && _listing == null
-                        ? const SizedBox.shrink()
+                        ? (_gridView
+                            ? PocketLinkSkeleton.fileGrid(
+                                padding: EdgeInsets.fromLTRB(
+                                  16, topInset, 16,
+                                  LayoutInsetsScope.of(context).bottomClearance,
+                                ),
+                              )
+                            : PocketLinkSkeleton.fileList(
+                                padding: EdgeInsets.fromLTRB(
+                                  16, topInset, 16,
+                                  LayoutInsetsScope.of(context).bottomClearance,
+                                ),
+                              ))
                         : items.isEmpty
                             ? emptyList(allItems.isEmpty ? 'This folder is empty' : 'No matching files')
                             : _gridView
                                 ? GridView.builder(
                                     controller: _scrollController,
                                     physics: const AlwaysScrollableScrollPhysics(),
-                                    padding: EdgeInsets.fromLTRB(16, topInset + 12, 16, LayoutInsetsScope.of(context).bottomClearance),
+                                    padding: EdgeInsets.fromLTRB(16, topInset, 16, LayoutInsetsScope.of(context).bottomClearance),
                                     gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                                       maxCrossAxisExtent: 190,
                                       mainAxisExtent: 156,
@@ -919,7 +959,16 @@ tooltip: 'Choose storage location',
                                     itemCount: items.length,
                                     itemBuilder: (context, index) {
                                       final item = items[index];
-                                      return InkWell(
+                                      return Material(
+                                        color: colors.surfaceContainerLow,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(20),
+                                          side: BorderSide(
+                                            color: colors.outlineVariant.withValues(alpha: 0.32),
+                                          ),
+                                        ),
+                                        clipBehavior: Clip.antiAlias,
+                                        child: InkWell(
                                         borderRadius: BorderRadius.circular(20),
                                         onTap: item.isDirectory
                                             ? () => _load(_itemPath(item.name))
@@ -928,13 +977,8 @@ tooltip: 'Choose storage location',
                                                 : _isImage(item)
                                                     ? () => _previewImage(item)
                                                     : null,
-                                        child: Container(
+                                        child: Padding(
                                           padding: const EdgeInsets.all(14),
-                                          decoration: BoxDecoration(
-                                            color: colors.surfaceContainerLow,
-                                            borderRadius: BorderRadius.circular(20),
-                                            border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.32)),
-                                          ),
                                           child: Column(
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
@@ -969,13 +1013,14 @@ tooltip: 'Choose storage location',
                                             ],
                                           ),
                                         ),
+                                        ),
                                       );
                                     },
                                   )
                                 : ListView.separated(
                                     controller: _scrollController,
                                     physics: const AlwaysScrollableScrollPhysics(),
-                                    padding: EdgeInsets.fromLTRB(16, topInset + 12, 16, LayoutInsetsScope.of(context).bottomClearance),
+                                    padding: EdgeInsets.fromLTRB(16, topInset, 16, LayoutInsetsScope.of(context).bottomClearance),
                                     itemCount: items.length,
                                     separatorBuilder: (_, __) => const SizedBox(height: 8),
                                     itemBuilder: (context, index) => fileTile(items[index]),
@@ -1104,7 +1149,7 @@ tooltip: 'Choose storage location',
                         ),
                       ),
                     ),
-                    if (_loading) const LinearProgressIndicator(minHeight: 2),
+                    if (_loading && _listing != null) const LinearProgressIndicator(minHeight: 2),
                     if (_error != null)
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),

@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../../core/logging/app_logger.dart';
+
 /// App-scoped media-library navigation and presentation state, isolated per
 /// server and media type (for example, Music and Videos).
 class MediaBrowserStateStore extends ChangeNotifier {
@@ -9,6 +11,10 @@ class MediaBrowserStateStore extends ChangeNotifier {
       _states.putIfAbsent('$serverKey::$mediaType', MediaBrowserState.new);
 
   void update(String serverKey, String mediaType, MediaBrowserState state) {
+    AppLogger.event('media.browser_state_updated', category: 'media',
+      component: 'media_browser_state',
+      fields: {'media_type': mediaType, 'has_selected_volume': state.selectedVolume != null,
+        'view': state.view, 'sort_by': state.sortBy, 'layout_mode': state.layoutMode});
     _states['$serverKey::$mediaType'] = state;
     notifyListeners();
   }

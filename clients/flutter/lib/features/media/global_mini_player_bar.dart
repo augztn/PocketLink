@@ -1,7 +1,10 @@
+import 'dart:typed_data';
+
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/widgets/liquid_glass_pill.dart';
 import 'persistent_audio_player.dart';
+import 'discover/discover_thumbnail_cache.dart';
 
 /// Compact, app-wide music controls shown above the navigation dock.
 class GlobalMiniPlayerBar extends StatelessWidget {
@@ -10,6 +13,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
     required this.visible,
     required this.reduceMotion,
     required this.isPlaying,
+    this.isLoading = false,
     required this.position,
     required this.duration,
     required this.canSkipPrevious,
@@ -20,6 +24,14 @@ class GlobalMiniPlayerBar extends StatelessWidget {
     required this.onSkipPrevious,
     required this.onSkipNext,
     this.surfaceKey,
+    this.hasFloatingNavBar = true,
+    this.compact = false,
+    this.surfaceIntensity = 1.0,
+    this.artworkBytes,
+    this.artworkKey,
+    this.onExpandDragStart,
+    this.onExpandDragUpdate,
+    this.onExpandDragEnd,
     super.key,
   });
 
@@ -27,6 +39,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
   final bool visible;
   final bool reduceMotion;
   final bool isPlaying;
+  final bool isLoading;
   final Duration position;
   final Duration duration;
   final bool canSkipPrevious;
@@ -37,6 +50,14 @@ class GlobalMiniPlayerBar extends StatelessWidget {
   final VoidCallback onSkipPrevious;
   final VoidCallback onSkipNext;
   final Key? surfaceKey;
+  final bool hasFloatingNavBar;
+  final bool compact;
+  final double surfaceIntensity;
+  final Uint8List? artworkBytes;
+  final Key? artworkKey;
+  final VoidCallback? onExpandDragStart;
+  final ValueChanged<double>? onExpandDragUpdate;
+  final ValueChanged<double>? onExpandDragEnd;
 
   double get _progress {
     if (duration <= Duration.zero) return 0;
@@ -62,34 +83,54 @@ class GlobalMiniPlayerBar extends StatelessWidget {
     final secondaryForeground =
         isLight ? const Color(0xFF475569) : colors.onSurfaceVariant;
 
+    final safeInsets = MediaQuery.paddingOf(context);
+
     return Align(
       alignment: Alignment.centerLeft,
       child: Padding(
-        // Match the Home / Explore / Files capsule and leave Music outside it.
-        padding: const EdgeInsets.fromLTRB(14, 4, 88, 0),
+        // Match the full 3+1 dock width, including the circular Music button.
+        padding: compact
+            ? const EdgeInsets.only(top: 4)
+            : EdgeInsets.fromLTRB(
+                safeInsets.left + 16.0,
+                4,
+                safeInsets.right + 16.0,
+                0,
+              ),
         child: SmokedGlassSurface(
           key: surfaceKey,
           radius: BorderRadius.circular(22),
-          child: AnimatedOpacity(
+          intensity: surfaceIntensity,
+          // The overlay paints the shared morphing player while expanding.
+          // Hide this docked source immediately so two control sets never overlap.
+          child: Opacity(
             opacity: visible ? 1 : 0,
-            duration: reduceMotion
-                ? Duration.zero
-                : const Duration(milliseconds: 220),
-            curve: Curves.easeOut,
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
+              onTap: onOpen,
               onHorizontalDragEnd: _handleHorizontalDrag,
+              onVerticalDragStart: onExpandDragStart == null
+                  ? null
+                  : (_) => onExpandDragStart!(),
+              onVerticalDragUpdate: onExpandDragUpdate == null
+                  ? null
+                  : (details) =>
+                      onExpandDragUpdate!(details.primaryDelta ?? 0),
               onVerticalDragEnd: (details) {
                 final velocity = details.primaryVelocity ?? 0;
-                if (!isPlaying && velocity > 300) onDismiss();
+                if (onExpandDragEnd != null) {
+                  onExpandDragEnd!(velocity);
+                } else if (!isPlaying && velocity > 300) {
+                  onDismiss();
+                }
               },
+              onVerticalDragCancel: onExpandDragEnd == null
+                  ? null
+                  : () => onExpandDragEnd!(0),
               child: Material(
                 type: MaterialType.transparency,
                 borderRadius: BorderRadius.circular(22),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(22),
-                  onTap: onOpen,
-                  child: Column(
+                child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       SizedBox(
@@ -98,17 +139,36 @@ class GlobalMiniPlayerBar extends StatelessWidget {
                           children: [
                             const SizedBox(width: 10),
                             Container(
+                              key: artworkKey,
                               width: 34,
                               height: 34,
+                              clipBehavior: Clip.antiAlias,
                               decoration: BoxDecoration(
                                 color: colors.primary.withValues(alpha: 0.14),
                                 borderRadius: BorderRadius.circular(11),
                               ),
-                              child: Icon(
-                                Icons.graphic_eq_rounded,
-                                color: colors.primary,
-                                size: 19,
-                              ),
+                              child: artworkBytes != null
+                                  ? Image.memory(
+                                      artworkBytes!,
+                                      cacheWidth: 544,
+                                      fit: BoxFit.cover,
+                                      gaplessPlayback: true,
+                                    )
+                                  : item.artworkUrl?.isNotEmpty == true
+                                      ? DiscoverThumbnail(
+                                          url: DiscoverThumbnailCache.urlForSize(item.artworkUrl!, 544),
+                                          cacheWidth: 544,
+                                          fallback: Icon(
+                                            Icons.graphic_eq_rounded,
+                                            color: colors.primary,
+                                            size: 19,
+                                          ),
+                                        )
+                                      : Icon(
+                                          Icons.graphic_eq_rounded,
+                                          color: colors.primary,
+                                          size: 19,
+                                        ),
                             ),
                             const SizedBox(width: 8),
                             Expanded(
@@ -170,14 +230,23 @@ class GlobalMiniPlayerBar extends StatelessWidget {
                                 width: 34,
                                 height: 40,
                               ),
-                              onPressed: onTogglePlayback,
+                              onPressed: isLoading ? null : onTogglePlayback,
                               color: foreground,
-                              icon: Icon(
-                                isPlaying
-                                    ? Icons.pause_rounded
-                                    : Icons.play_arrow_rounded,
-                                size: 22,
-                              ),
+                              icon: isLoading
+                                  ? SizedBox(
+                                      width: 17,
+                                      height: 17,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor: AlwaysStoppedAnimation<Color>(foreground),
+                                      ),
+                                    )
+                                  : Icon(
+                                      isPlaying
+                                          ? Icons.pause_rounded
+                                          : Icons.play_arrow_rounded,
+                                      size: 22,
+                                    ),
                             ),
                             IconButton(
                               tooltip: 'Next track',
@@ -198,23 +267,23 @@ class GlobalMiniPlayerBar extends StatelessWidget {
                           ],
                         ),
                       ),
-                      ClipRRect(
-                        borderRadius: const BorderRadius.vertical(
-                          bottom: Radius.circular(22),
-                        ),
-                        child: LinearProgressIndicator(
-                          value: _progress,
-                          minHeight: 2.5,
-                          backgroundColor:
-                              colors.onSurface.withValues(alpha: 0.07),
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            colors.primary.withValues(alpha: 0.92),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(19, 0, 19, 3),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(2),
+                          child: LinearProgressIndicator(
+                            value: _progress,
+                            minHeight: 2.5,
+                            backgroundColor:
+                                colors.onSurface.withValues(alpha: 0.07),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              colors.primary.withValues(alpha: 0.92),
+                            ),
                           ),
                         ),
                       ),
                     ],
                   ),
-                ),
               ),
             ),
           ),

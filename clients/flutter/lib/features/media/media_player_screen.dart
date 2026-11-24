@@ -69,15 +69,33 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
   static const MethodChannel _videoControlChannel = MethodChannel('pocketlink/media');
   final TransformationController _videoTransformController = TransformationController();
 
-  List<MediaQueueItem> get _queue => widget.queue.isEmpty
-      ? [MediaQueueItem(title: widget.title, path: widget.path, volume: widget.volume)]
-      : widget.queue;
+  List<MediaQueueItem> get _queue => widget.resumeExisting && _persistent.queue.isNotEmpty
+      ? _persistent.queue
+      : widget.queue.isEmpty
+          ? [MediaQueueItem(title: widget.title, path: widget.path, volume: widget.volume)]
+          : widget.queue;
+
+  void _onPersistentQueueChanged() {
+    if (!mounted || !widget.resumeExisting || _queue.isEmpty) return;
+    final index = _persistent.currentIndex.clamp(0, _queue.length - 1).toInt();
+    if (index != _currentIndex) {
+      setState(() {
+        _currentIndex = index;
+        _coverBytes = null;
+        _coverForTrack = null;
+      });
+      unawaited(_loadArtwork(_queue[index]));
+    } else {
+      setState(() {});
+    }
+  }
 
   @override
   void initState() {
     super.initState();
     _persistent = PersistentAudioPlayer.instance;
     _player = _persistent.player;
+    _persistent.addListener(_onPersistentQueueChanged);
     _currentIndex = widget.resumeExisting
         ? _persistent.currentIndex
         : widget.initialIndex.clamp(0, _queue.length - 1).toInt();
@@ -534,6 +552,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
       unawaited(SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge));
       unawaited(SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]));
     }
+    _persistent.removeListener(_onPersistentQueueChanged);
     unawaited(_playlistSubscription?.cancel());
     unawaited(_playingSubscription?.cancel());
     unawaited(_tracksSubscription?.cancel());
@@ -966,7 +985,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                             VideoTransportButton(
                               tooltip: 'Previous video',
                               icon: Icons.skip_previous_rounded,
-                              onPressed: _queue.length > 1 ? _player.previous : null,
+                              onPressed: _queue.length > 1 ? _persistent.skipToPrevious : null,
                             ),
                             const SizedBox(width: 16),
                             VideoTransportButton(
@@ -1001,7 +1020,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                             VideoTransportButton(
                               tooltip: 'Next video',
                               icon: Icons.skip_next_rounded,
-                              onPressed: _queue.length > 1 ? _player.next : null,
+                              onPressed: _queue.length > 1 ? _persistent.skipToNext : null,
                             ),
                           ],
                         );
@@ -1265,7 +1284,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
           children: [
             IconButton(
               tooltip: 'Previous track',
-              onPressed: _queue.length > 1 ? _player.previous : null,
+              onPressed: _queue.length > 1 ? _persistent.skipToPrevious : null,
               icon: const Icon(Icons.skip_previous_rounded, color: Colors.white, size: 34),
             ),
             IconButton.filled(
@@ -1281,7 +1300,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
             ),
             IconButton(
               tooltip: 'Next track',
-              onPressed: _queue.length > 1 ? _player.next : null,
+              onPressed: _queue.length > 1 ? _persistent.skipToNext : null,
               icon: const Icon(Icons.skip_next_rounded, color: Colors.white, size: 34),
             ),
           ],

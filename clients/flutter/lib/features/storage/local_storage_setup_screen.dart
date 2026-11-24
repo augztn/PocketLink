@@ -586,6 +586,7 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
       hasFloatingNavBar: true,
       hasActiveMiniPlayer: activeMiniPlayer,
       child: Scaffold(
+      resizeToAvoidBottomInset: true,
       extendBody: true,
       appBar: PocketLinkAppBar(
         title: const Text('Host PocketLink'),
@@ -598,13 +599,9 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
             dimension: 38,
             child: GlassCircleButton(
               tooltip: 'Back',
-              onPressed: () {
-                final navigator = Navigator.of(context);
-                if (navigator.canPop()) {
-                  navigator.pop();
-                } else {
-                  widget.onHome?.call();
-                }
+              onPressed: () async {
+                final handled = await Navigator.of(context).maybePop();
+                if (!handled) widget.onHome?.call();
               },
               child: const Icon(Icons.arrow_back_rounded, size: 18),
             ),
@@ -672,7 +669,9 @@ class _LocalStorageSetupScreenState extends State<LocalStorageSetupScreen> with 
         ],
       ),
       ),
-      bottomNavigationBar: SizedBox(
+      bottomNavigationBar: MediaQuery.viewInsetsOf(context).bottom > 0
+          ? null
+          : SizedBox(
         height: 64 + bottomSystemInset + 12,
         child: Padding(
           padding: EdgeInsets.fromLTRB(20, 0, 20, bottomSystemInset + 12),

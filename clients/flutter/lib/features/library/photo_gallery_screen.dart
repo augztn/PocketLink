@@ -4,6 +4,7 @@ import 'photo_favorites_store.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
+import '../../core/widgets/pocketlink_skeleton.dart';
 import '../../core/widgets/smoked_glass_popover_menu.dart';
 import '../downloads/download_manager_service.dart';
 import '../transfers/transfer_manager_screen.dart';
@@ -93,14 +94,38 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
   }
 
   void _syncBackHandler() {
-    widget.onBackHandlerChanged?.call(searchOpen
-        ? () => _setSearchOpen(false)
-        : null);
+    final handler = _viewMenuOpen
+        ? () => _setViewMenuOpen(false)
+        : searchOpen
+            ? () => _setSearchOpen(false)
+            : selected.isNotEmpty
+                ? _clearSelection
+                : null;
+    widget.onBackHandlerChanged?.call(handler);
+  }
+
+  void _setViewMenuOpen(bool open) {
+    if (_viewMenuOpen == open) return;
+    setState(() => _viewMenuOpen = open);
+    _syncBackHandler();
   }
 
   void _setSearchOpen(bool open) {
     if (searchOpen == open) return;
     setState(() => searchOpen = open);
+    _syncBackHandler();
+  }
+
+  void _toggleSelection(_Photo photo) {
+    setState(() {
+      if (!selected.add(photo.id)) selected.remove(photo.id);
+    });
+    _syncBackHandler();
+  }
+
+  void _clearSelection() {
+    if (selected.isEmpty) return;
+    setState(selected.clear);
     _syncBackHandler();
   }
 
@@ -143,7 +168,8 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
       }
     }
     if (!mounted) return;
-    setState(() { loading = true; error = null; photos = []; selected.clear(); });
+    setState(() { loading = true; error = null; if (!refresh) photos = []; selected.clear(); });
+    _syncBackHandler();
     try {
       volumes = await widget.api.listStorageVolumes();
       if (!mounted) return;
@@ -184,6 +210,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     if (!mounted) return;
     if (refresh) widget.api.invalidateDirectoryCache();
     setState(() { loading = true; error = null; photos = []; selected.clear(); });
+    _syncBackHandler();
     final found = <_Photo>[];
     final pending = <({String path, String? volume, int depth})>[];
     final visited = <String>{};
@@ -285,9 +312,9 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
       final p = items[i]; final isSelected = selected.contains(p.id);
       return GestureDetector(
         onTap: () => selected.isNotEmpty
-            ? setState(() { if (!selected.add(p.id)) selected.remove(p.id); })
+            ? _toggleSelection(p)
             : openViewer(items,i),
-        onLongPress: () => setState(() { if (!selected.add(p.id)) selected.remove(p.id); }),
+        onLongPress: () => _toggleSelection(p),
         child: Stack(fit: StackFit.expand, children: [
           image(p),
           if (isSelected) ColoredBox(color: Theme.of(context).colorScheme.primary.withValues(alpha: .35)),
@@ -425,6 +452,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
       photos=photos.where((p)=>!deletedIds.contains(p.id)).toList();
       favorites.removeAll(deletedIds);selected.clear();
     });
+    _syncBackHandler();
     if (deletedIds.isNotEmpty) await _persistFavorites();
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('Deleted $deleted of $count photos.')));
   }
@@ -436,6 +464,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
       }
       selected.clear();
     });
+    _syncBackHandler();
     await _persistFavorites();
   }
 
@@ -585,7 +614,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                   ),
                 ),
               ),
-            if (loading) const LinearProgressIndicator(minHeight: 2),
+            if (loading && photos.isNotEmpty) const LinearProgressIndicator(minHeight: 2),
             if (error != null)
               Padding(padding: const EdgeInsets.all(12),
                 child: Text(error!, style: TextStyle(color: theme.colorScheme.error))),
@@ -593,7 +622,16 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
               child: error != null
                   ? Center(child: FilledButton(onPressed: scan, child: const Text('Retry scan')))
                   : loading && photos.isEmpty
-                      ? const Center(child: Text('Scanning photos…'))
+                      ? PocketLinkSkeleton.photoGrid(
+                          crossAxisCount: tab == 1 ? 2 : gridColumns,
+                          childAspectRatio: tab == 1 ? .92 : 1,
+                          padding: EdgeInsets.fromLTRB(
+                            2,
+                            searchOpen ? 2 : contentTop,
+                            2,
+                            LayoutInsetsScope.of(context).bottomClearance,
+                          ),
+                        )
                       : AnimatedSwitcher(
                           duration: const Duration(milliseconds: 220),
                           switchInCurve: Curves.easeOutCubic,
@@ -617,6 +655,11 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
           Positioned(
             top: headerTop + 8, left: 16, right: 16, height: 52,
             child: Row(children: [
+              IconButton(
+                tooltip: 'Back',
+                onPressed: () => Navigator.of(context).maybePop(),
+                icon: Icon(Icons.arrow_back_rounded, color: foreground),
+              ),
               if (selecting)
                 Expanded(child: Align(
                   alignment: Alignment.centerLeft,
@@ -626,7 +669,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
               else
                 Expanded(child: Align(alignment: Alignment.centerLeft, child: TitleDropdownPopover<int>(
 tooltip: 'Choose photo view',
-                  onOpenChanged: (open) => setState(() => _viewMenuOpen = open),
+                  onOpenChanged: _setViewMenuOpen,
                   items: [
                     for (var index = 0; index < 3; index++)
                       SmokedGlassPopoverMenuItem(
@@ -640,7 +683,10 @@ tooltip: 'Choose photo view',
                         ]),
                       ),
                   ],
-                  onSelected: (value) => setState(() { tab = value; selected.clear(); }),
+                  onSelected: (value) {
+                    setState(() { tab = value; selected.clear(); });
+                    _syncBackHandler();
+                  },
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 4),
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -701,10 +747,13 @@ tooltip: 'Choose photo view',
                     ));
                   }
                   if (value == 'home') PocketLinkAppBar.goToDashboard(context);
-                  if (value == 'select') setState(() {
-                    if (selected.isEmpty) selected.addAll(items.map((p) => p.id));
-                    else selected.clear();
-                  });
+                  if (value == 'select') {
+                    setState(() {
+                      if (selected.isEmpty) selected.addAll(items.map((p) => p.id));
+                      else selected.clear();
+                    });
+                    _syncBackHandler();
+                  }
                 },
                 child: GlassCircleButton(tooltip: 'Open more photo actions', onPressed: null,
                   child: const Icon(Icons.more_vert_rounded)),

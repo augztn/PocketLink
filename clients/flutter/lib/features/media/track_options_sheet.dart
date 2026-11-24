@@ -20,6 +20,7 @@ class TrackOptionsSheet {
     required ValueChanged<TrackOptionAction> onAction,
     required bool isFavorite,
     required bool isCached,
+    bool serverActionsEnabled = true,
   }) {
     return showGeneralDialog<void>(
       context: context,
@@ -68,7 +69,7 @@ class TrackOptionsSheet {
                               TrackOptionAction.favorite,
                             ),
                           ),
-                          _TopAction(
+                          if (serverActionsEnabled) _TopAction(
                             icon: Icons.download_rounded,
                             label: 'Download',
                             onTap: () => _select(
@@ -77,7 +78,7 @@ class TrackOptionsSheet {
                               TrackOptionAction.download,
                             ),
                           ),
-                          _TopAction(
+                          if (serverActionsEnabled) _TopAction(
                             icon: Icons.ios_share_rounded,
                             label: 'Share',
                             onTap: () => _select(
@@ -111,12 +112,12 @@ class TrackOptionsSheet {
                             padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                             child: Divider(height: 1, color: Color(0x22FFFFFF)),
                           ),
-                          _ActionTile(
+                          if (serverActionsEnabled) _ActionTile(
                             Icons.folder_open_rounded,
                             'Show in folder',
                             () => _select(dialogContext, onAction, TrackOptionAction.showInFolder),
                           ),
-                          _ActionTile(
+                          if (serverActionsEnabled) _ActionTile(
                             Icons.info_outline_rounded,
                             'File info',
                             () => _select(dialogContext, onAction, TrackOptionAction.fileInfo),

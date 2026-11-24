@@ -36,8 +36,6 @@ class AppSettings extends ChangeNotifier {
   static const _libraryKey = 'settings_home_library';
   static const _recentKey = 'settings_home_recent';
   static const _liquidGlassKey = 'settings_use_liquid_glass';
-  static const _progressiveBlurKey = 'settings_progressive_blur';
-  static const _progressiveBlurStrengthKey = 'settings_progressive_blur_strength';
   static const _navigationOrderKey = 'settings_navigation_order';
   static const _navigationVisibilityKey = 'settings_navigation_visibility';
   static const _homeSearchKey = 'settings_home_search';
@@ -68,6 +66,37 @@ class AppSettings extends ChangeNotifier {
   static const _videoSubtitleBackgroundKey = 'settings_video_subtitle_background';
   static const _videoAutoFullscreenKey = 'settings_video_auto_fullscreen';
   static const _videoFullscreenOrientationKey = 'settings_video_fullscreen_orientation';
+  static const _discoverEnabledKey = 'settings_discover_enabled';
+  static const _showDiscoverOnWelcomeKey = 'settings_show_discover_on_welcome';
+  static const _discoverLocalLosslessKey = 'settings_discover_local_lossless';
+  static const _discoverLyricsKey = 'settings_discover_lyrics';
+  static const _discoverAutoQueueKey = 'settings_discover_auto_queue';
+  static const _discoverArtworkKey = 'settings_discover_artwork';
+  static const _discoverAudioQualityKey = 'settings_discover_audio_quality';
+  static const _discoverResolverProfileKey = 'settings_discover_resolver_profile';
+  static const _discoverRegionKey = 'settings_discover_region';
+  static const discoverRegions = <String, String>{
+    'IN': 'India',
+    'US': 'United States',
+    'GB': 'United Kingdom',
+    'CA': 'Canada',
+    'AU': 'Australia',
+    'JP': 'Japan',
+    'KR': 'South Korea',
+    'DE': 'Germany',
+    'FR': 'France',
+    'BR': 'Brazil',
+    'MX': 'Mexico',
+    'ID': 'Indonesia',
+    'PH': 'Philippines',
+    'SG': 'Singapore',
+    'MY': 'Malaysia',
+    'TH': 'Thailand',
+    'AE': 'United Arab Emirates',
+    'SA': 'Saudi Arabia',
+    'ZA': 'South Africa',
+    'NG': 'Nigeria',
+  };
   static const homeSectionDefaults = <String>['search', 'quick', 'transfers', 'continue', 'recent'];
   static const navigationDefaults = <String>['home', 'explore', 'files', 'browse'];
   static const musicButtonShortcutDefaults =
@@ -84,10 +113,7 @@ class AppSettings extends ChangeNotifier {
   bool _showGlobalSearch = true;
   bool _showActiveTransfers = true;
   List<String> _homeSectionOrder = List.of(homeSectionDefaults);
-  bool _useLiquidGlass = false;
-  bool _progressiveBlurEnabled = false;
-  double _progressiveBlurStrength = 55;
-  Future<void> _progressiveBlurWrite = Future<void>.value();
+  bool _useLiquidGlass = true;
   bool _loaded = false;
   List<String> _navigationOrder = List.of(navigationDefaults);
   Set<String> _visibleNavigationItems = Set.of(navigationDefaults);
@@ -117,6 +143,15 @@ class AppSettings extends ChangeNotifier {
   bool _videoSubtitleBackground = true;
   bool _videoAutoFullscreen = false;
   String _videoFullscreenOrientation = 'landscape';
+  bool _discoverEnabled = true;
+  bool _showDiscoverOnWelcome = true;
+  bool _discoverLocalLossless = true;
+  bool _discoverLyrics = true;
+  bool _discoverAutoQueue = true;
+  bool _discoverArtwork = true;
+  String _discoverAudioQuality = 'best_available';
+  String _discoverResolverProfile = 'automatic';
+  String _discoverRegion = 'IN';
 
   ThemeMode get themeMode => _themeMode;
   bool get amoled => _amoled;
@@ -128,8 +163,6 @@ class AppSettings extends ChangeNotifier {
   bool get showActiveTransfers => _showActiveTransfers;
   List<String> get homeSectionOrder => List.unmodifiable(_homeSectionOrder);
   bool get useLiquidGlass => _useLiquidGlass;
-  bool get progressiveBlurEnabled => _progressiveBlurEnabled;
-  double get progressiveBlurStrength => _progressiveBlurStrength;
   List<String> get navigationOrder => List.unmodifiable(_navigationOrder);
   Set<String> get visibleNavigationItems => Set.unmodifiable(_visibleNavigationItems);
   bool get navigationLayoutIsDefault => _navigationOrder.join(',') == navigationDefaults.join(',') && _visibleNavigationItems.length == navigationDefaults.length;
@@ -157,6 +190,15 @@ class AppSettings extends ChangeNotifier {
   bool get videoSubtitleBackground => _videoSubtitleBackground;
   bool get videoAutoFullscreen => _videoAutoFullscreen;
   String get videoFullscreenOrientation => _videoFullscreenOrientation;
+  bool get discoverEnabled => _discoverEnabled;
+  bool get showDiscoverOnWelcome => _showDiscoverOnWelcome;
+  bool get discoverLocalLossless => _discoverLocalLossless;
+  bool get discoverLyrics => _discoverLyrics;
+  bool get discoverAutoQueue => _discoverAutoQueue;
+  bool get discoverArtwork => _discoverArtwork;
+  String get discoverAudioQuality => _discoverAudioQuality;
+  String get discoverResolverProfile => _discoverResolverProfile;
+  String get discoverRegion => _discoverRegion;
 
   Future<void> reloadPreferences() async {
     _loaded = false;
@@ -170,16 +212,11 @@ class AppSettings extends ChangeNotifier {
     _visibleNavigationItems = Set.of(navigationDefaults);
     try {
       final preferences = await SharedPreferences.getInstance();
-      _useLiquidGlass = preferences.getBool(_liquidGlassKey) ?? false;
-      _progressiveBlurEnabled = preferences.getBool(_progressiveBlurKey) ?? false;
-      final storedBlurStrength = preferences.get(_progressiveBlurStrengthKey);
-      _progressiveBlurStrength = storedBlurStrength is num
-          ? storedBlurStrength.toDouble().clamp(0, 100).toDouble()
-          : 55;
+      _useLiquidGlass = preferences.getBool(_liquidGlassKey) ?? true;
       _showMiniPlayer = preferences.getBool(_nowPlayingMiniPlayerKey) ?? true;
       _enableNowPlayingGestures = preferences.getBool(_nowPlayingGesturesKey) ?? true;
       _showStatsForNerds = preferences.getBool(_nowPlayingStatsForNerdsKey) ?? true;
-      _nowPlayingTheme = const {'apple', 'blur', 'blurCard', 'gradient'}
+      _nowPlayingTheme = const {'apple', 'blur', 'blurCard', 'gradient', 'aether'}
           .contains(preferences.getString(_nowPlayingThemeKey))
           ? preferences.getString(_nowPlayingThemeKey)!
           : 'apple';
@@ -204,6 +241,22 @@ class AppSettings extends ChangeNotifier {
       _videoSubtitleBackground = preferences.getBool(_videoSubtitleBackgroundKey) ?? true;
       _videoAutoFullscreen = preferences.getBool(_videoAutoFullscreenKey) ?? false;
       _videoFullscreenOrientation = preferences.getString(_videoFullscreenOrientationKey) ?? 'landscape';
+      _discoverEnabled = preferences.getBool(_discoverEnabledKey) ?? true;
+      _showDiscoverOnWelcome = preferences.getBool(_showDiscoverOnWelcomeKey) ?? true;
+      _discoverLocalLossless = preferences.getBool(_discoverLocalLosslessKey) ?? true;
+      _discoverLyrics = preferences.getBool(_discoverLyricsKey) ?? true;
+      _discoverAutoQueue = preferences.getBool(_discoverAutoQueueKey) ?? true;
+      _discoverArtwork = preferences.getBool(_discoverArtworkKey) ?? true;
+      _discoverAudioQuality = const {'best_available', 'balanced', 'data_saver'}
+          .contains(preferences.getString(_discoverAudioQualityKey))
+          ? preferences.getString(_discoverAudioQualityKey)!
+          : 'best_available';
+      _discoverResolverProfile = const {'automatic', 'newpipe_first', 'player_api_first'}
+          .contains(preferences.getString(_discoverResolverProfileKey))
+          ? preferences.getString(_discoverResolverProfileKey)!
+          : 'automatic';
+      final storedRegion = preferences.getString(_discoverRegionKey);
+      _discoverRegion = discoverRegions.containsKey(storedRegion) ? storedRegion! : 'IN';
       _musicButtonSwipeEnabled = preferences.getBool(_musicButtonSwipeEnabledKey) ?? true;
       _musicButtonSwipeLeftAction = _validMusicSwipeAction(preferences.getString(_musicButtonSwipeLeftActionKey), 'next');
       _musicButtonSwipeRightAction = _validMusicSwipeAction(preferences.getString(_musicButtonSwipeRightActionKey), 'previous');
