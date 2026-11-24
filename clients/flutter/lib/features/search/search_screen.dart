@@ -784,6 +784,12 @@ class _SearchScreenState extends State<SearchScreen> {
         feathered: true,
         showHome: false,
         automaticallyImplyLeading: false,
+        leading: IconButton(
+          tooltip: 'Back',
+          onPressed: () => Navigator.of(context).maybePop(),
+          icon: const Icon(Icons.arrow_back_rounded),
+        ),
+        leadingWidth: 56,
         title: const Text('Search'),
         actions: [
           PocketLinkAppBarAction(
