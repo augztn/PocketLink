@@ -258,7 +258,12 @@ class PersistentAudioPlayer extends ChangeNotifier {
       }
       rethrow;
     }
-    if (session != _queueSession) return;
+    if (session != _queueSession) {
+      // A newer selection superseded this source while media_kit was opening.
+      // Stop the stale source before the serialized newer open begins.
+      await player.pause();
+      return;
+    }
     _selectionLoading = false;
     notifyListeners();
     final current = currentItem;
