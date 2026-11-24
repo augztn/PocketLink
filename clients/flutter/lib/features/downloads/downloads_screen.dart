@@ -45,6 +45,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     await _manager.initialize();
     _manager.bindServerApi(widget.api);
     await _refreshServerJobs();
+    if (!mounted) return;
     _serverRefreshTimer = Timer.periodic(
       const Duration(seconds: 2),
       (_) => _refreshServerJobs(),
@@ -123,6 +124,54 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
       _DownloadFilter.completed => job.status == 'completed',
       _DownloadFilter.failed => job.status == 'failed',
     }).toList(growable: false);
+  }
+
+  Future<void> _pauseAll() async {
+    await _manager.pauseAll();
+    try {
+      await Future.wait(_serverJobs
+          .where((job) => job.status == 'queued' || job.status == 'downloading')
+          .map((job) => widget.api.pauseServerDownload(job.id)));
+      await _refreshServerJobs();
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not pause all server downloads: $error')),
+        );
+      }
+    }
+  }
+
+  Future<void> _resumeAll() async {
+    await _manager.resumeAll();
+    try {
+      await Future.wait(_serverJobs
+          .where((job) => job.status == 'paused' || job.status == 'failed')
+          .map((job) => widget.api.resumeServerDownload(job.id)));
+      await _refreshServerJobs();
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not resume all server downloads: $error')),
+        );
+      }
+    }
+  }
+
+  Future<void> _clearCompleted() async {
+    await _manager.clearCompleted();
+    try {
+      await Future.wait(_serverJobs
+          .where((job) => job.status == 'completed')
+          .map((job) => widget.api.removeServerDownload(job.id)));
+      await _refreshServerJobs();
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not clear completed server jobs: $error')),
+        );
+      }
+    }
   }
 
   Future<void> _serverJobAction(
@@ -255,10 +304,10 @@ tooltip: 'Filter downloads',
                       children: [
                         Text(
                           '${switch (filter) {
-                            _DownloadFilter.all => _manager.tasks.length,
-                            _DownloadFilter.active => _manager.activeCount,
-                            _DownloadFilter.completed => _manager.tasks.where((task) => task.status == DownloadStatus.completed).length,
-                            _DownloadFilter.failed => _manager.tasks.where((task) => task.status == DownloadStatus.failed).length,
+                            _DownloadFilter.all => _manager.tasks.length + _serverJobs.length,
+                            _DownloadFilter.active => _manager.activeCount + _serverJobs.where((job) => job.status == 'downloading' || job.status == 'queued' || job.status == 'paused').length,
+                            _DownloadFilter.completed => _manager.tasks.where((task) => task.status == DownloadStatus.completed).length + _serverJobs.where((job) => job.status == 'completed').length,
+                            _DownloadFilter.failed => _manager.tasks.where((task) => task.status == DownloadStatus.failed).length + _serverJobs.where((job) => job.status == 'failed').length,
                           }}',
                           style: const TextStyle(
                             fontFamily: 'monospace',
@@ -320,29 +369,37 @@ tooltip: 'Filter downloads',
               PocketLinkAppBarAction(
                 label: 'Pause all',
                 icon: Icons.pause_rounded,
-                enabled: _manager.activeCount > 0 || _manager.queuedCount > 0,
-                onPressed: _manager.activeCount > 0 || _manager.queuedCount > 0 ? _manager.pauseAll : null,
+                enabled: _manager.activeCount > 0 || _manager.queuedCount > 0 ||
+                    _serverJobs.any((job) => job.status == 'downloading' || job.status == 'queued'),
+                onPressed: _manager.activeCount > 0 || _manager.queuedCount > 0 ||
+                    _serverJobs.any((job) => job.status == 'downloading' || job.status == 'queued')
+                    ? _pauseAll
+                    : null,
               ),
               PocketLinkAppBarAction(
                 label: 'Resume all',
                 icon: Icons.play_arrow_rounded,
                 enabled: _manager.tasks.any((task) =>
                     task.status == DownloadStatus.paused ||
-                    task.status == DownloadStatus.failed),
+                    task.status == DownloadStatus.failed) ||
+                    _serverJobs.any((job) => job.status == 'paused' || job.status == 'failed'),
                 onPressed: _manager.tasks.any((task) =>
                     task.status == DownloadStatus.paused ||
-                    task.status == DownloadStatus.failed)
-                    ? _manager.resumeAll
+                    task.status == DownloadStatus.failed) ||
+                    _serverJobs.any((job) => job.status == 'paused' || job.status == 'failed')
+                    ? _resumeAll
                     : null,
               ),
               PocketLinkAppBarAction(
                 label: 'Clear completed',
                 icon: Icons.delete_sweep_outlined,
                 enabled: _manager.tasks.any(
-                    (task) => task.status == DownloadStatus.completed),
+                    (task) => task.status == DownloadStatus.completed) ||
+                    _serverJobs.any((job) => job.status == 'completed'),
                 onPressed: _manager.tasks.any(
-                    (task) => task.status == DownloadStatus.completed)
-                    ? _manager.clearCompleted
+                    (task) => task.status == DownloadStatus.completed) ||
+                    _serverJobs.any((job) => job.status == 'completed')
+                    ? _clearCompleted
                     : null,
                 dividerBefore: true,
               ),
@@ -927,7 +984,7 @@ class _NewDownloadSheetState extends State<_NewDownloadSheet> {
                 children: [
                   Expanded(
                     child: ChoiceChip(
-                      label: const Text('Local · This phone'),
+                      label: const Text('Local'),
                       selected: _destination == 'local',
                       onSelected: (_) => setState(() {
                         _destination = 'local';
@@ -939,7 +996,7 @@ class _NewDownloadSheetState extends State<_NewDownloadSheet> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: ChoiceChip(
-                      label: const Text('Server · Host storage'),
+                      label: const Text('Server'),
                       selected: _destination == 'server',
                       onSelected: (_) => setState(() {
                         _destination = 'server';
@@ -960,7 +1017,13 @@ class _NewDownloadSheetState extends State<_NewDownloadSheet> {
                   hintText: 'https://example.com/file.zip',
                   border: OutlineInputBorder(),
                 ),
-                onSubmitted: (_) => _resolve(),
+                onSubmitted: (_) {
+                  if (_destination == 'local') {
+                    _resolve();
+                  } else {
+                    _start();
+                  }
+                },
                 onChanged: (_) => setState(() {
                   _resolved = null;
                   _error = null;
@@ -996,7 +1059,7 @@ class _NewDownloadSheetState extends State<_NewDownloadSheet> {
                   decoration: const InputDecoration(
                     labelText: 'Server destination folder',
                     hintText: 'Downloads/PocketLink',
-                    helperText: 'Leave as default to sort into Videos, Music, Documents, Photos, Archives, APK or Others.',
+                    helperText: 'Relative to shared storage. Leave as default to sort into Videos, Music, Documents, Photos, Archives, APK or Others.',
                     border: OutlineInputBorder(),
                   ),
                 ),
