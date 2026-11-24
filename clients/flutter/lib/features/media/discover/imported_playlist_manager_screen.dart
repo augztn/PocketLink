@@ -136,7 +136,7 @@ class _ImportedPlaylistManagerScreenState extends State<ImportedPlaylistManagerS
       if (bytes == null) throw const FormatException('Could not read the selected playlist file.');
       final text = utf8.decode(bytes, allowMalformed: false);
       final extension = file.extension?.toLowerCase() ?? '';
-      final fallbackName = file.name.replaceFirst(RegExp(r'\.[^.]+, '');
+      final fallbackName = file.name.replaceFirst(RegExp(r'\.[^.]+$'), '');
       final playlists = switch (extension) {
         'm3u' || 'm3u8' => [
             PlaylistImportService.parseM3u(text, fallbackPlaylistName: fallbackName),
