@@ -18,6 +18,7 @@ class FloatingNavigationDock extends StatelessWidget {
     this.hasMedia = false,
     this.isVideo = false,
     this.preview = false,
+    this.showNavigationTabs = true,
     this.musicShortcutsExpanded = false,
     this.onMusicShortcutLongPress,
     this.onMusicShortcutDismissed,
@@ -35,6 +36,7 @@ class FloatingNavigationDock extends StatelessWidget {
   final bool hasMedia;
   final bool isVideo;
   final bool preview;
+  final bool showNavigationTabs;
   final bool musicShortcutsExpanded;
   final VoidCallback? onMusicShortcutLongPress;
   final VoidCallback? onMusicShortcutDismissed;
@@ -55,27 +57,41 @@ class FloatingNavigationDock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final progress = preview ? null : NowPlayingOverlayController.expandProgress;
-    if (progress == null) return _buildDock(context, 0);
-
-    return AnimatedBuilder(
-      animation: progress,
-      builder: (context, _) {
-        final value = progress.value.clamp(0.0, 1.0).toDouble();
-        final dockT = (value / 0.45).clamp(0.0, 1.0).toDouble();
-        final dockTotalHeight = 82.0 + MediaQuery.paddingOf(context).bottom;
-        return IgnorePointer(
-          ignoring: value > 0.05,
-          child: Transform.translate(
-            offset: Offset(0, dockTotalHeight * dockT),
-            child: _buildDock(context, dockT),
-          ),
+    return ValueListenableBuilder<bool>(
+      valueListenable: PocketLinkNavigation.discoverSearchVisible,
+      builder: (context, searchVisible, _) {
+        final showTabs = showNavigationTabs && !searchVisible;
+        if (progress == null) {
+          return _buildDock(context, 0, showNavigationTabs: showTabs);
+        }
+        return AnimatedBuilder(
+          animation: progress,
+          builder: (context, _) {
+            final value = progress.value.clamp(0.0, 1.0).toDouble();
+            final dockT = (value / 0.45).clamp(0.0, 1.0).toDouble();
+            final dockTotalHeight = 82.0 + MediaQuery.paddingOf(context).bottom;
+            return IgnorePointer(
+              ignoring: value > 0.05,
+              child: Transform.translate(
+                offset: Offset(0, dockTotalHeight * dockT),
+                child: _buildDock(context, dockT, showNavigationTabs: showTabs),
+              ),
+            );
+          },
         );
       },
     );
   }
 
-  Widget _buildDock(BuildContext context, double dockT) {
-    final activeItems = order.where(visibleItems.contains).toList(growable: false);
+  Widget _buildDock(
+    BuildContext context,
+    double dockT, {
+    required bool showNavigationTabs,
+  }) {
+    final activeItems = order
+        .where((id) => visibleItems.contains(id) &&
+            (showNavigationTabs || id == 'browse'))
+        .toList(growable: false);
     final segments = <Widget>[];
     var tabGroup = <String>[];
 
@@ -208,6 +224,9 @@ class FloatingNavigationDock extends StatelessWidget {
     addTabGroup();
 
     final content = Row(
+      mainAxisAlignment: showNavigationTabs
+          ? MainAxisAlignment.start
+          : MainAxisAlignment.end,
       children: [
         for (var index = 0; index < segments.length; index++) ...[
           if (index > 0) const SizedBox(width: 10),

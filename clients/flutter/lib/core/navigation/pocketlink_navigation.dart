@@ -94,6 +94,7 @@ abstract final class PocketLinkNavigation {
   static final mediaOverlayKey = GlobalKey();
   static final drawerOpen = ValueNotifier<bool>(false);
   static final quickShortcutsOpen = ValueNotifier<bool>(false);
+  static final discoverSearchVisible = ValueNotifier<bool>(false);
   static final observer = PocketLinkNavigationObserver();
 
   /// Resolves an element in the coordinate space shared by the media overlay.

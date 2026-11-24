@@ -23,6 +23,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
     required this.onSkipNext,
     this.surfaceKey,
     this.hasFloatingNavBar = true,
+    this.compact = false,
     this.surfaceIntensity = 1.0,
     this.artworkBytes,
     this.artworkKey,
@@ -46,6 +47,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
   final VoidCallback onSkipNext;
   final Key? surfaceKey;
   final bool hasFloatingNavBar;
+  final bool compact;
   final double surfaceIntensity;
   final Uint8List? artworkBytes;
   final Key? artworkKey;
@@ -82,12 +84,14 @@ class GlobalMiniPlayerBar extends StatelessWidget {
       alignment: Alignment.centerLeft,
       child: Padding(
         // Match the full 3+1 dock width, including the circular Music button.
-        padding: EdgeInsets.fromLTRB(
-          safeInsets.left + 16.0,
-          4,
-          safeInsets.right + 16.0,
-          0,
-        ),
+        padding: compact
+            ? const EdgeInsets.only(top: 4)
+            : EdgeInsets.fromLTRB(
+                safeInsets.left + 16.0,
+                4,
+                safeInsets.right + 16.0,
+                0,
+              ),
         child: SmokedGlassSurface(
           key: surfaceKey,
           radius: BorderRadius.circular(22),

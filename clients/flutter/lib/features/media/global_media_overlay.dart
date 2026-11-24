@@ -393,6 +393,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
         settings,
         PocketLinkNavigation.drawerOpen,
         PocketLinkNavigation.quickShortcutsOpen,
+        PocketLinkNavigation.discoverSearchVisible,
       ]),
       builder: (context, _) => ValueListenableBuilder<List<Route<dynamic>>>(
         valueListenable: observer.routeStack,
@@ -411,6 +412,8 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
               !observer.isModalRouteOnTop &&
               _nowPlayingController.value <= 0.0;
           final onDashboard = observer.isDashboardVisible;
+          final compactDiscoverControls =
+              PocketLinkNavigation.discoverSearchVisible.value && onDashboard;
           final showTrackPopup = _trackPopup != null &&
               _trackPopupOffset != null &&
               onDashboard &&
@@ -464,9 +467,10 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
                 ),
               if (shouldRenderMiniPlayer)
                 Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: bottomInset + (onDashboard ? _homeDockHeight : 0),
+                  left: compactDiscoverControls ? 14 : 0,
+                  right: compactDiscoverControls ? 88 : 0,
+                  bottom: bottomInset +
+                      (onDashboard && !compactDiscoverControls ? _homeDockHeight : 10),
                   child: IgnorePointer(
                     ignoring: !visible,
                     child: AnimatedSlide(
@@ -476,6 +480,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
                           : const Duration(milliseconds: 280),
                       curve: Curves.easeOutCubic,
                       child: _GlobalMiniPlayerBar(
+                        compact: compactDiscoverControls,
                         visible: visible,
                         hasFloatingNavBar: onDashboard,
                         reduceMotion: reduceMotion ||
@@ -1036,6 +1041,7 @@ class _AnimatedTrackDirection extends StatelessWidget {
 
 class _GlobalMiniPlayerBar extends StatelessWidget {
   const _GlobalMiniPlayerBar({
+    required this.compact,
     required this.visible,
     required this.hasFloatingNavBar,
     required this.reduceMotion,
@@ -1048,6 +1054,7 @@ class _GlobalMiniPlayerBar extends StatelessWidget {
     required this.onExpandDragEnd,
   });
 
+  final bool compact;
   final bool visible;
   final bool hasFloatingNavBar;
   final bool reduceMotion;
@@ -1091,6 +1098,7 @@ class _GlobalMiniPlayerBar extends StatelessWidget {
               onSkipNext: player.skipToNext,
               surfaceKey: PocketLinkNavigation.miniPlayerKey,
               hasFloatingNavBar: hasFloatingNavBar,
+              compact: compact,
               surfaceIntensity: surfaceIntensity,
               artworkBytes: artwork,
               artworkKey: PocketLinkNavigation.miniArtworkKey,

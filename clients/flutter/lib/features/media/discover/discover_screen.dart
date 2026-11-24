@@ -13,6 +13,7 @@ import '../../../core/widgets/smoked_glass_popover_menu.dart';
 import '../../../core/widgets/pocketlink_section_header.dart';
 import '../data/media_library_repository.dart';
 import '../media_library_catalog.dart';
+import '../../../core/navigation/pocketlink_navigation.dart';
 import '../now_playing_overlay_controller.dart';
 import '../music_library_screen.dart';
 import 'imported_playlist_manager_screen.dart';
@@ -98,7 +99,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
 
 
   Future<void> _openMoodsAndMoments() async {
-    await Navigator.of(context).push<void>(
+    PocketLinkNavigation.discoverSearchVisible.value = true;
+    try {
+      await Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (_) => _MoodsAndMomentsScreen(
           service: _service,
@@ -115,7 +118,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
           },
         ),
       ),
-    );
+      );
+    } finally {
+      PocketLinkNavigation.discoverSearchVisible.value = false;
+    }
   }
 
   Future<void> _loadLocalLibrary({bool forceRefresh = false}) async {

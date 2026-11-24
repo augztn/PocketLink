@@ -106,6 +106,31 @@ void main() {
     },
   );
 
+  testWidgets('Discover search keeps Music button and mini-player dock lane while hiding tabs', (tester) async {
+    PocketLinkNavigation.discoverSearchVisible.value = true;
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        bottomNavigationBar: FloatingNavigationDock(
+          order: const ['home', 'browse', 'explore', 'files'],
+          visibleItems: const {'home', 'browse', 'explore', 'files'},
+          selectedIndex: 1,
+          onSelect: (_) {},
+          onBrowsePressed: () {},
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('navigation-dock-tabs-capsule')), findsNothing);
+    expect(find.byKey(PocketLinkNavigation.musicButtonKey), findsOneWidget);
+    expect(tester.getCenter(find.byKey(PocketLinkNavigation.musicButtonKey)).dx,
+        greaterThan(tester.viewSize.width / 2));
+
+    PocketLinkNavigation.discoverSearchVisible.value = false;
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('navigation-dock-tabs-capsule')), findsOneWidget);
+  });
+
   testWidgets('expanded shortcuts dismiss from Music button without an X icon', (tester) async {
     var opens = 0;
     var dismisses = 0;
