@@ -681,7 +681,12 @@ class _HomeScreenState extends State<HomeScreen> {
               !_musicShortcutsExpanded &&
               !PocketLinkNavigation.drawerOpen.value,
           onPopInvokedWithResult: (didPop, result) {
-            if (didPop || nowPlayingProgress.value > 0.001) return;
+            if (didPop) return;
+            if (nowPlayingProgress.value > 0.5) {
+              _handleSystemBack(nowPlayingProgress.value);
+              return;
+            }
+            if (nowPlayingProgress.value > 0.001) return;
             _handleSystemBack(nowPlayingProgress.value);
           },
           child: child!,
