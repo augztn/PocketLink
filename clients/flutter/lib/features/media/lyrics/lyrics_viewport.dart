@@ -51,6 +51,21 @@ class _LyricsViewportState extends State<LyricsViewport> {
     }
   }
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToActive());
+  }
+
+  void _scrollToActive() {
+    final index = _activeIndex;
+    if (index < 0 || !_scroll.hasClients || !mounted) return;
+    final target = (index * 66.0 - _scroll.position.viewportDimension * .42)
+        .clamp(0.0, _scroll.position.maxScrollExtent);
+    _scroll.jumpTo(target);
+    _lastActive = index;
+  }
+
   int get _activeIndex {
     final lines = widget.document?.lines ?? const <LyricsLine>[];
     if (widget.document?.synced != true) return -1;
