@@ -14,6 +14,7 @@ import '../../core/logging/app_logger.dart';
 import '../../core/storage/home_activity_store.dart';
 import 'file_browser_state_store.dart';
 import 'file_entry_tile.dart';
+import 'file_browser_directory_content.dart';
 import 'file_browser_header_controls.dart';
 import '../transfers/transfer_manager.dart';
 import '../downloads/download_manager_service.dart';
@@ -852,116 +853,37 @@ tooltip: 'Choose storage location',
                     (_searchExpanded ? 64 : 0) +
                     (_path.isNotEmpty ? 38 : 0) +
                     34; // Filter row follows the shared measured header.
-                Widget emptyList(String message, {Widget? action}) => ListView(
-                  controller: _scrollController,
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: EdgeInsets.fromLTRB(16, topInset, 16, LayoutInsetsScope.of(context).bottomClearance),
-                  children: [
-                    SizedBox(
-                      height: 150,
-                      child: Center(
-                        child: Column(mainAxisSize: MainAxisSize.min, children: [
-                          Text(message, style: theme.textTheme.bodyLarge?.copyWith(color: colors.onSurfaceVariant)),
-                          if (action != null) ...[const SizedBox(height: 12), action],
-                        ]),
-                      ),
-                    ),
-                  ],
-                );
-
-                final Widget content = _error != null
-                    ? emptyList(
-                        _error!,
-                        action: FilledButton.icon(
-                          onPressed: _refreshDirectory,
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('Try again'),
-                        ),
-                      )
-                    : _loading && _listing == null
-                        ? (_gridView
-                            ? PocketLinkSkeleton.fileGrid(
-                                padding: EdgeInsets.fromLTRB(
-                                  16, topInset, 16,
-                                  LayoutInsetsScope.of(context).bottomClearance,
-                                ),
-                              )
-                            : PocketLinkSkeleton.fileList(
-                                padding: EdgeInsets.fromLTRB(
-                                  16, topInset, 16,
-                                  LayoutInsetsScope.of(context).bottomClearance,
-                                ),
-                              ))
-                        : items.isEmpty
-                            ? emptyList(allItems.isEmpty ? 'This folder is empty' : 'No matching files')
-                            : _gridView
-                                ? GridView.builder(
-                                    controller: _scrollController,
-                                    physics: const AlwaysScrollableScrollPhysics(),
-                                    padding: EdgeInsets.fromLTRB(16, topInset, 16, LayoutInsetsScope.of(context).bottomClearance),
-                                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                                      maxCrossAxisExtent: 190,
-                                      mainAxisExtent: 156,
-                                      crossAxisSpacing: 10,
-                                      mainAxisSpacing: 10,
-                                    ),
-                                    itemCount: items.length,
-                                    itemBuilder: (context, index) {
-                                      final item = items[index];
-                                      return FileEntryTile(
-                                        item: item,
-                                        grid: true,
-                                        colors: colors,
-                                        icon: PocketLinkFileVisuals.resolve(
-                                          name: item.name,
-                                          isDirectory: item.isDirectory,
-                                          colors: colors,
-                                        ).icon,
-                                        iconColor: PocketLinkFileVisuals.resolve(
-                                          name: item.name,
-                                          isDirectory: item.isDirectory,
-                                          colors: colors,
-                                        ).color,
-                                        formattedSize: _formatSize(item.size),
-                                        onOpen: _openActionFor(item),
-                                        onDownload: () => _downloadFile(item),
-                                        onRename: () => _rename(item),
-                                        onDelete: () => _delete(item),
-                                      );
-                                    },
-                                  )
-                                : ListView.separated(
-                                    controller: _scrollController,
-                                    physics: const AlwaysScrollableScrollPhysics(),
-                                    padding: EdgeInsets.fromLTRB(16, topInset, 16, LayoutInsetsScope.of(context).bottomClearance),
-                                    itemCount: items.length,
-                                    separatorBuilder: (_, __) => const SizedBox(height: 8),
-                                    itemBuilder: (context, index) {
-                                      final item = items[index];
-                                      return FileEntryTile(
-                                        item: item,
-                                        colors: colors,
-                                        icon: PocketLinkFileVisuals.resolve(
-                                          name: item.name,
-                                          isDirectory: item.isDirectory,
-                                          colors: colors,
-                                        ).icon,
-                                        iconColor: PocketLinkFileVisuals.resolve(
-                                          name: item.name,
-                                          isDirectory: item.isDirectory,
-                                          colors: colors,
-                                        ).color,
-                                        formattedSize: _formatSize(item.size),
-                                        onOpen: _openActionFor(item),
-                                        onDownload: () => _downloadFile(item),
-                                        onRename: () => _rename(item),
-                                        onDelete: () => _delete(item),
-                                      );
-                                    },
-                                  );
-                return RefreshIndicator(
+                return FileBrowserDirectoryContent(
+                  allItemsEmpty: allItems.isEmpty,
+                  items: items,
+                  loading: _loading,
+                  error: _error,
+                  gridView: _gridView,
+                  scrollController: _scrollController,
+                  topInset: topInset,
+                  bottomInset: LayoutInsetsScope.of(context).bottomClearance,
+                  colors: colors,
+                  textTheme: theme.textTheme,
                   onRefresh: _refreshDirectory,
-                  child: content,
+                  itemBuilder: (item, grid) {
+                    final visual = PocketLinkFileVisuals.resolve(
+                      name: item.name,
+                      isDirectory: item.isDirectory,
+                      colors: colors,
+                    );
+                    return FileEntryTile(
+                      item: item,
+                      grid: grid,
+                      colors: colors,
+                      icon: visual.icon,
+                      iconColor: visual.color,
+                      formattedSize: _formatSize(item.size),
+                      onOpen: _openActionFor(item),
+                      onDownload: () => _downloadFile(item),
+                      onRename: () => _rename(item),
+                      onDelete: () => _delete(item),
+                    );
+                  },
                 );
               }),
             ),
