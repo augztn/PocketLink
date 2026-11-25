@@ -17,9 +17,11 @@ void main() {
 
   late ServerApi api;
   late _DirectoryAdapter adapter;
+  late FileBrowserStateStore browserState;
 
   setUp(() {
     adapter = _DirectoryAdapter();
+    browserState = FileBrowserStateStore();
     api = ServerApi(
       baseUrl: 'http://pocketlink.test:8000',
       username: 'test',
@@ -35,8 +37,8 @@ void main() {
     VoidCallback? backHandler;
 
     await tester.pumpWidget(
-      ChangeNotifierProvider(
-        create: (_) => FileBrowserStateStore(),
+      ChangeNotifierProvider<FileBrowserStateStore>.value(
+        value: browserState,
         child: MaterialApp(
           builder: (context, child) => MaterialUiCompatibilityBridge(
             child: child ?? const SizedBox.shrink(),
@@ -75,13 +77,13 @@ void main() {
     backHandler!();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
-    expect(adapter.directoryRequests.last, 'DCIM');
+    expect(browserState.stateFor(api.baseUrl).path, 'DCIM');
     expect(backHandler, isNotNull);
 
     backHandler!();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
-    expect(adapter.directoryRequests.last, isEmpty);
+    expect(browserState.stateFor(api.baseUrl).path, isEmpty);
     expect(backHandler, isNull);
   });
 }
