@@ -59,23 +59,28 @@ void main() {
       ),
     );
 
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     expect(adapter.directoryRequests, contains(''));
 
     await tester.tap(find.text('DCIM').first);
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     expect(adapter.directoryRequests, contains('DCIM'));
 
     await tester.tap(find.text('Screenshots').first);
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     expect(adapter.directoryRequests, contains('DCIM/Screenshots'));
 
     await tester.binding.handlePopRoute();
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     expect(adapter.directoryRequests.last, 'DCIM');
 
     await tester.binding.handlePopRoute();
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     expect(adapter.directoryRequests.last, isEmpty);
   });
 }
