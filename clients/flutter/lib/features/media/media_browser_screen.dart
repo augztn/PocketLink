@@ -23,6 +23,7 @@ import 'widgets/music_equalizer.dart';
 import 'widgets/video_metadata_label.dart';
 import 'widgets/video_duration_badge.dart';
 import 'widgets/video_grid_card.dart';
+import 'widgets/video_list_tile.dart';
 import 'music_track_tile.dart';
 import 'persistent_audio_player.dart';
 import 'now_playing_overlay_controller.dart';
@@ -599,85 +600,53 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   Widget _buildVideoList(List<MediaFileItem> items) {
     return ListView.separated(
       controller: _contentScrollController,
-      padding: EdgeInsets.fromLTRB(12, ((_searchExpanded && widget.showSearch) || _libraryView == 'folders') ? 8 : LayoutInsetsScope.of(context).topClearance, 12, LayoutInsetsScope.of(context).bottomClearance),
+      padding: EdgeInsets.fromLTRB(
+        12,
+        ((_searchExpanded && widget.showSearch) || _libraryView == 'folders')
+            ? 8
+            : LayoutInsetsScope.of(context).topClearance,
+        12,
+        LayoutInsetsScope.of(context).bottomClearance,
+      ),
       itemCount: items.length,
       separatorBuilder: (_, __) => const SizedBox(height: 4),
       itemBuilder: (context, index) {
         final media = items[index];
         final extension = media.entry.name.split('.').last.toUpperCase();
-        return Card(
-          clipBehavior: Clip.antiAlias,
-          child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            leading: Container(
-              width: 104,
-              height: 64,
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: _buildVideoArtwork(media, fit: BoxFit.cover),
-            ),
-            title: Text(
-              media.entry.name,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('$extension · ${_formatBytes(media.entry.size)} · ${_sourceLabel(media)}',
-                  maxLines: 1, overflow: TextOverflow.ellipsis),
-                _videoMetadataLabel(media),
-              ],
-            ),            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SmokedGlassPopoverMenu<String>(
-                  tooltip: 'Video actions',
-                  items: const [
-                    SmokedGlassPopoverMenuItem(value: 'download', label: 'Download', icon: Icons.download_rounded),
-                  ],
-                  onSelected: (action) async {
-                    if (action != 'download') return;
-                    try {
-                      await DownloadManagerService.instance.enqueueServerFile(
-                        api: widget.api,
-                        name: media.entry.name,
-                        sourcePath: media.path,
-                        volume: media.volume,
-                        size: media.entry.size,
-                      );
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Added to Downloads: ${media.entry.name}')),
-                        );
-                      }
-                    } catch (_) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Could not add this video to Downloads.')),
-                        );
-                      }
-                    }
-                  },
-                  child: const Padding(
-                    padding: EdgeInsets.all(8),
-                    child: Icon(Icons.more_vert_rounded),
-                  ),
-                ),
-                const Icon(Icons.play_circle_outline_rounded),
-              ],
-            ),
-            onTap: () => _openMedia(media, items),
-          ),
+        return VideoListTile(
+          title: media.entry.name,
+          extension: extension,
+          sizeLabel: _formatBytes(media.entry.size),
+          sourceLabel: _sourceLabel(media),
+          artwork: _buildVideoArtwork(media, fit: BoxFit.cover),
+          metadataLabel: _videoMetadataLabel(media),
+          onOpen: () => _openMedia(media, items),
+          onDownload: () async {
+            try {
+              await DownloadManagerService.instance.enqueueServerFile(
+                api: widget.api,
+                name: media.entry.name,
+                sourcePath: media.path,
+                volume: media.volume,
+                size: media.entry.size,
+              );
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Added to Downloads: ${media.entry.name}')),
+                );
+              }
+            } catch (_) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Could not add this video to Downloads.')),
+                );
+              }
+            }
+          },
         );
       },
     );
   }
-
 
   Widget _buildFolders(List<MediaFileItem> items) {
     final folders = _foldersAtCurrentLevel(items);
