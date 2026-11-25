@@ -23,6 +23,7 @@ import 'widgets/music_equalizer.dart';
 import 'widgets/video_metadata_label.dart';
 import 'widgets/video_duration_badge.dart';
 import 'widgets/video_grid_card.dart';
+import 'widgets/video_artwork.dart';
 import 'widgets/video_list_tile.dart';
 import 'widgets/media_folder_tile.dart';
 import 'music_track_tile.dart';
@@ -488,31 +489,11 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   List<MediaFileItem> _sortMedia(List<MediaFileItem> items) =>
       _catalog.sortMedia(items);
 
-  Widget _buildVideoArtwork(MediaFileItem media, {required BoxFit fit}) {
-    return FutureBuilder<Uint8List?>(
-      future: widget.api.videoThumbnail(media.path, volume: media.volume),
-      builder: (context, snapshot) {
-        final bytes = snapshot.data;
-        if (bytes != null && bytes.isNotEmpty) {
-          return Image.memory(bytes, fit: fit, gaplessPlayback: true);
-        }
-        return DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Theme.of(context).colorScheme.primaryContainer,
-                Theme.of(context).colorScheme.surfaceContainerHighest,
-              ],
-            ),
-          ),
-          child: Icon(Icons.movie_creation_outlined, size: 42,
-            color: Theme.of(context).colorScheme.onSurfaceVariant),
-        );
-      },
-    );
-  }
+  Widget _buildVideoArtwork(MediaFileItem media, {required BoxFit fit}) =>
+      VideoArtwork(
+        future: widget.api.videoThumbnail(media.path, volume: media.volume),
+        fit: fit,
+      );
 
   Future<VideoMetadata?> _videoMetadataFor(MediaFileItem media) =>
       _videoMetadataCache.putIfAbsent(_favoriteKey(media), () => widget.api.videoMetadata(media.path, volume: media.volume));
