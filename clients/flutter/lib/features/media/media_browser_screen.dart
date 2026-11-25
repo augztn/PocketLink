@@ -34,6 +34,7 @@ import 'widgets/media_browser_filter_sheet.dart';
 import 'widgets/media_browser_empty_state.dart';
 import 'widgets/music_browser_empty_state.dart';
 import 'widgets/music_browser_track_list.dart';
+import 'widgets/music_selection_toolbar.dart';
 import 'persistent_audio_player.dart';
 import 'now_playing_overlay_controller.dart';
 import '../transfers/transfer_manager_screen.dart';
@@ -397,8 +398,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         });
         WidgetsBinding.instance.addPostFrameCallback((_) => _restoreScrollOffset());
       }
-    }
-  }
+    }  }
 
   Future<void> _openMedia(MediaFileItem media, List<MediaFileItem> queueItems) async {
     if (_openingMedia) return;
@@ -797,8 +797,7 @@ tooltip: 'Choose video view',
                   SizedBox(width: 20, child: _libraryView == 'favorites' ? const Icon(Icons.check_rounded, size: 18) : null),
                 ]),
               ),
-            ],
-            onSelected: (value) {
+            ],            onSelected: (value) {
               setState(() {
                 _libraryView = value;
                 if (value != 'folders') _currentFolderPath = '';
@@ -1197,8 +1196,7 @@ tooltip: 'Choose video view',
                               loading: _loading && _media.isEmpty,
                               favoritesView: _libraryView == 'favorites',
                               onRetry: _scan,
-                              topPadding: LayoutInsetsScope.of(context).topClearance,
-                              bottomPadding: LayoutInsetsScope.of(context).bottomClearance,
+                              topPadding: LayoutInsetsScope.of(context).topClearance,                              bottomPadding: LayoutInsetsScope.of(context).bottomClearance,
                             )
                           : MusicBrowserTrackList(
                               controller: _contentScrollController,
@@ -1436,24 +1434,10 @@ tooltip: 'Choose music view',
                     ),
                   ),
                 if (_selectionMode)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 8),
-                    child: LiquidGlassSurface(
-                      radius: BorderRadius.circular(22),
-                      refractive: true,
-                        lightRefractive: true,
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        Padding(
-                          padding: const EdgeInsets.only(left: 10),
-                          child: Text('${_selectedTrackKeys.length} selected', style: TextStyle(color: foreground, fontSize: 12)),
-                        ),
-                        IconButton(
-                          tooltip: 'Done selecting',
-                          onPressed: _clearSelectionMode,
-                          icon: Icon(Icons.close_rounded, size: 18, color: foreground),
-                        ),
-                      ]),
-                    ),
+                  MusicSelectionToolbar(
+                    selectedCount: _selectedTrackKeys.length,
+                    foreground: foreground,
+                    onDone: _clearSelectionMode,
                   ),
               ]),
             ),
