@@ -21,6 +21,7 @@ import 'data/media_library_repository.dart';
 import 'widgets/video_metadata_label.dart';
 import 'widgets/video_duration_badge.dart';
 import 'widgets/video_library_header_title.dart';
+import 'widgets/music_library_header_title.dart';
 import 'widgets/video_grid_card.dart';
 import 'widgets/video_artwork.dart';
 import 'widgets/video_list_tile.dart';
@@ -257,8 +258,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
 
       if ((status.state == 'failed' || status.state == 'partial') && found.isEmpty) {
         await _scanLegacy();
-        return;
-      }
+        return;      }
       if (mounted) {
         setState(() {
           _media = List.unmodifiable(found);
@@ -696,8 +696,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
               if (_contentScrollController.hasClients) {
                 _contentScrollController.jumpTo(0);
               }
-              _syncBackHandler();
-            },
+              _syncBackHandler();            },
           ),
         for (final media in files)
           MediaFolderFileTile(
@@ -1157,8 +1156,7 @@ tooltip: 'Choose video view',
       child: AnimatedBuilder(
         animation: PersistentAudioPlayer.instance,
         builder: (context, _) => Scaffold(
-          extendBodyBehindAppBar: true,
-          body: Stack(children: [
+          extendBodyBehindAppBar: true,          body: Stack(children: [
             Positioned.fill(
               child: _libraryView == 'folders'
                   ? Padding(
@@ -1320,52 +1318,11 @@ tooltip: 'Choose music view',
                         _saveState(folderPath: _currentFolderPath);
                         if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0);
                       },
-                      child: SizedBox(
-                        width: double.infinity,
-                        height: 44,
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: Padding(
-                            padding: const EdgeInsets.only(left: 2, right: 8),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Row(mainAxisSize: MainAxisSize.min, children: [
-                                  Text(
-                                    'Music',
-                                    style: TextStyle(
-                                      color: foreground,
-                                      fontSize: 26,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: -0.5,
-                                      height: 1.0,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  AnimatedRotation(
-                                    turns: _musicMenuOpen ? 0.5 : 0,
-                                    duration: const Duration(milliseconds: 200),
-                                    child: Icon(
-                                      Icons.keyboard_arrow_down_rounded,
-                                      color: foreground,
-                                      size: 20,
-                                    ),
-                                  ),
-                                ]),
-                                const SizedBox(height: 3),
-                                Text(
-                                  '${visible.length} tracks • ${_selectedVolume == null ? 'All storage' : _volumeName(_selectedVolume)}',
-                                  maxLines: 1,
-                                  softWrap: false,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(color: foreground.withValues(alpha: 0.62), fontSize: 11, height: 1.0, fontWeight: FontWeight.w500),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+                      child: MusicLibraryHeaderTitle(
+                        subtitle:
+                            '${visible.length} tracks • ${_selectedVolume == null ? 'All storage' : _volumeName(_selectedVolume)}',
+                        menuOpen: _musicMenuOpen,
+                        titleColor: foreground,
                       ),
                     ),
                   ),
