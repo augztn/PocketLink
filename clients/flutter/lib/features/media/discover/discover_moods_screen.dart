@@ -22,10 +22,10 @@ class DiscoverMoodsScreen extends StatefulWidget {
   final void Function(DiscoverTrack track, List<DiscoverTrack> queue) onPlay;
 
   @override
-  State<DiscoverMoodsScreen> createState() => DiscoverMoodsScreenState();
+  State<DiscoverMoodsScreen> createState() => _DiscoverMoodsScreenState();
 }
 
-class DiscoverMoodsScreenState extends State<DiscoverMoodsScreen> {
+class _DiscoverMoodsScreenState extends State<DiscoverMoodsScreen> {
   late Future<List<DiscoverMoodSection>> _sections;
   final TextEditingController _query = TextEditingController();
   bool _searching = false;
