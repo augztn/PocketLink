@@ -25,7 +25,7 @@ import 'widgets/video_grid_card.dart';
 import 'widgets/video_artwork.dart';
 import 'widgets/video_list_tile.dart';
 import 'widgets/media_folder_tile.dart';
-import 'music_artwork.dart';
+import 'widgets/music_artwork.dart';
 import 'music_track_tile.dart';
 import 'widgets/music_duration_label.dart';
 import 'persistent_audio_player.dart';
