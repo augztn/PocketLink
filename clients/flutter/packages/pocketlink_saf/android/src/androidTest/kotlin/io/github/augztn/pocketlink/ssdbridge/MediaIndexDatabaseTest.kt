@@ -13,6 +13,45 @@ import java.util.concurrent.atomic.AtomicReference
 @RunWith(AndroidJUnit4::class)
 class MediaIndexDatabaseTest {
     @Test
+    fun pathSnapshotsLoadOnlyRequestedRowsAndDetectDescendantsInSql() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        context.deleteDatabase("pocketlink_index.db")
+        val database = MediaIndexDatabase(context)
+        try {
+            val entries = (0 until 2_000).map { index ->
+                IndexedFile(
+                    "internal",
+                    "Library/track-$index.mp3",
+                    "track-$index.mp3",
+                    "file",
+                    index.toLong(),
+                    index.toLong(),
+                    "audio/mpeg",
+                    "music"
+                )
+            }
+            database.upsertFiles(entries, "scan")
+            database.upsertMedia(entries, "scan")
+
+            val requested = listOf("Library/track-17.mp3", "Library/track-999.mp3")
+            val files = database.fileSnapshot("internal", requested)
+            val media = database.mediaSnapshot("internal", requested)
+
+            assertEquals(2, files.size)
+            assertEquals(2, media.size)
+            assertEquals(17L, files["Library/track-17.mp3"]?.size)
+            assertEquals("music", media["Library/track-999.mp3"]?.category)
+            assertTrue(database.hasIndexedDescendants("internal", "Library"))
+            assertTrue(database.hasIndexedDescendants("internal", ""))
+            assertTrue(!database.hasIndexedDescendants("internal", "Missing"))
+            assertTrue(!database.hasIndexedDescendants("internal", "Library/track-17.mp3"))
+        } finally {
+            database.close()
+            context.deleteDatabase("pocketlink_index.db")
+        }
+    }
+
+    @Test
     fun statsSnapshotIsStableAndReadOnlyAcrossSubsequentWrites() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         context.deleteDatabase("pocketlink_index.db")
