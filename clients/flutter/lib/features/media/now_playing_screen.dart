@@ -19,6 +19,7 @@ import '../../core/widgets/smoked_glass_popover_menu.dart';
 import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
 import '../storage/storage_browser_screen.dart';
+import 'now_playing_artwork_card.dart';
 import 'now_playing_scrubber.dart';
 import 'now_playing_scroll_dismiss_detector.dart';
 import 'persistent_audio_player.dart';
@@ -996,123 +997,15 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     ),
   );
 
-  Widget _artworkCard() {
-    final hasArtwork = _artwork != null && _artworkKey == _trackKey;
-    final palette = _trackPalette;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = (constraints.maxWidth - 40).clamp(0.0, 380.0).toDouble();
-        final height = (constraints.maxHeight - 18).clamp(0.0, 380.0).toDouble();
-        final dimension = math.min(width, height).clamp(0.0, 360.0).toDouble();
-        return Container(
-          key: widget.artworkTargetKey,
-          width: dimension,
-          height: dimension,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(26),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
-            boxShadow: [
-              BoxShadow(
-                color: palette[0].withValues(alpha: 0.28),
-                blurRadius: 38,
-                spreadRadius: 2,
-                offset: const Offset(0, 16),
-              ),
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.34),
-                blurRadius: 24,
-                offset: const Offset(0, 12),
-              ),
-            ],
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: _usesSharedArtwork
-              ? const SizedBox.expand()
-              : AnimatedSwitcher(
-            duration: Duration.zero,
-            reverseDuration: Duration.zero,
-            switchInCurve: Curves.easeOutCubic,
-            switchOutCurve: Curves.easeInCubic,
-            transitionBuilder: (child, animation) => FadeTransition(
-              opacity: animation,
-              child: ScaleTransition(
-                scale: Tween<double>(begin: 0.96, end: 1).animate(animation),
-                child: child,
-              ),
-            ),
-            child: hasArtwork
-                ? Stack(
-                    key: ValueKey(_artworkKey),
-                    fit: StackFit.expand,
-                    children: [
-                      Image.memory(
-                        _artwork!,
-                        cacheWidth: 544,
-                        fit: BoxFit.cover,
-                        gaplessPlayback: true,
-                      ),
-                      DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: RadialGradient(
-                            center: const Alignment(-0.55, -0.7),
-                            radius: 1.1,
-                            colors: [
-                              Colors.white.withValues(alpha: 0.18),
-                              Colors.transparent,
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  )
-                : (_track.artworkUrl?.isNotEmpty ?? false)
-                    ? DiscoverThumbnail(
-                        key: ValueKey('music-artwork-url:${_track.artworkUrl}'),
-                        url: DiscoverThumbnailCache.urlForSize(_track.artworkUrl!, 544),
-                        cacheWidth: 544,
-                        fallback: DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                palette[0].withValues(alpha: 0.92),
-                                palette[1].withValues(alpha: 0.78),
-                                palette[2],
-                              ],
-                            ),
-                          ),
-                          child: const Center(
-                            child: Icon(Icons.music_note_rounded, size: 92, color: Colors.white),
-                          ),
-                        ),
-                      )
-                    : DecoratedBox(
-                    key: const ValueKey('music-artwork-fallback'),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          palette[0].withValues(alpha: 0.92),
-                          palette[1].withValues(alpha: 0.78),
-                          palette[2],
-                        ],
-                      ),
-                    ),
-                    child: const Center(
-                      child: Icon(
-                        Icons.music_note_rounded,
-                        size: 92,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-          ),
-        );
-      },
-    );
-  }
+  Widget _artworkCard() => NowPlayingArtworkCard(
+        artwork: _artwork,
+        artworkKey: _artworkKey,
+        trackKey: _trackKey,
+        palette: _trackPalette,
+        usesSharedArtwork: _usesSharedArtwork,
+        artworkTargetKey: widget.artworkTargetKey,
+        artworkUrl: _track.artworkUrl,
+      );
 
   Widget _roundAction({
     required IconData icon,
