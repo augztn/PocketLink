@@ -27,6 +27,7 @@ import 'widgets/media_folder_file_tile.dart';
 import 'widgets/media_folder_breadcrumbs.dart';
 import 'widgets/media_folder_content.dart';
 import 'widgets/music_artwork.dart';
+import 'widgets/music_library_header.dart';
 import 'music_track_tile.dart';
 import 'widgets/music_duration_label.dart';
 import 'widgets/media_browser_filter_sheet.dart';
