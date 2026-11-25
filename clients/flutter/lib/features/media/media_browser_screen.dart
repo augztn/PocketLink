@@ -519,6 +519,32 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         formatDuration: _formatDuration,
       );
 
+  Future<void> _downloadVideo(
+    BuildContext context,
+    MediaFileItem media,
+  ) async {
+    try {
+      await DownloadManagerService.instance.enqueueServerFile(
+        api: widget.api,
+        name: media.entry.name,
+        sourcePath: media.path,
+        volume: media.volume,
+        size: media.entry.size,
+      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Added to Downloads: ${media.entry.name}')),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not add this video to Downloads.')),
+        );
+      }
+    }
+  }
+
   Widget _buildVideoGrid(List<MediaFileItem> items) {
     return GridView.builder(
       controller: _contentScrollController,
@@ -551,32 +577,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
           metadataLabel: _videoMetadataLabel(media),
           onOpen: () => _openMedia(media, items),
           onToggleFavorite: () => _toggleFavorite(media),
-          onDownload: () async {
-            try {
-              await DownloadManagerService.instance.enqueueServerFile(
-                api: widget.api,
-                name: media.entry.name,
-                sourcePath: media.path,
-                volume: media.volume,
-                size: media.entry.size,
-              );
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Added to Downloads: ${media.entry.name}'),
-                  ),
-                );
-              }
-            } catch (_) {
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Could not add this video to Downloads.'),
-                  ),
-                );
-              }
-            }
-          },
+          onDownload: () => _downloadVideo(context, media),
         );
       },
     );
@@ -606,28 +607,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
           artwork: _buildVideoArtwork(media, fit: BoxFit.cover),
           metadataLabel: _videoMetadataLabel(media),
           onOpen: () => _openMedia(media, items),
-          onDownload: () async {
-            try {
-              await DownloadManagerService.instance.enqueueServerFile(
-                api: widget.api,
-                name: media.entry.name,
-                sourcePath: media.path,
-                volume: media.volume,
-                size: media.entry.size,
-              );
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Added to Downloads: ${media.entry.name}')),
-                );
-              }
-            } catch (_) {
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Could not add this video to Downloads.')),
-                );
-              }
-            }
-          },
+          onDownload: () => _downloadVideo(context, media),
         );
       },
     );
