@@ -18,19 +18,28 @@ import org.schabi.newpipe.extractor.stream.StreamInfo
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
 import java.io.IOException
 import java.util.Locale
-import java.util.concurrent.Executors
+import java.util.concurrent.ArrayBlockingQueue
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.RejectedExecutionException
+import java.util.concurrent.ThreadFactory
+import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 
 /**
  * Android-side YouTube audio discovery bridge.
  *
  * NewPipeExtractor performs player JavaScript signature and n-parameter
- * deciphering natively. Network work is serialized off the platform thread.
+ * deciphering natively. Independent HTTP work runs in bounded lanes. Calls
+ * into NewPipe remain serialized because its localization is process-global.
  */
 internal object DiscoverBridge {
-    private val executor = Executors.newSingleThreadExecutor { task ->
-        Thread(task, "PocketLink-Discover").apply { isDaemon = true }
-    }
+    private val discoverExecutor = boundedExecutor("PocketLink-Discover", workers = 2)
+    private val metadataExecutor = boundedExecutor("PocketLink-Metadata", workers = 2)
+    private val resolverExecutor = boundedExecutor("PocketLink-Resolver", workers = 1)
+    private val newPipeLock = ReentrantLock()
     private val mainHandler = Handler(Looper.getMainLooper())
     private val httpClient = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
@@ -47,7 +56,7 @@ internal object DiscoverBridge {
 
 
     fun moodAndGenres(regionCode: String, result: io.flutter.plugin.common.MethodChannel.Result) {
-        executor.execute {
+        submit(discoverExecutor, result, "DISCOVER_MOODS_FAILED", "Could not load moods and genres.") {
             try {
                 val sections = catalog.moodAndGenres(regionCode)
                 mainHandler.post { result.success(sections) }
@@ -64,7 +73,7 @@ internal object DiscoverBridge {
         regionCode: String,
         result: io.flutter.plugin.common.MethodChannel.Result
     ) {
-        executor.execute {
+        submit(discoverExecutor, result, "DISCOVER_MOOD_BROWSE_FAILED", "Could not open this mood.") {
             try {
                 val tracks = catalog.browseMood(browseId, params, limit.coerceIn(1, 50), regionCode)
                 mainHandler.post { result.success(tracks) }
@@ -75,7 +84,7 @@ internal object DiscoverBridge {
     }
 
     fun search(query: String, limit: Int, regionCode: String, result: io.flutter.plugin.common.MethodChannel.Result) {
-        executor.execute {
+        submit(discoverExecutor, result, "DISCOVER_SEARCH_FAILED", "YouTube Music search failed.") {
             try {
                 val cleanQuery = query.trim()
                 require(cleanQuery.length >= 2) { "Enter at least two characters." }
@@ -84,18 +93,20 @@ internal object DiscoverBridge {
                 val tracks = if (catalogueTracks.isNotEmpty()) {
                     catalogueTracks
                 } else {
-                    ensureInitialized(regionCode)
-                    val handler = ServiceList.YouTube.searchQHFactory.fromQuery(
-                        cleanQuery,
-                        listOf("music_songs"),
-                        ""
-                    )
-                    val info = SearchInfo.getInfo(ServiceList.YouTube, handler)
-                    info.relatedItems.orEmpty()
-                        .filterIsInstance<StreamInfoItem>()
-                        .mapNotNull { item -> item.toDiscoverTrack() }
-                        .distinctBy { it["videoId"] }
-                        .take(boundedLimit)
+                    newPipeLock.withLock {
+                        ensureInitialized(regionCode)
+                        val handler = ServiceList.YouTube.searchQHFactory.fromQuery(
+                            cleanQuery,
+                            listOf("music_songs"),
+                            ""
+                        )
+                        val info = SearchInfo.getInfo(ServiceList.YouTube, handler)
+                        info.relatedItems.orEmpty()
+                            .filterIsInstance<StreamInfoItem>()
+                            .mapNotNull { item -> item.toDiscoverTrack() }
+                            .distinctBy { it["videoId"] }
+                            .take(boundedLimit)
+                    }
                 }
                 mainHandler.post { result.success(tracks) }
             } catch (error: Exception) {
@@ -111,24 +122,26 @@ internal object DiscoverBridge {
     }
 
     fun home(limit: Int, regionCode: String, result: io.flutter.plugin.common.MethodChannel.Result) {
-        executor.execute {
+        submit(discoverExecutor, result, "DISCOVER_HOME_FAILED", "YouTube Music home is unavailable.") {
             try {
                 val boundedLimit = limit.coerceIn(1, 50)
                 val catalogueTracks = catalog.home(boundedLimit, regionCode)
                 val tracks = if (catalogueTracks.isNotEmpty()) {
                     catalogueTracks
                 } else {
-                    ensureInitialized(regionCode)
-                    val handler = ServiceList.YouTube.searchQHFactory.fromQuery(
-                        "top songs",
-                        listOf("music_songs"),
-                        ""
-                    )
-                    SearchInfo.getInfo(ServiceList.YouTube, handler).relatedItems.orEmpty()
-                        .filterIsInstance<StreamInfoItem>()
-                        .mapNotNull { it.toDiscoverTrack() }
-                        .distinctBy { it["videoId"] }
-                        .take(boundedLimit)
+                    newPipeLock.withLock {
+                        ensureInitialized(regionCode)
+                        val handler = ServiceList.YouTube.searchQHFactory.fromQuery(
+                            "top songs",
+                            listOf("music_songs"),
+                            ""
+                        )
+                        SearchInfo.getInfo(ServiceList.YouTube, handler).relatedItems.orEmpty()
+                            .filterIsInstance<StreamInfoItem>()
+                            .mapNotNull { it.toDiscoverTrack() }
+                            .distinctBy { it["videoId"] }
+                            .take(boundedLimit)
+                    }
                 }
                 mainHandler.post { result.success(tracks) }
             } catch (error: Exception) {
@@ -140,7 +153,7 @@ internal object DiscoverBridge {
     }
 
     fun radio(videoId: String, limit: Int, regionCode: String, result: io.flutter.plugin.common.MethodChannel.Result) {
-        executor.execute {
+        submit(discoverExecutor, result, "DISCOVER_RADIO_FAILED", "Could not load radio recommendations.") {
             try {
                 val id = videoId.trim()
                 val boundedLimit = limit.coerceIn(1, 50)
@@ -148,14 +161,16 @@ internal object DiscoverBridge {
                 val tracks = if (catalogueTracks.isNotEmpty()) {
                     catalogueTracks
                 } else {
-                    ensureInitialized(regionCode)
-                    StreamInfo.getInfo(ServiceList.YouTube, "https://www.youtube.com/watch?v=$id")
-                        .relatedItems.orEmpty()
-                        .filterIsInstance<StreamInfoItem>()
-                        .mapNotNull { it.toDiscoverTrack() }
-                        .filter { it["videoId"] != id }
-                        .distinctBy { it["videoId"] }
-                        .take(boundedLimit)
+                    newPipeLock.withLock {
+                        ensureInitialized(regionCode)
+                        StreamInfo.getInfo(ServiceList.YouTube, "https://www.youtube.com/watch?v=$id")
+                            .relatedItems.orEmpty()
+                            .filterIsInstance<StreamInfoItem>()
+                            .mapNotNull { it.toDiscoverTrack() }
+                            .filter { it["videoId"] != id }
+                            .distinctBy { it["videoId"] }
+                            .take(boundedLimit)
+                    }
                 }
                 mainHandler.post { result.success(tracks) }
             } catch (error: Exception) {
@@ -167,7 +182,7 @@ internal object DiscoverBridge {
     }
 
     fun lyrics(videoId: String, regionCode: String, result: io.flutter.plugin.common.MethodChannel.Result) {
-        executor.execute {
+        submit(metadataExecutor, result, "DISCOVER_LYRICS_FAILED", "YouTube Music lyrics are unavailable.") {
             try {
                 val payload = catalog.lyrics(videoId.trim(), regionCode)
                 mainHandler.post { result.success(payload) }
@@ -178,7 +193,7 @@ internal object DiscoverBridge {
     }
 
     fun captions(videoId: String, regionCode: String, result: io.flutter.plugin.common.MethodChannel.Result) {
-        executor.execute {
+        submit(metadataExecutor, result, "DISCOVER_CAPTIONS_FAILED", "YouTube captions are unavailable.") {
             try {
                 val payload = catalog.captions(videoId.trim(), regionCode)
                 mainHandler.post { result.success(payload) }
@@ -195,7 +210,7 @@ internal object DiscoverBridge {
         regionCode: String,
         result: io.flutter.plugin.common.MethodChannel.Result
     ) {
-        executor.execute {
+        submit(resolverExecutor, result, "DISCOVER_STREAM_FAILED", "Could not resolve the YouTube audio stream.") {
             try {
                 val id = videoId.trim()
                 require(ID_PATTERN.matches(id)) { "Invalid YouTube video ID." }
@@ -299,11 +314,12 @@ internal object DiscoverBridge {
         regionCode: String,
         quality: String
     ): Pair<Map<String, Any>?, Map<String, Any>?> {
-        ensureInitialized(regionCode)
-        val info = StreamInfo.getInfo(
-            ServiceList.YouTube,
-            "https://www.youtube.com/watch?v=$videoId"
-        )
+        return newPipeLock.withLock {
+            ensureInitialized(regionCode)
+            val info = StreamInfo.getInfo(
+                ServiceList.YouTube,
+                "https://www.youtube.com/watch?v=$videoId"
+            )
         val audio = info.audioStreams.orEmpty()
             .filter { it.content.orEmpty().startsWith("https://") }
         val selectedAudio = DiscoverPlaybackOptions.selectAudioFormat(
@@ -344,7 +360,44 @@ internal object DiscoverBridge {
                     "audioOnly" to false
                 )
             }
-        return audioPayload to progressivePayload
+            audioPayload to progressivePayload
+        }
+    }
+
+    private fun boundedExecutor(name: String, workers: Int): ExecutorService {
+        val sequence = AtomicInteger()
+        val factory = ThreadFactory { task ->
+            Thread(task, "$name-${sequence.incrementAndGet()}").apply { isDaemon = true }
+        }
+        return ThreadPoolExecutor(
+            workers,
+            workers,
+            0L,
+            TimeUnit.MILLISECONDS,
+            ArrayBlockingQueue(32),
+            factory,
+            ThreadPoolExecutor.AbortPolicy()
+        )
+    }
+
+    private fun submit(
+        executor: ExecutorService,
+        result: io.flutter.plugin.common.MethodChannel.Result,
+        errorCode: String,
+        fallbackMessage: String,
+        task: () -> Unit
+    ) {
+        try {
+            executor.execute(task)
+        } catch (error: RejectedExecutionException) {
+            mainHandler.post {
+                result.error(errorCode, "Discover is busy. Please retry shortly.", null)
+            }
+        } catch (error: Exception) {
+            mainHandler.post {
+                result.error(errorCode, error.message ?: fallbackMessage, null)
+            }
+        }
     }
 
     private fun ensureInitialized(regionCode: String) {
