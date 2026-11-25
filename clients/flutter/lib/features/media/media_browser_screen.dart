@@ -27,6 +27,7 @@ import 'widgets/video_list_tile.dart';
 import 'widgets/media_folder_tile.dart';
 import 'widgets/media_folder_file_tile.dart';
 import 'widgets/media_folder_breadcrumbs.dart';
+import 'widgets/media_folder_content.dart';
 import 'widgets/music_artwork.dart';
 import 'music_track_tile.dart';
 import 'widgets/music_duration_label.dart';
@@ -625,80 +626,83 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   Widget _buildFolders(List<MediaFileItem> items) {
     final folders = _foldersAtCurrentLevel(items);
     final files = _sortMedia(_filesAtCurrentLevel(items));
-    return Column(
+    return MediaFolderContent(
+      breadcrumbs: MediaFolderBreadcrumbs(
+        currentPath: _currentFolderPath,
+        volumeLabel: _selectedVolume == null ? null : _volumeName(_selectedVolume),
+        onAllStorage: () {
+          setState(() {
+            _currentFolderPath = '';
+            _selectedVolume = null;
+          });
+          _pendingScrollOffset = 0;
+          _saveState(folderPath: '', clearVolume: true);
+          if (_contentScrollController.hasClients) {
+            _contentScrollController.jumpTo(0);
+          }
+          _syncBackHandler();
+        },
+        onVolumeRoot: () {
+          setState(() {
+            _currentFolderPath =
+                _selectedVolume == 'internal' && _isMusic ? 'Music' : '';
+          });
+          _pendingScrollOffset = 0;
+          _saveState(folderPath: _currentFolderPath);
+          if (_contentScrollController.hasClients) {
+            _contentScrollController.jumpTo(0);
+          }
+          _syncBackHandler();
+        },
+        onFolder: (path) {
+          setState(() => _currentFolderPath = path);
+          _saveState(folderPath: path);
+          if (_contentScrollController.hasClients) {
+            _contentScrollController.jumpTo(0);
+          }
+          _syncBackHandler();
+        },
+      ),
+      controller: _contentScrollController,
+      physics: _isMusic ? const AlwaysScrollableScrollPhysics() : null,
+      padding: EdgeInsets.fromLTRB(
+        12,
+        _isMusic
+            ? 8
+            : ((_searchExpanded && widget.showSearch) ||
+                    _libraryView == 'folders')
+                ? 8
+                : LayoutInsetsScope.of(context).topClearance,
+        12,
+        LayoutInsetsScope.of(context).bottomClearance,
+      ),
       children: [
-        MediaFolderBreadcrumbs(
-          currentPath: _currentFolderPath,
-          volumeLabel: _selectedVolume == null ? null : _volumeName(_selectedVolume),
-          onAllStorage: () {
-            setState(() {
-              _currentFolderPath = '';
-              _selectedVolume = null;
-            });
-            _pendingScrollOffset = 0;
-            _saveState(folderPath: '', clearVolume: true);
-            if (_contentScrollController.hasClients) {
-              _contentScrollController.jumpTo(0);
-            }
-            _syncBackHandler();
-          },
-          onVolumeRoot: () {
-            setState(() {
-              _currentFolderPath =
-                  _selectedVolume == 'internal' && _isMusic ? 'Music' : '';
-            });
-            _pendingScrollOffset = 0;
-            _saveState(folderPath: _currentFolderPath);
-            if (_contentScrollController.hasClients) {
-              _contentScrollController.jumpTo(0);
-            }
-            _syncBackHandler();
-          },
-          onFolder: (path) {
-            setState(() => _currentFolderPath = path);
-            _saveState(folderPath: path);
-            if (_contentScrollController.hasClients) {
-              _contentScrollController.jumpTo(0);
-            }
-            _syncBackHandler();
-          },
-        ),
-        Expanded(
-          child: ListView(
-            physics: _isMusic ? const AlwaysScrollableScrollPhysics() : null,
-            controller: _contentScrollController,
-            padding: EdgeInsets.fromLTRB(12, _isMusic ? 8 : ((_searchExpanded && widget.showSearch) || _libraryView == 'folders') ? 8 : LayoutInsetsScope.of(context).topClearance, 12, LayoutInsetsScope.of(context).bottomClearance),
-            children: [
-              for (final folder in folders)
-                MediaFolderTile(
-                  title: folder.name,
-                  subtitle: '${_countLabel(folder.items.length, _isMusic ? 'track' : 'video', _isMusic ? 'tracks' : 'videos')} · ${_volumeName(folder.volume)}',
-                  onTap: () {
-                    setState(() {
-                      _selectedVolume = folder.volume ?? 'internal';
-                      _currentFolderPath = folder.path;
-                    });
-                    _pendingScrollOffset = 0;
-                    _saveState(folderPath: folder.path);
-                    if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0);
-                    _syncBackHandler();
-                  },
-                ),
-              for (final media in files)
-                MediaFolderFileTile(
-                  title: _isMusic ? _displayTitle(media) : media.entry.name,
-                  subtitle: '${_isMusic && _fileExtension(media).isNotEmpty ? '${_fileExtension(media)} · ' : ''}${_formatBytes(media.entry.size)} · ${_volumeName(media.volume)}',
-                  isMusic: _isMusic,
-                  onTap: () => _openMedia(media, files),
-                ),
-              if (folders.isEmpty && files.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(32),
-                  child: Center(child: Text('No media in this folder')),
-                ),
-            ],
+        for (final folder in folders)
+          MediaFolderTile(
+            title: folder.name,
+            subtitle:
+                '${_countLabel(folder.items.length, _isMusic ? 'track' : 'video', _isMusic ? 'tracks' : 'videos')} · ${_volumeName(folder.volume)}',
+            onTap: () {
+              setState(() {
+                _selectedVolume = folder.volume ?? 'internal';
+                _currentFolderPath = folder.path;
+              });
+              _pendingScrollOffset = 0;
+              _saveState(folderPath: folder.path);
+              if (_contentScrollController.hasClients) {
+                _contentScrollController.jumpTo(0);
+              }
+              _syncBackHandler();
+            },
           ),
-        ),
+        for (final media in files)
+          MediaFolderFileTile(
+            title: _isMusic ? _displayTitle(media) : media.entry.name,
+            subtitle:
+                '${_isMusic && _fileExtension(media).isNotEmpty ? '${_fileExtension(media)} · ' : ''}${_formatBytes(media.entry.size)} · ${_volumeName(media.volume)}',
+            isMusic: _isMusic,
+            onTap: () => _openMedia(media, files),
+          ),
       ],
     );
   }
