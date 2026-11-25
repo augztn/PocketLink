@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:material_ui/material_ui.dart';
 
 /// Loads and displays a video's thumbnail with the browser's fallback artwork.
