@@ -35,6 +35,7 @@ import 'widgets/media_browser_empty_state.dart';
 import 'widgets/music_browser_empty_state.dart';
 import 'widgets/music_browser_track_list.dart';
 import 'widgets/music_selection_toolbar.dart';
+import 'widgets/music_more_actions_menu.dart';
 import 'persistent_audio_player.dart';
 import 'now_playing_overlay_controller.dart';
 import '../transfers/transfer_manager_screen.dart';
@@ -497,8 +498,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       _catalog.sortMedia(items);
 
   Widget _buildVideoArtwork(MediaFileItem media, {required BoxFit fit}) =>
-      VideoArtwork(
-        future: widget.api.videoThumbnail(media.path, volume: media.volume),
+      VideoArtwork(        future: widget.api.videoThumbnail(media.path, volume: media.volume),
         fit: fit,
       );
 
@@ -997,8 +997,7 @@ tooltip: 'Choose video view',
       }
     } catch (_) {
       // Embedded artwork is optional; playback must not depend on it.
-    }
-    return null;
+    }    return null;
   }
 
   Future<void> _showMusicFilters() async {
@@ -1392,42 +1391,31 @@ tooltip: 'Choose music view',
                         child: Row(mainAxisSize: MainAxisSize.min, children: [
                         iconAction(Icons.search_rounded, 'Search', () => _setSearchExpanded(true)),
                         iconAction(Icons.tune_rounded, 'Sort and filter', _showMusicFilters),
-                        SmokedGlassPopoverMenu<String>(
-                          tooltip: 'More music actions',
-                          items: [
-                            const SmokedGlassPopoverMenuItem(value: 'shuffle', label: 'Shuffle all', icon: Icons.shuffle_rounded),
-                            const SmokedGlassPopoverMenuItem(value: 'select', label: 'Select tracks', icon: Icons.checklist_rounded),
-                            const SmokedGlassPopoverMenuItem(value: 'scan', label: 'Scan library', icon: Icons.refresh_rounded),
-                            const SmokedGlassPopoverMenuItem(value: 'settings', label: 'Settings', icon: Icons.settings_rounded, dividerBefore: true),
-                            const SmokedGlassPopoverMenuItem(value: 'home', label: 'Return to Home', icon: Icons.home_rounded),
-                          ],
-                          onSelected: (value) {
-                            if (value == 'shuffle' && visible.isNotEmpty) {
-                              final shuffled = List<MediaFileItem>.of(visible)..shuffle(math.Random());
-                              _openMedia(shuffled.first, shuffled);
-                            }
-                            if (value == 'select') {
-                              setState(() {
-                                _selectionMode = true;
-                                _selectedTrackKeys.clear();
-                              });
-                              _syncBackHandler();
-                            }
-                            if (value == 'scan' && !_loading) _scan(refresh: true);
-                            if (value == 'settings') {
-                              Navigator.of(context).push(MaterialPageRoute<void>(
-                                builder: (_) => const SettingsScreen(),
-                              ));
-                            }
-                            if (value == 'home') {
-                              PocketLinkAppBar.goToDashboard(context);
-                            }
+                        MusicMoreActionsMenu(
+                          onShuffle: visible.isEmpty
+                              ? null
+                              : () {
+                                  final shuffled =
+                                      List<MediaFileItem>.of(visible)
+                                        ..shuffle(math.Random());
+                                  _openMedia(shuffled.first, shuffled);
+                                },
+                          onSelect: () {
+                            setState(() {
+                              _selectionMode = true;
+                              _selectedTrackKeys.clear();
+                            });
+                            _syncBackHandler();
                           },
-                          child: GlassCircleButton(
-                            tooltip: 'Open more music actions',
-                            onPressed: null,
-                            child: const Icon(Icons.more_vert_rounded, size: 18),
-                          ),
+                          onScan: () {
+                            if (!_loading) _scan(refresh: true);
+                          },
+                          onSettings: () {
+                            Navigator.of(context).push(MaterialPageRoute<void>(
+                              builder: (_) => const SettingsScreen(),
+                            ));
+                          },
+                          onHome: () => PocketLinkAppBar.goToDashboard(context),
                         ),
                         ]),
                       ),
