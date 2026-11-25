@@ -8,6 +8,7 @@ class MusicTrackTile extends StatelessWidget {
   const MusicTrackTile({
     required this.title,
     required this.artist,
+    required this.artwork,
     required this.duration,
     required this.playing,
     required this.selected,
@@ -24,6 +25,7 @@ class MusicTrackTile extends StatelessWidget {
 
   final String title;
   final String artist;
+  final Widget artwork;
   final Widget duration;
   final bool playing;
   final bool selected;
@@ -52,7 +54,7 @@ class MusicTrackTile extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             child: Row(children: [
-              const SizedBox(width: 52),
+              artwork,
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
