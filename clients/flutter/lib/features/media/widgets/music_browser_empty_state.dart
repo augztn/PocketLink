@@ -1,5 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../../../core/widgets/pocketlink_skeleton.dart';
+
 class MusicBrowserEmptyState extends StatelessWidget {
   const MusicBrowserEmptyState({
     required this.error,
