@@ -2,8 +2,9 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
-import 'package:flutter/material.dart';
-import 'package:material_ui/material_ui.dart' show MaterialUiCompatibilityBridge;
+import 'package:flutter/material.dart' hide MaterialApp;
+import 'package:material_ui/material_ui.dart'
+    show MaterialApp, MaterialUiCompatibilityBridge;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
@@ -40,20 +41,18 @@ void main() {
           builder: (context, child) => MaterialUiCompatibilityBridge(
             child: child ?? const SizedBox.shrink(),
           ),
-          home: StatefulBuilder(
-            builder: (context, setState) => PopScope(
-              canPop: false,
-              onPopInvokedWithResult: (didPop, result) {
-                if (!didPop) backHandler?.call();
+          home: PopScope(
+            canPop: false,
+            onPopInvokedWithResult: (didPop, result) {
+              if (!didPop) backHandler?.call();
+            },
+            child: FileManagerScreen(
+              api: api,
+              isActive: true,
+              onBackAtRoot: () {},
+              onBackHandlerChanged: (handler) {
+                backHandler = handler;
               },
-              child: FileManagerScreen(
-                api: api,
-                isActive: true,
-                onBackAtRoot: () {},
-                onBackHandlerChanged: (handler) {
-                  backHandler = handler;
-                },
-              ),
             ),
           ),
         ),
