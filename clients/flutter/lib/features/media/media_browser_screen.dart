@@ -197,8 +197,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         await widget.api.startMediaIndexScan();
         if (!mounted) return;
       } on DioException {
-        await _scanLegacy(refresh: refresh);
-        return;
+        await _scanLegacy(refresh: refresh);        return;
       }
     }
     if (!mounted) return;
@@ -397,8 +396,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   }
 
   Future<void> _openMedia(MediaFileItem media, List<MediaFileItem> queueItems) async {
-    if (_openingMedia) return;
-    _openingMedia = true;
+    if (_openingMedia) return;    _openingMedia = true;
     final queue = queueItems
         .map((item) => MediaQueueItem(
               title: item.entry.name,
@@ -519,10 +517,11 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         formatDuration: _formatDuration,
       );
 
-  Future<void> _downloadVideo(
+  Future<void> _downloadMedia(
     BuildContext context,
-    MediaFileItem media,
-  ) async {
+    MediaFileItem media, {
+    required String failureMessage,
+  }) async {
     try {
       await DownloadManagerService.instance.enqueueServerFile(
         api: widget.api,
@@ -539,7 +538,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     } catch (_) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not add this video to Downloads.')),
+          SnackBar(content: Text(failureMessage)),
         );
       }
     }
@@ -577,7 +576,11 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
           metadataLabel: _videoMetadataLabel(media),
           onOpen: () => _openMedia(media, items),
           onToggleFavorite: () => _toggleFavorite(media),
-          onDownload: () => _downloadVideo(context, media),
+          onDownload: () => _downloadMedia(
+            context,
+            media,
+            failureMessage: 'Could not add this video to Downloads.',
+          ),
         );
       },
     );
@@ -597,8 +600,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       itemCount: items.length,
       separatorBuilder: (_, __) => const SizedBox(height: 4),
       itemBuilder: (context, index) {
-        final media = items[index];
-        final extension = media.entry.name.split('.').last.toUpperCase();
+        final media = items[index];        final extension = media.entry.name.split('.').last.toUpperCase();
         return VideoListTile(
           title: media.entry.name,
           extension: extension,
@@ -607,7 +609,11 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
           artwork: _buildVideoArtwork(media, fit: BoxFit.cover),
           metadataLabel: _videoMetadataLabel(media),
           onOpen: () => _openMedia(media, items),
-          onDownload: () => _downloadVideo(context, media),
+          onDownload: () => _downloadMedia(
+            context,
+            media,
+            failureMessage: 'Could not add this video to Downloads.',
+          ),
         );
       },
     );
@@ -797,8 +803,7 @@ tooltip: 'Choose video view',
               Expanded(
                 child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Row(mainAxisSize: MainAxisSize.min, children: [
-                    Flexible(child: Text(headerTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700, letterSpacing: -0.5, color: titleColor))),
-                    const SizedBox(width: 6),
+                    Flexible(child: Text(headerTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700, letterSpacing: -0.5, color: titleColor))),                    const SizedBox(width: 6),
                     AnimatedRotation(turns: _musicMenuOpen ? 0.5 : 0, duration: const Duration(milliseconds: 200), child: const Icon(Icons.keyboard_arrow_down_rounded, size: 20)),
                   ]),
                   Text(
@@ -997,8 +1002,7 @@ tooltip: 'Choose video view',
                 ? await widget.api.downloadFile(path)
                 : await widget.api.downloadStorageFile(media.volume!, path);
             if (bytes.isNotEmpty) return bytes;
-          }
-        }
+          }        }
       }
     } catch (_) {
       // Embedded artwork is optional; playback must not depend on it.
@@ -1160,28 +1164,11 @@ tooltip: 'Choose video view',
       onToggleFavorite: () => _toggleFavorite(media),
       onPlayNext: () => _queueTrack(media, playNext: true),
       onQueue: () => _queueTrack(media, playNext: false),
-      onDownload: () async {
-        try {
-          await DownloadManagerService.instance.enqueueServerFile(
-            api: widget.api,
-            name: media.entry.name,
-            sourcePath: media.path,
-            volume: media.volume,
-            size: media.entry.size,
-          );
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Added to Downloads: ${media.entry.name}')),
-            );
-          }
-        } catch (_) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Could not add this track to Downloads.')),
-            );
-          }
-        }
-      },
+      onDownload: () => _downloadMedia(
+        context,
+        media,
+        failureMessage: 'Could not add this track to Downloads.',
+      ),
     );
   }
 
@@ -1197,8 +1184,7 @@ tooltip: 'Choose video view',
     final folderCount = _foldersAtCurrentLevel(_media).length;
     final favoriteCount = _media.where((m) => _favoriteKeys.contains(_favoriteKey(m))).length;
     final top = MediaQuery.paddingOf(context).top;
-    final foreground = Theme.of(context).brightness == Brightness.dark
-        ? Colors.white
+    final foreground = Theme.of(context).brightness == Brightness.dark        ? Colors.white
         : const Color(0xFF172033);
 
     Widget iconAction(IconData icon, String tooltip, VoidCallback onPressed) =>
@@ -1397,8 +1383,7 @@ tooltip: 'Choose music view',
                         SmokedGlassPopoverMenuItem(value: 'favorites', label: 'Favorites', icon: Icons.favorite_rounded,
                           trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                             Text('$favoriteCount', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
-                            const SizedBox(width: 8),
-                            SizedBox(width: 20, child: _libraryView == 'favorites' ? const Icon(Icons.check_rounded, size: 18) : null),
+                            const SizedBox(width: 8),                            SizedBox(width: 20, child: _libraryView == 'favorites' ? const Icon(Icons.check_rounded, size: 18) : null),
                           ])),
                       ],
                       onSelected: (value) {
