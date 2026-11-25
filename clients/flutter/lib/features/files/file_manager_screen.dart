@@ -212,9 +212,11 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
       _saveState(path: _path);
       await _load(_path);
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not open that storage location.')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open that storage location.')),
+        );
+      }
     }
   }
 
@@ -232,9 +234,11 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
       }
       await _selectPartition(available.first.id);
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not load external drives.')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not load external drives.')),
+        );
+      }
     }
   }
 
@@ -294,7 +298,11 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
       setState(() { _path = result.path == '.' ? '' : result.path; _listing = result; _saveState(path: _path); });
       widget.onCanNavigateBackChanged?.call(_path.isNotEmpty);
       if (_path.isNotEmpty && (_path != previousPath || _selectedVolume != previousVolume)) {
-        HomeActivityStore.instance.recordFolder(serverUrl: widget.api.baseUrl, path: _path, volume: _selectedVolume);
+        await HomeActivityStore.instance.recordFolder(
+          serverUrl: widget.api.baseUrl,
+          path: _path,
+          volume: _selectedVolume,
+        );
       }
     } on DioException catch (error) {
       if (!mounted || generation != _loadGeneration) return;
@@ -557,7 +565,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     try {
       final bytes = _selectedVolume == null ? await widget.api.downloadFile(_itemPath(item.name)) : await widget.api.downloadStorageFile(_selectedVolume!, _itemPath(item.name));
       if (!mounted) return;
-      HomeActivityStore.instance.recordFile(
+      await HomeActivityStore.instance.recordFile(
         serverUrl: widget.api.baseUrl,
         title: item.name,
         path: _itemPath(item.name),
