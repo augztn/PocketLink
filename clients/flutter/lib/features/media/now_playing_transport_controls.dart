@@ -24,8 +24,8 @@ class NowPlayingTransportControls extends StatelessWidget {
   final bool initialPlaying;
   final bool initialBuffering;
   final Duration initialDuration;
-  final bool selectionLoading;
-  final bool hasMultipleTracks;
+  final bool Function() selectionLoading;
+  final bool Function() hasMultipleTracks;
   final VoidCallback onPrevious;
   final VoidCallback onPlayPause;
   final VoidCallback onNext;
@@ -42,7 +42,7 @@ class NowPlayingTransportControls extends StatelessWidget {
             initialData: initialDuration,
             builder: (context, durationSnapshot) {
               final isPlaying = playingSnapshot.data ?? false;
-              final loading = selectionLoading ||
+              final loading = selectionLoading() ||
                   (bufferingSnapshot.data ?? false) ||
                   (durationSnapshot.data ?? Duration.zero) <= Duration.zero;
               return Row(
@@ -52,7 +52,7 @@ class NowPlayingTransportControls extends StatelessWidget {
                     tooltip: 'Previous track',
                     icon: Icons.skip_previous_rounded,
                     size: 32,
-                    enabled: hasMultipleTracks,
+                    enabled: hasMultipleTracks(),
                     onTap: onPrevious,
                   ),
                   PlaybackLoadingIndicator(
@@ -72,7 +72,7 @@ class NowPlayingTransportControls extends StatelessWidget {
                     tooltip: 'Next track',
                     icon: Icons.skip_next_rounded,
                     size: 32,
-                    enabled: hasMultipleTracks,
+                    enabled: hasMultipleTracks(),
                     onTap: onNext,
                   ),
                 ],
