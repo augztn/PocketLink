@@ -15,6 +15,7 @@ import 'file_entry_tile.dart';
 import 'file_browser_directory_content.dart';
 import 'file_browser_header_content.dart';
 import 'file_browser_storage_title.dart';
+import 'file_browser_sort_sheet.dart';
 import '../transfers/transfer_manager.dart';
 import '../downloads/download_manager_service.dart';
 import '../transfers/transfer_manager_screen.dart';
@@ -444,56 +445,9 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
 
 
   Future<void> _showSortOptions() async {
-    final selected = await showModalBottomSheet<String>(
+    final selected = await showFileBrowserSortOptions(
       context: context,
-      backgroundColor: Colors.transparent,
-      showDragHandle: true,
-      builder: (sheetContext) {
-        final sheetColors = Theme.of(sheetContext).colorScheme;
-        const options = [
-          ('name', 'Name', Icons.sort_by_alpha_rounded),
-          ('newest', 'Newest', Icons.schedule_rounded),
-          ('largest', 'Largest', Icons.storage_rounded),
-        ];
-        return SafeArea(
-          child: Container(
-            decoration: BoxDecoration(
-              color: sheetColors.surface,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            ),
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(20, 4, 20, 12),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text('Sort files', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-                  ),
-                ),
-                for (final option in options) ...[
-                  if (option.$1 == 'newest')
-                    const Padding(
-                      padding: EdgeInsets.only(left: 56, right: 16),
-                      child: Divider(height: 1, thickness: 1),
-                    ),
-                  ListTile(
-                    dense: true,
-                    visualDensity: VisualDensity.compact,
-                    leading: Icon(option.$3),
-                    title: Text(option.$2),
-                    trailing: _sortBy == option.$1
-                        ? const Icon(Icons.check_rounded, size: 18)
-                        : null,
-                    onTap: () => Navigator.pop(sheetContext, option.$1),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        );
-      },
+      selectedSort: _sortBy,
     );
     if (selected == null || !mounted || selected == _sortBy) return;
     setState(() => _sortBy = selected);
