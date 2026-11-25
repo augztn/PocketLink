@@ -31,6 +31,7 @@ import 'widgets/music_artwork.dart';
 import 'music_track_tile.dart';
 import 'widgets/music_duration_label.dart';
 import 'widgets/media_browser_filter_sheet.dart';
+import 'widgets/media_browser_empty_state.dart';
 import 'persistent_audio_player.dart';
 import 'now_playing_overlay_controller.dart';
 import '../transfers/transfer_manager_screen.dart';
@@ -893,36 +894,15 @@ tooltip: 'Choose video view',
                                 ),
                               )
                     : visibleMedia.isEmpty
-                        ? Center(
-                            child: Padding(
-                              padding: const EdgeInsets.all(24),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    _isMusic
-                                        ? Icons.library_music_outlined
-                                        : Icons.video_library_outlined,
-                                    size: 52,
-                                    color: Theme.of(context).colorScheme.outline,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    _media.isEmpty
-                                        ? 'No ${_title.toLowerCase()} found. Check internal storage and granted USB/OTG folders, then scan again.'
-                                        : 'No matching files. Try another search or storage source.',
-                                    textAlign: TextAlign.center,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  if (!_loading)
-                                    OutlinedButton.icon(
-                                      onPressed: _scan,
-                                      icon: const Icon(Icons.refresh),
-                                      label: const Text('Scan again'),
-                                    ),
-                                ],
-                              ),
-                            ),
+                        ? MediaBrowserEmptyState(
+                            icon: _isMusic
+                                ? Icons.library_music_outlined
+                                : Icons.video_library_outlined,
+                            message: _media.isEmpty
+                                ? 'No ${_title.toLowerCase()} found. Check internal storage and granted USB/OTG folders, then scan again.'
+                                : 'No matching files. Try another search or storage source.',
+                            onScan: _scan,
+                            showScanAction: !_loading,
                           )
                         : isFolderView
                             ? _buildFolders(visibleMedia)
