@@ -21,6 +21,7 @@ import '../storage/storage_browser_screen.dart';
 import 'now_playing_artwork_card.dart';
 import 'now_playing_lyrics_mode.dart';
 import 'now_playing_scrubber.dart';
+import 'now_playing_transport_controls.dart';
 import 'now_playing_scroll_dismiss_detector.dart';
 import 'persistent_audio_player.dart';
 import 'now_playing_artwork_palette.dart';
@@ -1081,55 +1082,19 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     ),
   );
 
-  Widget _transport() => StreamBuilder<bool>(
-    stream: _player.stream.playing,
-    initialData: _player.state.playing,
-    builder: (context, playingSnapshot) => StreamBuilder<bool>(
-      stream: _player.stream.buffering,
-      initialData: _player.state.buffering,
-      builder: (context, bufferingSnapshot) => StreamBuilder<Duration>(
-        stream: _player.stream.duration,
-        initialData: _player.state.duration,
-        builder: (context, durationSnapshot) {
-          final playing = playingSnapshot.data ?? false;
-          final loading = _persistent.isSelectionLoading ||
-              (bufferingSnapshot.data ?? false) ||
-              (durationSnapshot.data ?? Duration.zero) <= Duration.zero;
-          final hasMultiple = _persistent.queue.length > 1;
-          return Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _TransportGlyph(
-                tooltip: 'Previous track',
-                icon: Icons.skip_previous_rounded,
-                size: 32,
-                enabled: hasMultiple,
-                onTap: _persistent.skipToPrevious,
-              ),
-              PlaybackLoadingIndicator(
-                loading: loading,
-                size: 68,
-                child: _TransportGlyph(
-                  tooltip: playing ? 'Pause' : 'Play',
-                  icon: playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                  size: 48,
-                  enabled: !loading,
-                  onTap: _player.playOrPause,
-                ),
-              ),
-              _TransportGlyph(
-                tooltip: 'Next track',
-                icon: Icons.skip_next_rounded,
-                size: 32,
-                enabled: hasMultiple,
-                onTap: _persistent.skipToNext,
-              ),
-            ],
-          );
-        },
-      ),
-    ),
-  );
+  Widget _transport() => NowPlayingTransportControls(
+        playing: _player.stream.playing,
+        buffering: _player.stream.buffering,
+        duration: _player.stream.duration,
+        initialPlaying: _player.state.playing,
+        initialBuffering: _player.state.buffering,
+        initialDuration: _player.state.duration,
+        selectionLoading: _persistent.isSelectionLoading,
+        hasMultipleTracks: _persistent.queue.length > 1,
+        onPrevious: _persistent.skipToPrevious,
+        onPlayPause: _player.playOrPause,
+        onNext: _persistent.skipToNext,
+      );
 
   Widget _bottomUtilities() => Row(
     mainAxisAlignment: MainAxisAlignment.center,
