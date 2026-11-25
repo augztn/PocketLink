@@ -27,6 +27,7 @@ import 'widgets/video_list_tile.dart';
 import 'widgets/media_folder_tile.dart';
 import 'music_artwork.dart';
 import 'music_track_tile.dart';
+import 'widgets/music_duration_label.dart';
 import 'persistent_audio_player.dart';
 import 'now_playing_overlay_controller.dart';
 import '../transfers/transfer_manager_screen.dart';
@@ -1157,22 +1158,9 @@ tooltip: 'Choose video view',
         return durationMs;
       });
 
-  Widget _musicDurationLabel(MediaFileItem media) =>
-      FutureBuilder<int>(
+  Widget _musicDurationLabel(MediaFileItem media) => MusicDurationLabel(
         future: _musicDurationFor(media),
-        builder: (context, snapshot) {
-          final durationMs = snapshot.data ?? 0;
-          if (durationMs <= 0) return const SizedBox.shrink();
-          return Text(
-            _formatDuration(durationMs),
-            style: const TextStyle(
-              color: Color(0xFF8E939E),
-              fontSize: 12.5,
-              fontFamily: 'JetBrains Mono',
-              fontFeatures: [ui.FontFeature.tabularFigures()],
-            ),
-          );
-        },
+        formatDuration: _formatDuration,
       );
 
   Widget _musicTrackTile(MediaFileItem media, List<MediaFileItem> queueItems) {
