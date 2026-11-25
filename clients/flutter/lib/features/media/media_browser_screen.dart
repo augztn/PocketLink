@@ -25,6 +25,7 @@ import 'widgets/video_grid_card.dart';
 import 'widgets/video_artwork.dart';
 import 'widgets/video_list_tile.dart';
 import 'widgets/media_folder_tile.dart';
+import 'widgets/media_folder_file_tile.dart';
 import 'widgets/media_folder_breadcrumbs.dart';
 import 'widgets/music_artwork.dart';
 import 'music_track_tile.dart';
@@ -695,14 +696,11 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                   },
                 ),
               for (final media in files)
-                Card(
-                  child: ListTile(
-                    leading: Icon(_isMusic ? Icons.audio_file_outlined : Icons.movie_outlined),
-                    title: Text(_isMusic ? _displayTitle(media) : media.entry.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-                    subtitle: Text('${_isMusic && _fileExtension(media).isNotEmpty ? '${_fileExtension(media)} · ' : ''}${_formatBytes(media.entry.size)} · ${_volumeName(media.volume)}'),
-                    trailing: const Icon(Icons.play_arrow_rounded),
-                    onTap: () => _openMedia(media, files),
-                  ),
+                MediaFolderFileTile(
+                  title: _isMusic ? _displayTitle(media) : media.entry.name,
+                  subtitle: '${_isMusic && _fileExtension(media).isNotEmpty ? '${_fileExtension(media)} · ' : ''}${_formatBytes(media.entry.size)} · ${_volumeName(media.volume)}',
+                  isMusic: _isMusic,
+                  onTap: () => _openMedia(media, files),
                 ),
               if (folders.isEmpty && files.isEmpty)
                 const Padding(
