@@ -30,7 +30,7 @@ void main() {
 
   tearDown(() => api.close(force: true));
 
-  testWidgets('system Back steps up one folder at a time at multiple depths',
+  testWidgets('registered Back handler steps up one folder at a time',
       (tester) async {
     VoidCallback? backHandler;
 
@@ -41,19 +41,13 @@ void main() {
           builder: (context, child) => MaterialUiCompatibilityBridge(
             child: child ?? const SizedBox.shrink(),
           ),
-          home: PopScope(
-            canPop: false,
-            onPopInvokedWithResult: (didPop, result) {
-              if (!didPop) backHandler?.call();
+          home: FileManagerScreen(
+            api: api,
+            isActive: true,
+            onBackAtRoot: () {},
+            onBackHandlerChanged: (handler) {
+              backHandler = handler;
             },
-            child: FileManagerScreen(
-              api: api,
-              isActive: true,
-              onBackAtRoot: () {},
-              onBackHandlerChanged: (handler) {
-                backHandler = handler;
-              },
-            ),
           ),
         ),
       ),
@@ -62,26 +56,33 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(adapter.directoryRequests, contains(''));
+    expect(backHandler, isNull);
 
     await tester.tap(find.text('DCIM').first);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(adapter.directoryRequests, contains('DCIM'));
+    expect(backHandler, isNotNull);
 
     await tester.tap(find.text('Screenshots').first);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(adapter.directoryRequests, contains('DCIM/Screenshots'));
+    expect(backHandler, isNotNull);
 
-    await tester.binding.handlePopRoute();
+    // The app shell invokes this registered callback from its system
+    // PopScope handler. Calling it directly isolates the Files contract
+    // from Navigator's platform-back simulation in widget tests.
+    backHandler!();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(adapter.directoryRequests.last, 'DCIM');
 
-    await tester.binding.handlePopRoute();
+    backHandler!();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(adapter.directoryRequests.last, isEmpty);
+    expect(backHandler, isNull);
   });
 }
 
