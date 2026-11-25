@@ -19,7 +19,6 @@ import '../../core/network/server_api.dart';
 import 'media_player_screen.dart';
 import 'media_library_catalog.dart';
 import 'data/media_library_repository.dart';
-import 'widgets/music_equalizer.dart';
 import 'widgets/video_metadata_label.dart';
 import 'widgets/video_duration_badge.dart';
 import 'widgets/video_grid_card.dart';
@@ -1106,28 +1105,8 @@ tooltip: 'Choose video view',
     _syncBackHandler();
   }
 
-  Widget _musicArtwork(MediaFileItem media, {bool playing = false}) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(10),
-      child: SizedBox(
-        width: 48, height: 48,
-        child: Stack(fit: StackFit.expand, children: [
-          const DecoratedBox(decoration: BoxDecoration(
-            gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
-              colors: [Color(0xFF536DFE), Color(0xFF7250C8), Color(0xFF171827)]),
-          )),
-          FutureBuilder<Uint8List?>(
-            future: _loadTrackArtwork(media),
-            builder: (context, snapshot) => snapshot.data == null
-                ? const Center(child: Icon(Icons.music_note_rounded, color: Colors.white70, size: 24))
-                : Image.memory(snapshot.data!, fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.music_note_rounded, color: Colors.white70))),
-          ),
-          if (playing) const ColoredBox(color: Color(0x66000000), child: Center(child: MusicEqualizer())),
-        ]),
-      ),
-    );
-  }
+  Widget _musicArtwork(MediaFileItem media, {bool playing = false}) =>
+      MusicArtwork(future: _loadTrackArtwork(media), playing: playing);
 
   Future<void> _queueTrack(MediaFileItem media, {required bool playNext}) async {
     final player = PersistentAudioPlayer.instance;
