@@ -856,7 +856,7 @@ tooltip: 'Choose storage location',
                 return FileBrowserDirectoryContent(
                   allItemsEmpty: allItems.isEmpty,
                   items: items,
-                  loading: _loading,
+                  initialLoading: _loading && _listing == null,
                   error: _error,
                   gridView: _gridView,
                   scrollController: _scrollController,
