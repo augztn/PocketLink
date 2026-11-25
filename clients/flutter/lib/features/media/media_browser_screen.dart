@@ -23,6 +23,7 @@ import 'widgets/music_equalizer.dart';
 import 'widgets/video_metadata_label.dart';
 import 'widgets/video_duration_badge.dart';
 import 'widgets/video_grid_card.dart';
+import 'music_track_tile.dart';
 import 'persistent_audio_player.dart';
 import 'now_playing_overlay_controller.dart';
 import '../transfers/transfer_manager_screen.dart';
@@ -1252,123 +1253,51 @@ tooltip: 'Choose video view',
     final isPlaying = player.currentItem?.path == media.path &&
         player.currentItem?.volume == media.volume &&
         player.isMusic && player.isPlaying;
-    final selected = _selectedTrackKeys.contains(_favoriteKey(media));
-    final favorite = _favoriteKeys.contains(_favoriteKey(media));
-    return Material(
-      color: selected
-          ? const Color(0x22536DFE)
-          : isPlaying
-              ? Colors.white.withValues(alpha: 0.07)
-              : Colors.transparent,
-      child: InkWell(
-        onTap: () => _selectionMode
-            ? _toggleTrackSelection(media)
-            : _openMedia(media, queueItems),
-        onLongPress: () {
-          if (!_selectionMode) {
-            setState(() => _selectionMode = true);
-            _syncBackHandler();
+    final key = _favoriteKey(media);
+    return MusicTrackTile(
+      title: _displayTitle(media),
+      artist: _trackArtist(media),
+      artwork: _musicArtwork(media, playing: isPlaying),
+      duration: _musicDurationLabel(media),
+      playing: isPlaying,
+      selected: _selectedTrackKeys.contains(key),
+      favorite: _favoriteKeys.contains(key),
+      selectionMode: _selectionMode,
+      onTap: () => _selectionMode
+          ? _toggleTrackSelection(media)
+          : _openMedia(media, queueItems),
+      onLongPress: () {
+        if (!_selectionMode) {
+          setState(() => _selectionMode = true);
+          _syncBackHandler();
+        }
+        _toggleTrackSelection(media);
+      },
+      onToggleFavorite: () => _toggleFavorite(media),
+      onPlayNext: () => _queueTrack(media, playNext: true),
+      onQueue: () => _queueTrack(media, playNext: false),
+      onDownload: () async {
+        try {
+          await DownloadManagerService.instance.enqueueServerFile(
+            api: widget.api,
+            name: media.entry.name,
+            sourcePath: media.path,
+            volume: media.volume,
+            size: media.entry.size,
+          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Added to Downloads: ${media.entry.name}')),
+            );
           }
-          _toggleTrackSelection(media);
-        },
-        child: SizedBox(
-          height: 64,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            child: Row(children: [
-              _musicArtwork(media, playing: isPlaying),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      _displayTitle(media),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFFFFFFFF),
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        height: 1.15,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      _trackArtist(media),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFF8E939E),
-                        fontSize: 13,
-                        height: 1.1,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              _musicDurationLabel(media),
-              if (_selectionMode)
-                SizedBox(
-                  width: 36,
-                  height: 36,
-                  child: Icon(
-                    selected ? Icons.check_circle_rounded : Icons.circle_outlined,
-                    size: 18,
-                    color: selected ? const Color(0xFF536DFE) : const Color(0xFF8E939E),
-                  ),
-                )
-              else
-                SmokedGlassPopoverMenu<String>(
-                  tooltip: 'Track actions',
-                  items: [
-                    const SmokedGlassPopoverMenuItem(value: 'next', label: 'Play next', icon: Icons.skip_next_rounded),
-                    const SmokedGlassPopoverMenuItem(value: 'queue', label: 'Add to queue', icon: Icons.queue_music_rounded),
-                    const SmokedGlassPopoverMenuItem(value: 'download', label: 'Download', icon: Icons.download_rounded, dividerBefore: true),
-                    SmokedGlassPopoverMenuItem(value: 'favorite', label: favorite ? 'Remove favourite' : 'Add to favourites', icon: favorite ? Icons.favorite_rounded : Icons.favorite_border_rounded),
-                  ],
-                  onSelected: (action) async {
-                    if (action == 'favorite') await _toggleFavorite(media);
-                    if (action == 'next') await _queueTrack(media, playNext: true);
-                    if (action == 'queue') await _queueTrack(media, playNext: false);
-                    if (action == 'download') {
-                      try {
-                        await DownloadManagerService.instance.enqueueServerFile(
-                          api: widget.api,
-                          name: media.entry.name,
-                          sourcePath: media.path,
-                          volume: media.volume,
-                          size: media.entry.size,
-                        );
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Added to Downloads: ${media.entry.name}')),
-                          );
-                        }
-                      } catch (_) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Could not add this track to Downloads.')),
-                          );
-                        }
-                      }
-                    }
-                  },
-                  child: const SizedBox(
-                    width: 28,
-                    height: 36,
-                    child: Center(
-                      child: Icon(Icons.more_vert_rounded, size: 18, color: Color(0xFF8E939E)),
-                    ),
-                  ),
-                ),
-            ]),
-          ),
-        ),
-      ),
+        } catch (_) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Could not add this track to Downloads.')),
+            );
+          }
+        }
+      },
     );
   }
 
