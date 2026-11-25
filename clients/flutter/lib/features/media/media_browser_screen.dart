@@ -197,7 +197,8 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         await widget.api.startMediaIndexScan();
         if (!mounted) return;
       } on DioException {
-        await _scanLegacy(refresh: refresh);        return;
+        await _scanLegacy(refresh: refresh);
+        return;
       }
     }
     if (!mounted) return;
@@ -396,7 +397,8 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   }
 
   Future<void> _openMedia(MediaFileItem media, List<MediaFileItem> queueItems) async {
-    if (_openingMedia) return;    _openingMedia = true;
+    if (_openingMedia) return;
+    _openingMedia = true;
     final queue = queueItems
         .map((item) => MediaQueueItem(
               title: item.entry.name,
@@ -600,7 +602,8 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       itemCount: items.length,
       separatorBuilder: (_, __) => const SizedBox(height: 4),
       itemBuilder: (context, index) {
-        final media = items[index];        final extension = media.entry.name.split('.').last.toUpperCase();
+        final media = items[index];
+        final extension = media.entry.name.split('.').last.toUpperCase();
         return VideoListTile(
           title: media.entry.name,
           extension: extension,
@@ -803,7 +806,8 @@ tooltip: 'Choose video view',
               Expanded(
                 child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Row(mainAxisSize: MainAxisSize.min, children: [
-                    Flexible(child: Text(headerTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700, letterSpacing: -0.5, color: titleColor))),                    const SizedBox(width: 6),
+                    Flexible(child: Text(headerTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700, letterSpacing: -0.5, color: titleColor))),
+                    const SizedBox(width: 6),
                     AnimatedRotation(turns: _musicMenuOpen ? 0.5 : 0, duration: const Duration(milliseconds: 200), child: const Icon(Icons.keyboard_arrow_down_rounded, size: 20)),
                   ]),
                   Text(
@@ -988,7 +992,8 @@ tooltip: 'Choose video view',
   Future<Uint8List?> _fetchTrackArtwork(MediaFileItem media) async {
     final folder = media.path.contains('/')
         ? media.path.substring(0, media.path.lastIndexOf('/') + 1)
-        : '';    try {
+        : '';
+    try {
       final listing = media.volume == null
           ? await widget.api.listDirectory(folder)
           : await widget.api.listStorageDirectory(media.volume!, folder);
@@ -1002,7 +1007,8 @@ tooltip: 'Choose video view',
                 ? await widget.api.downloadFile(path)
                 : await widget.api.downloadStorageFile(media.volume!, path);
             if (bytes.isNotEmpty) return bytes;
-          }        }
+          }
+        }
       }
     } catch (_) {
       // Embedded artwork is optional; playback must not depend on it.
@@ -1184,7 +1190,8 @@ tooltip: 'Choose video view',
     final folderCount = _foldersAtCurrentLevel(_media).length;
     final favoriteCount = _media.where((m) => _favoriteKeys.contains(_favoriteKey(m))).length;
     final top = MediaQuery.paddingOf(context).top;
-    final foreground = Theme.of(context).brightness == Brightness.dark        ? Colors.white
+    final foreground = Theme.of(context).brightness == Brightness.dark
+        ? Colors.white
         : const Color(0xFF172033);
 
     Widget iconAction(IconData icon, String tooltip, VoidCallback onPressed) =>
@@ -1383,7 +1390,8 @@ tooltip: 'Choose music view',
                         SmokedGlassPopoverMenuItem(value: 'favorites', label: 'Favorites', icon: Icons.favorite_rounded,
                           trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                             Text('$favoriteCount', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
-                            const SizedBox(width: 8),                            SizedBox(width: 20, child: _libraryView == 'favorites' ? const Icon(Icons.check_rounded, size: 18) : null),
+                            const SizedBox(width: 8),
+                            SizedBox(width: 20, child: _libraryView == 'favorites' ? const Icon(Icons.check_rounded, size: 18) : null),
                           ])),
                       ],
                       onSelected: (value) {
