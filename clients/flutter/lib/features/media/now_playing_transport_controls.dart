@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:material_ui/material_ui.dart';
+
+import 'now_playing_scrubber.dart';
 
 /// Stream-driven transport controls for the expanded Now Playing screen.
 class NowPlayingTransportControls extends StatelessWidget {
