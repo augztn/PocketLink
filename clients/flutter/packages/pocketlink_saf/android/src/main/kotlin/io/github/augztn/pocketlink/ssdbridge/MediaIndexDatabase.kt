@@ -347,8 +347,16 @@ internal class MediaIndexDatabase(context: Context) :
     @Synchronized fun hasIndexedDescendants(volume: String, parentPath: String): Boolean {
         val prefix = if (parentPath.isEmpty()) "" else "$parentPath/"
         return readableDatabase.rawQuery(
-            "SELECT 1 FROM files WHERE volume=? AND path<>? AND substr(path,1,?)=? LIMIT 1",
-            arrayOf(volume, parentPath, prefix.length.toString(), prefix)
+            """SELECT 1 FROM files
+                WHERE volume=? AND path<>? AND substr(path,1,?)=?
+                UNION ALL
+                SELECT 1 FROM media
+                WHERE volume=? AND path<>? AND substr(path,1,?)=?
+                LIMIT 1""".trimIndent(),
+            arrayOf(
+                volume, parentPath, prefix.length.toString(), prefix,
+                volume, parentPath, prefix.length.toString(), prefix
+            )
         ).use { it.moveToFirst() }
     }
 
