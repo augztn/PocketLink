@@ -25,6 +25,7 @@ import 'widgets/video_grid_card.dart';
 import 'widgets/video_artwork.dart';
 import 'widgets/video_list_tile.dart';
 import 'widgets/media_folder_tile.dart';
+import 'widgets/media_folder_breadcrumbs.dart';
 import 'widgets/music_artwork.dart';
 import 'music_track_tile.dart';
 import 'widgets/music_duration_label.dart';
@@ -637,51 +638,42 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     final parts = _currentFolderPath.split('/').where((part) => part.isNotEmpty).toList();
     return Column(
       children: [
-        if (_currentFolderPath.isNotEmpty || _selectedVolume != null)
-          SizedBox(
-            height: 38,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(children: [
-                TextButton(
-                  onPressed: _currentFolderPath.isEmpty && _selectedVolume == null
-                      ? null
-                      : () {
-                          setState(() { _currentFolderPath = ''; _selectedVolume = null; });
-                          _pendingScrollOffset = 0;
-                          _saveState(folderPath: '', clearVolume: true);
-                          if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0);
-                          _syncBackHandler();
-                        },
-                  child: const Text('All storage'),
-                ),
-                if (_selectedVolume != null) ...[
-                  const Icon(Icons.chevron_right_rounded, size: 16),
-                  TextButton(
-                    onPressed: _currentFolderPath.isEmpty
-                        ? null
-                        : () { setState(() => _currentFolderPath = _selectedVolume == 'internal' && _isMusic ? 'Music' : ''); _pendingScrollOffset = 0; _saveState(folderPath: _currentFolderPath); if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0); _syncBackHandler(); },
-                    child: Text(_volumeName(_selectedVolume)),
-                  ),
-                ],
-                for (var i = 0; i < parts.length; i++) ...[
-                  const Icon(Icons.chevron_right_rounded, size: 16),
-                  TextButton(
-                    onPressed: i == parts.length - 1
-                        ? null
-                        : () {
-                            final path = parts.take(i + 1).join('/');
-                            setState(() => _currentFolderPath = path);
-                            _saveState(folderPath: path);
-                            if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0);
-                            _syncBackHandler();
-                          },
-                    child: Text(parts[i]),
-                  ),
-                ],
-              ]),
-            ),
-          ),
+        MediaFolderBreadcrumbs(
+          currentPath: _currentFolderPath,
+          volumeLabel: _selectedVolume == null ? null : _volumeName(_selectedVolume),
+          onAllStorage: () {
+            setState(() {
+              _currentFolderPath = '';
+              _selectedVolume = null;
+            });
+            _pendingScrollOffset = 0;
+            _saveState(folderPath: '', clearVolume: true);
+            if (_contentScrollController.hasClients) {
+              _contentScrollController.jumpTo(0);
+            }
+            _syncBackHandler();
+          },
+          onVolumeRoot: () {
+            setState(() {
+              _currentFolderPath =
+                  _selectedVolume == 'internal' && _isMusic ? 'Music' : '';
+            });
+            _pendingScrollOffset = 0;
+            _saveState(folderPath: _currentFolderPath);
+            if (_contentScrollController.hasClients) {
+              _contentScrollController.jumpTo(0);
+            }
+            _syncBackHandler();
+          },
+          onFolder: (path) {
+            setState(() => _currentFolderPath = path);
+            _saveState(folderPath: path);
+            if (_contentScrollController.hasClients) {
+              _contentScrollController.jumpTo(0);
+            }
+            _syncBackHandler();
+          },
+        ),
         Expanded(
           child: ListView(
             physics: _isMusic ? const AlwaysScrollableScrollPhysics() : null,
