@@ -15,6 +15,7 @@ import '../../core/logging/app_logger.dart';
 import '../../core/storage/home_activity_store.dart';
 import 'file_browser_state_store.dart';
 import 'file_entry_tile.dart';
+import 'file_browser_header_controls.dart';
 import '../transfers/transfer_manager.dart';
 import '../downloads/download_manager_service.dart';
 import '../transfers/transfer_manager_screen.dart';
@@ -986,94 +987,25 @@ tooltip: 'Choose storage location',
                           ),
                         ),
                       ),
-                    if (_path.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 2),
-                        child: SizedBox(
-                          height: 30,
-                          child: ListView(
-                            scrollDirection: Axis.horizontal,
-                            padding: EdgeInsets.zero,
-                            children: [
-                              TextButton(
-                                style: TextButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 4), minimumSize: const Size(0, 28), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                                onPressed: () => _load(''),
-                                child: Text(_selectedVolume == null ? 'Internal storage' : _volumeName(_selectedVolume!),
-                                  style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant)),
-                              ),
-                              for (var i = 0; i < _path.split('/').where((part) => part.isNotEmpty).length; i++) ...[
-                                const Center(child: Icon(Icons.chevron_right_rounded, size: 15)),
-                                TextButton(
-                                  style: TextButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 4), minimumSize: const Size(0, 28), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                                  onPressed: i == _path.split('/').where((part) => part.isNotEmpty).length - 1
-                                      ? null
-                                      : () => _load(_path.split('/').where((part) => part.isNotEmpty).take(i + 1).join('/')),
-                                  child: Text(_path.split('/').where((part) => part.isNotEmpty).elementAt(i), style: theme.textTheme.labelSmall),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: SmokedGlassPopoverMenu<String>(
-                          tooltip: 'Filter file types',
-                          itemHeight: 44,
-                          menuVerticalPadding: 6,
-                          itemHorizontalPadding: 14,
-                          trailingWidth: 52,
-                          items: [
-                            for (final category in const ['All', 'Images', 'Videos', 'Music', 'Documents'])
-                              SmokedGlassPopoverMenuItem(
-                                value: category,
-                                label: category,
-                                icon: switch (category) {
-                                  'Images' => Icons.image_outlined,
-                                  'Videos' => Icons.movie_outlined,
-                                  'Music' => Icons.music_note_outlined,
-                                  'Documents' => Icons.description_outlined,
-                                  _ => Icons.apps_rounded,
-                                },
-                                trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                                  Text(
-                                    '${_categoryCount(allItems, category)}',
-                                    style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3)),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  SizedBox(
-                                    width: 20,
-                                    child: Align(
-                                      alignment: Alignment.centerRight,
-                                      child: _category == category
-                                          ? const Icon(Icons.check_rounded, size: 16)
-                                          : const SizedBox.shrink(),
-                                    ),
-                                  ),
-                                ]),
-                              ),
-                          ],
-                          onSelected: (category) {
-                            setState(() => _category = category);
-                            _saveState();
-                          },
-                          child: SmokedGlassSurface(
-                            radius: BorderRadius.circular(18),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                const Icon(Icons.filter_list_rounded, size: 17),
-                                const SizedBox(width: 7),
-                                Text('Filter: $_category', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-                                const SizedBox(width: 4),
-                                const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
-                              ]),
-                            ),
-                          ),
-                        ),
-                      ),
+                    FileBrowserBreadcrumbs(
+                      path: _path,
+                      storageLabel: _selectedVolume == null
+                          ? 'Internal storage'
+                          : _volumeName(_selectedVolume!),
+                      onNavigate: _load,
+                    ),
+                    FileCategoryFilter(
+                      selectedCategory: _category,
+                      counts: {
+                        for (final category in const [
+                          'All', 'Images', 'Videos', 'Music', 'Documents',
+                        ])
+                          category: _categoryCount(allItems, category),
+                      },
+                      onSelected: (category) {
+                        setState(() => _category = category);
+                        _saveState();
+                      },
                     ),
                     if (_loading && _listing != null) const LinearProgressIndicator(minHeight: 2),
                     if (_error != null)
