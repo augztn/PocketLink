@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
 import '../../core/widgets/pocketlink_file_icon.dart';
-import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/smoked_glass_popover_menu.dart';
 
 import '../../core/network/server_api.dart';
@@ -14,7 +13,7 @@ import '../../core/storage/home_activity_store.dart';
 import 'file_browser_state_store.dart';
 import 'file_entry_tile.dart';
 import 'file_browser_directory_content.dart';
-import 'file_browser_header_controls.dart';
+import 'file_browser_header_content.dart';
 import '../transfers/transfer_manager.dart';
 import '../downloads/download_manager_service.dart';
 import '../transfers/transfer_manager_screen.dart';
@@ -890,70 +889,34 @@ tooltip: 'Choose storage location',
               top: LayoutInsetsScope.of(context).topClearance - 10,
               left: 0,
               right: 0,
-              child: Material(
-                color: Colors.transparent,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (_searchExpanded)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                        child: TextField(
-                          controller: _searchController,
-                          autofocus: true,
-                          onChanged: (_) => setState(() {}),
-                          decoration: InputDecoration(
-                            hintText: 'Search this folder',
-                            prefixIcon: const Icon(Icons.search_rounded),
-                            suffixIcon: IconButton(
-                              onPressed: () { _searchController.clear(); setState(() {}); },
-                              icon: const Icon(Icons.close_rounded),
-                            ),
-                            filled: true,
-                            fillColor: colors.surfaceContainerLow.withValues(alpha: 0.92),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-                          ),
-                        ),
-                      ),
-                    FileBrowserBreadcrumbs(
-                      path: _path,
-                      storageLabel: _selectedVolume == null
-                          ? 'Internal storage'
-                          : _volumeName(_selectedVolume!),
-                      onNavigate: _load,
-                    ),
-                    FileCategoryFilter(
-                      selectedCategory: _category,
-                      counts: {
-                        for (final category in const [
-                          'All', 'Images', 'Videos', 'Music', 'Documents',
-                        ])
-                          category: _categoryCount(allItems, category),
-                      },
-                      onSelected: (category) {
-                        setState(() => _category = category);
-                        _saveState();
-                      },
-                    ),
-                    if (_loading && _listing != null) const LinearProgressIndicator(minHeight: 2),
-                    if (_error != null)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                        child: Material(
-                          color: colors.errorContainer,
-                          borderRadius: BorderRadius.circular(14),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Row(children: [
-                              Icon(Icons.error_outline_rounded, color: colors.onErrorContainer),
-                              const SizedBox(width: 8),
-                              Expanded(child: Text(_error!, style: TextStyle(color: colors.onErrorContainer))),
-                            ]),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
+              child: FileBrowserHeaderContent(
+                searchExpanded: _searchExpanded,
+                searchController: _searchController,
+                path: _path,
+                storageLabel: _selectedVolume == null
+                    ? 'Internal storage'
+                    : _volumeName(_selectedVolume!),
+                selectedCategory: _category,
+                categoryCounts: {
+                  for (final category in const [
+                    'All', 'Images', 'Videos', 'Music', 'Documents',
+                  ])
+                    category: _categoryCount(allItems, category),
+                },
+                loading: _loading,
+                hasListing: _listing != null,
+                error: _error,
+                colors: colors,
+                onSearchChanged: (_) => setState(() {}),
+                onClearSearch: () {
+                  _searchController.clear();
+                  setState(() {});
+                },
+                onNavigate: _load,
+                onCategorySelected: (category) {
+                  setState(() => _category = category);
+                  _saveState();
+                },
               ),
             ),
           ],
