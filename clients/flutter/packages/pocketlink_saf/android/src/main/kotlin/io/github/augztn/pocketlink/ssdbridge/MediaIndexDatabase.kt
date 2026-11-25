@@ -312,6 +312,46 @@ internal class MediaIndexDatabase(context: Context) :
         writableDatabase.delete("media", "volume=? AND scan_id<>?", arrayOf(volume, scanId))
     }
 
+    @Synchronized fun fileSnapshot(volume: String, paths: Collection<String>): Map<String, IndexStamp> {
+        if (paths.isEmpty()) return emptyMap()
+        val requested = paths.distinct()
+        val placeholders = requested.joinToString(",") { "?" }
+        val args = arrayOf(volume) + requested.toTypedArray()
+        val result = mutableMapOf<String, IndexStamp>()
+        readableDatabase.query(
+            "files", arrayOf("path", "size", "modified"),
+            "volume=? AND path IN ($placeholders)", args, null, null, null
+        ).use { cursor ->
+            while (cursor.moveToNext()) result[cursor.getString(0)] =
+                IndexStamp(cursor.getLong(1), cursor.getLong(2))
+        }
+        return result
+    }
+
+    @Synchronized fun mediaSnapshot(volume: String, paths: Collection<String>): Map<String, IndexStamp> {
+        if (paths.isEmpty()) return emptyMap()
+        val requested = paths.distinct()
+        val placeholders = requested.joinToString(",") { "?" }
+        val args = arrayOf(volume) + requested.toTypedArray()
+        val result = mutableMapOf<String, IndexStamp>()
+        readableDatabase.query(
+            "media", arrayOf("path", "size", "modified", "category"),
+            "volume=? AND path IN ($placeholders)", args, null, null, null
+        ).use { cursor ->
+            while (cursor.moveToNext()) result[cursor.getString(0)] =
+                IndexStamp(cursor.getLong(1), cursor.getLong(2), cursor.getString(3))
+        }
+        return result
+    }
+
+    @Synchronized fun hasIndexedDescendants(volume: String, parentPath: String): Boolean {
+        val prefix = if (parentPath.isEmpty()) "" else "$parentPath/"
+        return readableDatabase.rawQuery(
+            "SELECT 1 FROM files WHERE volume=? AND path<>? AND substr(path,1,?)=? LIMIT 1",
+            arrayOf(volume, parentPath, prefix.length.toString(), prefix)
+        ).use { it.moveToFirst() }
+    }
+
     fun fileSnapshot(volume: String): Map<String, IndexStamp> {
         val result = mutableMapOf<String, IndexStamp>()
         readableDatabase.query("files", arrayOf("path", "size", "modified"),
