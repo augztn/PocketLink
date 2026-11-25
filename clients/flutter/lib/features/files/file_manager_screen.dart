@@ -15,6 +15,7 @@ import 'file_browser_state_store.dart';
 import 'file_entry_tile.dart';
 import 'file_browser_directory_content.dart';
 import 'file_browser_header_content.dart';
+import 'file_browser_storage_title.dart';
 import '../transfers/transfer_manager.dart';
 import '../downloads/download_manager_service.dart';
 import '../transfers/transfer_manager_screen.dart';
@@ -770,66 +771,29 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                 ),
           leadingWidth: _path.isEmpty && embeddedTab ? 0 : 62,
           titleSpacing: _path.isEmpty && embeddedTab ? 16 : 8,
-          title: TitleDropdownPopover<String>(
-tooltip: 'Choose storage location',
+          title: FileBrowserStorageTitle(
+            path: _path,
+            folderCount: folderCount,
+            fileCount: fileCount,
+            volumes: _volumes,
+            selectedVolume: _selectedVolume,
+            menuOpen: _storageMenuOpen,
             onOpenChanged: (open) => setState(() => _storageMenuOpen = open),
-            items: [
-              SmokedGlassPopoverMenuItem(
-                value: 'internal',
-                label: 'Internal storage',
-                icon: Icons.phone_android_rounded,
-                trailing: SizedBox(
-                  width: 20,
-                  child: _selectedVolume == null
-                      ? const Icon(Icons.check_rounded, size: 18)
-                      : null,
-                ),
-              ),
-              for (final volume in _volumes)
-                SmokedGlassPopoverMenuItem(
-                  value: volume.id,
-                  label: volume.name,
-                  icon: Icons.usb_rounded,
-                  trailing: SizedBox(
-                    width: 20,
-                    child: _selectedVolume == volume.id
-                        ? const Icon(Icons.check_rounded, size: 18)
-                        : null,
-                  ),
-                ),
-              const SmokedGlassPopoverMenuItem(
-                value: 'downloads',
-                label: 'Downloads',
-                icon: Icons.download_rounded,
-                dividerBefore: true,
-              ),
-              const SmokedGlassPopoverMenuItem(
-                value: 'recent',
-                label: 'Recent',
-                icon: Icons.history_rounded,
-              ),
-            ],
             onSelected: (value) {
-              if (value == 'recent') { _showRecentLocations(); return; }
-              if (value == 'internal') { _selectPartition(null); return; }
-              if (value == 'downloads') { _selectPartition(null).then((_) => _load('Downloads')); return; }
+              if (value == 'recent') {
+                _showRecentLocations();
+                return;
+              }
+              if (value == 'internal') {
+                _selectPartition(null);
+                return;
+              }
+              if (value == 'downloads') {
+                _selectPartition(null).then((_) => _load('Downloads'));
+                return;
+              }
               _selectPartition(value);
             },
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Flexible(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(mainAxisSize: MainAxisSize.min, children: [
-                  Flexible(child: Text(_path.isEmpty ? 'Files' : _path.split('/').last,
-                    maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w700, letterSpacing: -0.5))),
-                  const SizedBox(width: 6),
-                  AnimatedRotation(turns: _storageMenuOpen ? 0.5 : 0, duration: const Duration(milliseconds: 200),
-                    child: const Icon(Icons.keyboard_arrow_down_rounded, size: 20)),
-                ]),
-                Text('${folderCount == 1 ? '1 folder' : '$folderCount folders'} • ${fileCount == 1 ? '1 file' : '$fileCount files'}',
-                  maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 10, fontFamily: 'monospace', color: Color(0xFFA1A7B3))),
-              ])),
-            ]),
           ),
           actions: [
             if (widget.showSearch) PocketLinkAppBarAction(label: _searchExpanded ? 'Close search' : 'Search files', icon: _searchExpanded ? Icons.close_rounded : Icons.search_rounded, onPressed: () => _setSearchExpanded(!_searchExpanded)),
