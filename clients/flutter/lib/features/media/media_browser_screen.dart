@@ -31,6 +31,7 @@ import 'widgets/media_folder_content.dart';
 import 'widgets/music_artwork.dart';
 import 'music_track_tile.dart';
 import 'widgets/music_duration_label.dart';
+import 'widgets/media_browser_filter_sheet.dart';
 import 'persistent_audio_player.dart';
 import 'now_playing_overlay_controller.dart';
 import '../transfers/transfer_manager_screen.dart';
@@ -1021,61 +1022,17 @@ tooltip: 'Choose video view',
   }
 
   Future<void> _showMusicFilters() async {
-    final selected = await showModalBottomSheet<({String? volume, String sort})>(
+    final selected =
+        await showModalBottomSheet<({String? volume, String sort})>(
       context: context,
       useRootNavigator: true,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (sheetContext) {
-        var volume = _selectedVolume;
-        var sort = _sortBy;
-        final isDark = Theme.of(sheetContext).brightness == Brightness.dark;
-        return StatefulBuilder(builder: (context, update) => Padding(
-          padding: const EdgeInsets.all(12),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(24),
-            child: BackdropFilter(
-              filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xEE17191F) : const Color(0xEEF8FAFC),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.white.withValues(alpha: isDark ? 0.14 : 0.55)),
-                ),
-                child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('Filter & sort', style: Theme.of(context).textTheme.titleLarge),
-                  const SizedBox(height: 18),
-                  const Text('STORAGE SOURCE', style: TextStyle(fontSize: 11, letterSpacing: 1.1, color: Color(0xFFA1A7B3), fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 8),
-                  DropdownButtonFormField<String?>(
-                    initialValue: volume,
-                    decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
-                    items: [
-                      const DropdownMenuItem<String?>(value: null, child: Text('All storage')),
-                      const DropdownMenuItem<String?>(value: 'internal', child: Text('Internal storage')),
-                      ..._volumes.where((v) => v.available).map((v) => DropdownMenuItem<String?>(value: v.id, child: Text(v.name))),
-                    ],
-                    onChanged: (value) => update(() => volume = value),
-                  ),
-                  const SizedBox(height: 18),
-                  const Text('SORT ORDER', style: TextStyle(fontSize: 11, letterSpacing: 1.1, color: Color(0xFFA1A7B3), fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 8),
-                  Wrap(spacing: 8, children: [
-                    for (final option in [('name', 'Name'), ('newest', 'Newest'), ('largest', 'Largest')])
-                      ChoiceChip(label: Text(option.$2), selected: sort == option.$1, onSelected: (_) => update(() => sort = option.$1)),
-                  ]),
-                  const SizedBox(height: 18),
-                  SizedBox(width: double.infinity, child: FilledButton(
-                    onPressed: () => Navigator.pop(sheetContext, (volume: volume, sort: sort)),
-                    child: const Text('Apply'),
-                  )),
-                ]),
-              ),
-            ),
-          ),
-        ));
-      },
+      builder: (_) => MediaBrowserFilterSheet(
+        volumes: _volumes,
+        initialVolume: _selectedVolume,
+        initialSort: _sortBy,
+      ),
     );
     if (selected == null || !mounted) return;
     final rootPath = _isMusic && selected.volume == 'internal' ? 'Music' : '';
