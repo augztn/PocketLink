@@ -464,7 +464,8 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     setState(() {
       if (restoringSession) _isRestoringSession = false;
     });
-    await _openDashboard(api);
+    try {
+      await _openDashboard(api);
     } finally {
       if (mounted) setState(() => _isConnecting = false);
     }
