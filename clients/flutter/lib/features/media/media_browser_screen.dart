@@ -33,6 +33,7 @@ import 'widgets/music_duration_label.dart';
 import 'widgets/media_browser_filter_sheet.dart';
 import 'widgets/media_browser_empty_state.dart';
 import 'widgets/music_browser_empty_state.dart';
+import 'widgets/music_browser_track_list.dart';
 import 'persistent_audio_player.dart';
 import 'now_playing_overlay_controller.dart';
 import '../transfers/transfer_manager_screen.dart';
@@ -1199,17 +1200,13 @@ tooltip: 'Choose video view',
                               topPadding: LayoutInsetsScope.of(context).topClearance,
                               bottomPadding: LayoutInsetsScope.of(context).bottomClearance,
                             )
-                          : ListView.separated(
-                              physics: const AlwaysScrollableScrollPhysics(),
+                          : MusicBrowserTrackList(
                               controller: _contentScrollController,
-                              padding: EdgeInsets.fromLTRB(0, LayoutInsetsScope.of(context).topClearance, 0, LayoutInsetsScope.of(context).bottomClearance),
                               itemCount: visible.length,
-                              separatorBuilder: (_, __) => Container(
-                                height: 1,
-                                margin: const EdgeInsets.only(left: 76),
-                                color: Colors.white.withValues(alpha: 0.06),
-                              ),
-                              itemBuilder: (context, index) => _musicTrackTile(visible[index], visible),
+                              itemBuilder: (context, index) =>
+                                  _musicTrackTile(visible[index], visible),
+                              topPadding: LayoutInsetsScope.of(context).topClearance,
+                              bottomPadding: LayoutInsetsScope.of(context).bottomClearance,
                             ),
                     ),
             ),
