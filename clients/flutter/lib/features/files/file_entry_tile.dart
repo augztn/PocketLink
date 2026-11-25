@@ -69,10 +69,13 @@ class FileEntryTile extends StatelessWidget {
         switch (action) {
           case 'download':
             if (!item.isDirectory) onDownload();
+            break;
           case 'rename':
             onRename();
+            break;
           case 'delete':
             onDelete();
+            break;
         }
       },
       child: Padding(
