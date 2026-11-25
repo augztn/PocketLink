@@ -17,6 +17,7 @@ import 'file_browser_header_content.dart';
 import 'file_browser_storage_title.dart';
 import 'file_browser_sort_sheet.dart';
 import 'file_browser_recent_locations.dart';
+import 'file_browser_dialogs.dart';
 import '../transfers/transfer_manager.dart';
 import '../downloads/download_manager_service.dart';
 import '../transfers/transfer_manager_screen.dart';
@@ -335,34 +336,12 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     return id;
   }
 
-  Future<String?> _askName(String title, {String initial = ''}) async {
-    final controller = TextEditingController(text: initial);
-    final result = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(labelText: 'Name'),
-          onSubmitted: (value) => Navigator.pop(context, value.trim()),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, controller.text.trim()),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-    controller.dispose();
-    if (result == null || result.trim().isEmpty) return null;
-    return result.trim();
-  }
+  Future<String?> _askName(String title, {String initial = ''}) =>
+      showFileBrowserNameDialog(
+        context: context,
+        title: title,
+        initial: initial,
+      );
 
 
   Future<void> _showRecentLocations() async {
@@ -556,24 +535,11 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   }
 
   Future<void> _delete(FileEntry item) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await confirmFileBrowserDelete(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete item?'),
-        content: Text('Delete "${item.name}"? Folders must be empty.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+      itemName: item.name,
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
     try {
       if (_selectedVolume == null) { await widget.api.deleteItem(_itemPath(item.name)); } else { await widget.api.deleteStorageItem(_selectedVolume!, _itemPath(item.name)); }
       await _load();
