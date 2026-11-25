@@ -30,7 +30,7 @@ void main() {
 
   tearDown(() => api.close(force: true));
 
-  testWidgets('Back navigation updates the registered handler at each depth',
+  testWidgets('registered system Back handler steps up one folder at a time',
       (tester) async {
     VoidCallback? backHandler;
 
@@ -70,15 +70,15 @@ void main() {
     expect(adapter.directoryRequests, contains('DCIM/Screenshots'));
     expect(backHandler, isNotNull);
 
-    // Exercise the same parent-directory action used by the registered
-    // callback. The shell's PopScope dispatch is covered by navigation tests.
-    await tester.tap(find.byTooltip('Back'));
+    // Invoke the same callback the HomeScreen shell dispatches from
+    // its system-back PopScope.
+    backHandler!();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(adapter.directoryRequests.last, 'DCIM');
     expect(backHandler, isNotNull);
 
-    await tester.tap(find.byTooltip('Back'));
+    backHandler!();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(adapter.directoryRequests.last, isEmpty);
