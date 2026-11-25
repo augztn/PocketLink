@@ -43,7 +43,12 @@ void main() {
           builder: (context, child) => MaterialUiCompatibilityBridge(
             child: child ?? const SizedBox.shrink(),
           ),
-          home: FileManagerScreen(
+          home: PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            if (!didPop) backHandler?.call();
+          },
+          child: FileManagerScreen(
             api: api,
             isActive: true,
             onBackAtRoot: () {},
@@ -51,6 +56,7 @@ void main() {
               backHandler = handler;
             },
           ),
+        ),
         ),
       ),
     );
@@ -72,15 +78,15 @@ void main() {
     expect(adapter.directoryRequests, contains('DCIM/Screenshots'));
     expect(backHandler, isNotNull);
 
-    // Invoke the same callback the HomeScreen shell dispatches from
-    // its system-back PopScope.
-    backHandler!();
+    // Send a platform Back event through the same PopScope dispatch used
+    // by HomeScreen, rather than invoking the folder callback directly.
+    await tester.binding.handlePopRoute();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(browserState.stateFor(api.baseUrl).path, 'DCIM');
     expect(backHandler, isNotNull);
 
-    backHandler!();
+    await tester.binding.handlePopRoute();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(browserState.stateFor(api.baseUrl).path, isEmpty);
