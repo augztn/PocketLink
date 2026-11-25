@@ -1858,33 +1858,3 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     super.dispose();
   }
 }
-
-class _TransportGlyph extends StatefulWidget {
-  const _TransportGlyph({required this.tooltip, required this.icon, required this.size, required this.enabled, required this.onTap});
-  final String tooltip;
-  final IconData icon;
-  final double size;
-  final bool enabled;
-  final VoidCallback onTap;
-  @override
-  State<_TransportGlyph> createState() => _TransportGlyphState();
-}
-class _TransportGlyphState extends State<_TransportGlyph> {
-  bool _pressed = false;
-  @override
-  Widget build(BuildContext context) => Tooltip(message: widget.tooltip, child: GestureDetector(
-    behavior: HitTestBehavior.opaque,
-    onTap: widget.enabled ? widget.onTap : null,
-    onTapDown: widget.enabled ? (_) => setState(() => _pressed = true) : null,
-    onTapUp: widget.enabled ? (_) => setState(() => _pressed = false) : null,
-    onTapCancel: () => setState(() => _pressed = false),
-    child: SizedBox(width: 68, height: 68, child: Center(child: AnimatedScale(
-      scale: _pressed ? 0.88 : 1, duration: const Duration(milliseconds: 110),
-      curve: Curves.easeOutCubic,
-      child: Icon(widget.icon, size: widget.size,
-        color: Colors.white.withValues(alpha: widget.enabled ? 1 : 0.32)),
-    ))),
-  ));
-}
-
-
