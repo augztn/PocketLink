@@ -20,6 +20,7 @@ import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
 import '../storage/storage_browser_screen.dart';
 import 'now_playing_artwork_card.dart';
+import 'now_playing_lyrics_mode.dart';
 import 'now_playing_scrubber.dart';
 import 'now_playing_scroll_dismiss_detector.dart';
 import 'persistent_audio_player.dart';
@@ -1294,108 +1295,66 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   }
 
   Widget _lyricsMode(String theme, double progress) {
-    return IgnorePointer(
-      ignoring: progress < 0.02,
-      child: Opacity(
-        opacity: progress,
-        child: SafeArea(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final width = constraints.maxWidth;
-              final height = constraints.maxHeight;
-              final artSize = theme == 'gradient'
-                  ? width
-                  : math.min(320.0, width - 44).clamp(180.0, 320.0).toDouble();
-              final startRect = theme == 'gradient'
-                  ? Rect.fromLTWH(0, 0, width, height * 0.55)
-                  : Rect.fromLTWH((width - artSize) / 2, height * 0.10, artSize, artSize);
-              // SafeArea owns the status-bar inset; keep compact art in the
-              // same header row as the title and track actions.
-              const compactArtRect = Rect.fromLTWH(12, 3, 48, 48);
-              final artRect = Rect.lerp(startRect, compactArtRect, progress)!;
-              return Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Positioned.fromRect(
-                    rect: artRect,
-                    child: GestureDetector(
-                      onTap: () => unawaited(_showTrackLyrics()),
-                      child: _lyricsArtwork(progress),
-                    ),
-                  ),
-                  Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(left: 68, right: 12),
-                        child: SizedBox(
-                          height: 54,
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(_fileName, maxLines: 1, overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700)),
-                                    Text(_track.artist ?? _folderName, maxLines: 1, overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(color: Colors.white60, fontSize: 12)),
-                                  ],
-                                ),
-                              ),
-                              _roundAction(icon: _isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
-                                tooltip: 'Favorite', foreground: _isFavorite ? const Color(0xFFFFD66B) : Colors.white,
-                                onTap: () => unawaited(_toggleFavorite()), contentOpacity: progress),
-                              const SizedBox(width: 6),
-                              _roundAction(icon: Icons.more_horiz_rounded, tooltip: 'Track options',
-                                onTap: _showOptions, contentOpacity: progress),
-                            ],
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: StreamBuilder<Duration>(
-                          stream: _player.stream.position,
-                          initialData: _player.state.position,
-                          builder: (context, snapshot) => LyricsViewport(
-                            key: _lyricsViewportKey,
-                            document: _activeLyrics,
-                            position: snapshot.data ?? Duration.zero,
-                            loading: _lyricsLoading,
-                            results: _lyricsProviderStates,
-                            providers: _lyricsRepository.providers,
-                            onSeek: (position) => unawaited(_player.seek(position)),
-                            onChooseProvider: _chooseLyricsProvider,
-                            onToggleTranslation: _toggleLyricsTranslation,
-                            translationEnabled: _lyricsTranslationEnabled,
-                          ),
-                        ),
-                      ),
-                      GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: _chooseLyricsProvider,
-                        child: Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Text(
-                            'Lyrics by ' + (_activeLyrics?.providerName ?? (_lyricsLoading ? 'Searching' : 'Unavailable')),
-                            style: const TextStyle(color: Colors.white70, fontSize: 12,
-                              decoration: TextDecoration.underline, decorationColor: Colors.white54),
-                          ),
-                        ),
-                      ),
-                      Padding(padding: const EdgeInsets.symmetric(horizontal: 22), child: _timeline()),
-                      const SizedBox(height: 10),
-                      Padding(padding: const EdgeInsets.symmetric(horizontal: 22), child: _transport()),
-                      const SizedBox(height: 6),
-                      _bottomUtilities(),
-                      const SizedBox(height: 8),
-                    ],
-                  ),
-                ],
-              );
-            },
+    return NowPlayingLyricsMode(
+      theme: theme,
+      progress: progress,
+      artwork: _lyricsArtwork(progress),
+      trackTitle: _fileName,
+      artistLabel: _track.artist ?? _folderName,
+      actions: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _roundAction(
+            icon: _isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
+            tooltip: 'Favorite',
+            foreground: _isFavorite ? const Color(0xFFFFD66B) : Colors.white,
+            onTap: () => unawaited(_toggleFavorite()),
+            contentOpacity: progress,
           ),
+          const SizedBox(width: 6),
+          _roundAction(
+            icon: Icons.more_horiz_rounded,
+            tooltip: 'Track options',
+            onTap: _showOptions,
+            contentOpacity: progress,
+          ),
+        ],
+      ),
+      onClose: () => unawaited(_showTrackLyrics()),
+      lyricsContent: StreamBuilder<Duration>(
+        stream: _player.stream.position,
+        initialData: _player.state.position,
+        builder: (context, snapshot) => LyricsViewport(
+          key: _lyricsViewportKey,
+          document: _activeLyrics,
+          position: snapshot.data ?? Duration.zero,
+          loading: _lyricsLoading,
+          results: _lyricsProviderStates,
+          providers: _lyricsRepository.providers,
+          onSeek: (position) => unawaited(_player.seek(position)),
+          onChooseProvider: _chooseLyricsProvider,
+          onToggleTranslation: _toggleLyricsTranslation,
+          translationEnabled: _lyricsTranslationEnabled,
         ),
+      ),
+      providerLabel: 'Lyrics by ${_activeLyrics?.providerName ?? (_lyricsLoading ? 'Searching' : 'Unavailable')}',
+      onChooseProvider: _chooseLyricsProvider,
+      footer: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 22),
+            child: _timeline(),
+          ),
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 22),
+            child: _transport(),
+          ),
+          const SizedBox(height: 6),
+          _bottomUtilities(),
+          const SizedBox(height: 8),
+        ],
       ),
     );
   }
