@@ -4,9 +4,9 @@ import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
+import '../../core/widgets/pocketlink_file_icon.dart';
 import '../../core/widgets/pocketlink_skeleton.dart';
 import '../../core/widgets/feathered_glass_header.dart';
-import '../../core/widgets/pocketlink_file_icon.dart';
 import '../../core/widgets/smoked_glass_popover_menu.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
 
@@ -14,6 +14,7 @@ import '../../core/network/server_api.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/storage/home_activity_store.dart';
 import 'file_browser_state_store.dart';
+import 'file_entry_tile.dart';
 import '../transfers/transfer_manager.dart';
 import '../downloads/download_manager_service.dart';
 import '../transfers/transfer_manager_screen.dart';
@@ -104,19 +105,6 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
         .where((item) => !item.isDirectory && extensions.contains(_extension(item)))
         .length;
   }
-
-  PocketLinkFileVisual _fileVisual(FileEntry item, ColorScheme colors) =>
-      PocketLinkFileVisuals.resolve(
-        name: item.name,
-        isDirectory: item.isDirectory,
-        colors: colors,
-      );
-
-  IconData _iconFor(FileEntry item) =>
-      _fileVisual(item, Theme.of(context).colorScheme).icon;
-
-  Color _iconColorFor(FileEntry item, ColorScheme colors) =>
-      _fileVisual(item, colors).color;
 
   @override
   void didUpdateWidget(covariant FileManagerScreen oldWidget) {
@@ -548,6 +536,13 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     }
   }
 
+  VoidCallback? _openActionFor(FileEntry item) {
+    if (item.isDirectory) return () => _load(_itemPath(item.name));
+    if (_isAudio(item)) return () => _openAudio(item);
+    if (_isImage(item)) return () => _previewImage(item);
+    return null;
+  }
+
   bool _isImage(FileEntry item) {
     final extension = item.name.toLowerCase().split('.').last;
     return const {'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'}.contains(extension);
@@ -725,60 +720,6 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
       }
       return a.name.toLowerCase().compareTo(b.name.toLowerCase());
     });
-
-    Widget fileIcon(FileEntry item, {double size = 24}) {
-      final color = _iconColorFor(item, colors);
-      return Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Icon(_iconFor(item), color: color, size: size),
-      );
-    }
-
-    Widget fileTile(FileEntry item) {
-      return Card(
-        margin: EdgeInsets.zero,
-        elevation: 0,
-        color: colors.surfaceContainerLow,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14), side: BorderSide(color: colors.outlineVariant.withValues(alpha: 0.22))),
-        child: SizedBox(height: 60, child: ListTile(
-          dense: true,
-          visualDensity: VisualDensity.compact,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-          leading: fileIcon(item),
-          title: Text(item.name, maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontWeight: FontWeight.w600)),
-          subtitle: Text(item.isDirectory ? 'Folder' : _formatSize(item.size),
-              style: TextStyle(color: colors.onSurfaceVariant)),
-          onTap: item.isDirectory
-              ? () => _load(_itemPath(item.name))
-              : _isAudio(item) ? () => _openAudio(item)
-              : _isImage(item) ? () => _previewImage(item) : null,
-          trailing: SmokedGlassPopoverMenu<String>(
-            tooltip: 'More actions',
-            items: [
-              if (!item.isDirectory)
-                const SmokedGlassPopoverMenuItem(value: 'download', label: 'Download', icon: Icons.download_rounded),
-              const SmokedGlassPopoverMenuItem(value: 'rename', label: 'Rename', icon: Icons.drive_file_rename_outline_rounded),
-              const SmokedGlassPopoverMenuItem(value: 'delete', label: 'Delete', icon: Icons.delete_outline_rounded, destructive: true, dividerBefore: true),
-            ],
-            onSelected: (action) {
-              if (action == 'download' && !item.isDirectory) _downloadFile(item);
-              if (action == 'rename') _rename(item);
-              if (action == 'delete') _delete(item);
-            },
-            child: const Padding(
-              padding: EdgeInsets.all(8),
-              child: Icon(Icons.more_vert_rounded),
-            ),
-          ),
-        )),
-      );
-    }
 
     final embeddedTab = widget.onBackAtRoot != null;
     return PopScope(
@@ -959,61 +900,25 @@ tooltip: 'Choose storage location',
                                     itemCount: items.length,
                                     itemBuilder: (context, index) {
                                       final item = items[index];
-                                      return Material(
-                                        color: colors.surfaceContainerLow,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(20),
-                                          side: BorderSide(
-                                            color: colors.outlineVariant.withValues(alpha: 0.32),
-                                          ),
-                                        ),
-                                        clipBehavior: Clip.antiAlias,
-                                        child: InkWell(
-                                        borderRadius: BorderRadius.circular(20),
-                                        onTap: item.isDirectory
-                                            ? () => _load(_itemPath(item.name))
-                                            : _isAudio(item)
-                                                ? () => _openAudio(item)
-                                                : _isImage(item)
-                                                    ? () => _previewImage(item)
-                                                    : null,
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(14),
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Row(children: [
-                                                fileIcon(item, size: 26),
-                                                const Spacer(),
-                                                SmokedGlassPopoverMenu<String>(
-                                                  tooltip: 'More actions',
-                                                  items: [
-                                                    if (!item.isDirectory)
-                                                      const SmokedGlassPopoverMenuItem(value: 'download', label: 'Download', icon: Icons.download_rounded),
-                                                    const SmokedGlassPopoverMenuItem(value: 'rename', label: 'Rename', icon: Icons.drive_file_rename_outline_rounded),
-                                                    const SmokedGlassPopoverMenuItem(value: 'delete', label: 'Delete', icon: Icons.delete_outline_rounded, destructive: true, dividerBefore: true),
-                                                  ],
-                                                  onSelected: (action) {
-                                                    if (action == 'download' && !item.isDirectory) _downloadFile(item);
-                                                    if (action == 'rename') _rename(item);
-                                                    if (action == 'delete') _delete(item);
-                                                  },
-                                                  child: const Padding(
-                                                    padding: EdgeInsets.all(6),
-                                                    child: Icon(Icons.more_vert_rounded),
-                                                  ),
-                                                ),
-                                              ]),
-                                              const Spacer(),
-                                              Text(item.name, maxLines: 2, overflow: TextOverflow.ellipsis,
-                                                style: const TextStyle(fontWeight: FontWeight.w700)),
-                                              const SizedBox(height: 3),
-                                              Text(item.isDirectory ? 'Folder' : _formatSize(item.size),
-                                                style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
-                                            ],
-                                          ),
-                                        ),
-                                        ),
+                                      return FileEntryTile(
+                                        item: item,
+                                        grid: true,
+                                        colors: colors,
+                                        icon: PocketLinkFileVisuals.resolve(
+                                          name: item.name,
+                                          isDirectory: item.isDirectory,
+                                          colors: colors,
+                                        ).icon,
+                                        iconColor: PocketLinkFileVisuals.resolve(
+                                          name: item.name,
+                                          isDirectory: item.isDirectory,
+                                          colors: colors,
+                                        ).color,
+                                        formattedSize: _formatSize(item.size),
+                                        onOpen: _openActionFor(item),
+                                        onDownload: () => _downloadFile(item),
+                                        onRename: () => _rename(item),
+                                        onDelete: () => _delete(item),
                                       );
                                     },
                                   )
@@ -1023,7 +928,28 @@ tooltip: 'Choose storage location',
                                     padding: EdgeInsets.fromLTRB(16, topInset, 16, LayoutInsetsScope.of(context).bottomClearance),
                                     itemCount: items.length,
                                     separatorBuilder: (_, __) => const SizedBox(height: 8),
-                                    itemBuilder: (context, index) => fileTile(items[index]),
+                                    itemBuilder: (context, index) {
+                                      final item = items[index];
+                                      return FileEntryTile(
+                                        item: item,
+                                        colors: colors,
+                                        icon: PocketLinkFileVisuals.resolve(
+                                          name: item.name,
+                                          isDirectory: item.isDirectory,
+                                          colors: colors,
+                                        ).icon,
+                                        iconColor: PocketLinkFileVisuals.resolve(
+                                          name: item.name,
+                                          isDirectory: item.isDirectory,
+                                          colors: colors,
+                                        ).color,
+                                        formattedSize: _formatSize(item.size),
+                                        onOpen: _openActionFor(item),
+                                        onDownload: () => _downloadFile(item),
+                                        onRename: () => _rename(item),
+                                        onDelete: () => _delete(item),
+                                      );
+                                    },
                                   );
                 return RefreshIndicator(
                   onRefresh: _refreshDirectory,
