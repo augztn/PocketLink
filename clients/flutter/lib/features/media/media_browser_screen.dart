@@ -635,7 +635,6 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   Widget _buildFolders(List<MediaFileItem> items) {
     final folders = _foldersAtCurrentLevel(items);
     final files = _sortMedia(_filesAtCurrentLevel(items));
-    final parts = _currentFolderPath.split('/').where((part) => part.isNotEmpty).toList();
     return Column(
       children: [
         MediaFolderBreadcrumbs(
