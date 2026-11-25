@@ -18,6 +18,7 @@ import 'file_browser_storage_title.dart';
 import 'file_browser_sort_sheet.dart';
 import 'file_browser_recent_locations.dart';
 import 'file_browser_dialogs.dart';
+import 'file_browser_image_preview.dart';
 import '../transfers/transfer_manager.dart';
 import '../downloads/download_manager_service.dart';
 import '../transfers/transfer_manager_screen.dart';
@@ -478,32 +479,10 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
         path: _itemPath(item.name),
         volume: _selectedVolume,
       );
-      await showDialog<void>(
+      await showFileBrowserImagePreview(
         context: context,
-        builder: (context) => Dialog(
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(item.name, style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 12),
-                Flexible(
-                  child: InteractiveViewer(
-                    child: Image.memory(
-                      bytes,
-                      fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => const Padding(
-                        padding: EdgeInsets.all(24),
-                        child: Text('This image format could not be previewed.'),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+        name: item.name,
+        bytes: bytes,
       );
     } on DioException catch (error) {
       _showError(_messageFor(error));
