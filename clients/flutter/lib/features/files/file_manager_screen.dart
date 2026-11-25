@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:material_ui/material_ui.dart';
@@ -565,7 +567,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     final handler = _searchExpanded
         ? () => _setSearchExpanded(false)
         : _path.isNotEmpty
-            ? _goUp
+            ? () => unawaited(_goUp())
             : null;
     widget.onBackHandlerChanged?.call(handler);
   }
