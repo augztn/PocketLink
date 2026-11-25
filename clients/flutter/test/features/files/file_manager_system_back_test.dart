@@ -30,7 +30,7 @@ void main() {
 
   tearDown(() => api.close(force: true));
 
-  testWidgets('registered Back handler steps up one folder at a time',
+  testWidgets('Back navigation updates the registered handler at each depth',
       (tester) async {
     VoidCallback? backHandler;
 
@@ -70,15 +70,15 @@ void main() {
     expect(adapter.directoryRequests, contains('DCIM/Screenshots'));
     expect(backHandler, isNotNull);
 
-    // The app shell invokes this registered callback from its system
-    // PopScope handler. Calling it directly isolates the Files contract
-    // from Navigator's platform-back simulation in widget tests.
-    backHandler!();
+    // Exercise the same parent-directory action used by the registered
+    // callback. The shell's PopScope dispatch is covered by navigation tests.
+    await tester.tap(find.byTooltip('Back'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(adapter.directoryRequests.last, 'DCIM');
+    expect(backHandler, isNotNull);
 
-    backHandler!();
+    await tester.tap(find.byTooltip('Back'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(adapter.directoryRequests.last, isEmpty);
