@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
@@ -36,6 +37,9 @@ void main() {
       ChangeNotifierProvider(
         create: (_) => FileBrowserStateStore(),
         child: MaterialApp(
+          builder: (context, child) => MaterialUiCompatibilityBridge(
+            child: child ?? const SizedBox.shrink(),
+          ),
           home: StatefulBuilder(
             builder: (context, setState) => PopScope(
               canPop: false,
