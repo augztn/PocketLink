@@ -1,6 +1,5 @@
 import 'package:material_ui/material_ui.dart';
 
-import '../../core/widgets/pocketlink_file_icon.dart';
 import '../../core/widgets/smoked_glass_popover_menu.dart';
 import '../../core/network/server_api.dart';
 
