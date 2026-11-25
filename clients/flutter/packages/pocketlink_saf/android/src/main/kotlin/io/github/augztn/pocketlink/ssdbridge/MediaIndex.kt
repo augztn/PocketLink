@@ -417,12 +417,48 @@ internal class MediaIndexScanner(
             database.beginScanCheckpoint(volume, rootId, scanId)
         }
 
-        val fileSnapshot = database.fileSnapshot(volume)
-        val mediaSnapshot = database.mediaSnapshot(volume)
+        // Compare only the current bounded write batch with SQLite. Loading every
+        // indexed path into maps makes memory usage grow with the entire volume.
+        val pendingIndexItems = ArrayList<IndexedFile>(200)
         val batch = ArrayList<IndexedFile>(200)
         val unchangedFiles = ArrayList<String>(200)
         val unchangedMedia = ArrayList<String>(200)
+        fun processPendingIndexItems() {
+            if (pendingIndexItems.isEmpty()) return
+            val paths = pendingIndexItems.map { it.path }
+            val fileSnapshot = database.fileSnapshot(volume, paths)
+            val mediaSnapshot = database.mediaSnapshot(volume, paths)
+            pendingIndexItems.forEach { item ->
+                val previousFile = fileSnapshot[item.path]
+                val previousMedia = mediaSnapshot[item.path]
+                val fileUnchanged = previousFile != null &&
+                    previousFile.size == item.size &&
+                    (if (item.modified <= 0L) previousFile.modified <= 0L else previousFile.modified == item.modified)
+                if (item.type == "file") {
+                    if (previousFile == null) newFiles++
+                    else if (!fileUnchanged) updatedFiles++
+                }
+                val mediaUnchanged = when {
+                    item.category == null -> previousMedia == null
+                    previousMedia == null -> false
+                    previousMedia.size != item.size || previousMedia.category != item.category -> false
+                    item.modified <= 0L -> previousMedia.modified <= 0L
+                    else -> previousMedia.modified == item.modified
+                }
+                scannedBytes += item.size
+                scanned++
+                if (fileUnchanged && mediaUnchanged) {
+                    unchanged++
+                    unchangedFiles += item.path
+                    if (item.category != null) unchangedMedia += item.path
+                } else {
+                    batch += item
+                }
+            }
+            pendingIndexItems.clear()
+        }
         fun flush() {
+            processPendingIndexItems()
             val snapshot = batch.toList()
             if (snapshot.isNotEmpty()) {
                 try { database.upsertFiles(snapshot, scanId) } catch (error: Exception) {
@@ -458,33 +494,9 @@ internal class MediaIndexScanner(
             val safeSize = size.coerceAtLeast(0L)
             val safeModified = modified.coerceAtLeast(0L)
             val category = if (directory) null else MediaFileClassifier.categoryFor(name, mime)
-            scannedBytes += safeSize
-            val previousFile = fileSnapshot[path]
-            val previousMedia = mediaSnapshot[path]
-            val fileUnchanged = previousFile != null &&
-                previousFile.size == safeSize &&
-                (if (safeModified <= 0L) previousFile.modified <= 0L else previousFile.modified == safeModified)
-            if (!directory) {
-                if (previousFile == null) newFiles++
-                else if (!fileUnchanged) updatedFiles++
-            }
-            val mediaUnchanged = when {
-                category == null -> previousMedia == null
-                previousMedia == null -> false
-                previousMedia.size != safeSize || previousMedia.category != category -> false
-                safeModified <= 0L -> previousMedia.modified <= 0L
-                else -> previousMedia.modified == safeModified
-            }
-            scanned++
-            if (fileUnchanged && mediaUnchanged) {
-                unchanged++
-                unchangedFiles += path
-                if (category != null) unchangedMedia += path
-            } else {
-                batch += IndexedFile(volume, path, name, if (directory) "directory" else "file",
-                    safeSize, safeModified, mime, category)
-            }
-            if (batch.size >= 200 || unchangedFiles.size >= 200) flush()
+            pendingIndexItems += IndexedFile(volume, path, name, if (directory) "directory" else "file",
+                safeSize, safeModified, mime, category)
+            if (pendingIndexItems.size >= 200) flush()
         }
 
         if (root is File) {
@@ -583,7 +595,7 @@ internal class MediaIndexScanner(
                             continue
                         }
                         children = listedChildren
-                        if (children.isEmpty() && hasIndexedDescendants(fileSnapshot.keys + mediaSnapshot.keys, relativePath)) {
+                        if (children.isEmpty() && database.hasIndexedDescendants(volume, relativePath)) {
                             deferredDirectories = true
                             deferredIds.add(pendingItem.id)
                             skipped++
