@@ -5,9 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
 import '../../core/widgets/pocketlink_skeleton.dart';
-import '../../core/widgets/feathered_glass_header.dart';
 import '../../core/widgets/compact_search_field.dart';
-import '../../core/widgets/liquid_glass_pill.dart';
 import '../../core/widgets/smoked_glass_popover_menu.dart';
 
 import 'package:dio/dio.dart';
@@ -21,7 +19,6 @@ import 'data/media_library_repository.dart';
 import 'widgets/video_metadata_label.dart';
 import 'widgets/video_duration_badge.dart';
 import 'widgets/video_library_header_title.dart';
-import 'widgets/music_library_header_title.dart';
 import 'widgets/video_grid_card.dart';
 import 'widgets/video_artwork.dart';
 import 'widgets/video_list_tile.dart';
@@ -36,8 +33,6 @@ import 'widgets/media_browser_filter_sheet.dart';
 import 'widgets/media_browser_empty_state.dart';
 import 'widgets/music_browser_empty_state.dart';
 import 'widgets/music_browser_track_list.dart';
-import 'widgets/music_selection_toolbar.dart';
-import 'widgets/music_more_actions_menu.dart';
 import 'persistent_audio_player.dart';
 import 'now_playing_overlay_controller.dart';
 import '../transfers/transfer_manager_screen.dart';
@@ -1124,19 +1119,6 @@ tooltip: 'Choose video view',
         ? Colors.white
         : const Color(0xFF172033);
 
-    Widget iconAction(IconData icon, String tooltip, VoidCallback onPressed) =>
-        SizedBox(
-          width: 36,
-          height: 36,
-          child: IconButton(
-            tooltip: tooltip,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints.tightFor(width: 38, height: 38),
-            onPressed: onPressed,
-            icon: Icon(icon, size: 18, color: foreground),
-          ),
-        );
-
     return PopScope(
       canPop: widget.onBackHandlerChanged != null ||
           (!_searchExpanded && !_selectionMode && (_libraryView != 'folders' || _atFolderRoot)),
@@ -1212,170 +1194,102 @@ tooltip: 'Choose video view',
                 right: 16,
                 child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
               ),
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              height: top + 88,
-              child: const IgnorePointer(
-                child: FeatheredGlassHeaderBackground(
-                  contentHeight: 44,
-                  darkTint: [
-                    Color(0xD9000000),
-                    Color(0x66000000),
-                    Colors.transparent,
-                  ],
+            MusicLibraryHeader(
+              topInset: top,
+              foreground: foreground,
+              searchExpanded: _searchExpanded,
+              selectionMode: _selectionMode,
+              selectedCount: _selectedTrackKeys.length,
+              searchController: _searchController,
+              searchQuery: _searchQuery,
+              menuOpen: _musicMenuOpen,
+              subtitle:
+                  '${visible.length} tracks • ${_selectedVolume == null ? 'All storage' : _volumeName(_selectedVolume)}',
+              viewItems: [
+                SmokedGlassPopoverMenuItem(
+                  value: 'all',
+                  label: 'Songs',
+                  icon: Icons.music_note_rounded,
+                  trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Text('${visible.length}', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
+                    const SizedBox(width: 8),
+                    SizedBox(width: 20, child: _libraryView == 'all' ? const Icon(Icons.check_rounded, size: 18) : null),
+                  ]),
                 ),
-              ),
-            ),
-            Positioned(
-              top: top + 10,
-              left: 16,
-              right: 16,
-              height: 44,
-              child: Row(children: [
-                if (!_searchExpanded)
-                  IconButton(
-                    tooltip: 'Back',
-                    onPressed: () => Navigator.of(context).maybePop(),
-                    icon: Icon(Icons.arrow_back_rounded, size: 20, color: foreground),
+                SmokedGlassPopoverMenuItem(
+                  value: 'folders',
+                  label: 'Folders',
+                  icon: Icons.folder_rounded,
+                  trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Text('$folderCount', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
+                    const SizedBox(width: 8),
+                    SizedBox(width: 20, child: _libraryView == 'folders' ? const Icon(Icons.check_rounded, size: 18) : null),
+                  ]),
+                ),
+                SmokedGlassPopoverMenuItem(
+                  value: 'favorites',
+                  label: 'Favorites',
+                  icon: Icons.favorite_rounded,
+                  trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Text('$favoriteCount', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
+                    const SizedBox(width: 8),
+                    SizedBox(width: 20, child: _libraryView == 'favorites' ? const Icon(Icons.check_rounded, size: 18) : null),
+                  ]),
+                ),
+              ],
+              onSearchChanged: (value) => setState(() => _searchQuery = value),
+              onSearchClearOrClose: () {
+                if (_searchQuery.isNotEmpty) {
+                  _searchController.clear();
+                  setState(() => _searchQuery = '');
+                } else {
+                  _setSearchExpanded(false);
+                }
+              },
+              onSearchToggle: () => _setSearchExpanded(true),
+              onFilter: _showMusicFilters,
+              onViewSelected: (value) {
+                setState(() {
+                  _libraryView = value;
+                  _currentFolderPath =
+                      value == 'folders' && _selectedVolume == 'internal'
+                          ? 'Music'
+                          : '';
+                });
+                _syncBackHandler();
+                _pendingScrollOffset = 0;
+                _saveState(folderPath: _currentFolderPath);
+                if (_contentScrollController.hasClients) {
+                  _contentScrollController.jumpTo(0);
+                }
+              },
+              onMenuOpenChanged: _setMusicMenuOpen,
+              onShuffle: visible.isEmpty
+                  ? null
+                  : () {
+                      final shuffled = List<MediaFileItem>.of(visible)
+                        ..shuffle(math.Random());
+                      _openMedia(shuffled.first, shuffled);
+                    },
+              onSelect: () {
+                setState(() {
+                  _selectionMode = true;
+                  _selectedTrackKeys.clear();
+                });
+                _syncBackHandler();
+              },
+              onScan: () {
+                if (!_loading) _scan(refresh: true);
+              },
+              onSettings: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const SettingsScreen(),
                   ),
-                if (_searchExpanded)
-                  Expanded(
-                    child: SizedBox(
-                      height: 44,
-                      child: LiquidGlassSurface(
-                        radius: BorderRadius.circular(22),
-                        refractive: true,
-                      lightRefractive: true,
-                        child: Row(children: [
-                          const SizedBox(width: 14),
-                          Icon(Icons.search_rounded, size: 18, color: foreground.withValues(alpha: 0.72)),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: TextField(
-                              controller: _searchController,
-                              autofocus: true,
-                              onChanged: (value) => setState(() => _searchQuery = value),
-                              textInputAction: TextInputAction.search,
-                              style: TextStyle(color: foreground, fontSize: 14),
-                              decoration: const InputDecoration(
-                                hintText: 'Search songs or folders',
-                                hintStyle: TextStyle(color: Color(0xFF8E939E), fontSize: 14),
-                                border: InputBorder.none,
-                                isDense: true,
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            tooltip: _searchQuery.isEmpty ? 'Close search' : 'Clear search',
-                            onPressed: () {
-                              if (_searchQuery.isNotEmpty) {
-                                _searchController.clear();
-                                setState(() => _searchQuery = '');
-                              } else {
-                                _setSearchExpanded(false);
-                              }
-                            },
-                            icon: Icon(Icons.close_rounded, size: 18, color: foreground.withValues(alpha: 0.72)),
-                          ),
-                        ]),
-                      ),
-                    ),
-                  )
-                else
-                  Expanded(
-                    child: TitleDropdownPopover<String>(
-tooltip: 'Choose music view',
-                      onOpenChanged: _setMusicMenuOpen,
-                      items: [
-                        SmokedGlassPopoverMenuItem(value: 'all', label: 'Songs', icon: Icons.music_note_rounded,
-                          trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                            Text('${visible.length}', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
-                            const SizedBox(width: 8),
-                            SizedBox(width: 20, child: _libraryView == 'all' ? const Icon(Icons.check_rounded, size: 18) : null),
-                          ])),
-                        SmokedGlassPopoverMenuItem(value: 'folders', label: 'Folders', icon: Icons.folder_rounded,
-                          trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                            Text('$folderCount', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
-                            const SizedBox(width: 8),
-                            SizedBox(width: 20, child: _libraryView == 'folders' ? const Icon(Icons.check_rounded, size: 18) : null),
-                          ])),
-                        SmokedGlassPopoverMenuItem(value: 'favorites', label: 'Favorites', icon: Icons.favorite_rounded,
-                          trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                            Text('$favoriteCount', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
-                            const SizedBox(width: 8),
-                            SizedBox(width: 20, child: _libraryView == 'favorites' ? const Icon(Icons.check_rounded, size: 18) : null),
-                          ])),
-                      ],
-                      onSelected: (value) {
-                        setState(() {
-                          _libraryView = value;
-                          _currentFolderPath = value == 'folders' && _selectedVolume == 'internal' ? 'Music' : '';
-                        });
-                        _syncBackHandler();
-                        _pendingScrollOffset = 0;
-                        _saveState(folderPath: _currentFolderPath);
-                        if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0);
-                      },
-                      child: MusicLibraryHeaderTitle(
-                        subtitle:
-                            '${visible.length} tracks • ${_selectedVolume == null ? 'All storage' : _volumeName(_selectedVolume)}',
-                        menuOpen: _musicMenuOpen,
-                        titleColor: foreground,
-                      ),
-                    ),
-                  ),
-                if (!_searchExpanded) const SizedBox(width: 12),
-                if (!_searchExpanded && !_selectionMode)
-                  SizedBox(
-                    height: 44,
-                    child: LiquidGlassSurface(
-                      radius: BorderRadius.circular(22),
-                      refractive: true,
-                        lightRefractive: true,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 6),
-                        child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        iconAction(Icons.search_rounded, 'Search', () => _setSearchExpanded(true)),
-                        iconAction(Icons.tune_rounded, 'Sort and filter', _showMusicFilters),
-                        MusicMoreActionsMenu(
-                          onShuffle: visible.isEmpty
-                              ? null
-                              : () {
-                                  final shuffled =
-                                      List<MediaFileItem>.of(visible)
-                                        ..shuffle(math.Random());
-                                  _openMedia(shuffled.first, shuffled);
-                                },
-                          onSelect: () {
-                            setState(() {
-                              _selectionMode = true;
-                              _selectedTrackKeys.clear();
-                            });
-                            _syncBackHandler();
-                          },
-                          onScan: () {
-                            if (!_loading) _scan(refresh: true);
-                          },
-                          onSettings: () {
-                            Navigator.of(context).push(MaterialPageRoute<void>(
-                              builder: (_) => const SettingsScreen(),
-                            ));
-                          },
-                          onHome: () => PocketLinkAppBar.goToDashboard(context),
-                        ),
-                        ]),
-                      ),
-                    ),
-                  ),
-                if (_selectionMode)
-                  MusicSelectionToolbar(
-                    selectedCount: _selectedTrackKeys.length,
-                    foreground: foreground,
-                    onDone: _clearSelectionMode,
-                  ),
-              ]),
+                );
+              },
+              onHome: () => PocketLinkAppBar.goToDashboard(context),
+              onSelectionDone: _clearSelectionMode,
             ),
           ]),
         ),
