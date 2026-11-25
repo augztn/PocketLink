@@ -32,6 +32,7 @@ import 'music_track_tile.dart';
 import 'widgets/music_duration_label.dart';
 import 'widgets/media_browser_filter_sheet.dart';
 import 'widgets/media_browser_empty_state.dart';
+import 'widgets/music_browser_empty_state.dart';
 import 'persistent_audio_player.dart';
 import 'now_playing_overlay_controller.dart';
 import '../transfers/transfer_manager_screen.dart';
@@ -1190,23 +1191,13 @@ tooltip: 'Choose video view',
                       onRefresh: _refreshMusic,
                       displacement: 48,
                       child: _error != null || (_loading && _media.isEmpty) || visible.isEmpty
-                          ? ListView(
-                              physics: const AlwaysScrollableScrollPhysics(),
-                              padding: EdgeInsets.fromLTRB(0, LayoutInsetsScope.of(context).topClearance, 0, LayoutInsetsScope.of(context).bottomClearance),
-                              children: [
-                                SizedBox(
-                                  height: MediaQuery.sizeOf(context).height * 0.55,
-                                  child: Center(
-                                    child: _error != null
-                                        ? FilledButton(onPressed: _scan, child: const Text('Retry scan'))
-                                        : _loading && _media.isEmpty
-                                            ? PocketLinkSkeleton.musicList(rows: 5)
-                                            : Text(_libraryView == 'favorites'
-                                                ? 'No favourite tracks yet.'
-                                                : 'No music found. Scan storage to find tracks.'),
-                                  ),
-                                ),
-                              ],
+                          ? MusicBrowserEmptyState(
+                              error: _error,
+                              loading: _loading && _media.isEmpty,
+                              favoritesView: _libraryView == 'favorites',
+                              onRetry: _scan,
+                              topPadding: LayoutInsetsScope.of(context).topClearance,
+                              bottomPadding: LayoutInsetsScope.of(context).bottomClearance,
                             )
                           : ListView.separated(
                               physics: const AlwaysScrollableScrollPhysics(),
