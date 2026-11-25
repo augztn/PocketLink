@@ -20,6 +20,7 @@ import 'media_library_catalog.dart';
 import 'data/media_library_repository.dart';
 import 'widgets/video_metadata_label.dart';
 import 'widgets/video_duration_badge.dart';
+import 'widgets/video_library_header_title.dart';
 import 'widgets/video_grid_card.dart';
 import 'widgets/video_artwork.dart';
 import 'widgets/video_list_tile.dart';
@@ -808,27 +809,17 @@ tooltip: 'Choose video view',
                 _contentScrollController.jumpTo(0);
               }
             },
-            child: Row(children: [
-              Expanded(
-                child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Row(mainAxisSize: MainAxisSize.min, children: [
-                    Flexible(child: Text(headerTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700, letterSpacing: -0.5, color: titleColor))),
-                    const SizedBox(width: 6),
-                    AnimatedRotation(turns: _musicMenuOpen ? 0.5 : 0, duration: const Duration(milliseconds: 200), child: const Icon(Icons.keyboard_arrow_down_rounded, size: 20)),
-                  ]),
-                  Text(
-                  _countLabel(visibleMedia.length, 'video', 'videos') + ' • ${_selectedVolume == null ? 'All storage' : _volumeName(_selectedVolume)}'
+            child: VideoLibraryHeaderTitle(
+              title: headerTitle,
+              subtitle:
+                  _countLabel(visibleMedia.length, 'video', 'videos') +
+                  ' • ${_selectedVolume == null ? 'All storage' : _volumeName(_selectedVolume)}'
                   '${_scannedDirectories > 0 ? ' • $_scannedDirectories scanned' : ''}'
                   '${_skippedDirectories > 0 ? ' · $_skippedDirectories skipped' : ''}'
                   '${_loading && _scanLocation.isNotEmpty ? ' · $_scanLocation' : ''}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 10, fontFamily: 'monospace', color: Color(0xFFA1A7B3)),
-                  ),
-                ]),
-              ),
-              const SizedBox(width: 8),
-            ]),
+              menuOpen: _musicMenuOpen,
+              titleColor: titleColor,
+            )
           ),
           actions: [
             if (widget.showSearch) PocketLinkAppBarAction(label: _searchExpanded ? 'Close search' : 'Search videos', icon: _searchExpanded ? Icons.close_rounded : Icons.search_rounded, onPressed: () => _setSearchExpanded(!_searchExpanded)),
