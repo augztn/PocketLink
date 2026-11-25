@@ -24,6 +24,7 @@ import 'widgets/video_metadata_label.dart';
 import 'widgets/video_duration_badge.dart';
 import 'widgets/video_grid_card.dart';
 import 'widgets/video_list_tile.dart';
+import 'widgets/media_folder_tile.dart';
 import 'music_track_tile.dart';
 import 'persistent_audio_player.dart';
 import 'now_playing_overlay_controller.dart';
@@ -706,23 +707,19 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
             padding: EdgeInsets.fromLTRB(12, _isMusic ? 8 : ((_searchExpanded && widget.showSearch) || _libraryView == 'folders') ? 8 : LayoutInsetsScope.of(context).topClearance, 12, LayoutInsetsScope.of(context).bottomClearance),
             children: [
               for (final folder in folders)
-                Card(
-                  child: ListTile(
-                    leading: const Icon(Icons.folder_rounded),
-                    title: Text(folder.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-                    subtitle: Text('${_countLabel(folder.items.length, _isMusic ? 'track' : 'video', _isMusic ? 'tracks' : 'videos')} · ${_volumeName(folder.volume)}'),
-                    trailing: const Icon(Icons.chevron_right_rounded),
-                    onTap: () {
-                      setState(() {
-                        _selectedVolume = folder.volume ?? 'internal';
-                        _currentFolderPath = folder.path;
-                      });
-                      _pendingScrollOffset = 0;
-                      _saveState(folderPath: folder.path);
-                      if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0);
-                      _syncBackHandler();
-                    },
-                  ),
+                MediaFolderTile(
+                  title: folder.name,
+                  subtitle: '${_countLabel(folder.items.length, _isMusic ? 'track' : 'video', _isMusic ? 'tracks' : 'videos')} · ${_volumeName(folder.volume)}',
+                  onTap: () {
+                    setState(() {
+                      _selectedVolume = folder.volume ?? 'internal';
+                      _currentFolderPath = folder.path;
+                    });
+                    _pendingScrollOffset = 0;
+                    _saveState(folderPath: folder.path);
+                    if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0);
+                    _syncBackHandler();
+                  },
                 ),
               for (final media in files)
                 Card(
