@@ -190,8 +190,123 @@ class _SharedReadAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+class _MediaFailureAdapter implements HttpClientAdapter {
+  final Map<String, int> requests = {};
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    requests.update(options.uri.path, (count) => count + 1, ifAbsent: () => 1);
+    final status = options.uri.path == '/api/music/library' ? 404 : 400;
+    return ResponseBody.fromString(
+      '{"detail":"unsupported"}',
+      status,
+      headers: {Headers.contentTypeHeader: ['application/json']},
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+class _PriorityLaneAdapter implements HttpClientAdapter {
+  final mediaStarted = Completer<void>();
+  final coreStarted = Completer<void>();
+  final releaseMedia = Completer<void>();
+  int mediaRequestsStarted = 0;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    if (options.uri.path == '/api/media/thumbnail') {
+      mediaRequestsStarted++;
+      if (!mediaStarted.isCompleted) mediaStarted.complete();
+      await releaseMedia.future;
+      return ResponseBody.fromString(
+        'image-data',
+        200,
+        headers: {Headers.contentTypeHeader: ['image/jpeg']},
+      );
+    }
+    if (!coreStarted.isCompleted) coreStarted.complete();
+    return ResponseBody.fromString(
+      '{"path":"","items":[]}',
+      200,
+      headers: {Headers.contentTypeHeader: ['application/json']},
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
 void main() {
   group('ServerApi', () {
+
+    test('media thumbnail work cannot occupy the core API request lane', () async {
+      final adapter = _PriorityLaneAdapter();
+      final api = ServerApi(
+        baseUrl: 'http://127.0.0.1:8000',
+        username: 'admin',
+        password: 'secret',
+        httpClientAdapter: adapter,
+      );
+
+      final thumbnails = Future.wait([
+        api.videoThumbnail('Movies/one.mp4'),
+        api.videoThumbnail('Movies/two.mp4'),
+        api.videoThumbnail('Movies/three.mp4'),
+        api.videoThumbnail('Movies/four.mp4'),
+      ]);
+      await adapter.mediaStarted.future;
+
+      final coreRead = api.authenticate();
+      await adapter.coreStarted.future.timeout(const Duration(milliseconds: 250));
+      expect(adapter.mediaRequestsStarted, 1);
+
+      adapter.releaseMedia.complete();
+      await thumbnails;
+      expect((await coreRead).items, isEmpty);
+      api.close();
+    });
+
+    test('404 optional music endpoint is cached for the API session', () async {
+      final adapter = _MediaFailureAdapter();
+      final api = ServerApi(
+        baseUrl: 'http://127.0.0.1:8000',
+        username: 'admin',
+        password: 'secret',
+        httpClientAdapter: adapter,
+      );
+
+      expect(await api.musicLibrary(), isEmpty);
+      expect(await api.musicLibrary(), isEmpty);
+      expect(adapter.requests['/api/music/library'], 1);
+      api.close();
+    });
+
+    test('400/404 media failures stay negatively cached after cache clearing', () async {
+      final adapter = _MediaFailureAdapter();
+      final api = ServerApi(
+        baseUrl: 'http://127.0.0.1:8000',
+        username: 'admin',
+        password: 'secret',
+        httpClientAdapter: adapter,
+      );
+
+      expect(await api.videoThumbnail('Movies/broken.mp4'), isNull);
+      api.clearMediaCache();
+      expect(await api.videoThumbnail('Movies/broken.mp4'), isNull);
+      expect(adapter.requests['/api/media/thumbnail'], 1);
+      api.close();
+    });
+
     test('close releases the HTTP adapter exactly once', () {
       final adapter = _CloseTrackingAdapter();
       final api = ServerApi(
