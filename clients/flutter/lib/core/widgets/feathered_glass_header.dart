@@ -12,6 +12,7 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
     this.contentHeight = kToolbarHeight,
     this.strongestAtBottom = false,
     this.fadeTailOnly = false,
+    this.toolbarSegmentOnly = false,
     super.key,
   });
 
@@ -20,6 +21,7 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
   final double contentHeight;
   final bool strongestAtBottom;
   final bool fadeTailOnly;
+  final bool toolbarSegmentOnly;
 
   @override
   Widget build(BuildContext context) {
@@ -29,8 +31,11 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
     final fadeStart = (media.padding.top + contentHeight) / fullHeaderHeight;
     final headerHeight = fadeTailOnly
         ? pocketLinkHeaderFadeTailHeight
-        : fullHeaderHeight;
+        : toolbarSegmentOnly
+            ? media.padding.top + contentHeight
+            : fullHeaderHeight;
     final blurStartSigma = fadeTailOnly ? 24 * (1 - fadeStart) : 24.0;
+    final blurEndSigma = toolbarSegmentOnly ? 24 * (1 - fadeStart) : 0.0;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final effectiveDarkTint = isDark
         ? (darkTint != null && darkTint!.length >= 3
@@ -44,11 +49,20 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
 
     final gradientColors = effectiveDarkTint == null
         ? null
-        : fadeTailOnly
+        : (fadeTailOnly || toolbarSegmentOnly)
             ? [
-                _sampleHeaderTint(effectiveDarkTint, fadeStart),
-                _sampleHeaderTint(effectiveDarkTint, fadeStart + (1 - fadeStart) * 0.5),
-                effectiveDarkTint[2],
+                _sampleHeaderTint(
+                  effectiveDarkTint,
+                  fadeTailOnly ? fadeStart : 0,
+                ),
+                _sampleHeaderTint(
+                  effectiveDarkTint,
+                  fadeTailOnly ? fadeStart + (1 - fadeStart) * 0.5 : fadeStart * 0.5,
+                ),
+                _sampleHeaderTint(
+                  effectiveDarkTint,
+                  fadeTailOnly ? 1 : fadeStart,
+                ),
               ]
             : [
                 effectiveDarkTint[0],
@@ -57,7 +71,7 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
                 Color.lerp(effectiveDarkTint[1], effectiveDarkTint[2], 0.5)!,
                 effectiveDarkTint[2],
               ];
-    final gradientStops = fadeTailOnly
+    final gradientStops = (fadeTailOnly || toolbarSegmentOnly)
         ? const [0.0, 0.5, 1.0]
         : const [0.0, 0.16, 0.38, 0.68, 1.0];
 
@@ -69,7 +83,7 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
         child: ClipRect(
           child: ProgressiveBlur(
             maxSigma: blurStartSigma,
-            endSigma: 0,
+            endSigma: blurEndSigma,
             strongestAtBottom: strongestAtBottom,
             child: effectiveDarkTint == null
                 ? const SizedBox.expand()
