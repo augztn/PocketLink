@@ -1,3 +1,5 @@
+import 'package:dio/dio.dart';
+
 import '../../../core/network/server_api.dart';
 import '../media_library_catalog.dart';
 
@@ -65,6 +67,31 @@ class MediaLibraryRepository {
       offset += page.items.length;
       if (page.items.length < _pageSize) break;
     } while (true);
+
+    if (type == MediaLibraryType.music && found.isNotEmpty) {
+      try {
+        final metadata = await api.musicLibrary();
+        final byPath = <String, MusicLibraryTrack>{
+          for (final track in metadata) track.path: track,
+        };
+        for (var index = 0; index < found.length; index++) {
+          final item = found[index];
+          // The host music API currently indexes internal storage. OTG sources
+          // keep their existing path-derived labels and artwork fallback.
+          final track = item.volume == null ? byPath[item.path] : null;
+          if (track == null) continue;
+          found[index] = item.copyWith(
+            title: track.title,
+            artist: track.artist,
+            album: track.album,
+            durationMs: track.durationMs,
+            artworkAvailable: track.artworkAvailable,
+          );
+        }
+      } on DioException {
+        // Older or third-party hosts may not implement the optional music API.
+      }
+    }
 
     found.sort((a, b) =>
         a.entry.name.toLowerCase().compareTo(b.entry.name.toLowerCase()));
