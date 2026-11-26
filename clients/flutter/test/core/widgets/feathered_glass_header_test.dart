@@ -73,7 +73,7 @@ void main() {
       find.byType(shader_blur.ProgressiveBlur),
     );
     expect(blur.sigmaStart, 72);
-    expect(blur.sigmaEnd, 24);
+    expect(blur.sigmaEnd, 72);
   });
 
   testWidgets('header preserves status bar plus toolbar plus fade-tail geometry',
