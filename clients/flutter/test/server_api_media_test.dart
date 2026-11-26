@@ -47,6 +47,7 @@ void main() {
         'type': 'file',
         'size': 1024,
         'modified': '2026-11-16T10:00:00.000Z',
+        'created': '2026-11-15T09:00:00.000Z',
         'mime': 'audio/mpeg',
         'category': 'music',
       });
@@ -54,6 +55,8 @@ void main() {
       expect(item.volume, 'internal');
       expect(item.path, 'Music/Track 1.mp3');
       expect(item.toFileEntry().name, 'Track 1.mp3');
+      expect(item.toFileEntry().created, '2026-11-15T09:00:00.000Z');
+      expect(item.created, '2026-11-15T09:00:00.000Z');
       expect(item.category, 'music');
     });
 

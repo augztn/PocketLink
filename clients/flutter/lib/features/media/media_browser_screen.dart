@@ -1209,6 +1209,17 @@ tooltip: 'Choose video view',
     return result;
   }
 
+  List<MediaFileItem> _recentlyAddedTracks(List<MediaFileItem> source) {
+    final result = source.where((item) =>
+      DateTime.tryParse(item.entry.created ?? '') != null).toList();
+    result.sort((a, b) {
+      final aDate = DateTime.tryParse(a.entry.created!)!;
+      final bDate = DateTime.tryParse(b.entry.created!)!;
+      return bDate.compareTo(aDate);
+    });
+    return result.take(8).toList(growable: false);
+  }
+
   List<MediaFileItem> _recentlyUpdatedTracks(List<MediaFileItem> source) {
     final result = List<MediaFileItem>.of(source);
     result.sort((a, b) {
@@ -1259,6 +1270,7 @@ tooltip: 'Choose video view',
     }
     final recentlyPlayed = _recentlyPlayedTracks(visible);
     final mostPlayed = _mostPlayedTracks(visible);
+    final recentlyAdded = _recentlyAddedTracks(visible);
     final recentlyUpdated = _recentlyUpdatedTracks(visible);
 
     return ListView(
@@ -1347,6 +1359,10 @@ tooltip: 'Choose video view',
         if (mostPlayed.isNotEmpty) ...[
           _musicSectionTitle('Most played'),
           for (final track in mostPlayed) _musicTrackTile(track, visible),
+        ],
+        if (recentlyAdded.isNotEmpty) ...[
+          _musicSectionTitle('Recently added', action: 'See all', onAction: () => _selectMusicView('all')),
+          for (final track in recentlyAdded) _musicTrackTile(track, visible),
         ],
         if (recentlyUpdated.isNotEmpty) ...[
           _musicSectionTitle('Recently updated', action: 'See all', onAction: () => _selectMusicView('all')),

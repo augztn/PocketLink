@@ -225,7 +225,7 @@ class IndexedFile {
   const IndexedFile({
     required this.volume, required this.path, required this.name,
     required this.type, required this.size, required this.modified,
-    required this.mime, this.category,
+    required this.mime, this.category, this.created,
   });
   final String volume;
   final String path;
@@ -235,6 +235,7 @@ class IndexedFile {
   final String modified;
   final String mime;
   final String? category;
+  final String? created;
   bool get isDirectory => type == 'directory';
 
   factory IndexedFile.fromJson(Map<String, dynamic> json) => IndexedFile(
@@ -246,10 +247,11 @@ class IndexedFile {
     modified: json['modified']?.toString() ?? '',
     mime: json['mime']?.toString() ?? 'application/octet-stream',
     category: json['category']?.toString(),
+    created: json['created']?.toString(),
   );
 
   FileEntry toFileEntry() => FileEntry(
-    name: name, type: type, size: size, modified: modified,
+    name: name, type: type, size: size, modified: modified, created: created,
   );
 }
 
