@@ -38,6 +38,8 @@ class ServerApi {
   bool _closed = false;
   bool _musicLibraryUnavailable = false;
   final Set<CancelToken> _mediaRequestTokens = {};
+  final Map<String, CancelToken> _thumbnailRequestTokens = {};
+  final Map<String, CancelToken> _metadataRequestTokens = {};
   final Map<String, DateTime> _failedThumbnailUntil = {};
   final Map<String, DateTime> _failedMetadataUntil = {};
   static const _negativeMediaCacheTtl = Duration(minutes: 10);
@@ -148,9 +150,25 @@ class ServerApi {
       if (!token.isCancelled) token.cancel('Media cache invalidated');
     }
     _mediaRequestTokens.clear();
+    _thumbnailRequestTokens.clear();
+    _metadataRequestTokens.clear();
     _thumbnailCache.clear();
     _metadataCache.clear();
     _musicArtworkCache.clear();
+  }
+
+  void cancelMediaRequestsFor(String path, {String? volume}) {
+    final key = _mediaCacheKey(path, volume);
+    final thumbnail = _thumbnailRequestTokens.remove(key);
+    if (thumbnail != null && !thumbnail.isCancelled) {
+      thumbnail.cancel('Video thumbnail left the viewport');
+    }
+    final metadata = _metadataRequestTokens.remove(key);
+    if (metadata != null && !metadata.isCancelled) {
+      metadata.cancel('Video metadata left the viewport');
+    }
+    _thumbnailCache.remove(key);
+    _metadataCache.remove(key);
   }
 
   void _rememberFailedMediaKey(Map<String, DateTime> failures, String key) {
@@ -181,7 +199,10 @@ class ServerApi {
     }
     final cached = _metadataCache[key];
     if (cached != null) return cached;
-    if (cancelToken != null) _mediaRequestTokens.add(cancelToken);
+    if (cancelToken != null) {
+      _mediaRequestTokens.add(cancelToken);
+      _metadataRequestTokens[key] = cancelToken;
+    }
     late final Future<VideoMetadata?> future;
     future = (() async {
       try {
@@ -203,6 +224,9 @@ class ServerApi {
         return null;
       } finally {
         if (cancelToken != null) _mediaRequestTokens.remove(cancelToken);
+        if (identical(_metadataRequestTokens[key], cancelToken)) {
+          _metadataRequestTokens.remove(key);
+        }
       }
     })();
     _metadataCache[key] = future;
@@ -221,7 +245,10 @@ class ServerApi {
     }
     final cached = _thumbnailCache[key];
     if (cached != null) return cached;
-    if (cancelToken != null) _mediaRequestTokens.add(cancelToken);
+    if (cancelToken != null) {
+      _mediaRequestTokens.add(cancelToken);
+      _thumbnailRequestTokens[key] = cancelToken;
+    }
     late final Future<Uint8List?> future;
     future = (() async {
       try {
@@ -247,6 +274,9 @@ class ServerApi {
         return null;
       } finally {
         if (cancelToken != null) _mediaRequestTokens.remove(cancelToken);
+        if (identical(_thumbnailRequestTokens[key], cancelToken)) {
+          _thumbnailRequestTokens.remove(key);
+        }
       }
     })();
     _thumbnailCache[key] = future;
