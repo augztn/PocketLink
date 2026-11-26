@@ -428,8 +428,7 @@ internal class MediaIndexScanner(
                 ?.trim()?.takeIf { it.isNotEmpty() }
             EmbeddedMusicMetadata(
                 title = tag(MediaMetadataRetriever.METADATA_KEY_TITLE),
-                artist = tag(MediaMetadataRetriever.METADATA_KEY_ARTIST)
-                    ?: tag(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST),
+                artist = tag(MediaMetadataRetriever.METADATA_KEY_ARTIST),
                 album = tag(MediaMetadataRetriever.METADATA_KEY_ALBUM),
                 durationMs = tag(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()
                     ?.takeIf { it > 0L },
