@@ -1,6 +1,7 @@
 package io.github.augztn.pocketlink.ssdbridge
 
 import android.content.Context
+import android.media.MediaMetadataRetriever
 import androidx.documentfile.provider.DocumentFile
 import java.io.File
 import java.util.UUID
@@ -15,10 +16,20 @@ internal data class IndexedFile(
     val size: Long,
     val modified: Long,
     val mime: String,
-    val category: String?
+    val category: String?,
+    val title: String? = null,
+    val artist: String? = null,
+    val album: String? = null,
+    val durationMs: Long? = null,
+    val metadataScanned: Boolean = false
 )
 
-internal data class IndexStamp(val size: Long, val modified: Long, val category: String? = null)
+internal data class IndexStamp(
+    val size: Long,
+    val modified: Long,
+    val category: String? = null,
+    val metadataScanned: Boolean = false
+)
 
 internal data class SkippedIndexItem(val volume: String, val path: String, val reason: String)
 
@@ -389,6 +400,51 @@ internal class MediaIndexScanner(
         }
     }
 
+    private data class EmbeddedMusicMetadata(
+        val title: String?,
+        val artist: String?,
+        val album: String?,
+        val durationMs: Long?,
+        val scanned: Boolean
+    )
+
+    /**
+     * Extract tags only when the file's size/modified stamp changes or its
+     * metadata has never been attempted. Unreadable SAF grants remain retryable.
+     */
+    private fun extractMusicMetadata(source: Any?): EmbeddedMusicMetadata {
+        if (source == null) return EmbeddedMusicMetadata(null, null, null, null, false)
+        val retriever = MediaMetadataRetriever()
+        return try {
+            when (source) {
+                is File -> retriever.setDataSource(source.absolutePath)
+                is DocumentFile -> retriever.setDataSource(
+                    context.applicationContext, source.uri
+                )
+                else -> return EmbeddedMusicMetadata(null, null, null, null, false)
+            }
+            fun tag(key: Int): String? = retriever.extractMetadata(key)
+                ?.trim()?.takeIf { it.isNotEmpty() }
+            EmbeddedMusicMetadata(
+                title = tag(MediaMetadataRetriever.METADATA_KEY_TITLE),
+                artist = tag(MediaMetadataRetriever.METADATA_KEY_ARTIST)
+                    ?: tag(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST),
+                album = tag(MediaMetadataRetriever.METADATA_KEY_ALBUM),
+                durationMs = tag(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()
+                    ?.takeIf { it > 0L },
+                scanned = true
+            )
+        } catch (_: SecurityException) {
+            EmbeddedMusicMetadata(null, null, null, null, false)
+        } catch (_: Exception) {
+            // Unsupported or malformed audio is a completed metadata attempt;
+            // file indexing remains successful and the filename fallback is used.
+            EmbeddedMusicMetadata(null, null, null, null, true)
+        } finally {
+            try { retriever.release() } catch (_: Exception) { }
+        }
+    }
+
     private fun scanSource(volume: String, root: Any): Boolean {
         ensureScanActive()
         val rootId = when (root) {
@@ -423,6 +479,7 @@ internal class MediaIndexScanner(
         val batch = ArrayList<IndexedFile>(200)
         val unchangedFiles = ArrayList<String>(200)
         val unchangedMedia = ArrayList<String>(200)
+        val musicSources = HashMap<String, Any>(200)
         fun processPendingIndexItems() {
             if (pendingIndexItems.isEmpty()) return
             val paths = pendingIndexItems.map { it.path }
@@ -445,17 +502,30 @@ internal class MediaIndexScanner(
                     item.modified <= 0L -> previousMedia.modified <= 0L
                     else -> previousMedia.modified == item.modified
                 }
+                val metadataNeedsRefresh = item.category == "music" &&
+                    (!mediaUnchanged || previousMedia?.metadataScanned != true)
                 scannedBytes += item.size
                 scanned++
-                if (fileUnchanged && mediaUnchanged) {
+                if (fileUnchanged && mediaUnchanged && !metadataNeedsRefresh) {
                     unchanged++
                     unchangedFiles += item.path
                     if (item.category != null) unchangedMedia += item.path
                 } else {
-                    batch += item
+                    val indexedItem = if (metadataNeedsRefresh) {
+                        val metadata = extractMusicMetadata(musicSources[item.path])
+                        item.copy(
+                            title = metadata.title,
+                            artist = metadata.artist,
+                            album = metadata.album,
+                            durationMs = metadata.durationMs,
+                            metadataScanned = metadata.scanned
+                        )
+                    } else item
+                    batch += indexedItem
                 }
             }
             pendingIndexItems.clear()
+            musicSources.clear()
         }
         fun flush() {
             processPendingIndexItems()
@@ -490,12 +560,16 @@ internal class MediaIndexScanner(
             unchangedFiles.clear()
             unchangedMedia.clear()
         }
-        fun add(path: String, name: String, directory: Boolean, size: Long, modified: Long, mime: String) {
+        fun add(
+            path: String, name: String, directory: Boolean, size: Long, modified: Long,
+            mime: String, source: Any? = null
+        ) {
             val safeSize = size.coerceAtLeast(0L)
             val safeModified = modified.coerceAtLeast(0L)
             val category = if (directory) null else MediaFileClassifier.categoryFor(name, mime)
             pendingIndexItems += IndexedFile(volume, path, name, if (directory) "directory" else "file",
                 safeSize, safeModified, mime, category)
+            if (category == "music" && source != null) musicSources[path] = source
             if (pendingIndexItems.size >= 200) flush()
         }
 
@@ -625,7 +699,7 @@ internal class MediaIndexScanner(
                             }
                             val childPath = canonical.relativeTo(baseDirectory).invariantSeparatorsPath
                             add(childPath, child.name, child.isDirectory, if (child.isFile) child.length() else 0L,
-                                child.lastModified(), MediaFileClassifier.mimeForName(child.name))
+                                child.lastModified(), MediaFileClassifier.mimeForName(child.name), canonical)
                             if (child.isDirectory) pendingPaths.add(childPath)
                         }
                         is DocumentFile -> {
@@ -637,7 +711,7 @@ internal class MediaIndexScanner(
                             }
                             val childPath = if (relativePath.isEmpty()) name else "$relativePath/$name"
                             add(childPath, name, child.isDirectory, if (child.isFile) child.length() else 0L,
-                                child.lastModified(), child.type ?: MediaFileClassifier.mimeForName(name))
+                                child.lastModified(), child.type ?: MediaFileClassifier.mimeForName(name), child)
                             if (child.isDirectory) pendingPaths.add(childPath)
                         }
                     }
