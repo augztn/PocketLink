@@ -11,11 +11,19 @@ class MediaBrowserStateStore extends ChangeNotifier {
       _states.putIfAbsent('$serverKey::$mediaType', MediaBrowserState.new);
 
   void update(String serverKey, String mediaType, MediaBrowserState state) {
+    final key = '$serverKey::$mediaType';
+    final previous = _states[key] ?? const MediaBrowserState();
+    if (previous == state) return;
+
+    _states[key] = state;
+    // Scroll offsets are persisted silently. They change on every scroll tick
+    // but are not navigation state and must not rebuild listeners or emit events.
+    if (previous.samePresentationState(state)) return;
+
     AppLogger.event('media.browser_state_updated', category: 'media',
       component: 'media_browser_state',
       fields: {'media_type': mediaType, 'has_selected_volume': state.selectedVolume != null,
         'view': state.view, 'sort_by': state.sortBy, 'layout_mode': state.layoutMode});
-    _states['$serverKey::$mediaType'] = state;
     notifyListeners();
   }
 }
@@ -37,6 +45,29 @@ class MediaBrowserState {
   final String sortBy;
   final String layoutMode;
   final double scrollOffset;
+
+  bool samePresentationState(MediaBrowserState other) =>
+      folderPath == other.folderPath &&
+      selectedVolume == other.selectedVolume &&
+      view == other.view &&
+      sortBy == other.sortBy &&
+      layoutMode == other.layoutMode;
+
+  @override
+  bool operator ==(Object other) =>
+      other is MediaBrowserState &&
+      samePresentationState(other) &&
+      scrollOffset == other.scrollOffset;
+
+  @override
+  int get hashCode => Object.hash(
+        folderPath,
+        selectedVolume,
+        view,
+        sortBy,
+        layoutMode,
+        scrollOffset,
+      );
 
   MediaBrowserState copyWith({
     String? folderPath,
