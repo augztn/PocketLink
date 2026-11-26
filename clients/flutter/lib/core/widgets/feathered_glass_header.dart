@@ -14,7 +14,7 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
     super.key,
   });
 
-  /// Optional legacy dark tint. The default Apple-style treatment is untinted.
+  /// Optional dark scrim stops. Dark mode uses a subtle default scrim when omitted.
   final List<Color>? darkTint;
   final double contentHeight;
   final bool strongestAtBottom;
@@ -22,10 +22,17 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
-    final headerHeight = media.padding.top + contentHeight + 16;
+    final headerHeight =
+        media.padding.top + contentHeight + pocketLinkHeaderFadeTailHeight;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final customDarkTint = isDark && darkTint != null && darkTint!.length >= 3
-        ? darkTint!
+    final effectiveDarkTint = isDark
+        ? (darkTint != null && darkTint!.length >= 3
+            ? darkTint!
+            : const [
+                Color(0x66000000),
+                Color(0x40000000),
+                Colors.transparent,
+              ])
         : null;
 
     return _HeaderHeightReporter(
@@ -45,7 +52,7 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
                   strongestAtBottom: strongestAtBottom,
                 ),
               ),
-              if (customDarkTint != null)
+              if (effectiveDarkTint != null)
                 Positioned.fill(
                   child: DecoratedBox(
                     decoration: BoxDecoration(
@@ -57,10 +64,10 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
                             ? Alignment.topCenter
                             : Alignment.bottomCenter,
                         colors: [
-                          customDarkTint[0],
-                          Color.lerp(customDarkTint[0], customDarkTint[1], 0.5)!,
+                          effectiveDarkTint[0],
+                          Color.lerp(customDarkTint[0], effectiveDarkTint[1], 0.5)!,
                           customDarkTint[1],
-                          Color.lerp(customDarkTint[1], customDarkTint[2], 0.5)!,
+                          Color.lerp(customDarkTint[1], effectiveDarkTint[2], 0.5)!,
                           customDarkTint[2],
                         ],
                         stops: const [0, 0.16, 0.38, 0.68, 1],
