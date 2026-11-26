@@ -387,6 +387,29 @@ class PocketLinkSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
     private fun internalStorageGranted(): Boolean =
         Build.VERSION.SDK_INT < Build.VERSION_CODES.R || Environment.isExternalStorageManager()
 
+    private fun safAccessState(volumeId: String): SafVolumeAccessState {
+        val storedUri = prefs.getString("volume_uri_$volumeId", null)
+        val uri = storedUri?.let { runCatching { Uri.parse(it) }.getOrNull() }
+        val grant = storedUri?.let { value ->
+            runCatching {
+                context.contentResolver.persistedUriPermissions
+                    .firstOrNull { permission -> permission.uri.toString() == value }
+            }.getOrNull()
+        }
+        val document = uri?.let { value ->
+            runCatching { DocumentFile.fromTreeUri(context, value) }.getOrNull()
+        }
+        return safVolumeAccessState(
+            hasStoredUri = storedUri != null,
+            hasPersistedGrant = grant != null,
+            hasReadPermission = grant?.isReadPermission == true,
+            hasWritePermission = grant?.isWritePermission == true,
+            documentExists = runCatching { document?.exists() == true }.getOrDefault(false),
+            documentCanRead = runCatching { document?.canRead() == true }.getOrDefault(false),
+            documentCanWrite = runCatching { document?.canWrite() == true }.getOrDefault(false)
+        )
+    }
+
     private fun status(): Map<String, Any?> = mapOf(
         "usb1" to volumeName("usb1"),
         "usb2" to volumeName("usb2"),
@@ -394,18 +417,19 @@ class PocketLinkSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
             val directory = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) volume.directory else null
             val directAccess = internalStorageGranted() && directory?.isDirectory == true &&
                 directory.canRead() && directory.listFiles() != null
-            val safSelected = prefs.getString("volume_uri_$id", null) != null
+            val safAccess = safAccessState(id)
             mapOf(
                 "id" to id,
                 "name" to volume.getDescription(context),
-                "selected" to (directAccess || safSelected),
+                "selected" to (directAccess || safAccess.selected),
                 "access" to when {
                     directAccess -> "direct"
-                    safSelected -> "saf"
+                    safAccess.readable -> "saf"
+                    safAccess.selected -> "permission_unavailable"
                     else -> "not_granted"
                 },
-                "readable" to (directAccess || safSelected),
-                "writable" to if (directAccess) directory?.canWrite() == true else safSelected,
+                "readable" to (directAccess || safAccess.readable),
+                "writable" to if (directAccess) directory?.canWrite() == true else safAccess.writable,
                 "state" to volume.state
             )
         },
