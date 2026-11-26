@@ -41,6 +41,7 @@ class AppSettings extends ChangeNotifier {
   static const _navigationVisibilityKey = 'settings_navigation_visibility';
   static const _homeSearchKey = 'settings_home_search';
   static const _homeTransfersKey = 'settings_home_transfers';
+  static const _homeStorageOverviewKey = 'settings_home_storage_overview';
   static const _homeSectionOrderKey = 'settings_home_section_order';
   static const _musicButtonShortcutsKey = AppSettingsMigrations.musicButtonShortcutsKey;
   static const _legacyFloatingShortcutsKey = AppSettingsMigrations.legacyFloatingShortcutsKey;
@@ -98,7 +99,7 @@ class AppSettings extends ChangeNotifier {
     'ZA': 'South Africa',
     'NG': 'Nigeria',
   };
-  static const homeSectionDefaults = <String>['quick', 'continue', 'recent', 'transfers', 'search'];
+  static const homeSectionDefaults = <String>['quick', 'continue', 'recent', 'storage', 'transfers', 'search'];
   static const navigationDefaults = <String>['home', 'explore', 'files', 'browse'];
   static const musicButtonShortcutDefaults =
       AppSettingsMigrations.musicButtonShortcutDefaults;
@@ -113,6 +114,7 @@ class AppSettings extends ChangeNotifier {
   bool _showRecentFiles = true;
   bool _showGlobalSearch = true;
   bool _showActiveTransfers = true;
+  bool _showStorageOverview = true;
   List<String> _homeSectionOrder = List.of(homeSectionDefaults);
   bool _useLiquidGlass = true;
   bool _progressiveBlurEnabled = true;
@@ -163,6 +165,7 @@ class AppSettings extends ChangeNotifier {
   bool get showRecentFiles => _showRecentFiles;
   bool get showGlobalSearch => _showGlobalSearch;
   bool get showActiveTransfers => _showActiveTransfers;
+  bool get showStorageOverview => _showStorageOverview;
   List<String> get homeSectionOrder => List.unmodifiable(_homeSectionOrder);
   bool get useLiquidGlass => _useLiquidGlass;
   bool get progressiveBlurEnabled => _progressiveBlurEnabled;
@@ -269,6 +272,7 @@ class AppSettings extends ChangeNotifier {
           await AppSettingsMigrations.migrateMusicButtonShortcuts(preferences);
       _showGlobalSearch = preferences.getBool(_homeSearchKey) ?? true;
       _showActiveTransfers = preferences.getBool(_homeTransfersKey) ?? true;
+      _showStorageOverview = preferences.getBool(_homeStorageOverviewKey) ?? true;
       final sectionValues = _decodeStoredStringList(
         preferences.getString(_homeSectionOrderKey),
       );
