@@ -105,6 +105,41 @@ void main() {
     messenger.setMockMethodCallHandler(channel, null);
   });
 
+  test('continuation shelf merge appends new tracks without repeating IDs', () {
+    const existing = [
+      DiscoverHomeShelf(
+        title: 'Trending',
+        tracks: [
+          DiscoverTrack(videoId: 'abcdefghijk', title: 'First', artist: 'Artist'),
+        ],
+      ),
+    ];
+    const incoming = [
+      DiscoverHomeShelf(
+        title: 'Trending',
+        tracks: [
+          DiscoverTrack(videoId: 'abcdefghijk', title: 'Duplicate', artist: 'Artist'),
+          DiscoverTrack(videoId: 'lmnopqrstuv', title: 'Second', artist: 'Artist'),
+        ],
+      ),
+      DiscoverHomeShelf(
+        title: 'New shelf',
+        tracks: [
+          DiscoverTrack(videoId: 'lmnopqrstuv', title: 'Duplicate again', artist: 'Artist'),
+          DiscoverTrack(videoId: 'zyxwvutsrqp', title: 'Third', artist: 'Artist'),
+        ],
+      ),
+    ];
+
+    final merged = mergeDiscoverHomeShelves(existing, incoming);
+
+    expect(merged, hasLength(2));
+    expect(merged.first.title, 'Trending');
+    expect(merged.first.tracks.map((track) => track.videoId),
+        ['abcdefghijk', 'lmnopqrstuv']);
+    expect(merged.last.tracks.map((track) => track.videoId), ['zyxwvutsrqp']);
+  });
+
   test('homeFeed parses live YouTube Music shelves and continuation', () async {
     SharedPreferences.setMockInitialValues({});
     await AppSettings.instance.reloadPreferences();
