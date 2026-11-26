@@ -37,6 +37,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _exportingLogs = false;
   bool _exportingSettings = false;
   bool _importingSettings = false;
+  String _settingsSearchQuery = '';
 
   Future<void> _openDiscoverPlaylists() async {
     final api = widget.api;
@@ -300,6 +301,200 @@ class _SettingsScreenState extends State<SettingsScreen> {
     Navigator.of(context).push(route);
   }
 
+  bool _categoryMatches(String id) {
+    final query = _settingsSearchQuery.trim().toLowerCase();
+    if (query.isEmpty) return true;
+    final keywords = <String, String>{
+      'appearance': 'appearance theme color dark light system amoled oled liquid glass blur progressive blur',
+      'navigation': 'navigation bar dock tabs reorder destinations fab floating action button',
+      'dashboard': 'dashboard home shortcuts quick actions search transfers recent continue sections layout',
+      'audio': 'audio music player now playing mini player gestures shortcuts playback',
+      'discover': 'discover explore youtube music lyrics playlists audio quality region resolver',
+      'video': 'video player playback gestures controls scaling subtitles fullscreen',
+      'media': 'media storage downloads directory folder cache concurrent wifi resume',
+      'backup': 'backup restore export import preferences settings json',
+      'connection': 'connection network server saved servers diagnostics logs troubleshooting',
+      'about': 'about pocketlink version licenses architecture information',
+    };
+    final labels = <String, String>{
+      'appearance': 'appearance theme',
+      'navigation': 'navigation bar dock',
+      'dashboard': 'dashboard shortcuts',
+      'audio': 'audio now playing',
+      'discover': 'discover',
+      'video': 'video player',
+      'media': 'media library storage',
+      'backup': 'backup restore',
+      'connection': 'connection diagnostics',
+      'about': 'about pocketlink',
+    };
+    return ('${labels[id] ?? ''} ${keywords[id] ?? ''}')
+        .contains(query);
+  }
+
+  Widget _categoryIntro(String category) {
+    final descriptions = <String, String>{
+      'Appearance': 'Control PocketLink’s theme, OLED appearance and visual effects.',
+      'Dashboard & Shortcuts': 'Choose which Home sections appear and arrange their order.',
+      'Discover': 'Configure music discovery, matching, playback preferences and playlists.',
+      'Media & Storage': 'Manage download behavior, download location and temporary cache.',
+      'Backup & Restore': 'Export or restore supported PocketLink preferences.',
+      'Connection & Diagnostics': 'Manage saved server connections and export troubleshooting logs.',
+    };
+    final description = descriptions[category];
+    if (description == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: Text(
+        description,
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _homeSettingsChildren() => [
+    Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: TextField(
+        onChanged: (value) => setState(() => _settingsSearchQuery = value),
+        textInputAction: TextInputAction.search,
+        decoration: InputDecoration(
+          hintText: 'Search settings',
+          prefixIcon: const Icon(Icons.search_rounded),
+          suffixIcon: _settingsSearchQuery.isEmpty
+              ? null
+              : IconButton(
+                  tooltip: 'Clear search',
+                  onPressed: () => setState(() => _settingsSearchQuery = ''),
+                  icon: const Icon(Icons.close_rounded),
+                ),
+          filled: true,
+          fillColor: Theme.of(context).colorScheme.surfaceContainerLow,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          contentPadding: const EdgeInsets.symmetric(vertical: 14),
+        ),
+      ),
+    ),
+    if (_categoryMatches('appearance') || _categoryMatches('navigation') || _categoryMatches('dashboard'))
+      _settingsGroupTitle('Personalization'),
+    if (_categoryMatches('appearance'))
+      _categoryTile(
+        id: 'appearance',
+        icon: Icons.palette_rounded,
+        tint: const Color(0xFF8D72E8),
+        title: 'Appearance & Theme',
+        subtitle: 'Theme, OLED mode, blur and visual effects',
+        badge: _settings.themeMode == ThemeMode.dark
+            ? (_settings.amoled ? 'AMOLED' : 'Dark')
+            : _settings.themeMode == ThemeMode.light ? 'Light' : 'System',
+      ),
+    if (_categoryMatches('navigation'))
+      _categoryTile(
+        id: 'navigation',
+        icon: Icons.tune_rounded,
+        tint: const Color(0xFF60A5FA),
+        title: 'Navigation Bar & Dock',
+        subtitle: 'Reorder tabs and choose which destinations appear',
+        badge: '${_settings.visibleNavigationItems.length} tabs',
+      ),
+    if (_categoryMatches('dashboard'))
+      _categoryTile(
+        id: 'dashboard',
+        icon: Icons.dashboard_customize_rounded,
+        tint: const Color(0xFF2DD4BF),
+        title: 'Dashboard & Shortcuts',
+        subtitle: 'Home sections, quick actions and dashboard layout',
+      ),
+    if (_categoryMatches('audio') || _categoryMatches('discover') || _categoryMatches('video') || _categoryMatches('media') || _categoryMatches('backup'))
+      _settingsGroupTitle('Media & Storage'),
+    if (_categoryMatches('audio'))
+      _categoryTile(
+        id: 'audio',
+        icon: Icons.graphic_eq_rounded,
+        tint: const Color(0xFF8D72E8),
+        title: 'Audio & Now Playing',
+        subtitle: 'Music button gestures, shortcuts and mini-player',
+        badge: _settings.showMiniPlayer ? 'Mini On' : 'Mini Off',
+      ),
+    if (_categoryMatches('discover'))
+      _categoryTile(
+        id: 'discover',
+        icon: Icons.explore_rounded,
+        tint: const Color(0xFFDB79A8),
+        title: 'Discover',
+        subtitle: 'Music discovery, local lossless matching, lyrics and playlists',
+      ),
+    if (_categoryMatches('video'))
+      _categoryTile(
+        id: 'video',
+        icon: Icons.movie_creation_rounded,
+        tint: const Color(0xFF28B8C8),
+        title: 'Video Player',
+        subtitle: 'Playback gestures, controls, scaling and subtitles',
+      ),
+    if (_categoryMatches('media'))
+      _categoryTile(
+        id: 'media',
+        icon: Icons.perm_media_rounded,
+        tint: const Color(0xFFFBBF24),
+        title: 'Media Library & Storage',
+        subtitle: 'Download location, download behavior and temporary cache',
+      ),
+    if (_categoryMatches('backup'))
+      _categoryTile(
+        id: 'backup',
+        icon: Icons.backup_rounded,
+        tint: const Color(0xFF60A5FA),
+        title: 'Backup & Restore',
+        subtitle: 'Export or restore your PocketLink preferences',
+      ),
+    if (_categoryMatches('connection') || _categoryMatches('about'))
+      _settingsGroupTitle('Network & System'),
+    if (_categoryMatches('connection'))
+      _categoryTile(
+        id: 'connection',
+        icon: Icons.wifi_rounded,
+        tint: const Color(0xFF4ADE80),
+        title: 'Connection & Diagnostics',
+        subtitle: 'Saved servers, connectivity help and logs',
+      ),
+    if (_categoryMatches('about'))
+      _categoryTile(
+        id: 'about',
+        icon: Icons.info_outline_rounded,
+        tint: const Color(0xFFFBBF24),
+        title: 'About PocketLink',
+        subtitle: 'Version information, architecture and licenses',
+      ),
+    if (!_categoryMatches('appearance') &&
+        !_categoryMatches('navigation') &&
+        !_categoryMatches('dashboard') &&
+        !_categoryMatches('audio') &&
+        !_categoryMatches('discover') &&
+        !_categoryMatches('video') &&
+        !_categoryMatches('media') &&
+        !_categoryMatches('backup') &&
+        !_categoryMatches('connection') &&
+        !_categoryMatches('about'))
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 36),
+        child: Center(
+          child: Text(
+            'No settings found for “$_settingsSearchQuery”.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      ),
+  ];
+
   Widget _categoryTile({
     required String id,
     required IconData icon,
@@ -440,89 +635,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             bottomClearance,
           ),
           children: widget.category == null
-              ? [
-                  _settingsGroupTitle('Personalization'),
-                  _categoryTile(
-                    id: 'appearance',
-                    icon: Icons.palette_rounded,
-                    tint: const Color(0xFF8D72E8),
-                    title: 'Appearance & Theme',
-                    subtitle: 'Themes and Liquid Glass controls',
-                    badge: _settings.themeMode == ThemeMode.dark
-                        ? (_settings.amoled ? 'AMOLED' : 'Dark')
-                        : _settings.themeMode == ThemeMode.light
-                            ? 'Light'
-                            : 'System',
-                  ),
-                  _categoryTile(
-                    id: 'navigation',
-                    icon: Icons.tune_rounded,
-                    tint: const Color(0xFF60A5FA),
-                    title: 'Navigation Bar & Dock',
-                    subtitle: 'Reorder tabs and choose which destinations appear',
-                    badge: '${_settings.visibleNavigationItems.length} tabs',
-                  ),
-                  _categoryTile(
-                    id: 'dashboard',
-                    icon: Icons.dashboard_customize_rounded,
-                    tint: const Color(0xFF2DD4BF),
-                    title: 'Dashboard & Shortcuts',
-                    subtitle: 'Home sections, quick actions and dashboard layout',
-                  ),
-                  _settingsGroupTitle('Media & Storage'),
-                  _categoryTile(
-                    id: 'audio',
-                    icon: Icons.graphic_eq_rounded,
-                    tint: const Color(0xFF8D72E8),
-                    title: 'Audio & Now Playing',
-                    subtitle: 'Music button gestures, shortcuts and mini-player',
-                    badge: _settings.showMiniPlayer ? 'Mini On' : 'Mini Off',
-                  ),
-                  _categoryTile(
-                    id: 'discover',
-                    icon: Icons.explore_rounded,
-                    tint: const Color(0xFFDB79A8),
-                    title: 'Discover',
-                    subtitle: 'YouTube Music, local lossless matching and lyrics',
-                  ),
-                  _categoryTile(
-                    id: 'video',
-                    icon: Icons.movie_creation_rounded,
-                    tint: const Color(0xFF28B8C8),
-                    title: 'Video Player',
-                    subtitle: 'Playback gestures, controls, scaling and subtitles',
-                  ),
-                  _categoryTile(
-                    id: 'media',
-                    icon: Icons.perm_media_rounded,
-                    tint: const Color(0xFFFBBF24),
-                    title: 'Media Library & Storage',
-                    subtitle: 'Download location and temporary cache',
-                  ),
-                  _categoryTile(
-                    id: 'backup',
-                    icon: Icons.backup_rounded,
-                    tint: const Color(0xFF60A5FA),
-                    title: 'Backup & Restore',
-                    subtitle: 'Export or restore your PocketLink preferences',
-                  ),
-                  _settingsGroupTitle('Network & System'),
-                  _categoryTile(
-                    id: 'connection',
-                    icon: Icons.wifi_rounded,
-                    tint: const Color(0xFF4ADE80),
-                    title: 'Connection & Diagnostics',
-                    subtitle: 'Saved servers, connectivity help and logs',
-                  ),
-                  _categoryTile(
-                    id: 'about',
-                    icon: Icons.info_outline_rounded,
-                    tint: const Color(0xFFFBBF24),
-                    title: 'About PocketLink',
-                    subtitle: 'Version information, architecture and licenses',
-                  ),
-                ]
+              ? _homeSettingsChildren()
               : [
+                if (widget.category != null) _categoryIntro(widget.category!),
                 if (widget.category == 'Backup & Restore')
                   _section('Settings Backup', [
                     ListTile(
