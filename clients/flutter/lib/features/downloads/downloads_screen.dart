@@ -960,9 +960,10 @@ class _NewDownloadSheetState extends State<_NewDownloadSheet> {
 
 
   Future<void> _chooseServerDirectory() async {
-    var path = _serverDirectoryController.text.trim().replaceAll('\\\\', '/');
+    var path = _serverDirectoryController.text.trim().replaceAll('\\', '/');
     var folders = <FileEntry>[];
     String? error;
+    var loading = false;
     try {
       final listing = await widget.api.listDirectory(path);
       folders = listing.items.where((item) => item.isDirectory).toList()
@@ -976,7 +977,6 @@ class _NewDownloadSheetState extends State<_NewDownloadSheet> {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) {
-          var loading = false;
           Future<void> navigate(String nextPath) async {
             setDialogState(() {
               path = nextPath;
