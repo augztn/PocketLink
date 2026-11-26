@@ -21,6 +21,7 @@ import 'file_browser_sort_sheet.dart';
 import 'file_browser_recent_locations.dart';
 import 'file_browser_dialogs.dart';
 import 'file_browser_image_preview.dart';
+import 'files_home_content.dart';
 import '../transfers/transfer_manager.dart';
 import '../downloads/download_manager_service.dart';
 import '../transfers/transfer_manager_screen.dart';
@@ -84,6 +85,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   bool _gridView = false;
   bool _searchExpanded = false;
   bool _storageMenuOpen = false;
+  bool _showFilesHome = true;
   final TextEditingController _searchController = TextEditingController();
 
   static const Map<String, Set<String>> _categoryExtensions = {
@@ -147,6 +149,8 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     _browserState = Provider.of<FileBrowserStateStore>(context, listen: false);
     final saved = _browserState.stateFor(_stateKey);
     _path = widget.locationRequest > 0 ? widget.requestedPath : (widget.initialPath.isNotEmpty ? widget.initialPath : saved.path);
+    _showFilesHome = widget.locationRequest == 0 && widget.initialPath.isEmpty && widget.initialVolume == null;
+    unawaited(HomeActivityStore.instance.load());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       widget.onCanNavigateBackChanged?.call(_path.isNotEmpty);
@@ -205,6 +209,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
         return;
       }
       setState(() {
+        _showFilesHome = false;
         _volumes = available;
         _selectedVolume = volume;
         _path = widget.requestedPath;
@@ -273,6 +278,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
 
   Future<void> _selectPartition(String? volumeId) async {
     setState(() {
+      _showFilesHome = false;
       _selectedVolume = volumeId; _path = ''; _listing = null;
       _pendingScrollOffset = 0;
       if (_scrollController.hasClients) _scrollController.jumpTo(0);
@@ -543,6 +549,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     if (_path.isEmpty) return;
     final parts = _path.split('/');
     parts.removeLast();
+    if (parts.isEmpty) setState(() => _showFilesHome = true);
     if (_scrollController.hasClients) _scrollController.jumpTo(0);
     await _load(parts.join('/'));
   }
@@ -674,7 +681,10 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
             },
           ),
           actions: [
-            if (widget.showSearch) PocketLinkAppBarAction(label: _searchExpanded ? 'Close search' : 'Search files', icon: _searchExpanded ? Icons.close_rounded : Icons.search_rounded, onPressed: () => _setSearchExpanded(!_searchExpanded)),
+            if (_showFilesHome)
+              PocketLinkAppBarAction(label: 'Browse files', icon: Icons.folder_open_rounded,
+                onPressed: () { setState(() => _showFilesHome = false); }),
+            if (!_showFilesHome && widget.showSearch) PocketLinkAppBarAction(label: _searchExpanded ? 'Close search' : 'Search files', icon: _searchExpanded ? Icons.close_rounded : Icons.search_rounded, onPressed: () => _setSearchExpanded(!_searchExpanded)),
             PocketLinkAppBarAction(label: 'Upload file', icon: Icons.upload_rounded, onPressed: _uploadFile),
             PocketLinkAppBarAction(label: 'New folder', icon: Icons.create_new_folder_outlined, onPressed: _createFolder),
             PocketLinkAppBarAction(label: 'Sort by...', icon: Icons.sort_rounded,
@@ -688,13 +698,38 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
         ),
         body: Stack(
           children: [
-            Positioned.fill(
-              child: Builder(builder: (context) {
-                final topInset = LayoutInsetsScope.of(context).topClearance +
+            if (_showFilesHome)
+              Positioned.fill(
+                child: FilesHomeContent(
+                  volumes: _volumes,
+                  recent: HomeActivityStore.instance.itemsForServer(widget.api.baseUrl)
+                      .where((item) => item.kind != 'track').take(5).toList(growable: false),
+                  lastPath: _browserState.stateFor(_stateKey).path,
+                  lastVolume: _browserState.stateFor(_stateKey).selectedVolume,
+                  onOpenInternal: () => _selectPartition(null),
+                  onOpenVolume: (volume) => _selectPartition(volume),
+                  onOpenLastLocation: () {
+                    final saved = _browserState.stateFor(_stateKey);
+                    _selectPartition(saved.selectedVolume).then((_) => _load(saved.path));
+                  },
+                  onOpenRecent: (item) {
+                    final parent = item.isFolder ? item.path : item.parentPath;
+                    _selectPartition(item.volume).then((_) => _load(parent));
+                  },
+                  onBrowseCategory: (category) {
+                    setState(() => _category = category);
+                    _selectPartition(null);
+                  },
+                ),
+              )
+            else
+              Positioned.fill(
+                child: Builder(builder: (context) {
+                  final topInset = LayoutInsetsScope.of(context).topClearance +
                     (_searchExpanded ? 64 : 0) +
                     (_path.isNotEmpty ? 38 : 0) +
                     34; // Filter row follows the shared measured header.
-                return FileBrowserDirectoryContent(
+                  return FileBrowserDirectoryContent(
                   allItemsEmpty: allItems.isEmpty,
                   items: items,
                   initialLoading: _loading && _listing == null,
@@ -728,7 +763,8 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                 );
               }),
             ),
-            Positioned(
+            if (!_showFilesHome)
+              Positioned(
               top: LayoutInsetsScope.of(context).topClearance - 10,
               left: 0,
               right: 0,
