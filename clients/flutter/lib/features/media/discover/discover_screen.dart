@@ -1432,11 +1432,12 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
 
   Widget _listeningPicksShelf() {
     if (_listeningPicks.isEmpty) return const SliverToBoxAdapter();
+    final cardWidth = (MediaQuery.sizeOf(context).width * .60).clamp(190.0, 280.0);
     return SliverToBoxAdapter(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         _shelfHeading('Top Picks for You'),
         SizedBox(
-          height: 238,
+          height: cardWidth / .75,
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             scrollDirection: Axis.horizontal,
