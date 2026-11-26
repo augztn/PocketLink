@@ -83,6 +83,21 @@ class FilesHomeContent extends StatelessWidget {
             ]),
           ),
         ],
+        if (favorites.isEmpty) ...[
+          const SizedBox(height: 20),
+          const _SectionTitle(title: 'Favorites'),
+          const SizedBox(height: 9),
+          _HomeCard(
+            child: Row(children: [
+              _IconTile(icon: Icons.star_outline_rounded, color: colors.secondary),
+              const SizedBox(width: 12),
+              Expanded(child: Text(
+                'Save files and folders from the More actions menu to find them here.',
+                style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+              )),
+            ]),
+          ),
+        ],
         if (favorites.isNotEmpty) ...[
           const SizedBox(height: 22),
           _SectionTitle(title: 'Favorites', trailing: '${favorites.length}'),
