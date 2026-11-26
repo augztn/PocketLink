@@ -51,7 +51,8 @@ class DiscoverScreen extends StatefulWidget {
   State<DiscoverScreen> createState() => _DiscoverScreenState();
 }
 
-class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProviderStateMixin {
+class _DiscoverScreenState extends State<DiscoverScreen>
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   static final Map<String, List<IndexedFile>> _localLibraryCache = {};
   static final Map<String, DateTime> _localLibraryCacheUpdated = {};
   final DiscoverService _service = DiscoverService();
@@ -75,6 +76,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
   String _sectionTitle = 'Top charts in India';
   int _requestGeneration = 0;
   int _playRequestGeneration = 0;
+  int _resolverGeneration = 0;
+  bool _appResumed = true;
   String _homeContinuation = '';
   bool _loadingMore = false;
   Future<void>? _homeRequest;
@@ -84,6 +87,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _appResumed = WidgetsBinding.instance.lifecycleState == null ||
+        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
     AppLogger.event('screen.opened', category: 'screen', component: 'discover');
     _shimmerController = AnimationController(
       vsync: this,
@@ -97,6 +103,34 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     unawaited(_loadRecentlyPlayed());
     unawaited(_loadMoods());
   }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final resumed = state == AppLifecycleState.resumed;
+    if (_appResumed == resumed) return;
+    _appResumed = resumed;
+    if (!resumed) {
+      // MethodChannel resolution already in flight cannot be interrupted, but
+      // its batch is invalidated so no further tracks are resolved or queued.
+      _resolverGeneration++;
+      AppLogger.event(
+        'discover_resolver.prefetch_paused',
+        category: 'media',
+        component: 'discover_resolver',
+        fields: {'lifecycle_state': state.name},
+      );
+    }
+  }
+
+  bool _canContinueQueueResolution(
+    int generation,
+    int session,
+    PersistentAudioPlayer player,
+  ) =>
+      mounted &&
+      _appResumed &&
+      generation == _resolverGeneration &&
+      session == player.queueSession;
 
   Future<void> _loadRecentlyPlayed() async {
     final generation = _recentlyPlayedGeneration;
@@ -218,6 +252,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
   void dispose() {
     AppLogger.event('screen.closed', category: 'screen', component: 'discover',
       fields: {'loading': _loading, 'track_count': _tracks.length, 'shelf_count': _homeShelves.length});
+    WidgetsBinding.instance.removeObserver(this);
+    _resolverGeneration++;
     AppSettings.instance.removeListener(_onSettingsChanged);
     _scrollController.removeListener(_onDiscoverScroll);
     _scrollController.dispose();
@@ -673,8 +709,12 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
           session != player.queueSession) return;
 
       _recordRecentlyPlayed(track);
-      unawaited(_populateQueue(queueTracks, startIndex, session)
-          .catchError((Object _) {}));
+      unawaited(_populateQueue(
+        queueTracks,
+        startIndex,
+        session,
+        _resolverGeneration,
+      ).catchError((Object _) {}));
     } catch (error) {
       player.failQueueSelection(session);
       if (!mounted || request != _playRequestGeneration) return;
@@ -772,16 +812,24 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     List<DiscoverTrack> tracks,
     int selectedIndex,
     int session,
+    int resolverGeneration,
   ) async {
     final player = PersistentAudioPlayer.instance;
     Future<MediaQueueItem?> resolveAt(int index) async {
-      if (session != player.queueSession) return null;
+      if (!_canContinueQueueResolution(resolverGeneration, session, player)) {
+        return null;
+      }
       try {
-        return await _queueItem(tracks[index]);
+        final item = await _queueItem(tracks[index]);
+        return _canContinueQueueResolution(resolverGeneration, session, player)
+            ? item
+            : null;
       } catch (_) {
         return null;
       }
     }
+
+    if (!_canContinueQueueResolution(resolverGeneration, session, player)) return;
 
     // Resolve the immediate neighbours concurrently, then fill the rest
     // in a deterministic order without blocking initial playback.
@@ -790,21 +838,27 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
         (selectedIndex + 1 < tracks.length ? 1 : 0);
     final immediate = order.take(immediateCount).toList(growable: false);
     final immediateItems = await Future.wait(immediate.map(resolveAt));
+    if (!_canContinueQueueResolution(resolverGeneration, session, player)) return;
     for (var offset = 0; offset < immediate.length; offset++) {
       final item = immediateItems[offset];
-      if (item == null || session != player.queueSession) continue;
+      if (item == null ||
+          !_canContinueQueueResolution(resolverGeneration, session, player)) {
+        continue;
+      }
       await player.enqueue(
         item,
         insertAtStart: immediate[offset] < selectedIndex,
         expectedSession: session,
       );
     }
-    if (session != player.queueSession || !AppSettings.instance.discoverAutoQueue) return;
+    if (!_canContinueQueueResolution(resolverGeneration, session, player) ||
+        !AppSettings.instance.discoverAutoQueue) return;
 
     for (final index in order.skip(immediate.length)) {
-      if (session != player.queueSession) return;
+      if (!_canContinueQueueResolution(resolverGeneration, session, player)) return;
       final item = await resolveAt(index);
-      if (item != null) {
+      if (item != null &&
+          _canContinueQueueResolution(resolverGeneration, session, player)) {
         await player.enqueue(
           item,
           insertAtStart: index < selectedIndex,
