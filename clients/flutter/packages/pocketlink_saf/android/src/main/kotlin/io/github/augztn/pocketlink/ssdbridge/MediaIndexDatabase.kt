@@ -426,22 +426,13 @@ internal class MediaIndexDatabase(context: Context) :
     }
 
     fun queryMedia(category: String, query: String, limit: Int, offset: Int): List<IndexedFile> {
-        val (extensions, allowedMime) = when (category) {
-            "music" -> MediaFileClassifier.AUDIO_EXTENSIONS to MediaFileClassifier.AUDIO_MIME_TYPES
-            "video" -> MediaFileClassifier.VIDEO_EXTENSIONS to MediaFileClassifier.VIDEO_MIME_TYPES
-            "photo" -> MediaFileClassifier.PHOTO_EXTENSIONS to MediaFileClassifier.PHOTO_MIME_TYPES
-            else -> return emptyList()
-        }
-        val extensionClause = extensions.joinToString(" OR ") { "LOWER(name) LIKE ?" }
-        val where = mutableListOf(
-            "category=?",
-            "($extensionClause)",
-            "(LOWER(mime) IN (${allowedMime.joinToString(",") { "?" }}) OR LOWER(mime)=?)"
-        )
+        // The scanner assigns category only after validating extension and MIME.
+        // Filtering those same columns again here forced LOWER(name)/LOWER(mime)
+        // scans and prevented the category/name index from serving the default
+        // library query. Keep the indexed category as the single source of truth.
+        if (category !in setOf("music", "video", "photo")) return emptyList()
+        val where = mutableListOf("category=?")
         val args = mutableListOf(category)
-        extensions.sorted().forEach { args += "%.$it" }
-        allowedMime.sorted().forEach { args += it }
-        args += "application/octet-stream"
         if (query.isNotBlank()) {
             val escaped = "%" + query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
             where += "(name LIKE ? ESCAPE '\\' OR path LIKE ? ESCAPE '\\')"
