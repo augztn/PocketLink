@@ -162,7 +162,8 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   }
 
   void _prepareNowPlaying() {
-    if (_nowPlayingOpen || _openingNowPlaying) return;
+    if (_nowPlayingOpen || _openingNowPlaying ||
+        (_nowPlayingRoute?.isActive ?? false)) return;
     final player = _player;
     final item = player.currentItem;
     final navigator = PocketLinkNavigation.navigatorKey.currentState;
@@ -292,7 +293,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     _isNowPlayingDragging.value = false;
     final navigator = PocketLinkNavigation.navigatorKey.currentState;
     final route = _nowPlayingRoute;
-    if (navigator != null && route != null) {
+    if (navigator != null && route != null && route.isActive) {
       // Remove only after the shared controller has completed its reverse spring.
       navigator.removeRoute(route);
     }
