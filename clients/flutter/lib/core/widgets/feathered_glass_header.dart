@@ -29,9 +29,9 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
         ? (darkTint != null && darkTint!.length >= 3
             ? darkTint!
             : const [
-                Color(0x66000000),
-                Color(0x40000000),
-                Colors.transparent,
+                Color(0xE6000000),
+                Color(0xB3000000),
+                Color(0x55000000),
               ])
         : null;
 
