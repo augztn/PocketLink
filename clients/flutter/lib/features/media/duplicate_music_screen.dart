@@ -161,7 +161,7 @@ class _DuplicateMusicScreenState extends State<DuplicateMusicScreen> {
               ],
               const SizedBox(height: 12),
               SizedBox(width: double.infinity, child: FilledButton.icon(
-                onPressed: _busy ? () => _cancel?.cancel('Cancelled') : () => _scan(),
+                onPressed: _busy ? () { setState(() => _error = 'Scan cancelled; these results are incomplete.'); _cancel?.cancel('Cancelled'); } : () => _scan(),
                 icon: Icon(_busy ? Icons.stop_rounded : Icons.search_rounded),
                 label: Text(_busy ? 'Cancel scan' : 'Scan for duplicates'),
               )),
