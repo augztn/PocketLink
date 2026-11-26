@@ -32,11 +32,12 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
     final fullHeaderHeight =
         effectiveTopInset + contentHeight + pocketLinkHeaderFadeTailHeight;
     final fadeStart = (effectiveTopInset + contentHeight) / fullHeaderHeight;
+    // The visible header ends with the compact toolbar. The fade tail is
+    // represented only in the shader's former geometry, never as extra layout
+    // height that can cover the first scrolling rows.
     final headerHeight = fadeTailOnly
         ? pocketLinkHeaderFadeTailHeight
-        : toolbarSegmentOnly
-            ? effectiveTopInset + contentHeight
-            : fullHeaderHeight;
+        : effectiveTopInset + contentHeight;
     final blurStartSigma = fadeTailOnly ? 24 * (1 - fadeStart) : 24.0;
     final blurEndSigma = toolbarSegmentOnly ? 24 * (1 - fadeStart) : 0.0;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -79,7 +80,9 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
         : const [0.0, 0.16, 0.38, 0.68, 1.0];
 
     return _HeaderHeightReporter(
-      height: fullHeaderHeight,
+      height: fadeTailOnly
+          ? fullHeaderHeight
+          : effectiveTopInset + contentHeight,
       child: SizedBox(
         width: double.infinity,
         height: headerHeight,
