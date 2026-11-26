@@ -493,6 +493,16 @@ class ServerApi {
     invalidateDirectoryCache();
   }
 
+  /// Permanently deletes a music file from internal or SAF-backed storage.
+  Future<void> deleteMediaFile(String path, {String? volume}) async {
+    if (volume == null || volume == 'internal') {
+      await deleteItem(path);
+    } else {
+      await deleteStorageItem(volume, path);
+    }
+    clearMediaCache();
+  }
+
   Future<List<StorageVolume>> listStorageVolumes() async {
     final cached = _volumesCache;
     if (cached != null && cached.expiresAt.isAfter(DateTime.now())) {
