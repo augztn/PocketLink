@@ -1283,11 +1283,16 @@ tooltip: 'Choose video view',
     }
 
     final favorites = Set<String>.of(_favoriteKeys)..remove(key);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(
-      _favoritesPreferenceKey,
-      favorites.toList()..sort(),
-    );
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(
+        _favoritesPreferenceKey,
+        favorites.toList()..sort(),
+      );
+    } catch (_) {
+      // File deletion has succeeded; a favorites persistence failure must not
+      // report the destructive operation as failed or leave the row visible.
+    }
 
     final player = PersistentAudioPlayer.instance;
     final current = player.currentItem;
