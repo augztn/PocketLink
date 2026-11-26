@@ -31,6 +31,7 @@ class MediaLibraryRepository {
     final category = type == MediaLibraryType.music ? 'music' : 'video';
     final found = <MediaFileItem>[];
     var offset = 0;
+    var indexedMetadataComplete = type == MediaLibraryType.music;
     var status = const MediaIndexStatus(
       state: 'idle',
       scanned: 0,
@@ -60,18 +61,27 @@ class MediaLibraryRepository {
                   type: type,
                   mime: item.mime,
                 ))
-            .map((item) => MediaFileItem(
-                  entry: item.toFileEntry(),
-                  path: item.path,
-                  volume: item.volume == 'internal' ? null : item.volume,
-                )),
+            .map((item) {
+              if (type == MediaLibraryType.music && !item.metadataScanned) {
+                indexedMetadataComplete = false;
+              }
+              return MediaFileItem(
+                entry: item.toFileEntry(),
+                path: item.path,
+                volume: item.volume == 'internal' ? null : item.volume,
+                title: item.title,
+                artist: item.artist,
+                album: item.album,
+                durationMs: item.durationMs,
+              );
+            }),
       );
 
       offset += page.items.length;
       if (page.items.length < _pageSize) break;
     } while (true);
 
-    if (type == MediaLibraryType.music && found.isNotEmpty) {
+    if (type == MediaLibraryType.music && found.isNotEmpty && !indexedMetadataComplete) {
       try {
         final metadata = await api.musicLibrary();
         final byPath = <String, MusicLibraryTrack>{
@@ -79,9 +89,9 @@ class MediaLibraryRepository {
         };
         for (var index = 0; index < found.length; index++) {
           final item = found[index];
-          // The host music API currently indexes internal storage. OTG sources
-          // keep their existing path-derived labels and artwork fallback.
-          final track = item.volume == null ? byPath[item.path] : null;
+          // Older Termux hosts may still expose the optional full music catalog.
+          // Native PocketLink hosts now return cached tags with indexed media rows.
+          final track = byPath[item.path];
           if (track == null) continue;
           found[index] = item.copyWith(
             title: track.title,
