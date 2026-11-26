@@ -305,28 +305,44 @@ enum _MiniPlayerDragAxis { undecided, vertical, horizontal }
 
 class _MiniPlayerGestureSurfaceState
     extends State<_MiniPlayerGestureSurface> {
-  Offset _distance = Offset.zero;
+  Offset? _startPosition;
+  Offset _lastAppliedOffset = Offset.zero;
   _MiniPlayerDragAxis _axis = _MiniPlayerDragAxis.undecided;
+  bool _expandStarted = false;
 
-  void _onPanStart(DragStartDetails details) {
-    _distance = Offset.zero;
+  void _onPanDown(DragDownDetails details) {
+    _startPosition = details.globalPosition;
+    _lastAppliedOffset = Offset.zero;
     _axis = _MiniPlayerDragAxis.undecided;
+    _expandStarted = false;
   }
 
   void _onPanUpdate(DragUpdateDetails details) {
-    _distance += details.delta;
-    if (_axis == _MiniPlayerDragAxis.undecided &&
-        _distance.distance >= 8) {
-      _axis = _distance.dy.abs() > _distance.dx.abs()
+    final totalOffset = _startPosition == null
+        ? _lastAppliedOffset + details.delta
+        : details.globalPosition - _startPosition!;
+    if (_axis == _MiniPlayerDragAxis.undecided) {
+      if (totalOffset.distance < 8) {
+        _lastAppliedOffset = totalOffset;
+        return;
+      }
+      _axis = totalOffset.dy.abs() > totalOffset.dx.abs()
           ? _MiniPlayerDragAxis.vertical
           : _MiniPlayerDragAxis.horizontal;
-      if (_axis == _MiniPlayerDragAxis.vertical && _distance.dy < 0) {
-        widget.onExpandDragStart?.call();
-      }
     }
 
-    if (_axis == _MiniPlayerDragAxis.vertical) {
-      widget.onExpandDragUpdate?.call(details.delta.dy);
+    final delta = totalOffset - _lastAppliedOffset;
+    _lastAppliedOffset = totalOffset;
+    if (_axis != _MiniPlayerDragAxis.vertical) return;
+
+    // Apply the entire displacement from pointer-down when the vertical axis
+    // locks, then only incremental deltas. Touch-slop movement is not lost.
+    if (!_expandStarted && totalOffset.dy < 0) {
+      _expandStarted = true;
+      widget.onExpandDragStart?.call();
+      widget.onExpandDragUpdate?.call(totalOffset.dy);
+    } else if (_expandStarted) {
+      widget.onExpandDragUpdate?.call(delta.dy);
     }
   }
 
@@ -358,15 +374,17 @@ class _MiniPlayerGestureSurfaceState
   }
 
   void _reset() {
-    _distance = Offset.zero;
+    _startPosition = null;
+    _lastAppliedOffset = Offset.zero;
     _axis = _MiniPlayerDragAxis.undecided;
+    _expandStarted = false;
   }
 
   @override
   Widget build(BuildContext context) => GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: widget.onTap,
-        onPanStart: _onPanStart,
+        onPanDown: _onPanDown,
         onPanUpdate: _onPanUpdate,
         onPanEnd: _onPanEnd,
         onPanCancel: _onPanCancel,
