@@ -3,7 +3,6 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
-import 'now_playing_artwork_palette.dart';
 import 'track_artwork_view.dart';
 
 /// Artwork surface used by the expanded Now Playing screen.
