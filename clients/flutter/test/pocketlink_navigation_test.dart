@@ -68,10 +68,10 @@ void main() {
       expect(observer.currentPageRoute, isNull);
       expect(observer.isNowPlayingVisible, isFalse);
     });
-    test('opens Now Playing after a normal single upward swipe', () {
+    test('opens Now Playing after a single swipe crosses 20 percent', () {
       expect(
         PocketLinkNavigation.shouldExpandFromMiniPlayer(
-          progress: 0.09,
+          progress: 0.21,
           upwardVelocity: -100,
         ),
         isTrue,
@@ -82,7 +82,7 @@ void main() {
       expect(
         PocketLinkNavigation.shouldExpandFromMiniPlayer(
           progress: 0,
-          upwardVelocity: -160,
+          upwardVelocity: -251,
         ),
         isTrue,
       );
