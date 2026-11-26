@@ -1044,20 +1044,36 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     return SliverList(
       delegate: SliverChildListDelegate([
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 2, 20, 12),
-          child: _skeletonLine(width: 86, height: 12),
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _skeletonLine(width: 142, height: 26),
+              const SizedBox(height: 8),
+              _skeletonLine(width: 178, height: 10),
+            ],
+          ),
         ),
+        const SizedBox(height: 12),
         SizedBox(
-          height: 286,
+          height: 238,
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             scrollDirection: Axis.horizontal,
-            itemCount: 2,
+            itemCount: 3,
             separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemBuilder: (_, __) => _skeletonBlock(
-              width: screenWidth * .70,
-              height: 286,
-              radius: 18,
+            itemBuilder: (_, __) => SizedBox(
+              width: 168,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _skeletonBlock(width: 168, height: 168, radius: 14),
+                  const SizedBox(height: 9),
+                  _skeletonLine(width: 132, height: 10),
+                  const SizedBox(height: 6),
+                  _skeletonLine(width: 88, height: 8),
+                ],
+              ),
             ),
           ),
         ),
@@ -1156,11 +1172,15 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     child: Icon(Icons.music_note_rounded, size: size.isFinite ? size * .42 : 44),
   );
 
-  Widget _feedCard(DiscoverTrack track, {List<DiscoverTrack>? queueOverride}) {
+  Widget _feedCard(
+    DiscoverTrack track, {
+    List<DiscoverTrack>? queueOverride,
+    double cardWidth = 148,
+  }) {
     final theme = Theme.of(context);
     final local = AppSettings.instance.discoverLocalLossless
         ? DiscoverService.findLocalLosslessMatch(track, _localLibrary) : null;
-    return SizedBox(width: 148, child: InkWell(
+    return SizedBox(width: cardWidth, child: InkWell(
       borderRadius: BorderRadius.circular(16),
       onTap: () => _play(track, queueOverride: queueOverride),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -1224,7 +1244,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         _shelfHeading('Top Picks for You'),
         SizedBox(
-          height: 214,
+          height: 238,
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             scrollDirection: Axis.horizontal,
@@ -1233,6 +1253,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
             itemBuilder: (context, index) => _feedCard(
               _listeningPicks[index],
               queueOverride: _listeningPicks,
+              cardWidth: 168,
             ),
           ),
         ),
@@ -1614,6 +1635,30 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
             else if (hasTracks) ...[
               if (_loading) const SliverToBoxAdapter(child: LinearProgressIndicator(minHeight: 2)),
               if (_homeShelves.isNotEmpty) ...[
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Listen now',
+                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.7,
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          'Picked for you in $_regionName',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
                 // BitChord Home order: Top Picks, Recents, then the live
                 // upstream shelves. Find Your Mood is inserted after the
                 // lead feed shelf rather than before the feed.
