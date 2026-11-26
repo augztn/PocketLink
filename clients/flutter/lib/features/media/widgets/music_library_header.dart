@@ -77,15 +77,10 @@ class MusicLibraryHeader extends StatelessWidget {
             top: 0,
             left: 0,
             right: 0,
-            height: topInset + 88,
+            height: topInset + kToolbarHeight,
             child: const IgnorePointer(
               child: FeatheredGlassHeaderBackground(
-                contentHeight: 44,
-                darkTint: [
-                  Color(0xD9000000),
-                  Color(0x66000000),
-                  Colors.transparent,
-                ],
+                contentHeight: kToolbarHeight,
               ),
             ),
           ),
