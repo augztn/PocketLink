@@ -1129,6 +1129,7 @@ tooltip: 'Choose video view',
     }
     setState(() {
       _libraryView = value;
+      if (value == 'home') _selectedVolume = null;
       _currentFolderPath = value == 'folders' && _selectedVolume == 'internal'
           ? 'Music'
           : '';
