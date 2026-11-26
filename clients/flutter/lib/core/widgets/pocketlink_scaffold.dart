@@ -123,13 +123,11 @@ class _PocketLinkScaffoldState extends State<PocketLinkScaffold> {
     final renderedHeaderHeight = widget.routeIdentity == null
         ? null
         : _renderedHeaderHeights[widget.routeIdentity];
-    // Keep scrolling content below the compact status-bar and toolbar blur.
-    // Any decorative tail is excluded from the content's resting position.
+    // The header reporter reports only the visible status-bar + toolbar
+    // surface. Keep the first content row below that compact pinned header.
     final topClearance = renderedHeaderHeight == null
         ? statusBarHeight + kToolbarHeight + pocketLinkTopContentGap
-        : renderedHeaderHeight -
-            pocketLinkHeaderFadeTailHeight +
-            pocketLinkTopContentGap;
+        : renderedHeaderHeight + pocketLinkTopContentGap;
     final bottomClearance = media.padding.bottom +
         (widget.hasFloatingNavBar ? 84.0 : 12.0) +
         (widget.hasActiveMiniPlayer ? pocketLinkMiniPlayerHeight : 0.0);
