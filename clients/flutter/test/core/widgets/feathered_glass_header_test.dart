@@ -172,7 +172,8 @@ void main() {
     );
   });
 
-  testWidgets('custom dark tint remains supported', (tester) async {
+  testWidgets('legacy per-screen tint cannot override the shared scrim',
+      (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: ThemeData(brightness: Brightness.dark),
@@ -187,6 +188,7 @@ void main() {
         ),
       ),
     );
+
     final gradients = tester.widgetList<DecoratedBox>(find.byType(DecoratedBox))
         .map((box) => box.decoration)
         .whereType<BoxDecoration>()
@@ -195,8 +197,9 @@ void main() {
     expect(
       gradients.any((gradient) =>
           gradient.colors.length == 5 &&
-          gradient.colors.first == const Color(0xD9000000) &&
-          gradient.colors.last == Colors.transparent),
+          gradient.colors.first == const Color(0xE6000000) &&
+          gradient.colors.last == Colors.transparent &&
+          gradient.colors.length == gradient.stops!.length),
       isTrue,
     );
   });
