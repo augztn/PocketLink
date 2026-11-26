@@ -49,7 +49,7 @@ void main() {
     );
     expect(blur.begin, Alignment.bottomCenter);
     expect(blur.end, Alignment.topCenter);
-    expect(blur.sigmaStart, 24);
+    expect(blur.sigmaStart, 72);
     expect(blur.sigmaEnd, 0);
     expect(find.byType(Positioned), findsNothing);
   });
