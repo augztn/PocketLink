@@ -98,12 +98,15 @@ void main() {
   });
 
 
-  testWidgets('app bar extends the shader from physical top through fade tail',
+  testWidgets('app bar uses one continuous blur from screen top through fade tail',
       (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         home: MediaQuery(
-          data: const MediaQueryData(padding: EdgeInsets.only(top: 24)),
+          data: const MediaQueryData(
+            devicePixelRatio: 3,
+            padding: EdgeInsets.only(top: 24),
+          ),
           child: Scaffold(
             appBar: const PocketLinkAppBar(
               title: Text('Files'),
@@ -116,22 +119,21 @@ void main() {
     );
 
     final blurFinder = find.byType(ProgressiveBlur);
-    expect(blurFinder, findsNWidgets(2));
-    final blurLayers = tester
-        .widgetList<ProgressiveBlur>(blurFinder)
-        .toList(growable: false);
-    // The toolbar segment ends at the same sigma at which the fade-tail
-    // segment begins, preventing a hard transition at the AppBar bottom.
-    expect(blurLayers[0].maxSigma, 24);
-    expect(blurLayers[0].endSigma, closeTo(14, 0.001));
-    expect(blurLayers[1].maxSigma, closeTo(14, 0.001));
-    expect(blurLayers[1].endSigma, 0);
-    expect(tester.getTopLeft(blurFinder.first).dy, 0);
-    expect(tester.getSize(blurFinder.first).height, 80);
-    expect(tester.getTopLeft(blurFinder.last).dy, 80);
-    expect(tester.getSize(blurFinder.last).height, 112);
-    expect(tester.getSize(find.byType(PocketLinkAppBar)).height, 80);
+    expect(blurFinder, findsOneWidget);
+    final blur = tester.widget<ProgressiveBlur>(blurFinder);
+    expect(blur.maxSigma, 24);
+    expect(blur.endSigma, 0);
+
+    final shader = tester.widget<shader_blur.ProgressiveBlur>(
+      find.byType(shader_blur.ProgressiveBlur),
+    );
+    expect(shader.sigmaStart, 72);
+    expect(shader.sigmaEnd, 0);
+    expect(tester.getTopLeft(blurFinder).dy, 0);
+    expect(tester.getSize(blurFinder).height, 192);
+    expect(tester.getSize(find.byType(PocketLinkAppBar)).height, 192);
   });
+
 
   testWidgets('dark header has a readable default acrylic scrim',
       (tester) async {
