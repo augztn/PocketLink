@@ -317,6 +317,24 @@ class _MiniPlayerGestureSurfaceState
     _expandStarted = false;
   }
 
+  void _onPanStart(DragStartDetails details) {
+    if (_axis != _MiniPlayerDragAxis.undecided) return;
+    final start = _startPosition;
+    if (start == null) return;
+    final totalOffset = details.globalPosition - start;
+    if (totalOffset.distance < 8) return;
+
+    _axis = totalOffset.dy.abs() > totalOffset.dx.abs()
+        ? _MiniPlayerDragAxis.vertical
+        : _MiniPlayerDragAxis.horizontal;
+    _lastAppliedOffset = totalOffset;
+    if (_axis == _MiniPlayerDragAxis.vertical && totalOffset.dy < 0) {
+      _expandStarted = true;
+      widget.onExpandDragStart?.call();
+      widget.onExpandDragUpdate?.call(totalOffset.dy);
+    }
+  }
+
   void _onPanUpdate(DragUpdateDetails details) {
     final totalOffset = _startPosition == null
         ? _lastAppliedOffset + details.delta
@@ -367,9 +385,9 @@ class _MiniPlayerGestureSurfaceState
   }
 
   void _onPanCancel() {
-    if (_axis == _MiniPlayerDragAxis.vertical) {
-      widget.onExpandDragEnd?.call(0);
-    }
+    // A canceled pan must always release the parent morph state, including
+    // cancellation before the recognizer has fully locked its axis.
+    widget.onExpandDragEnd?.call(0);
     _reset();
   }
 
@@ -385,6 +403,7 @@ class _MiniPlayerGestureSurfaceState
         behavior: HitTestBehavior.opaque,
         onTap: widget.onTap,
         onPanDown: _onPanDown,
+        onPanStart: _onPanStart,
         onPanUpdate: _onPanUpdate,
         onPanEnd: _onPanEnd,
         onPanCancel: _onPanCancel,
