@@ -161,7 +161,7 @@ internal object DiscoverBridge {
     fun moreHome(token: String, limit: Int, regionCode: String, result: io.flutter.plugin.common.MethodChannel.Result) {
         submit(discoverExecutor, result, "DISCOVER_HOME_MORE_FAILED", "Could not load more recommendations.") {
             try {
-                val feed = catalog.moreHome(token, limit.coerceIn(1, 50))
+                val feed = catalog.moreHome(token, limit.coerceIn(1, 50), regionCode)
                 mainHandler.post { result.success(feed) }
             } catch (error: Exception) {
                 mainHandler.post {
