@@ -72,6 +72,7 @@ class HomeActivityStore extends ChangeNotifier {
 
   Future<void> load() async {
     await _writeQueue;
+    _playCounts = const [];
     try {
       final preferences = await SharedPreferences.getInstance();
       final rawCounts = preferences.getString(_playCountsKey);

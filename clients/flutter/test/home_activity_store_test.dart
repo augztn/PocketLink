@@ -93,5 +93,20 @@ void main() {
       expect(store.mostPlayedForServer('http://server-a:8000').first.count, 2);
     });
 
+    test('clears in-memory play counts when persisted history is absent', () async {
+      final store = HomeActivityStore.instance;
+      await store.recordTrack(
+        serverUrl: 'http://server-a:8000',
+        title: 'Track.flac',
+        path: 'Music/Track.flac',
+      );
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.remove('home_track_play_counts_v1');
+
+      await store.load();
+
+      expect(store.mostPlayedForServer('http://server-a:8000'), isEmpty);
+    });
+
   });
 }
