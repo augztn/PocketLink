@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:material_ui/material_ui.dart';
@@ -300,6 +302,9 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
       final previousVolume = _selectedVolume;
       setState(() { _path = result.path == '.' ? '' : result.path; _listing = result; _saveState(path: _path); });
       widget.onCanNavigateBackChanged?.call(_path.isNotEmpty);
+      // Folder depth is state-driven in the embedded Files tab, so refresh
+      // the shell's system-Back callback whenever a directory load commits.
+      _syncBackHandler();
       if (_path.isNotEmpty && (_path != previousPath || _selectedVolume != previousVolume)) {
         await HomeActivityStore.instance.recordFolder(
           serverUrl: widget.api.baseUrl,
@@ -562,7 +567,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     final handler = _searchExpanded
         ? () => _setSearchExpanded(false)
         : _path.isNotEmpty
-            ? _goUp
+            ? () => unawaited(_goUp())
             : null;
     widget.onBackHandlerChanged?.call(handler);
   }

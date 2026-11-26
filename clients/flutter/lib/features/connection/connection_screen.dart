@@ -93,7 +93,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
         }
         await _selectProfile(selectedProfile, connect: false);
         if (widget.autoConnect && _passwordController.text.isNotEmpty) {
-          await _connect(restoringSession: true);
+          await _openSavedSession();
         }
       } else if (saved != null) {
         _applyAddress(saved);
@@ -110,6 +110,55 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
         setState(() => _isRestoringSession = false);
       }
     }
+  }
+
+  /// Opens a saved session without a startup network probe.
+  ///
+  /// ServerApi attaches the saved Basic Auth credentials to every request, so
+  /// the dashboard can render immediately and normal data requests determine
+  /// whether the server is reachable.
+  Future<void> _openSavedSession() async {
+    final host = _addressController.text.trim();
+    final port = int.tryParse(_portController.text.trim());
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text;
+    if (host.isEmpty ||
+        port == null ||
+        port < 1 ||
+        port > 65535 ||
+        username.isEmpty ||
+        password.isEmpty) {
+      return;
+    }
+
+    late final ServerApi api;
+    try {
+      api = ServerApi(
+        baseUrl: '$host:$port',
+        username: username,
+        password: password,
+      );
+    } catch (error) {
+      await AppLogger.warning(
+        'Could not restore saved server client',
+        fields: {'error_type': error.runtimeType.toString()},
+      );
+      return;
+    }
+
+    if (!mounted) {
+      api.close();
+      return;
+    }
+    setState(() {
+      _isRestoringSession = false;
+      _message = null;
+    });
+    await AppLogger.info(
+      'Saved server session restored; startup network probe skipped',
+      fields: {'host': host, 'port': port},
+    );
+    await _openDashboard(api);
   }
 
   void _applyAddress(String address) {
@@ -416,28 +465,36 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       if (restoringSession) _isRestoringSession = false;
     });
     try {
-      await Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          settings: const RouteSettings(
-            name: PocketLinkAppBar.dashboardRouteName,
-          ),
-          builder: (_) => HomeScreen(
-            api: api,
-            serverName: _serverNameController.text.trim(),
-            onReturnToConnection: () {
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute<void>(
-                  builder: (_) => const ConnectionScreen(autoConnect: false),
-                ),
-                (route) => false,
-              );
-            },
-          ),
-        ),
-      );
+      await _openDashboard(api);
     } finally {
       if (mounted) setState(() => _isConnecting = false);
     }
+  }
+
+  Future<void> _openDashboard(ServerApi api) async {
+    if (!mounted) {
+      api.close();
+      return;
+    }
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        settings: const RouteSettings(
+          name: PocketLinkAppBar.dashboardRouteName,
+        ),
+        builder: (_) => HomeScreen(
+          api: api,
+          serverName: _serverNameController.text.trim(),
+          onReturnToConnection: () {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute<void>(
+                builder: (_) => const ConnectionScreen(autoConnect: false),
+              ),
+              (route) => false,
+            );
+          },
+        ),
+      ),
+    );
   }
 
   InputDecoration _inputDecoration({
