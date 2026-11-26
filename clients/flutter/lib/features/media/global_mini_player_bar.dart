@@ -67,15 +67,6 @@ class GlobalMiniPlayerBar extends StatelessWidget {
         .toDouble();
   }
 
-  void _handleHorizontalDrag(DragEndDetails details) {
-    final velocity = details.primaryVelocity ?? 0;
-    if (velocity < -300 && canSkipNext) {
-      onSkipNext();
-    } else if (velocity > 300 && canSkipPrevious) {
-      onSkipPrevious();
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
@@ -113,28 +104,17 @@ class GlobalMiniPlayerBar extends StatelessWidget {
           intensity: surfaceIntensity,
           // The overlay paints the shared morphing player while expanding.
           // Hide this docked source immediately so two control sets never overlap.
-          child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
+          child: _MiniPlayerGestureSurface(
               onTap: onOpen,
-              onHorizontalDragEnd: _handleHorizontalDrag,
-              onVerticalDragStart: onExpandDragStart == null
-                  ? null
-                  : (_) => onExpandDragStart!(),
-              onVerticalDragUpdate: onExpandDragUpdate == null
-                  ? null
-                  : (details) =>
-                      onExpandDragUpdate!(details.primaryDelta ?? 0),
-              onVerticalDragEnd: (details) {
-                final velocity = details.primaryVelocity ?? 0;
-                if (onExpandDragEnd != null) {
-                  onExpandDragEnd!(velocity);
-                } else if (!isPlaying && velocity > 300) {
-                  onDismiss();
-                }
-              },
-              onVerticalDragCancel: onExpandDragEnd == null
-                  ? null
-                  : () => onExpandDragEnd!(0),
+              onDismiss: onDismiss,
+              isPlaying: isPlaying,
+              canSkipPrevious: canSkipPrevious,
+              canSkipNext: canSkipNext,
+              onExpandDragStart: onExpandDragStart,
+              onExpandDragUpdate: onExpandDragUpdate,
+              onExpandDragEnd: onExpandDragEnd,
+              onHorizontalSkipNext: onSkipNext,
+              onHorizontalSkipPrevious: onSkipPrevious,
               child: Opacity(
                 opacity: visible ? 1 : 0,
                 child: Material(
@@ -285,4 +265,111 @@ class GlobalMiniPlayerBar extends StatelessWidget {
         ),
     );
   }
+}
+
+/// Routes taps and both swipe directions through one pan recognizer. Locking
+/// the axis after touch slop prevents diagonal jitter from changing expansion.
+class _MiniPlayerGestureSurface extends StatefulWidget {
+  const _MiniPlayerGestureSurface({
+    required this.child,
+    required this.onTap,
+    required this.onDismiss,
+    required this.isPlaying,
+    required this.canSkipPrevious,
+    required this.canSkipNext,
+    required this.onExpandDragStart,
+    required this.onExpandDragUpdate,
+    required this.onExpandDragEnd,
+    required this.onHorizontalSkipNext,
+    required this.onHorizontalSkipPrevious,
+  });
+
+  final Widget child;
+  final VoidCallback onTap;
+  final VoidCallback onDismiss;
+  final bool isPlaying;
+  final bool canSkipPrevious;
+  final bool canSkipNext;
+  final VoidCallback? onExpandDragStart;
+  final ValueChanged<double>? onExpandDragUpdate;
+  final ValueChanged<double>? onExpandDragEnd;
+  final VoidCallback onHorizontalSkipNext;
+  final VoidCallback onHorizontalSkipPrevious;
+
+  @override
+  State<_MiniPlayerGestureSurface> createState() =>
+      _MiniPlayerGestureSurfaceState();
+}
+
+enum _MiniPlayerDragAxis { undecided, vertical, horizontal }
+
+class _MiniPlayerGestureSurfaceState
+    extends State<_MiniPlayerGestureSurface> {
+  Offset _distance = Offset.zero;
+  _MiniPlayerDragAxis _axis = _MiniPlayerDragAxis.undecided;
+
+  void _onPanStart(DragStartDetails details) {
+    _distance = Offset.zero;
+    _axis = _MiniPlayerDragAxis.undecided;
+  }
+
+  void _onPanUpdate(DragUpdateDetails details) {
+    _distance += details.delta;
+    if (_axis == _MiniPlayerDragAxis.undecided &&
+        _distance.distance >= 8) {
+      _axis = _distance.dy.abs() > _distance.dx.abs()
+          ? _MiniPlayerDragAxis.vertical
+          : _MiniPlayerDragAxis.horizontal;
+      if (_axis == _MiniPlayerDragAxis.vertical) {
+        widget.onExpandDragStart?.call();
+      }
+    }
+
+    if (_axis == _MiniPlayerDragAxis.vertical) {
+      widget.onExpandDragUpdate?.call(details.delta.dy);
+    }
+  }
+
+  void _onPanEnd(DragEndDetails details) {
+    final velocity = details.velocity.pixelsPerSecond;
+    if (_axis == _MiniPlayerDragAxis.vertical) {
+      if (widget.onExpandDragEnd != null) {
+        widget.onExpandDragEnd!(velocity.dy);
+      } else if (!widget.isPlaying && velocity.dy > 300) {
+        widget.onDismiss();
+      }
+    } else if (_axis == _MiniPlayerDragAxis.horizontal) {
+      if (velocity.dx < -300 && widget.canSkipNext) {
+        widget.onHorizontalSkipNext();
+      } else if (velocity.dx > 300 && widget.canSkipPrevious) {
+        widget.onHorizontalSkipPrevious();
+      }
+    } else if (!widget.isPlaying && velocity.dy > 300) {
+      widget.onDismiss();
+    }
+    _reset();
+  }
+
+  void _onPanCancel() {
+    if (_axis == _MiniPlayerDragAxis.vertical) {
+      widget.onExpandDragEnd?.call(0);
+    }
+    _reset();
+  }
+
+  void _reset() {
+    _distance = Offset.zero;
+    _axis = _MiniPlayerDragAxis.undecided;
+  }
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onTap,
+        onPanStart: _onPanStart,
+        onPanUpdate: _onPanUpdate,
+        onPanEnd: _onPanEnd,
+        onPanCancel: _onPanCancel,
+        child: widget.child,
+      );
 }
