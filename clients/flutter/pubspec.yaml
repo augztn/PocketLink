@@ -28,6 +28,7 @@ dependencies:
   media_kit: ^1.2.6
   media_kit_video: ^2.0.1
   media_kit_libs_video: ^1.0.7
+  progressive_background_blur: ^1.0.1
   pocketlink_saf:
     path: packages/pocketlink_saf
 
