@@ -95,7 +95,7 @@ class FileCategoryFilter extends StatelessWidget {
           trailingWidth: 52,
           items: [
             for (final category in const [
-              'All', 'Images', 'Videos', 'Music', 'Documents',
+              'All', 'Images', 'Videos', 'Music', 'Documents', 'Archives',
             ])
               SmokedGlassPopoverMenuItem(
                 value: category,
@@ -105,6 +105,7 @@ class FileCategoryFilter extends StatelessWidget {
                   'Videos' => Icons.movie_outlined,
                   'Music' => Icons.music_note_outlined,
                   'Documents' => Icons.description_outlined,
+                  'Archives' => Icons.archive_outlined,
                   _ => Icons.apps_rounded,
                 },
                 trailing: Row(mainAxisSize: MainAxisSize.min, children: [
