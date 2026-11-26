@@ -17,7 +17,6 @@ import 'now_playing_screen.dart';
 import 'persistent_audio_player.dart';
 import 'now_playing_overlay_controller.dart';
 import 'now_playing_scrubber.dart';
-import 'discover/discover_thumbnail_cache.dart';
 import 'now_playing_artwork_palette.dart';
 import 'track_artwork_view.dart';
 
@@ -633,8 +632,12 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
             ambientFill,
             (t / 0.3).clamp(0.0, 1.0).toDouble(),
           )!;
-          final miniOpacity =
-              (1.0 - t / 0.25).clamp(0.0, 1.0).toDouble();
+          final miniOpacity = 1.0 -
+              const Interval(
+                0.25,
+                0.55,
+                curve: Curves.easeInOut,
+              ).transform(t);
           final isGradientTheme =
               AppSettings.instance.nowPlayingTheme == 'gradient';
           final targetArt = isGradientTheme
@@ -684,6 +687,18 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
+                        Positioned.fromRect(
+                          rect: rect,
+                          child: IgnorePointer(
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: sheetFill,
+                                borderRadius: radius,
+                              ),
+                              child: const SizedBox.expand(),
+                            ),
+                          ),
+                        ),
                         Positioned.fill(
                           child: IgnorePointer(
                             ignoring: t < 0.35,
@@ -694,18 +709,6 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
                                 curve: Curves.easeOutCubic,
                               ).transform(t),
                               child: animatedChild!,
-                            ),
-                          ),
-                        ),
-                        Positioned.fromRect(
-                          rect: rect,
-                          child: IgnorePointer(
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                color: sheetFill,
-                                borderRadius: radius,
-                              ),
-                              child: const SizedBox.expand(),
                             ),
                           ),
                         ),
