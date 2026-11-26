@@ -195,9 +195,6 @@ class PersistentAudioPlayer extends ChangeNotifier {
     _retriedDiscoverTracks.clear();
     _retryingDiscoverPlayback = false;
     notifyListeners();
-    unawaited(_serializeQueueMutation(() async {
-      if (session == _queueSession) await player.pause();
-    }).catchError((Object _) {}));
     return session;
   }
 
@@ -300,9 +297,8 @@ class PersistentAudioPlayer extends ChangeNotifier {
       rethrow;
     }
     if (session != _queueSession) {
-      // A newer selection superseded this source while media_kit was opening.
-      // Stop the stale source before the serialized newer open begins.
-      await player.pause();
+      // The serialized newer queue open replaces this stale source. Do not
+      // pause the shared player here: that would interrupt the new selection.
       return;
     }
     _selectionLoading = false;
