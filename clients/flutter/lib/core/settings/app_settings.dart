@@ -277,10 +277,20 @@ class AppSettings extends ChangeNotifier {
         preferences.getString(_homeSectionOrderKey),
       );
       if (sectionValues != null &&
-          sectionValues.length == homeSectionDefaults.length &&
-          sectionValues.toSet().length == homeSectionDefaults.length &&
-          sectionValues.toSet().containsAll(homeSectionDefaults)) {
-        _homeSectionOrder = sectionValues;
+          sectionValues.isNotEmpty &&
+          sectionValues.toSet().length == sectionValues.length &&
+          sectionValues.every(homeSectionDefaults.contains)) {
+        // Preserve an existing custom order when adding a new Home section.
+        _homeSectionOrder = [
+          ...sectionValues,
+          ...homeSectionDefaults.where((id) => !sectionValues.contains(id)),
+        ];
+        if (_homeSectionOrder.length != sectionValues.length) {
+          await preferences.setString(
+            _homeSectionOrderKey,
+            jsonEncode(_homeSectionOrder),
+          );
+        }
       }
 
       final navigationValues = _decodeStoredStringList(
