@@ -221,11 +221,18 @@ class StorageVolume {
       );
 }
 
+String? _optionalMetadataText(Object? value) {
+  final text = value?.toString().trim();
+  return text == null || text.isEmpty ? null : text;
+}
+
 class IndexedFile {
   const IndexedFile({
     required this.volume, required this.path, required this.name,
     required this.type, required this.size, required this.modified,
     required this.mime, this.category, this.created,
+    this.title, this.artist, this.album, this.durationMs,
+    this.metadataScanned = false,
   });
   final String volume;
   final String path;
@@ -236,6 +243,11 @@ class IndexedFile {
   final String mime;
   final String? category;
   final String? created;
+  final String? title;
+  final String? artist;
+  final String? album;
+  final int? durationMs;
+  final bool metadataScanned;
   bool get isDirectory => type == 'directory';
 
   factory IndexedFile.fromJson(Map<String, dynamic> json) => IndexedFile(
@@ -248,6 +260,11 @@ class IndexedFile {
     mime: json['mime']?.toString() ?? 'application/octet-stream',
     category: json['category']?.toString(),
     created: json['created']?.toString(),
+    title: _optionalMetadataText(json['title']),
+    artist: _optionalMetadataText(json['artist']),
+    album: _optionalMetadataText(json['album']),
+    durationMs: (json['duration_ms'] as num?)?.toInt(),
+    metadataScanned: json['metadata_scanned'] == true,
   );
 
   FileEntry toFileEntry() => FileEntry(
