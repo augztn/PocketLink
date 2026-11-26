@@ -80,11 +80,18 @@ class PersistentAudioPlayer extends ChangeNotifier {
     }
     _playlistSubscription = player.stream.playlist.listen((playlist) {
       _currentIndex = playlist.index.clamp(0, _queue.isEmpty ? 0 : _queue.length - 1).toInt();
+      final signature = playlist.medias.map((media) => media.uri).join('\\u0000');
+      if (_lastPlaylistSignature != null &&
+          signature == _lastPlaylistSignature &&
+          _lastPlaylistIndex != null &&
+          playlist.index != _lastPlaylistIndex) {
+        _playbackTransition++;
+      }
+      _lastPlaylistSignature = signature;
+      _lastPlaylistIndex = playlist.index;
+      _recordCurrentTrackIfNeeded();
       notifyListeners();
       unawaited(_syncMediaSession());
-    });
-    _currentSubscription = player.stream.current.listen((_) {
-      scheduleMicrotask(_recordCurrentTrackIfNeeded);
     });
     _playingSubscription = player.stream.playing.listen((playing) {
       AppLogger.event(playing ? 'playback.started' : 'playback.paused',
@@ -128,7 +135,6 @@ class PersistentAudioPlayer extends ChangeNotifier {
   VideoController get videoController =>
       _videoController ??= VideoController(player);
   StreamSubscription<Playlist>? _playlistSubscription;
-  StreamSubscription<Media?>? _currentSubscription;
   StreamSubscription<bool>? _playingSubscription;
   StreamSubscription<bool>? _completedSubscription;
   StreamSubscription<String>? _errorSubscription;
@@ -146,6 +152,9 @@ class PersistentAudioPlayer extends ChangeNotifier {
   DateTime? _pendingTrackDirectionAt;
   int _queueSession = 0;
   String? _lastRecordedTrackKey;
+  String? _lastPlaylistSignature;
+  int? _lastPlaylistIndex;
+  int _playbackTransition = 0;
   Future<void> _queueMutationTail = Future<void>.value();
   final Set<String> _retriedDiscoverTracks = <String>{};
   bool _retryingDiscoverPlayback = false;
@@ -174,6 +183,9 @@ class PersistentAudioPlayer extends ChangeNotifier {
     final session = ++_queueSession;
     _api = api;
     _lastRecordedTrackKey = null;
+    _lastPlaylistSignature = null;
+    _lastPlaylistIndex = null;
+    _playbackTransition = 0;
     _queue = List.unmodifiable([item]);
     _currentIndex = 0;
     _music = isMusic;
@@ -224,7 +236,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
         current == null || current.localPath != null || current.streamUrl != null) {
       return;
     }
-    final key = '$_queueSession:$_currentIndex:${current.stableTrackId}';
+    final key = '$_queueSession:$_playbackTransition:${current.stableTrackId}';
     if (_lastRecordedTrackKey == key) return;
     _lastRecordedTrackKey = key;
     unawaited(HomeActivityStore.instance.recordTrack(
@@ -253,6 +265,9 @@ class PersistentAudioPlayer extends ChangeNotifier {
     }
     _api = api;
     _lastRecordedTrackKey = null;
+    _lastPlaylistSignature = null;
+    _lastPlaylistIndex = null;
+    _playbackTransition = 0;
     _queue = List.unmodifiable(queue);
     _retriedDiscoverTracks.clear();
     _retryingDiscoverPlayback = false;
@@ -546,6 +561,9 @@ class PersistentAudioPlayer extends ChangeNotifier {
     _currentIndex = 0;
     _api = null;
     _lastRecordedTrackKey = null;
+    _lastPlaylistSignature = null;
+    _lastPlaylistIndex = null;
+    _playbackTransition = 0;
     notifyListeners();
   }
 
@@ -606,7 +624,6 @@ class PersistentAudioPlayer extends ChangeNotifier {
   void dispose() {
     cancelSleepTimer();
     unawaited(_playlistSubscription?.cancel());
-    unawaited(_currentSubscription?.cancel());
     unawaited(_playingSubscription?.cancel());
     unawaited(_completedSubscription?.cancel());
     unawaited(_errorSubscription?.cancel());
