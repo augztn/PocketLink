@@ -1,7 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 const double pocketLinkMiniPlayerHeight = 74.0;
-const double pocketLinkHeaderFadeTailHeight = 112.0;
+const double pocketLinkHeaderFadeTailHeight = 0.0;
 const double pocketLinkTopContentGap = 14.0;
 
 /// Route-level layout geometry shared by every PocketLink screen.
@@ -123,8 +123,8 @@ class _PocketLinkScaffoldState extends State<PocketLinkScaffold> {
     final renderedHeaderHeight = widget.routeIdentity == null
         ? null
         : _renderedHeaderHeights[widget.routeIdentity];
-    // The header reporter includes the feathered fade tail. Remove that
-    // decorative tail, then add the one shared resting content gap.
+    // Keep scrolling content below the compact status-bar and toolbar blur.
+    // Any decorative tail is excluded from the content's resting position.
     final topClearance = renderedHeaderHeight == null
         ? statusBarHeight + kToolbarHeight + pocketLinkTopContentGap
         : renderedHeaderHeight -
