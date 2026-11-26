@@ -168,23 +168,32 @@ class GlassCircleButton extends StatelessWidget {
     final foreground = isDark ? Colors.white : const Color(0xFF0F172A);
 
     return SizedBox.square(
-      dimension: size,
-      child: LiquidGlassSurface(
-        radius: BorderRadius.circular(size / 2),
-        refractive: true,
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onPressed,
-            customBorder: const CircleBorder(),
-            splashColor: foreground.withValues(alpha: 0.08),
-            highlightColor: Colors.transparent,
-            child: Tooltip(
-              message: tooltip,
+      dimension: 48,
+      child: Tooltip(
+        message: tooltip,
+        child: Semantics(
+          button: true,
+          label: tooltip,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onPressed,
+              customBorder: const CircleBorder(),
+              splashColor: foreground.withValues(alpha: 0.08),
+              highlightColor: Colors.transparent,
               child: Center(
-                child: IconTheme(
-                  data: IconThemeData(color: foreground, size: 18),
-                  child: child,
+                child: SizedBox.square(
+                  dimension: size,
+                  child: LiquidGlassSurface(
+                    radius: BorderRadius.circular(size / 2),
+                    refractive: true,
+                    child: Center(
+                      child: IconTheme(
+                        data: IconThemeData(color: foreground, size: 18),
+                        child: child,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
