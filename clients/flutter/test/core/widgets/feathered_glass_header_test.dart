@@ -14,7 +14,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  testWidgets('header uses eased grouped blur and an alpha fade mask', (tester) async {
+  testWidgets('header keeps grouped backdrop filters out of shader-mask layers', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(body: FeatheredGlassHeaderBackground()),
@@ -23,8 +23,7 @@ void main() {
     expect(find.byType(ProgressiveBlur), findsOneWidget);
     expect(find.byType(BackdropGroup), findsOneWidget);
     expect(find.byType(BackdropFilter), findsNWidgets(17));
-    final mask = tester.widget<ShaderMask>(find.byType(ShaderMask));
-    expect(mask.blendMode, BlendMode.dstIn);
+    expect(find.byType(ShaderMask), findsNothing);
   });
 
   testWidgets('progressive blur supports reversed direction', (tester) async {
@@ -71,35 +70,6 @@ void main() {
       (widget) => widget is SizedBox && widget.height == 96,
     );
     expect(tester.getSize(bounds).height, 96);
-  });
-
-  test('fade mask stays opaque through 60 percent then eases to transparent', () {
-    expect(FeatheredGlassHeaderBackground.fadeMaskAlphaAt(0), 1);
-    expect(FeatheredGlassHeaderBackground.fadeMaskAlphaAt(0.6), 1);
-    expect(FeatheredGlassHeaderBackground.fadeMaskAlphaAt(1), 0);
-    var previous = 1.0;
-    for (var index = 0; index <= 100; index++) {
-      final alpha = FeatheredGlassHeaderBackground.fadeMaskAlphaAt(index / 100);
-      expect(alpha, lessThanOrEqualTo(previous));
-      previous = alpha;
-    }
-    expect(FeatheredGlassHeaderBackground.fadeMaskAlphaAt(0.8), greaterThan(0));
-    expect(FeatheredGlassHeaderBackground.fadeMaskAlphaAt(0.98), lessThan(0.01));
-  });
-
-  test('fade mask uses nine alpha samples and can reverse direction', () {
-    final gradient = FeatheredGlassHeaderBackground.fadeMaskGradient();
-    expect(gradient.colors, hasLength(9));
-    expect(gradient.colors.first.a, 1);
-    expect(gradient.colors.last.a, 0);
-    expect(gradient.begin, Alignment.topCenter);
-    expect(gradient.end, Alignment.bottomCenter);
-
-    final reversed = FeatheredGlassHeaderBackground.fadeMaskGradient(
-      strongestAtBottom: true,
-    );
-    expect(reversed.begin, Alignment.bottomCenter);
-    expect(reversed.end, Alignment.topCenter);
   });
 
   testWidgets('custom dark tint remains supported', (tester) async {
