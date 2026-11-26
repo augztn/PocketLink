@@ -4,6 +4,58 @@ import 'package:pocketlink_client/features/media/media_browser_state_store.dart'
 
 void main() {
   group('MediaBrowserStateStore', () {
+
+    test('scroll offset changes are persisted without rebuild notifications', () {
+      final store = MediaBrowserStateStore();
+      var notifications = 0;
+      store.addListener(() => notifications++);
+
+      store.update(
+        'server',
+        'video',
+        const MediaBrowserState(view: 'home', sortBy: 'name', layoutMode: 'grid'),
+      );
+      expect(notifications, 1);
+
+      store.update(
+        'server',
+        'video',
+        const MediaBrowserState(
+          view: 'home',
+          sortBy: 'name',
+          layoutMode: 'grid',
+          scrollOffset: 24,
+        ),
+      );
+      expect(store.stateFor('server', 'video').scrollOffset, 24);
+      expect(notifications, 1);
+
+      store.update(
+        'server',
+        'video',
+        const MediaBrowserState(
+          view: 'home',
+          sortBy: 'name',
+          layoutMode: 'grid',
+          scrollOffset: 24,
+        ),
+      );
+      expect(notifications, 1);
+
+      store.update(
+        'server',
+        'video',
+        const MediaBrowserState(
+          view: 'folders',
+          sortBy: 'name',
+          layoutMode: 'grid',
+          scrollOffset: 24,
+        ),
+      );
+      expect(notifications, 2);
+      store.dispose();
+    });
+
     test('retains Music and Videos tabs and storage selections independently', () {
       final store = MediaBrowserStateStore();
 
