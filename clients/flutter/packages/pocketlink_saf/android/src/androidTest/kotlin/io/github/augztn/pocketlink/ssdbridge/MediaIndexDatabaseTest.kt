@@ -137,7 +137,11 @@ class MediaIndexDatabaseTest {
         val database = MediaIndexDatabase(context)
         try {
             val entries = listOf(
-                IndexedFile("internal", "Music/song.mp3", "song.mp3", "file", 1234L, 100L, "audio/mpeg", "music"),
+                IndexedFile(
+                    "internal", "Music/song.mp3", "song.mp3", "file", 1234L, 100L,
+                    "audio/mpeg", "music", "Embedded Title", "Embedded Artist",
+                    "Embedded Album", 187000L, true
+                ),
                 IndexedFile("internal", "Pictures/photo.jpg", "photo.jpg", "file", 2345L, 200L, "image/jpeg", "photo"),
                 IndexedFile("internal", "Documents", "Documents", "directory", 0L, 300L, "application/octet-stream", null)
             )
@@ -148,7 +152,13 @@ class MediaIndexDatabaseTest {
             assertEquals(1, database.counts()["directories"])
             assertEquals(2, database.counts()["regular_files"])
             assertEquals(2, database.counts()["media"])
-            assertEquals("song.mp3", database.queryMedia("music", "", 20, 0).single().name)
+            val indexedSong = database.queryMedia("music", "", 20, 0).single()
+            assertEquals("song.mp3", indexedSong.name)
+            assertEquals("Embedded Title", indexedSong.title)
+            assertEquals("Embedded Artist", indexedSong.artist)
+            assertEquals("Embedded Album", indexedSong.album)
+            assertEquals(187000L, indexedSong.durationMs)
+            assertTrue(indexedSong.metadataScanned)
             assertEquals("photo.jpg", database.queryMedia("photo", "", 20, 0).single().name)
             assertTrue(database.searchFiles("Documents", 20, 0).any { it.type == "directory" })
 
