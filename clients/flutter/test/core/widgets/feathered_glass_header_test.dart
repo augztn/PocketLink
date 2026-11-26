@@ -116,9 +116,19 @@ void main() {
     );
 
     final blurFinder = find.byType(ProgressiveBlur);
-    expect(blurFinder, findsOneWidget);
-    expect(tester.getTopLeft(blurFinder).dy, 0);
-    expect(tester.getSize(blurFinder).height, 192);
+    expect(blurFinder, findsNWidgets(2));
+    final blurLayers = tester
+        .widgetList<ProgressiveBlur>(blurFinder)
+        .toList(growable: false);
+    // The toolbar segment ends at the same sigma at which the fade-tail
+    // segment begins, preventing a hard transition at the AppBar bottom.
+    expect(blurLayers[0].maxSigma, 24);
+    expect(blurLayers[0].endSigma, 0);
+    expect(blurLayers[1].maxSigma, closeTo(14, 0.001));
+    expect(blurLayers[1].endSigma, 0);
+    expect(tester.getTopLeft(blurFinder.first).dy, 0);
+    expect(tester.getSize(blurFinder.first).height, 192);
+    expect(tester.getSize(blurFinder.last).height, 112);
     expect(tester.getSize(find.byType(PocketLinkAppBar)).height, 192);
   });
 
