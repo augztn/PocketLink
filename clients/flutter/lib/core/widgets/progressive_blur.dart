@@ -9,7 +9,7 @@ import 'package:progressive_background_blur/progressive_background_blur.dart'
 class ProgressiveBlur extends StatelessWidget {
   const ProgressiveBlur({
     this.maxSigma = 24,
-    this.endSigma = 8,
+    this.endSigma = 24,
     this.strongestAtBottom = false,
     super.key,
   });
@@ -17,7 +17,8 @@ class ProgressiveBlur extends StatelessWidget {
   /// Blur sigma at the strongest edge, in logical pixels.
   final double maxSigma;
 
-  /// Blur sigma retained at the feathered edge, in logical pixels.
+  /// Blur sigma at the feathered edge, in logical pixels. Set equal to
+  /// [maxSigma] for a uniform blur that is faded with an alpha mask.
   final double endSigma;
 
   /// When true, blur is strongest at the bottom instead of the top.
