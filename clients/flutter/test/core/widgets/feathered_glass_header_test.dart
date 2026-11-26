@@ -204,6 +204,36 @@ void main() {
     );
   });
 
+  testWidgets('progressive blur setting disables shader while retaining header scrim',
+      (tester) async {
+    await tester.runAsync(
+      () => AppSettings.instance.setProgressiveBlurEnabled(false),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(brightness: Brightness.dark),
+        home: const Scaffold(body: FeatheredGlassHeaderBackground()),
+      ),
+    );
+
+    expect(find.byType(ProgressiveBlur), findsNothing);
+    expect(find.byType(shader_blur.ProgressiveBlur), findsNothing);
+    final gradients = tester.widgetList<DecoratedBox>(find.byType(DecoratedBox))
+        .map((box) => box.decoration)
+        .whereType<BoxDecoration>()
+        .map((decoration) => decoration.gradient)
+        .whereType<LinearGradient>();
+    expect(
+      gradients.any((gradient) =>
+          gradient.colors.first == const Color(0xE6000000) &&
+          gradient.colors.last == Colors.transparent),
+      isTrue,
+    );
+    await tester.runAsync(
+      () => AppSettings.instance.setProgressiveBlurEnabled(true),
+    );
+  });
+
   testWidgets('Liquid Glass UI off still disables other glass surfaces',
       (tester) async {
     await tester.runAsync(
