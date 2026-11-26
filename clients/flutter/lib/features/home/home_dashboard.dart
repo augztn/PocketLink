@@ -82,6 +82,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    AppSettings.instance.addListener(_homeSettingsChanged);
     _loadQuickActions();
     HomeActivityStore.instance.load();
     _refreshStatus();
@@ -91,8 +92,13 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
   @override
   void dispose() {
     _telemetryTimer?.cancel();
+    AppSettings.instance.removeListener(_homeSettingsChanged);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  void _homeSettingsChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
