@@ -136,10 +136,12 @@ class ServerApi {
 
   final Map<String, Future<Uint8List?>> _thumbnailCache = {};
   final Map<String, Future<VideoMetadata?>> _metadataCache = {};
+  final Map<String, Future<Uint8List?>> _musicArtworkCache = {};
 
   void clearMediaCache() {
     _thumbnailCache.clear();
     _metadataCache.clear();
+    _musicArtworkCache.clear();
   }
 
   String _mediaCacheKey(String path, String? volume) => '${volume ?? 'internal'}:$path';
@@ -468,6 +470,40 @@ class ServerApi {
       },
     );
     return AutomaticMediaScanSettings.fromJson(response.data ?? const {});
+  }
+
+  /// Reads embedded music tags from hosts that expose the optional music API.
+  Future<List<MusicLibraryTrack>> musicLibrary() async {
+    final response = await _dio.get<Map<String, dynamic>>('/api/music/library');
+    return (response.data?['items'] as List<dynamic>? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(MusicLibraryTrack.fromJson)
+        .where((item) => item.path.isNotEmpty)
+        .toList(growable: false);
+  }
+
+  /// Fetches embedded album artwork without downloading the audio file.
+  Future<Uint8List?> musicArtwork(String path) {
+    final cached = _musicArtworkCache[path];
+    if (cached != null) return cached;
+    final future = () async {
+      try {
+        final response = await _dio.get<List<int>>(
+          '/api/music/artwork',
+          queryParameters: {'path': path},
+          options: Options(responseType: ResponseType.bytes),
+        );
+        final bytes = response.data;
+        return bytes == null || bytes.isEmpty ? null : Uint8List.fromList(bytes);
+      } on DioException {
+        return null;
+      }
+    }();
+    _musicArtworkCache[path] = future;
+    if (_musicArtworkCache.length > 256) {
+      _musicArtworkCache.remove(_musicArtworkCache.keys.first);
+    }
+    return future;
   }
 
   Future<IndexedMediaPage> indexedMedia(
