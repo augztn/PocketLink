@@ -26,4 +26,11 @@ extension AppSettingsAppearance on AppSettings {
     await preferences.setBool(AppSettings._liquidGlassKey, value);
   }
 
+  Future<void> setProgressiveBlurEnabled(bool value) async {
+    _progressiveBlurEnabled = value;
+    _notifySettingsChanged();
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(AppSettings._progressiveBlurKey, value);
+  }
+
 }
