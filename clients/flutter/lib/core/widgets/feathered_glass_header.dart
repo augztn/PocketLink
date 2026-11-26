@@ -19,35 +19,6 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
   final double contentHeight;
   final bool strongestAtBottom;
 
-  static const int _fadeSamples = 9;
-  static const double _fadeStart = 0.6;
-
-  /// Alpha mask: full blur through 60%, then an eased fade to transparency.
-  @visibleForTesting
-  static double fadeMaskAlphaAt(double t) {
-    final progress = t.clamp(0.0, 1.0).toDouble();
-    if (progress <= _fadeStart) return 1;
-    final u = (progress - _fadeStart) / (1 - _fadeStart);
-    return 1 - (u * u * (3 - 2 * u));
-  }
-
-  @visibleForTesting
-  static LinearGradient fadeMaskGradient({bool strongestAtBottom = false}) {
-    final colors = <Color>[];
-    final stops = <double>[];
-    for (var index = 0; index < _fadeSamples; index++) {
-      final t = index / (_fadeSamples - 1);
-      colors.add(Colors.white.withValues(alpha: fadeMaskAlphaAt(t)));
-      stops.add(t);
-    }
-    return LinearGradient(
-      begin: strongestAtBottom ? Alignment.bottomCenter : Alignment.topCenter,
-      end: strongestAtBottom ? Alignment.topCenter : Alignment.bottomCenter,
-      colors: colors,
-      stops: stops,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
