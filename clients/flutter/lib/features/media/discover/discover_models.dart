@@ -65,6 +65,40 @@ class DiscoverHomeFeed {
 }
 
 
+/// Appends a continuation page without repeating a track across Home shelves.
+List<DiscoverHomeShelf> mergeDiscoverHomeShelves(
+  List<DiscoverHomeShelf> current,
+  List<DiscoverHomeShelf> incoming,
+) {
+  final seenVideoIds = <String>{};
+  final merged = current.map((shelf) {
+    final tracks = shelf.tracks
+        .where((track) => seenVideoIds.add(track.videoId))
+        .toList(growable: false);
+    return DiscoverHomeShelf(title: shelf.title, tracks: tracks);
+  }).toList();
+
+  for (final shelf in incoming) {
+    final freshTracks = shelf.tracks
+        .where((track) => seenVideoIds.add(track.videoId))
+        .toList(growable: false);
+    if (freshTracks.isEmpty) continue;
+    final index = merged.indexWhere(
+      (item) => item.title.toLowerCase() == shelf.title.toLowerCase(),
+    );
+    if (index < 0) {
+      merged.add(DiscoverHomeShelf(title: shelf.title, tracks: freshTracks));
+    } else {
+      merged[index] = DiscoverHomeShelf(
+        title: merged[index].title,
+        tracks: [...merged[index].tracks, ...freshTracks],
+      );
+    }
+  }
+  return List.unmodifiable(merged);
+}
+
+
 class DiscoverMoodSection {
   const DiscoverMoodSection({required this.title, required this.items});
   final String title;
