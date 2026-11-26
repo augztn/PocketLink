@@ -80,6 +80,11 @@ void main() {
     final preferences = await SharedPreferences.getInstance();
     expect(preferences.getBool('settings_home_search'), isFalse);
     expect(preferences.getBool('settings_home_transfers'), isFalse);
+
+    await settings.setHomeSections(
+      globalSearch: true,
+      activeTransfers: true,
+    );
   });
 
   test('Home section order persists and rejects incomplete layouts', () async {
