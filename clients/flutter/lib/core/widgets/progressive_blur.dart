@@ -13,7 +13,7 @@ class ProgressiveBlur extends StatelessWidget {
     super.key,
   });
 
-  /// Blur sigma at the strongest edge.
+  /// Blur sigma at the strongest edge, in logical pixels.
   final double maxSigma;
 
   /// When true, blur is strongest at the bottom instead of the top.
@@ -25,6 +25,9 @@ class ProgressiveBlur extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
+    final sigmaInPhysicalPixels = maxSigma *
+        MediaQuery.devicePixelRatioOf(context);
+
     return shader_blur.ProgressiveBlur(
       begin: strongestAtBottom
           ? Alignment.bottomCenter
@@ -32,7 +35,7 @@ class ProgressiveBlur extends StatelessWidget {
       end: strongestAtBottom
           ? Alignment.topCenter
           : Alignment.bottomCenter,
-      sigmaStart: maxSigma
+      sigmaStart: sigmaInPhysicalPixels
           .clamp(0.0, shader_blur.ProgressiveBlur.maxSigma)
           .toDouble(),
       sigmaEnd: 0,
