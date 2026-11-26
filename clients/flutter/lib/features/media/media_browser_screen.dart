@@ -71,6 +71,9 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   bool _searchExpanded = false;
   bool _selectionMode = false;
   final Set<String> _selectedTrackKeys = <String>{};
+  List<MediaFileItem> _selectedCollectionItems = const [];
+  String? _collectionReturnView;
+  String? _collectionTitle;
 
   void _syncBackHandler() {
     final handler = _musicMenuOpen
@@ -81,9 +84,11 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                 ? _clearSelectionMode
                 : _libraryView == 'folders' && !_atFolderRoot
                     ? _goUpFolder
-                    : _isMusic && _libraryView != 'home'
-                        ? () => _selectMusicView('home')
-                        : null;
+                    : _libraryView == 'collection'
+                        ? _closeMusicCollection
+                        : _isMusic && _libraryView != 'home'
+                            ? () => _selectMusicView('home')
+                            : null;
     widget.onBackHandlerChanged?.call(handler);
   }
 
@@ -475,6 +480,8 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   }
 
   String _displayTitle(MediaFileItem media) {
+    final taggedTitle = media.title?.trim();
+    if (taggedTitle != null && taggedTitle.isNotEmpty) return taggedTitle;
     final dot = media.entry.name.lastIndexOf('.');
     final name = (dot > 0 ? media.entry.name.substring(0, dot) : media.entry.name)
         .replaceAll('_', ' ')
@@ -760,6 +767,8 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         if (didPop || widget.onBackHandlerChanged != null) return;
         if (_searchExpanded) {
           _setSearchExpanded(false);
+        } else if (_libraryView == 'collection') {
+          _closeMusicCollection();
         } else if (_libraryView == 'folders' && !_atFolderRoot) {
           _goUpFolder();
         }
@@ -970,6 +979,8 @@ tooltip: 'Choose video view',
   }
 
   String _trackArtist(MediaFileItem media) {
+    final taggedArtist = media.artist?.trim();
+    if (taggedArtist != null && taggedArtist.isNotEmpty) return taggedArtist;
     final parts = media.path.split('/')..removeLast();
     return parts.isEmpty ? _sourceLabel(media) : parts.last;
   }
@@ -978,6 +989,10 @@ tooltip: 'Choose video view',
       _musicArtworkCache.putIfAbsent(_favoriteKey(media), () => _fetchTrackArtwork(media));
 
   Future<Uint8List?> _fetchTrackArtwork(MediaFileItem media) async {
+    if (media.artworkAvailable && media.volume == null) {
+      final embedded = await widget.api.musicArtwork(media.path);
+      if (embedded != null && embedded.isNotEmpty) return embedded;
+    }
     final folder = media.path.contains('/')
         ? media.path.substring(0, media.path.lastIndexOf('/') + 1)
         : '';
@@ -1062,6 +1077,7 @@ tooltip: 'Choose video view',
 
   Future<int> _musicDurationFor(MediaFileItem media) =>
       _musicDurationRequests.putIfAbsent(_favoriteKey(media), () async {
+        if ((media.durationMs ?? 0) > 0) return media.durationMs!;
         final preferences = await SharedPreferences.getInstance();
         final preferenceKey = _musicDurationPreferenceKey(media);
         final cached = preferences.getInt(preferenceKey);
@@ -1129,6 +1145,9 @@ tooltip: 'Choose video view',
     }
     setState(() {
       _libraryView = value;
+      _selectedCollectionItems = const [];
+      _collectionReturnView = null;
+      _collectionTitle = null;
       if (value == 'home') _selectedVolume = null;
       _currentFolderPath = value == 'folders' && _selectedVolume == 'internal'
           ? 'Music'
@@ -1360,7 +1379,7 @@ tooltip: 'Choose video view',
               Text(artists ? 'No artist folders found' : 'No album folders found',
                 style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
               const SizedBox(height: 5),
-              const Text('Collections are grouped from folder names because embedded music tags are not available in the current index.',
+              const Text('Collections use embedded music tags when available, with folder names as a fallback.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Color(0xFF8E939E), fontSize: 12)),
             ]),
@@ -1404,17 +1423,42 @@ tooltip: 'Choose video view',
 
   void _openMusicCollection(MediaCollectionGroup group) {
     setState(() {
-      _libraryView = 'folders';
+      _collectionReturnView = _libraryView;
+      _collectionTitle = group.name;
+      _selectedCollectionItems = group.items;
+      _libraryView = 'collection';
       _selectedVolume = group.volume ?? 'internal';
-      _currentFolderPath = group.path;
     });
     _pendingScrollOffset = 0;
-    _saveState(folderPath: group.path);
+    _syncBackHandler();
+    if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0);
+  }
+
+  void _closeMusicCollection() {
+    if (_libraryView != 'collection') return;
+    setState(() {
+      _libraryView = _collectionReturnView ?? 'albums';
+      _selectedCollectionItems = const [];
+      _collectionReturnView = null;
+      _collectionTitle = null;
+    });
     _syncBackHandler();
     if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0);
   }
 
   Widget _buildMusicContent(List<MediaFileItem> visible) {
+    if (_libraryView == 'collection') {
+      return RefreshIndicator(
+        onRefresh: _refreshMusic,
+        child: MusicBrowserTrackList(
+          controller: _contentScrollController,
+          itemCount: visible.length,
+          itemBuilder: (context, index) => _musicTrackTile(visible[index], visible),
+          topPadding: LayoutInsetsScope.of(context).topClearance,
+          bottomPadding: LayoutInsetsScope.of(context).bottomClearance,
+        ),
+      );
+    }
     if (_libraryView == 'home') {
       return RefreshIndicator(onRefresh: _refreshMusic, child: _buildMusicHome(visible));
     }
@@ -1463,12 +1507,19 @@ tooltip: 'Choose video view',
   Widget _musicScreen(BuildContext context) {
     final query = _searchQuery.trim().toLowerCase();
     final matches = _media.where((media) {
-      final q = query.isEmpty || media.entry.name.toLowerCase().contains(query) || media.path.toLowerCase().contains(query);
+      final q = query.isEmpty ||
+          media.entry.name.toLowerCase().contains(query) ||
+          media.path.toLowerCase().contains(query) ||
+          (media.title?.toLowerCase().contains(query) ?? false) ||
+          (media.artist?.toLowerCase().contains(query) ?? false) ||
+          (media.album?.toLowerCase().contains(query) ?? false);
       final volume = _selectedVolume == null || (_selectedVolume == 'internal' ? media.volume == null : media.volume == _selectedVolume);
       final favorite = _libraryView != 'favorites' || _favoriteKeys.contains(_favoriteKey(media));
       return q && volume && favorite;
     }).toList(growable: false);
-    final visible = _sortMedia(matches);
+    final visible = _sortMedia(
+      _libraryView == 'collection' ? _selectedCollectionItems : matches,
+    );
     final folderCount = _foldersAtCurrentLevel(_media).length;
     final favoriteCount = _media.where((m) => _favoriteKeys.contains(_favoriteKey(m))).length;
     final top = MediaQuery.paddingOf(context).top;
@@ -1478,7 +1529,9 @@ tooltip: 'Choose video view',
 
     return PopScope(
       canPop: widget.onBackHandlerChanged != null ||
-          (!_searchExpanded && !_selectionMode && (_libraryView != 'folders' || _atFolderRoot)),
+          (!_searchExpanded && !_selectionMode &&
+              _libraryView != 'collection' &&
+              (_libraryView != 'folders' || _atFolderRoot)),
       onPopInvokedWithResult: (didPop, result) {
         if (didPop || widget.onBackHandlerChanged != null) return;
         if (_searchExpanded) {
@@ -1522,8 +1575,10 @@ tooltip: 'Choose video view',
               searchController: _searchController,
               searchQuery: _searchQuery,
               menuOpen: _musicMenuOpen,
-              subtitle: _libraryView == 'home'
-                  ? '${visible.length} tracks • Your collection'
+              subtitle: _libraryView == 'collection'
+                  ? '${_collectionTitle ?? 'Collection'} • ${visible.length} tracks'
+                  : _libraryView == 'home'
+                      ? '${visible.length} tracks • Your collection'
                   : _libraryView == 'albums'
                       ? '${_catalog.albumsFromFolders(visible).length} albums • grouped by folder'
                       : _libraryView == 'artists'
