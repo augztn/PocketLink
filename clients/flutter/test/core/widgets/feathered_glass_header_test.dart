@@ -50,7 +50,7 @@ void main() {
     expect(blur.begin, Alignment.bottomCenter);
     expect(blur.end, Alignment.topCenter);
     expect(blur.sigmaStart, 72);
-    expect(blur.sigmaEnd, 0);
+    expect(blur.sigmaEnd, 36);
     expect(find.byType(Positioned), findsNothing);
   });
 
@@ -87,9 +87,31 @@ void main() {
       ),
     );
     final bounds = find.byWidgetPredicate(
-      (widget) => widget is SizedBox && widget.height == 96,
+      (widget) => widget is SizedBox && widget.height == 192,
     );
-    expect(tester.getSize(bounds).height, 96);
+    expect(tester.getSize(bounds).height, 192);
+  });
+
+  testWidgets('dark header has a readable default acrylic scrim',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(brightness: Brightness.dark),
+        home: const Scaffold(body: FeatheredGlassHeaderBackground()),
+      ),
+    );
+
+    final gradients = tester.widgetList<DecoratedBox>(find.byType(DecoratedBox))
+        .map((box) => box.decoration)
+        .whereType<BoxDecoration>()
+        .map((decoration) => decoration.gradient)
+        .whereType<LinearGradient>();
+    expect(
+      gradients.any((gradient) =>
+          gradient.colors.first == const Color(0x66000000) &&
+          gradient.colors.last == Colors.transparent),
+      isTrue,
+    );
   });
 
   testWidgets('custom dark tint remains supported', (tester) async {
