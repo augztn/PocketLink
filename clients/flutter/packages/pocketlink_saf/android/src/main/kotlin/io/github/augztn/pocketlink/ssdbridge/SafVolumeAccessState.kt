@@ -25,7 +25,7 @@ internal fun safVolumeAccessState(
         documentExists &&
         documentCanRead
     return SafVolumeAccessState(
-        selected = hasStoredUri,
+        selected = readable,
         readable = readable,
         writable = readable && hasWritePermission && documentCanWrite
     )
