@@ -443,6 +443,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     setState(() {
       if (!_selectedItems.add(item.name)) _selectedItems.remove(item.name);
     });
+    _syncBackHandler();
   }
 
   void _selectAll(List<FileEntry> visibleItems) {
@@ -452,6 +453,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   void _clearSelection() {
     if (_selectedItems.isEmpty) return;
     setState(_selectedItems.clear);
+    _syncBackHandler();
   }
 
   Future<void> _downloadSelected() async {
@@ -495,8 +497,10 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
           ? _messageFor(error)
           : 'Deleted $deleted of ${selected.length} items. ${_messageFor(error)}');
     } finally {
-      _clearSelection();
-      await _load();
+      if (mounted) {
+        _clearSelection();
+        await _load();
+      }
     }
   }
 
@@ -663,6 +667,8 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     }
     final handler = _showFilesHome
         ? null
+        : _isSelecting
+        ? _clearSelection
         : _searchExpanded
         ? () => _setSearchExpanded(false)
         : _path.isNotEmpty
@@ -715,7 +721,9 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
       canPop: embeddedTab || (!_searchExpanded && _path.isEmpty),
       onPopInvokedWithResult: (didPop, result) {
         if (didPop || embeddedTab) return;
-        if (_searchExpanded) {
+        if (_isSelecting) {
+          _clearSelection();
+        } else if (_searchExpanded) {
           _setSearchExpanded(false);
         } else if (_path.isNotEmpty) {
           _goUp();
