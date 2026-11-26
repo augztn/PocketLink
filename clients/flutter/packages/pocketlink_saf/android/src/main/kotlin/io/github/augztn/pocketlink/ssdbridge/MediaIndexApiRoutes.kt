@@ -66,7 +66,12 @@ internal class MediaIndexApiRoutes(
                         .put("size", item.size)
                         .put("modified", formatDate(item.modified))
                         .put("mime", item.mime)
-                        .put("category", item.category))
+                        .put("category", item.category)
+                        .put("title", item.title)
+                        .put("artist", item.artist)
+                        .put("album", item.album)
+                        .put("duration_ms", item.durationMs)
+                        .put("metadata_scanned", item.metadataScanned))
                 }
                 jsonResponse(JSONObject().put("items", items).put("status", mediaIndex.status()))
             }
