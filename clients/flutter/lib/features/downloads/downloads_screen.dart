@@ -15,6 +15,7 @@ import 'download_manager_service.dart';
 import 'download_task.dart';
 
 enum _DownloadFilter { all, active, completed, failed }
+enum _DownloadScope { server, local, all }
 
 class DownloadsScreen extends StatefulWidget {
   const DownloadsScreen({
@@ -31,6 +32,7 @@ class DownloadsScreen extends StatefulWidget {
 class _DownloadsScreenState extends State<DownloadsScreen> {
   final _manager = DownloadManagerService.instance;
   _DownloadFilter _filter = _DownloadFilter.all;
+  _DownloadScope _scope = _DownloadScope.server;
   List<ServerDownloadJob> _serverJobs = const [];
   Timer? _serverRefreshTimer;
   bool _refreshingServerJobs = false;
@@ -135,6 +137,25 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     }
   }
 
+
+  Future<void> _serverBulkAction({required bool pause}) async {
+    final candidates = _serverJobs.where((job) => pause
+        ? job.status == 'downloading' || job.status == 'queued'
+        : job.status == 'paused' || job.status == 'failed').toList();
+    for (final job in candidates) {
+      try {
+        if (pause) {
+          await widget.api.pauseServerDownload(job.id);
+        } else {
+          await widget.api.resumeServerDownload(job.id);
+        }
+      } catch (_) {
+        // Continue the remaining jobs; the refreshed list exposes failures.
+      }
+    }
+    await _refreshServerJobs();
+  }
+
   Future<void> _removeServerJob(ServerDownloadJob job) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -178,20 +199,28 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     }).toList(growable: false);
   }
 
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _manager,
       builder: (context, _) {
-        final tasks = _visibleTasks(_manager.tasks);
-        final serverJobs = _visibleServerJobs(_serverJobs);
+        final allLocalTasks = _manager.tasks;
+        final allServerJobs = _serverJobs;
+        final tasks = _visibleTasks(allLocalTasks).where((task) =>
+            _scope != _DownloadScope.server).toList(growable: false);
+        final serverJobs = _visibleServerJobs(allServerJobs).where((job) =>
+            _scope != _DownloadScope.local).toList(growable: false);
         final theme = Theme.of(context);
         final colors = theme.colorScheme;
-        final subtitle = _manager.activeCount > 0
-            ? '${_formatSpeed(_manager.totalSpeedBytesPerSecond)} · ${_manager.activeCount} active'
-            : _manager.queuedCount > 0
-                ? '${_manager.queuedCount} queued'
-                : 'Manage your downloads';
+        final activeServer = allServerJobs.where((job) => job.status == 'downloading').length;
+        final queuedServer = allServerJobs.where((job) => job.status == 'queued').length;
+        final completedServer = allServerJobs.where((job) => job.status == 'completed').length;
+        final activeLocal = _manager.activeCount;
+        final queuedLocal = _manager.queuedCount;
+        final subtitle = activeServer + activeLocal > 0
+            ? '${activeServer + activeLocal} active · ${_formatSpeed(allServerJobs.where((j) => j.status == 'downloading').fold<int>(0, (sum, j) => sum + j.speedBytesPerSecond) + _manager.totalSpeedBytesPerSecond)}'
+            : 'Server downloads to your host storage';
 
         return Scaffold(
           extendBodyBehindAppBar: true,
@@ -205,84 +234,16 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
               icon: const Icon(Icons.arrow_back_rounded),
             ),
             leadingWidth: 56,
-            title: TitleDropdownPopover<_DownloadFilter>(
-tooltip: 'Filter downloads',
-              items: [
-                for (final filter in _DownloadFilter.values)
-                  SmokedGlassPopoverMenuItem(
-                    value: filter,
-                    label: switch (filter) {
-                      _DownloadFilter.all => 'All downloads',
-                      _DownloadFilter.active => 'Active',
-                      _DownloadFilter.completed => 'Completed',
-                      _DownloadFilter.failed => 'Failed',
-                    },
-                    icon: switch (filter) {
-                      _DownloadFilter.all => Icons.download_rounded,
-                      _DownloadFilter.active => Icons.sync_rounded,
-                      _DownloadFilter.completed => Icons.check_circle_outline_rounded,
-                      _DownloadFilter.failed => Icons.error_outline_rounded,
-                    },
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          '${switch (filter) {
-                            _DownloadFilter.all => _manager.tasks.length,
-                            _DownloadFilter.active => _manager.activeCount,
-                            _DownloadFilter.completed => _manager.tasks.where((task) => task.status == DownloadStatus.completed).length,
-                            _DownloadFilter.failed => _manager.tasks.where((task) => task.status == DownloadStatus.failed).length,
-                          }}',
-                          style: const TextStyle(
-                            fontFamily: 'monospace',
-                            fontSize: 12,
-                            color: Color(0xFFA1A7B3),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        SizedBox(
-                          width: 20,
-                          child: _filter == filter
-                              ? const Icon(Icons.check_rounded, size: 18)
-                              : null,
-                        ),
-                      ],
-                    ),
-                  ),
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Downloads', style: theme.textTheme.titleLarge?.copyWith(
+                  fontSize: 26, fontWeight: FontWeight.w700, letterSpacing: -0.5,
+                )),
+                Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant)),
               ],
-              onSelected: (value) => setState(() => _filter = value),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Flexible(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Downloads',
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            fontSize: 26,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                        Text(
-                          subtitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: colors.onSurfaceVariant,
-                            fontFeatures: [ui.FontFeature.tabularFigures()],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
-                ],
-              ),
             ),
             actions: [
               PocketLinkAppBarAction(
@@ -290,114 +251,288 @@ tooltip: 'Filter downloads',
                 icon: Icons.add_link_rounded,
                 onPressed: _newDownload,
               ),
-              PocketLinkAppBarAction(
-                label: 'Pause all',
-                icon: Icons.pause_rounded,
-                enabled: _manager.activeCount > 0 || _manager.queuedCount > 0,
-                onPressed: _manager.activeCount > 0 || _manager.queuedCount > 0 ? _manager.pauseAll : null,
-              ),
-              PocketLinkAppBarAction(
-                label: 'Resume all',
-                icon: Icons.play_arrow_rounded,
-                enabled: _manager.tasks.any((task) =>
-                    task.status == DownloadStatus.paused ||
-                    task.status == DownloadStatus.failed),
-                onPressed: _manager.tasks.any((task) =>
-                    task.status == DownloadStatus.paused ||
-                    task.status == DownloadStatus.failed)
-                    ? _manager.resumeAll
-                    : null,
-              ),
-              PocketLinkAppBarAction(
-                label: 'Clear completed',
-                icon: Icons.delete_sweep_outlined,
-                enabled: _manager.tasks.any(
-                    (task) => task.status == DownloadStatus.completed),
-                onPressed: _manager.tasks.any(
-                    (task) => task.status == DownloadStatus.completed)
-                    ? _manager.clearCompleted
-                    : null,
-                dividerBefore: true,
-              ),
+              if (_scope != _DownloadScope.local)
+                PocketLinkAppBarAction(
+                  label: 'Pause server downloads',
+                  icon: Icons.pause_rounded,
+                  enabled: activeServer + queuedServer > 0,
+                  onPressed: activeServer + queuedServer > 0
+                      ? () => _serverBulkAction(pause: true) : null,
+                ),
+              if (_scope != _DownloadScope.local)
+                PocketLinkAppBarAction(
+                  label: 'Resume server downloads',
+                  icon: Icons.play_arrow_rounded,
+                  enabled: allServerJobs.any((j) => j.status == 'paused' || j.status == 'failed'),
+                  onPressed: allServerJobs.any((j) => j.status == 'paused' || j.status == 'failed')
+                      ? () => _serverBulkAction(pause: false) : null,
+                ),
+              if (_scope != _DownloadScope.server)
+                PocketLinkAppBarAction(
+                  label: 'Pause local downloads',
+                  icon: Icons.pause_circle_outline_rounded,
+                  enabled: activeLocal > 0 || queuedLocal > 0,
+                  onPressed: activeLocal > 0 || queuedLocal > 0 ? _manager.pauseAll : null,
+                ),
+              if (_scope != _DownloadScope.server)
+                PocketLinkAppBarAction(
+                  label: 'Resume local downloads',
+                  icon: Icons.play_circle_outline_rounded,
+                  enabled: allLocalTasks.any((task) => task.status == DownloadStatus.paused || task.status == DownloadStatus.failed),
+                  onPressed: allLocalTasks.any((task) => task.status == DownloadStatus.paused || task.status == DownloadStatus.failed)
+                      ? _manager.resumeAll : null,
+                ),
+              if (_scope != _DownloadScope.server)
+                PocketLinkAppBarAction(
+                  label: 'Clear completed local downloads',
+                  icon: Icons.delete_sweep_outlined,
+                  enabled: allLocalTasks.any((task) => task.status == DownloadStatus.completed),
+                  onPressed: allLocalTasks.any((task) => task.status == DownloadStatus.completed)
+                      ? _manager.clearCompleted : null,
+                  dividerBefore: true,
+                ),
             ],
           ),
-          body: ListView.builder(
+          body: ListView(
             padding: EdgeInsets.fromLTRB(
               16,
               LayoutInsetsScope.of(context).topClearance + 2,
               16,
               LayoutInsetsScope.of(context).bottomClearance,
             ),
-            itemCount: tasks.isEmpty && serverJobs.isEmpty ? 2 : 1 + tasks.length + serverJobs.length,
-            itemBuilder: (context, index) {
-              if (index == 0) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 14),
-                  child: SizedBox(
-                    height: 44,
-                    child: SmokedGlassSurface(
-                      radius: BorderRadius.circular(99),
-                      child: TextButton.icon(
-                        onPressed: _newDownload,
-                        icon: const Icon(Icons.add_link_rounded),
-                        label: const Text('Add URL'),
-                        style: TextButton.styleFrom(foregroundColor: Colors.white, shape: const StadiumBorder()),
-                      ),
+            children: [
+              _DownloadsOverview(
+                serverActive: activeServer,
+                serverQueued: queuedServer,
+                serverCompleted: completedServer,
+                localActive: activeLocal,
+                localQueued: queuedLocal,
+                localCompleted: allLocalTasks.where((t) => t.status == DownloadStatus.completed).length,
+                scope: _scope,
+                onScopeChanged: (scope) => setState(() => _scope = scope),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(child: Text(
+                    _scope == _DownloadScope.server ? 'Server transfers'
+                        : _scope == _DownloadScope.local ? 'Local downloads' : 'All downloads',
+                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                  )),
+                  PopupMenuButton<_DownloadFilter>(
+                    tooltip: 'Filter downloads',
+                    initialValue: _filter,
+                    onSelected: (value) => setState(() => _filter = value),
+                    itemBuilder: (_) => [
+                      for (final filter in _DownloadFilter.values)
+                        PopupMenuItem(
+                          value: filter,
+                          child: Text(switch (filter) {
+                            _DownloadFilter.all => 'All statuses',
+                            _DownloadFilter.active => 'Active',
+                            _DownloadFilter.completed => 'Completed',
+                            _DownloadFilter.failed => 'Failed',
+                          }),
+                        ),
+                    ],
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        const Icon(Icons.filter_list_rounded, size: 18),
+                        const SizedBox(width: 5),
+                        Text(switch (_filter) {
+                          _DownloadFilter.all => 'All',
+                          _DownloadFilter.active => 'Active',
+                          _DownloadFilter.completed => 'Completed',
+                          _DownloadFilter.failed => 'Failed',
+                        }),
+                        const Icon(Icons.arrow_drop_down_rounded),
+                      ]),
                     ),
                   ),
-                );
-              }
-              if (tasks.isEmpty && serverJobs.isEmpty) {
-                final hasAnyTasks = _manager.tasks.isNotEmpty || _serverJobs.isNotEmpty;
-                return Padding(
-                  padding: const EdgeInsets.only(top: 56),
+                ],
+              ),
+              const SizedBox(height: 10),
+              if (serverJobs.isNotEmpty) ...[
+                if (_scope == _DownloadScope.all)
+                  const _DownloadSectionLabel(title: 'Server', icon: Icons.cloud_download_outlined),
+                for (var i = 0; i < serverJobs.length; i++)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _ServerDownloadJobCard(
+                      job: serverJobs[i],
+                      queuePosition: serverJobs[i].status == 'queued'
+                          ? serverJobs.take(i + 1).where((j) => j.status == 'queued').length
+                          : null,
+                      onPause: () => _serverAction(() => widget.api.pauseServerDownload(serverJobs[i].id)),
+                      onResume: () => _serverAction(() => widget.api.resumeServerDownload(serverJobs[i].id)),
+                      onCancel: () => _serverAction(() => widget.api.cancelServerDownload(serverJobs[i].id)),
+                      onRemove: () => _removeServerJob(serverJobs[i]),
+                    ),
+                  ),
+              ],
+              if (tasks.isNotEmpty) ...[
+                if (_scope == _DownloadScope.all)
+                  const _DownloadSectionLabel(title: 'Local', icon: Icons.phone_android_rounded),
+                for (final task in tasks)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _DownloadTaskCard(
+                      task: task,
+                      onPause: () => _manager.pause(task.id),
+                      onResume: () => _manager.resume(task.id),
+                      onOpen: () => _manager.openFile(task),
+                      onDelete: () => _delete(task),
+                    ),
+                  ),
+              ],
+              if (serverJobs.isEmpty && tasks.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 56, bottom: 40),
                   child: Column(
                     children: [
-                      Icon(hasAnyTasks ? Icons.filter_alt_off_rounded : Icons.download_for_offline_outlined,
-                          size: 48, color: colors.onSurfaceVariant.withValues(alpha: 0.65)),
+                      Icon(
+                        allLocalTasks.isEmpty && allServerJobs.isEmpty
+                            ? Icons.download_for_offline_outlined : Icons.filter_alt_off_rounded,
+                        size: 48, color: colors.onSurfaceVariant.withValues(alpha: 0.65),
+                      ),
                       const SizedBox(height: 12),
-                      Text(hasAnyTasks ? 'No matching downloads' : 'No downloads yet',
-                          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                      Text(
+                        allLocalTasks.isEmpty && allServerJobs.isEmpty
+                            ? 'No downloads yet' : 'No matching downloads',
+                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                      ),
                       const SizedBox(height: 5),
                       Text(
-                        hasAnyTasks ? 'Try another download filter.' : 'Add a URL and choose Local or Server as its destination.',
+                        allLocalTasks.isEmpty && allServerJobs.isEmpty
+                            ? 'Add a URL and choose Server to download directly to host storage.'
+                            : 'Try another destination or status filter.',
                         textAlign: TextAlign.center,
                         style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
                       ),
+                      const SizedBox(height: 16),
+                      OutlinedButton.icon(
+                        onPressed: _newDownload,
+                        icon: const Icon(Icons.add_link_rounded),
+                        label: const Text('Add URL'),
+                      ),
                     ],
                   ),
-                );
-              }
-              if (index <= tasks.length) {
-                final task = tasks[index - 1];
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _DownloadTaskCard(
-                    task: task,
-                    onPause: () => _manager.pause(task.id),
-                    onResume: () => _manager.resume(task.id),
-                    onOpen: () => _manager.openFile(task),
-                    onDelete: () => _delete(task),
-                  ),
-                );
-              }
-              final job = serverJobs[index - tasks.length - 1];
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _ServerDownloadJobCard(
-                  job: job,
-                  onPause: () => _serverAction(() => widget.api.pauseServerDownload(job.id)),
-                  onResume: () => _serverAction(() => widget.api.resumeServerDownload(job.id)),
-                  onCancel: () => _serverAction(() => widget.api.cancelServerDownload(job.id)),
-                  onRemove: () => _removeServerJob(job),
                 ),
-              );
-            },
+            ],
           ),
         );
       },
     );
   }
+
+}
+
+class _DownloadTaskCard}
+
+
+class _DownloadsOverview extends StatelessWidget {
+  const _DownloadsOverview({
+    required this.serverActive,
+    required this.serverQueued,
+    required this.serverCompleted,
+    required this.localActive,
+    required this.localQueued,
+    required this.localCompleted,
+    required this.scope,
+    required this.onScopeChanged,
+  });
+
+  final int serverActive, serverQueued, serverCompleted;
+  final int localActive, localQueued, localCompleted;
+  final _DownloadScope scope;
+  final ValueChanged<_DownloadScope> onScopeChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final server = scope != _DownloadScope.local;
+    final local = scope != _DownloadScope.server;
+    final active = (server ? serverActive : 0) + (local ? localActive : 0);
+    final queued = (server ? serverQueued : 0) + (local ? localQueued : 0);
+    final completed = (server ? serverCompleted : 0) + (local ? localCompleted : 0);
+    final colors = Theme.of(context).colorScheme;
+    Widget metric(String value, String label) => Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+        decoration: BoxDecoration(
+          color: colors.surfaceContainerHighest.withValues(alpha: 0.45),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(value, style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w700, fontFeatures: const [ui.FontFeature.tabularFigures()],
+          )),
+          const SizedBox(height: 2),
+          Text(label, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant)),
+        ]),
+      ),
+    );
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        _scopeChip(context, _DownloadScope.server, 'Server', Icons.cloud_download_outlined),
+        const SizedBox(width: 8),
+        _scopeChip(context, _DownloadScope.local, 'Local', Icons.phone_android_rounded),
+        const SizedBox(width: 8),
+        _scopeChip(context, _DownloadScope.all, 'All', Icons.swap_vert_rounded),
+      ]),
+      const SizedBox(height: 12),
+      Row(children: [
+        metric('$active', 'Active'),
+        const SizedBox(width: 8),
+        metric('$queued', 'Queued'),
+        const SizedBox(width: 8),
+        metric('$completed', 'Completed'),
+      ]),
+    ]);
+  }
+
+  Widget _scopeChip(BuildContext context, _DownloadScope value, String label, IconData icon) {
+    final selected = scope == value;
+    final colors = Theme.of(context).colorScheme;
+    return Expanded(
+      child: Material(
+        color: selected ? colors.primaryContainer : colors.surfaceContainerHighest.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(13),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(13),
+          onTap: () => onScopeChanged(value),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Icon(icon, size: 16, color: selected ? colors.onPrimaryContainer : colors.onSurfaceVariant),
+              const SizedBox(width: 5),
+              Text(label, style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: selected ? colors.onPrimaryContainer : colors.onSurfaceVariant,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              )),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DownloadSectionLabel extends StatelessWidget {
+  const _DownloadSectionLabel({required this.title, required this.icon});
+  final String title;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(2, 8, 2, 10),
+    child: Row(children: [
+      Icon(icon, size: 17, color: Theme.of(context).colorScheme.onSurfaceVariant),
+      const SizedBox(width: 7),
+      Text(title, style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700)),
+    ]),
+  );
 }
 
 class _DownloadTaskCard extends StatelessWidget {
@@ -582,6 +717,7 @@ class _DownloadTaskCard extends StatelessWidget {
   }
 }
 
+
 class _ServerDownloadJobCard extends StatelessWidget {
   const _ServerDownloadJobCard({
     required this.job,
@@ -589,6 +725,7 @@ class _ServerDownloadJobCard extends StatelessWidget {
     required this.onResume,
     required this.onCancel,
     required this.onRemove,
+    this.queuePosition,
   });
 
   final ServerDownloadJob job;
@@ -596,6 +733,7 @@ class _ServerDownloadJobCard extends StatelessWidget {
   final VoidCallback onResume;
   final VoidCallback onCancel;
   final VoidCallback onRemove;
+  final int? queuePosition;
 
   @override
   Widget build(BuildContext context) {
@@ -605,87 +743,137 @@ class _ServerDownloadJobCard extends StatelessWidget {
     final canPause = downloading || job.status == 'queued';
     final completed = job.status == 'completed';
     final failed = job.status == 'failed';
+    final cancelled = job.status == 'cancelled';
     final status = switch (job.status) {
-      'queued' => 'Queued on server',
-      'downloading' => 'Downloading on server',
+      'queued' => 'Queued on host',
+      'downloading' => 'Downloading on host',
       'paused' => 'Paused',
-      'completed' => 'Saved to server',
+      'completed' => 'Saved to host',
       'cancelled' => 'Cancelled',
-      _ => 'Failed',
+      _ => 'Download failed',
     };
+    final host = Uri.tryParse(job.url)?.host;
+    final remaining = job.totalBytes == null || job.speedBytesPerSecond <= 0
+        ? null
+        : ((job.totalBytes! - job.downloadedBytes).clamp(0, job.totalBytes!) /
+                job.speedBytesPerSecond)
+            .ceil();
+    final eta = remaining == null ? null : _formatEta(remaining);
+
     return SmokedGlassSurface(
       radius: BorderRadius.circular(20),
       child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.cloud_download_outlined, color: Colors.white70, size: 30),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(job.fileName, maxLines: 2, overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
-                      const SizedBox(height: 3),
-                      Text('SERVER · ' + status,
-                          style: TextStyle(color: completed ? Colors.greenAccent.shade100 : failed ? colors.error : Colors.white60, fontSize: 11)),
-                    ],
-                  ),
-                ),
-                if (canPause)
-                  IconButton(tooltip: 'Pause', onPressed: onPause, icon: const Icon(Icons.pause_rounded, color: Colors.white))
-                else if (!completed && job.status != 'cancelled')
-                  IconButton(tooltip: 'Resume', onPressed: onResume, icon: const Icon(Icons.play_arrow_rounded, color: Colors.white)),
-                if (!completed && job.status != 'cancelled')
-                  IconButton(tooltip: 'Cancel', onPressed: onCancel, icon: const Icon(Icons.close_rounded, color: Colors.white70)),
-                IconButton(tooltip: 'Remove', onPressed: onRemove, icon: const Icon(Icons.delete_outline_rounded, color: Colors.white70)),
-              ],
-            ),
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(99),
-              child: LinearProgressIndicator(
-                value: progress ?? (downloading ? null : 0.0),
-                minHeight: 4,
-                backgroundColor: Colors.white.withValues(alpha: 0.10),
+        padding: const EdgeInsets.all(15),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Container(
+              width: 42, height: 42,
+              decoration: BoxDecoration(
+                color: colors.primary.withValues(alpha: 0.13),
+                borderRadius: BorderRadius.circular(13),
               ),
+              child: Icon(_fileIcon(job.fileName), color: colors.primary, size: 22),
             ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    job.totalBytes == null ? _formatBytes(job.downloadedBytes) :
-                      _formatBytes(job.downloadedBytes) + ' / ' + _formatBytes(job.totalBytes!),
-                    style: const TextStyle(color: Colors.white70, fontSize: 11),
-                  ),
-                ),
-                if (downloading && job.speedBytesPerSecond > 0)
-                  Text(_formatSpeed(job.speedBytesPerSecond), style: const TextStyle(color: Colors.white70, fontSize: 11)),
-                if (progress != null) ...[
-                  const SizedBox(width: 8),
-                  Text((progress * 100).round().toString() + '%', style: const TextStyle(color: Colors.white70, fontSize: 11)),
-                ],
+            const SizedBox(width: 12),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(job.fileName, maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
+              const SizedBox(height: 3),
+              Text(status, style: TextStyle(
+                color: completed ? const Color(0xFF8BE0B0) : failed ? colors.error : Colors.white70,
+                fontSize: 11,
+              )),
+            ])),
+            PopupMenuButton<String>(
+              tooltip: 'Download actions',
+              icon: const Icon(Icons.more_vert_rounded, color: Colors.white70),
+              onSelected: (value) {
+                if (value == 'pause') onPause();
+                if (value == 'resume') onResume();
+                if (value == 'cancel') onCancel();
+                if (value == 'remove') onRemove();
+              },
+              itemBuilder: (_) => [
+                if (canPause) const PopupMenuItem(value: 'pause', child: Text('Pause')),
+                if (!canPause && !completed && !cancelled)
+                  PopupMenuItem(value: 'resume', child: Text(failed ? 'Retry download' : 'Resume')),
+                if (!completed && !cancelled)
+                  const PopupMenuItem(value: 'cancel', child: Text('Cancel')),
+                const PopupMenuDivider(),
+                const PopupMenuItem(value: 'remove', child: Text('Remove from history')),
               ],
             ),
-            if (job.destinationPath != null) ...[
-              const SizedBox(height: 7),
-              Text(job.destinationPath!, maxLines: 2, overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white54, fontSize: 11)),
+          ]),
+          const SizedBox(height: 13),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(99),
+            child: LinearProgressIndicator(
+              value: progress ?? (downloading ? null : completed ? 1 : 0),
+              minHeight: 5,
+              backgroundColor: Colors.white.withValues(alpha: 0.10),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(children: [
+            Expanded(child: Text(
+              job.totalBytes == null
+                  ? _formatBytes(job.downloadedBytes)
+                  : '${_formatBytes(job.downloadedBytes)} / ${_formatBytes(job.totalBytes!)}',
+              style: const TextStyle(color: Colors.white70, fontSize: 11),
+            )),
+            if (downloading && job.speedBytesPerSecond > 0)
+              Text(_formatSpeed(job.speedBytesPerSecond),
+                style: const TextStyle(color: Colors.white70, fontSize: 11)),
+            if (progress != null) ...[
+              const SizedBox(width: 9),
+              Text('${(progress * 100).round()}%',
+                style: const TextStyle(color: Colors.white70, fontSize: 11)),
             ],
-            if (job.error != null) ...[
-              const SizedBox(height: 7),
-              Text(job.error!, style: TextStyle(color: colors.error, fontSize: 12)),
-            ],
+          ]),
+          if (downloading && eta != null) ...[
+            const SizedBox(height: 6),
+            Text('About $eta remaining', style: const TextStyle(color: Colors.white54, fontSize: 11)),
           ],
-        ),
+          if (queuePosition != null) ...[
+            const SizedBox(height: 6),
+            Text('Queue position $queuePosition', style: const TextStyle(color: Colors.white54, fontSize: 11)),
+          ],
+          if (host != null && host.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Row(children: [
+              const Icon(Icons.link_rounded, size: 13, color: Colors.white54),
+              const SizedBox(width: 5),
+              Expanded(child: Text(host, maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.white54, fontSize: 11))),
+            ]),
+          ],
+          if (job.destinationPath != null) ...[
+            const SizedBox(height: 6),
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Icon(Icons.folder_outlined, size: 13, color: Colors.white54),
+              const SizedBox(width: 5),
+              Expanded(child: Text(job.destinationPath!, maxLines: 2, overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.white54, fontSize: 11))),
+            ]),
+          ],
+          if (job.error != null) ...[
+            const SizedBox(height: 8),
+            Text(job.error!, style: TextStyle(color: colors.error, fontSize: 12)),
+          ],
+        ]),
       ),
     );
   }
+}
+
+String _formatEta(int seconds) {
+  if (seconds < 60) return '$seconds sec';
+  final duration = Duration(seconds: seconds);
+  if (duration.inHours > 0) {
+    final minutes = duration.inMinutes.remainder(60);
+    return minutes == 0 ? '${duration.inHours} hr' : '${duration.inHours} hr $minutes min';
+  }
+  return '${duration.inMinutes} min';
 }
 
 class _NewDownloadSheet extends StatefulWidget {
