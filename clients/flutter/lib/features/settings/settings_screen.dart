@@ -594,6 +594,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onChanged: _settings.setUseLiquidGlass,
                     ),
                     const Divider(height: 1),
+                    SwitchListTile(
+                      secondary: const Icon(Icons.blur_circular_rounded),
+                      title: const Text('Progressive Blur'),
+                      subtitle: const Text(
+                        'Enable the continuous blur fade behind shared screen headers',
+                      ),
+                      value: _settings.progressiveBlurEnabled,
+                      onChanged: _settings.setProgressiveBlurEnabled,
+                    ),
+                    const Divider(height: 1),
                   ]),
                 if (widget.category == 'Dashboard & Shortcuts')
                   _section('Dashboard & Shortcuts', [
