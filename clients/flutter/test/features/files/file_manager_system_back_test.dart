@@ -50,6 +50,9 @@ void main() {
           },
           child: FileManagerScreen(
             api: api,
+            // Exercise the directory browser rather than the Files home
+            // landing page; folder entries remain visible in every category.
+            initialCategory: 'Documents',
             isActive: true,
             onBackAtRoot: () {},
             onBackHandlerChanged: (handler) {
