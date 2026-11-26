@@ -24,6 +24,7 @@ import 'discover_service.dart';
 import 'discover_cache.dart';
 import 'discover_thumbnail_cache.dart';
 import 'discover_recently_played_store.dart';
+import 'discover_home_feed_store.dart';
 import 'discover_moods_screen.dart';
 
 class _DiscoverShelf {
@@ -322,15 +323,37 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
   Future<void> _loadHome({bool forceRefresh = false}) async {
     final region = AppSettings.instance.discoverRegion;
     final cacheKey = 'home:$region';
-    final cached = DiscoverCache.instance.read<_DiscoverFeedSnapshot>(cacheKey);
-    if (cached != null) {
+    var cached = DiscoverCache.instance.read<_DiscoverFeedSnapshot>(cacheKey);
+    var persistedStale = false;
+
+    // Restore the last successful feed after process restart before making a
+    // network request. A stale snapshot remains visible while it refreshes.
+    if (cached == null) {
+      final persisted = await DiscoverHomeFeedStore.read(region);
+      if (!mounted || region != AppSettings.instance.discoverRegion) return;
+      if (persisted != null) {
+        final snapshot = _DiscoverFeedSnapshot(
+          List.unmodifiable(persisted.feed.shelves.map(
+            (shelf) => _DiscoverShelf(shelf.title, shelf.tracks),
+          )),
+          'Discover in ${AppSettings.discoverRegions[region] ?? region}',
+          persisted.feed.continuation,
+        );
+        DiscoverCache.instance.write(cacheKey, snapshot);
+        cached = DiscoverCache.instance.read<_DiscoverFeedSnapshot>(cacheKey);
+        persistedStale = persisted.isStale;
+      }
+    }
+
+    final cacheEntry = cached;
+    if (cacheEntry != null) {
       void restore() {
-        _homeShelves = cached.value.shelves;
-        _tracks = cached.value.shelves.isEmpty
+        _homeShelves = cacheEntry.value.shelves;
+        _tracks = cacheEntry.value.shelves.isEmpty
             ? const []
-            : cached.value.shelves.first.tracks;
-        _sectionTitle = cached.value.sectionTitle;
-        _homeContinuation = cached.value.continuation;
+            : cacheEntry.value.shelves.first.tracks;
+        _sectionTitle = cacheEntry.value.sectionTitle;
+        _homeContinuation = cacheEntry.value.continuation;
         _error = null;
         _loading = false;
       }
@@ -340,12 +363,13 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       } else {
         restore();
       }
+      final stale = persistedStale || DiscoverCache.instance.isStale(cacheEntry);
       AppLogger.event('discover.home_cache_restored', category: 'discover',
         component: 'discover_screen',
-        fields: {'shelf_count': cached.value.shelves.length,
-          'track_count': cached.value.shelves.fold<int>(0, (sum, shelf) => sum + shelf.tracks.length),
-          'stale': DiscoverCache.instance.isStale(cached)});
-      if (!forceRefresh && !DiscoverCache.instance.isStale(cached)) return;
+        fields: {'shelf_count': cacheEntry.value.shelves.length,
+          'track_count': cacheEntry.value.shelves.fold<int>(0, (sum, shelf) => sum + shelf.tracks.length),
+          'stale': stale, 'persistent': true});
+      if (!forceRefresh && !stale) return;
       if (!forceRefresh) {
         unawaited(_fetchHome(cacheKey, showLoading: false));
         return;
@@ -409,6 +433,17 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
         feed.continuation,
       );
       DiscoverCache.instance.write(cacheKey, snapshot);
+      unawaited(DiscoverHomeFeedStore.write(
+        region,
+        DiscoverHomeFeed(
+          shelves: feed.shelves,
+          continuation: feed.continuation,
+        ),
+      ).catchError((Object error) {
+        AppLogger.warning('Discover feed cache persistence failed',
+          category: 'discover', component: 'discover_screen',
+          fields: {'failure_type': error.runtimeType.toString()});
+      }));
       AppLogger.event('discover.home_loading_completed', category: 'discover',
         component: 'discover_screen',
         fields: {'generation': generation, 'shelf_count': snapshot.shelves.length,
@@ -493,6 +528,18 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
           'home:${AppSettings.instance.discoverRegion}',
           snapshot,
         );
+        unawaited(DiscoverHomeFeedStore.write(
+          region,
+          DiscoverHomeFeed(
+            shelves: _homeShelves.map((shelf) => DiscoverHomeShelf(
+              title: shelf.title, tracks: shelf.tracks,
+            )).toList(growable: false),
+          ),
+        ).catchError((Object error) {
+          AppLogger.warning('Discover feed cache persistence failed',
+            category: 'discover', component: 'discover_screen',
+            fields: {'failure_type': error.runtimeType.toString()});
+        }));
         setState(() => _homeContinuation = '');
         return;
       }
@@ -505,6 +552,19 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
         nextContinuation,
       );
       DiscoverCache.instance.write('home:${AppSettings.instance.discoverRegion}', snapshot);
+      unawaited(DiscoverHomeFeedStore.write(
+        region,
+        DiscoverHomeFeed(
+          shelves: snapshot.shelves.map((shelf) => DiscoverHomeShelf(
+            title: shelf.title, tracks: shelf.tracks,
+          )).toList(growable: false),
+          continuation: snapshot.continuation,
+        ),
+      ).catchError((Object error) {
+        AppLogger.warning('Discover feed cache persistence failed',
+          category: 'discover', component: 'discover_screen',
+          fields: {'failure_type': error.runtimeType.toString()});
+      }));
       setState(() {
         _homeShelves = snapshot.shelves;
         _homeContinuation = snapshot.continuation;
