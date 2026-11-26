@@ -13,6 +13,7 @@ void main() {
     WidgetTester tester, {
     bool isPlaying = true,
     bool canSkip = true,
+    bool visible = true,
     VoidCallback? onOpen,
     VoidCallback? onDismiss,
     VoidCallback? onTogglePlayback,
@@ -30,7 +31,8 @@ void main() {
           body: Center(
             child: GlobalMiniPlayerBar(
               item: item,
-              visible: true,
+              visible: visible,
+              surfaceIntensity: visible ? 1.0 : 0.0,
               reduceMotion: true,
               isPlaying: isPlaying,
               position: position,
@@ -149,6 +151,31 @@ void main() {
     double? releaseVelocity;
     await pumpMiniPlayer(
       tester,
+      onExpandDragUpdate: dragDeltas.add,
+      onExpandDragEnd: (velocity) => releaseVelocity = velocity,
+    );
+
+    await tester.fling(
+      find.byType(GlobalMiniPlayerBar),
+      const Offset(0, -140),
+      1000,
+    );
+    await tester.pump();
+
+    expect(dragDeltas, isNotEmpty);
+    expect(dragDeltas.any((delta) => delta < 0), isTrue);
+    expect(releaseVelocity, isNotNull);
+    expect(releaseVelocity, lessThan(0));
+  });
+
+  testWidgets('hidden mini-player keeps its active drag recognizer hit-testable',
+      (tester) async {
+    final dragDeltas = <double>[];
+    double? releaseVelocity;
+    await pumpMiniPlayer(
+      tester,
+      visible: false,
+      onExpandDragStart: () {},
       onExpandDragUpdate: dragDeltas.add,
       onExpandDragEnd: (velocity) => releaseVelocity = velocity,
     );
