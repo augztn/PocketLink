@@ -1231,9 +1231,88 @@ tooltip: 'Choose video view',
         media,
         failureMessage: 'Could not add this track to Downloads.',
       ),
+      onDelete: () => _deleteMusicFile(media),
     );
   }
 
+  Future<void> _deleteMusicFile(MediaFileItem media) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete permanently?'),
+        content: Text(
+          '“${media.entry.name}” will be permanently deleted from '
+          '${_volumeName(media.volume)}. This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(dialogContext).colorScheme.error,
+            ),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Delete permanently'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final key = _favoriteKey(media);
+    try {
+      await widget.api.deleteMediaFile(media.path, volume: media.volume);
+    } on DioException {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Could not delete this file. Check that the storage is connected and writable.',
+          ),
+        ),
+      );
+      return;
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not delete this music file.')),
+      );
+      return;
+    }
+
+    final favorites = Set<String>.of(_favoriteKeys)..remove(key);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(
+      _favoritesPreferenceKey,
+      favorites.toList()..sort(),
+    );
+
+    final player = PersistentAudioPlayer.instance;
+    final current = player.currentItem;
+    if (current?.path == media.path && current?.volume == media.volume) {
+      unawaited(player.dismiss());
+    }
+
+    _musicArtworkCache.remove(key);
+    _musicDurationRequests.remove(key);
+    if (!mounted) return;
+    setState(() {
+      _media = List.unmodifiable(
+        _media.where((item) => _favoriteKey(item) != key),
+      );
+      _selectedCollectionItems = List.unmodifiable(
+        _selectedCollectionItems.where((item) => _favoriteKey(item) != key),
+      );
+      _favoriteKeys = favorites;
+      _selectedTrackKeys.remove(key);
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Deleted ${media.entry.name}')),
+    );
+    unawaited(_scan(refresh: true));
+  }
 
   void _selectMusicView(String value) {
     if (value == 'playlists') {
