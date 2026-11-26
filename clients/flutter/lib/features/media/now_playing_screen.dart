@@ -1551,10 +1551,13 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
             ),
           if (hasArtwork)
             Positioned.fill(
-              child: ClipRect(
-                child: BackdropFilter(
-                  filter: ui.ImageFilter.blur(sigmaX: 36, sigmaY: 36),
-                  child: const ColoredBox(color: Colors.transparent),
+              child: ImageFiltered(
+                imageFilter: ui.ImageFilter.blur(sigmaX: 36, sigmaY: 36),
+                child: Image.memory(
+                  _artwork!,
+                  cacheWidth: 544,
+                  fit: BoxFit.cover,
+                  gaplessPlayback: true,
                 ),
               ),
             ),
