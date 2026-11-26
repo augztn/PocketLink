@@ -54,6 +54,28 @@ void main() {
     expect(find.byType(Positioned), findsNothing);
   });
 
+  testWidgets('shader blur converts logical sigma to physical pixels', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(devicePixelRatio: 3),
+          child: const Scaffold(
+            body: SizedBox(
+              height: 100,
+              child: ProgressiveBlur(),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final blur = tester.widget<shader_blur.ProgressiveBlur>(
+      find.byType(shader_blur.ProgressiveBlur),
+    );
+    expect(blur.sigmaStart, 72);
+    expect(blur.sigmaEnd, 0);
+  });
+
   testWidgets('header preserves status bar plus toolbar plus fade-tail geometry',
       (tester) async {
     await tester.pumpWidget(
