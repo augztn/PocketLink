@@ -320,7 +320,7 @@ class _MiniPlayerGestureSurfaceState
       _axis = _distance.dy.abs() > _distance.dx.abs()
           ? _MiniPlayerDragAxis.vertical
           : _MiniPlayerDragAxis.horizontal;
-      if (_axis == _MiniPlayerDragAxis.vertical) {
+      if (_axis == _MiniPlayerDragAxis.vertical && _distance.dy < 0) {
         widget.onExpandDragStart?.call();
       }
     }
