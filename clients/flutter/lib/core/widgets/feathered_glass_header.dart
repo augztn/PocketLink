@@ -5,134 +5,73 @@ import 'package:material_ui/material_ui.dart';
 import 'pocketlink_scaffold.dart';
 import 'progressive_blur.dart';
 
+/// Single source of truth for the top-edge blur used by every PocketLink section.
+///
+/// Change these values once to update all shared headers consistently.
+abstract final class PocketLinkHeaderBlurStyle {
+  static const double sigma = 24.0;
+  static const List<Color> darkScrim = [
+    Color(0xE6000000),
+    Color(0xB3000000),
+    Colors.transparent,
+  ];
+  static const List<double> scrimStops = [0.0, 0.16, 0.38, 0.68, 1.0];
+}
+
 /// Shared top-edge blur and legibility surface for edge-to-edge screens.
+///
+/// Legacy per-screen styling arguments remain accepted for source compatibility,
+/// but are intentionally ignored: blur strength, direction, fade and scrim are
+/// global so every section renders the same header treatment.
 class FeatheredGlassHeaderBackground extends StatelessWidget {
   const FeatheredGlassHeaderBackground({
-    this.darkTint,
+    List<Color>? darkTint,
     this.contentHeight = kToolbarHeight,
     this.topInset,
-    this.strongestAtBottom = false,
-    this.fadeTailOnly = false,
-    this.toolbarSegmentOnly = false,
+    bool? strongestAtBottom,
+    bool? fadeTailOnly,
+    bool? toolbarSegmentOnly,
     super.key,
   });
 
-  /// Optional dark scrim stops. Dark mode uses a subtle default scrim when omitted.
-  final List<Color>? darkTint;
   final double contentHeight;
   final double? topInset;
-  final bool strongestAtBottom;
-  final bool fadeTailOnly;
-  final bool toolbarSegmentOnly;
 
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
     final effectiveTopInset = topInset ?? media.padding.top;
-    final fullHeaderHeight =
-        effectiveTopInset + contentHeight + pocketLinkHeaderFadeTailHeight;
-    final fadeStart = (effectiveTopInset + contentHeight) / fullHeaderHeight;
-    // The visible header ends with the compact toolbar. The fade tail is
-    // represented only in the shader's former geometry, never as extra layout
-    // height that can cover the first scrolling rows.
-    final headerHeight = fadeTailOnly
-        ? pocketLinkHeaderFadeTailHeight
-        : effectiveTopInset + contentHeight;
-    final blurStartSigma = fadeTailOnly ? 24 * (1 - fadeStart) : 24.0;
-    final blurEndSigma = toolbarSegmentOnly ? 24 * (1 - fadeStart) : 0.0;
+    final headerHeight = effectiveTopInset + contentHeight;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final effectiveDarkTint = isDark
-        ? (darkTint != null && darkTint!.length >= 3
-            ? darkTint!
-            : const [
-                Color(0xE6000000),
-                Color(0xB3000000),
-                Colors.transparent,
-              ])
-        : null;
-
-    final gradientColors = effectiveDarkTint == null
-        ? null
-        : (fadeTailOnly || toolbarSegmentOnly)
-            ? [
-                _sampleHeaderTint(
-                  effectiveDarkTint,
-                  fadeTailOnly ? fadeStart : 0,
-                ),
-                _sampleHeaderTint(
-                  effectiveDarkTint,
-                  fadeTailOnly ? fadeStart + (1 - fadeStart) * 0.5 : fadeStart * 0.5,
-                ),
-                _sampleHeaderTint(
-                  effectiveDarkTint,
-                  fadeTailOnly ? 1 : fadeStart,
-                ),
-              ]
-            : [
-                effectiveDarkTint[0],
-                Color.lerp(effectiveDarkTint[0], effectiveDarkTint[1], 0.5)!,
-                effectiveDarkTint[1],
-                Color.lerp(effectiveDarkTint[1], effectiveDarkTint[2], 0.5)!,
-                effectiveDarkTint[2],
-              ];
-    final gradientStops = (fadeTailOnly || toolbarSegmentOnly)
-        ? const [0.0, 0.5, 1.0]
-        : const [0.0, 0.16, 0.38, 0.68, 1.0];
 
     return _HeaderHeightReporter(
-      height: fadeTailOnly
-          ? fullHeaderHeight
-          : effectiveTopInset + contentHeight,
+      height: headerHeight,
       child: SizedBox(
         width: double.infinity,
         height: headerHeight,
         child: ClipRect(
           child: ProgressiveBlur(
-            maxSigma: blurStartSigma,
-            endSigma: blurEndSigma,
-            strongestAtBottom: strongestAtBottom,
-            child: effectiveDarkTint == null
-                ? const SizedBox.expand()
-                : DecoratedBox(
+            maxSigma: PocketLinkHeaderBlurStyle.sigma,
+            endSigma: 0,
+            strongestAtBottom: false,
+            child: isDark
+                ? const DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        begin: strongestAtBottom
-                            ? Alignment.bottomCenter
-                            : Alignment.topCenter,
-                        end: strongestAtBottom
-                            ? Alignment.topCenter
-                            : Alignment.bottomCenter,
-                        colors: gradientColors!,
-                        stops: gradientStops,
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: PocketLinkHeaderBlurStyle.darkScrim,
+                        stops: PocketLinkHeaderBlurStyle.scrimStops,
                       ),
                     ),
-                    child: const SizedBox.expand(),
-                  ),
+                    child: SizedBox.expand(),
+                  )
+                : const SizedBox.expand(),
           ),
         ),
       ),
     );
   }
-}
-
-
-Color _sampleHeaderTint(List<Color> tint, double position) {
-  const stops = [0.0, 0.16, 0.38, 0.68, 1.0];
-  final colors = [
-    tint[0],
-    Color.lerp(tint[0], tint[1], 0.5)!,
-    tint[1],
-    Color.lerp(tint[1], tint[2], 0.5)!,
-    tint[2],
-  ];
-  for (var index = 0; index < stops.length - 1; index++) {
-    if (position <= stops[index + 1]) {
-      final local = (position - stops[index]) /
-          (stops[index + 1] - stops[index]);
-      return Color.lerp(colors[index], colors[index + 1], local)!;
-    }
-  }
-  return colors.last;
 }
 
 /// Reports a header's known geometry after layout, never during build.
