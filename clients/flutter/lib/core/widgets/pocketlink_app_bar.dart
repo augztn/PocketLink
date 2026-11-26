@@ -103,7 +103,10 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
       flexibleSpace: const FeatheredGlassHeaderBackground(),
       bottom: const PreferredSize(
         preferredSize: Size.fromHeight(pocketLinkHeaderFadeTailHeight),
-        child: SizedBox.expand(),
+        child: FeatheredGlassHeaderBackground(
+          contentHeight: kToolbarHeight,
+          fadeTailOnly: true,
+        ),
       ),
       foregroundColor: foregroundColor,
       elevation: elevation ?? 0,
