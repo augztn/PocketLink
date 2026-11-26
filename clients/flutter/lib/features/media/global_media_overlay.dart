@@ -296,6 +296,8 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
       // The route is already being removed.
     }
 
+    // Paint the exact t == 0 source frame before revealing the static player.
+    await WidgetsBinding.instance.endOfFrame;
     _isNowPlayingDragging.value = false;
     final navigator = PocketLinkNavigation.navigatorKey.currentState;
     final route = _nowPlayingRoute;
