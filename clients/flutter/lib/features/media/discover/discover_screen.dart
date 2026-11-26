@@ -433,28 +433,18 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     try {
       final feed = await _service.moreHome(continuation, limit: 50);
       if (!mounted || generation != _requestGeneration) return;
-      final existingIds = _homeShelves
-          .expand((shelf) => shelf.tracks)
-          .map((track) => track.videoId)
-          .toSet();
-      final merged = _homeShelves.map((shelf) =>
-          _DiscoverShelf(shelf.title, List<DiscoverTrack>.of(shelf.tracks))).toList();
-      for (final pageShelf in feed.shelves) {
-        final freshTracks = pageShelf.tracks
-            .where((track) => existingIds.add(track.videoId))
-            .toList(growable: false);
-        if (freshTracks.isEmpty) continue;
-        final index = merged.indexWhere((shelf) =>
-            shelf.title.toLowerCase() == pageShelf.title.toLowerCase());
-        if (index < 0) {
-          merged.add(_DiscoverShelf(pageShelf.title, freshTracks));
-        } else {
-          merged[index] = _DiscoverShelf(
-            merged[index].title,
-            [...merged[index].tracks, ...freshTracks],
-          );
-        }
-      }
+      final mergedFeed = mergeDiscoverHomeShelves(
+        _homeShelves
+            .map((shelf) => DiscoverHomeShelf(
+                  title: shelf.title,
+                  tracks: shelf.tracks,
+                ))
+            .toList(growable: false),
+        feed.shelves,
+      );
+      final merged = mergedFeed
+          .map((shelf) => _DiscoverShelf(shelf.title, shelf.tracks))
+          .toList(growable: false);
       if (merged.length == _homeShelves.length &&
           merged.every((shelf) => _homeShelves.any((old) =>
               old.title == shelf.title && old.tracks.length == shelf.tracks.length))) {
