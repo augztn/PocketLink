@@ -143,7 +143,7 @@ class FilesHomeContent extends StatelessWidget {
           ),
         )),
         const SizedBox(height: 14),
-        const _SectionTitle(title: 'Browse by type', trailing: 'Current location'),
+        const _SectionTitle(title: 'Browse by type', trailing: 'Storage root'),
         const SizedBox(height: 9),
         GridView.count(
           crossAxisCount: 2,
@@ -155,8 +155,9 @@ class FilesHomeContent extends StatelessWidget {
           children: [
             _CategoryTile(label: 'Images', icon: Icons.photo_outlined, onTap: () => onBrowseCategory('Images')),
             _CategoryTile(label: 'Videos', icon: Icons.movie_outlined, onTap: () => onBrowseCategory('Videos')),
-            _CategoryTile(label: 'Music', icon: Icons.music_note_rounded, onTap: () => onBrowseCategory('Music')),
+            _CategoryTile(label: 'Audio', icon: Icons.music_note_rounded, onTap: () => onBrowseCategory('Music')),
             _CategoryTile(label: 'Documents', icon: Icons.description_outlined, onTap: () => onBrowseCategory('Documents')),
+            _CategoryTile(label: 'Archives', icon: Icons.archive_outlined, onTap: () => onBrowseCategory('Archives')),
           ],
         ),
         if (recent.isNotEmpty) ...[
