@@ -20,6 +20,7 @@ class _DuplicateMusicScreenState extends State<DuplicateMusicScreen> {
   static const muted = Color(0xFF9295A0);
   CancelToken? _cancel;
   bool _busy = false;
+  bool _hasScanned = false;
   int _done = 0, _total = 0, _skipped = 0;
   String? _error;
   List<List<MediaFileItem>> _groups = const [];
@@ -35,13 +36,17 @@ class _DuplicateMusicScreenState extends State<DuplicateMusicScreen> {
     final token = CancelToken();
     setState(() {
       _busy = true; _done = 0; _total = 0; _skipped = 0;
-      _error = null; _groups = const []; _cancel = token;
+      _error = null; _groups = const []; _hasScanned = false; _cancel = token;
     });
     try {
       final result = await MediaLibraryRepository(
         api: widget.api, type: MediaLibraryType.music,
       ).readIndexedMedia(shouldContinue: () => mounted && !token.isCancelled);
       if (!mounted || token.isCancelled) return;
+      if (result.status.state != 'complete') {
+        setState(() => _error = 'The music index is ' + result.status.state + '. Finish a complete library scan before checking duplicates.');
+        return;
+      }
       final sized = <int, List<MediaFileItem>>{};
       for (final item in result.items) {
         sized.putIfAbsent(item.entry.size, () => []).add(item);
@@ -69,7 +74,7 @@ class _DuplicateMusicScreenState extends State<DuplicateMusicScreen> {
       final groups = digests.values.where((items) => items.length > 1)
           .map((items) => List<MediaFileItem>.unmodifiable(items)).toList()
         ..sort((a, b) => b.first.entry.size.compareTo(a.first.entry.size));
-      setState(() => _groups = List.unmodifiable(groups));
+      setState(() { _groups = List.unmodifiable(groups); _hasScanned = true; });
     } catch (_) {
       if (mounted && !token.isCancelled) {
         setState(() => _error = 'Could not scan the indexed music library.');
@@ -98,7 +103,10 @@ class _DuplicateMusicScreenState extends State<DuplicateMusicScreen> {
     );
     final body = response.data;
     if (body == null) return null;
-    final value = (await sha256.bind(body.stream).first).toString();
+    var received = 0;
+    final checkedStream = body.stream.map((chunk) { received += chunk.length; return chunk; });
+    final value = (await sha256.bind(checkedStream).first).toString();
+    if (received != item.entry.size) throw StateError('Incomplete file stream');
     await prefs.setString(key, stamp + '|' + value);
     return value;
   }
@@ -194,12 +202,12 @@ class _DuplicateMusicScreenState extends State<DuplicateMusicScreen> {
                 ]),
               ),
           ],
-          if (!_busy && _error == null && _total > 0 && _groups.isEmpty)
+          if (!_busy && _hasScanned && _error == null && _groups.isEmpty)
             const Padding(
               padding: EdgeInsets.only(top: 24),
               child: Center(child: Text('No byte-identical music files found.', style: TextStyle(color: muted))),
             ),
-          if (!_busy && _error == null && _total == 0 && _groups.isEmpty)
+          if (!_busy && !_hasScanned && _error == null && _total == 0 && _groups.isEmpty)
             const Padding(
               padding: EdgeInsets.only(top: 24),
               child: Center(child: Text('Scan the indexed music library to check for duplicates.',
