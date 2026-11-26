@@ -35,6 +35,9 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
   List<ServerDownloadJob> _serverJobs = const [];
   Timer? _serverRefreshTimer;
   bool _refreshingServerJobs = false;
+  bool _routeIsCurrent = true;
+  bool _downloadsInitialized = false;
+  CancelToken? _serverRefreshCancelToken;
 
   @override
   void initState() {
@@ -42,23 +45,55 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     unawaited(_initialize());
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _routeIsCurrent = ModalRoute.of(context)?.isCurrent ?? true;
+    _syncServerPolling();
+  }
+
   Future<void> _initialize() async {
     await _manager.initialize();
-    _manager.bindServerApi(widget.api);
-    await _refreshServerJobs();
     if (!mounted) return;
-    _serverRefreshTimer = Timer.periodic(const Duration(seconds: 2), (_) => _refreshServerJobs());
+    _manager.bindServerApi(widget.api);
+    _downloadsInitialized = true;
+    if (_routeIsCurrent) await _refreshServerJobs();
+    if (mounted) _syncServerPolling();
+  }
+
+  void _syncServerPolling() {
+    if (!_downloadsInitialized || !mounted || !_routeIsCurrent) {
+      _serverRefreshTimer?.cancel();
+      _serverRefreshTimer = null;
+      final token = _serverRefreshCancelToken;
+      _serverRefreshCancelToken = null;
+      if (token != null && !token.isCancelled) {
+        token.cancel('Downloads screen is not the active route');
+      }
+      return;
+    }
+    _serverRefreshTimer ??= Timer.periodic(
+      const Duration(seconds: 2),
+      (_) => _refreshServerJobs(),
+    );
   }
 
   Future<void> _refreshServerJobs() async {
-    if (_refreshingServerJobs) return;
+    if (_refreshingServerJobs || !mounted || !_routeIsCurrent) return;
     _refreshingServerJobs = true;
+    final token = CancelToken();
+    _serverRefreshCancelToken = token;
     try {
-      final jobs = await widget.api.listServerDownloads();
-      if (mounted) setState(() => _serverJobs = jobs);
+      final jobs = await widget.api.listServerDownloads(cancelToken: token);
+      if (mounted && _routeIsCurrent && !token.isCancelled) {
+        setState(() => _serverJobs = jobs);
+      }
     } catch (_) {
       // Preserve the last host snapshot during a temporary disconnect.
     } finally {
+      if (identical(_serverRefreshCancelToken, token)) {
+        _serverRefreshCancelToken = null;
+      }
       _refreshingServerJobs = false;
     }
   }
@@ -184,6 +219,10 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
   @override
   void dispose() {
     _serverRefreshTimer?.cancel();
+    final token = _serverRefreshCancelToken;
+    if (token != null && !token.isCancelled) {
+      token.cancel('Downloads screen disposed');
+    }
     super.dispose();
   }
 
