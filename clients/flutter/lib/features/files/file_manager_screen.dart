@@ -736,6 +736,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                   lastPath: _browserState.stateFor(_stateKey).path,
                   lastVolume: _browserState.stateFor(_stateKey).selectedVolume,
                   onOpenInternal: () => _selectPartition(null),
+                  onOpenDownloads: () => _selectPartition(null).then((_) => _load('Downloads')),
                   onOpenVolume: (volume) => _selectPartition(volume),
                   onOpenLastLocation: () {
                     final saved = _browserState.stateFor(_stateKey);
