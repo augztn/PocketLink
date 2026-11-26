@@ -38,6 +38,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _exportingSettings = false;
   bool _importingSettings = false;
   String _settingsSearchQuery = '';
+  final TextEditingController _settingsSearchController = TextEditingController();
 
   Future<void> _openDiscoverPlaylists() async {
     final api = widget.api;
@@ -358,6 +359,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     Padding(
       padding: const EdgeInsets.only(bottom: 18),
       child: TextField(
+        controller: _settingsSearchController,
         onChanged: (value) => setState(() => _settingsSearchQuery = value),
         textInputAction: TextInputAction.search,
         decoration: InputDecoration(
@@ -367,7 +369,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ? null
               : IconButton(
                   tooltip: 'Clear search',
-                  onPressed: () => setState(() => _settingsSearchQuery = ''),
+                  onPressed: () {
+                    _settingsSearchController.clear();
+                    setState(() => _settingsSearchQuery = '');
+                  },
                   icon: const Icon(Icons.close_rounded),
                 ),
           filled: true,
@@ -596,6 +601,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _settingsSearchController.dispose();
+    super.dispose();
   }
 
   @override
