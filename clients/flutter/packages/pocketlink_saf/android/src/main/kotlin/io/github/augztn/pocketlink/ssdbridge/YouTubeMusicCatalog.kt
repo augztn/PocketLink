@@ -54,6 +54,102 @@ internal class YouTubeMusicCatalog(
     }
 
 
+    fun homeFeed(limit: Int, regionCode: String = "IN"): Map<String, Any> {
+        val home = runCatching {
+            post("browse", JSONObject().put("browseId", "FEmusic_home"), regionCode)
+        }.getOrNull()
+        var source = home
+        var shelves = home?.let { parseHomeShelves(it, limit) }.orEmpty()
+        if (shelves.isEmpty()) {
+            source = post("browse", JSONObject().put("browseId", "FEmusic_charts"), regionCode)
+            shelves = parseHomeShelves(source, limit)
+        }
+        if (shelves.isEmpty()) {
+            val tracks = source?.let { parseTracks(it, limit) }.orEmpty()
+            if (tracks.isNotEmpty()) {
+                shelves = listOf(mapOf("title" to "Trending in $regionCode", "tracks" to tracks))
+            }
+        }
+        return mapOf(
+            "shelves" to shelves,
+            "continuation" to (source?.let(::findContinuationToken) ?: "")
+        )
+    }
+
+    fun moreHome(token: String, limit: Int): Map<String, Any> {
+        require(token.isNotBlank() && token.length <= 8192) { "Invalid Home continuation token." }
+        val response = post("browse", JSONObject().put("continuation", token), "IN")
+        return mapOf(
+            "shelves" to parseHomeShelves(response, limit),
+            "continuation" to (findContinuationToken(response) ?: "")
+        )
+    }
+
+    internal fun parseHomeShelves(root: JSONObject, limit: Int): List<Map<String, Any>> {
+        val renderers = mutableListOf<JSONObject>()
+        collectHomeShelves(root, renderers)
+        val seenVideoIds = mutableSetOf<String>()
+        return renderers.mapNotNull { shelf ->
+            val title = homeShelfTitle(shelf)
+            if (title.isBlank()) return@mapNotNull null
+            val tracks = parseTracks(shelf, limit).filter { track ->
+                seenVideoIds.add(track["videoId"]?.toString().orEmpty())
+            }
+            if (tracks.isEmpty()) null else mapOf("title" to title, "tracks" to tracks)
+        }
+    }
+
+    private fun collectHomeShelves(value: Any?, output: MutableList<JSONObject>) {
+        when (value) {
+            is JSONObject -> {
+                val shelf = value.optJSONObject("musicCarouselShelfRenderer")
+                    ?: value.optJSONObject("musicShelfRenderer")
+                    ?: value.optJSONObject("musicImmersiveCarouselShelfRenderer")
+                if (shelf != null) {
+                    output.add(shelf)
+                    return
+                }
+                val keys = value.keys()
+                while (keys.hasNext()) collectHomeShelves(value.opt(keys.next()), output)
+            }
+            is JSONArray -> for (index in 0 until value.length()) {
+                collectHomeShelves(value.opt(index), output)
+            }
+        }
+    }
+
+    private fun homeShelfTitle(shelf: JSONObject): String {
+        val header = shelf.optJSONObject("header")
+        val candidates = listOf(
+            "musicCarouselShelfBasicHeaderRenderer",
+            "musicShelfHeaderRenderer",
+            "musicImmersiveCarouselShelfBasicHeaderRenderer"
+        )
+        for (key in candidates) {
+            val title = header?.optJSONObject(key)?.optJSONObject("title")?.let(::textValue)
+                .orEmpty().trim()
+            if (title.isNotEmpty()) return title
+        }
+        return shelf.optJSONObject("title")?.let(::textValue).orEmpty().trim()
+    }
+
+    private fun findContinuationToken(value: Any?): String? {
+        when (value) {
+            is JSONObject -> {
+                value.optJSONObject("continuationCommand")?.optString("token")
+                    ?.takeIf { it.isNotBlank() }?.let { return it }
+                value.optJSONObject("nextContinuationData")?.optString("continuation")
+                    ?.takeIf { it.isNotBlank() }?.let { return it }
+                val keys = value.keys()
+                while (keys.hasNext()) findContinuationToken(value.opt(keys.next()))?.let { return it }
+            }
+            is JSONArray -> for (index in 0 until value.length()) {
+                findContinuationToken(value.opt(index))?.let { return it }
+            }
+        }
+        return null
+    }
+
     fun moodAndGenres(regionCode: String = "IN"): List<Map<String, Any>> {
         val response = post(
             "browse",
