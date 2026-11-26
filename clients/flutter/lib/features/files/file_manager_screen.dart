@@ -150,6 +150,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     final saved = _browserState.stateFor(_stateKey);
     _path = widget.locationRequest > 0 ? widget.requestedPath : (widget.initialPath.isNotEmpty ? widget.initialPath : saved.path);
     _showFilesHome = widget.locationRequest == 0 && widget.initialPath.isEmpty && widget.initialVolume == null;
+    HomeActivityStore.instance.addListener(_onHomeActivityChanged);
     unawaited(HomeActivityStore.instance.load().then((_) {
       if (mounted && _showFilesHome) setState(() {});
     }));
@@ -192,6 +193,10 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   }
 
   void _saveScrollOffset() => _saveState();
+
+  void _onHomeActivityChanged() {
+    if (mounted) setState(() {});
+  }
 
   Future<void> _navigateToRequestedLocation() async {
     final volume = widget.requestedVolume;
@@ -590,6 +595,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   @override
   void dispose() {
     widget.onBackHandlerChanged?.call(null);
+    HomeActivityStore.instance.removeListener(_onHomeActivityChanged);
     _saveState();
     _scrollController.removeListener(_saveScrollOffset);
     _scrollController.dispose();
@@ -658,7 +664,9 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                 ),
           leadingWidth: _path.isEmpty && embeddedTab ? 0 : 62,
           titleSpacing: _path.isEmpty && embeddedTab ? 16 : 8,
-          title: FileBrowserStorageTitle(
+          title: _showFilesHome
+              ? const Text('Files', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700, letterSpacing: -0.5))
+              : FileBrowserStorageTitle(
             path: _path,
             folderCount: folderCount,
             fileCount: fileCount,
@@ -685,7 +693,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
           actions: [
             if (_showFilesHome)
               PocketLinkAppBarAction(label: 'Browse files', icon: Icons.folder_open_rounded,
-                onPressed: () { setState(() => _showFilesHome = false); }),
+                onPressed: () { setState(() { _showFilesHome = false; _category = 'All'; }); }),
             if (!_showFilesHome && widget.showSearch) PocketLinkAppBarAction(label: _searchExpanded ? 'Close search' : 'Search files', icon: _searchExpanded ? Icons.close_rounded : Icons.search_rounded, onPressed: () => _setSearchExpanded(!_searchExpanded)),
             PocketLinkAppBarAction(label: 'Upload file', icon: Icons.upload_rounded, onPressed: _uploadFile),
             PocketLinkAppBarAction(label: 'New folder', icon: Icons.create_new_folder_outlined, onPressed: _createFolder),
@@ -706,6 +714,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                   volumes: _volumes,
                   recent: HomeActivityStore.instance.itemsForServer(widget.api.baseUrl)
                       .where((item) => item.kind != 'track').take(5).toList(growable: false),
+                  favorites: HomeActivityStore.instance.favoritesForServer(widget.api.baseUrl),
                   lastPath: _browserState.stateFor(_stateKey).path,
                   lastVolume: _browserState.stateFor(_stateKey).selectedVolume,
                   onOpenInternal: () => _selectPartition(null),
@@ -718,9 +727,13 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                     final parent = item.isFolder ? item.path : item.parentPath;
                     _selectPartition(item.volume).then((_) => _load(parent));
                   },
+                  onOpenFavorite: (item) {
+                    final parent = item.isFolder ? item.path : item.parentPath;
+                    _selectPartition(item.volume).then((_) => _load(parent));
+                  },
                   onBrowseCategory: (category) {
                     setState(() => _category = category);
-                    _selectPartition(null);
+                    _selectPartition(_selectedVolume);
                   },
                 ),
               )
@@ -760,6 +773,18 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                       onDownload: () => _downloadFile(item),
                       onRename: () => _rename(item),
                       onDelete: () => _delete(item),
+                      isFavorite: HomeActivityStore.instance.isFavorite(
+                        serverUrl: widget.api.baseUrl,
+                        path: _itemPath(item.name),
+                        volume: _selectedVolume,
+                      ),
+                      onToggleFavorite: () => unawaited(HomeActivityStore.instance.toggleFavorite(
+                        serverUrl: widget.api.baseUrl,
+                        title: item.name,
+                        path: _itemPath(item.name),
+                        volume: _selectedVolume,
+                        isFolder: item.isDirectory,
+                      )),
                     );
                   },
                 );
