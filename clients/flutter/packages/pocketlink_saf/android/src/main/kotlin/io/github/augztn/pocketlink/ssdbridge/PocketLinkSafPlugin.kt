@@ -90,6 +90,21 @@ class PocketLinkSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
                     result
                 )
             }
+            "discoverHomeFeed" -> {
+                DiscoverBridge.homeFeed(
+                    call.argument<Number>("limit")?.toInt() ?: 30,
+                    call.argument<String>("region") ?: "IN",
+                    result
+                )
+            }
+            "discoverHomeMore" -> {
+                DiscoverBridge.moreHome(
+                    call.argument<String>("continuation").orEmpty(),
+                    call.argument<Number>("limit")?.toInt() ?: 30,
+                    call.argument<String>("region") ?: "IN",
+                    result
+                )
+            }
             "discoverHome" -> {
                 DiscoverBridge.home(
                     call.argument<Number>("limit")?.toInt() ?: 30,
