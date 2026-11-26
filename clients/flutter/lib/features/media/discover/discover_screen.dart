@@ -57,6 +57,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
   late final AnimationController _shimmerController;
   List<DiscoverTrack> _tracks = const [];
   List<DiscoverTrack> _recentlyPlayed = const [];
+  List<DiscoverTrack> _listeningPicks = const [];
+  String _listeningPicksSeed = '';
+  int _listeningPicksGeneration = 0;
   List<DiscoverMoodSection> _moodSections = const [];
   List<_DiscoverShelf> _homeShelves = const [];
   List<IndexedFile> _localLibrary = const [];
@@ -95,6 +98,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
   Future<void> _loadRecentlyPlayed() async {
     final recent = await DiscoverRecentlyPlayedStore.read();
     if (mounted) setState(() => _recentlyPlayed = recent);
+    if (recent.isNotEmpty) unawaited(_loadListeningPicks(recent.first));
   }
 
   Future<void> _loadMoods() async {
@@ -137,6 +141,23 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     }
   }
 
+  Future<void> _loadListeningPicks(DiscoverTrack seed) async {
+    if (_listeningPicksSeed == seed.videoId) return;
+    final generation = ++_listeningPicksGeneration;
+    _listeningPicksSeed = seed.videoId;
+    try {
+      final picks = await _service.radio(seed, limit: 12);
+      if (!mounted || generation != _listeningPicksGeneration) return;
+      setState(() => _listeningPicks = picks
+          .where((track) => track.videoId != seed.videoId)
+          .toList(growable: false));
+    } catch (_) {
+      if (mounted && generation == _listeningPicksGeneration) {
+        setState(() => _listeningPicks = const []);
+      }
+    }
+  }
+
   void _recordRecentlyPlayed(DiscoverTrack track) {
     final recent = [
       track,
@@ -144,6 +165,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     ].take(20).toList(growable: false);
     if (mounted) setState(() => _recentlyPlayed = recent);
     unawaited(DiscoverRecentlyPlayedStore.record(track));
+    unawaited(_loadListeningPicks(track));
   }
 
   void _onSettingsChanged() {
@@ -1039,13 +1061,13 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     child: Icon(Icons.music_note_rounded, size: size.isFinite ? size * .42 : 44),
   );
 
-  Widget _feedCard(DiscoverTrack track) {
+  Widget _feedCard(DiscoverTrack track, {List<DiscoverTrack>? queueOverride}) {
     final theme = Theme.of(context);
     final local = AppSettings.instance.discoverLocalLossless
         ? DiscoverService.findLocalLosslessMatch(track, _localLibrary) : null;
     return SizedBox(width: 148, child: InkWell(
       borderRadius: BorderRadius.circular(16),
-      onTap: () => _play(track),
+      onTap: () => _play(track, queueOverride: queueOverride),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         AspectRatio(aspectRatio: 1, child: Stack(fit: StackFit.expand, children: [
           _art(track, size: double.infinity),
@@ -1059,7 +1081,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
             child: PopupMenuButton<String>(
               icon: const Icon(Icons.more_horiz_rounded, color: Colors.white),
               onSelected: (v) {
-                if (v == 'play') _play(track);
+                if (v == 'play') _play(track, queueOverride: queueOverride);
                 if (v == 'radio') _loadRadio(track);
                 if (v == 'lyrics') _showLyrics(track, local: local);
               },
@@ -1099,6 +1121,29 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       _homeShelves = const [];
       _homeContinuation = '';
     });
+  }
+
+  Widget _listeningPicksShelf() {
+    if (_listeningPicks.isEmpty) return const SliverToBoxAdapter();
+    return SliverToBoxAdapter(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        _shelfHeading('Inspired by your listening'),
+        SizedBox(
+          height: 214,
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            scrollDirection: Axis.horizontal,
+            itemCount: _listeningPicks.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (context, index) => _feedCard(
+              _listeningPicks[index],
+              queueOverride: _listeningPicks,
+            ),
+          ),
+        ),
+        const SizedBox(height: 22),
+      ]),
+    );
   }
 
   Widget _recentlyPlayedShelf() {
@@ -1547,6 +1592,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
             else if (hasTracks) ...[
               if (_loading) const SliverToBoxAdapter(child: LinearProgressIndicator(minHeight: 2)),
               if (_homeShelves.isNotEmpty) ...[
+                _listeningPicksShelf(),
                 _recentlyPlayedShelf(),
                 _heroShelf(_homeShelves),
                 if (_homeShelves.isNotEmpty) _trackPager(_homeShelves.first),
