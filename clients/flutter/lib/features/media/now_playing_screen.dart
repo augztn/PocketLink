@@ -19,6 +19,7 @@ import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
 import '../storage/storage_browser_screen.dart';
 import 'now_playing_artwork_card.dart';
+import 'track_artwork_view.dart';
 import 'now_playing_lyrics_mode.dart';
 import 'now_playing_scrubber.dart';
 import 'now_playing_transport_controls.dart';
@@ -1597,7 +1598,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                 ),
               ),
             ),
-          if (hasArtwork && !_usesSharedArtwork)
+          if (!_usesSharedArtwork)
             Positioned(
               top: 0,
               left: 0,
@@ -1605,20 +1606,12 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
               height: MediaQuery.sizeOf(context).height * 0.64,
               child: Opacity(
                 opacity: 1 - lyricsProgress,
-                child: ShaderMask(
-                  blendMode: BlendMode.dstIn,
-                  shaderCallback: (bounds) => const LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Colors.white, Colors.white, Colors.transparent],
-                    stops: [0, 0.56, 1],
-                  ).createShader(bounds),
-                  child: Image.memory(
-                    _artwork!,
-                    cacheWidth: 544,
-                    fit: BoxFit.cover,
-                    gaplessPlayback: true,
-                  ),
+                child: TrackArtworkView(
+                  bytes: hasArtwork ? _artwork : null,
+                  artworkUrl: _track.artworkUrl,
+                  fallbackColors: palette,
+                  fallbackIconSize: 92,
+                  fadeBottom: true,
                 ),
               ),
             ),
