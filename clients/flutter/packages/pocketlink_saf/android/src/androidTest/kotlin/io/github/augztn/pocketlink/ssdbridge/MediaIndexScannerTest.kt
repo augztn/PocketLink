@@ -149,6 +149,8 @@ class MediaIndexScannerTest {
             assertEquals(setOf("track.mp3", "legacy.aiff"), scanner.media("music", "", 10, 0).map { it.name }.toSet())
             assertEquals("clip.ts", scanner.media("video", "", 10, 0).single().name)
             assertEquals("audio/mpeg", scanner.media("music", "", 10, 0).first { it.name == "track.mp3" }.mime)
+            assertTrue("Music metadata attempts must be persisted for unchanged-file scans",
+                scanner.media("music", "", 10, 0).all { it.metadataScanned })
             assertEquals("application/pdf", scanner.files("report.pdf", 10, 0).single().mime)
 
             SystemClock.sleep(5)
