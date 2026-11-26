@@ -150,7 +150,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     final region = AppSettings.instance.discoverRegion;
     if (region == _lastRegion) return;
     _lastRegion = region;
-    if (mounted) unawaited(_loadHome(forceRefresh: true));
+    if (mounted) {
+      unawaited(_loadHome(forceRefresh: true));
+      unawaited(_loadMoods());
+    }
   }
 
   String get _regionName =>
@@ -361,6 +364,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
         _homeContinuation = snapshot.continuation;
         _error = null;
       });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _onDiscoverScroll();
+      });
     } on PlatformException catch (error) {
       AppLogger.warning('Discover home loading failed', category: 'discover',
         component: 'discover_screen',
@@ -386,6 +392,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
 
   void _onDiscoverScroll() {
     if (!_scrollController.hasClients ||
+        _loading ||
         _loadingMore ||
         _homeContinuation.isEmpty ||
         _homeShelves.isEmpty) {
@@ -398,7 +405,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
 
   Future<void> _loadMoreHome() async {
     final continuation = _homeContinuation;
-    if (_loadingMore || continuation.isEmpty || _homeShelves.isEmpty) return;
+    if (_loading || _loadingMore || continuation.isEmpty || _homeShelves.isEmpty) return;
     setState(() => _loadingMore = true);
     final generation = _requestGeneration;
     try {
@@ -444,6 +451,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       setState(() {
         _homeShelves = snapshot.shelves;
         _homeContinuation = snapshot.continuation;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _onDiscoverScroll();
       });
     } on PlatformException catch (error) {
       AppLogger.warning('Discover home continuation failed', category: 'discover',
@@ -1133,10 +1143,19 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
                                 )),
                             ],
                           )),
-                          IconButton(
+                          PopupMenuButton<String>(
                             tooltip: 'More actions',
-                            onPressed: () => _showTrackMenu(track),
-                            icon: const Icon(Icons.more_horiz_rounded),
+                            onSelected: (value) {
+                              if (value == 'play') _play(track, queueOverride: _recentlyPlayed);
+                              if (value == 'radio') _loadRadio(track);
+                              if (value == 'lyrics') _showLyrics(track);
+                            },
+                            itemBuilder: (_) => [
+                              const PopupMenuItem(value: 'play', child: Text('Play')),
+                              const PopupMenuItem(value: 'radio', child: Text('Start radio')),
+                              if (AppSettings.instance.discoverLyrics)
+                                const PopupMenuItem(value: 'lyrics', child: Text('Lyrics')),
+                            ],
                           ),
                         ]),
                       ),
@@ -1152,10 +1171,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
   }
 
   Widget _moodHomeShelf() {
-    final section = _moodSections
-        .where((item) => item.items.isNotEmpty)
-        .firstOrNull;
-    if (section == null) return const SliverToBoxAdapter();
+    final sections = _moodSections.where((item) => item.items.isNotEmpty).toList();
+    if (sections.isEmpty) return const SliverToBoxAdapter();
+    final section = sections.first;
     return SliverToBoxAdapter(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         _shelfHeading(section.title, onSeeAll: _openMoodsAndMoments),
@@ -1413,6 +1431,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     await Future.wait([
       _loadHome(forceRefresh: true),
       _loadLocalLibrary(forceRefresh: true),
+      _loadMoods(),
     ]);
     if (mounted && _error != null && _tracks.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
