@@ -150,7 +150,9 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     final saved = _browserState.stateFor(_stateKey);
     _path = widget.locationRequest > 0 ? widget.requestedPath : (widget.initialPath.isNotEmpty ? widget.initialPath : saved.path);
     _showFilesHome = widget.locationRequest == 0 && widget.initialPath.isEmpty && widget.initialVolume == null;
-    unawaited(HomeActivityStore.instance.load());
+    unawaited(HomeActivityStore.instance.load().then((_) {
+      if (mounted && _showFilesHome) setState(() {});
+    }));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       widget.onCanNavigateBackChanged?.call(_path.isNotEmpty);
