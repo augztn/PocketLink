@@ -124,6 +124,47 @@ void main() {
     });
   });
 
+
+  group('MediaLibraryCatalog folder-derived music collections', () {
+    final items = [
+      media('Music/Artist A/Album One/first.mp3'),
+      media('Music/Artist A/Album One/second.mp3'),
+      media('Music/Artist A/Album Two/third.mp3'),
+      media('Music/Artist B/Album Three/fourth.mp3', volume: 'usb1'),
+      media('Music/root-track.mp3'),
+    ];
+
+    test('groups albums by parent folder and keeps storage volumes separate', () {
+      final groups = const MediaLibraryCatalog(
+        type: MediaLibraryType.music,
+        selectedVolume: null,
+        currentFolderPath: '',
+        sortBy: 'name',
+      ).albumsFromFolders(items);
+
+      expect(groups.map((group) => group.name),
+          ['Album One', 'Album Three', 'Album Two', 'Unsorted']);
+      expect(groups.first.items.length, 2);
+      expect(groups[1].volume, 'usb1');
+      expect(groups.last.path, 'Music');
+    });
+
+    test('groups artists at the artist directory and handles root tracks', () {
+      final groups = const MediaLibraryCatalog(
+        type: MediaLibraryType.music,
+        selectedVolume: null,
+        currentFolderPath: '',
+        sortBy: 'name',
+      ).artistsFromFolders(items);
+
+      expect(groups.map((group) => group.name),
+          ['Artist A', 'Artist B', 'Unknown artist']);
+      expect(groups.first.items.length, 3);
+      expect(groups.first.path, 'Music/Artist A');
+      expect(groups[1].volume, 'usb1');
+    });
+  });
+
   group('MediaLibraryCatalog sorting', () {
     final items = [
       media('zeta.mp3', size: 40, modified: '2026-01-01T00:00:00Z'),

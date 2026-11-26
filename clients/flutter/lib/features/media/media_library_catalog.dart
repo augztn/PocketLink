@@ -28,6 +28,23 @@ class MediaFolderGroup {
 ///
 /// Keeping these rules outside the screen makes path/volume behavior
 /// independently testable and prevents UI state from owning catalog logic.
+
+/// A folder-derived music collection. The current index exposes file paths but
+/// not ID3 album/artist tags, so these groups intentionally use directory names.
+class MediaCollectionGroup {
+  const MediaCollectionGroup({
+    required this.name,
+    required this.path,
+    required this.volume,
+    required this.items,
+  });
+
+  final String name;
+  final String path;
+  final String? volume;
+  final List<MediaFileItem> items;
+}
+
 class MediaLibraryCatalog {
   const MediaLibraryCatalog({
     required this.type,
@@ -155,6 +172,68 @@ class MediaLibraryCatalog {
           a.entry.name.toLowerCase().compareTo(b.entry.name.toLowerCase()));
     }
     return result;
+  }
+
+
+  /// Groups tracks by their immediate parent directory as an album fallback.
+  /// This does not claim to read embedded album tags.
+  List<MediaCollectionGroup> albumsFromFolders(List<MediaFileItem> items) {
+    final groups = <String, List<MediaFileItem>>{};
+    final paths = <String, ({String name, String path, String? volume})>{};
+    for (final item in items) {
+      final separator = item.path.lastIndexOf('/');
+      final parent = separator < 0 ? '' : item.path.substring(0, separator);
+      final parts = _pathParts(parent);
+      final isMusicRoot = parts.length == 1 && parts.first.toLowerCase() == 'music';
+      final name = parent.isEmpty || isMusicRoot ? 'Unsorted' : parts.last;
+      final key = '${item.volume ?? 'internal'}::${parent}';
+      groups.putIfAbsent(key, () => <MediaFileItem>[]).add(item);
+      paths[key] = (name: name, path: parent, volume: item.volume);
+    }
+    return _collectionGroups(groups, paths);
+  }
+
+  /// Uses the artist-level directory for Music/Artist/Album/Track layouts.
+  /// Other layouts fall back to the nearest sensible parent directory.
+  List<MediaCollectionGroup> artistsFromFolders(List<MediaFileItem> items) {
+    final groups = <String, List<MediaFileItem>>{};
+    final paths = <String, ({String name, String path, String? volume})>{};
+    for (final item in items) {
+      final separator = item.path.lastIndexOf('/');
+      final parent = separator < 0 ? '' : item.path.substring(0, separator);
+      final parts = _pathParts(parent);
+      final first = parts.isEmpty ? '' : parts.first.toLowerCase();
+      final hasMusicRoot = const {'music', 'audio', 'songs', 'artists'}.contains(first);
+      final artistParts = hasMusicRoot
+          ? (parts.length > 1 ? parts.take(2).toList(growable: false) : const <String>[])
+          : (parts.length > 1 ? parts.take(parts.length - 1).toList(growable: false) : parts);
+      final artistPath = artistParts.join('/');
+      final name = artistParts.isEmpty ? 'Unknown artist' : artistParts.last;
+      final key = '${item.volume ?? 'internal'}::${artistPath}';
+      groups.putIfAbsent(key, () => <MediaFileItem>[]).add(item);
+      paths[key] = (name: name, path: artistPath, volume: item.volume);
+    }
+    return _collectionGroups(groups, paths);
+  }
+
+  List<MediaCollectionGroup> _collectionGroups(
+    Map<String, List<MediaFileItem>> groups,
+    Map<String, ({String name, String path, String? volume})> paths,
+  ) {
+    final result = <MediaCollectionGroup>[];
+    for (final entry in groups.entries) {
+      final info = paths[entry.key]!;
+      final tracks = List<MediaFileItem>.of(entry.value)
+        ..sort((a, b) => a.entry.name.toLowerCase().compareTo(b.entry.name.toLowerCase()));
+      result.add(MediaCollectionGroup(
+        name: info.name,
+        path: info.path,
+        volume: info.volume,
+        items: List.unmodifiable(tracks),
+      ));
+    }
+    result.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    return List.unmodifiable(result);
   }
 
   static List<String> _pathParts(String path) =>

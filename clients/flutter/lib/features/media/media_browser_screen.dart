@@ -13,6 +13,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/network/server_api.dart';
+import '../../core/storage/home_activity_store.dart';
 import 'media_player_screen.dart';
 import 'media_library_catalog.dart';
 import 'data/media_library_repository.dart';
@@ -39,6 +40,7 @@ import 'now_playing_overlay_controller.dart';
 import '../transfers/transfer_manager_screen.dart';
 import '../downloads/download_manager_service.dart';
 import 'media_browser_state_store.dart';
+import 'discover/imported_playlist_manager_screen.dart';
 import '../settings/settings_screen.dart';
 
 class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
@@ -119,6 +121,9 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     final saved = _browserState.stateFor(_stateKey, widget.type.name);
     _selectedVolume = saved.selectedVolume;
     _libraryView = widget.initialView ?? saved.view;
+    if (_isMusic && widget.initialView == null && _libraryView == 'all') {
+      _libraryView = 'home';
+    }
     _searchQuery = widget.initialSearchQuery ?? ''; 
     _searchController.text = _searchQuery;
     _searchExpanded = _searchQuery.isNotEmpty;
@@ -127,11 +132,19 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     _currentFolderPath = saved.folderPath;
     _pendingScrollOffset = saved.scrollOffset;
     _contentScrollController.addListener(_saveScrollOffset);
+    if (_isMusic) {
+      HomeActivityStore.instance.addListener(_onHomeActivityChanged);
+      unawaited(HomeActivityStore.instance.load());
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _syncBackHandler();
     });
     _loadFavorites();
     _scan();
+  }
+
+  void _onHomeActivityChanged() {
+    if (mounted && _isMusic) setState(() {});
   }
 
   void _restoreScrollOffset() {
@@ -709,6 +722,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   @override
   void dispose() {
     widget.onBackHandlerChanged?.call(null);
+    if (_isMusic) HomeActivityStore.instance.removeListener(_onHomeActivityChanged);
     _saveState();
     _searchController.dispose();
     _contentScrollController.removeListener(_saveScrollOffset);
@@ -1104,6 +1118,344 @@ tooltip: 'Choose video view',
     );
   }
 
+
+  void _selectMusicView(String value) {
+    if (value == 'playlists') {
+      unawaited(_openImportedPlaylists());
+      return;
+    }
+    setState(() {
+      _libraryView = value;
+      _currentFolderPath = value == 'folders' && _selectedVolume == 'internal'
+          ? 'Music'
+          : '';
+    });
+    _syncBackHandler();
+    _pendingScrollOffset = 0;
+    _saveState(folderPath: _currentFolderPath);
+    if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0);
+  }
+
+  Future<void> _openImportedPlaylists() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => ImportedPlaylistManagerScreen(api: widget.api),
+      ),
+    );
+  }
+
+  List<MediaFileItem> _recentlyPlayedTracks(List<MediaFileItem> source) {
+    final recent = HomeActivityStore.instance.itemsForServer(_stateKey)
+        .where((item) => item.kind == 'track')
+        .toList(growable: false);
+    final result = <MediaFileItem>[];
+    final seen = <String>{};
+    for (final activity in recent) {
+      final key = '${activity.volume ?? 'internal'}:${activity.path}';
+      if (!seen.add(key)) continue;
+      for (final track in source) {
+        if (track.path == activity.path &&
+            (track.volume ?? 'internal') == (activity.volume ?? 'internal')) {
+          result.add(track);
+          break;
+        }
+      }
+      if (result.length == 8) break;
+    }
+    return result;
+  }
+
+  List<MediaFileItem> _recentlyUpdatedTracks(List<MediaFileItem> source) {
+    final result = List<MediaFileItem>.of(source);
+    result.sort((a, b) {
+      final aDate = DateTime.tryParse(a.entry.modified);
+      final bDate = DateTime.tryParse(b.entry.modified);
+      return (bDate?.millisecondsSinceEpoch ?? 0)
+          .compareTo(aDate?.millisecondsSinceEpoch ?? 0);
+    });
+    return result.take(8).toList(growable: false);
+  }
+
+  Widget _musicHomeShortcut(String label, IconData icon, String view) {
+    return ActionChip(
+      avatar: Icon(icon, size: 17, color: const Color(0xFFB8C4FF)),
+      label: Text(label),
+      onPressed: () => _selectMusicView(view),
+      backgroundColor: const Color(0xFF1C1C1E),
+      side: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
+      labelStyle: const TextStyle(color: Colors.white, fontSize: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 5),
+    );
+  }
+
+  Widget _musicSectionTitle(String title, {String? action, VoidCallback? onAction}) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 22, bottom: 10),
+      child: Row(children: [
+        Expanded(child: Text(title,
+          style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700))),
+        if (action != null && onAction != null)
+          TextButton(onPressed: onAction, child: Text(action)),
+      ]),
+    );
+  }
+
+  Widget _buildMusicHome(List<MediaFileItem> visible) {
+    final player = PersistentAudioPlayer.instance;
+    final current = player.isMusic && player.isActive ? player.currentItem : null;
+    MediaFileItem? currentMedia;
+    if (current != null) {
+      for (final item in visible) {
+        if (item.path == current.path &&
+            (item.volume ?? 'internal') == (current.volume ?? 'internal')) {
+          currentMedia = item;
+          break;
+        }
+      }
+    }
+    final recentlyPlayed = _recentlyPlayedTracks(visible);
+    final recentlyUpdated = _recentlyUpdatedTracks(visible);
+
+    return ListView(
+      controller: _contentScrollController,
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: EdgeInsets.fromLTRB(16, LayoutInsetsScope.of(context).topClearance + 12,
+        16, LayoutInsetsScope.of(context).bottomClearance),
+      children: [
+        if (current != null)
+          Material(
+            color: const Color(0xFF1C1C1E),
+            borderRadius: BorderRadius.circular(22),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: NowPlayingOverlayController.open,
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(children: [
+                  if (currentMedia != null)
+                    _musicCollectionArtwork(currentMedia, size: 72)
+                  else
+                    Container(
+                      width: 72, height: 72,
+                      decoration: BoxDecoration(color: const Color(0xFF292B31), borderRadius: BorderRadius.circular(16)),
+                      child: const Icon(Icons.music_note_rounded, color: Colors.white70, size: 30),
+                    ),
+                  const SizedBox(width: 13),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    const Text('CONTINUE LISTENING',
+                      style: TextStyle(color: Color(0xFFB8C4FF), fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1)),
+                    const SizedBox(height: 5),
+                    Text(current.title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 3),
+                    Text(current.artist?.trim().isNotEmpty == true
+                        ? current.artist!
+                        : currentMedia == null ? 'PocketLink music' : _trackArtist(currentMedia),
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Color(0xFF9A9DA7), fontSize: 12)),
+                  ])),
+                  IconButton(
+                    tooltip: player.isPlaying ? 'Pause' : 'Play',
+                    onPressed: player.togglePlayback,
+                    icon: Icon(player.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                      color: Colors.white, size: 27),
+                  ),
+                ]),
+              ),
+            ),
+          )
+        else
+          Material(
+            color: const Color(0xFF1C1C1E),
+            borderRadius: BorderRadius.circular(22),
+            child: InkWell(
+              onTap: () => _selectMusicView('all'),
+              borderRadius: BorderRadius.circular(22),
+              child: const Padding(
+                padding: EdgeInsets.all(18),
+                child: Row(children: [
+                  Icon(Icons.headphones_rounded, color: Color(0xFFB8C4FF), size: 30),
+                  SizedBox(width: 14),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('Your music, in one place', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
+                    SizedBox(height: 4),
+                    Text('Choose a song to start listening', style: TextStyle(color: Color(0xFF9A9DA7), fontSize: 12)),
+                  ])),
+                  Icon(Icons.chevron_right_rounded, color: Colors.white54),
+                ]),
+              ),
+            ),
+          ),
+        _musicSectionTitle('Browse your library'),
+        Wrap(spacing: 8, runSpacing: 2, children: [
+          _musicHomeShortcut('Songs', Icons.music_note_rounded, 'all'),
+          _musicHomeShortcut('Albums', Icons.album_rounded, 'albums'),
+          _musicHomeShortcut('Artists', Icons.person_rounded, 'artists'),
+          _musicHomeShortcut('Playlists', Icons.queue_music_rounded, 'playlists'),
+          _musicHomeShortcut('Folders', Icons.folder_rounded, 'folders'),
+          _musicHomeShortcut('Favourites', Icons.favorite_rounded, 'favorites'),
+        ]),
+        if (recentlyPlayed.isNotEmpty) ...[
+          _musicSectionTitle('Recently played', action: 'See all songs', onAction: () => _selectMusicView('all')),
+          for (final track in recentlyPlayed) _musicTrackTile(track, visible),
+        ],
+        if (recentlyUpdated.isNotEmpty) ...[
+          _musicSectionTitle('Recently updated', action: 'See all', onAction: () => _selectMusicView('all')),
+          for (final track in recentlyUpdated) _musicTrackTile(track, visible),
+        ],
+        if (visible.isEmpty && !_loading)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 34),
+            child: Column(children: [
+              const Icon(Icons.library_music_outlined, color: Color(0xFF777B86), size: 38),
+              const SizedBox(height: 10),
+              const Text('No music found', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 5),
+              const Text('Refresh the library or check your storage sources.',
+                textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF8E939E), fontSize: 12)),
+              TextButton(onPressed: _scan, child: const Text('Refresh library')),
+            ]),
+          ),
+      ],
+    );
+  }
+
+  Widget _musicCollectionArtwork(MediaFileItem media, {double size = 112}) {
+    return FutureBuilder<Uint8List?>(
+      future: _loadTrackArtwork(media),
+      builder: (context, snapshot) {
+        final bytes = snapshot.data;
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(15),
+          child: SizedBox(
+            width: size, height: size,
+            child: bytes == null
+                ? const ColoredBox(color: Color(0xFF252832),
+                    child: Center(child: Icon(Icons.music_note_rounded, color: Colors.white54, size: 34)))
+                : Image.memory(bytes, fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFF252832),
+                      child: Center(child: Icon(Icons.music_note_rounded, color: Colors.white54, size: 34)))),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMusicCollections(List<MediaCollectionGroup> groups, {required bool artists}) {
+    if (groups.isEmpty) {
+      return ListView(
+        controller: _contentScrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(height: 320, child: Center(child: Padding(
+            padding: const EdgeInsets.all(28),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Icon(artists ? Icons.people_outline_rounded : Icons.album_outlined,
+                color: const Color(0xFF8E939E), size: 40),
+              const SizedBox(height: 10),
+              Text(artists ? 'No artist folders found' : 'No album folders found',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 5),
+              const Text('Collections are grouped from folder names because embedded music tags are not available in the current index.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Color(0xFF8E939E), fontSize: 12)),
+            ]),
+          ))),
+        ],
+      );
+    }
+    return GridView.builder(
+      controller: _contentScrollController,
+      padding: EdgeInsets.fromLTRB(16, LayoutInsetsScope.of(context).topClearance + 10,
+        16, LayoutInsetsScope.of(context).bottomClearance),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2, crossAxisSpacing: 14, mainAxisSpacing: 18, childAspectRatio: 0.78),
+      itemCount: groups.length,
+      itemBuilder: (context, index) {
+        final group = groups[index];
+        final first = group.items.first;
+        return Material(
+          color: const Color(0xFF15161B),
+          borderRadius: BorderRadius.circular(19),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () => _openMusicCollection(group),
+            child: Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(child: Center(child: _musicCollectionArtwork(first, size: 116))),
+                const SizedBox(height: 9),
+                Text(group.name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 3),
+                Text('${group.items.length} tracks',
+                  maxLines: 1, style: const TextStyle(color: Color(0xFF9296A1), fontSize: 11)),
+              ]),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _openMusicCollection(MediaCollectionGroup group) {
+    setState(() {
+      _libraryView = 'folders';
+      _selectedVolume = group.volume ?? 'internal';
+      _currentFolderPath = group.path;
+    });
+    _pendingScrollOffset = 0;
+    _saveState(folderPath: group.path);
+    _syncBackHandler();
+    if (_contentScrollController.hasClients) _contentScrollController.jumpTo(0);
+  }
+
+  Widget _buildMusicContent(List<MediaFileItem> visible) {
+    if (_libraryView == 'home') {
+      return RefreshIndicator(onRefresh: _refreshMusic, child: _buildMusicHome(visible));
+    }
+    if (_libraryView == 'albums') {
+      return RefreshIndicator(onRefresh: _refreshMusic,
+        child: _buildMusicCollections(_catalog.albumsFromFolders(visible), artists: false));
+    }
+    if (_libraryView == 'artists') {
+      return RefreshIndicator(onRefresh: _refreshMusic,
+        child: _buildMusicCollections(_catalog.artistsFromFolders(visible), artists: true));
+    }
+    if (_libraryView == 'folders') {
+      return Padding(
+        padding: EdgeInsets.only(top: LayoutInsetsScope.of(context).topClearance),
+        child: RefreshIndicator(
+          onRefresh: _refreshMusic,
+          child: _loading && _media.isEmpty
+              ? PocketLinkSkeleton.fileList(padding: EdgeInsets.fromLTRB(
+                  12, 8, 12, LayoutInsetsScope.of(context).bottomClearance))
+              : _buildFolders(visible),
+        ),
+      );
+    }
+    return RefreshIndicator(
+      onRefresh: _refreshMusic,
+      displacement: 48,
+      child: _error != null || (_loading && _media.isEmpty) || visible.isEmpty
+          ? MusicBrowserEmptyState(
+              error: _error,
+              loading: _loading && _media.isEmpty,
+              favoritesView: _libraryView == 'favorites',
+              onRetry: _scan,
+              topPadding: LayoutInsetsScope.of(context).topClearance,
+              bottomPadding: LayoutInsetsScope.of(context).bottomClearance,
+            )
+          : MusicBrowserTrackList(
+              controller: _contentScrollController,
+              itemCount: visible.length,
+              itemBuilder: (context, index) => _musicTrackTile(visible[index], visible),
+              topPadding: LayoutInsetsScope.of(context).topClearance,
+              bottomPadding: LayoutInsetsScope.of(context).bottomClearance,
+            ),
+    );
+  }
+
   Widget _musicScreen(BuildContext context) {
     final query = _searchQuery.trim().toLowerCase();
     final matches = _media.where((media) {
@@ -1140,45 +1492,7 @@ tooltip: 'Choose video view',
         animation: PersistentAudioPlayer.instance,
         builder: (context, _) => Scaffold(
           extendBodyBehindAppBar: true,          body: Stack(children: [
-            Positioned.fill(
-              child: _libraryView == 'folders'
-                  ? Padding(
-                      padding: EdgeInsets.only(top: LayoutInsetsScope.of(context).topClearance),
-                      child: RefreshIndicator(
-                        onRefresh: _refreshMusic,
-                        child: _loading && _media.isEmpty
-                            ? PocketLinkSkeleton.fileList(
-                                padding: EdgeInsets.fromLTRB(
-                                  12,
-                                  8,
-                                  12,
-                                  LayoutInsetsScope.of(context).bottomClearance,
-                                ),
-                              )
-                            : _buildFolders(visible),
-                      ),
-                    )
-                  : RefreshIndicator(
-                      onRefresh: _refreshMusic,
-                      displacement: 48,
-                      child: _error != null || (_loading && _media.isEmpty) || visible.isEmpty
-                          ? MusicBrowserEmptyState(
-                              error: _error,
-                              loading: _loading && _media.isEmpty,
-                              favoritesView: _libraryView == 'favorites',
-                              onRetry: _scan,
-                              topPadding: LayoutInsetsScope.of(context).topClearance,                              bottomPadding: LayoutInsetsScope.of(context).bottomClearance,
-                            )
-                          : MusicBrowserTrackList(
-                              controller: _contentScrollController,
-                              itemCount: visible.length,
-                              itemBuilder: (context, index) =>
-                                  _musicTrackTile(visible[index], visible),
-                              topPadding: LayoutInsetsScope.of(context).topClearance,
-                              bottomPadding: LayoutInsetsScope.of(context).bottomClearance,
-                            ),
-                    ),
-            ),
+            Positioned.fill(child: _buildMusicContent(visible)),
             if (_loading && _media.isNotEmpty)              Positioned(
                 top: top + 60,
                 left: 16,
@@ -1204,39 +1518,26 @@ tooltip: 'Choose video view',
               searchController: _searchController,
               searchQuery: _searchQuery,
               menuOpen: _musicMenuOpen,
-              subtitle:
-                  '${visible.length} tracks • ${_selectedVolume == null ? 'All storage' : _volumeName(_selectedVolume)}',
+              subtitle: _libraryView == 'home'
+                  ? '${visible.length} tracks • Your collection'
+                  : _libraryView == 'albums'
+                      ? '${_catalog.albumsFromFolders(visible).length} albums • grouped by folder'
+                      : _libraryView == 'artists'
+                          ? '${_catalog.artistsFromFolders(visible).length} artists • grouped by folder'
+                          : '${visible.length} tracks • ${_selectedVolume == null ? 'All storage' : _volumeName(_selectedVolume)}',
               viewItems: [
-                SmokedGlassPopoverMenuItem(
-                  value: 'all',
-                  label: 'Songs',
-                  icon: Icons.music_note_rounded,
-                  trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Text('${visible.length}', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
-                    const SizedBox(width: 8),
-                    SizedBox(width: 20, child: _libraryView == 'all' ? const Icon(Icons.check_rounded, size: 18) : null),
-                  ]),
-                ),
-                SmokedGlassPopoverMenuItem(
-                  value: 'folders',
-                  label: 'Folders',
-                  icon: Icons.folder_rounded,
-                  trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Text('$folderCount', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
-                    const SizedBox(width: 8),
-                    SizedBox(width: 20, child: _libraryView == 'folders' ? const Icon(Icons.check_rounded, size: 18) : null),
-                  ]),
-                ),
-                SmokedGlassPopoverMenuItem(
-                  value: 'favorites',
-                  label: 'Favorites',
-                  icon: Icons.favorite_rounded,
-                  trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Text('$favoriteCount', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3))),
-                    const SizedBox(width: 8),
-                    SizedBox(width: 20, child: _libraryView == 'favorites' ? const Icon(Icons.check_rounded, size: 18) : null),
-                  ]),
-                ),
+                const SmokedGlassPopoverMenuItem(value: 'home', label: 'Music Home', icon: Icons.home_rounded),
+                SmokedGlassPopoverMenuItem(value: 'all', label: 'Songs', icon: Icons.music_note_rounded,
+                  trailing: Text('${visible.length}', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3)))),
+                SmokedGlassPopoverMenuItem(value: 'albums', label: 'Albums', icon: Icons.album_rounded,
+                  trailing: Text('${_catalog.albumsFromFolders(visible).length}', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3)))),
+                SmokedGlassPopoverMenuItem(value: 'artists', label: 'Artists', icon: Icons.people_alt_rounded,
+                  trailing: Text('${_catalog.artistsFromFolders(visible).length}', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3)))),
+                const SmokedGlassPopoverMenuItem(value: 'playlists', label: 'Imported playlists', icon: Icons.queue_music_rounded),
+                SmokedGlassPopoverMenuItem(value: 'folders', label: 'Folders', icon: Icons.folder_rounded,
+                  trailing: Text('${folderCount}', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3)))),
+                SmokedGlassPopoverMenuItem(value: 'favorites', label: 'Favourites', icon: Icons.favorite_rounded,
+                  trailing: Text('${favoriteCount}', style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFA1A7B3)))),
               ],
               onSearchChanged: (value) => setState(() => _searchQuery = value),
               onSearchClearOrClose: () {
@@ -1249,21 +1550,7 @@ tooltip: 'Choose video view',
               },
               onSearchToggle: () => _setSearchExpanded(true),
               onFilter: _showMusicFilters,
-              onViewSelected: (value) {
-                setState(() {
-                  _libraryView = value;
-                  _currentFolderPath =
-                      value == 'folders' && _selectedVolume == 'internal'
-                          ? 'Music'
-                          : '';
-                });
-                _syncBackHandler();
-                _pendingScrollOffset = 0;
-                _saveState(folderPath: _currentFolderPath);
-                if (_contentScrollController.hasClients) {
-                  _contentScrollController.jumpTo(0);
-                }
-              },
+              onViewSelected: _selectMusicView,
               onMenuOpenChanged: _setMusicMenuOpen,
               onShuffle: visible.isEmpty
                   ? null
