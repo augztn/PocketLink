@@ -720,21 +720,23 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
                               builder: (context, bytes, _) => DecoratedBox(
                                 decoration: BoxDecoration(
                                   borderRadius: artworkRadius,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: artworkPalette[0]
-                                          .withValues(alpha: 0.28 * t),
-                                      blurRadius: 38 * t,
-                                      spreadRadius: 2 * t,
-                                      offset: Offset(0, 16 * t),
-                                    ),
-                                    BoxShadow(
-                                      color: Colors.black
-                                          .withValues(alpha: 0.34 * t),
-                                      blurRadius: 24 * t,
-                                      offset: Offset(0, 12 * t),
-                                    ),
-                                  ],
+                                  boxShadow: isGradientTheme
+                                      ? const []
+                                      : [
+                                          BoxShadow(
+                                            color: artworkPalette[0]
+                                                .withValues(alpha: 0.28 * t),
+                                            blurRadius: 38 * t,
+                                            spreadRadius: 2 * t,
+                                            offset: Offset(0, 16 * t),
+                                          ),
+                                          BoxShadow(
+                                            color: Colors.black
+                                                .withValues(alpha: 0.34 * t),
+                                            blurRadius: 24 * t,
+                                            offset: Offset(0, 12 * t),
+                                          ),
+                                        ],
                                 ),
                                 child: Stack(
                                   fit: StackFit.expand,
@@ -747,15 +749,32 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
                                       borderRadius: artworkRadius,
                                       fadeBottom: isGradientTheme,
                                     ),
-                                    DecoratedBox(
-                                      decoration: BoxDecoration(
-                                        borderRadius: artworkRadius,
-                                        border: Border.all(
-                                          color: Colors.white
-                                              .withValues(alpha: 0.16 * t),
+                                    if (bytes != null && !isGradientTheme)
+                                      DecoratedBox(
+                                        decoration: BoxDecoration(
+                                          borderRadius: artworkRadius,
+                                          gradient: RadialGradient(
+                                            center: const Alignment(-0.55, -0.7),
+                                            radius: 1.1,
+                                            colors: [
+                                              Colors.white.withValues(
+                                                alpha: 0.18 * t,
+                                              ),
+                                              Colors.transparent,
+                                            ],
+                                          ),
                                         ),
                                       ),
-                                    ),
+                                    if (!isGradientTheme)
+                                      DecoratedBox(
+                                        decoration: BoxDecoration(
+                                          borderRadius: artworkRadius,
+                                          border: Border.all(
+                                            color: Colors.white
+                                                .withValues(alpha: 0.16 * t),
+                                          ),
+                                        ),
+                                      ),
                                   ],
                                 ),
                               ),
