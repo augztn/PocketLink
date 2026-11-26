@@ -345,14 +345,15 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       }
     }
 
-    if (cached != null) {
+    final cacheEntry = cached;
+    if (cacheEntry != null) {
       void restore() {
-        _homeShelves = cached!.value.shelves;
-        _tracks = cached!.value.shelves.isEmpty
+        _homeShelves = cacheEntry.value.shelves;
+        _tracks = cacheEntry.value.shelves.isEmpty
             ? const []
-            : cached!.value.shelves.first.tracks;
-        _sectionTitle = cached!.value.sectionTitle;
-        _homeContinuation = cached!.value.continuation;
+            : cacheEntry.value.shelves.first.tracks;
+        _sectionTitle = cacheEntry.value.sectionTitle;
+        _homeContinuation = cacheEntry.value.continuation;
         _error = null;
         _loading = false;
       }
@@ -362,11 +363,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       } else {
         restore();
       }
-      final stale = persistedStale || DiscoverCache.instance.isStale(cached);
+      final stale = persistedStale || DiscoverCache.instance.isStale(cacheEntry);
       AppLogger.event('discover.home_cache_restored', category: 'discover',
         component: 'discover_screen',
-        fields: {'shelf_count': cached.value.shelves.length,
-          'track_count': cached.value.shelves.fold<int>(0, (sum, shelf) => sum + shelf.tracks.length),
+        fields: {'shelf_count': cacheEntry.value.shelves.length,
+          'track_count': cacheEntry.value.shelves.fold<int>(0, (sum, shelf) => sum + shelf.tracks.length),
           'stale': stale, 'persistent': true});
       if (!forceRefresh && !stale) return;
       if (!forceRefresh) {
