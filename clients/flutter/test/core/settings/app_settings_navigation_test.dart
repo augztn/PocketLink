@@ -64,7 +64,7 @@ void main() {
   test('Home defaults prioritize actions and recent activity', () {
     expect(
       AppSettings.homeSectionDefaults,
-      const ['quick', 'continue', 'recent', 'transfers', 'search'],
+      const ['quick', 'continue', 'recent', 'storage', 'transfers', 'search'],
     );
   });
 
@@ -73,17 +73,21 @@ void main() {
     await settings.setHomeSections(
       globalSearch: false,
       activeTransfers: false,
+      storageOverview: false,
     );
 
     expect(settings.showGlobalSearch, isFalse);
     expect(settings.showActiveTransfers, isFalse);
+    expect(settings.showStorageOverview, isFalse);
     final preferences = await SharedPreferences.getInstance();
     expect(preferences.getBool('settings_home_search'), isFalse);
     expect(preferences.getBool('settings_home_transfers'), isFalse);
+    expect(preferences.getBool('settings_home_storage_overview'), isFalse);
 
     await settings.setHomeSections(
       globalSearch: true,
       activeTransfers: true,
+      storageOverview: true,
     );
   });
 
