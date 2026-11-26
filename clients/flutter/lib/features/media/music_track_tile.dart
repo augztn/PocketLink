@@ -20,6 +20,7 @@ class MusicTrackTile extends StatelessWidget {
     required this.onQueue,
     required this.onDownload,
     required this.onToggleFavorite,
+    required this.onDelete,
     super.key,
   });
 
@@ -37,6 +38,7 @@ class MusicTrackTile extends StatelessWidget {
   final Future<void> Function() onQueue;
   final Future<void> Function() onDownload;
   final Future<void> Function() onToggleFavorite;
+  final Future<void> Function() onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -121,6 +123,12 @@ class MusicTrackTile extends StatelessWidget {
                       icon: Icons.download_rounded,
                       dividerBefore: true,
                     ),
+                    const SmokedGlassPopoverMenuItem(
+                      value: 'delete',
+                      label: 'Delete permanently',
+                      icon: Icons.delete_outline_rounded,
+                      dividerBefore: true,
+                    ),
                     SmokedGlassPopoverMenuItem(
                       value: 'favorite',
                       label: favorite
@@ -136,6 +144,7 @@ class MusicTrackTile extends StatelessWidget {
                     if (action == 'next') await onPlayNext();
                     if (action == 'queue') await onQueue();
                     if (action == 'download') await onDownload();
+                    if (action == 'delete') await onDelete();
                   },
                   child: const SizedBox(
                     width: 28,
