@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pocketlink_client/core/settings/app_settings.dart';
 import 'package:pocketlink_client/core/widgets/feathered_glass_header.dart';
 import 'package:pocketlink_client/core/widgets/liquid_glass_pill.dart';
+import 'package:pocketlink_client/core/widgets/pocketlink_app_bar.dart';
 import 'package:pocketlink_client/core/widgets/progressive_blur.dart';
 
 void main() {
@@ -31,7 +32,7 @@ void main() {
     final blur = tester.widget<shader_blur.ProgressiveBlur>(
       find.byType(shader_blur.ProgressiveBlur),
     );
-    expect(blur.sigmaStart, 24);
+    expect(blur.sigmaStart, 72);
     expect(blur.sigmaEnd, 0);
   });
 
@@ -96,6 +97,31 @@ void main() {
     expect(tester.getSize(bounds).height, 192);
   });
 
+
+  testWidgets('app bar extends the shader from physical top through fade tail',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(padding: EdgeInsets.only(top: 24)),
+          child: Scaffold(
+            appBar: const PocketLinkAppBar(
+              title: Text('Files'),
+              showMoreMenu: false,
+            ),
+            body: const SizedBox.expand(),
+          ),
+        ),
+      ),
+    );
+
+    final blurFinder = find.byType(ProgressiveBlur);
+    expect(blurFinder, findsOneWidget);
+    expect(tester.getTopLeft(blurFinder).dy, 0);
+    expect(tester.getSize(blurFinder).height, 192);
+    expect(tester.getSize(find.byType(PocketLinkAppBar)).height, 192);
+  });
+
   testWidgets('dark header has a readable default acrylic scrim',
       (tester) async {
     await tester.pumpWidget(
@@ -112,7 +138,7 @@ void main() {
         .whereType<LinearGradient>();
     expect(
       gradients.any((gradient) =>
-          gradient.colors.first == const Color(0x66000000) &&
+          gradient.colors.first == const Color(0xE6000000) &&
           gradient.colors.last == Colors.transparent),
       isTrue,
     );
