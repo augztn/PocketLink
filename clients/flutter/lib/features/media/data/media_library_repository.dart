@@ -62,7 +62,7 @@ class MediaLibraryRepository {
                   mime: item.mime,
                 ))
             .map((item) {
-              if (type == MediaLibraryType.music && !item.metadataScanned) {
+              if (type == MediaLibraryType.music && item.volume == 'internal' && !item.metadataScanned) {
                 indexedMetadataComplete = false;
               }
               return MediaFileItem(
