@@ -1009,6 +1009,46 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
               ),
             )
           : const SizedBox.shrink(),
+      'storage': () => appSettings.showStorageOverview
+          ? Padding(
+              padding: const EdgeInsets.only(bottom: 18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  sectionTitle('Storage & host health'),
+                  const SizedBox(height: 10),
+                  HostDeviceMetricsCard(
+                    telemetry: _hostTelemetry,
+                    telemetryError: _telemetryError,
+                    serverOnline: _serverOnline == true,
+                    volumes: _volumes,
+                    cardDecoration: _dashboardCardDecoration(theme, radius: 20),
+                    formatBytes: _formatBytes,
+                  ),
+                  const SizedBox(height: 12),
+                  HostMediaScanCard(
+                    status: _mediaScanStatus,
+                    scanError: _mediaScanError,
+                    savingSettings: _savingMediaScanSettings,
+                    startingScan: _startingMediaScan,
+                    serverOnline: _serverOnline == true,
+                    checking: _checking,
+                    volumes: _volumes,
+                    cardDecoration: _dashboardCardDecoration(theme),
+                    formatTimestamp: _formatScanTimestamp,
+                    formatInterval: _formatScanInterval,
+                    formatBytes: _formatBytes,
+                    onShowHistory: _showMediaScanHistory,
+                    onShowSkippedItems: _showSkippedItemsInfo,
+                    onUpdateAutomaticScanning: _updateAutomaticMediaScanning,
+                    onStartScan: _startHostMediaScan,
+                    onRetryScan: _retryFailedMediaScan,
+                    onShareReport: _shareMediaScanReport,
+                  ),
+                ],
+              ),
+            )
+          : const SizedBox.shrink(),
       'transfers': () => appSettings.showActiveTransfers
           ? Padding(
               padding: const EdgeInsets.only(bottom: 16),
@@ -1179,34 +1219,6 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
           children: [
             _buildServerTelemetry(),
             const SizedBox(height: 12),
-            HostDeviceMetricsCard(
-              telemetry: _hostTelemetry,
-              telemetryError: _telemetryError,
-              serverOnline: _serverOnline == true,
-              volumes: _volumes,
-              cardDecoration: _dashboardCardDecoration(theme, radius: 20),
-              formatBytes: _formatBytes,
-            ),
-            const SizedBox(height: 12),
-            HostMediaScanCard(
-              status: _mediaScanStatus,
-              scanError: _mediaScanError,
-              savingSettings: _savingMediaScanSettings,
-              startingScan: _startingMediaScan,
-              serverOnline: _serverOnline == true,
-              checking: _checking,
-              volumes: _volumes,
-              cardDecoration: _dashboardCardDecoration(theme),
-              formatTimestamp: _formatScanTimestamp,
-              formatInterval: _formatScanInterval,
-              formatBytes: _formatBytes,
-              onShowHistory: _showMediaScanHistory,
-              onShowSkippedItems: _showSkippedItemsInfo,
-              onUpdateAutomaticScanning: _updateAutomaticMediaScanning,
-              onStartScan: _startHostMediaScan,
-              onRetryScan: _retryFailedMediaScan,
-              onShareReport: _shareMediaScanReport,
-            ),
             const SizedBox(height: 18),
             for (final section in appSettings.homeSectionOrder)
               if (sectionBuilders.containsKey(section)) sectionBuilders[section]!(),
