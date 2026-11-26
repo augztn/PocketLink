@@ -36,6 +36,11 @@ class ServerApi {
   Dio get _dio => _transport.client;
 
   bool _closed = false;
+  bool _musicLibraryUnavailable = false;
+  final Set<CancelToken> _mediaRequestTokens = {};
+  final Map<String, DateTime> _failedThumbnailUntil = {};
+  final Map<String, DateTime> _failedMetadataUntil = {};
+  static const _negativeMediaCacheTtl = Duration(minutes: 10);
   static const _directoryCacheTtl = Duration(seconds: 20);
   static const _maxCachedDirectories = 512;
   final Map<String, _CacheEntry<DirectoryListing>> _directoryCache = {};
@@ -139,52 +144,113 @@ class ServerApi {
   final Map<String, Future<Uint8List?>> _musicArtworkCache = {};
 
   void clearMediaCache() {
+    for (final token in _mediaRequestTokens.toList()) {
+      if (!token.isCancelled) token.cancel('Media cache invalidated');
+    }
+    _mediaRequestTokens.clear();
     _thumbnailCache.clear();
     _metadataCache.clear();
     _musicArtworkCache.clear();
   }
 
+  void _rememberFailedMediaKey(Map<String, DateTime> failures, String key) {
+    if (failures.length >= 4096 && !failures.containsKey(key)) {
+      failures.remove(failures.keys.first);
+    }
+    failures[key] = DateTime.now().add(_negativeMediaCacheTtl);
+  }
+
+  bool _isKnownFailedMediaKey(Map<String, DateTime> failures, String key) {
+    final expiresAt = failures[key];
+    if (expiresAt == null) return false;
+    if (expiresAt.isAfter(DateTime.now())) return true;
+    failures.remove(key);
+    return false;
+  }
+
   String _mediaCacheKey(String path, String? volume) => '${volume ?? 'internal'}:$path';
 
-  Future<VideoMetadata?> videoMetadata(String path, {String? volume}) {
+  Future<VideoMetadata?> videoMetadata(
+    String path, {
+    String? volume,
+    CancelToken? cancelToken,
+  }) {
     final key = _mediaCacheKey(path, volume);
+    if (_isKnownFailedMediaKey(_failedMetadataUntil, key)) {
+      return Future<VideoMetadata?>.value(null);
+    }
     final cached = _metadataCache[key];
     if (cached != null) return cached;
-    final future = () async {
+    if (cancelToken != null) _mediaRequestTokens.add(cancelToken);
+    late final Future<VideoMetadata?> future;
+    future = (() async {
       try {
         final response = await _dio.get<Map<String, dynamic>>(
           '/api/media/metadata',
           queryParameters: {'path': path, if (volume != null) 'volume': volume},
+          options: Options(extra: {'pocketlink.priority': 'background'}),
+          cancelToken: cancelToken,
         );
         return VideoMetadata.fromJson(response.data ?? const {});
-      } on DioException {
+      } on DioException catch (error) {
+        if (error.response?.statusCode == 400 || error.response?.statusCode == 404) {
+          _rememberFailedMediaKey(_failedMetadataUntil, key);
+        }
+        if (cancelToken?.isCancelled ?? false &&
+            identical(_metadataCache[key], future)) {
+          _metadataCache.remove(key);
+        }
         return null;
+      } finally {
+        if (cancelToken != null) _mediaRequestTokens.remove(cancelToken);
       }
-    }();
+    })();
     _metadataCache[key] = future;
-    if (_metadataCache.length > 160) _metadataCache.remove(_metadataCache.keys.first);
+    if (_metadataCache.length > 512) _metadataCache.remove(_metadataCache.keys.first);
     return future;
   }
 
-  Future<Uint8List?> videoThumbnail(String path, {String? volume}) {
+  Future<Uint8List?> videoThumbnail(
+    String path, {
+    String? volume,
+    CancelToken? cancelToken,
+  }) {
     final key = _mediaCacheKey(path, volume);
+    if (_isKnownFailedMediaKey(_failedThumbnailUntil, key)) {
+      return Future<Uint8List?>.value(null);
+    }
     final cached = _thumbnailCache[key];
     if (cached != null) return cached;
-    final future = () async {
+    if (cancelToken != null) _mediaRequestTokens.add(cancelToken);
+    late final Future<Uint8List?> future;
+    future = (() async {
       try {
         final response = await _dio.get<List<int>>(
           '/api/media/thumbnail',
           queryParameters: {'path': path, if (volume != null) 'volume': volume},
-          options: Options(responseType: ResponseType.bytes),
+          options: Options(
+            responseType: ResponseType.bytes,
+            extra: {'pocketlink.priority': 'background'},
+          ),
+          cancelToken: cancelToken,
         );
         final bytes = response.data;
         return bytes == null || bytes.isEmpty ? null : Uint8List.fromList(bytes);
-      } on DioException {
+      } on DioException catch (error) {
+        if (error.response?.statusCode == 400 || error.response?.statusCode == 404) {
+          _rememberFailedMediaKey(_failedThumbnailUntil, key);
+        }
+        if (cancelToken?.isCancelled ?? false &&
+            identical(_thumbnailCache[key], future)) {
+          _thumbnailCache.remove(key);
+        }
         return null;
+      } finally {
+        if (cancelToken != null) _mediaRequestTokens.remove(cancelToken);
       }
-    }();
+    })();
     _thumbnailCache[key] = future;
-    if (_thumbnailCache.length > 160) _thumbnailCache.remove(_thumbnailCache.keys.first);
+    if (_thumbnailCache.length > 512) _thumbnailCache.remove(_thumbnailCache.keys.first);
     return future;
   }
   Future<DirectoryListing> authenticate({CancelToken? cancelToken}) =>
@@ -308,8 +374,13 @@ class ServerApi {
     return ServerDownloadJob.fromJson(response.data ?? const {});
   }
 
-  Future<List<ServerDownloadJob>> listServerDownloads() async {
-    final response = await _dio.get<Map<String, dynamic>>('/api/downloads');
+  Future<List<ServerDownloadJob>> listServerDownloads({
+    CancelToken? cancelToken,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/downloads',
+      cancelToken: cancelToken,
+    );
     return (response.data?['items'] as List<dynamic>? ?? const [])
         .whereType<Map<String, dynamic>>()
         .map(ServerDownloadJob.fromJson)
@@ -474,12 +545,22 @@ class ServerApi {
 
   /// Reads embedded music tags from hosts that expose the optional music API.
   Future<List<MusicLibraryTrack>> musicLibrary() async {
-    final response = await _dio.get<Map<String, dynamic>>('/api/music/library');
-    return (response.data?['items'] as List<dynamic>? ?? const [])
-        .whereType<Map<String, dynamic>>()
-        .map(MusicLibraryTrack.fromJson)
-        .where((item) => item.path.isNotEmpty)
-        .toList(growable: false);
+    if (_musicLibraryUnavailable) return const [];
+    try {
+      final response = await _dio.get<Map<String, dynamic>>('/api/music/library');
+      return (response.data?['items'] as List<dynamic>? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(MusicLibraryTrack.fromJson)
+          .where((item) => item.path.isNotEmpty)
+          .toList(growable: false);
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        // Optional legacy endpoint: remember absence for this ServerApi session.
+        _musicLibraryUnavailable = true;
+        return const [];
+      }
+      rethrow;
+    }
   }
 
   /// Fetches embedded album artwork without downloading the audio file.
