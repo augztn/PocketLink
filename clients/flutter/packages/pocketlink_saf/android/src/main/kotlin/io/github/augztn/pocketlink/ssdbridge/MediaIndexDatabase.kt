@@ -386,7 +386,7 @@ internal class MediaIndexDatabase(context: Context) :
 
     fun mediaSnapshot(volume: String): Map<String, IndexStamp> {
         val result = mutableMapOf<String, IndexStamp>()
-        readableDatabase.query("media", arrayOf("path", "size", "modified", "category"),
+        readableDatabase.query("media", arrayOf("path", "size", "modified", "category", "metadata_scanned"),
             "volume=?", arrayOf(volume), null, null, null).use { cursor ->
             while (cursor.moveToNext()) result[cursor.getString(0)] =
                 IndexStamp(cursor.getLong(1), cursor.getLong(2), cursor.getString(3), cursor.getInt(4) != 0)
