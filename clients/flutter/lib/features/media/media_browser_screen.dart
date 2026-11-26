@@ -1145,6 +1145,9 @@ tooltip: 'Choose video view',
       return;
     }
     setState(() {
+      if (_libraryView == 'collection') {
+        _selectedVolume = _collectionReturnVolume;
+      }
       _libraryView = value;
       _selectedCollectionItems = const [];
       _collectionReturnView = null;
