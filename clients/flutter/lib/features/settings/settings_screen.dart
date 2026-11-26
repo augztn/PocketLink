@@ -303,34 +303,57 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   bool _categoryMatches(String id) {
-    final query = _settingsSearchQuery.trim().toLowerCase();
-    if (query.isEmpty) return true;
-    final keywords = <String, String>{
-      'appearance': 'appearance theme color dark light system amoled oled liquid glass blur progressive blur',
-      'navigation': 'navigation bar dock tabs reorder destinations fab floating action button',
-      'dashboard': 'dashboard home shortcuts quick actions search transfers recent continue sections layout',
+    final tokens = _settingsSearchQuery
+        .toLowerCase()
+        .split(RegExp(r'[^a-z0-9]+'))
+        .where((token) => token.isNotEmpty)
+        .toList(growable: false);
+    if (tokens.isEmpty) return true;
+
+    // Include individual control names and their searchable descriptions so
+    // queries such as "wifi only", "blur", or "subtitle size" find the owner
+    // category even when the exact phrase is not contiguous.
+    final searchable = <String, String>{
+      'appearance': 'appearance theme color dark light system amoled oled black liquid glass progressive blur shader header preview reset',
+      'navigation': 'navigation bar dock tabs reorder destinations fab floating action button visible hidden',
+      'dashboard': 'dashboard home shortcuts quick actions search transfers recent continue sections layout reorder',
       'audio': 'audio music player now playing mini player gestures shortcuts playback',
-      'discover': 'discover explore youtube music lyrics playlists audio quality region resolver',
-      'video': 'video player playback gestures controls scaling subtitles fullscreen',
-      'media': 'media storage downloads directory folder cache concurrent wifi resume',
+      'discover': 'discover explore youtube music lyrics playlists audio quality region resolver lossless artwork auto queue',
+      'video': 'video player playback gestures controls scaling subtitles fullscreen seek speed orientation pinch zoom fit mode',
+      'media': 'media storage downloads directory folder cache concurrent wifi only mobile data auto resume',
       'backup': 'backup restore export import preferences settings json',
       'connection': 'connection network server saved servers diagnostics logs troubleshooting',
       'about': 'about pocketlink version licenses architecture information',
     };
-    final labels = <String, String>{
-      'appearance': 'appearance theme',
-      'navigation': 'navigation bar dock',
-      'dashboard': 'dashboard shortcuts',
-      'audio': 'audio now playing',
-      'discover': 'discover',
-      'video': 'video player',
-      'media': 'media library storage',
-      'backup': 'backup restore',
-      'connection': 'connection diagnostics',
-      'about': 'about pocketlink',
-    };
-    return ('${labels[id] ?? ''} ${keywords[id] ?? ''}')
-        .contains(query);
+    final corpus = '${searchable[id] ?? ''} ${id.replaceAll(RegExp(r'([A-Z])'), ' $1')}';
+    return tokens.every(corpus.contains);
+  }
+
+  Future<void> _resetAppearance() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Reset appearance settings?'),
+        content: const Text(
+          'Restore System theme, disable AMOLED mode, and turn Liquid Glass and Progressive Blur on. Other settings will not change.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Reset appearance'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await _settings.setThemeMode(ThemeMode.system);
+    await _settings.setUseLiquidGlass(true);
+    await _settings.setProgressiveBlurEnabled(true);
+    if (mounted) _message('Appearance settings restored to defaults.');
   }
 
   Widget _categoryIntro(String category) {
@@ -414,6 +437,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         tint: const Color(0xFF2DD4BF),
         title: 'Dashboard & Shortcuts',
         subtitle: 'Home sections, quick actions and dashboard layout',
+        badge: [
+          if (_settings.showQuickActions) 'Quick actions',
+          if (_settings.showRecentFiles) 'Recent files',
+        ].join(' · '),
       ),
     if (_categoryMatches('audio') || _categoryMatches('discover') || _categoryMatches('video') || _categoryMatches('media') || _categoryMatches('backup'))
       _settingsGroupTitle('Media & Storage'),
@@ -433,6 +460,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         tint: const Color(0xFFDB79A8),
         title: 'Discover',
         subtitle: 'Music discovery, local lossless matching, lyrics and playlists',
+        badge: _settings.discoverEnabled ? 'Enabled' : 'Off',
       ),
     if (_categoryMatches('video'))
       _categoryTile(
@@ -441,6 +469,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         tint: const Color(0xFF28B8C8),
         title: 'Video Player',
         subtitle: 'Playback gestures, controls, scaling and subtitles',
+        badge: '${_settings.videoDefaultSpeed.toStringAsFixed(2)}×',
       ),
     if (_categoryMatches('media'))
       _categoryTile(
@@ -449,6 +478,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         tint: const Color(0xFFFBBF24),
         title: 'Media Library & Storage',
         subtitle: 'Download location, download behavior and temporary cache',
+        badge: '${_settings.downloadConcurrency} concurrent',
       ),
     if (_categoryMatches('backup'))
       _categoryTile(
@@ -457,6 +487,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         tint: const Color(0xFF60A5FA),
         title: 'Backup & Restore',
         subtitle: 'Export or restore your PocketLink preferences',
+        badge: 'JSON',
       ),
     if (_categoryMatches('connection') || _categoryMatches('about'))
       _settingsGroupTitle('Network & System'),
@@ -467,6 +498,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         tint: const Color(0xFF4ADE80),
         title: 'Connection & Diagnostics',
         subtitle: 'Saved servers, connectivity help and logs',
+        badge: 'Manage',
       ),
     if (_categoryMatches('about'))
       _categoryTile(
@@ -475,6 +507,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         tint: const Color(0xFFFBBF24),
         title: 'About PocketLink',
         subtitle: 'Version information, architecture and licenses',
+        badge: 'Info',
       ),
     if (!_categoryMatches('appearance') &&
         !_categoryMatches('navigation') &&
@@ -730,6 +763,71 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onChanged: _settings.setProgressiveBlurEnabled,
                     ),
                     const Divider(height: 1),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Live appearance preview',
+                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
+                          const SizedBox(height: 10),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: _settings.amoled
+                                  ? Colors.black
+                                  : Theme.of(context).colorScheme.surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: Theme.of(context).colorScheme.outlineVariant,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 38,
+                                  height: 38,
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).colorScheme.primaryContainer,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Icon(
+                                    Icons.palette_rounded,
+                                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text('PocketLink', style: TextStyle(fontWeight: FontWeight.w700)),
+                                      Text(
+                                        '${_settings.amoled ? 'AMOLED black' : _settings.themeMode.name[0].toUpperCase() + _settings.themeMode.name.substring(1)} · Glass ${_settings.useLiquidGlass ? 'On' : 'Off'} · Blur ${_settings.progressiveBlurEnabled ? 'On' : 'Off'}',
+                                        style: Theme.of(context).textTheme.bodySmall,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Icon(Icons.chevron_right_rounded),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.restart_alt_rounded),
+                      title: const Text('Reset appearance'),
+                      subtitle: const Text('Restore default theme and visual effects'),
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      onTap: _resetAppearance,
+                    ),
                   ]),
                 if (widget.category == 'Dashboard & Shortcuts')
                   _section('Dashboard & Shortcuts', [
