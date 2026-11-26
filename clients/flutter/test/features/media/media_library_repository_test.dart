@@ -135,6 +135,40 @@ void main() {
       }
     });
 
+    test('uses persisted index tags without requesting the legacy music catalog', () async {
+      final track = _indexedFile(name: 'song.mp3', path: 'Music/song.mp3')
+        ..addAll({
+          'title': 'Persisted Title',
+          'artist': 'Persisted Artist',
+          'album': 'Persisted Album',
+          'duration_ms': 187000,
+          'metadata_scanned': true,
+        });
+      final adapter = _MediaPageAdapter([_page([track])]);
+      final api = ServerApi(
+        baseUrl: 'http://127.0.0.1:8000',
+        username: 'admin',
+        password: 'secret',
+        httpClientAdapter: adapter,
+      );
+
+      try {
+        final result = await MediaLibraryRepository(
+          api: api,
+          type: MediaLibraryType.music,
+        ).readIndexedMedia();
+
+        expect(result.items.single.title, 'Persisted Title');
+        expect(result.items.single.artist, 'Persisted Artist');
+        expect(result.items.single.album, 'Persisted Album');
+        expect(result.items.single.durationMs, 187000);
+        expect(adapter.requests, hasLength(1));
+        expect(adapter.requests.single.path, '/api/index/media');
+      } finally {
+        api.close(force: true);
+      }
+    });
+
     test('searches embedded title, artist and album metadata after indexing', () async {
       final adapter = _MediaPageAdapter([
         _page([
