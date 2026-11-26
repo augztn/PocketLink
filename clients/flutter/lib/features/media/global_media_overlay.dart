@@ -157,8 +157,14 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   }
 
   void _onMiniPlayerDragStart() {
-    if (_miniPlayerGestureActive || !mounted) return;
-    setState(() => _miniPlayerGestureActive = true);
+    if (!mounted) return;
+    if (!_miniPlayerGestureActive) {
+      setState(() => _miniPlayerGestureActive = true);
+    }
+    // Mount the morph sheet as soon as a vertical drag is recognized. Waiting
+    // for the first update lets the source player disappear before the sheet
+    // has had a frame to paint.
+    _prepareNowPlaying();
   }
 
   void _prepareNowPlaying() {
@@ -310,11 +316,15 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
       return;
     }
     final height = MediaQuery.sizeOf(context).height;
+    final travelDistance = math.max(
+      1.0,
+      height - (_nowPlayingOriginRect?.height ?? _miniPlayerHeight),
+    );
     _nowPlayingController.value =
         PocketLinkNavigation.updateMorphProgress(
       current: _nowPlayingController.value,
       dragDelta: delta,
-      extent: height,
+      extent: travelDistance,
     );
   }
 
@@ -713,8 +723,7 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
                             ),
                           ),
                         ),
-                        if (t < 0.999)
-                          Positioned.fromRect(
+                        Positioned.fromRect(
                             rect: artworkRect,
                             child: ValueListenableBuilder<Uint8List?>(
                               valueListenable: artworkBytes,
@@ -746,9 +755,8 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
                                       bytes: bytes,
                                       artworkUrl: currentItem?.artworkUrl,
                                       fallbackColors: artworkPalette,
-                                      fallbackIconSize: 30,
+                                      fallbackIconSize: 19 + (73 * t),
                                       borderRadius: artworkRadius,
-                                      fadeBottom: isGradientTheme,
                                     ),
                                     if (bytes != null && !isGradientTheme)
                                       DecoratedBox(
