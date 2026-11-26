@@ -80,19 +80,21 @@ class PersistentAudioPlayer extends ChangeNotifier {
     }
     _playlistSubscription = player.stream.playlist.listen((playlist) {
       _currentIndex = playlist.index.clamp(0, _queue.isEmpty ? 0 : _queue.length - 1).toInt();
-      final current = currentItem;
-      if (current != null && current.localPath == null && current.streamUrl == null && _active && _music && _api != null) {
-        unawaited(HomeActivityStore.instance.recordTrack(serverUrl: _api!.baseUrl, title: current.title, path: current.path, volume: current.volume));
-      }
       notifyListeners();
       unawaited(_syncMediaSession());
+    });
+    _currentSubscription = player.stream.current.listen((_) {
+      scheduleMicrotask(_recordCurrentTrackIfNeeded);
     });
     _playingSubscription = player.stream.playing.listen((playing) {
       AppLogger.event(playing ? 'playback.started' : 'playback.paused',
         category: 'media', component: 'persistent_player',
         fields: {'queue_length': _queue.length, 'queue_index': _currentIndex,
           'source': currentItem?.sourceLabel ?? 'unknown'});
-      if (playing) _miniPlayerDismissed = false;
+      if (playing) {
+        _miniPlayerDismissed = false;
+        _recordCurrentTrackIfNeeded();
+      }
       notifyListeners();
       unawaited(_syncMediaSession());
     });
@@ -126,6 +128,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
   VideoController get videoController =>
       _videoController ??= VideoController(player);
   StreamSubscription<Playlist>? _playlistSubscription;
+  StreamSubscription<Media?>? _currentSubscription;
   StreamSubscription<bool>? _playingSubscription;
   StreamSubscription<bool>? _completedSubscription;
   StreamSubscription<String>? _errorSubscription;
@@ -142,6 +145,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
   int? _pendingTrackDirection;
   DateTime? _pendingTrackDirectionAt;
   int _queueSession = 0;
+  String? _lastRecordedTrackKey;
   Future<void> _queueMutationTail = Future<void>.value();
   final Set<String> _retriedDiscoverTracks = <String>{};
   bool _retryingDiscoverPlayback = false;
@@ -169,6 +173,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
   }) {
     final session = ++_queueSession;
     _api = api;
+    _lastRecordedTrackKey = null;
     _queue = List.unmodifiable([item]);
     _currentIndex = 0;
     _music = isMusic;
@@ -212,6 +217,24 @@ class PersistentAudioPlayer extends ChangeNotifier {
   MediaQueueItem? get currentItem =>
       _queue.isEmpty ? null : _queue[_currentIndex.clamp(0, _queue.length - 1).toInt()];
 
+  void _recordCurrentTrackIfNeeded() {
+    final current = currentItem;
+    final api = _api;
+    if (!player.state.playing || !_active || !_music || api == null ||
+        current == null || current.localPath != null || current.streamUrl != null) {
+      return;
+    }
+    final key = '$_queueSession:$_currentIndex:${current.stableTrackId}';
+    if (_lastRecordedTrackKey == key) return;
+    _lastRecordedTrackKey = key;
+    unawaited(HomeActivityStore.instance.recordTrack(
+      serverUrl: api.baseUrl,
+      title: current.title,
+      path: current.path,
+      volume: current.volume,
+    ));
+  }
+
   /// Legacy widget compatibility; the app-level overlay owns the live bar.
   bool get showMiniPlayer => false;
 
@@ -229,6 +252,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
       throw StateError('A server connection is required for server-hosted media.');
     }
     _api = api;
+    _lastRecordedTrackKey = null;
     _queue = List.unmodifiable(queue);
     _retriedDiscoverTracks.clear();
     _retryingDiscoverPlayback = false;
@@ -521,6 +545,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
     _queue = const [];
     _currentIndex = 0;
     _api = null;
+    _lastRecordedTrackKey = null;
     notifyListeners();
   }
 
@@ -581,6 +606,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
   void dispose() {
     cancelSleepTimer();
     unawaited(_playlistSubscription?.cancel());
+    unawaited(_currentSubscription?.cancel());
     unawaited(_playingSubscription?.cancel());
     unawaited(_completedSubscription?.cancel());
     unawaited(_errorSubscription?.cancel());
