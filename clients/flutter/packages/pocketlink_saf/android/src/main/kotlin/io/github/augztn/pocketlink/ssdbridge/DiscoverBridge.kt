@@ -121,6 +121,56 @@ internal object DiscoverBridge {
         }
     }
 
+    fun homeFeed(limit: Int, regionCode: String, result: io.flutter.plugin.common.MethodChannel.Result) {
+        submit(discoverExecutor, result, "DISCOVER_HOME_FAILED", "YouTube Music home is unavailable.") {
+            try {
+                val boundedLimit = limit.coerceIn(1, 50)
+                val feed = catalog.homeFeed(boundedLimit, regionCode)
+                val shelves = (feed["shelves"] as? List<*>)?.filterIsInstance<Map<String, Any>>().orEmpty()
+                val response = if (shelves.isNotEmpty()) {
+                    feed
+                } else {
+                    val fallback = newPipeLock.withLock {
+                        ensureInitialized(regionCode)
+                        val handler = ServiceList.YouTube.searchQHFactory.fromQuery(
+                            "top songs",
+                            listOf("music_songs"),
+                            ""
+                        )
+                        SearchInfo.getInfo(ServiceList.YouTube, handler).relatedItems.orEmpty()
+                            .filterIsInstance<StreamInfoItem>()
+                            .mapNotNull { it.toDiscoverTrack() }
+                            .distinctBy { it["videoId"] }
+                            .take(boundedLimit)
+                    }
+                    mapOf(
+                        "shelves" to if (fallback.isEmpty()) emptyList<Map<String, Any>>()
+                            else listOf(mapOf("title" to "Trending in $regionCode", "tracks" to fallback)),
+                        "continuation" to ""
+                    )
+                }
+                mainHandler.post { result.success(response) }
+            } catch (error: Exception) {
+                mainHandler.post {
+                    result.error("DISCOVER_HOME_FAILED", error.message ?: "YouTube Music home is unavailable.", null)
+                }
+            }
+        }
+    }
+
+    fun moreHome(token: String, limit: Int, regionCode: String, result: io.flutter.plugin.common.MethodChannel.Result) {
+        submit(discoverExecutor, result, "DISCOVER_HOME_MORE_FAILED", "Could not load more recommendations.") {
+            try {
+                val feed = catalog.moreHome(token, limit.coerceIn(1, 50))
+                mainHandler.post { result.success(feed) }
+            } catch (error: Exception) {
+                mainHandler.post {
+                    result.error("DISCOVER_HOME_MORE_FAILED", error.message ?: "Could not load more recommendations.", null)
+                }
+            }
+        }
+    }
+
     fun home(limit: Int, regionCode: String, result: io.flutter.plugin.common.MethodChannel.Result) {
         submit(discoverExecutor, result, "DISCOVER_HOME_FAILED", "YouTube Music home is unavailable.") {
             try {
