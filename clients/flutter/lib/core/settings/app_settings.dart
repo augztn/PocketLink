@@ -98,7 +98,7 @@ class AppSettings extends ChangeNotifier {
     'ZA': 'South Africa',
     'NG': 'Nigeria',
   };
-  static const homeSectionDefaults = <String>['search', 'quick', 'transfers', 'continue', 'recent'];
+  static const homeSectionDefaults = <String>['quick', 'continue', 'recent', 'transfers', 'search'];
   static const navigationDefaults = <String>['home', 'explore', 'files', 'browse'];
   static const musicButtonShortcutDefaults =
       AppSettingsMigrations.musicButtonShortcutDefaults;
