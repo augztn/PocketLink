@@ -355,16 +355,16 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
               if (serverJobs.isNotEmpty) ...[
                 if (_scope == _DownloadScope.all)
                   const _DownloadSectionLabel(title: 'Server', icon: Icons.cloud_download_outlined),
-                for (var i = 0; i < serverJobs.length; i++)
+                for (final job in serverJobs)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: _ServerDownloadJobCard(
-                      job: serverJobs[i],
-                      queuePosition: _serverQueuePosition(serverJobs[i], allServerJobs),
-                      onPause: () => _serverAction(() => widget.api.pauseServerDownload(serverJobs[i].id)),
-                      onResume: () => _serverAction(() => widget.api.resumeServerDownload(serverJobs[i].id)),
-                      onCancel: () => _serverAction(() => widget.api.cancelServerDownload(serverJobs[i].id)),
-                      onRemove: () => _removeServerJob(serverJobs[i]),
+                      job: job,
+                      queuePosition: _serverQueuePosition(job, allServerJobs),
+                      onPause: () => _serverAction(() => widget.api.pauseServerDownload(job.id)),
+                      onResume: () => _serverAction(() => widget.api.resumeServerDownload(job.id)),
+                      onCancel: () => _serverAction(() => widget.api.cancelServerDownload(job.id)),
+                      onRemove: () => _removeServerJob(job),
                     ),
                   ),
               ],
