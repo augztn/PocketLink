@@ -3,7 +3,8 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
-import 'discover/discover_thumbnail_cache.dart';
+import 'now_playing_artwork_palette.dart';
+import 'track_artwork_view.dart';
 
 /// Artwork surface used by the expanded Now Playing screen.
 class NowPlayingArtworkCard extends StatelessWidget {
@@ -58,72 +59,33 @@ class NowPlayingArtworkCard extends StatelessWidget {
           clipBehavior: Clip.antiAlias,
           child: usesSharedArtwork
               ? const SizedBox.expand()
-              : AnimatedSwitcher(
-                  duration: Duration.zero,
-                  reverseDuration: Duration.zero,
-                  switchInCurve: Curves.easeOutCubic,
-                  switchOutCurve: Curves.easeInCubic,
-                  transitionBuilder: (child, animation) => FadeTransition(
-                    opacity: animation,
-                    child: ScaleTransition(
-                      scale: Tween<double>(begin: 0.96, end: 1).animate(animation),
-                      child: child,
+              : Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    TrackArtworkView(
+                      bytes: hasArtwork ? artwork : null,
+                      artworkUrl: artworkUrl,
+                      fallbackColors: palette,
+                      fallbackIconSize: 92,
                     ),
-                  ),
-                  child: hasArtwork
-                      ? Stack(
-                          key: ValueKey(artworkKey),
-                          fit: StackFit.expand,
-                          children: [
-                            Image.memory(
-                              artwork!,
-                              cacheWidth: 544,
-                              fit: BoxFit.cover,
-                              gaplessPlayback: true,
-                            ),
-                            DecoratedBox(
-                              decoration: BoxDecoration(
-                                gradient: RadialGradient(
-                                  center: const Alignment(-0.55, -0.7),
-                                  radius: 1.1,
-                                  colors: [
-                                    Colors.white.withValues(alpha: 0.18),
-                                    Colors.transparent,
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        )
-                      : (artworkUrl?.isNotEmpty ?? false)
-                          ? DiscoverThumbnail(
-                              key: ValueKey('music-artwork-url:$artworkUrl'),
-                              url: DiscoverThumbnailCache.urlForSize(artworkUrl!, 544),
-                              cacheWidth: 544,
-                              fallback: _fallback(),
-                            )
-                          : _fallback(key: const ValueKey('music-artwork-fallback')),
+                    if (hasArtwork)
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: RadialGradient(
+                            center: const Alignment(-0.55, -0.7),
+                            radius: 1.1,
+                            colors: [
+                              Colors.white.withValues(alpha: 0.18),
+                              Colors.transparent,
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
         );
       },
     );
   }
 
-  Widget _fallback({Key? key}) => DecoratedBox(
-        key: key,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              palette[0].withValues(alpha: 0.92),
-              palette[1].withValues(alpha: 0.78),
-              palette[2],
-            ],
-          ),
-        ),
-        child: const Center(
-          child: Icon(Icons.music_note_rounded, size: 92, color: Colors.white),
-        ),
-      );
 }
