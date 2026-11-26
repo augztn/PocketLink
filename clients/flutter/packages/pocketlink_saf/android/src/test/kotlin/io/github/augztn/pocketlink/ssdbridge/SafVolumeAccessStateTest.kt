@@ -51,7 +51,7 @@ class SafVolumeAccessStateTest {
             documentCanWrite = false
         )
 
-        assertTrue(access.selected)
+        assertFalse(access.selected)
         assertFalse(access.readable)
         assertFalse(access.writable)
     }
