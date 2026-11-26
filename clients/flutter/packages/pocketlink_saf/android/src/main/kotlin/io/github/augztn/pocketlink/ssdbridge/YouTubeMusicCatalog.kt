@@ -76,9 +76,9 @@ internal class YouTubeMusicCatalog(
         )
     }
 
-    fun moreHome(token: String, limit: Int): Map<String, Any> {
+    fun moreHome(token: String, limit: Int, regionCode: String = "IN"): Map<String, Any> {
         require(token.isNotBlank() && token.length <= 8192) { "Invalid Home continuation token." }
-        val response = post("browse", JSONObject().put("continuation", token), "IN")
+        val response = post("browse", JSONObject().put("continuation", token), regionCode)
         return mapOf(
             "shelves" to parseHomeShelves(response, limit),
             "continuation" to (findContinuationToken(response) ?: "")
@@ -133,7 +133,7 @@ internal class YouTubeMusicCatalog(
         return shelf.optJSONObject("title")?.let(::textValue).orEmpty().trim()
     }
 
-    private fun findContinuationToken(value: Any?): String? {
+    internal fun findContinuationToken(value: Any?): String? {
         when (value) {
             is JSONObject -> {
                 value.optJSONObject("continuationCommand")?.optString("token")
