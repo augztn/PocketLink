@@ -1,6 +1,7 @@
 package io.github.augztn.pocketlink.ssdbridge
 
 import android.content.Context
+import android.database.sqlite.SQLiteDatabase
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
@@ -12,6 +13,44 @@ import java.util.concurrent.atomic.AtomicReference
 
 @RunWith(AndroidJUnit4::class)
 class MediaIndexDatabaseTest {
+    @Test
+    fun upgradesVersionThreeMediaRowsWithoutDiscardingIndexedFiles() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        context.deleteDatabase("pocketlink_index.db")
+        val legacyFile = context.getDatabasePath("pocketlink_index.db")
+        legacyFile.parentFile?.mkdirs()
+        val legacy = SQLiteDatabase.openOrCreateDatabase(legacyFile, null)
+        try {
+            legacy.execSQL("""
+                CREATE TABLE media (
+                    volume TEXT NOT NULL, path TEXT NOT NULL, name TEXT NOT NULL,
+                    category TEXT NOT NULL, size INTEGER NOT NULL, modified INTEGER NOT NULL,
+                    mime TEXT NOT NULL, scan_id TEXT NOT NULL,
+                    PRIMARY KEY(volume, path)
+                )
+            """.trimIndent())
+            legacy.execSQL(
+                "INSERT INTO media VALUES(?,?,?,?,?,?,?,?)",
+                arrayOf<Any?>("internal", "Music/legacy.mp3", "legacy.mp3", "music",
+                    2048L, 100L, "audio/mpeg", "old-scan")
+            )
+            legacy.execSQL("PRAGMA user_version=3")
+        } finally {
+            legacy.close()
+        }
+
+        val database = MediaIndexDatabase(context)
+        try {
+            val migrated = database.queryMedia("music", "", 10, 0).single()
+            assertEquals("legacy.mp3", migrated.name)
+            assertEquals(2048L, migrated.size)
+            assertTrue(!migrated.metadataScanned)
+        } finally {
+            database.close()
+            context.deleteDatabase("pocketlink_index.db")
+        }
+    }
+
     @Test
     fun pathSnapshotsLoadOnlyRequestedRowsAndDetectDescendantsInSql() {
         val context = ApplicationProvider.getApplicationContext<Context>()
