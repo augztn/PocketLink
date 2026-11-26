@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../navigation/pocketlink_navigation.dart';
 import 'feathered_glass_header.dart';
+import 'pocketlink_scaffold.dart';
 import 'smoked_glass_popover_menu.dart';
 
 class PocketLinkAppBarAction {
@@ -100,6 +101,10 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
       centerTitle: centerTitle,
       backgroundColor: backgroundColor ?? Colors.transparent,
       flexibleSpace: const FeatheredGlassHeaderBackground(),
+      bottom: const PreferredSize(
+        preferredSize: Size.fromHeight(pocketLinkHeaderFadeTailHeight),
+        child: SizedBox.expand(),
+      ),
       foregroundColor: foregroundColor,
       elevation: elevation ?? 0,
       scrolledUnderElevation: 0,
@@ -169,7 +174,8 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+  Size get preferredSize =>
+      const Size.fromHeight(kToolbarHeight + pocketLinkHeaderFadeTailHeight);
 }
 
 
