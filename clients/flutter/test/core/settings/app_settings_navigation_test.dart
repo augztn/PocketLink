@@ -68,6 +68,20 @@ void main() {
     );
   });
 
+  test('Home section visibility persists independently', () async {
+    final settings = AppSettings.instance;
+    await settings.setHomeSections(
+      globalSearch: false,
+      activeTransfers: false,
+    );
+
+    expect(settings.showGlobalSearch, isFalse);
+    expect(settings.showActiveTransfers, isFalse);
+    final preferences = await SharedPreferences.getInstance();
+    expect(preferences.getBool('settings_home_search'), isFalse);
+    expect(preferences.getBool('settings_home_transfers'), isFalse);
+  });
+
   test('Home section order persists and rejects incomplete layouts', () async {
     final settings = AppSettings.instance;
     const order = ['recent', 'search', 'continue', 'quick', 'transfers'];
