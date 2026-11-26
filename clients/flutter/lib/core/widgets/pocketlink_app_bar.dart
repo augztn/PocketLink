@@ -88,7 +88,11 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final headerTopInset = MediaQuery.paddingOf(context).top;
-    return AppBar(
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Positioned.fill(
+          child: AppBar(
       title: feathered
           ? Align(
               alignment: Alignment.topLeft,
@@ -107,14 +111,6 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
           contentHeight: kToolbarHeight,
           topInset: headerTopInset,
           toolbarSegmentOnly: true,
-        ),
-      ),
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(pocketLinkHeaderFadeTailHeight),
-        child: FeatheredGlassHeaderBackground(
-          contentHeight: kToolbarHeight,
-          topInset: headerTopInset,
-          fadeTailOnly: true,
         ),
       ),
       foregroundColor: foregroundColor,
@@ -181,13 +177,26 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
             ),
           ),
         ),
+          ],
+          ),
+        ),
+        Positioned(
+          top: headerTopInset + kToolbarHeight,
+          left: 0,
+          right: 0,
+          height: pocketLinkHeaderFadeTailHeight,
+          child: FeatheredGlassHeaderBackground(
+            contentHeight: kToolbarHeight,
+            topInset: headerTopInset,
+            fadeTailOnly: true,
+          ),
+        ),
       ],
     );
   }
 
   @override
-  Size get preferredSize =>
-      const Size.fromHeight(kToolbarHeight + pocketLinkHeaderFadeTailHeight);
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }
 
 
