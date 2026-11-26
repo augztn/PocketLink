@@ -44,7 +44,8 @@ internal class MediaIndexScanner(
     private val internalRoot: () -> File,
     private val externalRoots: () -> List<Pair<String, DocumentFile>>
 ) {
-    private val database = MediaIndexDatabase(context.applicationContext)
+    private val appContext = context.applicationContext
+    private val database = MediaIndexDatabase(appContext)
     private val reportPrefs = context.applicationContext.getSharedPreferences("media-index-report", Context.MODE_PRIVATE)
     private val executor = Executors.newSingleThreadExecutor { runnable ->
         Thread(runnable, "PocketLink-MediaIndex").apply { isDaemon = true }
@@ -419,7 +420,7 @@ internal class MediaIndexScanner(
             when (source) {
                 is File -> retriever.setDataSource(source.absolutePath)
                 is DocumentFile -> retriever.setDataSource(
-                    context.applicationContext, source.uri
+                    appContext, source.uri
                 )
                 else -> return EmbeddedMusicMetadata(null, null, null, null, false)
             }
