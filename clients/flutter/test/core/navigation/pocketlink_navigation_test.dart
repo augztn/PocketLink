@@ -164,12 +164,18 @@ void main() {
         progress: 0.18,
         upwardVelocity: 0,
       ),
-      isTrue,
+      isFalse,
     );
-    // A short, deliberate swipe should expand without requiring a fast fling.
     expect(
       PocketLinkNavigation.shouldExpandFromMiniPlayer(
-        progress: 0.08,
+        progress: 0.2,
+        upwardVelocity: 0,
+      ),
+      isFalse,
+    );
+    expect(
+      PocketLinkNavigation.shouldExpandFromMiniPlayer(
+        progress: 0.2001,
         upwardVelocity: 0,
       ),
       isTrue,
@@ -177,14 +183,14 @@ void main() {
     expect(
       PocketLinkNavigation.shouldExpandFromMiniPlayer(
         progress: 0.07,
-        upwardVelocity: -400,
+        upwardVelocity: -251,
       ),
       isTrue,
     );
     expect(
       PocketLinkNavigation.shouldExpandFromMiniPlayer(
         progress: 0.07,
-        upwardVelocity: -300,
+        upwardVelocity: -250,
       ),
       isFalse,
     );
