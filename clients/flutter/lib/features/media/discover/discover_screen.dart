@@ -23,6 +23,7 @@ import 'discover_models.dart';
 import 'discover_service.dart';
 import 'discover_cache.dart';
 import 'discover_thumbnail_cache.dart';
+import 'discover_recently_played_store.dart';
 import 'discover_moods_screen.dart';
 
 class _DiscoverShelf {
@@ -55,6 +56,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
   final DiscoverService _service = DiscoverService();
   late final AnimationController _shimmerController;
   List<DiscoverTrack> _tracks = const [];
+  List<DiscoverTrack> _recentlyPlayed = const [];
+  List<DiscoverMoodSection> _moodSections = const [];
   List<_DiscoverShelf> _homeShelves = const [];
   List<IndexedFile> _localLibrary = const [];
   bool _loading = false;
@@ -85,6 +88,62 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     AppSettings.instance.addListener(_onSettingsChanged);
     _loadLocalLibrary();
     _loadHome();
+    unawaited(_loadRecentlyPlayed());
+    unawaited(_loadMoods());
+  }
+
+  Future<void> _loadRecentlyPlayed() async {
+    final recent = await DiscoverRecentlyPlayedStore.read();
+    if (mounted) setState(() => _recentlyPlayed = recent);
+  }
+
+  Future<void> _loadMoods() async {
+    try {
+      final sections = await _service.moodsAndGenres();
+      if (mounted) setState(() => _moodSections = sections);
+    } catch (error) {
+      AppLogger.warning('Discover mood shelf loading failed', category: 'discover',
+        component: 'discover_screen',
+        fields: {'failure_type': error.runtimeType.toString()});
+    }
+  }
+
+  Future<void> _openMood(DiscoverMood mood) async {
+    final generation = ++_requestGeneration;
+    setState(() {
+      _loading = true;
+      _error = null;
+      _sectionTitle = mood.title;
+      _homeShelves = const [];
+      _homeContinuation = '';
+    });
+    try {
+      final tracks = await _service.browseMood(mood, limit: 50);
+      if (!mounted || generation != _requestGeneration) return;
+      setState(() {
+        _tracks = tracks;
+        if (tracks.isEmpty) _error = 'No tracks found for this mood.';
+      });
+    } on PlatformException catch (error) {
+      if (!mounted || generation != _requestGeneration) return;
+      setState(() => _error = error.message ?? 'Could not open this mood.');
+    } catch (_) {
+      if (!mounted || generation != _requestGeneration) return;
+      setState(() => _error = 'Could not load this mood right now.');
+    } finally {
+      if (mounted && generation == _requestGeneration) {
+        setState(() => _loading = false);
+      }
+    }
+  }
+
+  void _recordRecentlyPlayed(DiscoverTrack track) {
+    final recent = [
+      track,
+      ..._recentlyPlayed.where((item) => item.videoId != track.videoId),
+    ].take(20).toList(growable: false);
+    setState(() => _recentlyPlayed = recent);
+    unawaited(DiscoverRecentlyPlayedStore.record(track));
   }
 
   void _onSettingsChanged() {
@@ -486,6 +545,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       if (request != _playRequestGeneration ||
           session != player.queueSession) return;
 
+      _recordRecentlyPlayed(track);
       unawaited(_populateQueue(queueTracks, startIndex, session)
           .catchError((Object _) {}));
     } catch (error) {
@@ -1022,12 +1082,124 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       );
 
   void _showShelf(_DiscoverShelf shelf) {
+    _requestGeneration++;
     setState(() {
       _tracks = shelf.tracks;
       _sectionTitle = shelf.title;
       _homeShelves = const [];
       _homeContinuation = '';
     });
+  }
+
+  Widget _recentlyPlayedShelf() {
+    if (_recentlyPlayed.isEmpty) return const SliverToBoxAdapter();
+    final columns = <List<DiscoverTrack>>[
+      for (var index = 0; index < _recentlyPlayed.length; index += 4)
+        _recentlyPlayed.skip(index).take(4).toList(growable: false),
+    ];
+    return SliverToBoxAdapter(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        _shelfHeading('Recently played'),
+        SizedBox(
+          height: 4 * 58,
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            scrollDirection: Axis.horizontal,
+            itemCount: columns.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 14),
+            itemBuilder: (context, index) => SizedBox(
+              width: MediaQuery.sizeOf(context).width * .78,
+              child: Column(
+                children: [
+                  for (final track in columns[index])
+                    SizedBox(
+                      height: 58,
+                      child: InkWell(
+                        onTap: () => _play(track, queueOverride: _recentlyPlayed),
+                        child: Row(children: [
+                          _art(track, size: 46),
+                          const SizedBox(width: 11),
+                          Expanded(child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(track.title, maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.titleSmall),
+                              Text(track.artist, maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                )),
+                            ],
+                          )),
+                          IconButton(
+                            tooltip: 'More actions',
+                            onPressed: () => _showTrackMenu(track),
+                            icon: const Icon(Icons.more_horiz_rounded),
+                          ),
+                        ]),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 22),
+      ]),
+    );
+  }
+
+  Widget _moodHomeShelf() {
+    final section = _moodSections
+        .where((item) => item.items.isNotEmpty)
+        .firstOrNull;
+    if (section == null) return const SliverToBoxAdapter();
+    return SliverToBoxAdapter(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        _shelfHeading(section.title, onSeeAll: _openMoodsAndMoments),
+        SizedBox(
+          height: 104,
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            scrollDirection: Axis.horizontal,
+            itemCount: section.items.length.clamp(0, 12),
+            separatorBuilder: (_, __) => const SizedBox(width: 10),
+            itemBuilder: (context, index) {
+              final mood = section.items[index];
+              final stripe = mood.stripeColor == 0
+                  ? Theme.of(context).colorScheme.surfaceContainerHighest
+                  : Color(mood.stripeColor);
+              return SizedBox(
+                width: 132,
+                child: Material(
+                  color: stripe,
+                  borderRadius: BorderRadius.circular(16),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: () => _openMood(mood),
+                    child: Padding(
+                      padding: const EdgeInsets.all(13),
+                      child: Align(
+                        alignment: Alignment.bottomLeft,
+                        child: Text(mood.title, maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          )),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 22),
+      ]),
+    );
   }
 
   Widget _heroShelf(List<_DiscoverShelf> shelves) {
@@ -1356,9 +1528,14 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
             else if (hasTracks) ...[
               if (_loading) const SliverToBoxAdapter(child: LinearProgressIndicator(minHeight: 2)),
               if (_homeShelves.isNotEmpty) ...[
+                _recentlyPlayedShelf(),
                 _heroShelf(_homeShelves),
                 if (_homeShelves.isNotEmpty) _trackPager(_homeShelves.first),
-                for (final shelf in _homeShelves.skip(1)) _homeShelf(shelf),
+                for (var index = 1; index < _homeShelves.length; index++) ...[
+                  _homeShelf(_homeShelves[index]),
+                  if (index == 1) _moodHomeShelf(),
+                ],
+                if (_homeShelves.length <= 1) _moodHomeShelf(),
               ] else ...[
                 SliverToBoxAdapter(
                   child: Padding(
