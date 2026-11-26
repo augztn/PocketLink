@@ -103,7 +103,7 @@ void main() {
         final result = await MediaLibraryRepository(
           api: api,
           type: MediaLibraryType.music,
-        ).readIndexedMedia(query: 'jazz');
+        ).readIndexedMedia();
 
         expect(result.items, hasLength(502));
         expect(result.items.first.entry.name, 'track_000.mp3');
@@ -120,7 +120,7 @@ void main() {
         );
         expect(
           adapter.requests.take(2).map((request) => request.queryParameters['q']),
-          everyElement('jazz'),
+          everyElement(''),
         );
         expect(
           adapter.requests.take(2).map((request) => request.queryParameters['limit']),
@@ -130,6 +130,55 @@ void main() {
           adapter.requests.take(2).map((request) => request.queryParameters['offset']),
           [0, 500],
         );
+      } finally {
+        api.close(force: true);
+      }
+    });
+
+    test('searches embedded title, artist and album metadata after indexing', () async {
+      final adapter = _MediaPageAdapter([
+        _page([
+          _indexedFile(name: 'track_001.mp3', path: 'Music/track_001.mp3'),
+          _indexedFile(name: 'track_002.mp3', path: 'Music/track_002.mp3'),
+        ]),
+        {
+          'items': [
+            {
+              'path': 'Music/track_001.mp3',
+              'name': 'track_001.mp3',
+              'title': 'Midnight City',
+              'artist': 'M83',
+              'album': 'Hurry Up, We Are Dreaming',
+              'duration': 4.03,
+              'artwork_available': true,
+            },
+            {
+              'path': 'Music/track_002.mp3',
+              'name': 'track_002.mp3',
+              'title': 'Outro',
+              'artist': 'M83',
+              'album': 'Hurry Up, We Are Dreaming',
+            },
+          ],
+        },
+      ]);
+      final api = ServerApi(
+        baseUrl: 'http://127.0.0.1:8000',
+        username: 'admin',
+        password: 'secret',
+        httpClientAdapter: adapter,
+      );
+
+      try {
+        final result = await MediaLibraryRepository(
+          api: api,
+          type: MediaLibraryType.music,
+        ).readIndexedMedia(query: 'midnight city');
+
+        expect(result.items, hasLength(1));
+        expect(result.items.single.title, 'Midnight City');
+        expect(result.items.single.artist, 'M83');
+        expect(adapter.requests.first.queryParameters['q'], '');
       } finally {
         api.close(force: true);
       }

@@ -43,7 +43,10 @@ class MediaLibraryRepository {
     do {
       final page = await api.indexedMedia(
         category,
-        query: query,
+        // The host index only searches file paths/names. Music queries must
+        // run after embedded tags are attached so title/artist/album matches
+        // are not discarded before metadata lookup.
+        query: type == MediaLibraryType.music ? '' : query,
         limit: _pageSize,
         offset: offset,
       );
@@ -93,11 +96,22 @@ class MediaLibraryRepository {
       }
     }
 
-    found.sort((a, b) =>
+    final normalizedQuery = query.trim().toLowerCase();
+    final results = normalizedQuery.isEmpty
+        ? found
+        : found.where((item) =>
+            item.entry.name.toLowerCase().contains(normalizedQuery) ||
+            item.path.toLowerCase().contains(normalizedQuery) ||
+            (item.title?.toLowerCase().contains(normalizedQuery) ?? false) ||
+            (item.artist?.toLowerCase().contains(normalizedQuery) ?? false) ||
+            (item.album?.toLowerCase().contains(normalizedQuery) ?? false),
+          ).toList(growable: false);
+
+    results.sort((a, b) =>
         a.entry.name.toLowerCase().compareTo(b.entry.name.toLowerCase()));
 
     return MediaLibraryResult(
-      items: List.unmodifiable(found),
+      items: List.unmodifiable(results),
       status: status,
     );
   }
