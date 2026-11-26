@@ -11,7 +11,7 @@ internal data class IndexDatabaseStats(
 )
 
 internal class MediaIndexDatabase(context: Context) :
-    SQLiteOpenHelper(context, "pocketlink_index.db", null, 3) {
+    SQLiteOpenHelper(context, "pocketlink_index.db", null, 4) {
 
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL("""
@@ -27,6 +27,8 @@ internal class MediaIndexDatabase(context: Context) :
                 volume TEXT NOT NULL, path TEXT NOT NULL, name TEXT NOT NULL,
                 category TEXT NOT NULL, size INTEGER NOT NULL, modified INTEGER NOT NULL,
                 mime TEXT NOT NULL, scan_id TEXT NOT NULL,
+                title TEXT, artist TEXT, album TEXT, duration_ms INTEGER,
+                metadata_scanned INTEGER NOT NULL DEFAULT 0,
                 PRIMARY KEY(volume, path)
             )
         """.trimIndent())
@@ -41,6 +43,13 @@ internal class MediaIndexDatabase(context: Context) :
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         if (oldVersion < 2) createScanCheckpointTable(db)
         if (oldVersion < 3) createScanTraversalTables(db)
+        if (oldVersion < 4) {
+            db.execSQL("ALTER TABLE media ADD COLUMN title TEXT")
+            db.execSQL("ALTER TABLE media ADD COLUMN artist TEXT")
+            db.execSQL("ALTER TABLE media ADD COLUMN album TEXT")
+            db.execSQL("ALTER TABLE media ADD COLUMN duration_ms INTEGER")
+            db.execSQL("ALTER TABLE media ADD COLUMN metadata_scanned INTEGER NOT NULL DEFAULT 0")
+        }
     }
 
     private fun createScanCheckpointTable(db: SQLiteDatabase) {
@@ -283,8 +292,8 @@ internal class MediaIndexDatabase(context: Context) :
         db.beginTransaction()
         try {
             val statement = db.compileStatement("""
-                INSERT OR REPLACE INTO media(volume,path,name,category,size,modified,mime,scan_id)
-                VALUES(?,?,?,?,?,?,?,?)
+                INSERT OR REPLACE INTO media(volume,path,name,category,size,modified,mime,scan_id,title,artist,album,duration_ms,metadata_scanned)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
             """.trimIndent())
             try {
                 mediaItems.forEach { item ->
@@ -297,6 +306,11 @@ internal class MediaIndexDatabase(context: Context) :
                     statement.bindLong(6, item.modified)
                     statement.bindString(7, item.mime)
                     statement.bindString(8, scanId)
+                    if (item.title == null) statement.bindNull(9) else statement.bindString(9, item.title)
+                    if (item.artist == null) statement.bindNull(10) else statement.bindString(10, item.artist)
+                    if (item.album == null) statement.bindNull(11) else statement.bindString(11, item.album)
+                    if (item.durationMs == null) statement.bindNull(12) else statement.bindLong(12, item.durationMs)
+                    statement.bindLong(13, if (item.metadataScanned) 1L else 0L)
                     statement.executeInsert()
                 }
             } finally { statement.close() }
@@ -335,11 +349,11 @@ internal class MediaIndexDatabase(context: Context) :
         val args = arrayOf(volume) + requested.toTypedArray()
         val result = mutableMapOf<String, IndexStamp>()
         readableDatabase.query(
-            "media", arrayOf("path", "size", "modified", "category"),
+            "media", arrayOf("path", "size", "modified", "category", "metadata_scanned"),
             "volume=? AND path IN ($placeholders)", args, null, null, null
         ).use { cursor ->
             while (cursor.moveToNext()) result[cursor.getString(0)] =
-                IndexStamp(cursor.getLong(1), cursor.getLong(2), cursor.getString(3))
+                IndexStamp(cursor.getLong(1), cursor.getLong(2), cursor.getString(3), cursor.getInt(4) != 0)
         }
         return result
     }
@@ -375,7 +389,7 @@ internal class MediaIndexDatabase(context: Context) :
         readableDatabase.query("media", arrayOf("path", "size", "modified", "category"),
             "volume=?", arrayOf(volume), null, null, null).use { cursor ->
             while (cursor.moveToNext()) result[cursor.getString(0)] =
-                IndexStamp(cursor.getLong(1), cursor.getLong(2), cursor.getString(3))
+                IndexStamp(cursor.getLong(1), cursor.getLong(2), cursor.getString(3), cursor.getInt(4) != 0)
         }
         return result
     }
@@ -430,13 +444,15 @@ internal class MediaIndexDatabase(context: Context) :
         }
         val rows = mutableListOf<IndexedFile>()
         readableDatabase.query(
-            "media", arrayOf("volume","path","name","category","size","modified","mime"),
+            "media", arrayOf("volume","path","name","category","size","modified","mime","title","artist","album","duration_ms","metadata_scanned"),
             where.joinToString(" AND "), args.toTypedArray(), null, null,
             "name COLLATE NOCASE ASC", "$offset,$limit"
         ).use { cursor ->
             while (cursor.moveToNext()) rows += IndexedFile(
                 cursor.getString(0), cursor.getString(1), cursor.getString(2), "file",
-                cursor.getLong(4), cursor.getLong(5), cursor.getString(6), cursor.getString(3)
+                cursor.getLong(4), cursor.getLong(5), cursor.getString(6), cursor.getString(3),
+                cursor.getString(7), cursor.getString(8), cursor.getString(9),
+                if (cursor.isNull(10)) null else cursor.getLong(10), cursor.getInt(11) != 0
             )
         }
         return rows
