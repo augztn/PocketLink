@@ -95,12 +95,14 @@ extension AppSettingsNavigation on AppSettings {
     bool? recentFiles,
     bool? globalSearch,
     bool? activeTransfers,
+    bool? storageOverview,
   }) async {
     if (quickActions != null) _showQuickActions = quickActions;
     if (library != null) _showLibrary = library;
     if (recentFiles != null) _showRecentFiles = recentFiles;
     if (globalSearch != null) _showGlobalSearch = globalSearch;
     if (activeTransfers != null) _showActiveTransfers = activeTransfers;
+    if (storageOverview != null) _showStorageOverview = storageOverview;
     _notifySettingsChanged();
     await Future.wait([
       if (quickActions != null) AppSettings._storage.write(key: AppSettings._quickActionsKey, value: '$quickActions'),
@@ -111,6 +113,7 @@ extension AppSettingsNavigation on AppSettings {
     await Future.wait([
       if (globalSearch != null) preferences.setBool(AppSettings._homeSearchKey, globalSearch),
       if (activeTransfers != null) preferences.setBool(AppSettings._homeTransfersKey, activeTransfers),
+      if (storageOverview != null) preferences.setBool(AppSettings._homeStorageOverviewKey, storageOverview),
     ]);
   }
 }
