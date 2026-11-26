@@ -27,7 +27,7 @@ void main() {
     expect(find.byType(shader_blur.ProgressiveBlur), findsOneWidget);
     expect(find.byType(BackdropFilter), findsNothing);
     expect(find.byType(BackdropGroup), findsNothing);
-    expect(find.byType(ShaderMask), findsNothing);
+    expect(find.byType(ShaderMask), findsOneWidget);
     expect(find.byType(Positioned), findsOneWidget);
   });
 
@@ -50,7 +50,7 @@ void main() {
     expect(blur.begin, Alignment.bottomCenter);
     expect(blur.end, Alignment.topCenter);
     expect(blur.sigmaStart, 72);
-    expect(blur.sigmaEnd, 24);
+    expect(blur.sigmaEnd, 72);
     expect(find.byType(Positioned), findsNothing);
   });
 
