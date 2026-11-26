@@ -251,7 +251,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                 icon: Icons.add_link_rounded,
                 onPressed: _newDownload,
               ),
-              if (_scope != _DownloadScope.local)
+              if (_scope == _DownloadScope.server)
                 PocketLinkAppBarAction(
                   label: 'Pause server downloads',
                   icon: Icons.pause_rounded,
@@ -259,7 +259,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                   onPressed: activeServer + queuedServer > 0
                       ? () => _serverBulkAction(pause: true) : null,
                 ),
-              if (_scope != _DownloadScope.local)
+              if (_scope == _DownloadScope.server)
                 PocketLinkAppBarAction(
                   label: 'Resume server downloads',
                   icon: Icons.play_arrow_rounded,
@@ -267,14 +267,14 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                   onPressed: allServerJobs.any((j) => j.status == 'paused' || j.status == 'failed')
                       ? () => _serverBulkAction(pause: false) : null,
                 ),
-              if (_scope != _DownloadScope.server)
+              if (_scope == _DownloadScope.local)
                 PocketLinkAppBarAction(
                   label: 'Pause local downloads',
                   icon: Icons.pause_circle_outline_rounded,
                   enabled: activeLocal > 0 || queuedLocal > 0,
                   onPressed: activeLocal > 0 || queuedLocal > 0 ? _manager.pauseAll : null,
                 ),
-              if (_scope != _DownloadScope.server)
+              if (_scope == _DownloadScope.local)
                 PocketLinkAppBarAction(
                   label: 'Resume local downloads',
                   icon: Icons.play_circle_outline_rounded,
@@ -282,7 +282,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                   onPressed: allLocalTasks.any((task) => task.status == DownloadStatus.paused || task.status == DownloadStatus.failed)
                       ? _manager.resumeAll : null,
                 ),
-              if (_scope != _DownloadScope.server)
+              if (_scope == _DownloadScope.local)
                 PocketLinkAppBarAction(
                   label: 'Clear completed local downloads',
                   icon: Icons.delete_sweep_outlined,
