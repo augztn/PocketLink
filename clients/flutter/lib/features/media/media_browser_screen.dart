@@ -50,6 +50,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
 
   List<MediaFileItem> _media = const [];
   bool _loading = true;
+  bool _routeIsCurrent = true;
   String? _error;
   int _scannedDirectories = 0;
   int _skippedDirectories = 0;
@@ -123,6 +124,20 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   bool get _isMusic => widget.type == MediaLibraryType.music;
   String get _title => _isMusic ? 'Music' : 'Videos';
   List<String> get _roots => _isMusic ? const ['Music'] : const [''];
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final isCurrent = ModalRoute.of(context)?.isCurrent ?? true;
+    if (_routeIsCurrent == isCurrent) return;
+    _routeIsCurrent = isCurrent;
+    if (!isCurrent) {
+      _cancelAllVideoRequests();
+    } else if (mounted) {
+      // Recreate requests for visible cards after returning to Videos.
+      setState(() {});
+    }
+  }
 
   @override
   void initState() {
