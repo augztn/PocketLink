@@ -363,9 +363,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final options = entries[id];
     if (options == null) return const [];
     if (tokens.isEmpty) return options.keys.toList(growable: false);
+    const categoryTerms = <String, String>{
+      'appearance': 'appearance visual effects',
+      'navigation': 'navigation bar dock',
+      'dashboard': 'dashboard home',
+      'audio': 'audio music',
+      'discover': 'discover explore',
+      'video': 'video player',
+      'media': 'media storage downloads',
+      'backup': 'backup restore',
+      'connection': 'connection network',
+      'about': 'about pocketlink',
+    };
     return options.entries
         .where((entry) {
-          final corpus = '${entry.key.toLowerCase()} ${entry.value}';
+          final corpus = '${id} ${categoryTerms[id] ?? ''} ${entry.key.toLowerCase()} ${entry.value} wi fi';
           return tokens.every(corpus.contains);
         })
         .map((entry) => entry.key)
