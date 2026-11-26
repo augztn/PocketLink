@@ -149,7 +149,9 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     _browserState = Provider.of<FileBrowserStateStore>(context, listen: false);
     final saved = _browserState.stateFor(_stateKey);
     _path = widget.locationRequest > 0 ? widget.requestedPath : (widget.initialPath.isNotEmpty ? widget.initialPath : saved.path);
-    _showFilesHome = widget.locationRequest == 0 && widget.initialPath.isEmpty && widget.initialVolume == null;
+    _showFilesHome = widget.locationRequest == 0 && widget.externalDriveRequest == 0 &&
+        widget.uploadRequest == 0 && widget.initialPath.isEmpty &&
+        widget.initialVolume == null && widget.initialCategory == 'All';
     HomeActivityStore.instance.addListener(_onHomeActivityChanged);
     unawaited(HomeActivityStore.instance.load().then((_) {
       if (mounted && _showFilesHome) setState(() {});
@@ -267,6 +269,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
       setState(() {
         _volumes = available;
         if (selectFirstExternal && available.isNotEmpty) {
+          _showFilesHome = false;
           _selectedVolume = available.first.id;
           _path = '';
           _pendingScrollOffset = 0;
