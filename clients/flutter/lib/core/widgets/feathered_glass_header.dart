@@ -2,6 +2,7 @@ import 'dart:ui' as ui;
 
 import 'package:material_ui/material_ui.dart';
 
+import '../settings/app_settings.dart';
 import 'pocketlink_scaffold.dart';
 import 'progressive_blur.dart';
 
@@ -52,23 +53,32 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
         width: double.infinity,
         height: headerHeight,
         child: ClipRect(
-          child: ProgressiveBlur(
-            maxSigma: PocketLinkHeaderBlurStyle.sigma,
-            endSigma: 0,
-            strongestAtBottom: false,
-            child: isDark
-                ? const DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: PocketLinkHeaderBlurStyle.darkScrim,
-                        stops: PocketLinkHeaderBlurStyle.scrimStops,
+          child: AnimatedBuilder(
+            animation: AppSettings.instance,
+            builder: (context, _) {
+              final backdrop = isDark
+                  ? const DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: PocketLinkHeaderBlurStyle.darkScrim,
+                          stops: PocketLinkHeaderBlurStyle.scrimStops,
+                        ),
                       ),
-                    ),
-                    child: SizedBox.expand(),
-                  )
-                : const SizedBox.expand(),
+                      child: SizedBox.expand(),
+                    )
+                  : const SizedBox.expand();
+              if (!AppSettings.instance.progressiveBlurEnabled) {
+                return backdrop;
+              }
+              return ProgressiveBlur(
+                maxSigma: PocketLinkHeaderBlurStyle.sigma,
+                endSigma: 0,
+                strongestAtBottom: false,
+                child: backdrop,
+              );
+            },
           ),
         ),
       ),
