@@ -45,6 +45,13 @@ class MediaIndexDatabaseTest {
             assertEquals("legacy.mp3", migrated.name)
             assertEquals(2048L, migrated.size)
             assertTrue(!migrated.metadataScanned)
+            assertTrue(database.hasUnscannedMusicMetadata())
+            database.upsertMedia(
+                listOf(migrated.copy(title = "Recovered Title", metadataScanned = true)),
+                "metadata-refresh"
+            )
+            assertTrue(!database.hasUnscannedMusicMetadata())
+            assertEquals("Recovered Title", database.queryMedia("music", "", 10, 0).single().title)
         } finally {
             database.close()
             context.deleteDatabase("pocketlink_index.db")
