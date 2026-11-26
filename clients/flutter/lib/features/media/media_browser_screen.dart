@@ -116,6 +116,8 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   Set<String> _favoriteKeys = <String>{};
   final Map<String, Future<Uint8List?>> _musicArtworkCache = {};
   final Map<String, Future<VideoMetadata?>> _videoMetadataCache = {};
+  final Map<String, CancelToken> _videoThumbnailTokens = {};
+  final Map<String, CancelToken> _videoMetadataTokens = {};
   final Map<String, Future<int>> _musicDurationRequests = {};
 
   bool get _isMusic => widget.type == MediaLibraryType.music;
@@ -518,13 +520,70 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   List<MediaFileItem> _sortMedia(List<MediaFileItem> items) =>
       _catalog.sortMedia(items);
 
-  Widget _buildVideoArtwork(MediaFileItem media, {required BoxFit fit}) =>
-      VideoArtwork(        future: widget.api.videoThumbnail(media.path, volume: media.volume),
-        fit: fit,
-      );
+  CancelToken _requestToken(
+    Map<String, CancelToken> tokens,
+    String key,
+  ) {
+    final existing = tokens[key];
+    if (existing != null && !existing.isCancelled) return existing;
+    final token = CancelToken();
+    tokens[key] = token;
+    return token;
+  }
 
-  Future<VideoMetadata?> _videoMetadataFor(MediaFileItem media) =>
-      _videoMetadataCache.putIfAbsent(_favoriteKey(media), () => widget.api.videoMetadata(media.path, volume: media.volume));
+  Widget _buildVideoArtwork(MediaFileItem media, {required BoxFit fit}) {
+    final key = _favoriteKey(media);
+    final token = _requestToken(_videoThumbnailTokens, key);
+    return VideoArtwork(
+      future: widget.api.videoThumbnail(
+        media.path,
+        volume: media.volume,
+        cancelToken: token,
+      ),
+      fit: fit,
+    );
+  }
+
+  Future<VideoMetadata?> _videoMetadataFor(MediaFileItem media) {
+    final key = _favoriteKey(media);
+    return _videoMetadataCache.putIfAbsent(key, () {
+      final token = _requestToken(_videoMetadataTokens, key);
+      return widget.api.videoMetadata(
+        media.path,
+        volume: media.volume,
+        cancelToken: token,
+      );
+    });
+  }
+
+  void _releaseVideoRequests(MediaFileItem media) {
+    final key = _favoriteKey(media);
+    final thumbnail = _videoThumbnailTokens.remove(key);
+    if (thumbnail != null && !thumbnail.isCancelled) {
+      thumbnail.cancel('Video card left the viewport');
+    }
+    final metadata = _videoMetadataTokens.remove(key);
+    if (metadata != null && !metadata.isCancelled) {
+      metadata.cancel('Video card left the viewport');
+    }
+    _videoMetadataCache.remove(key);
+  }
+
+  void _cancelAllVideoRequests() {
+    for (final media in _videoThumbnailTokens.keys.toList()) {
+      final token = _videoThumbnailTokens.remove(media);
+      if (token != null && !token.isCancelled) {
+        token.cancel('Video library is closing');
+      }
+    }
+    for (final media in _videoMetadataTokens.keys.toList()) {
+      final token = _videoMetadataTokens.remove(media);
+      if (token != null && !token.isCancelled) {
+        token.cancel('Video library is closing');
+      }
+    }
+    _videoMetadataCache.clear();
+  }
 
   Widget _videoMetadataLabel(MediaFileItem media) => VideoMetadataLabel(
         future: _videoMetadataFor(media),
@@ -593,20 +652,24 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         final media = items[index];
         final extension = media.entry.name.split('.').last.toUpperCase();
         final favorite = _favoriteKeys.contains(_favoriteKey(media));
-        return VideoGridCard(
-          title: media.entry.name,
-          extension: extension,
-          sizeLabel: _formatBytes(media.entry.size),
-          favorite: favorite,
-          artwork: _buildVideoArtwork(media, fit: BoxFit.cover),
-          durationBadge: _videoDurationBadge(media),
-          metadataLabel: _videoMetadataLabel(media),
-          onOpen: () => _openMedia(media, items),
-          onToggleFavorite: () => _toggleFavorite(media),
-          onDownload: () => _downloadMedia(
-            context,
-            media,
-            failureMessage: 'Could not add this video to Downloads.',
+        return _VideoRequestLifecycle(
+          key: ValueKey(_favoriteKey(media)),
+          onDispose: () => _releaseVideoRequests(media),
+          child: VideoGridCard(
+            title: media.entry.name,
+            extension: extension,
+            sizeLabel: _formatBytes(media.entry.size),
+            favorite: favorite,
+            artwork: _buildVideoArtwork(media, fit: BoxFit.cover),
+            durationBadge: _videoDurationBadge(media),
+            metadataLabel: _videoMetadataLabel(media),
+            onOpen: () => _openMedia(media, items),
+            onToggleFavorite: () => _toggleFavorite(media),
+            onDownload: () => _downloadMedia(
+              context,
+              media,
+              failureMessage: 'Could not add this video to Downloads.',
+            ),
           ),
         );
       },
@@ -629,18 +692,22 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       itemBuilder: (context, index) {
         final media = items[index];
         final extension = media.entry.name.split('.').last.toUpperCase();
-        return VideoListTile(
-          title: media.entry.name,
-          extension: extension,
-          sizeLabel: _formatBytes(media.entry.size),
-          sourceLabel: _sourceLabel(media),
-          artwork: _buildVideoArtwork(media, fit: BoxFit.cover),
-          metadataLabel: _videoMetadataLabel(media),
-          onOpen: () => _openMedia(media, items),
-          onDownload: () => _downloadMedia(
-            context,
-            media,
-            failureMessage: 'Could not add this video to Downloads.',
+        return _VideoRequestLifecycle(
+          key: ValueKey(_favoriteKey(media)),
+          onDispose: () => _releaseVideoRequests(media),
+          child: VideoListTile(
+            title: media.entry.name,
+            extension: extension,
+            sizeLabel: _formatBytes(media.entry.size),
+            sourceLabel: _sourceLabel(media),
+            artwork: _buildVideoArtwork(media, fit: BoxFit.cover),
+            metadataLabel: _videoMetadataLabel(media),
+            onOpen: () => _openMedia(media, items),
+            onDownload: () => _downloadMedia(
+              context,
+              media,
+              failureMessage: 'Could not add this video to Downloads.',
+            ),
           ),
         );
       },
@@ -735,6 +802,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     widget.onBackHandlerChanged?.call(null);
     if (_isMusic) HomeActivityStore.instance.removeListener(_onHomeActivityChanged);
     _saveState();
+    _cancelAllVideoRequests();
     _searchController.dispose();
     _contentScrollController.removeListener(_saveScrollOffset);
     _contentScrollController.dispose();
@@ -1720,4 +1788,29 @@ class MediaBrowserScreen extends StatefulWidget {
 
   @override
   State<MediaBrowserScreen> createState() => _MediaBrowserScreenState();
+}
+
+class _VideoRequestLifecycle extends StatefulWidget {
+  const _VideoRequestLifecycle({
+    required this.child,
+    required this.onDispose,
+    super.key,
+  });
+
+  final Widget child;
+  final VoidCallback onDispose;
+
+  @override
+  State<_VideoRequestLifecycle> createState() => _VideoRequestLifecycleState();
+}
+
+class _VideoRequestLifecycleState extends State<_VideoRequestLifecycle> {
+  @override
+  void dispose() {
+    widget.onDispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
