@@ -68,5 +68,35 @@ void main() {
       expect(observer.currentPageRoute, isNull);
       expect(observer.isNowPlayingVisible, isFalse);
     });
+    test('opens Now Playing after a normal single upward swipe', () {
+      expect(
+        PocketLinkNavigation.shouldExpandFromMiniPlayer(
+          progress: 0.09,
+          upwardVelocity: -100,
+        ),
+        isTrue,
+      );
+    });
+
+    test('opens Now Playing from a short fast upward swipe', () {
+      expect(
+        PocketLinkNavigation.shouldExpandFromMiniPlayer(
+          progress: 0,
+          upwardVelocity: -160,
+        ),
+        isTrue,
+      );
+    });
+
+    test('does not expand from a small slow accidental movement', () {
+      expect(
+        PocketLinkNavigation.shouldExpandFromMiniPlayer(
+          progress: 0.04,
+          upwardVelocity: -80,
+        ),
+        isFalse,
+      );
+    });
+
   });
 }
