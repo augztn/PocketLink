@@ -9,39 +9,81 @@ import 'progressive_blur.dart';
 class FeatheredGlassHeaderBackground extends StatelessWidget {
   const FeatheredGlassHeaderBackground({
     this.darkTint,
+    this.backgroundColor,
     this.contentHeight = kToolbarHeight,
     this.strongestAtBottom = false,
     super.key,
   });
 
+  /// Optional three-color dark-theme tint, interpolated across the header.
   final List<Color>? darkTint;
+
+  /// Color the content fades into. Defaults to the theme scaffold color.
+  final Color? backgroundColor;
   final double contentHeight;
   final bool strongestAtBottom;
+
+  static const int _fadeSamples = 9;
+  static const double _fadeHoldFraction = 0.2;
+  static const double _peakFadeAlpha = 0.97;
+
+  /// Eased opacity of the header scrim at [t] (0 = strong edge, 1 = weak edge).
+  @visibleForTesting
+  static double fadeAlphaAt(double t) {
+    final progress = t.clamp(0.0, 1.0).toDouble();
+    if (progress <= _fadeHoldFraction) return _peakFadeAlpha;
+    final u = (progress - _fadeHoldFraction) / (1 - _fadeHoldFraction);
+    return _peakFadeAlpha * (1 - u * u * (3 - 2 * u));
+  }
+
+  static LinearGradient _fadeGradient(
+    Color background, {
+    required bool strongestAtBottom,
+  }) {
+    final colors = <Color>[];
+    final stops = <double>[];
+    for (var index = 0; index < _fadeSamples; index++) {
+      final t = index / (_fadeSamples - 1);
+      colors.add(background.withValues(alpha: fadeAlphaAt(t)));
+      stops.add(t);
+    }
+    return LinearGradient(
+      begin: strongestAtBottom ? Alignment.bottomCenter : Alignment.topCenter,
+      end: strongestAtBottom ? Alignment.topCenter : Alignment.bottomCenter,
+      colors: colors,
+      stops: stops,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
     final headerHeight = media.padding.top + contentHeight + 16;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final scrimColor = isDark ? Colors.black : Colors.white;
     final customDarkTint = isDark && darkTint != null && darkTint!.length >= 3
         ? darkTint!
         : null;
-    final scrimColors = customDarkTint == null
-        ? [
-            scrimColor.withValues(alpha: 0.92),
-            scrimColor.withValues(alpha: 0.78),
-            scrimColor.withValues(alpha: 0.48),
-            scrimColor.withValues(alpha: 0.16),
-            scrimColor.withValues(alpha: 0),
-          ]
-        : [
-            customDarkTint[0],
-            Color.lerp(customDarkTint[0], customDarkTint[1], 0.5)!,
-            customDarkTint[1],
-            Color.lerp(customDarkTint[1], customDarkTint[2], 0.5)!,
-            customDarkTint[2],
-          ];
+    final gradient = customDarkTint == null
+        ? _fadeGradient(
+            backgroundColor ?? Theme.of(context).scaffoldBackgroundColor,
+            strongestAtBottom: strongestAtBottom,
+          )
+        : LinearGradient(
+            begin: strongestAtBottom
+                ? Alignment.bottomCenter
+                : Alignment.topCenter,
+            end: strongestAtBottom
+                ? Alignment.topCenter
+                : Alignment.bottomCenter,
+            colors: [
+              customDarkTint[0],
+              Color.lerp(customDarkTint[0], customDarkTint[1], 0.5)!,
+              customDarkTint[1],
+              Color.lerp(customDarkTint[1], customDarkTint[2], 0.5)!,
+              customDarkTint[2],
+            ],
+            stops: const [0, 0.16, 0.38, 0.68, 1],
+          );
 
     return _HeaderHeightReporter(
       height: headerHeight,
@@ -62,18 +104,7 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
               ),
               Positioned.fill(
                 child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: strongestAtBottom
-                          ? Alignment.bottomCenter
-                          : Alignment.topCenter,
-                      end: strongestAtBottom
-                          ? Alignment.topCenter
-                          : Alignment.bottomCenter,
-                      colors: scrimColors,
-                      stops: const [0, 0.16, 0.38, 0.68, 1],
-                    ),
-                  ),
+                  decoration: BoxDecoration(gradient: gradient),
                 ),
               ),
             ],
