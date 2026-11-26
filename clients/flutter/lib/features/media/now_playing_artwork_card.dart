@@ -38,23 +38,25 @@ class NowPlayingArtworkCard extends StatelessWidget {
           key: artworkTargetKey,
           width: dimension,
           height: dimension,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(26),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
-            boxShadow: [
-              BoxShadow(
-                color: palette[0].withValues(alpha: 0.28),
-                blurRadius: 38,
-                spreadRadius: 2,
-                offset: const Offset(0, 16),
-              ),
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.34),
-                blurRadius: 24,
-                offset: const Offset(0, 12),
-              ),
-            ],
-          ),
+          decoration: usesSharedArtwork
+              ? null
+              : BoxDecoration(
+                  borderRadius: BorderRadius.circular(26),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: palette[0].withValues(alpha: 0.28),
+                      blurRadius: 38,
+                      spreadRadius: 2,
+                      offset: const Offset(0, 16),
+                    ),
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.34),
+                      blurRadius: 24,
+                      offset: const Offset(0, 12),
+                    ),
+                  ],
+                ),
           clipBehavior: Clip.antiAlias,
           child: usesSharedArtwork
               ? const SizedBox.expand()
