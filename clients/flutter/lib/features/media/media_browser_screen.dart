@@ -230,6 +230,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       }
     }
     if (!mounted) return;
+    _cancelAllVideoRequests();
     widget.api.clearMediaCache();
     _musicDurationRequests.clear();
     setState(() {
@@ -546,6 +547,9 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
 
   Future<VideoMetadata?> _videoMetadataFor(MediaFileItem media) {
     final key = _favoriteKey(media);
+    if (_videoMetadataTokens[key]?.isCancelled ?? false) {
+      _videoMetadataCache.remove(key);
+    }
     return _videoMetadataCache.putIfAbsent(key, () {
       final token = _requestToken(_videoMetadataTokens, key);
       return widget.api.videoMetadata(
