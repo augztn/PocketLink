@@ -133,7 +133,7 @@ abstract final class PocketLinkNavigation {
     required double progress,
     required double upwardVelocity,
   }) =>
-      progress > 0.08 || upwardVelocity < -150;
+      progress > 0.2 || upwardVelocity < -250;
 
   /// A nested tab navigator may consume Back only while its tab is visible.
   static bool shouldHandleNestedBack({
