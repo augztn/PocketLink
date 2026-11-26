@@ -426,9 +426,6 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
 
 }
 
-class _DownloadTaskCard}
-
-
 class _DownloadsOverview extends StatelessWidget {
   const _DownloadsOverview({
     required this.serverActive,
