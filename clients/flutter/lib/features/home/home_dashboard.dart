@@ -1019,7 +1019,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
           ? Padding(
               padding: const EdgeInsets.only(bottom: 18),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                sectionTitle('Continue'),
+                sectionTitle('Continue browsing'),
                 const SizedBox(height: 10),
                 AnimatedBuilder(
                   animation: HomeActivityStore.instance,
