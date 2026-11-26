@@ -180,38 +180,77 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _customizeDashboardOrder() async {
-    const labels = <String, String>{
-      'search': 'Global search',
-      'quick': 'Quick actions',
-      'transfers': 'Active transfers',
-      'continue': 'Continue',
-      'recent': 'Recent files',
+    const labels = <String, ({String title, String description, IconData icon})>{
+      'search': (title: 'Global search', description: 'Search files and folders from Home', icon: Icons.search_rounded),
+      'quick': (title: 'Quick actions', description: 'Upload, Drives, Favorites and shortcuts', icon: Icons.dashboard_customize_rounded),
+      'transfers': (title: 'Active transfers', description: 'Live upload and download progress', icon: Icons.swap_vert_rounded),
+      'continue': (title: 'Continue browsing', description: 'Recently opened folders, files and tracks', icon: Icons.history_rounded),
+      'recent': (title: 'Recent files', description: 'Recently changed files from the server', icon: Icons.insert_drive_file_outlined),
     };
     var draft = List<String>.of(_settings.homeSectionOrder);
-    final result = await showDialog<List<String>>(
+    final visible = <String>{
+      if (_settings.showGlobalSearch) 'search',
+      if (_settings.showQuickActions) 'quick',
+      if (_settings.showActiveTransfers) 'transfers',
+      if (_settings.showLibrary) 'continue',
+      if (_settings.showRecentFiles) 'recent',
+    };
+    final result = await showDialog<({List<String> order, Set<String> visible})>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Reorder Home sections'),
+          title: const Text('Customize Home'),
           content: SizedBox(
-            width: 420,
-            height: 380,
-            child: ReorderableListView.builder(
-              itemCount: draft.length,
-              onReorderItem: (oldIndex, newIndex) {
-                setDialogState(() {
-                  final item = draft.removeAt(oldIndex);
-                  draft.insert(newIndex, item);
-                });
-              },
-              itemBuilder: (context, index) {
-                final id = draft[index];
-                return ListTile(
-                  key: ValueKey(id),
-                  leading: const Icon(Icons.drag_handle_rounded),
-                  title: Text(labels[id]!),
-                );
-              },
+            width: 440,
+            height: 470,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Choose which sections appear and drag to set their order. Server status and storage health stay at the top.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: ReorderableListView.builder(
+                    itemCount: draft.length,
+                    onReorderItem: (oldIndex, newIndex) {
+                      setDialogState(() {
+                        final item = draft.removeAt(oldIndex);
+                        draft.insert(newIndex, item);
+                      });
+                    },
+                    itemBuilder: (context, index) {
+                      final id = draft[index];
+                      final detail = labels[id]!;
+                      final enabled = visible.contains(id);
+                      return ListTile(
+                        key: ValueKey(id),
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(detail.icon, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                        title: Text(detail.title),
+                        subtitle: Text(detail.description, maxLines: 2, overflow: TextOverflow.ellipsis),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Switch(
+                              value: enabled,
+                              onChanged: (value) => setDialogState(() {
+                                if (value) {
+                                  visible.add(id);
+                                } else {
+                                  visible.remove(id);
+                                }
+                              }),
+                            ),
+                            const Icon(Icons.drag_handle_rounded),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
           actions: [
@@ -220,13 +259,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: const Text('Cancel'),
             ),
             TextButton(
-              onPressed: () => setDialogState(
-                () => draft = List.of(AppSettings.homeSectionDefaults),
-              ),
+              onPressed: () => setDialogState(() {
+                draft = List.of(AppSettings.homeSectionDefaults);
+                visible
+                  ..clear()
+                  ..addAll(AppSettings.homeSectionDefaults);
+              }),
               child: const Text('Reset'),
             ),
             FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, draft),
+              onPressed: () => Navigator.pop(
+                dialogContext,
+                (order: List<String>.of(draft), visible: Set<String>.of(visible)),
+              ),
               child: const Text('Save'),
             ),
           ],
@@ -234,7 +279,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
     if (result == null || !mounted) return;
-    await _settings.setHomeSectionOrder(result);
+    await _settings.setHomeSectionOrder(result.order);
+    await _settings.setHomeSections(
+      globalSearch: result.visible.contains('search'),
+      quickActions: result.visible.contains('quick'),
+      activeTransfers: result.visible.contains('transfers'),
+      library: result.visible.contains('continue'),
+      recentFiles: result.visible.contains('recent'),
+    );
   }
 
   void _message(String message) {
