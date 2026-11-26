@@ -753,12 +753,9 @@ class _ServerDownloadJobCard extends StatelessWidget {
       _ => 'Download failed',
     };
     final host = Uri.tryParse(job.url)?.host;
-    final remaining = job.totalBytes == null || job.speedBytesPerSecond <= 0
+    final eta = job.estimatedRemaining == null
         ? null
-        : ((job.totalBytes! - job.downloadedBytes).clamp(0, job.totalBytes!) /
-                job.speedBytesPerSecond)
-            .ceil();
-    final eta = remaining == null ? null : _formatEta(remaining);
+        : _formatEta(job.estimatedRemaining!.inSeconds);
 
     return SmokedGlassSurface(
       radius: BorderRadius.circular(20),
