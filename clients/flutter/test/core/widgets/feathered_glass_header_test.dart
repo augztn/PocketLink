@@ -234,22 +234,40 @@ void main() {
     );
   });
 
-  testWidgets('Liquid Glass UI off still disables other glass surfaces',
+  testWidgets('Liquid Glass UI setting controls dock and header buttons',
       (tester) async {
     await tester.runAsync(
       () => AppSettings.instance.setUseLiquidGlass(false),
     );
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
         home: Scaffold(
-          body: LiquidGlassSurface(
-            radius: BorderRadius.all(Radius.circular(16)),
-            refractive: true,
-            child: Text('Dock'),
+          body: Row(
+            children: [
+              const Expanded(
+                child: LiquidGlassSurface(
+                  radius: BorderRadius.all(Radius.circular(28)),
+                  refractive: true,
+                  child: Text('Dock'),
+                ),
+              ),
+              GlassCircleButton(
+                tooltip: 'Open menu',
+                onPressed: () {},
+                child: const Icon(Icons.menu_rounded),
+              ),
+            ],
           ),
         ),
       ),
     );
     expect(find.byType(BackdropFilter), findsNothing);
+
+    await tester.runAsync(
+      () => AppSettings.instance.setUseLiquidGlass(true),
+    );
+    await tester.pump();
+    expect(find.byType(BackdropFilter), findsNWidgets(2));
+    expect(find.byTooltip('Open menu'), findsOneWidget);
   });
 }
