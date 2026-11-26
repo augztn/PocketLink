@@ -15,6 +15,11 @@ MediaFileItem media(
   String? volume,
   int size = 0,
   String? modified,
+  String? title,
+  String? artist,
+  String? album,
+  int? durationMs,
+  bool artworkAvailable = false,
 }) =>
     MediaFileItem(
       entry: file(
@@ -24,6 +29,11 @@ MediaFileItem media(
       ),
       path: path,
       volume: volume,
+      title: title,
+      artist: artist,
+      album: album,
+      durationMs: durationMs,
+      artworkAvailable: artworkAvailable,
     );
 
 void main() {
@@ -162,6 +172,50 @@ void main() {
       expect(groups.first.items.length, 3);
       expect(groups.first.path, 'Music/Artist A');
       expect(groups[1].volume, 'usb1');
+    });
+  });
+
+  group('MediaLibraryCatalog embedded music metadata', () {
+    final tagged = [
+      media('Music/Folder A/track-one.mp3',
+          title: 'Track One', artist: 'Artist A', album: 'Shared Album',
+          durationMs: 182000, artworkAvailable: true),
+      media('Music/Folder B/track-two.flac',
+          title: 'Track Two', artist: 'Artist A', album: 'Shared Album'),
+      media('Music/Folder C/track-three.m4a',
+          title: 'Track Three', artist: 'Artist B', album: 'Other Album'),
+      media('Music/USB/track-four.mp3',
+          volume: 'usb1', artist: 'Artist A', album: 'Shared Album'),
+    ];
+
+    test('groups albums by embedded tag across folders and separates volumes', () {
+      final groups = const MediaLibraryCatalog(
+        type: MediaLibraryType.music,
+        selectedVolume: null,
+        currentFolderPath: '',
+        sortBy: 'name',
+      ).albumsFromFolders(tagged);
+
+      final internalShared = groups.singleWhere(
+        (group) => group.name == 'Shared Album' && group.volume == null,
+      );
+      expect(internalShared.items.map((item) => item.path),
+          ['Music/Folder A/track-one.mp3', 'Music/Folder B/track-two.flac']);
+      expect(groups.where((group) => group.name == 'Shared Album').length, 2);
+    });
+
+    test('groups artists by embedded tag across different albums', () {
+      final groups = const MediaLibraryCatalog(
+        type: MediaLibraryType.music,
+        selectedVolume: null,
+        currentFolderPath: '',
+        sortBy: 'name',
+      ).artistsFromFolders(tagged);
+
+      final artistA = groups.singleWhere(
+        (group) => group.name == 'Artist A' && group.volume == null,
+      );
+      expect(artistA.items.length, 2);
     });
   });
 
