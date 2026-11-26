@@ -13,6 +13,7 @@ class FilesHomeContent extends StatelessWidget {
     required this.lastPath,
     required this.lastVolume,
     required this.onOpenInternal,
+    required this.onOpenDownloads,
     required this.onOpenVolume,
     required this.onOpenRecent,
     required this.onOpenFavorite,
@@ -27,6 +28,7 @@ class FilesHomeContent extends StatelessWidget {
   final String lastPath;
   final String? lastVolume;
   final VoidCallback onOpenInternal;
+  final VoidCallback onOpenDownloads;
   final ValueChanged<String> onOpenVolume;
   final ValueChanged<HomeActivityItem> onOpenRecent;
   final ValueChanged<HomeActivityItem> onOpenFavorite;
@@ -38,6 +40,12 @@ class FilesHomeContent extends StatelessWidget {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final locations = [
+      _Location(
+        title: 'Downloads',
+        subtitle: 'Downloaded files',
+        icon: Icons.download_rounded,
+        onTap: onOpenDownloads,
+      ),
       _Location(
         title: 'Internal storage',
         subtitle: 'Browse phone storage',
