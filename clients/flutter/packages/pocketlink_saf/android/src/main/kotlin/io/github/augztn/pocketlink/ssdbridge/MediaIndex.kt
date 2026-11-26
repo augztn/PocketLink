@@ -156,6 +156,10 @@ internal class MediaIndexScanner(
             if (database.hasScanCheckpoints()) {
                 // Resume an interrupted volume traversal even when routine startup scans are disabled.
                 requestScan(force = true, trigger = scanTrigger)
+            } else if (database.hasUnscannedMusicMetadata()) {
+                // Upgrade legacy media rows once even when routine automatic
+                // scanning is disabled; unchanged files are not re-written.
+                requestScan(force = true, trigger = "metadata-upgrade")
             } else if (scanScheduler.automaticScanningEnabled() && scanScheduler.scanOnStartupEnabled()) {
                 requestScan(force = true, trigger = "automatic")
             } else {
@@ -435,7 +439,8 @@ internal class MediaIndexScanner(
                 scanned = true
             )
         } catch (_: SecurityException) {
-            EmbeddedMusicMetadata(null, null, null, null, false)
+            // Record the attempt to avoid forcing a full rescan on every launch.
+            EmbeddedMusicMetadata(null, null, null, null, true)
         } catch (_: Exception) {
             // Unsupported or malformed audio is a completed metadata attempt;
             // file indexing remains successful and the filename fallback is used.
