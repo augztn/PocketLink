@@ -1542,15 +1542,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
           if (hasArtwork)
             Opacity(
               opacity: 1 - lyricsProgress,
-              child: Image.memory(
-                _artwork!,
-                cacheWidth: 544,
-                fit: BoxFit.cover,
-                gaplessPlayback: true,
-              ),
-            ),
-          if (hasArtwork)
-            Positioned.fill(
               child: ImageFiltered(
                 imageFilter: ui.ImageFilter.blur(sigmaX: 36, sigmaY: 36),
                 child: Image.memory(
