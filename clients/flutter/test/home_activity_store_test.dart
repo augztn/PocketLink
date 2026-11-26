@@ -39,6 +39,48 @@ void main() {
       expect(store.itemsForServer('http://server-a:8000').length, 2);
     });
 
+    test('persists file and folder favorites per server and toggles them', () async {
+      final store = HomeActivityStore.instance;
+      await store.toggleFavorite(
+        serverUrl: 'http://server-a:8000',
+        title: 'Documents',
+        path: 'Documents',
+        isFolder: true,
+      );
+      await store.toggleFavorite(
+        serverUrl: 'http://server-a:8000',
+        title: 'Photo.jpg',
+        path: 'Pictures/Photo.jpg',
+        isFolder: false,
+        volume: 'usb1',
+      );
+      await store.toggleFavorite(
+        serverUrl: 'http://server-b:8000',
+        title: 'Private',
+        path: 'Private',
+        isFolder: true,
+      );
+
+      expect(store.favoritesForServer('http://server-a:8000'), hasLength(2));
+      expect(store.isFavorite(
+        serverUrl: 'http://server-a:8000',
+        path: 'Pictures/Photo.jpg',
+        volume: 'usb1',
+      ), isTrue);
+
+      await store.load();
+      expect(store.favoritesForServer('http://server-a:8000'), hasLength(2));
+      await store.toggleFavorite(
+        serverUrl: 'http://server-a:8000',
+        title: 'Documents',
+        path: 'Documents',
+        isFolder: true,
+      );
+      expect(store.favoritesForServer('http://server-a:8000').map((item) => item.path),
+          ['Pictures/Photo.jpg']);
+      expect(store.favoritesForServer('http://server-b:8000').single.path, 'Private');
+    });
+
     test('moves repeated activity to the top without duplicate entries', () async {
       final store = HomeActivityStore.instance;
       await store.recordFolder(
