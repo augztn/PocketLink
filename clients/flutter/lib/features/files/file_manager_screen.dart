@@ -80,6 +80,9 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   List<StorageVolume> _volumes = const [];
   String? _selectedVolume;
   bool _openingAudio = false;
+  final Set<String> _selectedItems = <String>{};
+
+  bool get _isSelecting => _selectedItems.isNotEmpty;
 
   late String _category = widget.initialCategory;
   bool _gridView = false;
@@ -290,6 +293,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   Future<void> _selectPartition(String? volumeId) async {
     setState(() {
       _showFilesHome = false;
+      _selectedItems.clear();
       _selectedVolume = volumeId; _path = ''; _listing = null;
       _pendingScrollOffset = 0;
       if (_scrollController.hasClients) _scrollController.jumpTo(0);
@@ -308,7 +312,11 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   Future<void> _load([String? path]) async {
     final generation = ++_loadGeneration;
     final target = path ?? _path;
-    if (target != _path) { _pendingScrollOffset = 0; if (_scrollController.hasClients) _scrollController.jumpTo(0); }
+    if (target != _path) {
+      _selectedItems.clear();
+      _pendingScrollOffset = 0;
+      if (_scrollController.hasClients) _scrollController.jumpTo(0);
+    }
     setState(() { _loading = true; _error = null; });
     try {
       final result = _selectedVolume == null
@@ -430,6 +438,67 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     }
   }
 
+
+  void _toggleSelection(FileEntry item) {
+    setState(() {
+      if (!_selectedItems.add(item.name)) _selectedItems.remove(item.name);
+    });
+  }
+
+  void _selectAll(List<FileEntry> visibleItems) {
+    setState(() => _selectedItems.addAll(visibleItems.map((item) => item.name)));
+  }
+
+  void _clearSelection() {
+    if (_selectedItems.isEmpty) return;
+    setState(_selectedItems.clear);
+  }
+
+  Future<void> _downloadSelected() async {
+    final selected = (_listing?.items ?? const <FileEntry>[])
+        .where((item) => _selectedItems.contains(item.name) && !item.isDirectory)
+        .toList(growable: false);
+    if (selected.isEmpty) {
+      _showError('Select at least one file to download.');
+      return;
+    }
+    for (final item in selected) {
+      await _downloadFile(item);
+    }
+    _clearSelection();
+  }
+
+  Future<void> _deleteSelected() async {
+    final selected = (_listing?.items ?? const <FileEntry>[])
+        .where((item) => _selectedItems.contains(item.name))
+        .toList(growable: false);
+    if (selected.isEmpty) return;
+    final confirmed = await confirmFileBrowserDelete(
+      context: context,
+      itemName: '${selected.length} selected items',
+    );
+    if (!confirmed || !mounted) return;
+    var deleted = 0;
+    try {
+      for (final item in selected) {
+        final path = _itemPath(item.name);
+        if (_selectedVolume == null) {
+          await widget.api.deleteItem(path);
+        } else {
+          await widget.api.deleteStorageItem(_selectedVolume!, path);
+        }
+        deleted++;
+      }
+      _showError('Deleted $deleted items.');
+    } on DioException catch (error) {
+      _showError(deleted == 0
+          ? _messageFor(error)
+          : 'Deleted $deleted of ${selected.length} items. ${_messageFor(error)}');
+    } finally {
+      _clearSelection();
+      await _load();
+    }
+  }
 
   Future<void> _showSortOptions() async {
     final selected = await showFileBrowserSortOptions(
@@ -707,19 +776,26 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
             },
           ),
           actions: [
-            if (_showFilesHome)
-              PocketLinkAppBarAction(label: 'Browse files', icon: Icons.folder_open_rounded,
-                onPressed: () { setState(() { _showFilesHome = false; _category = 'All'; }); }),
-            if (!_showFilesHome && widget.showSearch) PocketLinkAppBarAction(label: _searchExpanded ? 'Close search' : 'Search files', icon: _searchExpanded ? Icons.close_rounded : Icons.search_rounded, onPressed: () => _setSearchExpanded(!_searchExpanded)),
-            if (!_showFilesHome) ...[
-              PocketLinkAppBarAction(label: 'Upload file', icon: Icons.upload_rounded, onPressed: _uploadFile),
-              PocketLinkAppBarAction(label: 'New folder', icon: Icons.create_new_folder_outlined, onPressed: _createFolder),
-              PocketLinkAppBarAction(label: 'Sort by...', icon: Icons.sort_rounded,
-                onPressed: _showSortOptions, dividerBefore: true),
-              PocketLinkAppBarAction(label: _gridView ? 'Switch to list view' : 'Switch to grid view',
-                icon: _gridView ? Icons.view_list_rounded : Icons.grid_view_rounded,
-                onPressed: () { setState(() => _gridView = !_gridView); _saveState(); }),
-              PocketLinkAppBarAction(label: 'Refresh', icon: Icons.refresh_rounded, onPressed: _loading ? null : _refreshDirectory),
+            if (_isSelecting) ...[
+              PocketLinkAppBarAction(label: 'Select all', icon: Icons.select_all_rounded,
+                onPressed: () => _selectAll(items)),
+              PocketLinkAppBarAction(label: 'Clear selection', icon: Icons.close_rounded,
+                onPressed: _clearSelection),
+            ] else ...[
+              if (_showFilesHome)
+                PocketLinkAppBarAction(label: 'Browse files', icon: Icons.folder_open_rounded,
+                  onPressed: () { setState(() { _showFilesHome = false; _category = 'All'; }); }),
+              if (!_showFilesHome && widget.showSearch) PocketLinkAppBarAction(label: _searchExpanded ? 'Close search' : 'Search files', icon: _searchExpanded ? Icons.close_rounded : Icons.search_rounded, onPressed: () => _setSearchExpanded(!_searchExpanded)),
+              if (!_showFilesHome) ...[
+                PocketLinkAppBarAction(label: 'Upload file', icon: Icons.upload_rounded, onPressed: _uploadFile),
+                PocketLinkAppBarAction(label: 'New folder', icon: Icons.create_new_folder_outlined, onPressed: _createFolder),
+                PocketLinkAppBarAction(label: 'Sort by...', icon: Icons.sort_rounded,
+                  onPressed: _showSortOptions, dividerBefore: true),
+                PocketLinkAppBarAction(label: _gridView ? 'Switch to list view' : 'Switch to grid view',
+                  icon: _gridView ? Icons.view_list_rounded : Icons.grid_view_rounded,
+                  onPressed: () { setState(() => _gridView = !_gridView); _saveState(); }),
+                PocketLinkAppBarAction(label: 'Refresh', icon: Icons.refresh_rounded, onPressed: _loading ? null : _refreshDirectory),
+              ],
             ],
             PocketLinkAppBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded, onPressed: _openTransfers, dividerBefore: true),
           ],
@@ -788,7 +864,9 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                       icon: visual.icon,
                       iconColor: visual.color,
                       formattedSize: _formatSize(item.size),
-                      onOpen: _openActionFor(item),
+                      onOpen: _isSelecting ? () => _toggleSelection(item) : _openActionFor(item),
+                      selected: _selectedItems.contains(item.name),
+                      onLongPress: () => _toggleSelection(item),
                       onDownload: () => _downloadFile(item),
                       onRename: () => _rename(item),
                       onDelete: () => _delete(item),
@@ -845,6 +923,35 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                 },
               ),
             ),
+            if (_isSelecting)
+              Positioned(
+                left: 16,
+                right: 16,
+                bottom: LayoutInsetsScope.of(context).bottomClearance + 8,
+                child: Material(
+                  color: colors.surfaceContainerHigh,
+                  elevation: 8,
+                  borderRadius: BorderRadius.circular(18),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
+                    child: Row(children: [
+                      Expanded(child: Text('${_selectedItems.length} selected',
+                        style: const TextStyle(fontWeight: FontWeight.w700))),
+                      TextButton.icon(
+                        onPressed: _downloadSelected,
+                        icon: const Icon(Icons.download_rounded, size: 18),
+                        label: const Text('Download'),
+                      ),
+                      const SizedBox(width: 4),
+                      FilledButton.icon(
+                        onPressed: _deleteSelected,
+                        icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                        label: const Text('Delete'),
+                      ),
+                    ]),
+                  ),
+                ),
+              ),
           ],
         )
       ),
