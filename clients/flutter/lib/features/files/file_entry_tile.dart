@@ -18,6 +18,8 @@ class FileEntryTile extends StatelessWidget {
     this.grid = false,
     this.isFavorite = false,
     this.onToggleFavorite,
+    this.selected = false,
+    this.onLongPress,
     super.key,
   });
 
@@ -34,6 +36,8 @@ class FileEntryTile extends StatelessWidget {
   final bool grid;
   final bool isFavorite;
   final VoidCallback? onToggleFavorite;
+  final bool selected;
+  final VoidCallback? onLongPress;
 
   Widget _fileIcon({double size = 24}) {
     return Container(
@@ -112,7 +116,7 @@ class FileEntryTile extends StatelessWidget {
       return Card(
         margin: EdgeInsets.zero,
         elevation: 0,
-        color: colors.surfaceContainerLow,
+        color: selected ? colors.secondaryContainer : colors.surfaceContainerLow,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
           side: BorderSide(
@@ -136,7 +140,9 @@ class FileEntryTile extends StatelessWidget {
               item.isDirectory ? 'Folder' : formattedSize,
               style: TextStyle(color: colors.onSurfaceVariant),
             ),
+            selected: selected,
             onTap: onOpen,
+            onLongPress: onLongPress,
             trailing: _actions(padding: 8),
           ),
         ),
@@ -144,7 +150,7 @@ class FileEntryTile extends StatelessWidget {
     }
 
     return Material(
-      color: colors.surfaceContainerLow,
+      color: selected ? colors.secondaryContainer : colors.surfaceContainerLow,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
         side: BorderSide(
@@ -155,6 +161,7 @@ class FileEntryTile extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
         onTap: onOpen,
+        onLongPress: onLongPress,
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Column(
