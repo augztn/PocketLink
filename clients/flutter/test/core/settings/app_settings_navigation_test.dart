@@ -61,6 +61,13 @@ void main() {
     expect(preferences.getString('settings_navigation_order'), isNull);
     expect(preferences.getString('settings_navigation_visibility'), isNull);
   });
+  test('Home defaults prioritize actions and recent activity', () {
+    expect(
+      AppSettings.homeSectionDefaults,
+      const ['quick', 'continue', 'recent', 'transfers', 'search'],
+    );
+  });
+
   test('Home section order persists and rejects incomplete layouts', () async {
     final settings = AppSettings.instance;
     const order = ['recent', 'search', 'continue', 'quick', 'transfers'];
