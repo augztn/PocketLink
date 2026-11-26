@@ -9,42 +9,36 @@ import 'progressive_blur.dart';
 class FeatheredGlassHeaderBackground extends StatelessWidget {
   const FeatheredGlassHeaderBackground({
     this.darkTint,
-    this.backgroundColor,
     this.contentHeight = kToolbarHeight,
     this.strongestAtBottom = false,
     super.key,
   });
 
-  /// Optional three-color dark-theme tint, interpolated across the header.
+  /// Optional legacy dark tint. The default Apple-style treatment is untinted.
   final List<Color>? darkTint;
-
-  /// Color the content fades into. Defaults to the theme scaffold color.
-  final Color? backgroundColor;
   final double contentHeight;
   final bool strongestAtBottom;
 
   static const int _fadeSamples = 9;
-  static const double _fadeHoldFraction = 0.2;
-  static const double _peakFadeAlpha = 0.97;
+  static const double _fadeStart = 0.6;
 
-  /// Eased opacity of the header scrim at [t] (0 = strong edge, 1 = weak edge).
+  /// Alpha mask for the blur layer: fully visible, then eased to transparent.
   @visibleForTesting
-  static double fadeAlphaAt(double t) {
+  static double fadeMaskAlphaAt(double t) {
     final progress = t.clamp(0.0, 1.0).toDouble();
-    if (progress <= _fadeHoldFraction) return _peakFadeAlpha;
-    final u = (progress - _fadeHoldFraction) / (1 - _fadeHoldFraction);
-    return _peakFadeAlpha * (1 - u * u * (3 - 2 * u));
+    if (progress <= _fadeStart) return 1;
+    final u = (progress - _fadeStart) / (1 - _fadeStart);
+    final eased = u * u * (3 - 2 * u);
+    return 1 - eased;
   }
 
-  static LinearGradient _fadeGradient(
-    Color background, {
-    required bool strongestAtBottom,
-  }) {
+  @visibleForTesting
+  static LinearGradient fadeMaskGradient({bool strongestAtBottom = false}) {
     final colors = <Color>[];
     final stops = <double>[];
     for (var index = 0; index < _fadeSamples; index++) {
       final t = index / (_fadeSamples - 1);
-      colors.add(background.withValues(alpha: fadeAlphaAt(t)));
+      colors.add(Colors.white.withValues(alpha: fadeMaskAlphaAt(t)));
       stops.add(t);
     }
     return LinearGradient(
@@ -63,27 +57,6 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
     final customDarkTint = isDark && darkTint != null && darkTint!.length >= 3
         ? darkTint!
         : null;
-    final gradient = customDarkTint == null
-        ? _fadeGradient(
-            backgroundColor ?? Theme.of(context).scaffoldBackgroundColor,
-            strongestAtBottom: strongestAtBottom,
-          )
-        : LinearGradient(
-            begin: strongestAtBottom
-                ? Alignment.bottomCenter
-                : Alignment.topCenter,
-            end: strongestAtBottom
-                ? Alignment.topCenter
-                : Alignment.bottomCenter,
-            colors: [
-              customDarkTint[0],
-              Color.lerp(customDarkTint[0], customDarkTint[1], 0.5)!,
-              customDarkTint[1],
-              Color.lerp(customDarkTint[1], customDarkTint[2], 0.5)!,
-              customDarkTint[2],
-            ],
-            stops: const [0, 0.16, 0.38, 0.68, 1],
-          );
 
     return _HeaderHeightReporter(
       height: headerHeight,
@@ -95,18 +68,42 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
             fit: StackFit.expand,
             children: [
               Positioned.fill(
-                child: ProgressiveBlur(
-                  maxSigma: 24,
-                  steps: 14,
-                  exponent: 1.6,
-                  strongestAtBottom: strongestAtBottom,
+                child: ShaderMask(
+                  blendMode: BlendMode.dstIn,
+                  shaderCallback: (bounds) => fadeMaskGradient(
+                    strongestAtBottom: strongestAtBottom,
+                  ).createShader(bounds),
+                  child: ProgressiveBlur(
+                    maxSigma: 24,
+                    steps: 14,
+                    exponent: 1.6,
+                    strongestAtBottom: strongestAtBottom,
+                  ),
                 ),
               ),
-              Positioned.fill(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(gradient: gradient),
+              if (customDarkTint != null)
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: strongestAtBottom
+                            ? Alignment.bottomCenter
+                            : Alignment.topCenter,
+                        end: strongestAtBottom
+                            ? Alignment.topCenter
+                            : Alignment.bottomCenter,
+                        colors: [
+                          customDarkTint[0],
+                          Color.lerp(customDarkTint[0], customDarkTint[1], 0.5)!,
+                          customDarkTint[1],
+                          Color.lerp(customDarkTint[1], customDarkTint[2], 0.5)!,
+                          customDarkTint[2],
+                        ],
+                        stops: const [0, 0.16, 0.38, 0.68, 1],
+                      ),
+                    ),
+                  ),
                 ),
-              ),
             ],
           ),
         ),

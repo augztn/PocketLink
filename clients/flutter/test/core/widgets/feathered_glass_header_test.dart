@@ -14,7 +14,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  testWidgets('header uses Mochy progressive blur bands', (tester) async {
+  testWidgets('header uses progressive blur with an alpha fade mask', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(body: FeatheredGlassHeaderBackground()),
@@ -23,7 +23,8 @@ void main() {
     expect(find.byType(ProgressiveBlur), findsOneWidget);
     expect(find.byType(BackdropGroup), findsOneWidget);
     expect(find.byType(BackdropFilter), findsNWidgets(14));
-    expect(find.byType(ShaderMask), findsNothing);
+    final mask = tester.widget<ShaderMask>(find.byType(ShaderMask));
+    expect(mask.blendMode, BlendMode.dstIn);
   });
 
   testWidgets('progressive blur supports reversed direction', (tester) async {
@@ -58,45 +59,33 @@ void main() {
     expect(tester.getSize(bounds).height, 96);
   });
 
-  test('fade alpha is eased, monotonic and reaches transparency', () {
-    expect(FeatheredGlassHeaderBackground.fadeAlphaAt(0), closeTo(0.97, 1e-9));
-    expect(FeatheredGlassHeaderBackground.fadeAlphaAt(1), 0);
+  test('fade mask stays opaque through 60 percent then eases to transparent', () {
+    expect(FeatheredGlassHeaderBackground.fadeMaskAlphaAt(0), 1);
+    expect(FeatheredGlassHeaderBackground.fadeMaskAlphaAt(0.6), 1);
+    expect(FeatheredGlassHeaderBackground.fadeMaskAlphaAt(1), 0);
     var previous = 1.0;
     for (var index = 0; index <= 100; index++) {
-      final alpha = FeatheredGlassHeaderBackground.fadeAlphaAt(index / 100);
+      final alpha = FeatheredGlassHeaderBackground.fadeMaskAlphaAt(index / 100);
       expect(alpha, lessThanOrEqualTo(previous));
       previous = alpha;
     }
-    expect(FeatheredGlassHeaderBackground.fadeAlphaAt(0.98), lessThan(0.01));
+    expect(FeatheredGlassHeaderBackground.fadeMaskAlphaAt(0.8), greaterThan(0));
+    expect(FeatheredGlassHeaderBackground.fadeMaskAlphaAt(0.98), lessThan(0.01));
   });
 
-  testWidgets('dark and light themes use a nine-sample fade into the supplied background', (tester) async {
-    const background = Color(0xFF123456);
-    for (final brightness in [Brightness.dark, Brightness.light]) {
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: ThemeData(brightness: brightness),
-          home: const Scaffold(
-            body: FeatheredGlassHeaderBackground(backgroundColor: background),
-          ),
-        ),
-      );
-      final gradients = tester.widgetList<DecoratedBox>(find.byType(DecoratedBox))
-          .map((box) => box.decoration)
-          .whereType<BoxDecoration>()
-          .map((decoration) => decoration.gradient)
-          .whereType<LinearGradient>();
-      final gradient = gradients.firstWhere(
-        (candidate) => candidate.colors.length == 9,
-      );
-      expect(gradient.colors.first.a, closeTo(0.97, 0.01));
-      expect(gradient.colors.last.a, 0);
-      for (final color in gradient.colors) {
-        expect(color.r, closeTo(background.r, 1e-6));
-        expect(color.g, closeTo(background.g, 1e-6));
-        expect(color.b, closeTo(background.b, 1e-6));
-      }
-    }
+  test('fade mask uses nine alpha samples and can reverse direction', () {
+    final gradient = FeatheredGlassHeaderBackground.fadeMaskGradient();
+    expect(gradient.colors, hasLength(9));
+    expect(gradient.colors.first.a, 1);
+    expect(gradient.colors.last.a, 0);
+    expect(gradient.begin, Alignment.topCenter);
+    expect(gradient.end, Alignment.bottomCenter);
+
+    final reversed = FeatheredGlassHeaderBackground.fadeMaskGradient(
+      strongestAtBottom: true,
+    );
+    expect(reversed.begin, Alignment.bottomCenter);
+    expect(reversed.end, Alignment.topCenter);
   });
 
   testWidgets('custom dark tint remains supported', (tester) async {
