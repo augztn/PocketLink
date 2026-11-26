@@ -641,7 +641,7 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
           final isGradientTheme =
               AppSettings.instance.nowPlayingTheme == 'gradient';
           final targetArt = isGradientTheme
-              ? Rect.fromLTWH(0, 0, size.width, size.height * 0.55)
+              ? Rect.fromLTWH(0, 0, size.width, size.height * 0.64)
               : PocketLinkNavigation.resolveMediaRect(artworkTargetKey) ??
                   Rect.fromCenter(
                     center: Offset(size.width / 2, size.height * 0.34),
@@ -717,14 +717,47 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
                             rect: artworkRect,
                             child: ValueListenableBuilder<Uint8List?>(
                               valueListenable: artworkBytes,
-                              builder: (context, bytes, _) =>
-                                  TrackArtworkView(
-                                bytes: bytes,
-                                artworkUrl: currentItem?.artworkUrl,
-                                fallbackColors: artworkPalette,
-                                fallbackIconSize: 30,
-                                borderRadius: artworkRadius,
-                                fadeBottom: isGradientTheme,
+                              builder: (context, bytes, _) => DecoratedBox(
+                                decoration: BoxDecoration(
+                                  borderRadius: artworkRadius,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: artworkPalette[0]
+                                          .withValues(alpha: 0.28 * t),
+                                      blurRadius: 38 * t,
+                                      spreadRadius: 2 * t,
+                                      offset: Offset(0, 16 * t),
+                                    ),
+                                    BoxShadow(
+                                      color: Colors.black
+                                          .withValues(alpha: 0.34 * t),
+                                      blurRadius: 24 * t,
+                                      offset: Offset(0, 12 * t),
+                                    ),
+                                  ],
+                                ),
+                                child: Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    TrackArtworkView(
+                                      bytes: bytes,
+                                      artworkUrl: currentItem?.artworkUrl,
+                                      fallbackColors: artworkPalette,
+                                      fallbackIconSize: 30,
+                                      borderRadius: artworkRadius,
+                                      fadeBottom: isGradientTheme,
+                                    ),
+                                    DecoratedBox(
+                                      decoration: BoxDecoration(
+                                        borderRadius: artworkRadius,
+                                        border: Border.all(
+                                          color: Colors.white
+                                              .withValues(alpha: 0.16 * t),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
