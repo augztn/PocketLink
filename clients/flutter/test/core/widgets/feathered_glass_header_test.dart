@@ -27,8 +27,12 @@ void main() {
     expect(find.byType(shader_blur.ProgressiveBlur), findsOneWidget);
     expect(find.byType(BackdropFilter), findsNothing);
     expect(find.byType(BackdropGroup), findsNothing);
-    expect(find.byType(ShaderMask), findsOneWidget);
-    expect(find.byType(Positioned), findsOneWidget);
+    expect(find.byType(ShaderMask), findsNothing);
+    final blur = tester.widget<shader_blur.ProgressiveBlur>(
+      find.byType(shader_blur.ProgressiveBlur),
+    );
+    expect(blur.sigmaStart, 24);
+    expect(blur.sigmaEnd, 0);
   });
 
   testWidgets('continuous blur reverses direction without adding layers',
@@ -50,7 +54,7 @@ void main() {
     expect(blur.begin, Alignment.bottomCenter);
     expect(blur.end, Alignment.topCenter);
     expect(blur.sigmaStart, 72);
-    expect(blur.sigmaEnd, 72);
+    expect(blur.sigmaEnd, 0);
     expect(find.byType(Positioned), findsNothing);
   });
 
