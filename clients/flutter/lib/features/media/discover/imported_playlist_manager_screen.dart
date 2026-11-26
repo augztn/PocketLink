@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/network/server_api.dart';
+import '../../../core/widgets/pocketlink_app_bar.dart';
 
 import '../playlist_import_service.dart';
 
@@ -335,9 +336,10 @@ class _ImportedPlaylistManagerScreenState extends State<ImportedPlaylistManagerS
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
+      appBar: PocketLinkAppBar(
         title: const Text('Imported playlists'),
-        actions: [
+        showMoreMenu: false,
+        actionsBeforeHome: [
           PopupMenuButton<String>(
             tooltip: 'Export playlists',
             enabled: !_working && _playlists.isNotEmpty,
