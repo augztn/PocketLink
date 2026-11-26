@@ -1,85 +1,57 @@
-import 'dart:math' as math;
-import 'dart:ui' as ui;
-
 import 'package:material_ui/material_ui.dart';
+import 'package:progressive_background_blur/progressive_background_blur.dart'
+    as shader_blur;
 
-/// Approximates a variable backdrop blur with clipped, stepped blur bands.
+/// Continuous shader-based backdrop blur with a vertical sigma gradient.
 ///
-/// Keep this widget inside a bounded Stack/ClipRect and do not put an
-/// Opacity, FadeTransition or ShaderMask above it.
+/// Unlike clipped blur bands, the fragment shader interpolates blur strength
+/// per pixel, so there are no horizontal layer boundaries.
 class ProgressiveBlur extends StatelessWidget {
   const ProgressiveBlur({
     this.maxSigma = 24,
-    this.steps = 14,
-    this.exponent = 1.6,
+    this.endSigma = 0,
     this.strongestAtBottom = false,
+    this.child,
     super.key,
   });
 
-  /// Blur sigma at the strongest edge.
+  /// Blur sigma at the strongest edge, in logical pixels.
   final double maxSigma;
 
-  /// Number of clipped bands used to approximate the blur falloff.
-  final int steps;
+  /// Blur sigma at the feathered edge, in logical pixels. Defaults to zero
+  /// for a continuous blur fade at the opposite edge.
+  final double endSigma;
 
-  /// Falloff exponent. Values above 1 concentrate blur near the strong edge.
-  final double exponent;
+  /// Optional content painted above the backdrop blur.
+  final Widget? child;
 
   /// When true, blur is strongest at the bottom instead of the top.
   final bool strongestAtBottom;
 
   @override
   Widget build(BuildContext context) {
-    if (!maxSigma.isFinite || maxSigma <= 0.1 ||
-        steps < 1 || !exponent.isFinite || exponent <= 0) {
+    if (!maxSigma.isFinite || maxSigma <= 0 || !endSigma.isFinite) {
       return const SizedBox.shrink();
     }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final height = constraints.maxHeight;
-        if (!height.isFinite || height <= 0) {
-          return const SizedBox.shrink();
-        }
+    final pixelRatio = MediaQuery.devicePixelRatioOf(context);
+    final maxSigmaPhysical = maxSigma * pixelRatio;
+    final endSigmaPhysical = endSigma * pixelRatio;
 
-        final bandHeight = height / steps;
-        final bands = <Widget>[];
-        for (var index = 0; index < steps; index++) {
-          final distance = (index + 0.5) / steps;
-          final sigma = maxSigma * math.pow(1 - distance, exponent).toDouble();
-          if (sigma < 0.1) continue;
-
-          final top = strongestAtBottom
-              ? height - (index + 1) * bandHeight
-              : index * bandHeight;
-          bands.add(
-            Positioned(
-              top: top,
-              left: 0,
-              right: 0,
-              height: bandHeight + 1,
-              child: ClipRect(
-                child: BackdropFilter.grouped(
-                  filter: ui.ImageFilter.blur(
-                    sigmaX: sigma,
-                    sigmaY: sigma,
-                  ),
-                  child: const ColoredBox(color: Colors.transparent),
-                ),
-              ),
-            ),
-          );
-        }
-
-        // All bands sample the same backdrop. Grouping lets the engine share
-        // the backdrop input instead of capturing it independently per band.
-        return BackdropGroup(
-          child: Stack(
-            fit: StackFit.expand,
-            children: bands,
-          ),
-        );
-      },
+    return shader_blur.ProgressiveBlur(
+      begin: strongestAtBottom
+          ? Alignment.bottomCenter
+          : Alignment.topCenter,
+      end: strongestAtBottom
+          ? Alignment.topCenter
+          : Alignment.bottomCenter,
+      sigmaStart: maxSigmaPhysical
+          .clamp(0.0, shader_blur.ProgressiveBlur.maxSigma)
+          .toDouble(),
+      sigmaEnd: endSigmaPhysical
+          .clamp(0.0, shader_blur.ProgressiveBlur.maxSigma)
+          .toDouble(),
+      child: child ?? const SizedBox.expand(),
     );
   }
 }

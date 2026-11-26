@@ -115,10 +115,12 @@ void main() {
                       : identical(currentRoute, routeB)
                           ? 128.0
                           : 116.0;
+                  // The route fixtures include a 12px decorative margin; report only
+                  // the rendered header area, excluding that margin.
                   LayoutInsetsScope.reportRenderedHeader(
                     context,
                     currentRoute,
-                    headerHeight,
+                    headerHeight - 12.0,
                   );
                   final topClearance =
                       LayoutInsetsScope.of(context).topClearance;
