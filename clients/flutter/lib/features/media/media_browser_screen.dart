@@ -561,6 +561,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   }
 
   void _releaseVideoRequests(MediaFileItem media) {
+    widget.api.cancelMediaRequestsFor(media.path, volume: media.volume);
     final key = _favoriteKey(media);
     final thumbnail = _videoThumbnailTokens.remove(key);
     if (thumbnail != null && !thumbnail.isCancelled) {
@@ -574,6 +575,9 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   }
 
   void _cancelAllVideoRequests() {
+    for (final media in _media) {
+      widget.api.cancelMediaRequestsFor(media.path, volume: media.volume);
+    }
     for (final media in _videoThumbnailTokens.keys.toList()) {
       final token = _videoThumbnailTokens.remove(media);
       if (token != null && !token.isCancelled) {
