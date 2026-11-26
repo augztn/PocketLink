@@ -239,6 +239,7 @@ void main() {
     await tester.runAsync(
       () => AppSettings.instance.setUseLiquidGlass(false),
     );
+    var tapped = false;
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -253,7 +254,7 @@ void main() {
               ),
               GlassCircleButton(
                 tooltip: 'Open menu',
-                onPressed: () {},
+                onPressed: () => tapped = true,
                 child: const Icon(Icons.menu_rounded),
               ),
             ],
@@ -261,7 +262,11 @@ void main() {
         ),
       ),
     );
+    final button = find.byType(GlassCircleButton);
+    expect(tester.getSize(button), const Size(48, 48));
     expect(find.byType(BackdropFilter), findsNothing);
+    await tester.tapAt(tester.getCenter(button) + const Offset(20, 0));
+    expect(tapped, isTrue);
 
     await tester.runAsync(
       () => AppSettings.instance.setUseLiquidGlass(true),
