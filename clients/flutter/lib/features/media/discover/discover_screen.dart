@@ -484,6 +484,15 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       if (merged.length == _homeShelves.length &&
           merged.every((shelf) => _homeShelves.any((old) =>
               old.title == shelf.title && old.tracks.length == shelf.tracks.length))) {
+        final snapshot = _DiscoverFeedSnapshot(
+          List.unmodifiable(_homeShelves),
+          'Discover in $_regionName',
+          '',
+        );
+        DiscoverCache.instance.write(
+          'home:${AppSettings.instance.discoverRegion}',
+          snapshot,
+        );
         setState(() => _homeContinuation = '');
         return;
       }
