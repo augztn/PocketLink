@@ -24,6 +24,7 @@ import 'discover_service.dart';
 import 'discover_cache.dart';
 import 'discover_thumbnail_cache.dart';
 import 'discover_recently_played_store.dart';
+import 'discover_home_feed_store.dart';
 import 'discover_moods_screen.dart';
 
 class _DiscoverShelf {
@@ -322,15 +323,37 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
   Future<void> _loadHome({bool forceRefresh = false}) async {
     final region = AppSettings.instance.discoverRegion;
     final cacheKey = 'home:$region';
-    final cached = DiscoverCache.instance.read<_DiscoverFeedSnapshot>(cacheKey);
-    if (cached != null) {
+    var cached = DiscoverCache.instance.read<_DiscoverFeedSnapshot>(cacheKey);
+    var persistedStale = false;
+
+    // Restore the last successful feed after process restart before making a
+    // network request. A stale snapshot remains visible while it refreshes.
+    if (cached == null) {
+      final persisted = await DiscoverHomeFeedStore.read(region);
+      if (!mounted || region != AppSettings.instance.discoverRegion) return;
+      if (persisted != null) {
+        final snapshot = _DiscoverFeedSnapshot(
+          List.unmodifiable(persisted.feed.shelves.map(
+            (shelf) => _DiscoverShelf(shelf.title, shelf.tracks),
+          )),
+          'Discover in ${AppSettings.discoverRegions[region] ?? region}',
+          persisted.feed.continuation,
+        );
+        DiscoverCache.instance.write(cacheKey, snapshot);
+        cached = DiscoverCache.instance.read<_DiscoverFeedSnapshot>(cacheKey);
+        persistedStale = persisted.isStale;
+      }
+    }
+
+    final cacheEntry = cached;
+    if (cacheEntry != null) {
       void restore() {
-        _homeShelves = cached.value.shelves;
-        _tracks = cached.value.shelves.isEmpty
+        _homeShelves = cacheEntry.value.shelves;
+        _tracks = cacheEntry.value.shelves.isEmpty
             ? const []
-            : cached.value.shelves.first.tracks;
-        _sectionTitle = cached.value.sectionTitle;
-        _homeContinuation = cached.value.continuation;
+            : cacheEntry.value.shelves.first.tracks;
+        _sectionTitle = cacheEntry.value.sectionTitle;
+        _homeContinuation = cacheEntry.value.continuation;
         _error = null;
         _loading = false;
       }
@@ -340,12 +363,13 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       } else {
         restore();
       }
+      final stale = persistedStale || DiscoverCache.instance.isStale(cacheEntry);
       AppLogger.event('discover.home_cache_restored', category: 'discover',
         component: 'discover_screen',
-        fields: {'shelf_count': cached.value.shelves.length,
-          'track_count': cached.value.shelves.fold<int>(0, (sum, shelf) => sum + shelf.tracks.length),
-          'stale': DiscoverCache.instance.isStale(cached)});
-      if (!forceRefresh && !DiscoverCache.instance.isStale(cached)) return;
+        fields: {'shelf_count': cacheEntry.value.shelves.length,
+          'track_count': cacheEntry.value.shelves.fold<int>(0, (sum, shelf) => sum + shelf.tracks.length),
+          'stale': stale, 'persistent': true});
+      if (!forceRefresh && !stale) return;
       if (!forceRefresh) {
         unawaited(_fetchHome(cacheKey, showLoading: false));
         return;
@@ -409,6 +433,17 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
         feed.continuation,
       );
       DiscoverCache.instance.write(cacheKey, snapshot);
+      unawaited(DiscoverHomeFeedStore.write(
+        region,
+        DiscoverHomeFeed(
+          shelves: feed.shelves,
+          continuation: feed.continuation,
+        ),
+      ).catchError((Object error) {
+        AppLogger.warning('Discover feed cache persistence failed',
+          category: 'discover', component: 'discover_screen',
+          fields: {'failure_type': error.runtimeType.toString()});
+      }));
       AppLogger.event('discover.home_loading_completed', category: 'discover',
         component: 'discover_screen',
         fields: {'generation': generation, 'shelf_count': snapshot.shelves.length,
@@ -493,6 +528,18 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
           'home:${AppSettings.instance.discoverRegion}',
           snapshot,
         );
+        unawaited(DiscoverHomeFeedStore.write(
+          region,
+          DiscoverHomeFeed(
+            shelves: _homeShelves.map((shelf) => DiscoverHomeShelf(
+              title: shelf.title, tracks: shelf.tracks,
+            )).toList(growable: false),
+          ),
+        ).catchError((Object error) {
+          AppLogger.warning('Discover feed cache persistence failed',
+            category: 'discover', component: 'discover_screen',
+            fields: {'failure_type': error.runtimeType.toString()});
+        }));
         setState(() => _homeContinuation = '');
         return;
       }
@@ -505,6 +552,19 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
         nextContinuation,
       );
       DiscoverCache.instance.write('home:${AppSettings.instance.discoverRegion}', snapshot);
+      unawaited(DiscoverHomeFeedStore.write(
+        region,
+        DiscoverHomeFeed(
+          shelves: snapshot.shelves.map((shelf) => DiscoverHomeShelf(
+            title: shelf.title, tracks: shelf.tracks,
+          )).toList(growable: false),
+          continuation: snapshot.continuation,
+        ),
+      ).catchError((Object error) {
+        AppLogger.warning('Discover feed cache persistence failed',
+          category: 'discover', component: 'discover_screen',
+          fields: {'failure_type': error.runtimeType.toString()});
+      }));
       setState(() {
         _homeShelves = snapshot.shelves;
         _homeContinuation = snapshot.continuation;
@@ -1162,7 +1222,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     if (_listeningPicks.isEmpty) return const SliverToBoxAdapter();
     return SliverToBoxAdapter(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        _shelfHeading('Inspired by your listening'),
+        _shelfHeading('Top Picks for You'),
         SizedBox(
           height: 214,
           child: ListView.separated(
@@ -1189,7 +1249,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     ];
     return SliverToBoxAdapter(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        _shelfHeading('Recently played'),
+        _shelfHeading('Recents'),
         SizedBox(
           height: 4 * 58,
           child: ListView.separated(
@@ -1300,89 +1360,6 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     );
   }
 
-  Widget _heroShelf(List<_DiscoverShelf> shelves) {
-    final cards = <({DiscoverTrack track, String eyebrow})>[
-      for (final shelf in shelves.take(2))
-        if (shelf.tracks.isNotEmpty)
-          (track: shelf.tracks.first, eyebrow: shelf.title),
-    ];
-    if (cards.isEmpty) return const SizedBox.shrink();
-    final width = MediaQuery.sizeOf(context).width * .70;
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.only(top: 10),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          _shelfHeading('Featured'),
-          SizedBox(
-            height: 286,
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              scrollDirection: Axis.horizontal,
-              itemCount: cards.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (context, index) {
-                final card = cards[index];
-                return SizedBox(
-                  width: width,
-                  child: Material(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(18),
-                    clipBehavior: Clip.antiAlias,
-                    child: InkWell(
-                      onTap: () => _play(card.track),
-                      child: Stack(fit: StackFit.expand, children: [
-                        _art(card.track, size: double.infinity),
-                        const DecoratedBox(decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [Colors.transparent, Color(0xE6000000)],
-                            stops: [0.32, 1],
-                          ),
-                        )),
-                        Positioned(left: 16, right: 16, bottom: 18, child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(card.eyebrow.toUpperCase(),
-                              maxLines: 1, overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(color: Colors.white70,
-                                fontSize: 10, fontWeight: FontWeight.w800,
-                                letterSpacing: 1.1)),
-                            const SizedBox(height: 7),
-                            Text(card.track.title, maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                color: Colors.white, fontWeight: FontWeight.w900)),
-                            const SizedBox(height: 3),
-                            Text(card.track.artist, maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Colors.white70)),
-                          ],
-                        )),
-                        Positioned(right: 8, top: 8, child: Material(
-                          color: Colors.black45, shape: const CircleBorder(),
-                          child: Theme(
-                            data: Theme.of(context).copyWith(
-                              popupMenuTheme: const PopupMenuThemeData(
-                                color: Color(0xFF24262B),
-                              ),
-                            ),
-                            child: _showTrackMenu(card.track),
-                          ),
-                        )),
-                      ]),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ]),
-      ),
-    );
-  }
-
   Widget _showTrackMenu(DiscoverTrack track) {
     final local = AppSettings.instance.discoverLocalLossless
         ? DiscoverService.findLocalLosslessMatch(track, _localLibrary) : null;
@@ -1401,6 +1378,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       icon: const Icon(Icons.more_horiz_rounded),
     );
   }
+
 
   Widget _trackPager(_DiscoverShelf shelf) {
     final tracks = shelf.tracks.take(20).toList(growable: false);
@@ -1458,6 +1436,15 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
         SizedBox(width: 36, child: _showTrackMenu(track)),
       ]),
     );
+  }
+
+  bool _isListLayoutShelf(_DiscoverShelf shelf) {
+    final title = shelf.title.toLowerCase();
+    return title.contains('recents') ||
+        title.contains('quick picks') ||
+        title.contains('listen again') ||
+        title.contains('your music') ||
+        title.contains('top songs');
   }
 
   Widget _homeShelf(_DiscoverShelf shelf) {
@@ -1627,15 +1614,17 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
             else if (hasTracks) ...[
               if (_loading) const SliverToBoxAdapter(child: LinearProgressIndicator(minHeight: 2)),
               if (_homeShelves.isNotEmpty) ...[
+                // BitChord Home order: Top Picks, Recents, then the live
+                // upstream shelves. Find Your Mood is inserted after the
+                // lead feed shelf rather than before the feed.
                 _listeningPicksShelf(),
                 _recentlyPlayedShelf(),
-                _heroShelf(_homeShelves),
-                if (_homeShelves.isNotEmpty) _trackPager(_homeShelves.first),
-                for (var index = 1; index < _homeShelves.length; index++) ...[
-                  _homeShelf(_homeShelves[index]),
-                  if (index == 1) _moodHomeShelf(),
+                for (var index = 0; index < _homeShelves.length; index++) ...[
+                  _isListLayoutShelf(_homeShelves[index])
+                      ? _trackPager(_homeShelves[index])
+                      : _homeShelf(_homeShelves[index]),
+                  if (index == 0) _moodHomeShelf(),
                 ],
-                if (_homeShelves.length <= 1) _moodHomeShelf(),
               ] else ...[
                 SliverToBoxAdapter(
                   child: Padding(
