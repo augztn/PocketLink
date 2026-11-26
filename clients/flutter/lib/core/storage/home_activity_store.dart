@@ -63,8 +63,16 @@ class HomeActivityStore extends ChangeNotifier {
 
   static final instance = HomeActivityStore._();
   static const _key = 'home_recent_activity_v1';
+  static const _favoritesKey = 'files_favorites_v1';
 
   List<HomeActivityItem> _items = const [];
+  List<HomeActivityItem> _favorites = const [];
+
+  List<HomeActivityItem> favoritesForServer(String serverUrl) =>
+      _favorites.where((item) => item.serverUrl == serverUrl).toList(growable: false);
+
+  bool isFavorite({required String serverUrl, required String path, String? volume}) =>
+      _favorites.any((item) => item.serverUrl == serverUrl && item.path == path && item.volume == volume);
   Future<void> _writeQueue = Future<void>.value();
 
   List<HomeActivityItem> itemsForServer(String serverUrl) =>
@@ -83,6 +91,11 @@ class HomeActivityStore extends ChangeNotifier {
             .whereType<HomeActivityPlayCount>()
             .toList(growable: false);
       }
+      final rawFavorites = preferences.getString(_favoritesKey);
+      final decodedFavorites = rawFavorites == null ? const [] : jsonDecode(rawFavorites);
+      if (decodedFavorites is List) {
+        _favorites = decodedFavorites.map(HomeActivityItem.fromJson).whereType<HomeActivityItem>().toList(growable: false);
+      }
       final raw = preferences.getString(_key);
       final decoded = raw == null ? const [] : jsonDecode(raw);
       if (decoded is List) {
@@ -91,8 +104,42 @@ class HomeActivityStore extends ChangeNotifier {
       }
     } catch (_) {
       _items = const [];
+      _favorites = const [];
     }
     notifyListeners();
+  }
+
+  Future<void> toggleFavorite({
+    required String serverUrl,
+    required String title,
+    required String path,
+    required bool isFolder,
+    String? volume,
+  }) {
+    final write = _writeQueue.then((_) async {
+      final preferences = await SharedPreferences.getInstance();
+      final existing = _favorites.indexWhere((item) =>
+          item.serverUrl == serverUrl && item.path == path && item.volume == volume);
+      final updated = _favorites.toList();
+      if (existing >= 0) {
+        updated.removeAt(existing);
+      } else {
+        updated.insert(0, HomeActivityItem(
+          kind: isFolder ? 'folder' : 'file',
+          title: title,
+          path: path,
+          serverUrl: serverUrl,
+          volume: volume,
+          updatedAt: DateTime.now(),
+        ));
+      }
+      _favorites = List.unmodifiable(updated.take(200));
+      await preferences.setString(_favoritesKey,
+          jsonEncode(_favorites.map((item) => item.toJson()).toList()));
+      notifyListeners();
+    });
+    _writeQueue = write.catchError((_) {});
+    return write;
   }
 
   Future<void> recordTrack({
