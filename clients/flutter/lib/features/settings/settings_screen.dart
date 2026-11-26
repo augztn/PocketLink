@@ -302,32 +302,77 @@ class _SettingsScreenState extends State<SettingsScreen> {
     Navigator.of(context).push(route);
   }
 
-  bool _categoryMatches(String id) {
+  List<String> _matchingSettingLabels(String id) {
     final tokens = _settingsSearchQuery
         .toLowerCase()
         .split(RegExp(r'[^a-z0-9]+'))
         .where((token) => token.isNotEmpty)
         .toList(growable: false);
-    if (tokens.isEmpty) return true;
-
-    // Include individual control names and their searchable descriptions so
-    // queries such as "wifi only", "blur", or "subtitle size" find the owner
-    // category even when the exact phrase is not contiguous.
-    final searchable = <String, String>{
-      'appearance': 'appearance theme color dark light system amoled oled black liquid glass progressive blur shader header preview reset',
-      'navigation': 'navigation bar dock tabs reorder destinations fab floating action button visible hidden',
-      'dashboard': 'dashboard home shortcuts quick actions search transfers recent continue sections layout reorder',
-      'audio': 'audio music player now playing mini player gestures shortcuts playback',
-      'discover': 'discover explore youtube music lyrics playlists audio quality region resolver lossless artwork auto queue',
-      'video': 'video player playback gestures controls scaling subtitles fullscreen seek speed orientation pinch zoom fit mode',
-      'media': 'media storage downloads directory folder cache concurrent wifi only mobile data auto resume',
-      'backup': 'backup restore export import preferences settings json',
-      'connection': 'connection network server saved servers diagnostics logs troubleshooting',
-      'about': 'about pocketlink version licenses architecture information',
+    const entries = <String, Map<String, String>>{
+      'appearance': {
+        'Theme mode': 'theme color dark light system amoled oled black',
+        'Liquid Glass UI': 'liquid glass frosted reflections surfaces',
+        'Progressive Blur': 'progressive blur shader fade header',
+      },
+      'navigation': {
+        'Navigation bar': 'navigation dock tabs destinations visible hidden',
+        'Floating action button': 'fab floating action button',
+      },
+      'dashboard': {
+        'Quick actions': 'quick actions shortcuts',
+        'Home sections': 'home dashboard continue recent transfers',
+        'Global search': 'global search',
+        'Section order': 'reorder layout order',
+      },
+      'audio': {
+        'Mini-player': 'mini player now playing',
+        'Music button gestures': 'music button swipe gestures shortcuts playback',
+      },
+      'discover': {
+        'Discover availability': 'discover explore enable disable',
+        'Lossless matching': 'lossless flac alac wav matching',
+        'Lyrics and artwork': 'lyrics artwork thumbnails',
+        'Playback quality': 'audio quality balanced data saver',
+        'Resolver and region': 'resolver profile region catalogue',
+        'Playlists': 'import export playlists spotify csv m3u',
+      },
+      'video': {
+        'Playback controls': 'video controls seek speed fullscreen gestures',
+        'Display and subtitles': 'fit scaling subtitles font size orientation',
+      },
+      'media': {
+        'Download location': 'download directory folder location',
+        'Download concurrency': 'concurrent simultaneous downloads',
+        'Wi-Fi only': 'wifi mobile data network',
+        'Auto-resume': 'resume unfinished downloads launch',
+        'Cache': 'temporary files image cache clear',
+      },
+      'backup': {
+        'Export settings': 'backup export json preferences',
+        'Import settings': 'restore import json preferences',
+      },
+      'connection': {
+        'Saved servers': 'server connections switch',
+        'Diagnostic logs': 'diagnostics troubleshooting logs export',
+      },
+      'about': {
+        'Version information': 'version about pocketlink',
+        'Licenses': 'licenses acknowledgements architecture',
+      },
     };
-    final corpus = '${searchable[id] ?? ''} ${id.replaceAll(RegExp(r'([A-Z])'), ' $1')}';
-    return tokens.every(corpus.contains);
+    final options = entries[id];
+    if (options == null) return const [];
+    if (tokens.isEmpty) return options.keys.toList(growable: false);
+    return options.entries
+        .where((entry) {
+          final corpus = '${entry.key.toLowerCase()} ${entry.value}';
+          return tokens.every(corpus.contains);
+        })
+        .map((entry) => entry.key)
+        .toList(growable: false);
   }
+
+  bool _categoryMatches(String id) => _matchingSettingLabels(id).isNotEmpty;
 
   Future<void> _resetAppearance() async {
     final confirmed = await showDialog<bool>(
@@ -542,6 +587,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     String? badge,
   }) {
     final colors = Theme.of(context).colorScheme;
+    final matches = _matchingSettingLabels(id);
+    final query = _settingsSearchQuery.trim();
+    final visibleSubtitle = query.isEmpty || matches.isEmpty
+        ? subtitle
+        : '$subtitle · Matches: ${matches.join(', ')}';
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: 0, end: 1),
       duration: const Duration(milliseconds: 280),
@@ -599,8 +649,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        subtitle,
-                        maxLines: 2,
+                        visibleSubtitle,
+                        maxLines: query.isEmpty ? 2 : 4,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: colors.onSurfaceVariant,
