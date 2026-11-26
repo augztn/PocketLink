@@ -142,7 +142,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       track,
       ..._recentlyPlayed.where((item) => item.videoId != track.videoId),
     ].take(20).toList(growable: false);
-    setState(() => _recentlyPlayed = recent);
+    if (mounted) setState(() => _recentlyPlayed = recent);
     unawaited(DiscoverRecentlyPlayedStore.record(track));
   }
 
