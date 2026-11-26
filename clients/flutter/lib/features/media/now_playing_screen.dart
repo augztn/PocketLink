@@ -100,8 +100,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
 
   String get _trackKey => _trackIdentity;
 
-  bool get _usesSharedArtwork =>
-      widget.useSharedArtwork && (widget.morphAnimation?.value ?? 1.0) < 0.999;
+  bool get _usesSharedArtwork => widget.useSharedArtwork;
 
   String get _favoriteId => '${_track.volume ?? 'internal'}:${_track.path}';
 
@@ -1760,17 +1759,22 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
           curve: Curves.easeOutCubic,
         ).transform(progress);
         final lyricsProgress = Curves.easeOutCubic.transform(_lyricsController.value);
+        final isMorphing = widget.morphAnimation != null;
         return Scaffold(
-          backgroundColor: const Color(0xFF0A0B0E),
+          backgroundColor: isMorphing
+              ? Colors.transparent
+              : const Color(0xFF0A0B0E),
           body: Stack(
             fit: StackFit.expand,
             children: [
-              const Positioned.fill(
-                child: ColoredBox(color: Color(0xFF0A0B0E)),
-              ),
-              Positioned.fill(
-                child: _themeBackground(theme, lyricsProgress: lyricsProgress),
-              ),
+              if (!isMorphing)
+                const Positioned.fill(
+                  child: ColoredBox(color: Color(0xFF0A0B0E)),
+                ),
+              if (!isMorphing)
+                Positioned.fill(
+                  child: _themeBackground(theme, lyricsProgress: lyricsProgress),
+                ),
               Positioned.fill(
                 child: Stack(
                   fit: StackFit.expand,
