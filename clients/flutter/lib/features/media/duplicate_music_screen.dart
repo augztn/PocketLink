@@ -86,8 +86,12 @@ class _DuplicateMusicScreenState extends State<DuplicateMusicScreen> {
 
   Future<String?> _digest(MediaFileItem item, SharedPreferences prefs,
       CancelToken token, bool rehash) async {
+    final authFingerprint = sha256.convert(utf8.encode(
+      widget.api.mediaHeaders['Authorization'] ?? '',
+    )).toString();
     final id = sha256.convert(utf8.encode(
-      widget.api.baseUrl + '|' + (item.volume ?? 'internal') + '|' + item.path,
+      widget.api.baseUrl + '|' + authFingerprint + '|' +
+          (item.volume ?? 'internal') + '|' + item.path,
     )).toString();
     final key = 'pocketlink.duplicate.sha256.v1.' + id;
     final stamp = item.entry.size.toString() + '|' + item.entry.modified;
@@ -176,7 +180,12 @@ class _DuplicateMusicScreenState extends State<DuplicateMusicScreen> {
             Text(copies.toString() + ' duplicate copies in ' + _groups.length.toString() + ' groups',
               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
             const SizedBox(height: 4),
-            const Text('No files have been changed.', style: TextStyle(color: muted, fontSize: 12)),
+            Text(
+              _skipped > 0
+                  ? 'No files have been changed. $_skipped files could not be verified.'
+                  : 'No files have been changed.',
+              style: TextStyle(color: _skipped > 0 ? Colors.orangeAccent : muted, fontSize: 12),
+            ),
             const SizedBox(height: 12),
             for (final group in _groups)
               Container(
@@ -203,9 +212,17 @@ class _DuplicateMusicScreenState extends State<DuplicateMusicScreen> {
               ),
           ],
           if (!_busy && _hasScanned && _error == null && _groups.isEmpty)
-            const Padding(
-              padding: EdgeInsets.only(top: 24),
-              child: Center(child: Text('No byte-identical music files found.', style: TextStyle(color: muted))),
+            Padding(
+              padding: const EdgeInsets.only(top: 24),
+              child: Center(child: Text(
+                _skipped > 0
+                    ? 'No matches among verified files. $_skipped files could not be checked.'
+                    : _total == 0
+                        ? 'No same-size music candidates were found.'
+                        : 'No byte-identical music files found.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: muted),
+              )),
             ),
           if (!_busy && !_hasScanned && _error == null && _total == 0 && _groups.isEmpty)
             const Padding(
