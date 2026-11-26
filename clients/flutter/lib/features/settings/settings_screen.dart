@@ -186,6 +186,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       'transfers': (title: 'Active transfers', description: 'Live upload and download progress', icon: Icons.swap_vert_rounded),
       'continue': (title: 'Continue browsing', description: 'Recently opened folders, files and tracks', icon: Icons.history_rounded),
       'recent': (title: 'Recent files', description: 'Recently changed files from the server', icon: Icons.insert_drive_file_outlined),
+      'storage': (title: 'Storage & host health', description: 'Mounted volumes, device health and media scan status', icon: Icons.storage_rounded),
     };
     var draft = List<String>.of(_settings.homeSectionOrder);
     final visible = <String>{
@@ -194,6 +195,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (_settings.showActiveTransfers) 'transfers',
       if (_settings.showLibrary) 'continue',
       if (_settings.showRecentFiles) 'recent',
+      if (_settings.showStorageOverview) 'storage',
     };
     final result = await showDialog<({List<String> order, Set<String> visible})>(
       context: context,
@@ -286,6 +288,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       activeTransfers: result.visible.contains('transfers'),
       library: result.visible.contains('continue'),
       recentFiles: result.visible.contains('recent'),
+      storageOverview: result.visible.contains('storage'),
     );
   }
 
@@ -552,7 +555,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _settings.showActiveTransfers,
           _settings.showLibrary,
           _settings.showRecentFiles,
-        ].where((visible) => visible).length}/5 sections',
+          _settings.showStorageOverview,
+        ].where((visible) => visible).length}/6 sections',
       ),
     if (_categoryMatches('audio') || _categoryMatches('discover') || _categoryMatches('video') || _categoryMatches('media') || _categoryMatches('backup'))
       _settingsGroupTitle('Media & Storage'),
@@ -977,6 +981,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       subtitle: const Text('Show search entry on Home'),
                       value: _settings.showGlobalSearch,
                       onChanged: (value) => _settings.setHomeSections(globalSearch: value),
+                    ),
+                    const Divider(height: 1),
+                    SwitchListTile(
+                      secondary: const Icon(Icons.storage_rounded),
+                      title: const Text('Storage & host health'),
+                      subtitle: const Text('Show mounted volumes, device health and media scan status'),
+                      value: _settings.showStorageOverview,
+                      onChanged: (value) => _settings.setHomeSections(storageOverview: value),
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
