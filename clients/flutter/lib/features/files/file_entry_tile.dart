@@ -14,6 +14,7 @@ class FileEntryTile extends StatelessWidget {
     required this.onDownload,
     required this.onRename,
     required this.onDelete,
+    required this.onDetails,
     this.grid = false,
     this.isFavorite = false,
     this.onToggleFavorite,
@@ -29,6 +30,7 @@ class FileEntryTile extends StatelessWidget {
   final VoidCallback onDownload;
   final VoidCallback onRename;
   final VoidCallback onDelete;
+  final VoidCallback onDetails;
   final bool grid;
   final bool isFavorite;
   final VoidCallback? onToggleFavorite;
@@ -49,6 +51,11 @@ class FileEntryTile extends StatelessWidget {
     return SmokedGlassPopoverMenu<String>(
       tooltip: 'More actions',
       items: [
+        const SmokedGlassPopoverMenuItem(
+          value: 'details',
+          label: 'Details',
+          icon: Icons.info_outline_rounded,
+        ),
         SmokedGlassPopoverMenuItem(
           value: 'favorite',
           label: isFavorite ? 'Remove from favorites' : 'Add to favorites',
@@ -75,6 +82,9 @@ class FileEntryTile extends StatelessWidget {
       ],
       onSelected: (action) {
         switch (action) {
+          case 'details':
+            onDetails();
+            break;
           case 'favorite':
             onToggleFavorite?.call();
             break;
