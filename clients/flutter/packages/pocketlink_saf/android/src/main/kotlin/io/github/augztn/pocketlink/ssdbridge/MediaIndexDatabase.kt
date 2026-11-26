@@ -124,6 +124,12 @@ internal class MediaIndexDatabase(context: Context) :
         } finally { db.endTransaction() }
     }
 
+    @Synchronized fun hasUnscannedMusicMetadata(): Boolean =
+        readableDatabase.rawQuery(
+            "SELECT 1 FROM media WHERE category='music' AND metadata_scanned=0 LIMIT 1",
+            null
+        ).use { it.moveToFirst() }
+
     @Synchronized fun hasScanCheckpoints(): Boolean =
         readableDatabase.rawQuery("SELECT 1 FROM scan_checkpoints LIMIT 1", null).use { it.moveToFirst() }
 
