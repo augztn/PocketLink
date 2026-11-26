@@ -974,7 +974,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     }
   }
 
-  Widget _art(DiscoverTrack track, {double size = 56}) {
+  Widget _art(
+    DiscoverTrack track, {
+    double size = 56,
+    double radius = 7,
+  }) {
     final show = AppSettings.instance.discoverArtwork && track.thumbnailUrl.isNotEmpty;
     final placeholder = Container(
       width: size.isFinite ? size : null,
@@ -982,7 +986,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       color: const Color(0xFF1A1B20),
     );
     return ClipRRect(
-      borderRadius: BorderRadius.circular(13),
+      borderRadius: BorderRadius.circular(radius),
       child: SizedBox(
         width: size.isFinite ? size : null,
         height: size.isFinite ? size : null,
@@ -990,9 +994,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
             ? DiscoverThumbnail(
                 url: DiscoverThumbnailCache.urlForSize(
                   track.thumbnailUrl,
-                  size <= 60 ? 160 : 400,
+                  size <= 60 ? 160 : 544,
                 ),
-                cacheWidth: size <= 60 ? 160 : 400,
+                cacheWidth: size <= 60 ? 160 : 544,
                 fallback: placeholder,
                 errorFallback: _artFallback(size),
               )
@@ -1175,48 +1179,98 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
   Widget _feedCard(
     DiscoverTrack track, {
     List<DiscoverTrack>? queueOverride,
-    double cardWidth = 148,
+    double cardWidth = 168,
   }) {
     final theme = Theme.of(context);
     final local = AppSettings.instance.discoverLocalLossless
         ? DiscoverService.findLocalLosslessMatch(track, _localLibrary) : null;
-    return SizedBox(width: cardWidth, child: InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: () => _play(track, queueOverride: queueOverride),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        AspectRatio(aspectRatio: 1, child: Stack(fit: StackFit.expand, children: [
-          _art(track, size: double.infinity),
-          if (local != null) Positioned(left: 7, bottom: 7, child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-            decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(7)),
-            child: const Text('LOSSLESS', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800)),
-          )),
-          Positioned(right: 4, top: 4, child: Material(
-            color: Colors.black45, shape: const CircleBorder(),
-            child: PopupMenuButton<String>(
-              icon: const Icon(Icons.more_horiz_rounded, color: Colors.white),
-              onSelected: (v) {
-                if (v == 'play') _play(track, queueOverride: queueOverride);
-                if (v == 'radio') _loadRadio(track);
-                if (v == 'lyrics') _showLyrics(track, local: local);
-              },
-              itemBuilder: (_) => [
-                const PopupMenuItem(value: 'play', child: Text('Play')),
-                const PopupMenuItem(value: 'radio', child: Text('Start radio')),
-                if (AppSettings.instance.discoverLyrics)
-                  const PopupMenuItem(value: 'lyrics', child: Text('Lyrics')),
-              ],
+    return SizedBox(
+      width: cardWidth,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(7),
+        onTap: () => _play(track, queueOverride: queueOverride),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AspectRatio(
+              aspectRatio: 1,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  _art(track, size: double.infinity, radius: 7),
+                  if (local != null)
+                    Positioned(
+                      left: 7,
+                      bottom: 7,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.black87,
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                        child: const Text(
+                          'LOSSLESS',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: .4,
+                          ),
+                        ),
+                      ),
+                    ),
+                  Positioned(
+                    right: 5,
+                    top: 5,
+                    child: Material(
+                      color: Colors.black54,
+                      shape: const CircleBorder(),
+                      child: PopupMenuButton<String>(
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                        iconSize: 20,
+                        icon: const Icon(Icons.more_horiz_rounded, color: Colors.white),
+                        onSelected: (v) {
+                          if (v == 'play') _play(track, queueOverride: queueOverride);
+                          if (v == 'radio') _loadRadio(track);
+                          if (v == 'lyrics') _showLyrics(track, local: local);
+                        },
+                        itemBuilder: (_) => [
+                          const PopupMenuItem(value: 'play', child: Text('Play')),
+                          const PopupMenuItem(value: 'radio', child: Text('Start radio')),
+                          if (AppSettings.instance.discoverLyrics)
+                            const PopupMenuItem(value: 'lyrics', child: Text('Lyrics')),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          )),
-        ])),
-        const SizedBox(height: 9),
-        Text(track.title, maxLines: 1, overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-        const SizedBox(height: 3),
-        Text(track.artist, maxLines: 1, overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-      ]),
-    ));
+            const SizedBox(height: 8),
+            Text(
+              track.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              track.artist,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _shelfHeading(String title, {VoidCallback? onSeeAll}) => Padding(
@@ -1238,6 +1292,144 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     });
   }
 
+  Widget _topPickCard(DiscoverTrack track) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final width = (screenWidth * .60).clamp(190.0, 280.0);
+    final local = AppSettings.instance.discoverLocalLossless
+        ? DiscoverService.findLocalLosslessMatch(track, _localLibrary)
+        : null;
+    return SizedBox(
+      width: width,
+      child: AspectRatio(
+        aspectRatio: .75,
+        child: Material(
+          color: const Color(0xFF1A1B20),
+          borderRadius: BorderRadius.circular(12),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () => _play(track, queueOverride: _listeningPicks),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                _art(track, size: double.infinity, radius: 0),
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      stops: [.34, .66, 1],
+                      colors: [
+                        Color(0x00000000),
+                        Color(0x52000000),
+                        Color(0xE6000000),
+                      ],
+                    ),
+                  ),
+                ),
+                if (local != null)
+                  Positioned(
+                    left: 14,
+                    top: 14,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                      child: const Text(
+                        'LOSSLESS',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: .5,
+                        ),
+                      ),
+                    ),
+                  ),
+                Positioned(
+                  top: 5,
+                  right: 5,
+                  child: Material(
+                    color: Colors.black45,
+                    shape: const CircleBorder(),
+                    child: PopupMenuButton<String>(
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                      iconSize: 20,
+                      icon: const Icon(Icons.more_horiz_rounded, color: Colors.white),
+                      onSelected: (value) {
+                        if (value == 'play') _play(track, queueOverride: _listeningPicks);
+                        if (value == 'radio') _loadRadio(track);
+                        if (value == 'lyrics') _showLyrics(track, local: local);
+                      },
+                      itemBuilder: (_) => [
+                        const PopupMenuItem(value: 'play', child: Text('Play')),
+                        const PopupMenuItem(value: 'radio', child: Text('Start radio')),
+                        if (AppSettings.instance.discoverLyrics)
+                          const PopupMenuItem(value: 'lyrics', child: Text('Lyrics')),
+                      ],
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 16,
+                  right: 16,
+                  bottom: 16,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'BASED ON YOUR RECENT LISTENING',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: themeTextStyle(context, eyebrow: true),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        track.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: Colors.white,
+                          fontSize: 17,
+                          height: 1.2,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        track.artist,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.white.withValues(alpha: .86),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  TextStyle themeTextStyle(BuildContext context, {bool eyebrow = false}) {
+    return (eyebrow
+        ? Theme.of(context).textTheme.bodySmall
+        : Theme.of(context).textTheme.bodyMedium)!.copyWith(
+      color: eyebrow ? const Color(0xFFFFD2DA) : Colors.white,
+      fontSize: eyebrow ? 10 : 13,
+      fontWeight: eyebrow ? FontWeight.w600 : FontWeight.normal,
+      letterSpacing: eyebrow ? .65 : 0,
+    );
+  }
+
   Widget _listeningPicksShelf() {
     if (_listeningPicks.isEmpty) return const SliverToBoxAdapter();
     return SliverToBoxAdapter(
@@ -1249,12 +1441,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
             padding: const EdgeInsets.symmetric(horizontal: 20),
             scrollDirection: Axis.horizontal,
             itemCount: _listeningPicks.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemBuilder: (context, index) => _feedCard(
-              _listeningPicks[index],
-              queueOverride: _listeningPicks,
-              cardWidth: 168,
-            ),
+            separatorBuilder: (_, __) => const SizedBox(width: 14),
+            itemBuilder: (context, index) => _topPickCard(_listeningPicks[index]),
           ),
         ),
         const SizedBox(height: 22),
@@ -1339,7 +1527,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         _shelfHeading(section.title, onSeeAll: _openMoodsAndMoments),
         SizedBox(
-          height: 104,
+          height: 116,
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             scrollDirection: Axis.horizontal,
@@ -1347,28 +1535,73 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
             separatorBuilder: (_, __) => const SizedBox(width: 10),
             itemBuilder: (context, index) {
               final mood = section.items[index];
-              final stripe = mood.stripeColor == 0
+              final base = mood.stripeColor == 0
                   ? Theme.of(context).colorScheme.surfaceContainerHighest
                   : Color(mood.stripeColor);
               return SizedBox(
-                width: 132,
+                width: 148,
                 child: Material(
-                  color: stripe,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(12),
                   clipBehavior: Clip.antiAlias,
                   child: InkWell(
                     onTap: () => _openMood(mood),
-                    child: Padding(
-                      padding: const EdgeInsets.all(13),
-                      child: Align(
-                        alignment: Alignment.bottomLeft,
-                        child: Text(mood.title, maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                          )),
-                      ),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Color.lerp(base, Colors.white, .12)!,
+                                base,
+                                Color.lerp(base, Colors.black, .28)!,
+                              ],
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          right: -18,
+                          top: -28,
+                          child: Container(
+                            width: 112,
+                            height: 112,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: .18),
+                                width: 1.2,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          right: 6,
+                          top: 12,
+                          child: Icon(
+                            Icons.graphic_eq_rounded,
+                            size: 42,
+                            color: Colors.white.withValues(alpha: .22),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(13, 12, 13, 12),
+                          child: Align(
+                            alignment: Alignment.bottomLeft,
+                            child: Text(
+                              mood.title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                                height: 1.15,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
