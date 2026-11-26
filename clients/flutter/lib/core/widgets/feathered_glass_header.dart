@@ -11,6 +11,7 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
     this.darkTint,
     this.contentHeight = kToolbarHeight,
     this.strongestAtBottom = false,
+    this.fadeTailOnly = false,
     super.key,
   });
 
@@ -18,12 +19,18 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
   final List<Color>? darkTint;
   final double contentHeight;
   final bool strongestAtBottom;
+  final bool fadeTailOnly;
 
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
-    final headerHeight =
+    final fullHeaderHeight =
         media.padding.top + contentHeight + pocketLinkHeaderFadeTailHeight;
+    final fadeStart = (media.padding.top + contentHeight) / fullHeaderHeight;
+    final headerHeight = fadeTailOnly
+        ? pocketLinkHeaderFadeTailHeight
+        : fullHeaderHeight;
+    final blurStartSigma = fadeTailOnly ? 24 * (1 - fadeStart) : 24.0;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final effectiveDarkTint = isDark
         ? (darkTint != null && darkTint!.length >= 3
@@ -35,14 +42,33 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
               ])
         : null;
 
+    final gradientColors = effectiveDarkTint == null
+        ? null
+        : fadeTailOnly
+            ? [
+                _sampleHeaderTint(effectiveDarkTint, fadeStart),
+                _sampleHeaderTint(effectiveDarkTint, fadeStart + (1 - fadeStart) * 0.5),
+                effectiveDarkTint[2],
+              ]
+            : [
+                effectiveDarkTint[0],
+                Color.lerp(effectiveDarkTint[0], effectiveDarkTint[1], 0.5)!,
+                effectiveDarkTint[1],
+                Color.lerp(effectiveDarkTint[1], effectiveDarkTint[2], 0.5)!,
+                effectiveDarkTint[2],
+              ];
+    final gradientStops = fadeTailOnly
+        ? const [0.0, 0.5, 1.0]
+        : const [0.0, 0.16, 0.38, 0.68, 1.0];
+
     return _HeaderHeightReporter(
-      height: headerHeight,
+      height: fullHeaderHeight,
       child: SizedBox(
         width: double.infinity,
         height: headerHeight,
         child: ClipRect(
           child: ProgressiveBlur(
-            maxSigma: 24,
+            maxSigma: blurStartSigma,
             endSigma: 0,
             strongestAtBottom: strongestAtBottom,
             child: effectiveDarkTint == null
@@ -56,22 +82,8 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
                         end: strongestAtBottom
                             ? Alignment.topCenter
                             : Alignment.bottomCenter,
-                        colors: [
-                          effectiveDarkTint[0],
-                          Color.lerp(
-                            effectiveDarkTint[0],
-                            effectiveDarkTint[1],
-                            0.5,
-                          )!,
-                          effectiveDarkTint[1],
-                          Color.lerp(
-                            effectiveDarkTint[1],
-                            effectiveDarkTint[2],
-                            0.5,
-                          )!,
-                          effectiveDarkTint[2],
-                        ],
-                        stops: const [0, 0.16, 0.38, 0.68, 1],
+                        colors: gradientColors!,
+                        stops: gradientStops,
                       ),
                     ),
                     child: const SizedBox.expand(),
@@ -81,6 +93,26 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
       ),
     );
   }
+}
+
+
+Color _sampleHeaderTint(List<Color> tint, double position) {
+  const stops = [0.0, 0.16, 0.38, 0.68, 1.0];
+  final colors = [
+    tint[0],
+    Color.lerp(tint[0], tint[1], 0.5)!,
+    tint[1],
+    Color.lerp(tint[1], tint[2], 0.5)!,
+    tint[2],
+  ];
+  for (var index = 0; index < stops.length - 1; index++) {
+    if (position <= stops[index + 1]) {
+      final local = (position - stops[index]) /
+          (stops[index + 1] - stops[index]);
+      return Color.lerp(colors[index], colors[index + 1], local)!;
+    }
+  }
+  return colors.last;
 }
 
 /// Reports a header's known geometry after layout, never during build.
