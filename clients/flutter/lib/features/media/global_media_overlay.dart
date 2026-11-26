@@ -321,7 +321,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     final travelDistance = math.max(
       1.0,
       height - (_nowPlayingOriginRect?.height ?? _miniPlayerHeight),
-    );
+    ).toDouble();
     _nowPlayingController.value =
         PocketLinkNavigation.updateMorphProgress(
       current: _nowPlayingController.value,
