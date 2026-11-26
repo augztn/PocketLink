@@ -253,6 +253,53 @@ class IndexedFile {
   );
 }
 
+class MusicLibraryTrack {
+  const MusicLibraryTrack({
+    required this.path,
+    required this.name,
+    this.title,
+    this.artist,
+    this.album,
+    this.durationMs,
+    this.size = 0,
+    this.modified,
+    this.artworkAvailable = false,
+  });
+
+  final String path;
+  final String name;
+  final String? title;
+  final String? artist;
+  final String? album;
+  final int? durationMs;
+  final int size;
+  final String? modified;
+  final bool artworkAvailable;
+
+  factory MusicLibraryTrack.fromJson(Map<String, dynamic> json) {
+    final duration = json['duration'];
+    final durationMs = duration is num
+        ? (duration * 1000).round().clamp(0, 1 << 62).toInt()
+        : null;
+    String? text(Object? value) {
+      final result = value?.toString().trim();
+      return result == null || result.isEmpty ? null : result;
+    }
+
+    return MusicLibraryTrack(
+      path: json['path']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      title: text(json['title']),
+      artist: text(json['artist']),
+      album: text(json['album']),
+      durationMs: durationMs,
+      size: (json['size'] as num?)?.toInt() ?? 0,
+      modified: json['modified']?.toString(),
+      artworkAvailable: json['artwork_available'] == true,
+    );
+  }
+}
+
 class SkippedMediaIndexItem {
   const SkippedMediaIndexItem({required this.volume, required this.path, required this.reason});
   final String volume;
