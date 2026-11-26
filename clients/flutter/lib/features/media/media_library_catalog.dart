@@ -218,7 +218,7 @@ class MediaLibraryCatalog {
       final fallback = parent.isEmpty || isMusicRoot ? 'Unsorted' : parts.last;
       final taggedAlbum = item.album?.trim();
       final hasTag = taggedAlbum != null && taggedAlbum.isNotEmpty;
-      final name = hasTag ? taggedAlbum! : fallback;
+      final name = hasTag ? taggedAlbum : fallback;
       final key = hasTag
           ? '${item.volume ?? 'internal'}::tag:${name.toLowerCase()}'
           : '${item.volume ?? 'internal'}::folder:${parent}';
@@ -244,7 +244,7 @@ class MediaLibraryCatalog {
       final fallback = artistParts.isEmpty ? 'Unknown artist' : artistParts.last;
       final taggedArtist = item.artist?.trim();
       final hasTag = taggedArtist != null && taggedArtist.isNotEmpty;
-      final name = hasTag ? taggedArtist! : fallback;
+      final name = hasTag ? taggedArtist : fallback;
       final artistPath = artistParts.join('/');
       final key = hasTag
           ? '${item.volume ?? 'internal'}::tag:${name.toLowerCase()}'

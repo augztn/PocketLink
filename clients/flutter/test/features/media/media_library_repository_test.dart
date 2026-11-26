@@ -87,7 +87,11 @@ void main() {
           mime: 'video/mp4',
         ),
       ];
-      final adapter = _MediaPageAdapter([_page(firstPage), _page(secondPage)]);
+      final adapter = _MediaPageAdapter([
+        _page(firstPage),
+        _page(secondPage),
+        {'items': <dynamic>[]}, // Optional /api/music/library metadata response.
+      ]);
       final api = ServerApi(
         baseUrl: 'http://127.0.0.1:8000',
         username: 'admin',
@@ -108,21 +112,22 @@ void main() {
         expect(result.items.first.volume, isNull);
         expect(result.items.last.volume, 'usb1');
         expect(result.status.state, 'complete');
-        expect(adapter.requests, hasLength(2));
+        expect(adapter.requests, hasLength(3));
+        expect(adapter.requests.last.path, '/api/music/library');
         expect(
-          adapter.requests.map((request) => request.queryParameters['category']),
+          adapter.requests.take(2).map((request) => request.queryParameters['category']),
           everyElement('music'),
         );
         expect(
-          adapter.requests.map((request) => request.queryParameters['q']),
+          adapter.requests.take(2).map((request) => request.queryParameters['q']),
           everyElement('jazz'),
         );
         expect(
-          adapter.requests.map((request) => request.queryParameters['limit']),
+          adapter.requests.take(2).map((request) => request.queryParameters['limit']),
           everyElement(500),
         );
         expect(
-          adapter.requests.map((request) => request.queryParameters['offset']),
+          adapter.requests.take(2).map((request) => request.queryParameters['offset']),
           [0, 500],
         );
       } finally {
