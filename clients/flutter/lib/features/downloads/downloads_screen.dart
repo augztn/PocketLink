@@ -361,9 +361,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                     padding: const EdgeInsets.only(bottom: 10),
                     child: _ServerDownloadJobCard(
                       job: serverJobs[i],
-                      queuePosition: serverJobs[i].status == 'queued'
-                          ? serverJobs.take(i + 1).where((j) => j.status == 'queued').length
-                          : null,
+                      queuePosition: _serverQueuePosition(serverJobs[i], allServerJobs),
                       onPause: () => _serverAction(() => widget.api.pauseServerDownload(serverJobs[i].id)),
                       onResume: () => _serverAction(() => widget.api.resumeServerDownload(serverJobs[i].id)),
                       onCancel: () => _serverAction(() => widget.api.cancelServerDownload(serverJobs[i].id)),
@@ -861,6 +859,17 @@ class _ServerDownloadJobCard extends StatelessWidget {
       ),
     );
   }
+}
+
+int? _serverQueuePosition(ServerDownloadJob job, List<ServerDownloadJob> jobs) {
+  if (job.status != 'queued') return null;
+  final queued = jobs.where((item) => item.status == 'queued').toList()
+    ..sort((a, b) {
+      final byCreated = a.createdAt.compareTo(b.createdAt);
+      return byCreated != 0 ? byCreated : a.id.compareTo(b.id);
+    });
+  final index = queued.indexWhere((item) => item.id == job.id);
+  return index < 0 ? null : index + 1;
 }
 
 String _formatEta(int seconds) {
