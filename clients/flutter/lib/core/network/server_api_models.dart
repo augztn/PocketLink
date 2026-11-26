@@ -555,6 +555,14 @@ class ServerDownloadJob {
 
   bool get isActive => status == 'queued' || status == 'downloading';
 
+  /// Estimated remaining transfer time; unavailable until size and speed are known.
+  Duration? get estimatedRemaining {
+    if (totalBytes == null || speedBytesPerSecond <= 0 ||
+        status != 'downloading') return null;
+    final remainingBytes = (totalBytes! - downloadedBytes).clamp(0, totalBytes!);
+    return Duration(seconds: (remainingBytes / speedBytesPerSecond).ceil());
+  }
+
   factory ServerDownloadJob.fromJson(Map<String, dynamic> json) =>
       ServerDownloadJob(
         id: json['id']?.toString() ?? '',
