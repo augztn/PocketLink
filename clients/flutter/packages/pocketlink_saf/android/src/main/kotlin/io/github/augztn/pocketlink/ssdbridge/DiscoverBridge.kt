@@ -126,7 +126,7 @@ internal object DiscoverBridge {
             try {
                 val boundedLimit = limit.coerceIn(1, 50)
                 val feed = catalog.homeFeed(boundedLimit, regionCode)
-                val shelves = (feed["shelves"] as? List<*>)?.filterIsInstance<Map<String, Any>>().orEmpty()
+                val shelves = (feed["shelves"] as? List<*>)?.filterIsInstance<Map<*, *>>().orEmpty()
                 val response = if (shelves.isNotEmpty()) {
                     feed
                 } else {
