@@ -23,6 +23,48 @@ class DiscoverTrack {
 }
 
 
+class DiscoverHomeShelf {
+  const DiscoverHomeShelf({required this.title, required this.tracks});
+
+  final String title;
+  final List<DiscoverTrack> tracks;
+
+  factory DiscoverHomeShelf.fromJson(Map<String, dynamic> json) =>
+      DiscoverHomeShelf(
+        title: json['title']?.toString() ?? '',
+        tracks: (json['tracks'] as List? ?? const [])
+            .whereType<Map>()
+            .map((item) => DiscoverTrack.fromJson(
+                  item.map((key, value) => MapEntry(key.toString(), value)),
+                ))
+            .where((track) => track.videoId.isNotEmpty)
+            .toList(growable: false),
+      );
+}
+
+class DiscoverHomeFeed {
+  const DiscoverHomeFeed({
+    required this.shelves,
+    this.continuation = '',
+  });
+
+  final List<DiscoverHomeShelf> shelves;
+  final String continuation;
+
+  factory DiscoverHomeFeed.fromJson(Map<String, dynamic> json) =>
+      DiscoverHomeFeed(
+        shelves: (json['shelves'] as List? ?? const [])
+            .whereType<Map>()
+            .map((item) => DiscoverHomeShelf.fromJson(
+                  item.map((key, value) => MapEntry(key.toString(), value)),
+                ))
+            .where((shelf) => shelf.title.isNotEmpty && shelf.tracks.isNotEmpty)
+            .toList(growable: false),
+        continuation: json['continuation']?.toString() ?? '',
+      );
+}
+
+
 class DiscoverMoodSection {
   const DiscoverMoodSection({required this.title, required this.items});
   final String title;
