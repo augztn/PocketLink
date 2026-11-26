@@ -378,6 +378,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'Home sections': 'home dashboard continue recent transfers',
         'Global search': 'global search',
         'Section order': 'reorder layout order',
+        'Storage overview': 'storage host health mounted volumes media scan',
       },
       'audio': {
         'Mini-player': 'mini player now playing',
