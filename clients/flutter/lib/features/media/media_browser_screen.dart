@@ -80,7 +80,9 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
                 ? _clearSelectionMode
                 : _libraryView == 'folders' && !_atFolderRoot
                     ? _goUpFolder
-                    : null;
+                    : _isMusic && _libraryView != 'home'
+                        ? () => _selectMusicView('home')
+                        : null;
     widget.onBackHandlerChanged?.call(handler);
   }
 
