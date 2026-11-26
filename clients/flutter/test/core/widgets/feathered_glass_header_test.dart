@@ -98,7 +98,7 @@ void main() {
   });
 
 
-  testWidgets('app bar uses one continuous blur from screen top through fade tail',
+  testWidgets('shared app bar keeps title row compact over one feathered blur',
       (tester) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -118,6 +118,11 @@ void main() {
       ),
     );
 
+    final appBar = tester.widget<AppBar>(find.byType(AppBar));
+    expect(appBar.bottom, isNull);
+    expect(appBar.preferredSize.height, kToolbarHeight);
+    expect(find.text('Files'), findsOneWidget);
+
     final blurFinder = find.byType(ProgressiveBlur);
     expect(blurFinder, findsOneWidget);
     final blur = tester.widget<ProgressiveBlur>(blurFinder);
@@ -129,9 +134,10 @@ void main() {
     );
     expect(shader.sigmaStart, 72);
     expect(shader.sigmaEnd, 0);
-    expect(tester.getTopLeft(blurFinder).dy, 0);
-    expect(tester.getSize(blurFinder).height, 192);
-    expect(tester.getSize(find.byType(PocketLinkAppBar)).height, 192);
+    // The AppBar clips the decorative header to the status bar + toolbar;
+    // the 112dp tail remains a layout measurement only, not a painted shelf.
+    expect(tester.getSize(blurFinder).height, 80);
+    expect(tester.getSize(find.byType(AppBar)).height, 80);
   });
 
 
