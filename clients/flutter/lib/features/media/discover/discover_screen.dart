@@ -60,6 +60,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
   List<DiscoverTrack> _listeningPicks = const [];
   String _listeningPicksSeed = '';
   int _listeningPicksGeneration = 0;
+  int _recentlyPlayedGeneration = 0;
+  int _moodsGeneration = 0;
   List<DiscoverMoodSection> _moodSections = const [];
   List<_DiscoverShelf> _homeShelves = const [];
   List<IndexedFile> _localLibrary = const [];
@@ -96,15 +98,22 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
   }
 
   Future<void> _loadRecentlyPlayed() async {
+    final generation = _recentlyPlayedGeneration;
     final recent = await DiscoverRecentlyPlayedStore.read();
-    if (mounted) setState(() => _recentlyPlayed = recent);
+    if (!mounted || generation != _recentlyPlayedGeneration) return;
+    setState(() => _recentlyPlayed = recent);
     if (recent.isNotEmpty) unawaited(_loadListeningPicks(recent.first));
   }
 
-  Future<void> _loadMoods() async {
+  Future<void> _loadMoods({String? region}) async {
+    final targetRegion = region ?? AppSettings.instance.discoverRegion;
+    final generation = ++_moodsGeneration;
     try {
-      final sections = await _service.moodsAndGenres();
-      if (mounted) setState(() => _moodSections = sections);
+      final sections = await _service.moodsAndGenres(region: targetRegion);
+      if (mounted && generation == _moodsGeneration &&
+          targetRegion == AppSettings.instance.discoverRegion) {
+        setState(() => _moodSections = sections);
+      }
     } catch (error) {
       AppLogger.warning('Discover mood shelf loading failed', category: 'discover',
         component: 'discover_screen',
@@ -159,6 +168,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
   }
 
   void _recordRecentlyPlayed(DiscoverTrack track) {
+    _recentlyPlayedGeneration++;
     final recent = [
       track,
       ..._recentlyPlayed.where((item) => item.videoId != track.videoId),
@@ -172,10 +182,31 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     final region = AppSettings.instance.discoverRegion;
     if (region == _lastRegion) return;
     _lastRegion = region;
-    if (mounted) {
+    if (!mounted) return;
+    _requestGeneration++;
+    _listeningPicksSeed = '';
+    final pendingHome = _homeRequest;
+    if (pendingHome == null) {
       unawaited(_loadHome(forceRefresh: true));
-      unawaited(_loadMoods());
+    } else {
+      unawaited(_reloadHomeAfterPending(region, pendingHome));
     }
+    unawaited(_loadMoods(region: region));
+    if (_recentlyPlayed.isNotEmpty) {
+      unawaited(_loadListeningPicks(_recentlyPlayed.first));
+    }
+  }
+
+  Future<void> _reloadHomeAfterPending(
+    String region,
+    Future<void> pending,
+  ) async {
+    try {
+      await pending;
+    } catch (_) {}
+    if (!mounted || region != AppSettings.instance.discoverRegion) return;
+    if (identical(_homeRequest, pending)) _homeRequest = null;
+    await _loadHome(forceRefresh: true);
   }
 
   String get _regionName =>
@@ -356,9 +387,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
         if (_homeShelves.isEmpty) _sectionTitle = 'Discover in $_regionName';
       });
     }
+    final region = AppSettings.instance.discoverRegion;
     try {
-      final feed = await _service.homeFeed(limit: 50);
-      if (!mounted || generation != _requestGeneration) return;
+      final feed = await _service.homeFeed(limit: 50, region: region);
+      if (!mounted || generation != _requestGeneration ||
+          region != AppSettings.instance.discoverRegion) return;
       final shelves = feed.shelves
           .map((shelf) => _DiscoverShelf(shelf.title, shelf.tracks))
           .where((shelf) => shelf.tracks.isNotEmpty)
@@ -430,9 +463,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     if (_loading || _loadingMore || continuation.isEmpty || _homeShelves.isEmpty) return;
     setState(() => _loadingMore = true);
     final generation = _requestGeneration;
+    final region = AppSettings.instance.discoverRegion;
     try {
-      final feed = await _service.moreHome(continuation, limit: 50);
-      if (!mounted || generation != _requestGeneration) return;
+      final feed = await _service.moreHome(continuation, limit: 50, region: region);
+      if (!mounted || generation != _requestGeneration ||
+          region != AppSettings.instance.discoverRegion) return;
       final mergedFeed = mergeDiscoverHomeShelves(
         _homeShelves
             .map((shelf) => DiscoverHomeShelf(
