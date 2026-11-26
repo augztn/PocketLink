@@ -32,7 +32,9 @@ class ProgressiveBlur extends StatelessWidget {
       end: strongestAtBottom
           ? Alignment.topCenter
           : Alignment.bottomCenter,
-      sigmaStart: maxSigma.clamp(0.0, shader_blur.ProgressiveBlur.maxSigma),
+      sigmaStart: maxSigma
+          .clamp(0.0, shader_blur.ProgressiveBlur.maxSigma)
+          .toDouble(),
       sigmaEnd: 0,
       child: const SizedBox.expand(),
     );
