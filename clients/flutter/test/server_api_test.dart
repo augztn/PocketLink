@@ -5,6 +5,27 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pocketlink_client/core/network/server_api.dart';
 
+class _RequestCaptureAdapter implements HttpClientAdapter {
+  final List<RequestOptions> requests = [];
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    requests.add(options);
+    return ResponseBody.fromString(
+      '{"ok":true}',
+      200,
+      headers: {Headers.contentTypeHeader: ['application/json']},
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
 class _CloseTrackingAdapter implements HttpClientAdapter {
   int closeCalls = 0;
   bool? force;
@@ -248,6 +269,29 @@ class _PriorityLaneAdapter implements HttpClientAdapter {
 
 void main() {
   group('ServerApi', () {
+    test('deletes music files from internal and SAF-backed storage', () async {
+      final adapter = _RequestCaptureAdapter();
+      final api = ServerApi(
+        baseUrl: 'http://127.0.0.1:8000',
+        username: 'admin',
+        password: 'secret',
+        httpClientAdapter: adapter,
+      );
+
+      await api.deleteMediaFile('Music/internal.mp3');
+      await api.deleteMediaFile('Music/usb.mp3', volume: 'usb1');
+
+      expect(adapter.requests, hasLength(2));
+      expect(adapter.requests[0].method, 'DELETE');
+      expect(adapter.requests[0].uri.path, '/api/files/item');
+      expect(adapter.requests[0].queryParameters['path'], 'Music/internal.mp3');
+      expect(adapter.requests[1].method, 'DELETE');
+      expect(adapter.requests[1].uri.path, '/api/storage/item');
+      expect(adapter.requests[1].queryParameters['volume'], 'usb1');
+      expect(adapter.requests[1].queryParameters['path'], 'Music/usb.mp3');
+      api.close();
+    });
+
 
     test('media thumbnail work cannot occupy the core API request lane', () async {
       final adapter = _PriorityLaneAdapter();
