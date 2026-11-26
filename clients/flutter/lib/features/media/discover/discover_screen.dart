@@ -1294,7 +1294,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
 
   Widget _topPickCard(DiscoverTrack track) {
     final screenWidth = MediaQuery.sizeOf(context).width;
-    final width = (screenWidth * .60).clamp(190.0, 280.0);
+    final width = (screenWidth * .60).clamp(190.0, 280.0).toDouble();
     final local = AppSettings.instance.discoverLocalLossless
         ? DiscoverService.findLocalLosslessMatch(track, _localLibrary)
         : null;
@@ -1432,7 +1432,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
 
   Widget _listeningPicksShelf() {
     if (_listeningPicks.isEmpty) return const SliverToBoxAdapter();
-    final cardWidth = (MediaQuery.sizeOf(context).width * .60).clamp(190.0, 280.0);
+    final cardWidth = (MediaQuery.sizeOf(context).width * .60).clamp(190.0, 280.0).toDouble();
     return SliverToBoxAdapter(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         _shelfHeading('Top Picks for You'),
