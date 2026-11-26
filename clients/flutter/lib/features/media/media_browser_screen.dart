@@ -549,6 +549,9 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   }
 
   Widget _buildVideoArtwork(MediaFileItem media, {required BoxFit fit}) {
+    if (!_routeIsCurrent) {
+      return VideoArtwork(future: Future<Uint8List?>.value(null), fit: fit);
+    }
     final key = _favoriteKey(media);
     final token = _requestToken(_videoThumbnailTokens, key);
     return VideoArtwork(
@@ -562,6 +565,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   }
 
   Future<VideoMetadata?> _videoMetadataFor(MediaFileItem media) {
+    if (!_routeIsCurrent) return Future<VideoMetadata?>.value(null);
     final key = _favoriteKey(media);
     if (_videoMetadataTokens[key]?.isCancelled ?? false) {
       _videoMetadataCache.remove(key);
