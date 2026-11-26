@@ -1222,7 +1222,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     if (_listeningPicks.isEmpty) return const SliverToBoxAdapter();
     return SliverToBoxAdapter(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        _shelfHeading('Inspired by your listening'),
+        _shelfHeading('Top Picks for You'),
         SizedBox(
           height: 214,
           child: ListView.separated(
@@ -1249,7 +1249,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     ];
     return SliverToBoxAdapter(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        _shelfHeading('Recently played'),
+        _shelfHeading('Recents'),
         SizedBox(
           height: 4 * 58,
           child: ListView.separated(
@@ -1520,6 +1520,15 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     );
   }
 
+  bool _isListLayoutShelf(_DiscoverShelf shelf) {
+    final title = shelf.title.toLowerCase();
+    return title.contains('recents') ||
+        title.contains('quick picks') ||
+        title.contains('listen again') ||
+        title.contains('your music') ||
+        title.contains('top songs');
+  }
+
   Widget _homeShelf(_DiscoverShelf shelf) {
     return SliverToBoxAdapter(
       child: Padding(
@@ -1687,15 +1696,17 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
             else if (hasTracks) ...[
               if (_loading) const SliverToBoxAdapter(child: LinearProgressIndicator(minHeight: 2)),
               if (_homeShelves.isNotEmpty) ...[
+                // BitChord Home order: Top Picks, Recents, then the live
+                // upstream shelves. Find Your Mood is inserted after the
+                // lead feed shelf rather than before the feed.
                 _listeningPicksShelf(),
                 _recentlyPlayedShelf(),
-                _heroShelf(_homeShelves),
-                if (_homeShelves.isNotEmpty) _trackPager(_homeShelves.first),
-                for (var index = 1; index < _homeShelves.length; index++) ...[
-                  _homeShelf(_homeShelves[index]),
-                  if (index == 1) _moodHomeShelf(),
+                for (var index = 0; index < _homeShelves.length; index++) ...[
+                  _isListLayoutShelf(_homeShelves[index])
+                      ? _trackPager(_homeShelves[index])
+                      : _homeShelf(_homeShelves[index]),
+                  if (index == 0) _moodHomeShelf(),
                 ],
-                if (_homeShelves.length <= 1) _moodHomeShelf(),
               ] else ...[
                 SliverToBoxAdapter(
                   child: Padding(
