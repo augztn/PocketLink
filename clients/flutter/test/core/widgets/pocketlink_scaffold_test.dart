@@ -115,10 +115,14 @@ void main() {
                       : identical(currentRoute, routeB)
                           ? 128.0
                           : 116.0;
+                  // The route fixtures are expressed using the former
+                  // 12px fade tail. Convert them to the current 112px
+                  // reported header geometry while keeping content clearance
+                  // expectations unchanged.
                   LayoutInsetsScope.reportRenderedHeader(
                     context,
                     currentRoute,
-                    headerHeight,
+                    headerHeight - 12.0 + pocketLinkHeaderFadeTailHeight,
                   );
                   final topClearance =
                       LayoutInsetsScope.of(context).topClearance;
