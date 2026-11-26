@@ -9,6 +9,7 @@ import 'package:progressive_background_blur/progressive_background_blur.dart'
 class ProgressiveBlur extends StatelessWidget {
   const ProgressiveBlur({
     this.maxSigma = 24,
+    this.endSigma = 12,
     this.strongestAtBottom = false,
     super.key,
   });
@@ -16,17 +17,21 @@ class ProgressiveBlur extends StatelessWidget {
   /// Blur sigma at the strongest edge, in logical pixels.
   final double maxSigma;
 
+  /// Blur sigma retained at the feathered edge, in logical pixels.
+  final double endSigma;
+
   /// When true, blur is strongest at the bottom instead of the top.
   final bool strongestAtBottom;
 
   @override
   Widget build(BuildContext context) {
-    if (!maxSigma.isFinite || maxSigma <= 0) {
+    if (!maxSigma.isFinite || maxSigma <= 0 || !endSigma.isFinite) {
       return const SizedBox.shrink();
     }
 
-    final sigmaInPhysicalPixels = maxSigma *
-        MediaQuery.devicePixelRatioOf(context);
+    final pixelRatio = MediaQuery.devicePixelRatioOf(context);
+    final maxSigmaPhysical = maxSigma * pixelRatio;
+    final endSigmaPhysical = endSigma * pixelRatio;
 
     return shader_blur.ProgressiveBlur(
       begin: strongestAtBottom
@@ -35,10 +40,12 @@ class ProgressiveBlur extends StatelessWidget {
       end: strongestAtBottom
           ? Alignment.topCenter
           : Alignment.bottomCenter,
-      sigmaStart: sigmaInPhysicalPixels
+      sigmaStart: maxSigmaPhysical
           .clamp(0.0, shader_blur.ProgressiveBlur.maxSigma)
           .toDouble(),
-      sigmaEnd: 0,
+      sigmaEnd: endSigmaPhysical
+          .clamp(0.0, shader_blur.ProgressiveBlur.maxSigma)
+          .toDouble(),
       child: const SizedBox.expand(),
     );
   }
