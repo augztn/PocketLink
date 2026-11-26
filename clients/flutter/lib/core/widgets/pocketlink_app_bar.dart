@@ -108,10 +108,6 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
         contentHeight: kToolbarHeight,
         topInset: headerTopInset,
       ),
-      bottom: const PreferredSize(
-        preferredSize: Size.fromHeight(pocketLinkHeaderFadeTailHeight),
-        child: SizedBox.expand(),
-      ),
       foregroundColor: foregroundColor,
       elevation: elevation ?? 0,
       scrolledUnderElevation: 0,
@@ -185,8 +181,7 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   @override
-  Size get preferredSize =>
-      const Size.fromHeight(kToolbarHeight + pocketLinkHeaderFadeTailHeight);
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }
 
 
