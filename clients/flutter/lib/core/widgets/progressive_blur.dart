@@ -42,22 +42,44 @@ class ProgressiveBlur extends StatelessWidget {
           return const SizedBox.shrink();
         }
 
-        final bandHeight = height / steps;
+        final reportedDpr = MediaQuery.of(context).devicePixelRatio;
+        final devicePixelRatio =
+            reportedDpr.isFinite && reportedDpr > 0 ? reportedDpr : 1.0;
+        final onePhysicalPixel = 1 / devicePixelRatio;
+        double snap(double value) =>
+            (value * devicePixelRatio).roundToDouble() / devicePixelRatio;
+
         final bands = <Widget>[];
         for (var index = 0; index < steps; index++) {
           final distance = (index + 0.5) / steps;
           final sigma = maxSigma * math.pow(1 - distance, exponent).toDouble();
           if (sigma < 0.1) continue;
 
-          final top = strongestAtBottom
-              ? height - (index + 1) * bandHeight
-              : index * bandHeight;
+          final startFraction = strongestAtBottom
+              ? (steps - index - 1) / steps
+              : index / steps;
+          final endFraction = strongestAtBottom
+              ? (steps - index) / steps
+              : (index + 1) / steps;
+          final top = snap(height * startFraction);
+          final baseBottom = snap(height * endFraction);
+          final isLastBand = strongestAtBottom
+              ? index == 0
+              : index == steps - 1;
+          // Extend each internal edge by one physical pixel. Grouped filters
+          // share the original backdrop, so this overlap closes raster gaps
+          // without applying one band's blur on top of its neighbour.
+          final bottom = isLastBand
+              ? height
+              : math.min(height, baseBottom + onePhysicalPixel).toDouble();
+          if (bottom <= top) continue;
+
           bands.add(
             Positioned(
               top: top,
               left: 0,
               right: 0,
-              height: bandHeight + 1,
+              height: bottom - top,
               child: ClipRect(
                 child: BackdropFilter.grouped(
                   filter: ui.ImageFilter.blur(
