@@ -1193,6 +1193,22 @@ tooltip: 'Choose video view',
     return result;
   }
 
+  List<MediaFileItem> _mostPlayedTracks(List<MediaFileItem> source) {
+    final plays = HomeActivityStore.instance.mostPlayedForServer(_stateKey);
+    final result = <MediaFileItem>[];
+    for (final play in plays) {
+      for (final track in source) {
+        if (track.path == play.path &&
+            (track.volume ?? 'internal') == (play.volume ?? 'internal')) {
+          result.add(track);
+          break;
+        }
+      }
+      if (result.length == 8) break;
+    }
+    return result;
+  }
+
   List<MediaFileItem> _recentlyUpdatedTracks(List<MediaFileItem> source) {
     final result = List<MediaFileItem>.of(source);
     result.sort((a, b) {
@@ -1242,6 +1258,7 @@ tooltip: 'Choose video view',
       }
     }
     final recentlyPlayed = _recentlyPlayedTracks(visible);
+    final mostPlayed = _mostPlayedTracks(visible);
     final recentlyUpdated = _recentlyUpdatedTracks(visible);
 
     return ListView(
@@ -1326,6 +1343,10 @@ tooltip: 'Choose video view',
         if (recentlyPlayed.isNotEmpty) ...[
           _musicSectionTitle('Recently played', action: 'See all songs', onAction: () => _selectMusicView('all')),
           for (final track in recentlyPlayed) _musicTrackTile(track, visible),
+        ],
+        if (mostPlayed.isNotEmpty) ...[
+          _musicSectionTitle('Most played'),
+          for (final track in mostPlayed) _musicTrackTile(track, visible),
         ],
         if (recentlyUpdated.isNotEmpty) ...[
           _musicSectionTitle('Recently updated', action: 'See all', onAction: () => _selectMusicView('all')),

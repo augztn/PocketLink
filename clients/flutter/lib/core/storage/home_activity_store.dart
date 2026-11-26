@@ -74,6 +74,14 @@ class HomeActivityStore extends ChangeNotifier {
     await _writeQueue;
     try {
       final preferences = await SharedPreferences.getInstance();
+      final rawCounts = preferences.getString(_playCountsKey);
+      final decodedCounts = rawCounts == null ? const [] : jsonDecode(rawCounts);
+      if (decodedCounts is List) {
+        _playCounts = decodedCounts
+            .map(HomeActivityPlayCount.fromJson)
+            .whereType<HomeActivityPlayCount>()
+            .toList(growable: false);
+      }
       final raw = preferences.getString(_key);
       final decoded = raw == null ? const [] : jsonDecode(raw);
       if (decoded is List) {
@@ -91,7 +99,17 @@ class HomeActivityStore extends ChangeNotifier {
     required String title,
     required String path,
     String? volume,
-  }) => _record(kind: 'track', serverUrl: serverUrl, title: title, path: path, volume: volume);
+  }) => _record(
+    kind: 'track', serverUrl: serverUrl, title: title, path: path,
+    volume: volume, incrementPlayCount: true,
+  );
+
+  List<HomeActivityPlayCount> mostPlayedForServer(String serverUrl) =>
+      _playCounts.where((item) => item.serverUrl == serverUrl).toList()
+        ..sort((a, b) => b.count.compareTo(a.count));
+
+  static const _playCountsKey = 'home_track_play_counts_v1';
+  List<HomeActivityPlayCount> _playCounts = const [];
 
   Future<void> recordFolder({
     required String serverUrl,
@@ -112,6 +130,7 @@ class HomeActivityStore extends ChangeNotifier {
     required String title,
     required String path,
     String? volume,
+    bool incrementPlayCount = false,
   }) {
     final write = _writeQueue.then((_) async {
       final preferences = await SharedPreferences.getInstance();
@@ -129,9 +148,69 @@ class HomeActivityStore extends ChangeNotifier {
             item.volume == volume && item.path == path)),
       ].take(20).toList(growable: false);
       await preferences.setString(_key, jsonEncode(_items.map((item) => item.toJson()).toList()));
+      if (incrementPlayCount) {
+        final index = _playCounts.indexWhere((item) =>
+          item.serverUrl == serverUrl && item.path == path && item.volume == volume);
+        final updated = _playCounts.toList();
+        final count = index < 0 ? 1 : updated[index].count + 1;
+        final play = HomeActivityPlayCount(
+          serverUrl: serverUrl, path: path, volume: volume, count: count,
+        );
+        if (index < 0) {
+          updated.add(play);
+        } else {
+          updated[index] = play;
+        }
+        if (updated.length > 2000) {
+          updated.sort((a, b) => b.count.compareTo(a.count));
+          updated.removeRange(2000, updated.length);
+        }
+        _playCounts = List.unmodifiable(updated);
+        await preferences.setString(_playCountsKey,
+          jsonEncode(_playCounts.map((item) => item.toJson()).toList()));
+      }
       notifyListeners();
     });
     _writeQueue = write.catchError((_) {});
     return write;
+  }
+}
+
+
+class HomeActivityPlayCount {
+  const HomeActivityPlayCount({
+    required this.serverUrl,
+    required this.path,
+    required this.count,
+    this.volume,
+  });
+
+  final String serverUrl;
+  final String path;
+  final String? volume;
+  final int count;
+
+  Map<String, Object?> toJson() => {
+    'serverUrl': serverUrl,
+    'path': path,
+    'volume': volume,
+    'count': count,
+  };
+
+  static HomeActivityPlayCount? fromJson(Object? value) {
+    if (value is! Map) return null;
+    final map = Map<String, Object?>.from(value);
+    final serverUrl = map['serverUrl'];
+    final path = map['path'];
+    final count = map['count'];
+    if (serverUrl is! String || path is! String || count is! int || count < 1) {
+      return null;
+    }
+    return HomeActivityPlayCount(
+      serverUrl: serverUrl,
+      path: path,
+      volume: map['volume'] is String ? map['volume'] as String : null,
+      count: count,
+    );
   }
 }
