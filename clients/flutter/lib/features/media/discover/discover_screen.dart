@@ -1360,6 +1360,26 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     );
   }
 
+  Widget _showTrackMenu(DiscoverTrack track) {
+    final local = AppSettings.instance.discoverLocalLossless
+        ? DiscoverService.findLocalLosslessMatch(track, _localLibrary) : null;
+    return PopupMenuButton<String>(
+      onSelected: (value) {
+        if (value == 'play') _play(track);
+        if (value == 'radio') _loadRadio(track);
+        if (value == 'lyrics') _showLyrics(track, local: local);
+      },
+      itemBuilder: (_) => [
+        const PopupMenuItem(value: 'play', child: Text('Play')),
+        const PopupMenuItem(value: 'radio', child: Text('Start radio')),
+        if (AppSettings.instance.discoverLyrics)
+          const PopupMenuItem(value: 'lyrics', child: Text('Lyrics')),
+      ],
+      icon: const Icon(Icons.more_horiz_rounded),
+    );
+  }
+
+
   Widget _trackPager(_DiscoverShelf shelf) {
     final tracks = shelf.tracks.take(20).toList(growable: false);
     if (tracks.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
