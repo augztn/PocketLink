@@ -93,14 +93,14 @@ void main() {
 
   test('Home section order persists and rejects incomplete layouts', () async {
     final settings = AppSettings.instance;
-    const order = ['recent', 'search', 'continue', 'quick', 'transfers'];
+    const order = ['recent', 'search', 'continue', 'quick', 'storage', 'transfers'];
 
     await settings.setHomeSectionOrder(order);
 
     expect(settings.homeSectionOrder, order);
     final preferences = await SharedPreferences.getInstance();
     expect(preferences.getString('settings_home_section_order'),
-        '["recent","search","continue","quick","transfers"]');
+        '["recent","search","continue","quick","storage","transfers"]');
 
     await expectLater(
       settings.setHomeSectionOrder(const ['search', 'quick']),
