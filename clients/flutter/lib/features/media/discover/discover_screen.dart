@@ -32,10 +32,11 @@ class _DiscoverShelf {
 }
 
 class _DiscoverFeedSnapshot {
-  const _DiscoverFeedSnapshot(this.shelves, this.sectionTitle);
+  const _DiscoverFeedSnapshot(this.shelves, this.sectionTitle, this.continuation);
 
   final List<_DiscoverShelf> shelves;
   final String sectionTitle;
+  final String continuation;
 }
 
 class DiscoverScreen extends StatefulWidget {
@@ -65,6 +66,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
   String _sectionTitle = 'Top charts in India';
   int _requestGeneration = 0;
   int _playRequestGeneration = 0;
+  String _homeContinuation = '';
+  bool _loadingMore = false;
+  Future<void>? _homeRequest;
+  final ScrollController _scrollController = ScrollController();
   late String _lastRegion;
 
   @override
@@ -76,6 +81,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       duration: const Duration(milliseconds: 1500),
     )..repeat();
     _lastRegion = AppSettings.instance.discoverRegion;
+    _scrollController.addListener(_onDiscoverScroll);
     AppSettings.instance.addListener(_onSettingsChanged);
     _loadLocalLibrary();
     _loadHome();
@@ -96,6 +102,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     AppLogger.event('screen.closed', category: 'screen', component: 'discover',
       fields: {'loading': _loading, 'track_count': _tracks.length, 'shelf_count': _homeShelves.length});
     AppSettings.instance.removeListener(_onSettingsChanged);
+    _scrollController.removeListener(_onDiscoverScroll);
+    _scrollController.dispose();
     _shimmerController.dispose();
     super.dispose();
   }
@@ -114,6 +122,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
             setState(() {
               _tracks = tracks;
               _homeShelves = const [];
+              _homeContinuation = '';
               _sectionTitle = title;
               _error = tracks.isEmpty ? 'No tracks found for this mood.' : null;
               _loading = false;
@@ -205,6 +214,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
             ? const []
             : cached.value.shelves.first.tracks;
         _sectionTitle = cached.value.sectionTitle;
+        _homeContinuation = cached.value.continuation;
         _error = null;
         _loading = false;
       }
@@ -236,6 +246,19 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
   Future<void> _fetchHome(
     String cacheKey, {
     required bool showLoading,
+  }) {
+    final pending = _homeRequest;
+    if (pending != null) return pending;
+    final request = _performFetchHome(cacheKey, showLoading: showLoading);
+    _homeRequest = request;
+    return request.whenComplete(() {
+      if (identical(_homeRequest, request)) _homeRequest = null;
+    });
+  }
+
+  Future<void> _performFetchHome(
+    String cacheKey, {
+    required bool showLoading,
   }) async {
     final generation = ++_requestGeneration;
     AppLogger.event('discover.home_loading_started', category: 'discover',
@@ -246,56 +269,37 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       setState(() {
         _loading = true;
         _error = null;
-        if (_homeShelves.isEmpty) _sectionTitle = 'Top charts in $_regionName';
+        if (_homeShelves.isEmpty) _sectionTitle = 'Discover in $_regionName';
       });
     }
     try {
-      final responses = await Future.wait<List<DiscoverTrack>>([
-        _service.home(limit: 24).catchError((Object _) => <DiscoverTrack>[]),
-        _service.search('new music releases ${DateTime.now().year} $_regionName', limit: 18).catchError((Object _) => <DiscoverTrack>[]),
-        _service.search('popular Malayalam songs', limit: 18).catchError((Object _) => <DiscoverTrack>[]),
-        _service.search('popular Hindi songs', limit: 18).catchError((Object _) => <DiscoverTrack>[]),
-        _service.search('popular Tamil songs', limit: 18).catchError((Object _) => <DiscoverTrack>[]),
-        _service.search('chill relaxing songs playlist', limit: 18).catchError((Object _) => <DiscoverTrack>[]),
-        _service.search('workout energetic songs playlist', limit: 18).catchError((Object _) => <DiscoverTrack>[]),
-        _service.search('party hits playlist', limit: 18).catchError((Object _) => <DiscoverTrack>[]),
-        _service.search('popular music mixes $_regionName', limit: 18).catchError((Object _) => <DiscoverTrack>[]),
-      ]);
+      final feed = await _service.homeFeed(limit: 50);
       if (!mounted || generation != _requestGeneration) return;
-      final shelves = <_DiscoverShelf>[
-        if (responses[0].isNotEmpty) _DiscoverShelf('Trending in $_regionName', responses[0]),
-        if (responses[1].isNotEmpty) _DiscoverShelf('New releases', responses[1]),
-        if (responses[2].isNotEmpty) _DiscoverShelf('Malayalam hits', responses[2]),
-        if (responses[3].isNotEmpty) _DiscoverShelf('Hindi hits', responses[3]),
-        if (responses[4].isNotEmpty) _DiscoverShelf('Tamil hits', responses[4]),
-        if (responses[5].isNotEmpty) _DiscoverShelf('Chill & unwind', responses[5]),
-        if (responses[6].isNotEmpty) _DiscoverShelf('Workout energy', responses[6]),
-        if (responses[7].isNotEmpty) _DiscoverShelf('Party starters', responses[7]),
-        if (responses[8].isNotEmpty) _DiscoverShelf('Popular mixes', responses[8]),
-      ];
+      final shelves = feed.shelves
+          .map((shelf) => _DiscoverShelf(shelf.title, shelf.tracks))
+          .where((shelf) => shelf.tracks.isNotEmpty)
+          .toList(growable: false);
       if (shelves.isEmpty) {
-        final fallback = await _service.search('top songs $_regionName');
-        if (!mounted || generation != _requestGeneration) return;
-        if (fallback.isEmpty) {
-          if (_homeShelves.isEmpty) {
-            setState(() => _error = 'No music recommendations are available right now.');
-          }
-          return;
+        if (_homeShelves.isEmpty) {
+          setState(() => _error = 'No music recommendations are available right now.');
         }
-        shelves.add(_DiscoverShelf('Popular in $_regionName', fallback));
+        return;
       }
       final snapshot = _DiscoverFeedSnapshot(
         List.unmodifiable(shelves),
-        'Top charts in $_regionName',
+        'Discover in $_regionName',
+        feed.continuation,
       );
       DiscoverCache.instance.write(cacheKey, snapshot);
       AppLogger.event('discover.home_loading_completed', category: 'discover',
         component: 'discover_screen',
         fields: {'generation': generation, 'shelf_count': snapshot.shelves.length,
-          'track_count': snapshot.shelves.fold<int>(0, (sum, shelf) => sum + shelf.tracks.length)});
+          'track_count': snapshot.shelves.fold<int>(0, (sum, shelf) => sum + shelf.tracks.length),
+          'has_continuation': snapshot.continuation.isNotEmpty});
       setState(() {
         _homeShelves = snapshot.shelves;
         _tracks = shelves.first.tracks;
+        _homeContinuation = snapshot.continuation;
         _error = null;
       });
     } on PlatformException catch (error) {
@@ -321,6 +325,78 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     }
   }
 
+  void _onDiscoverScroll() {
+    if (!_scrollController.hasClients ||
+        _loadingMore ||
+        _homeContinuation.isEmpty ||
+        _homeShelves.isEmpty) {
+      return;
+    }
+    if (_scrollController.position.extentAfter < 600) {
+      unawaited(_loadMoreHome());
+    }
+  }
+
+  Future<void> _loadMoreHome() async {
+    final continuation = _homeContinuation;
+    if (_loadingMore || continuation.isEmpty || _homeShelves.isEmpty) return;
+    setState(() => _loadingMore = true);
+    final generation = _requestGeneration;
+    try {
+      final feed = await _service.moreHome(continuation, limit: 50);
+      if (!mounted || generation != _requestGeneration) return;
+      final existingIds = _homeShelves
+          .expand((shelf) => shelf.tracks)
+          .map((track) => track.videoId)
+          .toSet();
+      final merged = _homeShelves.map((shelf) =>
+          _DiscoverShelf(shelf.title, List<DiscoverTrack>.of(shelf.tracks))).toList();
+      for (final pageShelf in feed.shelves) {
+        final freshTracks = pageShelf.tracks
+            .where((track) => existingIds.add(track.videoId))
+            .toList(growable: false);
+        if (freshTracks.isEmpty) continue;
+        final index = merged.indexWhere((shelf) =>
+            shelf.title.toLowerCase() == pageShelf.title.toLowerCase());
+        if (index < 0) {
+          merged.add(_DiscoverShelf(pageShelf.title, freshTracks));
+        } else {
+          merged[index] = _DiscoverShelf(
+            merged[index].title,
+            [...merged[index].tracks, ...freshTracks],
+          );
+        }
+      }
+      if (merged.length == _homeShelves.length &&
+          merged.every((shelf) => _homeShelves.any((old) =>
+              old.title == shelf.title && old.tracks.length == shelf.tracks.length))) {
+        setState(() => _homeContinuation = '');
+        return;
+      }
+      final nextContinuation = feed.continuation == continuation
+          ? ''
+          : feed.continuation;
+      final snapshot = _DiscoverFeedSnapshot(
+        List.unmodifiable(merged),
+        'Discover in $_regionName',
+        nextContinuation,
+      );
+      DiscoverCache.instance.write('home:${AppSettings.instance.discoverRegion}', snapshot);
+      setState(() {
+        _homeShelves = snapshot.shelves;
+        _homeContinuation = snapshot.continuation;
+      });
+    } on PlatformException catch (error) {
+      AppLogger.warning('Discover home continuation failed', category: 'discover',
+        component: 'discover_screen', fields: {'error_code': error.code});
+    } catch (error) {
+      AppLogger.warning('Discover home continuation failed', category: 'discover',
+        component: 'discover_screen', fields: {'failure_type': error.runtimeType.toString()});
+    } finally {
+      if (mounted) setState(() => _loadingMore = false);
+    }
+  }
+
   Future<void> _loadRadio(DiscoverTrack track) async {
     final generation = ++_requestGeneration;
     setState(() {
@@ -328,6 +404,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       _error = null;
       _sectionTitle = 'Radio · ${track.title}';
       _homeShelves = const [];
+      _homeContinuation = '';
     });
     try {
       final results = await _service.radio(track);
@@ -949,6 +1026,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       _tracks = shelf.tracks;
       _sectionTitle = shelf.title;
       _homeShelves = const [];
+      _homeContinuation = '';
     });
   }
 
@@ -1233,6 +1311,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       body: RefreshIndicator(
         onRefresh: _refreshDiscover,
         child: CustomScrollView(
+          controller: _scrollController,
           cacheExtent: 600,
           physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
@@ -1295,6 +1374,16 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
                 ),
               ],
             ],
+          if (_loadingMore)
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 22),
+                child: Center(child: SizedBox.square(
+                  dimension: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )),
+              ),
+            ),
           SliverToBoxAdapter(child: SizedBox(height: bottom + 16)),
           ],
         ),
