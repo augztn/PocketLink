@@ -126,7 +126,7 @@ internal class MediaIndexDatabase(context: Context) :
 
     @Synchronized fun hasUnscannedMusicMetadata(): Boolean =
         readableDatabase.rawQuery(
-            "SELECT 1 FROM media WHERE category='music' AND metadata_scanned=0 LIMIT 1",
+            "SELECT 1 FROM media WHERE volume='internal' AND category='music' AND metadata_scanned=0 LIMIT 1",
             null
         ).use { it.moveToFirst() }
 
