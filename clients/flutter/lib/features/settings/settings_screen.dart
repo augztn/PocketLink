@@ -209,7 +209,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Choose which sections appear and drag to set their order. Server status and storage health stay at the top.',
+                  'Choose which sections appear and drag to set their order. Server status stays at the top.',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 12),
