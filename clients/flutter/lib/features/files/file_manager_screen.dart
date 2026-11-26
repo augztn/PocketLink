@@ -578,7 +578,9 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
       widget.onBackHandlerChanged?.call(null);
       return;
     }
-    final handler = _searchExpanded
+    final handler = _showFilesHome
+        ? null
+        : _searchExpanded
         ? () => _setSearchExpanded(false)
         : _path.isNotEmpty
             ? () => unawaited(_goUp())
@@ -644,7 +646,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
           feathered: true,
           showHome: false,
           automaticallyImplyLeading: false,
-          leading: _path.isEmpty && embeddedTab
+          leading: _showFilesHome || (_path.isEmpty && embeddedTab)
               ? null
               : Align(
                   alignment: Alignment.centerLeft,
@@ -662,8 +664,8 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                     ),
                   ),
                 ),
-          leadingWidth: _path.isEmpty && embeddedTab ? 0 : 62,
-          titleSpacing: _path.isEmpty && embeddedTab ? 16 : 8,
+          leadingWidth: _showFilesHome || (_path.isEmpty && embeddedTab) ? 0 : 62,
+          titleSpacing: _showFilesHome || (_path.isEmpty && embeddedTab) ? 16 : 8,
           title: _showFilesHome
               ? const Text('Files', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700, letterSpacing: -0.5))
               : FileBrowserStorageTitle(
@@ -695,15 +697,17 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
               PocketLinkAppBarAction(label: 'Browse files', icon: Icons.folder_open_rounded,
                 onPressed: () { setState(() { _showFilesHome = false; _category = 'All'; }); }),
             if (!_showFilesHome && widget.showSearch) PocketLinkAppBarAction(label: _searchExpanded ? 'Close search' : 'Search files', icon: _searchExpanded ? Icons.close_rounded : Icons.search_rounded, onPressed: () => _setSearchExpanded(!_searchExpanded)),
-            PocketLinkAppBarAction(label: 'Upload file', icon: Icons.upload_rounded, onPressed: _uploadFile),
-            PocketLinkAppBarAction(label: 'New folder', icon: Icons.create_new_folder_outlined, onPressed: _createFolder),
-            PocketLinkAppBarAction(label: 'Sort by...', icon: Icons.sort_rounded,
-              onPressed: _showSortOptions, dividerBefore: true),
-            PocketLinkAppBarAction(label: _gridView ? 'Switch to list view' : 'Switch to grid view',
-              icon: _gridView ? Icons.view_list_rounded : Icons.grid_view_rounded,
-              onPressed: () { setState(() => _gridView = !_gridView); _saveState(); }),
+            if (!_showFilesHome) ...[
+              PocketLinkAppBarAction(label: 'Upload file', icon: Icons.upload_rounded, onPressed: _uploadFile),
+              PocketLinkAppBarAction(label: 'New folder', icon: Icons.create_new_folder_outlined, onPressed: _createFolder),
+              PocketLinkAppBarAction(label: 'Sort by...', icon: Icons.sort_rounded,
+                onPressed: _showSortOptions, dividerBefore: true),
+              PocketLinkAppBarAction(label: _gridView ? 'Switch to list view' : 'Switch to grid view',
+                icon: _gridView ? Icons.view_list_rounded : Icons.grid_view_rounded,
+                onPressed: () { setState(() => _gridView = !_gridView); _saveState(); }),
+              PocketLinkAppBarAction(label: 'Refresh', icon: Icons.refresh_rounded, onPressed: _loading ? null : _refreshDirectory),
+            ],
             PocketLinkAppBarAction(label: 'Transfers', icon: Icons.swap_vert_rounded, onPressed: _openTransfers, dividerBefore: true),
-            PocketLinkAppBarAction(label: 'Refresh', icon: Icons.refresh_rounded, onPressed: _loading ? null : _refreshDirectory),
           ],
         ),
         body: Stack(
