@@ -93,6 +93,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     'Videos': {'mp4', 'mkv', 'mov', 'avi', 'webm', 'm4v', '3gp', 'mpeg', 'mpg'},
     'Music': {'mp3', 'm4a', 'aac', 'flac', 'wav', 'ogg', 'opus', 'wma'},
     'Documents': {'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'md', 'rtf', 'csv'},
+    'Archives': {'zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz', 'tgz'},
   };
 
   String _extension(FileEntry item) {
@@ -403,6 +404,16 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
       _showError('Unable to select or upload this file.');
     }
   }
+
+  Future<void> _showDetails(FileEntry item) => showFileBrowserDetails(
+    context: context,
+    name: item.name,
+    path: _itemPath(item.name),
+    storage: _selectedVolume == null ? 'Internal storage' : _volumeName(_selectedVolume!),
+    size: _formatSize(item.size),
+    modified: item.modified,
+    isDirectory: item.isDirectory,
+  );
 
   Future<void> _downloadFile(FileEntry item) async {
     try {
@@ -780,6 +791,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                       onDownload: () => _downloadFile(item),
                       onRename: () => _rename(item),
                       onDelete: () => _delete(item),
+                      onDetails: () => _showDetails(item),
                       isFavorite: HomeActivityStore.instance.isFavorite(
                         serverUrl: widget.api.baseUrl,
                         path: _itemPath(item.name),
@@ -812,7 +824,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
                 selectedCategory: _category,
                 categoryCounts: {
                   for (final category in const [
-                    'All', 'Images', 'Videos', 'Music', 'Documents',
+                    'All', 'Images', 'Videos', 'Music', 'Documents', 'Archives',
                   ])
                     category: _categoryCount(allItems, category),
                 },
