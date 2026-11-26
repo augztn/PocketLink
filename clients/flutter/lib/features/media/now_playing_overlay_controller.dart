@@ -7,6 +7,7 @@ abstract final class NowPlayingOverlayController {
   static Future<void> Function()? _openHandler;
   static Future<void> Function()? _collapseHandler;
   static Animation<double>? expandProgress;
+  static bool _opening = false;
 
   static void register(
     Future<void> Function() handler, {
@@ -22,11 +23,20 @@ abstract final class NowPlayingOverlayController {
     _openHandler = null;
     _collapseHandler = null;
     expandProgress = null;
+    _opening = false;
   }
 
   static void open() {
     final handler = _openHandler;
-    if (handler != null) unawaited(handler());
+    if (handler == null || _opening) return;
+    _opening = true;
+    unawaited(() async {
+      try {
+        await handler();
+      } finally {
+        _opening = false;
+      }
+    }());
   }
 
   static Future<void> collapse() async {
