@@ -81,7 +81,7 @@ void main() {
     expect(blur.sigmaEnd, 0);
   });
 
-  testWidgets('header preserves status bar plus toolbar plus fade-tail geometry',
+  testWidgets('header fills only the status bar and compact toolbar',
       (tester) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -92,9 +92,9 @@ void main() {
       ),
     );
     final bounds = find.byWidgetPredicate(
-      (widget) => widget is SizedBox && widget.height == 192,
+      (widget) => widget is SizedBox && widget.height == 80,
     );
-    expect(tester.getSize(bounds).height, 192);
+    expect(tester.getSize(bounds).height, 80);
   });
 
 
@@ -112,7 +112,13 @@ void main() {
               title: Text('Files'),
               showMoreMenu: false,
             ),
-            body: const SizedBox.expand(),
+            extendBodyBehindAppBar: true,
+            body: ListView(
+              padding: const EdgeInsets.only(top: 94),
+              children: const [
+                SizedBox(height: 1200, child: Text('Scrollable content')),
+              ],
+            ),
           ),
         ),
       ),
@@ -138,6 +144,9 @@ void main() {
     // the 112dp tail remains a layout measurement only, not a painted shelf.
     expect(tester.getSize(blurFinder).height, 80);
     expect(tester.getSize(find.byType(AppBar)).height, 80);
+    await tester.drag(find.byType(ListView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+    expect(find.text('Files'), findsOneWidget);
   });
 
 
