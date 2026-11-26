@@ -3,11 +3,42 @@ import '../../core/network/server_api.dart';
 enum MediaLibraryType { music, video }
 
 class MediaFileItem {
-  const MediaFileItem({required this.entry, required this.path, this.volume});
+  const MediaFileItem({
+    required this.entry,
+    required this.path,
+    this.volume,
+    this.title,
+    this.artist,
+    this.album,
+    this.durationMs,
+    this.artworkAvailable = false,
+  });
 
   final FileEntry entry;
   final String path;
   final String? volume;
+  final String? title;
+  final String? artist;
+  final String? album;
+  final int? durationMs;
+  final bool artworkAvailable;
+
+  MediaFileItem copyWith({
+    String? title,
+    String? artist,
+    String? album,
+    int? durationMs,
+    bool? artworkAvailable,
+  }) => MediaFileItem(
+    entry: entry,
+    path: path,
+    volume: volume,
+    title: title ?? this.title,
+    artist: artist ?? this.artist,
+    album: album ?? this.album,
+    durationMs: durationMs ?? this.durationMs,
+    artworkAvailable: artworkAvailable ?? this.artworkAvailable,
+  );
 }
 
 class MediaFolderGroup {
@@ -29,8 +60,8 @@ class MediaFolderGroup {
 /// Keeping these rules outside the screen makes path/volume behavior
 /// independently testable and prevents UI state from owning catalog logic.
 
-/// A folder-derived music collection. The current index exposes file paths but
-/// not ID3 album/artist tags, so these groups intentionally use directory names.
+/// A music collection grouped by embedded tags when available, with folder
+/// grouping retained as a fallback for hosts and files without tag metadata.
 class MediaCollectionGroup {
   const MediaCollectionGroup({
     required this.name,
@@ -175,8 +206,7 @@ class MediaLibraryCatalog {
   }
 
 
-  /// Groups tracks by their immediate parent directory as an album fallback.
-  /// This does not claim to read embedded album tags.
+  /// Groups by embedded album tags, falling back to the parent directory.
   List<MediaCollectionGroup> albumsFromFolders(List<MediaFileItem> items) {
     final groups = <String, List<MediaFileItem>>{};
     final paths = <String, ({String name, String path, String? volume})>{};
@@ -185,16 +215,20 @@ class MediaLibraryCatalog {
       final parent = separator < 0 ? '' : item.path.substring(0, separator);
       final parts = _pathParts(parent);
       final isMusicRoot = parts.length == 1 && parts.first.toLowerCase() == 'music';
-      final name = parent.isEmpty || isMusicRoot ? 'Unsorted' : parts.last;
-      final key = '${item.volume ?? 'internal'}::${parent}';
+      final fallback = parent.isEmpty || isMusicRoot ? 'Unsorted' : parts.last;
+      final taggedAlbum = item.album?.trim();
+      final hasTag = taggedAlbum != null && taggedAlbum.isNotEmpty;
+      final name = hasTag ? taggedAlbum : fallback;
+      final key = hasTag
+          ? '${item.volume ?? 'internal'}::tag:${name.toLowerCase()}'
+          : '${item.volume ?? 'internal'}::folder:${parent}';
       groups.putIfAbsent(key, () => <MediaFileItem>[]).add(item);
       paths[key] = (name: name, path: parent, volume: item.volume);
     }
     return _collectionGroups(groups, paths);
   }
 
-  /// Uses the artist-level directory for Music/Artist/Album/Track layouts.
-  /// Other layouts fall back to the nearest sensible parent directory.
+  /// Groups by embedded artist tags, falling back to the existing directory rule.
   List<MediaCollectionGroup> artistsFromFolders(List<MediaFileItem> items) {
     final groups = <String, List<MediaFileItem>>{};
     final paths = <String, ({String name, String path, String? volume})>{};
@@ -207,9 +241,14 @@ class MediaLibraryCatalog {
       final artistParts = hasMusicRoot
           ? (parts.length > 1 ? parts.take(2).toList(growable: false) : const <String>[])
           : (parts.length > 1 ? parts.take(parts.length - 1).toList(growable: false) : parts);
+      final fallback = artistParts.isEmpty ? 'Unknown artist' : artistParts.last;
+      final taggedArtist = item.artist?.trim();
+      final hasTag = taggedArtist != null && taggedArtist.isNotEmpty;
+      final name = hasTag ? taggedArtist : fallback;
       final artistPath = artistParts.join('/');
-      final name = artistParts.isEmpty ? 'Unknown artist' : artistParts.last;
-      final key = '${item.volume ?? 'internal'}::${artistPath}';
+      final key = hasTag
+          ? '${item.volume ?? 'internal'}::tag:${name.toLowerCase()}'
+          : '${item.volume ?? 'internal'}::folder:${artistPath}';
       groups.putIfAbsent(key, () => <MediaFileItem>[]).add(item);
       paths[key] = (name: name, path: artistPath, volume: item.volume);
     }
