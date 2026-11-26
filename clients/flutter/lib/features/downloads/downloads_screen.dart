@@ -958,6 +958,120 @@ class _NewDownloadSheetState extends State<_NewDownloadSheet> {
     if (selected != null && mounted) setState(() => _directory = selected);
   }
 
+
+  Future<void> _chooseServerDirectory() async {
+    var path = _serverDirectoryController.text.trim().replaceAll('\\\\', '/');
+    var folders = <FileEntry>[];
+    String? error;
+    try {
+      final listing = await widget.api.listDirectory(path);
+      folders = listing.items.where((item) => item.isDirectory).toList()
+        ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    } catch (value) {
+      error = value.toString();
+    }
+    if (!mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          var loading = false;
+          Future<void> navigate(String nextPath) async {
+            setDialogState(() {
+              path = nextPath;
+              loading = true;
+              error = null;
+            });
+            try {
+              final listing = await widget.api.listDirectory(nextPath);
+              if (!dialogContext.mounted) return;
+              setDialogState(() {
+                folders = listing.items.where((item) => item.isDirectory).toList()
+                  ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+                loading = false;
+              });
+            } catch (value) {
+              if (!dialogContext.mounted) return;
+              setDialogState(() {
+                error = value.toString();
+                loading = false;
+              });
+            }
+          }
+
+          final parentIndex = path.lastIndexOf('/');
+          final parent = parentIndex < 0 ? '' : path.substring(0, parentIndex);
+          return AlertDialog(
+            title: const Text('Choose server folder'),
+            content: SizedBox(
+              width: 420,
+              height: 360,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    IconButton(
+                      tooltip: 'Parent folder',
+                      onPressed: path.isEmpty || loading ? null : () => navigate(parent),
+                      icon: const Icon(Icons.arrow_upward_rounded),
+                    ),
+                    Expanded(
+                      child: Text(
+                        path.isEmpty ? 'Shared storage root' : path,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                  ]),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: loading
+                        ? const Center(child: CircularProgressIndicator())
+                        : error != null
+                            ? Center(child: Text(error!, textAlign: TextAlign.center))
+                            : folders.isEmpty
+                                ? const Center(child: Text('No subfolders here'))
+                                : ListView.builder(
+                                    itemCount: folders.length,
+                                    itemBuilder: (context, index) {
+                                      final folder = folders[index];
+                                      return ListTile(
+                                        dense: true,
+                                        leading: const Icon(Icons.folder_outlined),
+                                        title: Text(folder.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                                        trailing: const Icon(Icons.chevron_right_rounded),
+                                        onTap: () => navigate(path.isEmpty
+                                            ? folder.name : '$path/${folder.name}'),
+                                      );
+                                    },
+                                  ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: error != null || loading
+                    ? null
+                    : () {
+                        _serverDirectoryController.text = path;
+                        Navigator.pop(dialogContext);
+                      },
+                child: const Text('Use folder'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   Future<void> _start() async {
     final resolved = _resolved;
     if (_starting || (_destination == 'local' && resolved == null) ||
@@ -1104,14 +1218,27 @@ class _NewDownloadSheetState extends State<_NewDownloadSheet> {
                 ),
               if (_destination == 'server') ...[
                 const SizedBox(height: 8),
-                TextField(
-                  controller: _serverDirectoryController,
-                  decoration: const InputDecoration(
-                    labelText: 'Server destination folder',
-                    hintText: 'Default: Downloads/PocketLink',
-                    helperText: 'Leave blank for automatic category folders. Enter another relative folder to save there.',
-                    border: OutlineInputBorder(),
-                  ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _serverDirectoryController,
+                        decoration: const InputDecoration(
+                          labelText: 'Server destination folder',
+                          hintText: 'Default: Downloads/PocketLink',
+                          helperText: 'Leave blank for automatic folders. Paths are relative to shared storage.',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    IconButton.filledTonal(
+                      tooltip: 'Browse server folders',
+                      onPressed: _starting ? null : _chooseServerDirectory,
+                      icon: const Icon(Icons.folder_open_rounded),
+                    ),
+                  ],
                 ),
               ],
               if (_destination == 'local' && _resolved != null) ...[
