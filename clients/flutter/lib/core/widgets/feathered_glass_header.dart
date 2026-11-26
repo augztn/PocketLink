@@ -10,6 +10,7 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
   const FeatheredGlassHeaderBackground({
     this.darkTint,
     this.contentHeight = kToolbarHeight,
+    this.topInset,
     this.strongestAtBottom = false,
     this.fadeTailOnly = false,
     this.toolbarSegmentOnly = false,
@@ -19,6 +20,7 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
   /// Optional dark scrim stops. Dark mode uses a subtle default scrim when omitted.
   final List<Color>? darkTint;
   final double contentHeight;
+  final double? topInset;
   final bool strongestAtBottom;
   final bool fadeTailOnly;
   final bool toolbarSegmentOnly;
@@ -26,13 +28,14 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
+    final effectiveTopInset = topInset ?? media.padding.top;
     final fullHeaderHeight =
-        media.padding.top + contentHeight + pocketLinkHeaderFadeTailHeight;
-    final fadeStart = (media.padding.top + contentHeight) / fullHeaderHeight;
+        effectiveTopInset + contentHeight + pocketLinkHeaderFadeTailHeight;
+    final fadeStart = (effectiveTopInset + contentHeight) / fullHeaderHeight;
     final headerHeight = fadeTailOnly
         ? pocketLinkHeaderFadeTailHeight
         : toolbarSegmentOnly
-            ? media.padding.top + contentHeight
+            ? effectiveTopInset + contentHeight
             : fullHeaderHeight;
     final blurStartSigma = fadeTailOnly ? 24 * (1 - fadeStart) : 24.0;
     final blurEndSigma = toolbarSegmentOnly ? 24 * (1 - fadeStart) : 0.0;
