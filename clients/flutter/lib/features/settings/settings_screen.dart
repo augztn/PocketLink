@@ -546,10 +546,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         tint: const Color(0xFF2DD4BF),
         title: 'Dashboard & Shortcuts',
         subtitle: 'Home sections, quick actions and dashboard layout',
-        badge: [
-          if (_settings.showQuickActions) 'Quick actions',
-          if (_settings.showRecentFiles) 'Recent files',
-        ].join(' · '),
+        badge: '${[
+          _settings.showGlobalSearch,
+          _settings.showQuickActions,
+          _settings.showActiveTransfers,
+          _settings.showLibrary,
+          _settings.showRecentFiles,
+        ].where((visible) => visible).length}/5 sections',
       ),
     if (_categoryMatches('audio') || _categoryMatches('discover') || _categoryMatches('video') || _categoryMatches('media') || _categoryMatches('backup'))
       _settingsGroupTitle('Media & Storage'),
@@ -955,8 +958,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const Divider(height: 1),
                     SwitchListTile(
                       secondary: const Icon(Icons.grid_view_rounded),
-                      title: const Text('Your library'),
-                      subtitle: const Text('Show the Continue section on Home'),
+                      title: const Text('Continue browsing'),
+                      subtitle: const Text('Show recently opened folders, files and tracks on Home'),
                       value: _settings.showLibrary,
                       onChanged: (value) => _settings.setHomeSections(library: value),
                     ),
@@ -986,8 +989,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const Divider(height: 1),
                     ListTile(
                       leading: const Icon(Icons.reorder_rounded),
-                      title: const Text('Reorder Home sections'),
-                      subtitle: const Text('Choose the order of dashboard sections'),
+                      title: const Text('Customize Home'),
+                      subtitle: const Text('Choose visible sections and drag to change their order'),
                       trailing: const Icon(Icons.chevron_right_rounded),
                       onTap: _customizeDashboardOrder,
                     ),
