@@ -105,6 +105,73 @@ void main() {
     messenger.setMockMethodCallHandler(channel, null);
   });
 
+  test('homeFeed parses live YouTube Music shelves and continuation', () async {
+    SharedPreferences.setMockInitialValues({});
+    await AppSettings.instance.reloadPreferences();
+    await AppSettings.instance.setDiscoverPlaybackOptions(region: 'IN');
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      expect(call.method, 'discoverHomeFeed');
+      expect(call.arguments, {'limit': 30, 'region': 'IN'});
+      return {
+        'shelves': [
+          {
+            'title': 'Trending now',
+            'tracks': [
+              {
+                'videoId': 'abcdefghijk',
+                'title': 'Fresh track',
+                'artist': 'Fresh artist',
+              },
+            ],
+          },
+        ],
+        'continuation': 'next-page-token',
+      };
+    });
+
+    final feed = await DiscoverService().homeFeed();
+
+    expect(feed.shelves, hasLength(1));
+    expect(feed.shelves.single.title, 'Trending now');
+    expect(feed.shelves.single.tracks.single.videoId, 'abcdefghijk');
+    expect(feed.continuation, 'next-page-token');
+    messenger.setMockMethodCallHandler(channel, null);
+  });
+
+  test('moreHome forwards the continuation token and region', () async {
+    SharedPreferences.setMockInitialValues({});
+    await AppSettings.instance.reloadPreferences();
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      expect(call.method, 'discoverHomeMore');
+      expect(call.arguments, {
+        'continuation': 'next-page-token',
+        'limit': 30,
+        'region': AppSettings.instance.discoverRegion,
+      });
+      return {
+        'shelves': [
+          {
+            'title': 'More tracks',
+            'tracks': [
+              {
+                'videoId': 'lmnopqrstuv',
+                'title': 'Another track',
+                'artist': 'Another artist',
+              },
+            ],
+          },
+        ],
+        'continuation': '',
+      };
+    });
+
+    final feed = await DiscoverService().moreHome('next-page-token');
+
+    expect(feed.shelves.single.tracks.single.videoId, 'lmnopqrstuv');
+    expect(feed.continuation, isEmpty);
+    messenger.setMockMethodCallHandler(channel, null);
+  });
+
   group('DiscoverService.parseLrc', () {
     test('parses fractional timestamps and sorts lines', () {
       final lines = DiscoverService.parseLrc('[00:12.34]Second\n[00:02.1]First');
