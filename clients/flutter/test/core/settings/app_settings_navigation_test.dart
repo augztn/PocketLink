@@ -68,6 +68,26 @@ void main() {
     );
   });
 
+  test('adding storage preserves an existing custom Home section order', () async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(
+      'settings_home_section_order',
+      '["recent","search","continue","quick","transfers"]',
+    );
+
+    final settings = AppSettings.instance;
+    await settings.reloadPreferences();
+
+    expect(
+      settings.homeSectionOrder,
+      const ['recent', 'search', 'continue', 'quick', 'transfers', 'storage'],
+    );
+    expect(
+      preferences.getString('settings_home_section_order'),
+      '["recent","search","continue","quick","transfers","storage"]',
+    );
+  });
+
   test('Home section visibility persists independently', () async {
     final settings = AppSettings.instance;
     await settings.setHomeSections(
