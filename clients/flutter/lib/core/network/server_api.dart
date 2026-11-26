@@ -196,7 +196,7 @@ class ServerApi {
         if (error.response?.statusCode == 400 || error.response?.statusCode == 404) {
           _rememberFailedMediaKey(_failedMetadataUntil, key);
         }
-        if (cancelToken?.isCancelled ?? false &&
+        if ((cancelToken?.isCancelled ?? false) &&
             identical(_metadataCache[key], future)) {
           _metadataCache.remove(key);
         }
@@ -240,7 +240,7 @@ class ServerApi {
         if (error.response?.statusCode == 400 || error.response?.statusCode == 404) {
           _rememberFailedMediaKey(_failedThumbnailUntil, key);
         }
-        if (cancelToken?.isCancelled ?? false &&
+        if ((cancelToken?.isCancelled ?? false) &&
             identical(_thumbnailCache[key], future)) {
           _thumbnailCache.remove(key);
         }
