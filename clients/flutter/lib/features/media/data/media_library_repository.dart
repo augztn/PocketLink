@@ -91,7 +91,7 @@ class MediaLibraryRepository {
           final item = found[index];
           // Older Termux hosts may still expose the optional full music catalog.
           // Native PocketLink hosts now return cached tags with indexed media rows.
-          final track = byPath[item.path];
+          final track = item.volume == null ? byPath[item.path] : null;
           if (track == null) continue;
           found[index] = item.copyWith(
             title: track.title,
