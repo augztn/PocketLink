@@ -9,11 +9,13 @@ class FilesHomeContent extends StatelessWidget {
   const FilesHomeContent({
     required this.volumes,
     required this.recent,
+    required this.favorites,
     required this.lastPath,
     required this.lastVolume,
     required this.onOpenInternal,
     required this.onOpenVolume,
     required this.onOpenRecent,
+    required this.onOpenFavorite,
     required this.onOpenLastLocation,
     required this.onBrowseCategory,
     super.key,
@@ -21,11 +23,13 @@ class FilesHomeContent extends StatelessWidget {
 
   final List<StorageVolume> volumes;
   final List<HomeActivityItem> recent;
+  final List<HomeActivityItem> favorites;
   final String lastPath;
   final String? lastVolume;
   final VoidCallback onOpenInternal;
   final ValueChanged<String> onOpenVolume;
   final ValueChanged<HomeActivityItem> onOpenRecent;
+  final ValueChanged<HomeActivityItem> onOpenFavorite;
   final VoidCallback onOpenLastLocation;
   final ValueChanged<String> onBrowseCategory;
 
@@ -76,6 +80,31 @@ class FilesHomeContent extends StatelessWidget {
                   style: theme.textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant)),
               ])),
               const Icon(Icons.chevron_right_rounded),
+            ]),
+          ),
+        ],
+        if (favorites.isNotEmpty) ...[
+          const SizedBox(height: 22),
+          _SectionTitle(title: 'Favorites', trailing: '${favorites.length}'),
+          const SizedBox(height: 9),
+          _HomeCard(
+            child: Column(children: [
+              for (var index = 0; index < favorites.length; index++) ...[
+                if (index > 0) Divider(height: 1, indent: 48, color: colors.outlineVariant.withValues(alpha: .35)),
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+                  leading: _IconTile(
+                    icon: favorites[index].isFolder ? Icons.folder_rounded : Icons.star_rounded,
+                    color: colors.primary,
+                    size: 38,
+                  ),
+                  title: Text(favorites[index].title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                  subtitle: Text(favorites[index].path, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+                  onTap: () => onOpenFavorite(favorites[index]),
+                ),
+              ],
             ]),
           ),
         ],
