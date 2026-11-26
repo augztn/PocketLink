@@ -9,7 +9,7 @@ import 'package:progressive_background_blur/progressive_background_blur.dart'
 class ProgressiveBlur extends StatelessWidget {
   const ProgressiveBlur({
     this.maxSigma = 24,
-    this.endSigma = 12,
+    this.endSigma = 8,
     this.strongestAtBottom = false,
     super.key,
   });
