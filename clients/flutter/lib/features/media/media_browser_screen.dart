@@ -73,6 +73,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   final Set<String> _selectedTrackKeys = <String>{};
   List<MediaFileItem> _selectedCollectionItems = const [];
   String? _collectionReturnView;
+  String? _collectionReturnVolume;
   String? _collectionTitle;
 
   void _syncBackHandler() {
@@ -1147,6 +1148,7 @@ tooltip: 'Choose video view',
       _libraryView = value;
       _selectedCollectionItems = const [];
       _collectionReturnView = null;
+      _collectionReturnVolume = null;
       _collectionTitle = null;
       if (value == 'home') _selectedVolume = null;
       _currentFolderPath = value == 'folders' && _selectedVolume == 'internal'
@@ -1424,6 +1426,7 @@ tooltip: 'Choose video view',
   void _openMusicCollection(MediaCollectionGroup group) {
     setState(() {
       _collectionReturnView = _libraryView;
+      _collectionReturnVolume = _selectedVolume;
       _collectionTitle = group.name;
       _selectedCollectionItems = group.items;
       _libraryView = 'collection';
@@ -1439,7 +1442,9 @@ tooltip: 'Choose video view',
     setState(() {
       _libraryView = _collectionReturnView ?? 'albums';
       _selectedCollectionItems = const [];
+      _selectedVolume = _collectionReturnVolume;
       _collectionReturnView = null;
+      _collectionReturnVolume = null;
       _collectionTitle = null;
     });
     _syncBackHandler();
@@ -1541,6 +1546,8 @@ tooltip: 'Choose video view',
             _selectionMode = false;
             _selectedTrackKeys.clear();
           });
+        } else if (_libraryView == 'collection') {
+          _closeMusicCollection();
         } else if (_libraryView == 'folders' && !_atFolderRoot) {
           _goUpFolder();
         }
@@ -1580,9 +1587,9 @@ tooltip: 'Choose video view',
                   : _libraryView == 'home'
                       ? '${visible.length} tracks • Your collection'
                   : _libraryView == 'albums'
-                      ? '${_catalog.albumsFromFolders(visible).length} albums • grouped by folder'
+                      ? '${_catalog.albumsFromFolders(visible).length} albums • from tags and folders'
                       : _libraryView == 'artists'
-                          ? '${_catalog.artistsFromFolders(visible).length} artists • grouped by folder'
+                          ? '${_catalog.artistsFromFolders(visible).length} artists • from tags and folders'
                           : '${visible.length} tracks • ${_selectedVolume == null ? 'All storage' : _volumeName(_selectedVolume)}',
               viewItems: [
                 const SmokedGlassPopoverMenuItem(value: 'home', label: 'Music Home', icon: Icons.home_rounded),
