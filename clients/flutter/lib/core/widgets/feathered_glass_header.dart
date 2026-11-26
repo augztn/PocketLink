@@ -22,14 +22,13 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
   static const int _fadeSamples = 9;
   static const double _fadeStart = 0.6;
 
-  /// Alpha mask for the blur layer: fully visible, then eased to transparent.
+  /// Alpha mask: full blur through 60%, then an eased fade to transparency.
   @visibleForTesting
   static double fadeMaskAlphaAt(double t) {
     final progress = t.clamp(0.0, 1.0).toDouble();
     if (progress <= _fadeStart) return 1;
     final u = (progress - _fadeStart) / (1 - _fadeStart);
-    final eased = u * u * (3 - 2 * u);
-    return 1 - eased;
+    return 1 - (u * u * (3 - 2 * u));
   }
 
   @visibleForTesting
@@ -75,8 +74,7 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
                   ).createShader(bounds),
                   child: ProgressiveBlur(
                     maxSigma: 24,
-                    steps: 14,
-                    exponent: 1.6,
+                    steps: 18,
                     strongestAtBottom: strongestAtBottom,
                   ),
                 ),

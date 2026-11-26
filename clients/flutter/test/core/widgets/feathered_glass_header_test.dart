@@ -14,7 +14,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  testWidgets('header uses progressive blur with an alpha fade mask', (tester) async {
+  testWidgets('header uses eased grouped blur and an alpha fade mask', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(body: FeatheredGlassHeaderBackground()),
@@ -22,7 +22,7 @@ void main() {
     );
     expect(find.byType(ProgressiveBlur), findsOneWidget);
     expect(find.byType(BackdropGroup), findsOneWidget);
-    expect(find.byType(BackdropFilter), findsNWidgets(14));
+    expect(find.byType(BackdropFilter), findsNWidgets(18));
     final mask = tester.widget<ShaderMask>(find.byType(ShaderMask));
     expect(mask.blendMode, BlendMode.dstIn);
   });
@@ -42,6 +42,20 @@ void main() {
     expect(bands, hasLength(4));
     expect(bands.first.top, 75);
     expect(bands.last.top, 0);
+  });
+
+  test('blur intensity follows an ease-in-out curve', () {
+    expect(ProgressiveBlur.intensityAt(0), 1);
+    expect(ProgressiveBlur.intensityAt(0.5), closeTo(0.5, 1e-9));
+    expect(ProgressiveBlur.intensityAt(1), 0);
+    var previous = 1.0;
+    for (var index = 0; index <= 100; index++) {
+      final intensity = ProgressiveBlur.intensityAt(index / 100);
+      expect(intensity, lessThanOrEqualTo(previous));
+      previous = intensity;
+    }
+    expect(ProgressiveBlur.intensityAt(0.1), greaterThan(0.9));
+    expect(ProgressiveBlur.intensityAt(0.9), lessThan(0.1));
   });
 
   testWidgets('header preserves status bar plus toolbar plus fade-tail geometry', (tester) async {

@@ -3,15 +3,13 @@ import 'dart:ui' as ui;
 
 import 'package:material_ui/material_ui.dart';
 
-/// Approximates a variable backdrop blur with clipped, stepped blur bands.
+/// Approximates a variable backdrop blur with eased, clipped blur bands.
 ///
-/// Keep this widget inside a bounded Stack/ClipRect and do not put an
-/// Opacity, FadeTransition or ShaderMask above it.
+/// Keep this widget inside a bounded Stack/ClipRect.
 class ProgressiveBlur extends StatelessWidget {
   const ProgressiveBlur({
     this.maxSigma = 24,
-    this.steps = 14,
-    this.exponent = 1.6,
+    this.steps = 18,
     this.strongestAtBottom = false,
     super.key,
   });
@@ -19,19 +17,23 @@ class ProgressiveBlur extends StatelessWidget {
   /// Blur sigma at the strongest edge.
   final double maxSigma;
 
-  /// Number of clipped bands used to approximate the blur falloff.
+  /// Number of grouped bands used to approximate progressive blur intensity.
   final int steps;
-
-  /// Falloff exponent. Values above 1 concentrate blur near the strong edge.
-  final double exponent;
 
   /// When true, blur is strongest at the bottom instead of the top.
   final bool strongestAtBottom;
 
+  /// Ease-in-out intensity matching BitChord's Haze progressive gradient.
+  @visibleForTesting
+  static double intensityAt(double distance) {
+    final t = distance.clamp(0.0, 1.0).toDouble();
+    return 1 - (t * t * (3 - 2 * t));
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!maxSigma.isFinite || maxSigma <= 0.1 ||
-        steps < 1 || !exponent.isFinite || exponent <= 0) {
+        steps < 1) {
       return const SizedBox.shrink();
     }
 
@@ -52,7 +54,7 @@ class ProgressiveBlur extends StatelessWidget {
         final bands = <Widget>[];
         for (var index = 0; index < steps; index++) {
           final distance = (index + 0.5) / steps;
-          final sigma = maxSigma * math.pow(1 - distance, exponent).toDouble();
+          final sigma = maxSigma * intensityAt(distance);
           if (sigma < 0.1) continue;
 
           final startFraction = strongestAtBottom
@@ -66,9 +68,6 @@ class ProgressiveBlur extends StatelessWidget {
           final isLastBand = strongestAtBottom
               ? index == 0
               : index == steps - 1;
-          // Extend each internal edge by one physical pixel. Grouped filters
-          // share the original backdrop, so this overlap closes raster gaps
-          // without applying one band's blur on top of its neighbour.
           final bottom = isLastBand
               ? height
               : math.min(height, baseBottom + onePhysicalPixel).toDouble();
@@ -93,8 +92,7 @@ class ProgressiveBlur extends StatelessWidget {
           );
         }
 
-        // All bands sample the same backdrop. Grouping lets the engine share
-        // the backdrop input instead of capturing it independently per band.
+        // Grouped filters share one backdrop capture instead of recapturing it.
         return BackdropGroup(
           child: Stack(
             fit: StackFit.expand,
