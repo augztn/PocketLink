@@ -22,7 +22,7 @@ void main() {
     );
     expect(find.byType(ProgressiveBlur), findsOneWidget);
     expect(find.byType(BackdropGroup), findsOneWidget);
-    expect(find.byType(BackdropFilter), findsNWidgets(18));
+    expect(find.byType(BackdropFilter), findsNWidgets(17));
     final mask = tester.widget<ShaderMask>(find.byType(ShaderMask));
     expect(mask.blendMode, BlendMode.dstIn);
   });
