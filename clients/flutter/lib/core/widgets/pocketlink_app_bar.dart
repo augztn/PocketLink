@@ -88,15 +88,14 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final headerTopInset = MediaQuery.paddingOf(context).top;
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Positioned.fill(
-          child: AppBar(
+    return AppBar(
       title: feathered
           ? Align(
               alignment: Alignment.topLeft,
-              child: Padding(padding: const EdgeInsets.only(top: 8), child: title),
+              child: Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: title,
+              ),
             )
           : title,
       leading: leading,
@@ -105,13 +104,13 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
       automaticallyImplyLeading: automaticallyImplyLeading,
       centerTitle: centerTitle,
       backgroundColor: backgroundColor ?? Colors.transparent,
-      flexibleSpace: Align(
-        alignment: Alignment.topCenter,
-        child: FeatheredGlassHeaderBackground(
-          contentHeight: kToolbarHeight,
-          topInset: headerTopInset,
-          toolbarSegmentOnly: true,
-        ),
+      flexibleSpace: FeatheredGlassHeaderBackground(
+        contentHeight: kToolbarHeight,
+        topInset: headerTopInset,
+      ),
+      bottom: const PreferredSize(
+        preferredSize: Size.fromHeight(pocketLinkHeaderFadeTailHeight),
+        child: SizedBox.expand(),
       ),
       foregroundColor: foregroundColor,
       elevation: elevation ?? 0,
@@ -129,74 +128,65 @@ class PocketLinkAppBar extends StatelessWidget implements PreferredSizeWidget {
       ),
       actionsPadding: const EdgeInsets.only(right: 16),
       actions: [
-      ...actionsBeforeHome,
-      if (showHome)
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: SizedBox.square(
-            dimension: 38,
-            child: GlassCircleButton(
-              tooltip: 'Home',
-              onPressed: () => _goHome(context),
-              child: const Icon(Icons.home_rounded),
-            ),
-          ),
-        ),
-      if (showMoreMenu)
-        SmokedGlassPopoverMenu<PocketLinkAppBarAction>(
-          tooltip: 'More actions',
-          items: [
-            if (!actions.any((action) => action.label.toLowerCase().contains('home')))
-              SmokedGlassPopoverMenuItem<PocketLinkAppBarAction>(
-              value: PocketLinkAppBarAction(
-                label: 'Return to Home',
-                icon: Icons.home_rounded,
-                onPressed: () => _goHome(context),
-              ),
-              label: 'Return to Home',
-              icon: Icons.home_rounded,
-            ),
-            ...actions.map((action) => SmokedGlassPopoverMenuItem<PocketLinkAppBarAction>(
-              value: action,
-              label: action.label,
-              icon: action.icon,
-              enabled: action.enabled && action.onPressed != null,
-              dividerBefore: action.dividerBefore,
-            )),
-          ],
-          onSelected: (action) => action.onPressed?.call(),
-          child: const Padding(
-            padding: EdgeInsets.symmetric(vertical: 4),
+        ...actionsBeforeHome,
+        if (showHome)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
             child: SizedBox.square(
               dimension: 38,
               child: GlassCircleButton(
-                tooltip: 'Open overflow menu',
-                onPressed: null,
-                child: Icon(Icons.more_vert_rounded, size: 18),
+                tooltip: 'Home',
+                onPressed: () => _goHome(context),
+                child: const Icon(Icons.home_rounded),
               ),
             ),
           ),
-        ),
-          ],
+        if (showMoreMenu)
+          SmokedGlassPopoverMenu<PocketLinkAppBarAction>(
+            tooltip: 'More actions',
+            items: [
+              if (!actions.any(
+                (action) => action.label.toLowerCase().contains('home'),
+              ))
+                SmokedGlassPopoverMenuItem<PocketLinkAppBarAction>(
+                  value: PocketLinkAppBarAction(
+                    label: 'Return to Home',
+                    icon: Icons.home_rounded,
+                    onPressed: () => _goHome(context),
+                  ),
+                  label: 'Return to Home',
+                  icon: Icons.home_rounded,
+                ),
+              ...actions.map(
+                (action) => SmokedGlassPopoverMenuItem<PocketLinkAppBarAction>(
+                  value: action,
+                  label: action.label,
+                  icon: action.icon,
+                  enabled: action.enabled && action.onPressed != null,
+                  dividerBefore: action.dividerBefore,
+                ),
+              ),
+            ],
+            onSelected: (action) => action.onPressed?.call(),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 4),
+              child: SizedBox.square(
+                dimension: 38,
+                child: GlassCircleButton(
+                  tooltip: 'Open overflow menu',
+                  onPressed: null,
+                  child: Icon(Icons.more_vert_rounded, size: 18),
+                ),
+              ),
+            ),
           ),
-        ),
-        Positioned(
-          top: headerTopInset + kToolbarHeight,
-          left: 0,
-          right: 0,
-          height: pocketLinkHeaderFadeTailHeight,
-          child: FeatheredGlassHeaderBackground(
-            contentHeight: kToolbarHeight,
-            topInset: headerTopInset,
-            fadeTailOnly: true,
-          ),
-        ),
       ],
     );
   }
 
   @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+  Size get preferredSize =>
+      const Size.fromHeight(kToolbarHeight + pocketLinkHeaderFadeTailHeight);
 }
 
 
