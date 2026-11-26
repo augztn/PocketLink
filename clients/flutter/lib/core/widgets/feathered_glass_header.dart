@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import '../settings/app_settings.dart';
 import 'pocketlink_scaffold.dart';
 import 'progressive_blur.dart';
+import 'liquid_glass_pill.dart';
 
 /// Single source of truth for the top-edge blur used by every PocketLink section.
 ///
@@ -167,33 +168,21 @@ class GlassCircleButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final foreground = isDark ? Colors.white : const Color(0xFF0F172A);
-    final button = CustomPaint(
-      foregroundPainter: _GlassCircleRimPainter(isDark: isDark),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onPressed,
-          customBorder: const CircleBorder(),
-          splashColor: foreground.withValues(alpha: 0.08),
-          highlightColor: Colors.transparent,
-          child: Tooltip(
-            message: tooltip,
-            child: Container(
-              width: size,
-              height: size,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isDark
-                    ? const Color(0xFF1C1E24).withValues(alpha: 0.58)
-                    : Colors.white.withValues(alpha: 0.58),
-                border: Border.all(
-                  color: isDark
-                      ? Colors.white.withValues(alpha: 0.24)
-                      : const Color(0xFF94A3B8).withValues(alpha: 0.30),
-                  width: 1.0,
-                ),
-              ),
+
+    return SizedBox.square(
+      dimension: size,
+      child: LiquidGlassSurface(
+        radius: BorderRadius.circular(size / 2),
+        refractive: true,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onPressed,
+            customBorder: const CircleBorder(),
+            splashColor: foreground.withValues(alpha: 0.08),
+            highlightColor: Colors.transparent,
+            child: Tooltip(
+              message: tooltip,
               child: Center(
                 child: IconTheme(
                   data: IconThemeData(color: foreground, size: 18),
@@ -205,17 +194,7 @@ class GlassCircleButton extends StatelessWidget {
         ),
       ),
     );
-
-    return RepaintBoundary(
-      child: ClipOval(
-        child: BackdropFilter(
-          filter: ui.ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
-          child: button,
-        ),
-      ),
-    );
-  }
-}
+  }}
 
 class _GlassCircleRimPainter extends CustomPainter {
   const _GlassCircleRimPainter({required this.isDark});
