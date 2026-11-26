@@ -28,10 +28,10 @@ class DiscoverService {
   final Dio _http;
 
 
-  Future<List<DiscoverMoodSection>> moodsAndGenres() async {
+  Future<List<DiscoverMoodSection>> moodsAndGenres({String? region}) async {
     final raw = await _channel.invokeListMethod<Object?>(
       'discoverMoods',
-      {'region': AppSettings.instance.discoverRegion},
+      {'region': region ?? AppSettings.instance.discoverRegion},
     );
     return (raw ?? const [])
         .whereType<Map<Object?, Object?>>()
@@ -69,6 +69,32 @@ class DiscoverService {
       },
     );
     return _parseTracks(raw);
+  }
+
+  Future<DiscoverHomeFeed> homeFeed({int limit = 30, String? region}) async {
+    final raw = await _channel.invokeMapMethod<String, dynamic>(
+      'discoverHomeFeed',
+      {
+        'limit': limit.clamp(1, 50),
+        'region': region ?? AppSettings.instance.discoverRegion,
+      },
+    );
+    return DiscoverHomeFeed.fromJson(raw ?? const {});
+  }
+
+  Future<DiscoverHomeFeed> moreHome(
+    String continuation, {int limit = 30, String? region}
+  ) async {
+    if (continuation.isEmpty) return const DiscoverHomeFeed(shelves: []);
+    final raw = await _channel.invokeMapMethod<String, dynamic>(
+      'discoverHomeMore',
+      {
+        'continuation': continuation,
+        'limit': limit.clamp(1, 50),
+        'region': region ?? AppSettings.instance.discoverRegion,
+      },
+    );
+    return DiscoverHomeFeed.fromJson(raw ?? const {});
   }
 
   Future<List<DiscoverTrack>> home({int limit = 30}) async {

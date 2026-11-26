@@ -189,4 +189,63 @@ class YouTubeMusicCatalogTest {
         assertEquals(2, tracks.size)
         assertTrue(tracks.all { (it["title"] as String).startsWith("Track") })
     }
+
+    @Test
+    fun parsesDynamicHomeShelvesAndRemovesRepeatedTracksAcrossSections() {
+        val json = JSONObject(
+            """
+            {
+              "contents": {"sectionListRenderer": {"contents": [
+                {"musicCarouselShelfRenderer": {
+                  "header": {"musicCarouselShelfBasicHeaderRenderer": {
+                    "title": {"simpleText": "Trending now"}
+                  }},
+                  "contents": [
+                    {"musicTwoRowItemRenderer": {
+                      "videoId": "abcdefghijk",
+                      "title": {"simpleText": "First track"},
+                      "subtitle": {"simpleText": "First artist"}
+                    }}
+                  ]
+                }},
+                {"musicShelfRenderer": {
+                  "header": {"musicShelfHeaderRenderer": {
+                    "title": {"simpleText": "New releases"}
+                  }},
+                  "contents": [
+                    {"musicResponsiveListItemRenderer": {
+                      "playlistItemData": {"videoId": "abcdefghijk"},
+                      "flexColumns": [
+                        {"musicResponsiveListItemFlexColumnRenderer": {"text": {"simpleText": "Duplicate"}}}
+                      ]
+                    }},
+                    {"musicResponsiveListItemRenderer": {
+                      "playlistItemData": {"videoId": "lmnopqrstuv"},
+                      "flexColumns": [
+                        {"musicResponsiveListItemFlexColumnRenderer": {"text": {"simpleText": "Second track"}}},
+                        {"musicResponsiveListItemFlexColumnRenderer": {"text": {"simpleText": "Second artist"}}}
+                      ]
+                    }}
+                  ]
+                }}
+              ]}},
+              "continuations": [{"nextContinuationData": {"continuation": "next-page-token"}}]
+            }
+            """.trimIndent()
+        )
+
+        val shelves = catalog.parseHomeShelves(json, 20)
+
+        assertEquals(2, shelves.size)
+        assertEquals("Trending now", shelves[0]["title"])
+        assertEquals("New releases", shelves[1]["title"])
+        @Suppress("UNCHECKED_CAST")
+        val firstTracks = shelves[0]["tracks"] as List<Map<String, Any>>
+        @Suppress("UNCHECKED_CAST")
+        val secondTracks = shelves[1]["tracks"] as List<Map<String, Any>>
+        assertEquals(listOf("abcdefghijk"), firstTracks.map { it["videoId"] })
+        assertEquals(listOf("lmnopqrstuv"), secondTracks.map { it["videoId"] })
+        assertEquals("next-page-token", catalog.findContinuationToken(json))
+    }
+
 }

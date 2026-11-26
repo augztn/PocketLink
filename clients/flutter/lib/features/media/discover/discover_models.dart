@@ -23,6 +23,82 @@ class DiscoverTrack {
 }
 
 
+class DiscoverHomeShelf {
+  const DiscoverHomeShelf({required this.title, required this.tracks});
+
+  final String title;
+  final List<DiscoverTrack> tracks;
+
+  factory DiscoverHomeShelf.fromJson(Map<String, dynamic> json) =>
+      DiscoverHomeShelf(
+        title: json['title']?.toString() ?? '',
+        tracks: (json['tracks'] as List? ?? const [])
+            .whereType<Map>()
+            .map((item) => DiscoverTrack.fromJson(
+                  item.map((key, value) => MapEntry(key.toString(), value)),
+                ))
+            .where((track) => track.videoId.isNotEmpty)
+            .toList(growable: false),
+      );
+}
+
+class DiscoverHomeFeed {
+  const DiscoverHomeFeed({
+    required this.shelves,
+    this.continuation = '',
+  });
+
+  final List<DiscoverHomeShelf> shelves;
+  final String continuation;
+
+  factory DiscoverHomeFeed.fromJson(Map<String, dynamic> json) =>
+      DiscoverHomeFeed(
+        shelves: (json['shelves'] as List? ?? const [])
+            .whereType<Map>()
+            .map((item) => DiscoverHomeShelf.fromJson(
+                  item.map((key, value) => MapEntry(key.toString(), value)),
+                ))
+            .where((shelf) => shelf.title.isNotEmpty && shelf.tracks.isNotEmpty)
+            .toList(growable: false),
+        continuation: json['continuation']?.toString() ?? '',
+      );
+}
+
+
+/// Appends a continuation page without repeating a track across Home shelves.
+List<DiscoverHomeShelf> mergeDiscoverHomeShelves(
+  List<DiscoverHomeShelf> current,
+  List<DiscoverHomeShelf> incoming,
+) {
+  final seenVideoIds = <String>{};
+  final merged = current.map((shelf) {
+    final tracks = shelf.tracks
+        .where((track) => seenVideoIds.add(track.videoId))
+        .toList(growable: false);
+    return DiscoverHomeShelf(title: shelf.title, tracks: tracks);
+  }).toList();
+
+  for (final shelf in incoming) {
+    final freshTracks = shelf.tracks
+        .where((track) => seenVideoIds.add(track.videoId))
+        .toList(growable: false);
+    if (freshTracks.isEmpty) continue;
+    final index = merged.indexWhere(
+      (item) => item.title.toLowerCase() == shelf.title.toLowerCase(),
+    );
+    if (index < 0) {
+      merged.add(DiscoverHomeShelf(title: shelf.title, tracks: freshTracks));
+    } else {
+      merged[index] = DiscoverHomeShelf(
+        title: merged[index].title,
+        tracks: [...merged[index].tracks, ...freshTracks],
+      );
+    }
+  }
+  return List.unmodifiable(merged);
+}
+
+
 class DiscoverMoodSection {
   const DiscoverMoodSection({required this.title, required this.items});
   final String title;

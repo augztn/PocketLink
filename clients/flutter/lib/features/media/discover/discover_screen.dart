@@ -23,6 +23,7 @@ import 'discover_models.dart';
 import 'discover_service.dart';
 import 'discover_cache.dart';
 import 'discover_thumbnail_cache.dart';
+import 'discover_recently_played_store.dart';
 import 'discover_moods_screen.dart';
 
 class _DiscoverShelf {
@@ -32,10 +33,11 @@ class _DiscoverShelf {
 }
 
 class _DiscoverFeedSnapshot {
-  const _DiscoverFeedSnapshot(this.shelves, this.sectionTitle);
+  const _DiscoverFeedSnapshot(this.shelves, this.sectionTitle, this.continuation);
 
   final List<_DiscoverShelf> shelves;
   final String sectionTitle;
+  final String continuation;
 }
 
 class DiscoverScreen extends StatefulWidget {
@@ -54,6 +56,13 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
   final DiscoverService _service = DiscoverService();
   late final AnimationController _shimmerController;
   List<DiscoverTrack> _tracks = const [];
+  List<DiscoverTrack> _recentlyPlayed = const [];
+  List<DiscoverTrack> _listeningPicks = const [];
+  String _listeningPicksSeed = '';
+  int _listeningPicksGeneration = 0;
+  int _recentlyPlayedGeneration = 0;
+  int _moodsGeneration = 0;
+  List<DiscoverMoodSection> _moodSections = const [];
   List<_DiscoverShelf> _homeShelves = const [];
   List<IndexedFile> _localLibrary = const [];
   bool _loading = false;
@@ -65,6 +74,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
   String _sectionTitle = 'Top charts in India';
   int _requestGeneration = 0;
   int _playRequestGeneration = 0;
+  String _homeContinuation = '';
+  bool _loadingMore = false;
+  Future<void>? _homeRequest;
+  final ScrollController _scrollController = ScrollController();
   late String _lastRegion;
 
   @override
@@ -76,16 +89,125 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       duration: const Duration(milliseconds: 1500),
     )..repeat();
     _lastRegion = AppSettings.instance.discoverRegion;
+    _scrollController.addListener(_onDiscoverScroll);
     AppSettings.instance.addListener(_onSettingsChanged);
     _loadLocalLibrary();
     _loadHome();
+    unawaited(_loadRecentlyPlayed());
+    unawaited(_loadMoods());
+  }
+
+  Future<void> _loadRecentlyPlayed() async {
+    final generation = _recentlyPlayedGeneration;
+    final recent = await DiscoverRecentlyPlayedStore.read();
+    if (!mounted || generation != _recentlyPlayedGeneration) return;
+    setState(() => _recentlyPlayed = recent);
+    if (recent.isNotEmpty) unawaited(_loadListeningPicks(recent.first));
+  }
+
+  Future<void> _loadMoods({String? region}) async {
+    final targetRegion = region ?? AppSettings.instance.discoverRegion;
+    final generation = ++_moodsGeneration;
+    try {
+      final sections = await _service.moodsAndGenres(region: targetRegion);
+      if (mounted && generation == _moodsGeneration &&
+          targetRegion == AppSettings.instance.discoverRegion) {
+        setState(() => _moodSections = sections);
+      }
+    } catch (error) {
+      AppLogger.warning('Discover mood shelf loading failed', category: 'discover',
+        component: 'discover_screen',
+        fields: {'failure_type': error.runtimeType.toString()});
+    }
+  }
+
+  Future<void> _openMood(DiscoverMood mood) async {
+    final generation = ++_requestGeneration;
+    setState(() {
+      _loading = true;
+      _error = null;
+      _sectionTitle = mood.title;
+      _homeShelves = const [];
+      _homeContinuation = '';
+    });
+    try {
+      final tracks = await _service.browseMood(mood, limit: 50);
+      if (!mounted || generation != _requestGeneration) return;
+      setState(() {
+        _tracks = tracks;
+        if (tracks.isEmpty) _error = 'No tracks found for this mood.';
+      });
+    } on PlatformException catch (error) {
+      if (!mounted || generation != _requestGeneration) return;
+      setState(() => _error = error.message ?? 'Could not open this mood.');
+    } catch (_) {
+      if (!mounted || generation != _requestGeneration) return;
+      setState(() => _error = 'Could not load this mood right now.');
+    } finally {
+      if (mounted && generation == _requestGeneration) {
+        setState(() => _loading = false);
+      }
+    }
+  }
+
+  Future<void> _loadListeningPicks(DiscoverTrack seed) async {
+    if (_listeningPicksSeed == seed.videoId) return;
+    final generation = ++_listeningPicksGeneration;
+    _listeningPicksSeed = seed.videoId;
+    try {
+      final picks = await _service.radio(seed, limit: 12);
+      if (!mounted || generation != _listeningPicksGeneration) return;
+      setState(() => _listeningPicks = picks
+          .where((track) => track.videoId != seed.videoId)
+          .toList(growable: false));
+    } catch (_) {
+      if (mounted && generation == _listeningPicksGeneration) {
+        setState(() => _listeningPicks = const []);
+      }
+    }
+  }
+
+  void _recordRecentlyPlayed(DiscoverTrack track) {
+    unawaited(DiscoverRecentlyPlayedStore.record(track).catchError((Object _) {}));
+    if (!mounted) return;
+    _recentlyPlayedGeneration++;
+    final recent = [
+      track,
+      ..._recentlyPlayed.where((item) => item.videoId != track.videoId),
+    ].take(20).toList(growable: false);
+    setState(() => _recentlyPlayed = recent);
+    unawaited(_loadListeningPicks(track));
   }
 
   void _onSettingsChanged() {
     final region = AppSettings.instance.discoverRegion;
     if (region == _lastRegion) return;
     _lastRegion = region;
-    if (mounted) unawaited(_loadHome(forceRefresh: true));
+    if (!mounted) return;
+    _requestGeneration++;
+    _listeningPicksSeed = '';
+    final pendingHome = _homeRequest;
+    if (pendingHome == null) {
+      unawaited(_loadHome(forceRefresh: true));
+    } else {
+      unawaited(_reloadHomeAfterPending(region, pendingHome));
+    }
+    unawaited(_loadMoods(region: region));
+    if (_recentlyPlayed.isNotEmpty) {
+      unawaited(_loadListeningPicks(_recentlyPlayed.first));
+    }
+  }
+
+  Future<void> _reloadHomeAfterPending(
+    String region,
+    Future<void> pending,
+  ) async {
+    try {
+      await pending;
+    } catch (_) {}
+    if (!mounted || region != AppSettings.instance.discoverRegion) return;
+    if (identical(_homeRequest, pending)) _homeRequest = null;
+    await _loadHome(forceRefresh: true);
   }
 
   String get _regionName =>
@@ -96,6 +218,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     AppLogger.event('screen.closed', category: 'screen', component: 'discover',
       fields: {'loading': _loading, 'track_count': _tracks.length, 'shelf_count': _homeShelves.length});
     AppSettings.instance.removeListener(_onSettingsChanged);
+    _scrollController.removeListener(_onDiscoverScroll);
+    _scrollController.dispose();
     _shimmerController.dispose();
     super.dispose();
   }
@@ -114,6 +238,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
             setState(() {
               _tracks = tracks;
               _homeShelves = const [];
+              _homeContinuation = '';
               _sectionTitle = title;
               _error = tracks.isEmpty ? 'No tracks found for this mood.' : null;
               _loading = false;
@@ -205,6 +330,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
             ? const []
             : cached.value.shelves.first.tracks;
         _sectionTitle = cached.value.sectionTitle;
+        _homeContinuation = cached.value.continuation;
         _error = null;
         _loading = false;
       }
@@ -236,6 +362,19 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
   Future<void> _fetchHome(
     String cacheKey, {
     required bool showLoading,
+  }) {
+    final pending = _homeRequest;
+    if (pending != null) return pending;
+    final request = _performFetchHome(cacheKey, showLoading: showLoading);
+    _homeRequest = request;
+    return request.whenComplete(() {
+      if (identical(_homeRequest, request)) _homeRequest = null;
+    });
+  }
+
+  Future<void> _performFetchHome(
+    String cacheKey, {
+    required bool showLoading,
   }) async {
     final generation = ++_requestGeneration;
     AppLogger.event('discover.home_loading_started', category: 'discover',
@@ -246,57 +385,43 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       setState(() {
         _loading = true;
         _error = null;
-        if (_homeShelves.isEmpty) _sectionTitle = 'Top charts in $_regionName';
+        if (_homeShelves.isEmpty) _sectionTitle = 'Discover in $_regionName';
       });
     }
+    final region = AppSettings.instance.discoverRegion;
     try {
-      final responses = await Future.wait<List<DiscoverTrack>>([
-        _service.home(limit: 24).catchError((Object _) => <DiscoverTrack>[]),
-        _service.search('new music releases ${DateTime.now().year} $_regionName', limit: 18).catchError((Object _) => <DiscoverTrack>[]),
-        _service.search('popular Malayalam songs', limit: 18).catchError((Object _) => <DiscoverTrack>[]),
-        _service.search('popular Hindi songs', limit: 18).catchError((Object _) => <DiscoverTrack>[]),
-        _service.search('popular Tamil songs', limit: 18).catchError((Object _) => <DiscoverTrack>[]),
-        _service.search('chill relaxing songs playlist', limit: 18).catchError((Object _) => <DiscoverTrack>[]),
-        _service.search('workout energetic songs playlist', limit: 18).catchError((Object _) => <DiscoverTrack>[]),
-        _service.search('party hits playlist', limit: 18).catchError((Object _) => <DiscoverTrack>[]),
-        _service.search('popular music mixes $_regionName', limit: 18).catchError((Object _) => <DiscoverTrack>[]),
-      ]);
-      if (!mounted || generation != _requestGeneration) return;
-      final shelves = <_DiscoverShelf>[
-        if (responses[0].isNotEmpty) _DiscoverShelf('Trending in $_regionName', responses[0]),
-        if (responses[1].isNotEmpty) _DiscoverShelf('New releases', responses[1]),
-        if (responses[2].isNotEmpty) _DiscoverShelf('Malayalam hits', responses[2]),
-        if (responses[3].isNotEmpty) _DiscoverShelf('Hindi hits', responses[3]),
-        if (responses[4].isNotEmpty) _DiscoverShelf('Tamil hits', responses[4]),
-        if (responses[5].isNotEmpty) _DiscoverShelf('Chill & unwind', responses[5]),
-        if (responses[6].isNotEmpty) _DiscoverShelf('Workout energy', responses[6]),
-        if (responses[7].isNotEmpty) _DiscoverShelf('Party starters', responses[7]),
-        if (responses[8].isNotEmpty) _DiscoverShelf('Popular mixes', responses[8]),
-      ];
+      final feed = await _service.homeFeed(limit: 50, region: region);
+      if (!mounted || generation != _requestGeneration ||
+          region != AppSettings.instance.discoverRegion) return;
+      final shelves = feed.shelves
+          .map((shelf) => _DiscoverShelf(shelf.title, shelf.tracks))
+          .where((shelf) => shelf.tracks.isNotEmpty)
+          .toList(growable: false);
       if (shelves.isEmpty) {
-        final fallback = await _service.search('top songs $_regionName');
-        if (!mounted || generation != _requestGeneration) return;
-        if (fallback.isEmpty) {
-          if (_homeShelves.isEmpty) {
-            setState(() => _error = 'No music recommendations are available right now.');
-          }
-          return;
+        if (_homeShelves.isEmpty) {
+          setState(() => _error = 'No music recommendations are available right now.');
         }
-        shelves.add(_DiscoverShelf('Popular in $_regionName', fallback));
+        return;
       }
       final snapshot = _DiscoverFeedSnapshot(
         List.unmodifiable(shelves),
-        'Top charts in $_regionName',
+        'Discover in $_regionName',
+        feed.continuation,
       );
       DiscoverCache.instance.write(cacheKey, snapshot);
       AppLogger.event('discover.home_loading_completed', category: 'discover',
         component: 'discover_screen',
         fields: {'generation': generation, 'shelf_count': snapshot.shelves.length,
-          'track_count': snapshot.shelves.fold<int>(0, (sum, shelf) => sum + shelf.tracks.length)});
+          'track_count': snapshot.shelves.fold<int>(0, (sum, shelf) => sum + shelf.tracks.length),
+          'has_continuation': snapshot.continuation.isNotEmpty});
       setState(() {
         _homeShelves = snapshot.shelves;
         _tracks = shelves.first.tracks;
+        _homeContinuation = snapshot.continuation;
         _error = null;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _onDiscoverScroll();
       });
     } on PlatformException catch (error) {
       AppLogger.warning('Discover home loading failed', category: 'discover',
@@ -321,6 +446,83 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     }
   }
 
+  void _onDiscoverScroll() {
+    if (!_scrollController.hasClients ||
+        _loading ||
+        _loadingMore ||
+        _homeContinuation.isEmpty ||
+        _homeShelves.isEmpty) {
+      return;
+    }
+    if (_scrollController.position.extentAfter < 600) {
+      unawaited(_loadMoreHome());
+    }
+  }
+
+  Future<void> _loadMoreHome() async {
+    final continuation = _homeContinuation;
+    if (_loading || _loadingMore || continuation.isEmpty || _homeShelves.isEmpty) return;
+    setState(() => _loadingMore = true);
+    final generation = _requestGeneration;
+    final region = AppSettings.instance.discoverRegion;
+    try {
+      final feed = await _service.moreHome(continuation, limit: 50, region: region);
+      if (!mounted || generation != _requestGeneration ||
+          region != AppSettings.instance.discoverRegion) return;
+      final mergedFeed = mergeDiscoverHomeShelves(
+        _homeShelves
+            .map((shelf) => DiscoverHomeShelf(
+                  title: shelf.title,
+                  tracks: shelf.tracks,
+                ))
+            .toList(growable: false),
+        feed.shelves,
+      );
+      final merged = mergedFeed
+          .map((shelf) => _DiscoverShelf(shelf.title, shelf.tracks))
+          .toList(growable: false);
+      if (merged.length == _homeShelves.length &&
+          merged.every((shelf) => _homeShelves.any((old) =>
+              old.title == shelf.title && old.tracks.length == shelf.tracks.length))) {
+        final snapshot = _DiscoverFeedSnapshot(
+          List.unmodifiable(_homeShelves),
+          'Discover in $_regionName',
+          '',
+        );
+        DiscoverCache.instance.write(
+          'home:${AppSettings.instance.discoverRegion}',
+          snapshot,
+        );
+        setState(() => _homeContinuation = '');
+        return;
+      }
+      final nextContinuation = feed.continuation == continuation
+          ? ''
+          : feed.continuation;
+      final snapshot = _DiscoverFeedSnapshot(
+        List.unmodifiable(merged),
+        'Discover in $_regionName',
+        nextContinuation,
+      );
+      DiscoverCache.instance.write('home:${AppSettings.instance.discoverRegion}', snapshot);
+      setState(() {
+        _homeShelves = snapshot.shelves;
+        _homeContinuation = snapshot.continuation;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _onDiscoverScroll();
+      });
+    } on PlatformException catch (error) {
+      AppLogger.warning('Discover home continuation failed', category: 'discover',
+        component: 'discover_screen', fields: {'error_code': error.code});
+    } catch (error) {
+      AppLogger.warning('Discover home continuation failed', category: 'discover',
+        component: 'discover_screen', fields: {'failure_type': error.runtimeType.toString()});
+    } finally {
+      if (mounted) setState(() => _loadingMore = false);
+    }
+  }
+
   Future<void> _loadRadio(DiscoverTrack track) async {
     final generation = ++_requestGeneration;
     setState(() {
@@ -328,6 +530,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       _error = null;
       _sectionTitle = 'Radio · ${track.title}';
       _homeShelves = const [];
+      _homeContinuation = '';
     });
     try {
       final results = await _service.radio(track);
@@ -409,6 +612,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       if (request != _playRequestGeneration ||
           session != player.queueSession) return;
 
+      _recordRecentlyPlayed(track);
       unawaited(_populateQueue(queueTracks, startIndex, session)
           .catchError((Object _) {}));
     } catch (error) {
@@ -892,13 +1096,13 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     child: Icon(Icons.music_note_rounded, size: size.isFinite ? size * .42 : 44),
   );
 
-  Widget _feedCard(DiscoverTrack track) {
+  Widget _feedCard(DiscoverTrack track, {List<DiscoverTrack>? queueOverride}) {
     final theme = Theme.of(context);
     final local = AppSettings.instance.discoverLocalLossless
         ? DiscoverService.findLocalLosslessMatch(track, _localLibrary) : null;
     return SizedBox(width: 148, child: InkWell(
       borderRadius: BorderRadius.circular(16),
-      onTap: () => _play(track),
+      onTap: () => _play(track, queueOverride: queueOverride),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         AspectRatio(aspectRatio: 1, child: Stack(fit: StackFit.expand, children: [
           _art(track, size: double.infinity),
@@ -912,7 +1116,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
             child: PopupMenuButton<String>(
               icon: const Icon(Icons.more_horiz_rounded, color: Colors.white),
               onSelected: (v) {
-                if (v == 'play') _play(track);
+                if (v == 'play') _play(track, queueOverride: queueOverride);
                 if (v == 'radio') _loadRadio(track);
                 if (v == 'lyrics') _showLyrics(track, local: local);
               },
@@ -945,11 +1149,155 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       );
 
   void _showShelf(_DiscoverShelf shelf) {
+    _requestGeneration++;
     setState(() {
       _tracks = shelf.tracks;
       _sectionTitle = shelf.title;
       _homeShelves = const [];
+      _homeContinuation = '';
     });
+  }
+
+  Widget _listeningPicksShelf() {
+    if (_listeningPicks.isEmpty) return const SliverToBoxAdapter();
+    return SliverToBoxAdapter(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        _shelfHeading('Inspired by your listening'),
+        SizedBox(
+          height: 214,
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            scrollDirection: Axis.horizontal,
+            itemCount: _listeningPicks.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (context, index) => _feedCard(
+              _listeningPicks[index],
+              queueOverride: _listeningPicks,
+            ),
+          ),
+        ),
+        const SizedBox(height: 22),
+      ]),
+    );
+  }
+
+  Widget _recentlyPlayedShelf() {
+    if (_recentlyPlayed.isEmpty) return const SliverToBoxAdapter();
+    final columns = <List<DiscoverTrack>>[
+      for (var index = 0; index < _recentlyPlayed.length; index += 4)
+        _recentlyPlayed.skip(index).take(4).toList(growable: false),
+    ];
+    return SliverToBoxAdapter(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        _shelfHeading('Recently played'),
+        SizedBox(
+          height: 4 * 58,
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            scrollDirection: Axis.horizontal,
+            itemCount: columns.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 14),
+            itemBuilder: (context, index) => SizedBox(
+              width: MediaQuery.sizeOf(context).width * .78,
+              child: Column(
+                children: [
+                  for (final track in columns[index])
+                    SizedBox(
+                      height: 58,
+                      child: InkWell(
+                        onTap: () => _play(track, queueOverride: _recentlyPlayed),
+                        child: Row(children: [
+                          _art(track, size: 46),
+                          const SizedBox(width: 11),
+                          Expanded(child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(track.title, maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.titleSmall),
+                              Text(track.artist, maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                )),
+                            ],
+                          )),
+                          PopupMenuButton<String>(
+                            tooltip: 'More actions',
+                            onSelected: (value) {
+                              if (value == 'play') _play(track, queueOverride: _recentlyPlayed);
+                              if (value == 'radio') _loadRadio(track);
+                              if (value == 'lyrics') _showLyrics(track);
+                            },
+                            itemBuilder: (_) => [
+                              const PopupMenuItem(value: 'play', child: Text('Play')),
+                              const PopupMenuItem(value: 'radio', child: Text('Start radio')),
+                              if (AppSettings.instance.discoverLyrics)
+                                const PopupMenuItem(value: 'lyrics', child: Text('Lyrics')),
+                            ],
+                          ),
+                        ]),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 22),
+      ]),
+    );
+  }
+
+  Widget _moodHomeShelf() {
+    final sections = _moodSections.where((item) => item.items.isNotEmpty).toList();
+    if (sections.isEmpty) return const SliverToBoxAdapter();
+    final section = sections.first;
+    return SliverToBoxAdapter(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        _shelfHeading(section.title, onSeeAll: _openMoodsAndMoments),
+        SizedBox(
+          height: 104,
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            scrollDirection: Axis.horizontal,
+            itemCount: section.items.length.clamp(0, 12),
+            separatorBuilder: (_, __) => const SizedBox(width: 10),
+            itemBuilder: (context, index) {
+              final mood = section.items[index];
+              final stripe = mood.stripeColor == 0
+                  ? Theme.of(context).colorScheme.surfaceContainerHighest
+                  : Color(mood.stripeColor);
+              return SizedBox(
+                width: 132,
+                child: Material(
+                  color: stripe,
+                  borderRadius: BorderRadius.circular(16),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: () => _openMood(mood),
+                    child: Padding(
+                      padding: const EdgeInsets.all(13),
+                      child: Align(
+                        alignment: Alignment.bottomLeft,
+                        child: Text(mood.title, maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          )),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 22),
+      ]),
+    );
   }
 
   Widget _heroShelf(List<_DiscoverShelf> shelves) {
@@ -1163,6 +1511,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     await Future.wait([
       _loadHome(forceRefresh: true),
       _loadLocalLibrary(forceRefresh: true),
+      _loadMoods(),
     ]);
     if (mounted && _error != null && _tracks.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1233,6 +1582,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       body: RefreshIndicator(
         onRefresh: _refreshDiscover,
         child: CustomScrollView(
+          controller: _scrollController,
           cacheExtent: 600,
           physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
@@ -1277,9 +1627,15 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
             else if (hasTracks) ...[
               if (_loading) const SliverToBoxAdapter(child: LinearProgressIndicator(minHeight: 2)),
               if (_homeShelves.isNotEmpty) ...[
+                _listeningPicksShelf(),
+                _recentlyPlayedShelf(),
                 _heroShelf(_homeShelves),
                 if (_homeShelves.isNotEmpty) _trackPager(_homeShelves.first),
-                for (final shelf in _homeShelves.skip(1)) _homeShelf(shelf),
+                for (var index = 1; index < _homeShelves.length; index++) ...[
+                  _homeShelf(_homeShelves[index]),
+                  if (index == 1) _moodHomeShelf(),
+                ],
+                if (_homeShelves.length <= 1) _moodHomeShelf(),
               ] else ...[
                 SliverToBoxAdapter(
                   child: Padding(
@@ -1295,6 +1651,16 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
                 ),
               ],
             ],
+          if (_loadingMore)
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 22),
+                child: Center(child: SizedBox.square(
+                  dimension: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )),
+              ),
+            ),
           SliverToBoxAdapter(child: SizedBox(height: bottom + 16)),
           ],
         ),
