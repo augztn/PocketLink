@@ -40,9 +40,8 @@ class ServerApi {
   final Set<CancelToken> _mediaRequestTokens = {};
   final Map<String, CancelToken> _thumbnailRequestTokens = {};
   final Map<String, CancelToken> _metadataRequestTokens = {};
-  final Map<String, DateTime> _failedThumbnailUntil = {};
-  final Map<String, DateTime> _failedMetadataUntil = {};
-  static const _negativeMediaCacheTtl = Duration(minutes: 10);
+  final Set<String> _failedThumbnailKeys = {};
+  final Set<String> _failedMetadataKeys = {};
   static const _directoryCacheTtl = Duration(seconds: 20);
   static const _maxCachedDirectories = 512;
   final Map<String, _CacheEntry<DirectoryListing>> _directoryCache = {};
@@ -171,20 +170,13 @@ class ServerApi {
     _metadataCache.remove(key);
   }
 
-  void _rememberFailedMediaKey(Map<String, DateTime> failures, String key) {
-    if (failures.length >= 4096 && !failures.containsKey(key)) {
-      failures.remove(failures.keys.first);
-    }
-    failures[key] = DateTime.now().add(_negativeMediaCacheTtl);
+  void _rememberFailedMediaKey(Set<String> failures, String key) {
+    // A failed path remains suppressed until this ServerApi session ends.
+    failures.add(key);
   }
 
-  bool _isKnownFailedMediaKey(Map<String, DateTime> failures, String key) {
-    final expiresAt = failures[key];
-    if (expiresAt == null) return false;
-    if (expiresAt.isAfter(DateTime.now())) return true;
-    failures.remove(key);
-    return false;
-  }
+  bool _isKnownFailedMediaKey(Set<String> failures, String key) =>
+      failures.contains(key);
 
   String _mediaCacheKey(String path, String? volume) => '${volume ?? 'internal'}:$path';
 
@@ -194,7 +186,7 @@ class ServerApi {
     CancelToken? cancelToken,
   }) {
     final key = _mediaCacheKey(path, volume);
-    if (_isKnownFailedMediaKey(_failedMetadataUntil, key)) {
+    if (_isKnownFailedMediaKey(_failedMetadataKeys, key)) {
       return Future<VideoMetadata?>.value(null);
     }
     final cached = _metadataCache[key];
@@ -215,7 +207,7 @@ class ServerApi {
         return VideoMetadata.fromJson(response.data ?? const {});
       } on DioException catch (error) {
         if (error.response?.statusCode == 400 || error.response?.statusCode == 404) {
-          _rememberFailedMediaKey(_failedMetadataUntil, key);
+          _rememberFailedMediaKey(_failedMetadataKeys, key);
         }
         if ((cancelToken?.isCancelled ?? false) &&
             identical(_metadataCache[key], future)) {
@@ -240,7 +232,7 @@ class ServerApi {
     CancelToken? cancelToken,
   }) {
     final key = _mediaCacheKey(path, volume);
-    if (_isKnownFailedMediaKey(_failedThumbnailUntil, key)) {
+    if (_isKnownFailedMediaKey(_failedThumbnailKeys, key)) {
       return Future<Uint8List?>.value(null);
     }
     final cached = _thumbnailCache[key];
@@ -265,7 +257,7 @@ class ServerApi {
         return bytes == null || bytes.isEmpty ? null : Uint8List.fromList(bytes);
       } on DioException catch (error) {
         if (error.response?.statusCode == 400 || error.response?.statusCode == 404) {
-          _rememberFailedMediaKey(_failedThumbnailUntil, key);
+          _rememberFailedMediaKey(_failedThumbnailKeys, key);
         }
         if ((cancelToken?.isCancelled ?? false) &&
             identical(_thumbnailCache[key], future)) {
