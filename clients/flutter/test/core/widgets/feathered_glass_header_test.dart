@@ -128,8 +128,9 @@ void main() {
     expect(blurLayers[1].endSigma, 0);
     expect(tester.getTopLeft(blurFinder.first).dy, 0);
     expect(tester.getSize(blurFinder.first).height, 80);
+    expect(tester.getTopLeft(blurFinder.last).dy, 80);
     expect(tester.getSize(blurFinder.last).height, 112);
-    expect(tester.getSize(find.byType(PocketLinkAppBar)).height, 192);
+    expect(tester.getSize(find.byType(PocketLinkAppBar)).height, 80);
   });
 
   testWidgets('dark header has a readable default acrylic scrim',
