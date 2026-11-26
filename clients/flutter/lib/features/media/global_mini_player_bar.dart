@@ -4,7 +4,8 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../core/widgets/liquid_glass_pill.dart';
 import 'persistent_audio_player.dart';
-import 'discover/discover_thumbnail_cache.dart';
+import 'now_playing_artwork_palette.dart';
+import 'track_artwork_view.dart';
 
 /// Compact, app-wide music controls shown above the navigation dock.
 class GlobalMiniPlayerBar extends StatelessWidget {
@@ -84,6 +85,15 @@ class GlobalMiniPlayerBar extends StatelessWidget {
         isLight ? const Color(0xFF475569) : colors.onSurfaceVariant;
 
     final safeInsets = MediaQuery.paddingOf(context);
+    final pathParts = item.path.split('/');
+    final folderName = pathParts.length > 1
+        ? pathParts[pathParts.length - 2]
+        : 'Internal storage';
+    final artworkPalette = NowPlayingArtworkPalette.fallback(
+      title: item.title,
+      folderName: folderName,
+      path: item.path,
+    );
 
     return Align(
       alignment: Alignment.centerLeft,
@@ -103,9 +113,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
           intensity: surfaceIntensity,
           // The overlay paints the shared morphing player while expanding.
           // Hide this docked source immediately so two control sets never overlap.
-          child: Opacity(
-            opacity: visible ? 1 : 0,
-            child: GestureDetector(
+          child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: onOpen,
               onHorizontalDragEnd: _handleHorizontalDrag,
@@ -127,8 +135,10 @@ class GlobalMiniPlayerBar extends StatelessWidget {
               onVerticalDragCancel: onExpandDragEnd == null
                   ? null
                   : () => onExpandDragEnd!(0),
-              child: Material(
-                type: MaterialType.transparency,
+              child: Opacity(
+                opacity: visible ? 1 : 0,
+                child: Material(
+                  type: MaterialType.transparency,
                 borderRadius: BorderRadius.circular(22),
                 child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -144,31 +154,15 @@ class GlobalMiniPlayerBar extends StatelessWidget {
                               height: 34,
                               clipBehavior: Clip.antiAlias,
                               decoration: BoxDecoration(
-                                color: colors.primary.withValues(alpha: 0.14),
                                 borderRadius: BorderRadius.circular(11),
                               ),
-                              child: artworkBytes != null
-                                  ? Image.memory(
-                                      artworkBytes!,
-                                      cacheWidth: 544,
-                                      fit: BoxFit.cover,
-                                      gaplessPlayback: true,
-                                    )
-                                  : item.artworkUrl?.isNotEmpty == true
-                                      ? DiscoverThumbnail(
-                                          url: DiscoverThumbnailCache.urlForSize(item.artworkUrl!, 544),
-                                          cacheWidth: 544,
-                                          fallback: Icon(
-                                            Icons.graphic_eq_rounded,
-                                            color: colors.primary,
-                                            size: 19,
-                                          ),
-                                        )
-                                      : Icon(
-                                          Icons.graphic_eq_rounded,
-                                          color: colors.primary,
-                                          size: 19,
-                                        ),
+                              child: TrackArtworkView(
+                                bytes: artworkBytes,
+                                artworkUrl: item.artworkUrl,
+                                fallbackColors: artworkPalette,
+                                fallbackIconSize: 19,
+                                borderRadius: BorderRadius.circular(11),
+                              ),
                             ),
                             const SizedBox(width: 8),
                             Expanded(
@@ -284,6 +278,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
                       ),
                     ],
                   ),
+                ),
               ),
             ),
           ),
