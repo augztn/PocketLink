@@ -41,59 +41,41 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
         width: double.infinity,
         height: headerHeight,
         child: ClipRect(
-          child: ShaderMask(
-            blendMode: BlendMode.dstIn,
-            shaderCallback: (bounds) => LinearGradient(
-              begin: strongestAtBottom
-                  ? Alignment.bottomCenter
-                  : Alignment.topCenter,
-              end: strongestAtBottom
-                  ? Alignment.topCenter
-                  : Alignment.bottomCenter,
-              // Keep the toolbar fully frosted, then fade the entire acrylic
-              // layer smoothly to zero instead of ending on a hard edge.
-              colors: const [
-                Colors.white,
-                Colors.white,
-                Colors.transparent,
-              ],
-              stops: const [0, 0.6, 1],
-            ).createShader(bounds),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Positioned.fill(
-                  child: ProgressiveBlur(
-                    maxSigma: 24,
-                    endSigma: 24,
-                    strongestAtBottom: strongestAtBottom,
-                  ),
-                ),
-                if (effectiveDarkTint != null)
-                  Positioned.fill(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: strongestAtBottom
-                              ? Alignment.bottomCenter
-                              : Alignment.topCenter,
-                          end: strongestAtBottom
-                              ? Alignment.topCenter
-                              : Alignment.bottomCenter,
-                          colors: [
+          child: ProgressiveBlur(
+            maxSigma: 24,
+            endSigma: 0,
+            strongestAtBottom: strongestAtBottom,
+            child: effectiveDarkTint == null
+                ? const SizedBox.expand()
+                : DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: strongestAtBottom
+                            ? Alignment.bottomCenter
+                            : Alignment.topCenter,
+                        end: strongestAtBottom
+                            ? Alignment.topCenter
+                            : Alignment.bottomCenter,
+                        colors: [
+                          effectiveDarkTint[0],
+                          Color.lerp(
                             effectiveDarkTint[0],
-                            Color.lerp(effectiveDarkTint[0], effectiveDarkTint[1], 0.5)!,
                             effectiveDarkTint[1],
-                            Color.lerp(effectiveDarkTint[1], effectiveDarkTint[2], 0.5)!,
+                            0.5,
+                          )!,
+                          effectiveDarkTint[1],
+                          Color.lerp(
+                            effectiveDarkTint[1],
                             effectiveDarkTint[2],
-                          ],
-                          stops: const [0, 0.16, 0.38, 0.68, 1],
-                        ),
+                            0.5,
+                          )!,
+                          effectiveDarkTint[2],
+                        ],
+                        stops: const [0, 0.16, 0.38, 0.68, 1],
                       ),
                     ),
+                    child: const SizedBox.expand(),
                   ),
-              ],
-            ),
           ),
         ),
       ),
