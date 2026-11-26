@@ -1218,7 +1218,6 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
           ),
           children: [
             _buildServerTelemetry(),
-            const SizedBox(height: 12),
             const SizedBox(height: 18),
             for (final section in appSettings.homeSectionOrder)
               if (sectionBuilders.containsKey(section)) sectionBuilders[section]!(),
