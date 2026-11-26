@@ -71,6 +71,32 @@ class DiscoverService {
     return _parseTracks(raw);
   }
 
+  Future<DiscoverHomeFeed> homeFeed({int limit = 30}) async {
+    final raw = await _channel.invokeMapMethod<String, dynamic>(
+      'discoverHomeFeed',
+      {
+        'limit': limit.clamp(1, 50),
+        'region': AppSettings.instance.discoverRegion,
+      },
+    );
+    return DiscoverHomeFeed.fromJson(raw ?? const {});
+  }
+
+  Future<DiscoverHomeFeed> moreHome(
+    String continuation, {int limit = 30}
+  ) async {
+    if (continuation.isEmpty) return const DiscoverHomeFeed(shelves: []);
+    final raw = await _channel.invokeMapMethod<String, dynamic>(
+      'discoverHomeMore',
+      {
+        'continuation': continuation,
+        'limit': limit.clamp(1, 50),
+        'region': AppSettings.instance.discoverRegion,
+      },
+    );
+    return DiscoverHomeFeed.fromJson(raw ?? const {});
+  }
+
   Future<List<DiscoverTrack>> home({int limit = 30}) async {
     final raw = await _channel.invokeListMethod<Object?>(
       'discoverHome',
