@@ -1222,7 +1222,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     if (_listeningPicks.isEmpty) return const SliverToBoxAdapter();
     return SliverToBoxAdapter(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        _shelfHeading('Inspired by your listening'),
+        _shelfHeading('Top Picks for You'),
         SizedBox(
           height: 214,
           child: ListView.separated(
@@ -1249,7 +1249,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     ];
     return SliverToBoxAdapter(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        _shelfHeading('Recently played'),
+        _shelfHeading('Recents'),
         SizedBox(
           height: 4 * 58,
           child: ListView.separated(
@@ -1360,89 +1360,6 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
     );
   }
 
-  Widget _heroShelf(List<_DiscoverShelf> shelves) {
-    final cards = <({DiscoverTrack track, String eyebrow})>[
-      for (final shelf in shelves.take(2))
-        if (shelf.tracks.isNotEmpty)
-          (track: shelf.tracks.first, eyebrow: shelf.title),
-    ];
-    if (cards.isEmpty) return const SizedBox.shrink();
-    final width = MediaQuery.sizeOf(context).width * .70;
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.only(top: 10),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          _shelfHeading('Featured'),
-          SizedBox(
-            height: 286,
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              scrollDirection: Axis.horizontal,
-              itemCount: cards.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (context, index) {
-                final card = cards[index];
-                return SizedBox(
-                  width: width,
-                  child: Material(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(18),
-                    clipBehavior: Clip.antiAlias,
-                    child: InkWell(
-                      onTap: () => _play(card.track),
-                      child: Stack(fit: StackFit.expand, children: [
-                        _art(card.track, size: double.infinity),
-                        const DecoratedBox(decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [Colors.transparent, Color(0xE6000000)],
-                            stops: [0.32, 1],
-                          ),
-                        )),
-                        Positioned(left: 16, right: 16, bottom: 18, child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(card.eyebrow.toUpperCase(),
-                              maxLines: 1, overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(color: Colors.white70,
-                                fontSize: 10, fontWeight: FontWeight.w800,
-                                letterSpacing: 1.1)),
-                            const SizedBox(height: 7),
-                            Text(card.track.title, maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                color: Colors.white, fontWeight: FontWeight.w900)),
-                            const SizedBox(height: 3),
-                            Text(card.track.artist, maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Colors.white70)),
-                          ],
-                        )),
-                        Positioned(right: 8, top: 8, child: Material(
-                          color: Colors.black45, shape: const CircleBorder(),
-                          child: Theme(
-                            data: Theme.of(context).copyWith(
-                              popupMenuTheme: const PopupMenuThemeData(
-                                color: Color(0xFF24262B),
-                              ),
-                            ),
-                            child: _showTrackMenu(card.track),
-                          ),
-                        )),
-                      ]),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ]),
-      ),
-    );
-  }
-
   Widget _showTrackMenu(DiscoverTrack track) {
     final local = AppSettings.instance.discoverLocalLossless
         ? DiscoverService.findLocalLosslessMatch(track, _localLibrary) : null;
@@ -1461,6 +1378,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
       icon: const Icon(Icons.more_horiz_rounded),
     );
   }
+
 
   Widget _trackPager(_DiscoverShelf shelf) {
     final tracks = shelf.tracks.take(20).toList(growable: false);
@@ -1518,6 +1436,15 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
         SizedBox(width: 36, child: _showTrackMenu(track)),
       ]),
     );
+  }
+
+  bool _isListLayoutShelf(_DiscoverShelf shelf) {
+    final title = shelf.title.toLowerCase();
+    return title.contains('recents') ||
+        title.contains('quick picks') ||
+        title.contains('listen again') ||
+        title.contains('your music') ||
+        title.contains('top songs');
   }
 
   Widget _homeShelf(_DiscoverShelf shelf) {
@@ -1687,15 +1614,17 @@ class _DiscoverScreenState extends State<DiscoverScreen> with SingleTickerProvid
             else if (hasTracks) ...[
               if (_loading) const SliverToBoxAdapter(child: LinearProgressIndicator(minHeight: 2)),
               if (_homeShelves.isNotEmpty) ...[
+                // BitChord Home order: Top Picks, Recents, then the live
+                // upstream shelves. Find Your Mood is inserted after the
+                // lead feed shelf rather than before the feed.
                 _listeningPicksShelf(),
                 _recentlyPlayedShelf(),
-                _heroShelf(_homeShelves),
-                if (_homeShelves.isNotEmpty) _trackPager(_homeShelves.first),
-                for (var index = 1; index < _homeShelves.length; index++) ...[
-                  _homeShelf(_homeShelves[index]),
-                  if (index == 1) _moodHomeShelf(),
+                for (var index = 0; index < _homeShelves.length; index++) ...[
+                  _isListLayoutShelf(_homeShelves[index])
+                      ? _trackPager(_homeShelves[index])
+                      : _homeShelf(_homeShelves[index]),
+                  if (index == 0) _moodHomeShelf(),
                 ],
-                if (_homeShelves.length <= 1) _moodHomeShelf(),
               ] else ...[
                 SliverToBoxAdapter(
                   child: Padding(
