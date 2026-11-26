@@ -37,13 +37,11 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // Keep BackdropFilter directly in the painted stack. Wrapping
-              // backdrop filters in ShaderMask can isolate their backdrop
-              // input on some render paths, making the blur disappear.
+              // Keep the shader blur as one painted layer so its per-pixel
+              // sigma gradient stays continuous instead of forming bands.
               Positioned.fill(
                 child: ProgressiveBlur(
                   maxSigma: 24,
-                  steps: 18,
                   strongestAtBottom: strongestAtBottom,
                 ),
               ),
