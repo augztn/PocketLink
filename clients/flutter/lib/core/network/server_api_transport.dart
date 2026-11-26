@@ -61,8 +61,11 @@ class _ServerApiTransport {
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
         final queueStopwatch = Stopwatch()..start();
+        final background = options.extra['pocketlink.priority'] == 'background';
+        final gate = background ? _mediaRequestGate : _requestGate;
         try {
-          await _requestGate.acquire(options.cancelToken);
+          await gate.acquire(options.cancelToken);
+          options.extra['pocketlink.requestGate'] = background ? 'media' : 'core';
           options.extra['pocketlink.requestSlot'] = true;
         } on DioException catch (error) {
           handler.reject(error);
@@ -84,6 +87,7 @@ class _ServerApiTransport {
           'queueWaitMs': options.extra['pocketlink.queueWaitMs'],
           'retry': options.extra['pocketlink.retryCount'] ?? 0,
           'concurrencyLimit': 4,
+          'requestLane': background ? 'media' : 'core',
         });
         handler.next(options);
       },
@@ -186,6 +190,8 @@ class _ServerApiTransport {
   final Dio _dio;
   // One app-wide budget across every ServerApi/transport instance.
   static final _RequestGate _requestGate = _RequestGate(4);
+  // Media metadata/thumbnail extraction is deliberately isolated from core API traffic.
+  static final _RequestGate _mediaRequestGate = _RequestGate(1);
   static final Map<String, Future<Object?>> _sharedReadRequests = {};
 
   Dio get client => _dio;
@@ -282,7 +288,11 @@ String _stableDiagnosticHash(String value) {
 void _releaseRequestSlot(RequestOptions options) {
     if (options.extra['pocketlink.requestSlot'] == true) {
       options.extra['pocketlink.requestSlot'] = false;
-      _requestGate.release();
+      if (options.extra['pocketlink.requestGate'] == 'media') {
+        _mediaRequestGate.release();
+      } else {
+        _requestGate.release();
+      }
     }
   }
 
