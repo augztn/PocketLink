@@ -12,13 +12,14 @@ import '../../core/navigation/pocketlink_navigation.dart';
 import '../../core/network/server_api.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
-import '../../core/widgets/liquid_glass_pill.dart';
 import 'global_mini_player_bar.dart';
 import 'now_playing_screen.dart';
 import 'persistent_audio_player.dart';
 import 'now_playing_overlay_controller.dart';
 import 'now_playing_scrubber.dart';
 import 'discover/discover_thumbnail_cache.dart';
+import 'now_playing_artwork_palette.dart';
+import 'track_artwork_view.dart';
 
 class GlobalMediaOverlay extends StatefulWidget {
   const GlobalMediaOverlay({required this.child, super.key});
@@ -612,8 +613,26 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
             BorderRadius.circular(miniPlayerRadius),
             1.0 - t,
           )!;
-          final glassIntensity =
-              1.0 - (t * 2.5).clamp(0.0, 1.0).toDouble();
+          final currentItem = player.currentItem;
+          final artworkPalette = currentItem == null
+              ? const [Color(0xFF6559A8), Color(0xFF24243D), Color(0xFF171326)]
+              : NowPlayingArtworkPalette.fallback(
+                  title: currentItem.title,
+                  folderName: currentItem.path.split('/').length > 1
+                      ? currentItem.path.split('/')[currentItem.path.split('/').length - 2]
+                      : 'Internal storage',
+                  path: currentItem.path,
+                );
+          final ambientFill = Color.lerp(
+            artworkPalette[2],
+            const Color(0xFF0A0B0E),
+            0.55,
+          )!;
+          final sheetFill = Color.lerp(
+            const Color(0xFF1E2025),
+            ambientFill,
+            (t / 0.3).clamp(0.0, 1.0).toDouble(),
+          )!;
           final miniOpacity =
               (1.0 - t / 0.25).clamp(0.0, 1.0).toDouble();
           final isGradientTheme =
@@ -653,7 +672,7 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
                   Positioned.fill(
                     child: IgnorePointer(
                       child: ColoredBox(
-                        color: Colors.black.withValues(alpha: 0.55 * t),
+                        color: Colors.black.withValues(alpha: 0.45 * t),
                       ),
                     ),
                   ),
@@ -681,14 +700,12 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
                         Positioned.fromRect(
                           rect: rect,
                           child: IgnorePointer(
-                            child: ClipRRect(
-                              borderRadius: radius,
-                              clipBehavior: Clip.antiAlias,
-                              child: SmokedGlassSurface(
-                                radius: radius,
-                                intensity: glassIntensity,
-                                child: const SizedBox.expand(),
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: sheetFill,
+                                borderRadius: radius,
                               ),
+                              child: const SizedBox.expand(),
                             ),
                           ),
                         ),
@@ -698,10 +715,12 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
                             child: ValueListenableBuilder<Uint8List?>(
                               valueListenable: artworkBytes,
                               builder: (context, bytes, _) =>
-                                  _SharedMorphArtwork(
-                                item: player.currentItem,
+                                  TrackArtworkView(
                                 bytes: bytes,
-                                radius: artworkRadius,
+                                artworkUrl: currentItem?.artworkUrl,
+                                fallbackColors: artworkPalette,
+                                fallbackIconSize: 30,
+                                borderRadius: artworkRadius,
                                 fadeBottom: isGradientTheme,
                               ),
                             ),
@@ -725,67 +744,6 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
           );
         },
       ),
-    );
-  }
-}
-
-class _SharedMorphArtwork extends StatelessWidget {
-  const _SharedMorphArtwork({
-    required this.item,
-    required this.bytes,
-    required this.radius,
-    this.fadeBottom = false,
-  });
-
-  final MediaQueueItem? item;
-  final Uint8List? bytes;
-  final BorderRadius radius;
-  final bool fadeBottom;
-
-  @override
-  Widget build(BuildContext context) {
-    final artworkUrl = item?.artworkUrl;
-    Widget fallback() => DecoratedBox(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF6559A8), Color(0xFF24243D)],
-            ),
-          ),
-          child: const Center(
-            child: Icon(Icons.music_note_rounded, color: Colors.white, size: 30),
-          ),
-        );
-
-    final artwork = bytes != null
-        ? Image.memory(
-            bytes!,
-            cacheWidth: 544,
-            fit: BoxFit.cover,
-            gaplessPlayback: true,
-          )
-        : artworkUrl?.isNotEmpty == true
-            ? DiscoverThumbnail(
-                url: DiscoverThumbnailCache.urlForSize(artworkUrl!, 544),
-                cacheWidth: 544,
-                fallback: fallback(),
-              )
-            : fallback();
-    return ClipRRect(
-      borderRadius: radius,
-      child: fadeBottom
-          ? ShaderMask(
-              blendMode: BlendMode.dstIn,
-              shaderCallback: (bounds) => const LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Colors.white, Colors.white, Colors.transparent],
-                stops: [0, 0.56, 1],
-              ).createShader(bounds),
-              child: artwork,
-            )
-          : artwork,
     );
   }
 }
