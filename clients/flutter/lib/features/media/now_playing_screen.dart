@@ -881,14 +881,14 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
             ],
             onSelected: (value) {
               switch (value) {
-                case 'queue': _showQueue(); break;
+                case 'queue': unawaited(_showQueue()); break;
                 case 'shuffle': unawaited(_toggleShuffle()); break;
                 case 'repeat': unawaited(_cycleRepeat()); break;
                 case 'share': unawaited(_runOption(TrackOptionAction.share)); break;
                 case 'play_next': unawaited(_runOption(TrackOptionAction.playNext)); break;
                 case 'add_queue': unawaited(_runOption(TrackOptionAction.addToQueue)); break;
                 case 'show_folder': unawaited(_runOption(TrackOptionAction.showInFolder)); break;
-                case 'file_info': _runOption(TrackOptionAction.fileInfo); break;
+                case 'file_info': unawaited(_runOption(TrackOptionAction.fileInfo)); break;
                 case 'sleep_timer': unawaited(_runOption(TrackOptionAction.sleepTimer)); break;
                 case 'download': unawaited(_runOption(TrackOptionAction.download)); break;
                 case 'remove_cache': unawaited(_runOption(TrackOptionAction.removeFromCache)); break;
