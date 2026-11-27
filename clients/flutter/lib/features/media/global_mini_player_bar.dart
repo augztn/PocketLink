@@ -1,5 +1,7 @@
 import 'dart:typed_data';
 
+import 'package:flutter/gestures.dart';
+
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/widgets/liquid_glass_pill.dart';
@@ -264,6 +266,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
             ),
           ),
         ),
+      ),
     );
   }
 }
