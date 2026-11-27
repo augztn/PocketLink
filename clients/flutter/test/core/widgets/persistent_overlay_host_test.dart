@@ -4,7 +4,9 @@ import 'package:pocketlink_client/core/widgets/persistent_overlay_host.dart';
 
 void main() {
   testWidgets('keeps OverlayPortal mounted and updates its child', (tester) async {
+    final controller = OverlayPortalController();
     Widget portal(String label) => OverlayPortal(
+          controller: controller,
           overlayChildBuilder: (_) => const Text('overlay child'),
           child: Text(label),
         );
