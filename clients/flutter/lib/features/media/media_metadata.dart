@@ -34,7 +34,10 @@ String resolveMediaArtist({
   String fallback = '',
 }) {
   final tagged = cleanMediaArtist(artist);
-  if (tagged.isNotEmpty) return tagged;
+  if (tagged.isNotEmpty &&
+      !const {'pocketlink', 'discover', 'unknown'}.contains(tagged.toLowerCase())) {
+    return tagged;
+  }
 
   var stem = title.trim();
   final dot = stem.lastIndexOf('.');

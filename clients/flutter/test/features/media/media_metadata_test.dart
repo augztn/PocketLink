@@ -42,10 +42,10 @@ void main() {
     );
   });
 
-  test('generic source labels are never presented as artist metadata', () {
+  test('generic artist tags and source labels are never presented as artist metadata', () {
     expect(
       resolveMediaArtist(
-        artist: null,
+        artist: 'PocketLink',
         title: 'Indrajaalam',
         path: '/Music/Indrajaalam.flac',
         fallback: 'PocketLink',
