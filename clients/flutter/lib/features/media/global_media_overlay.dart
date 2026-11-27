@@ -669,7 +669,7 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
             resumeExisting: true,
             morphAnimation: animation,
             useSharedArtwork: true,
-            artworkTargetKey: artworkTargetKey,
+            artworkTargetKey: PocketLinkNavigation.nowPlayingArtworkKey,
             onArtworkChanged: onArtworkChanged,
             onDismiss: onDismiss,
             onDismissDragStart: onDragStart,
