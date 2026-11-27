@@ -306,8 +306,6 @@ class _MiniPlayerGestureSurface extends StatefulWidget {
 class _MiniPlayerGestureSurfaceState extends State<_MiniPlayerGestureSurface> {
   int? _activePointer;
   Offset? _pointerDownPosition;
-  Offset? _lastPointerPosition;
-  Duration? _lastPointerTime;
   VelocityTracker? _velocityTracker;
   double _deliveredVerticalDistance = 0;
   double _horizontalDistance = 0;
@@ -318,8 +316,6 @@ class _MiniPlayerGestureSurfaceState extends State<_MiniPlayerGestureSurface> {
     if (_activePointer != null) return;
     _activePointer = event.pointer;
     _pointerDownPosition = event.position;
-    _lastPointerPosition = event.position;
-    _lastPointerTime = event.timeStamp;
     _velocityTracker = VelocityTracker.withKind(event.kind)
       ..addPosition(event.timeStamp, event.position);
     _deliveredVerticalDistance = 0;
@@ -392,8 +388,6 @@ class _MiniPlayerGestureSurfaceState extends State<_MiniPlayerGestureSurface> {
   void _resetGesture() {
     _activePointer = null;
     _pointerDownPosition = null;
-    _lastPointerPosition = null;
-    _lastPointerTime = null;
     _velocityTracker = null;
     _deliveredVerticalDistance = 0;
     _horizontalDistance = 0;
