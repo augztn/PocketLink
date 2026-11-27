@@ -1,29 +1,44 @@
 part of 'server_api.dart';
 
 class _RequestGate {
-  _RequestGate(this.limit);
+  _RequestGate(this.limit, {this.maxQueued = 64});
 
   final int limit;
+  final int maxQueued;
   int _active = 0;
   final Queue<Completer<void>> _waiters = Queue<Completer<void>>();
 
-  Future<void> acquire(CancelToken? cancelToken) async {
+  Future<void> acquire(RequestOptions options) async {
+    final cancelToken = options.cancelToken;
     if (cancelToken?.isCancelled ?? false) {
       throw DioException(
-        requestOptions: RequestOptions(path: ''),
+        requestOptions: options,
         type: DioExceptionType.cancel,
-        message: 'Request cancelled while waiting for an API slot.',
+        message: 'Request cancelled before entering the API queue.',
       );
     }
     if (_active < limit) {
       _active++;
       return;
     }
+    if (_waiters.length >= maxQueued) {
+      options.extra['pocketlink.queueDropped'] = true;
+      throw DioException(
+        requestOptions: options,
+        type: DioExceptionType.cancel,
+        message: 'Request dropped because the media queue is full.',
+      );
+    }
     final waiter = Completer<void>();
     _waiters.addLast(waiter);
     cancelToken?.whenCancel.then<void>((error) {
       if (_waiters.remove(waiter) && !waiter.isCompleted) {
-        waiter.completeError(error);
+        waiter.completeError(DioException(
+          requestOptions: options,
+          type: DioExceptionType.cancel,
+          error: error,
+          message: 'Request cancelled while waiting for an API slot.',
+        ));
       }
     });
     await waiter.future;
@@ -61,6 +76,9 @@ class _ServerApiTransport {
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
         final queueStopwatch = Stopwatch()..start();
+        final requestId = AppLogger.nextEventId('http');
+        options.extra['pocketlink.requestId'] = requestId;
+        options.extra['pocketlink.queryKey'] = _diagnosticQueryKey(options);
         final priority = options.extra['pocketlink.priority'];
         final lane = priority == 'telemetry'
             ? 'telemetry'
@@ -73,17 +91,20 @@ class _ServerApiTransport {
                 ? _mediaRequestGate
                 : _requestGate;
         try {
-          await gate.acquire(options.cancelToken);
+          await gate.acquire(options);
           options.extra['pocketlink.requestGate'] = lane;
           options.extra['pocketlink.requestSlot'] = true;
         } on DioException catch (error) {
-          handler.reject(error);
+          handler.reject(DioException(
+            requestOptions: options,
+            type: error.type,
+            error: error.error,
+            message: error.message,
+            response: error.response,
+          ));
           return;
         }
-        final requestId = AppLogger.nextEventId('http');
-        options.extra['pocketlink.requestId'] = requestId;
         options.extra['pocketlink.queueWaitMs'] = queueStopwatch.elapsedMilliseconds;
-        options.extra['pocketlink.queryKey'] = _diagnosticQueryKey(options);
         options.extra['pocketlink.requestStopwatch'] = Stopwatch()..start();
         AppLogger.info('API request started', category: 'network', component: 'server_api', correlationId: requestId, fields: {
           'requestId': requestId,
@@ -95,7 +116,11 @@ class _ServerApiTransport {
           'queryKey': options.extra['pocketlink.queryKey'],
           'queueWaitMs': options.extra['pocketlink.queueWaitMs'],
           'retry': options.extra['pocketlink.retryCount'] ?? 0,
-          'concurrencyLimit': lane == 'core' ? 4 : 1,
+          'concurrencyLimit': lane == 'core'
+              ? 4
+              : lane == 'media'
+                  ? 2
+                  : 1,
           'requestLane': lane,
         });
         handler.next(options);
@@ -124,22 +149,39 @@ class _ServerApiTransport {
         final failedOptions = error.requestOptions;
         final stopwatch = failedOptions.extra['pocketlink.requestStopwatch'] as Stopwatch?;
         final requestId = failedOptions.extra['pocketlink.requestId']?.toString() ?? 'unknown';
-        AppLogger.warning('API request failed', category: 'network', component: 'server_api', correlationId: requestId, fields: {
-          'requestId': requestId,
-          'operation': '${failedOptions.method.toUpperCase()} ${failedOptions.uri.path}',
-          'endpoint': failedOptions.uri.path,
-          'route': failedOptions.uri.path,
-          'failureHint': _networkFailureHint(error),
-          'method': failedOptions.method,
-          'path': failedOptions.uri.path,
-          'type': error.type.name,
-          'status': error.response?.statusCode,
-          'durationMs': stopwatch?.elapsedMilliseconds,
-          'queueWaitMs': failedOptions.extra['pocketlink.queueWaitMs'],
-          'queryKey': failedOptions.extra['pocketlink.queryKey'],
-          'retry': failedOptions.extra['pocketlink.retryCount'] ?? 0,
-          'cancelled': failedOptions.cancelToken?.isCancelled ?? false,
-        });
+        final cancelled = failedOptions.cancelToken?.isCancelled ?? false;
+        final cancellation = cancelled || error.type == DioExceptionType.cancel;
+        if (cancellation) {
+          // Requests cancelled before acquiring a slot never reached the wire;
+          // omit them from diagnostics instead of emitting fake transport warnings.
+          if (stopwatch != null) {
+            AppLogger.info('API request cancelled', category: 'network', component: 'server_api', correlationId: requestId, fields: {
+              'requestId': requestId,
+              'operation': '${failedOptions.method.toUpperCase()} ${failedOptions.uri.path}',
+              'endpoint': failedOptions.uri.path,
+              'requestLane': failedOptions.extra['pocketlink.requestGate'],
+              'durationMs': stopwatch.elapsedMilliseconds,
+              'cancelled': true,
+            });
+          }
+        } else {
+          AppLogger.warning('API request failed', category: 'network', component: 'server_api', correlationId: requestId, fields: {
+            'requestId': requestId,
+            'operation': '${failedOptions.method.toUpperCase()} ${failedOptions.uri.path}',
+            'endpoint': failedOptions.uri.path,
+            'route': failedOptions.uri.path,
+            'failureHint': _networkFailureHint(error),
+            'method': failedOptions.method,
+            'path': failedOptions.uri.path,
+            'type': error.type.name,
+            'status': error.response?.statusCode,
+            'durationMs': stopwatch?.elapsedMilliseconds,
+            'queueWaitMs': failedOptions.extra['pocketlink.queueWaitMs'],
+            'queryKey': failedOptions.extra['pocketlink.queryKey'],
+            'retry': failedOptions.extra['pocketlink.retryCount'] ?? 0,
+            'cancelled': false,
+          });
+        }
 
         final options = error.requestOptions;
         _releaseRequestSlot(options);
@@ -200,9 +242,9 @@ class _ServerApiTransport {
   final Dio _dio;
   // One app-wide budget across every ServerApi/transport instance.
   static final _RequestGate _requestGate = _RequestGate(4);
-  // Media metadata/thumbnail extraction is deliberately isolated from core API traffic.
-  static final _RequestGate _mediaRequestGate = _RequestGate(1);
-  static final _RequestGate _telemetryRequestGate = _RequestGate(1);
+  // Keep lightweight media requests moving without allowing an unbounded queue.
+  static final _RequestGate _mediaRequestGate = _RequestGate(2, maxQueued: 12);
+  static final _RequestGate _telemetryRequestGate = _RequestGate(1, maxQueued: 4);
   static final Map<String, Future<Object?>> _sharedReadRequests = {};
 
   Dio get client => _dio;
