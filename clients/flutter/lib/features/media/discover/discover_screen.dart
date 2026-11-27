@@ -66,8 +66,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   String _listeningPicksSeed = '';
   int _listeningPicksGeneration = 0;
   int _recentlyPlayedGeneration = 0;
-  int _moodsGeneration = 0;
-  List<DiscoverMoodSection> _moodSections = const [];
   List<_DiscoverShelf> _homeShelves = const [];
   List<IndexedFile> _localLibrary = const [];
   bool _loading = false;
@@ -107,7 +105,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     _loadLocalLibrary();
     _loadHome();
     unawaited(_loadRecentlyPlayed());
-    unawaited(_loadMoods());
   }
 
   @override
@@ -144,22 +141,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     if (!mounted || generation != _recentlyPlayedGeneration) return;
     setState(() => _recentlyPlayed = recent);
     if (recent.isNotEmpty) unawaited(_loadListeningPicks(recent.first));
-  }
-
-  Future<void> _loadMoods({String? region}) async {
-    final targetRegion = region ?? AppSettings.instance.discoverRegion;
-    final generation = ++_moodsGeneration;
-    try {
-      final sections = await _service.moodsAndGenres(region: targetRegion);
-      if (mounted && generation == _moodsGeneration &&
-          targetRegion == AppSettings.instance.discoverRegion) {
-        setState(() => _moodSections = sections);
-      }
-    } catch (error) {
-      AppLogger.warning('Discover mood shelf loading failed', category: 'discover',
-        component: 'discover_screen',
-        fields: {'failure_type': error.runtimeType.toString()});
-    }
   }
 
   Future<void> _openMood(DiscoverMood mood) async {
@@ -247,7 +228,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     } else {
       unawaited(_reloadHomeAfterPending(region, pendingHome));
     }
-    unawaited(_loadMoods(region: region));
     if (_recentlyPlayed.isNotEmpty) {
       unawaited(_loadListeningPicks(_recentlyPlayed.first));
     }
@@ -1601,105 +1581,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     );
   }
 
-  Widget _moodHomeShelf() {
-    final sections = _moodSections.where((item) => item.items.isNotEmpty).toList();
-    if (sections.isEmpty) return const SliverToBoxAdapter();
-    return SliverToBoxAdapter(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          for (final section in sections) ...[
-            _shelfHeading(section.title, onSeeAll: _openMoodsAndMoments),
-            SizedBox(
-              height: 116,
-              child: ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                scrollDirection: Axis.horizontal,
-                itemCount: section.items.length.clamp(0, 12),
-                separatorBuilder: (_, __) => const SizedBox(width: 10),
-                itemBuilder: (context, index) {
-                  final mood = section.items[index];
-                  final base = mood.stripeColor == 0
-                      ? Theme.of(context).colorScheme.surfaceContainerHighest
-                      : Color(mood.stripeColor);
-                  return SizedBox(
-                    width: 148,
-                    child: Material(
-                      borderRadius: BorderRadius.circular(12),
-                      clipBehavior: Clip.antiAlias,
-                      child: InkWell(
-                        onTap: () => _openMood(mood),
-                        child: Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            DecoratedBox(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [
-                                    Color.lerp(base, Colors.white, .12)!,
-                                    base,
-                                    Color.lerp(base, Colors.black, .28)!,
-                                  ],
-                                ),
-                              ),
-                            ),
-                            Positioned(
-                              right: -18,
-                              top: -28,
-                              child: Container(
-                                width: 112,
-                                height: 112,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: .18),
-                                    width: 1.2,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            Positioned(
-                              right: 6,
-                              top: 12,
-                              child: Icon(
-                                Icons.graphic_eq_rounded,
-                                size: 42,
-                                color: Colors.white.withValues(alpha: .22),
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(13, 12, 13, 12),
-                              child: Align(
-                                alignment: Alignment.bottomLeft,
-                                child: Text(
-                                  mood.title,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
-                                    height: 1.15,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 22),
-          ],
-        ],
-      ),
-    );
-  }
-
   Widget _showTrackMenu(DiscoverTrack track) {
     final local = AppSettings.instance.discoverLocalLossless
         ? DiscoverService.findLocalLosslessMatch(track, _localLibrary) : null;
@@ -1776,6 +1657,13 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         SizedBox(width: 36, child: _showTrackMenu(track)),
       ]),
     );
+  }
+
+  bool _isMoodOrGenreShelf(_DiscoverShelf shelf) {
+    final title = shelf.title.trim().toLowerCase();
+    return title.contains('genre') ||
+        title.contains('mood') ||
+        title.contains('moment');
   }
 
   bool _isRecentHomeShelf(_DiscoverShelf shelf) {
@@ -1969,7 +1857,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     await Future.wait([
       _loadHome(forceRefresh: true),
       _loadLocalLibrary(forceRefresh: true),
-      _loadMoods(),
     ]);
     if (mounted && _error != null && _tracks.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -2008,8 +1895,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     final bottom = LayoutInsetsScope.of(context).bottomClearance;
     final hasTracks = _tracks.isNotEmpty;
     final hasPersonalContent = _recentlyPlayed.isNotEmpty ||
-        _listeningPicks.isNotEmpty ||
-        _moodSections.any((section) => section.items.isNotEmpty);
+        _listeningPicks.isNotEmpty;
     final hasHomeContent = hasTracks || _homeShelves.isNotEmpty || hasPersonalContent;
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -2120,8 +2006,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 _listeningPicksShelf(),
                 _recentlyPlayedShelf(),
                 for (var index = 0; index < _homeShelves.length; index++) ...[
-                  if (_recentlyPlayed.isEmpty ||
-                      !_isRecentHomeShelf(_homeShelves[index])) ...[
+                  if (!_isMoodOrGenreShelf(_homeShelves[index]) &&
+                      (_recentlyPlayed.isEmpty ||
+                          !_isRecentHomeShelf(_homeShelves[index]))) ...[
                   _isCommunityShelf(_homeShelves[index])
                       ? _communityHomeShelf(_homeShelves[index])
                       : _isListLayoutShelf(_homeShelves[index]) &&
@@ -2130,7 +2017,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                                   _homeShelves[index].items.every((item) => item.isPlayableTrack))
                           ? _trackPager(_homeShelves[index])
                           : _homeShelf(_homeShelves[index]),
-                  if (index == 0) _moodHomeShelf(),
                   ],
                 ],
               ] else ...[
@@ -2148,7 +2034,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 ),
                 _listeningPicksShelf(),
                 _recentlyPlayedShelf(),
-                _moodHomeShelf(),
                 if (_tracks.isNotEmpty) ...[
                   SliverToBoxAdapter(
                     child: Padding(
