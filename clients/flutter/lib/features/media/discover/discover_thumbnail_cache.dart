@@ -33,13 +33,18 @@ abstract final class DiscoverThumbnailCache {
         '=w$size-h$size',
       );
 
+  /// Returns an in-memory hit synchronously so a parent rebuild never swaps a
+  /// decoded thumbnail back to its loading placeholder for one frame.
+  static Uint8List? cached(String url) {
+    final bytes = _memory.remove(url);
+    if (bytes != null) _memory[url] = bytes;
+    return bytes;
+  }
+
   static Future<Uint8List?> load(String url) {
     if (url.isEmpty) return Future.value(null);
-    final cached = _memory.remove(url);
-    if (cached != null) {
-      _memory[url] = cached;
-      return Future.value(cached);
-    }
+    final cachedBytes = cached(url);
+    if (cachedBytes != null) return Future.value(cachedBytes);
     return _pending.putIfAbsent(url, () async {
       try {
         final directory = await getApplicationSupportDirectory();
@@ -86,6 +91,14 @@ abstract final class DiscoverThumbnailCache {
       }
     });
   }
+
+  Widget _image(Uint8List bytes) => Image.memory(
+        bytes,
+        cacheWidth: cacheWidth,
+        fit: fit,
+        gaplessPlayback: true,
+        errorBuilder: (_, __, ___) => errorFallback ?? fallback,
+      );
 }
 
 class DiscoverThumbnail extends StatelessWidget {
@@ -107,19 +120,15 @@ class DiscoverThumbnail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (url.isEmpty) return fallback;
+    final cachedBytes = DiscoverThumbnailCache.cached(url);
+    if (cachedBytes != null) return _image(cachedBytes);
     return FutureBuilder<Uint8List?>(
       future: DiscoverThumbnailCache.load(url),
       builder: (context, snapshot) {
         final bytes = snapshot.data;
         if (snapshot.connectionState != ConnectionState.done) return fallback;
         if (bytes == null || bytes.isEmpty) return errorFallback ?? fallback;
-        return Image.memory(
-          bytes,
-          cacheWidth: cacheWidth,
-          fit: fit,
-          gaplessPlayback: true,
-          errorBuilder: (_, __, ___) => errorFallback ?? fallback,
-        );
+        return _image(bytes);
       },
     );
   }
