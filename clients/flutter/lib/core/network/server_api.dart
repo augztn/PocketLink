@@ -276,11 +276,21 @@ class ServerApi {
     return future;
   }
   Future<DirectoryListing> authenticate({CancelToken? cancelToken}) =>
-      listDirectory('', cancelToken: cancelToken);
+      listDirectory(
+        '',
+        cancelToken: cancelToken,
+        connectTimeout: const Duration(seconds: 5),
+        receiveTimeout: const Duration(seconds: 5),
+        maxRetries: 1,
+      );
 
   Future<DirectoryListing> listDirectory(
-    String path, {CancelToken? cancelToken}
-  ) => _cachedGet(
+    String path, {
+    CancelToken? cancelToken,
+    Duration? connectTimeout,
+    Duration? receiveTimeout,
+    int? maxRetries,
+  }) => _cachedGet(
         'files:$path',
         _directoryCache,
         _directoryRequests,
@@ -289,6 +299,13 @@ class ServerApi {
             final response = await _dio.get<Map<String, dynamic>>(
               '/api/files/',
               queryParameters: {'path': path},
+              options: Options(
+                connectTimeout: connectTimeout,
+                receiveTimeout: receiveTimeout,
+                extra: {
+                  if (maxRetries != null) 'pocketlink.maxRetries': maxRetries,
+                },
+              ),
               cancelToken: cancelToken,
             );
             return DirectoryListing.fromJson(response.data ?? const {});
