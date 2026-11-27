@@ -1381,7 +1381,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     return SizedBox(
       width: width,
       child: AspectRatio(
-        aspectRatio: .75,
+        aspectRatio: 16 / 9,
         child: Material(
           color: const Color(0xFF1A1B20),
           borderRadius: BorderRadius.circular(12),
@@ -1395,9 +1395,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                   track,
                   size: double.infinity,
                   radius: 0,
-                  // Discover thumbnails are often 16:9 video frames; contain
-                  // them in the hero card instead of cropping embedded text.
-                  fit: BoxFit.contain,
+                  // Match the 16:9 source frame so embedded thumbnail
+                  // titles remain legible without letterboxing.
+                  fit: BoxFit.cover,
                 ),
                 const DecoratedBox(
                   decoration: BoxDecoration(
@@ -1524,7 +1524,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         _shelfHeading('Top Picks for You'),
         SizedBox(
-          height: cardWidth / .75,
+          height: cardWidth / (16 / 9),
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             scrollDirection: Axis.horizontal,
