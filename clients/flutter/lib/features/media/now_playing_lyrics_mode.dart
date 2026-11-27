@@ -125,6 +125,7 @@ class NowPlayingLyricsMode extends StatelessWidget {
                                 ],
                               ),
                             ),
+                            const SizedBox(width: 12),
                             actions,
                           ],
                         ),
@@ -142,7 +143,10 @@ class NowPlayingLyricsMode extends StatelessWidget {
                 child: Column(
                   children: [
                     Expanded(
-                      child: ClipRect(child: lyricsContent),
+                      child: ClipRect(
+                        key: const ValueKey('lyrics-mode-lyrics-viewport'),
+                        child: lyricsContent,
+                      ),
                     ),
                     Padding(
                         key: const ValueKey('lyrics-mode-attribution-footer'),
