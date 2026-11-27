@@ -68,7 +68,9 @@ class FloatingNavigationDock extends StatelessWidget {
           animation: progress,
           builder: (context, _) {
             final value = progress.value.clamp(0.0, 1.0).toDouble();
-            final dockT = (value / 0.45).clamp(0.0, 1.0).toDouble();
+            // Keep the dock in the same progress domain as the player
+            // morph so it travels continuously across the full transition.
+            final dockT = value;
             final dockTotalHeight = 82.0 + MediaQuery.paddingOf(context).bottom;
             return IgnorePointer(
               ignoring: value > 0.05,
