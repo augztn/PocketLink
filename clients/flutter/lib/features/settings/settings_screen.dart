@@ -425,9 +425,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       'appearance': 'appearance visual effects',
       'navigation': 'navigation bar dock',
       'dashboard': 'dashboard home',
-      'audio': 'audio music',
-      'discover': 'discover explore',
-      'video': 'video player',
+      'audio': 'audio music media',
+      'discover': 'discover explore media',
+      'video': 'video player media',
       'storage': 'storage downloads',
       'maintenance': 'maintenance backup restore diagnostics logs',
       'connectivity': 'connectivity connection network server',
@@ -1128,7 +1128,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ]),
                 if (widget.category == 'Storage')
-                  _section('Media Library & Storage', [
+                  _section('Storage & Downloads', [
                     FutureBuilder<String>(
                       future: DownloadManagerService.instance.defaultDirectory(),
                       builder: (context, snapshot) => ListTile(
