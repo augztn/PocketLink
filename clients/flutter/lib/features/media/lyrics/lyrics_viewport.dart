@@ -146,9 +146,6 @@ class _LyricsViewportState extends State<LyricsViewport> {
                   fontSize: active ? 29 : 27,
                   height: 1.22,
                   fontWeight: FontWeight.w700,
-                  shadows: active
-                      ? [Shadow(color: Colors.white.withValues(alpha: .18), blurRadius: 16)]
-                      : const [],
                 );
                 final lyricText = line.words.isEmpty
                     ? Text(line.text, textAlign: TextAlign.left, style: baseStyle)
@@ -276,8 +273,8 @@ class _LyricsFloatingButton extends StatelessWidget {
     child: BackdropFilter(
       filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
       child: Material(
-        color: Colors.white.withValues(alpha: selected ? .20 : .09),
-        shape: const CircleBorder(side: BorderSide(color: Colors.white24)),
+        color: Colors.white.withValues(alpha: 0.16),
+        shape: CircleBorder(side: BorderSide(color: Colors.white.withValues(alpha: 0.18))),
         child: IconButton(
           tooltip: tooltip,
           onPressed: onTap,
