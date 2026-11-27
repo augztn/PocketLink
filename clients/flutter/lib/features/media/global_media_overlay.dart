@@ -6,7 +6,6 @@ import 'package:flutter/physics.dart';
 import 'package:flutter/foundation.dart' show ValueListenable;
 
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter/scheduler.dart' show TickerCanceled;
 
 import '../../core/navigation/pocketlink_navigation.dart';
 import '../../core/network/server_api.dart';
@@ -16,8 +15,6 @@ import 'global_mini_player_bar.dart';
 import 'now_playing_screen.dart';
 import 'persistent_audio_player.dart';
 import 'now_playing_overlay_controller.dart';
-import 'now_playing_artwork_palette.dart';
-import 'track_artwork_view.dart';
 
 class GlobalMediaOverlay extends StatefulWidget {
   const GlobalMediaOverlay({required this.child, super.key});
