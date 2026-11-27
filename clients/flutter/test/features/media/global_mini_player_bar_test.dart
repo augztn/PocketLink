@@ -7,6 +7,7 @@ void main() {
   const item = MediaQueueItem(
     title: 'A long song title.mp3',
     path: '/music/song.mp3',
+    artist: 'Anirudh Ravichander',
   );
 
   Future<void> pumpMiniPlayer(
@@ -58,7 +59,8 @@ void main() {
     await pumpMiniPlayer(tester);
 
     expect(find.text('A long song title.mp3'), findsOneWidget);
-    expect(find.text('NOW PLAYING · SWIPE TO SKIP'), findsOneWidget);
+    expect(find.text('Anirudh Ravichander'), findsOneWidget);
+    expect(find.text('NOW PLAYING · SWIPE TO SKIP'), findsNothing);
     expect(find.byTooltip('Previous track'), findsOneWidget);
     expect(find.byTooltip('Pause'), findsOneWidget);
     expect(find.byTooltip('Next track'), findsOneWidget);
