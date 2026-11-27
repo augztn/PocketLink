@@ -116,7 +116,7 @@ class AppSettings extends ChangeNotifier {
   bool _showActiveTransfers = true;
   bool _showStorageOverview = true;
   List<String> _homeSectionOrder = List.of(homeSectionDefaults);
-  bool _useLiquidGlass = true;
+  bool _useLiquidGlass = false;
   bool _progressiveBlurEnabled = true;
   bool _loaded = false;
   List<String> _navigationOrder = List.of(navigationDefaults);
@@ -218,7 +218,7 @@ class AppSettings extends ChangeNotifier {
     _visibleNavigationItems = Set.of(navigationDefaults);
     try {
       final preferences = await SharedPreferences.getInstance();
-      _useLiquidGlass = preferences.getBool(_liquidGlassKey) ?? true;
+      _useLiquidGlass = preferences.getBool(_liquidGlassKey) ?? false;
       _progressiveBlurEnabled = preferences.getBool(_progressiveBlurKey) ?? true;
       _showMiniPlayer = preferences.getBool(_nowPlayingMiniPlayerKey) ?? true;
       _enableNowPlayingGestures = preferences.getBool(_nowPlayingGesturesKey) ?? true;

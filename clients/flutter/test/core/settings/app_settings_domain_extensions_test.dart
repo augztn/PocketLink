@@ -78,8 +78,9 @@ void main() {
     );
   });
 
-  test('Liquid Glass appearance preference persists', () async {
+  test('Liquid Glass defaults off and preference persists', () async {
     final settings = AppSettings.instance;
+    expect(settings.useLiquidGlass, isFalse);
 
     await settings.setUseLiquidGlass(true);
 

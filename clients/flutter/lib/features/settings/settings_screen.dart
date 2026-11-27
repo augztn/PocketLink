@@ -343,6 +343,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       'about' => _categoryRoute((_) => const AboutScreen()),
       _ => _categoryRoute(
           (_) => SettingsScreen(
+            api: widget.api,
             onOpenSavedServers: widget.onOpenSavedServers,
             category: switch (id) {
               'appearance' => 'Appearance',
@@ -367,51 +368,77 @@ class _SettingsScreenState extends State<SettingsScreen> {
         .toList(growable: false);
     const entries = <String, Map<String, String>>{
       'appearance': {
-        'Theme mode': 'theme color dark light system amoled oled black',
+        'Theme mode': 'theme light dark system brightness',
+        'AMOLED mode': 'amoled oled black deep black',
         'Liquid Glass UI': 'liquid glass frosted reflections surfaces',
         'Progressive Blur': 'progressive blur shader fade header',
+        'Live preview': 'preview sample appearance',
+        'Reset appearance': 'reset defaults restore theme',
       },
       'navigation': {
-        'Navigation bar': 'navigation dock tabs destinations visible hidden',
-        'Floating action button': 'fab floating action button',
+        'Navigation bar and dock': 'navigation dock tabs destinations visible hidden',
+        'Reorder destinations': 'reorder drag sort order position',
+        'Show or hide destinations': 'show hide visible tabs',
+        'Music button': 'browse music player shortcut button',
       },
       'dashboard': {
-        'Quick actions': 'quick actions shortcuts',
-        'Home sections': 'home dashboard continue recent transfers',
+        'Quick actions': 'quick actions shortcuts upload drives favorites',
+        'Continue browsing': 'continue library recently opened folders files tracks',
+        'Recent files': 'recent history files server',
         'Global search': 'global search',
-        'Section order': 'reorder layout order',
+        'Active transfers': 'upload download progress transfers',
         'Storage overview': 'storage host health mounted volumes media scan',
+        'Section order': 'reorder layout customize home order',
       },
       'audio': {
-        'Mini-player': 'mini player now playing',
-        'Music button gestures': 'music button swipe gestures shortcuts playback',
+        'Music button tap': 'tap open now playing',
+        'Swipe actions': 'swipe left right next previous track',
+        'Hold for shortcuts': 'long press hold destinations',
+        'Shortcut destinations': 'customize music shortcuts reorder',
+        'Scrubber style': 'seek progress bar waveform wavy classic apple',
+        'Now Playing theme': 'player appearance apple glass blur gradient aether',
+        'Mini-player': 'mini player compact player',
+        'Player gestures': 'now playing swipe down dismiss change tracks',
+        'Stats for nerds': 'codec bitrate sample rate audio details',
       },
       'discover': {
-        'Discover availability': 'discover explore enable disable',
-        'Lossless matching': 'lossless flac alac wav matching',
-        'Lyrics and artwork': 'lyrics artwork thumbnails',
-        'Playback quality': 'audio quality balanced data saver',
-        'Resolver and region': 'resolver profile region catalogue',
-        'Playlists': 'import export playlists spotify csv m3u',
+        'Enable Discover': 'discover explore enable disable availability',
+        'Local lossless matching': 'lossless flac alac wav matching',
+        'Lyrics': 'synced plain lyrics',
+        'Auto-queue': 'auto queue remaining results playback',
+        'Artwork': 'show thumbnails images artwork',
+        'Audio quality': 'best available balanced data saver bitrate',
+        'Resolver profile': 'automatic newpipe player api stream resolver',
+        'Playlist import and export': 'import export playlists spotify csv m3u',
+        'Content region': 'region catalogue country',
       },
       'video': {
-        'Playback controls': 'video controls seek speed fullscreen gestures',
-        'Display and subtitles': 'fit scaling subtitles font size orientation',
+        'Controls auto-hide': 'controls timeout hide never seconds',
+        'Double-tap seek': 'seek skip forward backward seconds',
+        'Default playback speed': 'speed rate',
+        'Player gestures': 'gesture horizontal swipe brightness volume',
+        'Pinch to zoom': 'pinch zoom pan enlarge',
+        'Tap to play or pause': 'tap toggle playback',
+        'Open videos in fullscreen': 'fullscreen automatically',
+        'Fullscreen orientation': 'landscape portrait rotate',
+        'Video scaling': 'fit contain cover crop stretch fill',
+        'Subtitle text size': 'subtitle font size captions',
+        'Subtitle background': 'subtitle captions background',
       },
       'storage': {
         'Download location': 'download directory folder location',
-        'Download concurrency': 'concurrent simultaneous downloads',
+        'Concurrent downloads': 'concurrency simultaneous downloads',
         'Wi-Fi only': 'wifi mobile data network',
         'Auto-resume': 'resume unfinished downloads launch',
-        'Cache': 'temporary files image cache clear',
+        'Clear cache': 'temporary files image cache clear',
       },
       'maintenance': {
         'Export settings': 'backup export json preferences',
         'Import settings': 'restore import json preferences',
-        'Diagnostic logs': 'diagnostics troubleshooting logs export',
+        'Diagnostic logs': 'diagnostics troubleshooting logs export share',
       },
       'connectivity': {
-        'Saved servers': 'server connections switch',
+        'Saved servers': 'server connections switch host profiles',
       },
       'about': {
         'Version information': 'version about pocketlink',
@@ -450,7 +477,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (dialogContext) => AlertDialog(
         title: const Text('Reset appearance settings?'),
         content: const Text(
-          'Restore System theme, disable AMOLED mode, and turn Liquid Glass and Progressive Blur on. Other settings will not change.',
+          'Restore System theme, disable AMOLED mode, turn Liquid Glass off, and restore Progressive Blur to its default. Other settings will not change.',
         ),
         actions: [
           TextButton(
@@ -466,7 +493,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
     if (confirmed != true || !mounted) return;
     await _settings.setThemeMode(ThemeMode.system);
-    await _settings.setUseLiquidGlass(true);
+    await _settings.setUseLiquidGlass(false);
     await _settings.setProgressiveBlurEnabled(true);
     if (mounted) _message('Appearance settings restored to defaults.');
   }

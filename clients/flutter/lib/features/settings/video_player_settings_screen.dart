@@ -25,6 +25,15 @@ class VideoPlayerSettingsScreen extends StatelessWidget {
         body: ListView(
           padding: settingsListPadding(context),
           children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 18),
+              child: Text(
+                'Set default video controls, gestures, display scaling, fullscreen behavior and subtitle appearance.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
             _group('Playback & controls', [
               _choice<double>(
                 icon: Icons.timer_outlined,

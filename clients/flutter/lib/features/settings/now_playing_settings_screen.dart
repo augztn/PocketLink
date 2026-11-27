@@ -27,6 +27,15 @@ class NowPlayingSettingsScreen extends StatelessWidget {
         body: ListView(
           padding: settingsListPadding(context),
           children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 18),
+              child: Text(
+                'Configure the Music button, Now Playing appearance, scrubber and mini-player behavior.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
             const SettingsSectionHeader('Music dock button'),
             SettingsGroupCard(children: [
               const ListTile(
