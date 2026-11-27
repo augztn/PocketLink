@@ -130,28 +130,6 @@ extension AppSettingsMedia on AppSettings {
     ]);
   }
 
-  Future<void> setNowPlayingScrubberStyle(String style) async {
-    if (!const {'apple', 'wavy', 'classic', 'waveform'}.contains(style)) {
-      throw ArgumentError.value(style, 'style');
-    }
-    if (_nowPlayingScrubberStyle == style) return;
-    _nowPlayingScrubberStyle = style;
-    _notifySettingsChanged();
-    final preferences = await SharedPreferences.getInstance();
-    await preferences.setString(AppSettings._nowPlayingScrubberStyleKey, style);
-  }
-
-  Future<void> setNowPlayingTheme(String theme) async {
-    if (!const {'apple', 'blur', 'blurCard', 'gradient', 'aether'}.contains(theme)) {
-      throw ArgumentError.value(theme, 'theme');
-    }
-    if (_nowPlayingTheme == theme) return;
-    _nowPlayingTheme = theme;
-    _notifySettingsChanged();
-    final preferences = await SharedPreferences.getInstance();
-    await preferences.setString(AppSettings._nowPlayingThemeKey, theme);
-  }
-
   Future<void> setDownloadOptions({
     int? concurrency,
     bool? wifiOnly,
@@ -176,16 +154,12 @@ extension AppSettingsMedia on AppSettings {
     _showMiniPlayer = true;
     _enableNowPlayingGestures = true;
     _showStatsForNerds = true;
-    _nowPlayingScrubberStyle = 'apple';
-    _nowPlayingTheme = 'apple';
     _notifySettingsChanged();
     final preferences = await SharedPreferences.getInstance();
     await Future.wait([
       preferences.remove(AppSettings._nowPlayingMiniPlayerKey),
       preferences.remove(AppSettings._nowPlayingGesturesKey),
       preferences.remove(AppSettings._nowPlayingStatsForNerdsKey),
-      preferences.remove(AppSettings._nowPlayingScrubberStyleKey),
-      preferences.remove(AppSettings._nowPlayingThemeKey),
     ]);
   }
 
