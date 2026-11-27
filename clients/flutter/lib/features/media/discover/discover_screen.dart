@@ -2047,7 +2047,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 _listeningPicksShelf(),
                 _recentlyPlayedShelf(),
                 for (var index = 0; index < _homeShelves.length; index++) ...[
-                  _isListLayoutShelf(_homeShelves[index]) && _homeShelves[index].tracks.isNotEmpty
+                  _isListLayoutShelf(_homeShelves[index]) &&
+                          _homeShelves[index].tracks.isNotEmpty &&
+                          (_homeShelves[index].items.isEmpty ||
+                              _homeShelves[index].items.every((item) => item.isPlayableTrack))
                       ? _trackPager(_homeShelves[index])
                       : _homeShelf(_homeShelves[index]),
                   if (index == 0) _moodHomeShelf(),
