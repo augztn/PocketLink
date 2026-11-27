@@ -11,7 +11,7 @@ import '../../core/settings/app_settings.dart';
 import '../../core/storage/home_activity_store.dart';
 
 class MediaQueueItem {
-  const MediaQueueItem({required this.title, required this.path, this.volume, this.localPath, this.size, this.streamUrl, this.httpHeaders = const {}, this.artist, this.artworkUrl, this.lyricsVideoId, this.durationText = '', this.streamCodec, this.streamResolver, this.streamBitrateBps});
+  const MediaQueueItem({required this.title, required this.path, this.volume, this.localPath, this.size, this.streamUrl, this.isDiscover = false, this.httpHeaders = const {}, this.artist, this.artworkUrl, this.lyricsVideoId, this.durationText = '', this.streamCodec, this.streamResolver, this.streamBitrateBps});
 
   final String title;
   final String path;
@@ -19,6 +19,7 @@ class MediaQueueItem {
   final String? localPath;
   final int? size;
   final String? streamUrl;
+  final bool isDiscover;
   final Map<String, String> httpHeaders;
   final String? artist;
   final String? artworkUrl;
@@ -51,6 +52,7 @@ class MediaQueueItem {
         localPath: update.localPath ?? localPath,
         size: update.size ?? size,
         streamUrl: update.streamUrl ?? streamUrl,
+        isDiscover: update.isDiscover || isDiscover,
         httpHeaders: update.httpHeaders.isEmpty ? httpHeaders : update.httpHeaders,
         artist: update.artist ?? artist,
         artworkUrl: (update.artworkUrl?.trim().isNotEmpty ?? false) ? update.artworkUrl : artworkUrl,
@@ -64,7 +66,7 @@ class MediaQueueItem {
   /// Describes the origin of the media, not the device or cache used to play it.
   String get sourceLabel {
     if (localPath != null) return 'Local';
-    if (streamUrl != null) return 'Discover';
+    if (isDiscover || streamUrl != null) return 'Discover';
     return 'PocketLink';
   }
 }
