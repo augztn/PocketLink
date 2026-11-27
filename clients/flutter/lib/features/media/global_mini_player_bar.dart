@@ -8,6 +8,7 @@ import '../../core/widgets/liquid_glass_pill.dart';
 import 'persistent_audio_player.dart';
 import 'now_playing_artwork_palette.dart';
 import 'track_artwork_view.dart';
+import 'media_metadata.dart';
 
 /// Compact, app-wide music controls shown above the navigation dock.
 class GlobalMiniPlayerBar extends StatelessWidget {
@@ -166,9 +167,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
                                   ),
                                   Text(
                                     isPlaying
-                                        ? (item.artist?.trim().isNotEmpty == true
-                                            ? item.artist!.trim()
-                                            : item.sourceLabel)
+                                        ? cleanMediaArtist(item.artist, fallback: item.sourceLabel)
                                         : 'PAUSED',
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
