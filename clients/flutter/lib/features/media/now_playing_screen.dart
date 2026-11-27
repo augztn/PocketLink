@@ -1668,8 +1668,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
       builder: (context, _) {
         final progress = animation?.value ?? 1.0;
         final contentOpacity = const Interval(
-          0.55,
-          1.0,
+          0.22,
+          0.62,
           curve: Curves.easeOutCubic,
         ).transform(progress);
         // The morph animation object remains attached for the route's entire
