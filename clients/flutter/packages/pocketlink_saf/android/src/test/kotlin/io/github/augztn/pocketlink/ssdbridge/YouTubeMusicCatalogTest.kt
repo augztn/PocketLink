@@ -281,7 +281,29 @@ class YouTubeMusicCatalogTest {
         )
 
         val items = catalog.parseHomeItems(json, 20)
+        val shelf = JSONObject()
+            .put(
+                "header",
+                JSONObject().put(
+                    "musicCarouselShelfBasicHeaderRenderer",
+                    JSONObject().put("title", JSONObject().put("simpleText", "From the community"))
+                )
+            )
+            .put("contents", json.getJSONArray("contents"))
+        val root = JSONObject().put(
+            "contents",
+            JSONObject().put("musicCarouselShelfRenderer", shelf)
+        )
+        val shelves = catalog.parseHomeShelves(root, 20)
 
+        assertEquals(1, shelves.size)
+        assertEquals("From the community", shelves.single()["title"])
+        @Suppress("UNCHECKED_CAST")
+        val shelfItems = shelves.single()["items"] as List<Map<String, Any>>
+        assertEquals(2, shelfItems.size)
+        @Suppress("UNCHECKED_CAST")
+        val shelfTracks = shelves.single()["tracks"] as List<Map<String, Any>>
+        assertTrue(shelfTracks.isEmpty())
         assertEquals(2, items.size)
         assertEquals("playlist", items[0]["type"])
         assertEquals("Sunday songs", items[0]["title"])
