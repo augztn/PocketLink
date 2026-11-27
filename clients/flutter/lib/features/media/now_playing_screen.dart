@@ -1253,6 +1253,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   Widget _lyricsMode(double progress) {
     return NowPlayingLyricsMode(
       progress: progress,
+      background: _ambientBackground(),
       artwork: _lyricsArtwork(progress),
       trackTitle: _fileName,
       artistLabel: cleanMediaArtist(_track.artist, fallback: _folderName),
