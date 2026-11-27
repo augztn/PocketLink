@@ -358,9 +358,8 @@ class ServerApi {
     }) async {
       try {
         final listing = candidate.volume == null
-            ? await listDirectory(candidate.path, background: true)
-            : await listStorageDirectory(
-                candidate.volume!, candidate.path, background: true);
+            ? await listDirectory(candidate.path)
+            : await listStorageDirectory(candidate.volume!, candidate.path);
         for (final item in listing.items) {
           if (item.name.startsWith('.')) continue;
           final path = candidate.path.isEmpty
