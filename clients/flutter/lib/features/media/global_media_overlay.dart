@@ -416,6 +416,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   }
 
   void _finishMiniPlayerDrag(double velocity) {
+    _isNowPlayingDragging.value = false;
     if (!_nowPlayingOpen) return;
     _openingNowPlaying = false;
     final extent = _morphTravelExtent(
@@ -448,10 +449,10 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   }
 
   void _endNowPlayingDrag(double velocity) {
-    if (!_nowPlayingOpen) return;
-    // Always leave the interactive-drag state before settling. Both a normal
-    // pointer-up and a recognizer cancellation converge on this path.
+    // Clear the gesture state even if another close path removed the route
+    // before the recognizer delivered its end/cancel callback.
     _isNowPlayingDragging.value = false;
+    if (!_nowPlayingOpen) return;
     final extent = _morphTravelExtent(
       fallback: math.max(1.0, MediaQuery.sizeOf(context).height),
     );
@@ -459,7 +460,6 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
       progress: _nowPlayingController.value,
       downwardVelocity: velocity,
     );
-    _isNowPlayingDragging.value = false;
     if (collapse) {
       unawaited(_closeNowPlaying(velocity: -velocity / extent));
     } else {
