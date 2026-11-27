@@ -706,16 +706,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     );
   }
 
-  void _showOptions() {
-    TrackOptionsSheet.show(
-      context,
-      isFavorite: _isFavorite,
-      isCached: _cached,
-      serverActionsEnabled: widget.api != null,
-      onAction: (action) => unawaited(_runOption(action)),
-    );
-  }
-
   void _showStatsForNerds() {
     const surfaceColor = Color(0xFF171717);
     final accentColor = Theme.of(context).colorScheme.primary;
@@ -861,6 +851,60 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     return '${value.toStringAsFixed(1)} ${units[unit]}';
   }
 
+  Widget _moreMenuButton({double contentOpacity = 1}) => SizedBox(
+        width: 40,
+        height: 40,
+        child: LiquidGlassPill(
+          radius: BorderRadius.circular(20),
+          intensity: contentOpacity,
+          child: SmokedGlassPopoverMenu<String>(
+            tooltip: 'More playback options',
+            items: [
+              const SmokedGlassPopoverMenuItem(value: 'queue', label: 'Queue', icon: Icons.queue_music_rounded),
+              const SmokedGlassPopoverMenuItem(value: 'shuffle', label: 'Shuffle', icon: Icons.shuffle_rounded),
+              const SmokedGlassPopoverMenuItem(value: 'repeat', label: 'Repeat', icon: Icons.repeat_rounded),
+              const SmokedGlassPopoverMenuItem(value: 'share', label: 'Share', icon: Icons.ios_share_rounded, dividerBefore: true),
+              const SmokedGlassPopoverMenuItem(value: 'play_next', label: 'Play next', icon: Icons.skip_next_rounded),
+              const SmokedGlassPopoverMenuItem(value: 'add_queue', label: 'Add to queue', icon: Icons.playlist_add_rounded),
+              if (widget.api != null)
+                const SmokedGlassPopoverMenuItem(value: 'show_folder', label: 'Show in folder', icon: Icons.folder_open_rounded),
+              const SmokedGlassPopoverMenuItem(value: 'file_info', label: 'File info', icon: Icons.info_outline_rounded),
+              const SmokedGlassPopoverMenuItem(value: 'sleep_timer', label: 'Sleep timer', icon: Icons.bedtime_outlined),
+              if (widget.api != null)
+                const SmokedGlassPopoverMenuItem(value: 'download', label: 'Download track', icon: Icons.download_rounded),
+              if (_cached)
+                const SmokedGlassPopoverMenuItem(value: 'remove_cache', label: 'Remove from cache', icon: Icons.delete_sweep_outlined, destructive: true),
+              if (AppSettings.instance.showStatsForNerds)
+                const SmokedGlassPopoverMenuItem(value: 'stats', label: 'Stats for nerds', icon: Icons.query_stats_rounded, dividerBefore: true),
+            ],
+            onSelected: (value) {
+              switch (value) {
+                case 'queue': _showQueue(); break;
+                case 'shuffle': unawaited(_toggleShuffle()); break;
+                case 'repeat': unawaited(_cycleRepeat()); break;
+                case 'share': unawaited(_runOption(TrackOptionAction.share)); break;
+                case 'play_next': unawaited(_runOption(TrackOptionAction.playNext)); break;
+                case 'add_queue': unawaited(_runOption(TrackOptionAction.addToQueue)); break;
+                case 'show_folder': unawaited(_runOption(TrackOptionAction.showInFolder)); break;
+                case 'file_info': _runOption(TrackOptionAction.fileInfo); break;
+                case 'sleep_timer': unawaited(_runOption(TrackOptionAction.sleepTimer)); break;
+                case 'download': unawaited(_runOption(TrackOptionAction.download)); break;
+                case 'remove_cache': unawaited(_runOption(TrackOptionAction.removeFromCache)); break;
+                case 'stats': _showStatsForNerds(); break;
+              }
+            },
+            child: Opacity(
+              opacity: contentOpacity,
+              child: const SizedBox(
+                width: 40,
+                height: 40,
+                child: Icon(Icons.more_horiz_rounded, color: Colors.white, size: 20),
+              ),
+            ),
+          ),
+        ),
+      );
+
   Widget _header({double contentOpacity = 1}) => SizedBox(
         height: 86,
         child: Padding(
@@ -942,37 +986,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                 ],
               ),
               const Spacer(),
-              SizedBox(
-                width: 40, height: 40,
-                child: LiquidGlassPill(
-                  radius: BorderRadius.circular(20),
-                  intensity: contentOpacity,
-                  child: SmokedGlassPopoverMenu<String>(
-                    tooltip: 'More playback options',
-                    items: [
-                      const SmokedGlassPopoverMenuItem(value: 'queue', label: 'Queue', icon: Icons.queue_music_rounded),
-                      const SmokedGlassPopoverMenuItem(value: 'shuffle', label: 'Shuffle', icon: Icons.shuffle_rounded),
-                      const SmokedGlassPopoverMenuItem(value: 'repeat', label: 'Repeat', icon: Icons.repeat_rounded),
-                      const SmokedGlassPopoverMenuItem(value: 'track_options', label: 'Track options', icon: Icons.more_horiz_rounded),
-                      if (AppSettings.instance.showStatsForNerds)
-                        const SmokedGlassPopoverMenuItem(value: 'stats', label: 'Stats for nerds', icon: Icons.query_stats_rounded),
-                      if (widget.api != null)
-                        const SmokedGlassPopoverMenuItem(value: 'download', label: 'Download track', icon: Icons.download_rounded),
-                    ],
-                    onSelected: (value) {
-                      switch (value) {
-                        case 'queue': _showQueue(); break;
-                        case 'shuffle': unawaited(_toggleShuffle()); break;
-                        case 'repeat': unawaited(_cycleRepeat()); break;
-                        case 'track_options': _showOptions(); break;
-                        case 'stats': _showStatsForNerds(); break;
-                        case 'download': unawaited(_downloadTrack()); break;
-                      }
-                    },
-                    child: const SizedBox(width: 40, height: 40, child: Icon(Icons.more_horiz_rounded, color: Colors.white, size: 20)),
-                  ),
-                ),
-              ),
+              _moreMenuButton(contentOpacity: contentOpacity),
             ],
           ),
         ),
@@ -1099,14 +1113,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
 
   Future<void> _showTrackLyrics() async {
     if (_lyricsController.value > 0.5) {
-      final key = _lyricsQueryKey;
-      if (key != null) _lyricsRepository.cancel(key);
-      setState(() {
-        _lyricsQueryKey = null;
-        _lyricsLoading = false;
-        _lyricsProviderStates = const {};
-        _activeLyrics = null;
-      });
+      // Keep the resolved document and provider state alive while the lyrics
+      // view animates out; clearing it here flashes the unavailable state.
       await _lyricsController.reverse();
       return;
     }
@@ -1227,12 +1235,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
             contentOpacity: progress,
           ),
           const SizedBox(width: 6),
-          _roundAction(
-            icon: Icons.more_horiz_rounded,
-            tooltip: 'Track options',
-            onTap: _showOptions,
-            contentOpacity: progress,
-          ),
+          _moreMenuButton(contentOpacity: progress),
         ],
       ),
       onClose: () => unawaited(_showTrackLyrics()),
@@ -1314,9 +1317,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
             foreground: _isFavorite ? const Color(0xFFFFD66B) : Colors.white,
             onTap: () => unawaited(_toggleFavorite()), contentOpacity: contentOpacity,
           ),
-          const SizedBox(width: 8),
-          _roundAction(icon: Icons.more_horiz_rounded, tooltip: 'Track options',
-            onTap: _showOptions, contentOpacity: contentOpacity),
         ],
       ),
     );
@@ -1545,9 +1545,15 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    Opacity(
-                      opacity: 1 - _lyricsController.value,
-                      child: GestureDetector(
+                    IgnorePointer(
+                      ignoring: _lyricsController.value >= 0.42,
+                      child: Opacity(
+                        opacity: 1 - const Interval(
+                          0.0,
+                          0.42,
+                          curve: Curves.easeInCubic,
+                        ).transform(_lyricsController.value),
+                        child: GestureDetector(
                   behavior: HitTestBehavior.translucent,
                   onVerticalDragStart: AppSettings.instance.enableNowPlayingGestures
                       ? (_) => widget.onDismissDragStart()
@@ -1583,15 +1589,26 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                   // are inset by SafeArea inside _playerLayout.
                   child: _playerLayout(contentOpacity, isMorphing: isMorphing),
                     ),
+                      ),
                     ),
                     Positioned.fill(
-                      child: NowPlayingScrollDismissDetector(
+                      child: IgnorePointer(
+                        ignoring: _lyricsController.value <= 0.58,
+                        child: Opacity(
+                          opacity: const Interval(
+                            0.58,
+                            1.0,
+                            curve: Curves.easeOutCubic,
+                          ).transform(_lyricsController.value),
+                          child: NowPlayingScrollDismissDetector(
                         enabled: AppSettings.instance.enableNowPlayingGestures,
                         onDismissDragStart: widget.onDismissDragStart,
                         onDismissDragUpdate: widget.onDismissDragUpdate,
                         onDismissDragEnd: widget.onDismissDragEnd,
                         scrollableKey: _lyricsViewportKey,
-                        child: _lyricsMode(Curves.easeOutCubic.transform(_lyricsController.value)),
+                            child: _lyricsMode(_lyricsController.value),
+                          ),
+                        ),
                       ),
                     ),
                   ],
