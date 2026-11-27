@@ -4,6 +4,13 @@ abstract final class PocketLinkRouteNames {
   static const dashboard = '/pocketlink-dashboard';
   static const nowPlaying = '/pocketlink-now-playing';
   static const standaloneDiscover = '/pocketlink-standalone-discover';
+  static const settings = '/pocketlink-settings';
+  static const diagnostics = '/pocketlink-diagnostics';
+  static const hostSetup = '/pocketlink-host-setup';
+  static const connection = '/pocketlink-connection';
+  static const discoverPlaylists = '/pocketlink-discover-playlists';
+
+  static String settingsCategory(String id) => '$settings/$id';
 }
 
 /// Tracks the root navigator stack so app-level UI can react to route changes.
