@@ -347,7 +347,9 @@ class ServerApi {
   Future<List<RecentFile>> listRecentFiles({
     int limit = 8,
     List<StorageVolume> volumes = const [],
+    CancelToken? cancelToken,
   }) async {
+    if (cancelToken?.isCancelled ?? false) return const [];
     const internalCandidates = [
       'DCIM', 'Pictures', 'Download', 'Documents', 'Music', 'Movies',
     ];
@@ -355,12 +357,18 @@ class ServerApi {
     try {
       // Authentication already warmed the internal root snapshot. Reuse it
       // to avoid probing folders that do not exist on this host.
-      final root = await listDirectory('', background: true);
+      final root = await listDirectory(
+        '',
+        background: true,
+        cancelToken: cancelToken,
+      );
+      if (cancelToken?.isCancelled ?? false) return const [];
       availableInternal = root.items
           .where((item) => item.isDirectory)
           .map((item) => item.name.toLowerCase())
           .toSet();
     } catch (_) {
+      if (cancelToken?.isCancelled ?? false) return const [];
       // If root metadata is temporarily unavailable, retain the bounded
       // common-folder fallback rather than suppressing all recent results.
     }
@@ -378,10 +386,21 @@ class ServerApi {
       ({String path, String? volume, String volumeName}) candidate, {
       bool collectChildren = false,
     }) async {
+      if (cancelToken?.isCancelled ?? false) return;
       try {
         final listing = candidate.volume == null
-            ? await listDirectory(candidate.path)
-            : await listStorageDirectory(candidate.volume!, candidate.path);
+            ? await listDirectory(
+                candidate.path,
+                background: true,
+                cancelToken: cancelToken,
+              )
+            : await listStorageDirectory(
+                candidate.volume!,
+                candidate.path,
+                background: true,
+                cancelToken: cancelToken,
+              );
+        if (cancelToken?.isCancelled ?? false) return;
         for (final item in listing.items) {
           if (item.name.startsWith('.')) continue;
           final path = candidate.path.isEmpty
@@ -410,26 +429,27 @@ class ServerApi {
     }
 
     // Keep the dashboard's optional recent-file scan off the core lane and
-    // limit active scans so startup cannot flood the transport queue.
+    // cap concurrent directory reads while allowing cancellation on navigation.
     Future<void> scanBatch(
       List<({String path, String? volume, String volumeName})> batch, {
       bool collectChildren = false,
     }) async {
       var next = 0;
       Future<void> worker() async {
-        while (next < batch.length) {
+        while (next < batch.length && !(cancelToken?.isCancelled ?? false)) {
           final candidate = batch[next++];
           await scan(candidate, collectChildren: collectChildren);
         }
       }
 
-      // The media lane intentionally has a single slot; one worker avoids
-      // accumulating waiters while the core lane remains fully available.
-      if (batch.isNotEmpty) await worker();
+      final workerCount = batch.length.clamp(0, 2);
+      await Future.wait(List.generate(workerCount, (_) => worker()));
     }
 
     await scanBatch(candidates, collectChildren: true);
-    await scanBatch(childDirectories);
+    if (!(cancelToken?.isCancelled ?? false)) {
+      await scanBatch(childDirectories);
+    }
 
     found.sort((a, b) => b.modifiedAt.compareTo(a.modifiedAt));
     return found.take(limit.clamp(1, 50).toInt()).toList(growable: false);
@@ -768,22 +788,30 @@ class ServerApi {
     String volume,
     String path, {
     bool background = false,
+    CancelToken? cancelToken,
   }) => _cachedGet(
         'storage:$volume:$path',
         _directoryCache,
         _directoryRequests,
-        () => _transport._sharedRead('storage:$volume:$path', () async {
-          final response = await _dio.get<Map<String, dynamic>>(
-            '/api/storage/$volume/',
-            queryParameters: {'path': path},
-            options: Options(
-              extra: {
-                if (background) 'pocketlink.priority': 'background',
-              },
-            ),
-          );
-          return DirectoryListing.fromJson(response.data ?? const {});
-        }),
+        () {
+          Future<DirectoryListing> load() async {
+            final response = await _dio.get<Map<String, dynamic>>(
+              '/api/storage/$volume/',
+              queryParameters: {'path': path},
+              options: Options(
+                extra: {
+                  if (background) 'pocketlink.priority': 'background',
+                },
+              ),
+              cancelToken: cancelToken,
+            );
+            return DirectoryListing.fromJson(response.data ?? const {});
+          }
+
+          return cancelToken == null
+              ? _transport._sharedRead('storage:$volume:$path', load)
+              : load();
+        },
       );
 
   Future<void> uploadStorageFile(
