@@ -1764,10 +1764,12 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
         final lyricsProgress = Curves.easeOutCubic.transform(_lyricsController.value);
         final isMorphing = widget.morphAnimation != null;
         return Scaffold(
-          // The morph overlay clips this scaffold to the animated
-          // player rect. Keep that clipped surface opaque so Discover cannot
-          // show through while the sheet is expanding or collapsing.
-          backgroundColor: const Color(0xFF0A0B0E),
+          // The morph sheet owns the opaque backdrop. Keep this route
+          // transparent while morphing so its shared artwork remains visible
+          // behind the foreground title, badges and controls.
+          backgroundColor: isMorphing
+              ? Colors.transparent
+              : const Color(0xFF0A0B0E),
           body: Stack(
             fit: StackFit.expand,
             children: [
