@@ -576,7 +576,7 @@ class ServerApi {
   Future<HostSystemTelemetry> systemTelemetry() async {
     final response = await _dio.get<Map<String, dynamic>>(
       '/api/system/telemetry',
-      options: Options(extra: {'pocketlink.priority': 'background'}),
+      options: Options(extra: {'pocketlink.priority': 'telemetry'}),
     );
     return HostSystemTelemetry.fromJson(response.data ?? const {});
   }
