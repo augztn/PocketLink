@@ -521,7 +521,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     ),
     if (_categoryMatches('appearance') || _categoryMatches('navigation'))
-      _settingsGroupTitle('Personalization'),
+      SettingsSectionHeader('Personalization'),
     if (_categoryMatches('appearance'))
       _categoryTile(
         id: 'appearance',
@@ -547,7 +547,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         badge: '${_settings.visibleNavigationItems.length} tabs',
       ),
     if (_categoryMatches('storage') || _categoryMatches('music'))
-      _settingsGroupTitle('Storage & Media'),
+      SettingsSectionHeader('Storage & Media'),
     if (_categoryMatches('storage'))
       _categoryTile(
         id: 'storage',
@@ -567,7 +567,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         badge: _settings.discoverEnabled ? 'Discover On' : 'Discover Off',
       ),
     if (_categoryMatches('network') || _categoryMatches('diagnostics') || _categoryMatches('about'))
-      _settingsGroupTitle('Network & System'),
+      SettingsSectionHeader('Network & System'),
     if (_categoryMatches('network'))
       _categoryTile(
         id: 'network',
