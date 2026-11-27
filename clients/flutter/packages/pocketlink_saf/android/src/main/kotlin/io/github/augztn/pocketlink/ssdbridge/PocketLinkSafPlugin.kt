@@ -73,7 +73,9 @@ class PocketLinkSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
                 context,
                 volumeReceiver,
                 IntentFilter("android.media.VOLUME_CHANGED_ACTION"),
-                ContextCompat.RECEIVER_NOT_EXPORTED
+                // Android's protected volume-change broadcast can originate from
+                // privileged system components that are not considered the app.
+                ContextCompat.RECEIVER_EXPORTED
             )
             volumeReceiverRegistered = true
         } catch (_: RuntimeException) {
