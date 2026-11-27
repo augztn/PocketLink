@@ -1043,11 +1043,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
         ),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Container(
-            width: 42,
-            height: 40,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
-              width: 36,
-              height: 36,
               color: selected ? Colors.white : Colors.transparent,
               borderRadius: BorderRadius.circular(10),
             ),
