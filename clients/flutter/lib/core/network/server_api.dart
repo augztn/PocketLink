@@ -46,7 +46,7 @@ class ServerApi {
   final Set<String> _failedMetadataKeys = {};
   static const _directoryCacheTtl = Duration(seconds: 20);
   static const _maxCachedDirectories = 512;
-  static const _indexedMediaCacheTtl = Duration(seconds: 45);
+  static const _indexedMediaCacheTtl = Duration(minutes: 2);
   final Map<String, _CacheEntry<IndexedMediaPage>> _indexedMediaCache = {};
   final Map<String, _CacheEntry<DirectoryListing>> _directoryCache = {};
   final Map<String, Future<DirectoryListing>> _directoryRequests = {};
