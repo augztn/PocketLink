@@ -160,7 +160,19 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
       );
 
   Widget _ambientBackground({bool lyricsMode = false}) {
-    final palette = _trackPalette;
+    // Keep the same deterministic fallback palette used by the morph sheet
+    // until the sheet reaches its final frame. Artwork extraction can finish
+    // during the 300–400ms transition; revealing it mid-morph caused a
+    // one-frame fallback-to-artwork color flash.
+    final isMorphing = widget.morphAnimation != null &&
+        widget.morphAnimation!.value < 0.999;
+    final palette = isMorphing
+        ? NowPlayingArtworkPalette.fallback(
+            title: _track.title,
+            folderName: _folderName,
+            path: _track.path,
+          )
+        : _trackPalette;
     final hasArtwork = _artwork != null && _artworkKey == _trackKey;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 650),
