@@ -1,10 +1,7 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 class NowPlayingLyricsMode extends StatelessWidget {
   const NowPlayingLyricsMode({
-    required this.theme,
     required this.progress,
     required this.artwork,
     required this.trackTitle,
@@ -18,7 +15,6 @@ class NowPlayingLyricsMode extends StatelessWidget {
     super.key,
   });
 
-  final String theme;
   final double progress;
   final Widget artwork;
   final String trackTitle;
@@ -41,19 +37,7 @@ class NowPlayingLyricsMode extends StatelessWidget {
             builder: (context, constraints) {
               final width = constraints.maxWidth;
               final height = constraints.maxHeight;
-              final artSize = theme == 'gradient'
-                  ? width
-                  : math.min(320.0, width - 44)
-                      .clamp(180.0, 320.0)
-                      .toDouble();
-              final startRect = theme == 'gradient'
-                  ? Rect.fromLTWH(0, 0, width, height * 0.55)
-                  : Rect.fromLTWH(
-                      (width - artSize) / 2,
-                      height * 0.10,
-                      artSize,
-                      artSize,
-                    );
+              final startRect = Rect.fromLTWH(0, 0, width, height * 0.46);
               const compactArtRect = Rect.fromLTWH(12, 3, 48, 48);
               final artRect = Rect.lerp(startRect, compactArtRect, progress)!;
               return Stack(
