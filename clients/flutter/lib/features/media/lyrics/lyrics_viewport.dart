@@ -207,15 +207,12 @@ class _LyricsViewportState extends State<LyricsViewport> {
           ),
         ),
         Positioned(
-          left: 0,
-          right: 0,
+          right: 18,
           bottom: 12,
-          child: Center(
-            child: _LyricsControlPill(
-              translationEnabled: widget.translationEnabled,
-              onChooseProvider: widget.onChooseProvider,
-              onToggleTranslation: widget.onToggleTranslation,
-            ),
+          child: _LyricsControlPill(
+            translationEnabled: widget.translationEnabled,
+            onChooseProvider: widget.onChooseProvider,
+            onToggleTranslation: widget.onToggleTranslation,
           ),
         ),
       ],
@@ -272,8 +269,8 @@ class _LyricsControlPill extends StatelessWidget {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
           child: Container(
-            height: 48,
-            padding: const EdgeInsets.all(4),
+            height: 38,
+            padding: const EdgeInsets.all(3),
             decoration: BoxDecoration(
               color: const Color(0xFF24252A).withValues(alpha: .72),
               borderRadius: BorderRadius.circular(99),
@@ -296,8 +293,8 @@ class _LyricsControlPill extends StatelessWidget {
                 ),
                 Container(
                   width: 1,
-                  height: 22,
-                  margin: const EdgeInsets.symmetric(horizontal: 2),
+                  height: 18,
+                  margin: const EdgeInsets.symmetric(horizontal: 1),
                   color: Colors.white.withValues(alpha: .18),
                 ),
                 _LyricsPillAction(
@@ -340,12 +337,12 @@ class _LyricsPillAction extends StatelessWidget {
             onTap: onTap,
             customBorder: const StadiumBorder(),
             child: SizedBox(
-              width: 40,
-              height: 40,
+              width: 32,
+              height: 32,
               child: Icon(
                 icon,
                 color: Colors.white,
-                size: 19,
+                size: 16,
               ),
             ),
           ),
