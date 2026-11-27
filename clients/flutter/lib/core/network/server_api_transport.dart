@@ -47,7 +47,7 @@ class _ServerApiTransport {
   })  : _dio = Dio(
           BaseOptions(
             baseUrl: _normalizeBaseUrl(baseUrl),
-            connectTimeout: const Duration(seconds: 10),
+            connectTimeout: const Duration(seconds: 5),
             receiveTimeout: const Duration(seconds: 30),
             sendTimeout: const Duration(seconds: 30),
             headers: {
@@ -142,8 +142,9 @@ class _ServerApiTransport {
         final transientNetwork = error.type == DioExceptionType.connectionError ||
             error.type == DioExceptionType.connectionTimeout ||
             error.type == DioExceptionType.receiveTimeout;
+        final maxRetries = options.extra['pocketlink.maxRetries'] as int? ?? 3;
         if (options.method.toUpperCase() == 'GET' &&
-            attempts < 3 && !cancelled && (transientNetwork || transientStatus)) {
+            attempts < maxRetries && !cancelled && (transientNetwork || transientStatus)) {
           options.extra['pocketlink.retryCount'] = attempts + 1;
           // A network handoff can leave an idle pooled socket bound to the old
           // Wi-Fi/mobile route. Force the retry onto a fresh TCP connection.
