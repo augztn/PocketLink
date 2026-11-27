@@ -1559,6 +1559,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
       children: [
         Positioned.fill(child: _ambientBackground()),
         Positioned.fill(
+          child: AnimatedBuilder(
+            animation: widget.morphAnimation ??
+                const AlwaysStoppedAnimation<double>(1),
             child: ShaderMask(
               blendMode: BlendMode.dstIn,
               shaderCallback: (bounds) => const LinearGradient(
@@ -1584,7 +1587,17 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                 fit: BoxFit.cover,
               ),
             ),
+            builder: (context, artwork) {
+              final progress = widget.morphAnimation?.value ?? 1.0;
+              final opacity = widget.useSharedArtwork
+                  ? ((progress - 0.75) / 0.25)
+                      .clamp(0.0, 1.0)
+                      .toDouble()
+                  : 1.0;
+              return Opacity(opacity: opacity, child: artwork);
+            },
           ),
+        ),
         Positioned(
             top: 0,
             left: 0,
