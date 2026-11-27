@@ -4,6 +4,53 @@ import 'package:material_ui/material_ui.dart';
 import 'package:pocketlink_client/core/navigation/pocketlink_navigation.dart';
 
 void main() {
+  testWidgets('resolves mini-player and dock anchors in overlay coordinates',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Stack(
+            key: PocketLinkNavigation.mediaOverlayKey,
+            children: [
+              const Positioned(
+                left: 12,
+                top: 34,
+                child: SizedBox(
+                  key: ValueKey('mini-anchor-test'),
+                  width: 300,
+                  height: 60,
+                ),
+              ),
+              Positioned(
+                right: 10,
+                bottom: 20,
+                child: SizedBox(
+                  key: PocketLinkNavigation.nowPlayingDockButtonKey,
+                  width: 64,
+                  height: 64,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final miniRect = PocketLinkNavigation.resolveMediaRect(
+      GlobalKey(),
+    );
+    expect(miniRect, isNull);
+    final dockRect = PocketLinkNavigation.resolveMediaRect(
+      PocketLinkNavigation.nowPlayingDockButtonKey,
+    );
+    expect(dockRect, isNotNull);
+    expect(dockRect!.width, 64);
+    expect(dockRect.height, 64);
+    expect(dockRect.right, closeTo(tester.view.physicalSize.width /
+        tester.view.devicePixelRatio - 10, 0.5));
+  });
+
   test('identifies only the welcome-screen standalone Discover route', () {
     final observer = PocketLinkNavigationObserver();
     final discoverRoute = MaterialPageRoute<void>(
