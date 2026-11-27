@@ -120,10 +120,22 @@ void main() {
     expect(result, isNull);
   });
 
-  test('lyrics search cleanup removes packaging noise and credits', () {
+  test('lyrics search cleanup removes catalogue numbering, tags, and view counts', () {
+    expect(
+      LyricsProvider.clean('14-Ya Nabi Salam Alayka (international version)'),
+      'Ya Nabi Salam Alayka',
+    );
     expect(
       LyricsProvider.clean('03 - Song Title (Official Audio) feat. Guest.flac'),
       'Song Title',
+    );
+    expect(
+      LyricsProvider.clean('Maher Zain • 5.2M views'),
+      'Maher Zain',
+    );
+    expect(
+      LyricsProvider.cleanArtist('Hamada Helal • 3.1M views'),
+      'Hamada Helal',
     );
   });
   test('track identity ignores mutable metadata and preserves known artwork', () {
