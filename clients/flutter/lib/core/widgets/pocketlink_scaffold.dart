@@ -131,7 +131,7 @@ class _PocketLinkScaffoldState extends State<PocketLinkScaffold> {
     final bottomClearance = media.padding.bottom +
         (widget.hasFloatingNavBar ? 82.0 : 12.0) +
         (widget.hasActiveMiniPlayer
-            ? 62.0 + 14.0
+            ? 62.0 + (widget.hasFloatingNavBar ? 14.0 : 12.0)
             : 0.0);
 
     return LayoutInsetsScope(
