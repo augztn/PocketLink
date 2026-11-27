@@ -67,6 +67,9 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   late final MediaBrowserStateStore _browserState;
   final ScrollController _contentScrollController = ScrollController();
   double _pendingScrollOffset = 0;
+  CancelToken? _indexRequestToken;
+  Timer? _videoRequestDebounceTimer;
+  bool _videoRequestsReady = true;
   bool _openingMedia = false;
   bool _musicMenuOpen = false;
   bool _searchExpanded = false;
@@ -132,10 +135,17 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     if (_routeIsCurrent == isCurrent) return;
     _routeIsCurrent = isCurrent;
     if (!isCurrent) {
+      _indexRequestToken?.cancel('Media library route became inactive');
+      _videoRequestDebounceTimer?.cancel();
+      _videoRequestsReady = false;
       _cancelAllVideoRequests();
     } else if (mounted) {
-      // Recreate requests for visible cards after returning to Videos.
-      setState(() {});
+      _videoRequestsReady = true;
+      if (_loading) {
+        unawaited(_scan());
+      } else {
+        setState(() {});
+      }
     }
   }
 
@@ -157,7 +167,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     _sortBy = widget.initialSortBy ?? saved.sortBy;
     _currentFolderPath = saved.folderPath;
     _pendingScrollOffset = saved.scrollOffset;
-    _contentScrollController.addListener(_saveScrollOffset);
+    _contentScrollController.addListener(_onContentScroll);
     if (_isMusic) {
       HomeActivityStore.instance.addListener(_onHomeActivityChanged);
       unawaited(HomeActivityStore.instance.load());
@@ -194,6 +204,23 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
 
   void _saveScrollOffset() => _saveState();
 
+  void _onContentScroll() {
+    _saveScrollOffset();
+    if (_isMusic || !_routeIsCurrent) return;
+    if (_videoRequestsReady) {
+      _videoRequestsReady = false;
+      _cancelAllVideoRequests();
+    }
+    _videoRequestDebounceTimer?.cancel();
+    _videoRequestDebounceTimer = Timer(
+      const Duration(milliseconds: 160),
+      () {
+        if (!mounted || !_routeIsCurrent) return;
+        setState(() => _videoRequestsReady = true);
+      },
+    );
+  }
+
   bool get _atFolderRoot => _currentFolderPath.isEmpty ||
       (_isMusic && _selectedVolume == 'internal' && _currentFolderPath == 'Music');
 
@@ -218,13 +245,16 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   bool _isMedia(FileEntry item, {String? mime}) =>
       MediaLibraryCatalog.isMedia(item, type: widget.type, mime: mime);
 
-  Future<MediaLibraryResult> _readIndexedMedia() =>
+  Future<MediaLibraryResult> _readIndexedMedia({
+    CancelToken? cancelToken,
+  }) =>
       MediaLibraryRepository(
         api: widget.api,
         type: widget.type,
       ).readIndexedMedia(
         query: _searchQuery,
-        shouldContinue: () => mounted,
+        cancelToken: cancelToken,
+        shouldContinue: () => mounted && _routeIsCurrent,
       );
 
   Future<void> _refreshMusic() async {
@@ -233,85 +263,93 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   }
 
   Future<void> _scan({bool refresh = false}) async {
-    if (!mounted) return;
-    if (refresh) {
-      widget.api.invalidateDirectoryCache();
-      try {
-        await widget.api.startMediaIndexScan();
-        if (!mounted) return;
-      } on DioException {
-        await _scanLegacy(refresh: refresh);
-        return;
-      }
-    }
-    if (!mounted) return;
-    _cancelAllVideoRequests();
-    widget.api.clearMediaCache();
-    _musicDurationRequests.clear();
-    setState(() {
-      _loading = true;
-      _error = null;
-      if (!refresh) _media = const [];
-      _scannedDirectories = 0;
-      _skippedDirectories = 0;
-      _scanLocation = '';
-    });
-
+    if (!mounted || !_routeIsCurrent) return;
+    _indexRequestToken?.cancel('Superseded media index request');
+    final requestToken = CancelToken();
+    _indexRequestToken = requestToken;
     try {
-      var result = await _readIndexedMedia();
-      var found = result.items;
-      var status = result.status;
-      if (mounted) {
-        setState(() {
-          _media = List.unmodifiable(found);
-          _scannedDirectories = status.scannedDirectories;
-          _skippedDirectories = status.skipped;
-          _scanLocation = _indexLocation(status);
-        });
-      }
-
-      // Keep the existing index visible while scanning. Poll only lightweight
-      // status; reload media once after the scan finishes.
-      final wasScanning = status.isScanning;
-      while (mounted && status.isScanning) {
-        await Future<void>.delayed(const Duration(seconds: 2));
-        if (!mounted) return;
-        status = await widget.api.mediaIndexStatus();
-        if (mounted) {
-          setState(() {
-            _scannedDirectories = status.scannedDirectories;
-            _skippedDirectories = status.skipped;
-            _scanLocation = status.isScanning ? _indexLocation(status) : '';
-          });
+      if (refresh) {
+        widget.api.invalidateDirectoryCache();
+        try {
+          await widget.api.startMediaIndexScan(cancelToken: requestToken);
+          if (!mounted || requestToken.isCancelled || !_routeIsCurrent) return;
+        } on DioException {
+          if (requestToken.isCancelled || !_routeIsCurrent) return;
+          await _scanLegacy(refresh: refresh);
+          return;
         }
       }
-      if (!mounted) return;
+      if (!mounted || requestToken.isCancelled || !_routeIsCurrent) return;
+      _cancelAllVideoRequests();
+      widget.api.clearMediaCache();
+      _musicDurationRequests.clear();
+      setState(() {
+        _loading = true;
+        _error = null;
+        if (!refresh) _media = const [];
+        _scannedDirectories = 0;
+        _skippedDirectories = 0;
+        _scanLocation = '';
+      });
+
+      var result = await _readIndexedMedia(cancelToken: requestToken);
+      if (!mounted || requestToken.isCancelled || !_routeIsCurrent) return;
+      var found = result.items;
+      var status = result.status;
+      setState(() {
+        _media = List.unmodifiable(found);
+        _scannedDirectories = status.scannedDirectories;
+        _skippedDirectories = status.skipped;
+        _scanLocation = _indexLocation(status);
+      });
+
+      final wasScanning = status.isScanning;
+      while (mounted && _routeIsCurrent && !requestToken.isCancelled &&
+          status.isScanning) {
+        await Future<void>.delayed(const Duration(seconds: 2));
+        if (!mounted || requestToken.isCancelled || !_routeIsCurrent) return;
+        status = await widget.api.mediaIndexStatus(cancelToken: requestToken);
+        if (!mounted || requestToken.isCancelled || !_routeIsCurrent) return;
+        setState(() {
+          _scannedDirectories = status.scannedDirectories;
+          _skippedDirectories = status.skipped;
+          _scanLocation = status.isScanning ? _indexLocation(status) : '';
+        });
+      }
+      if (!mounted || requestToken.isCancelled || !_routeIsCurrent) return;
       if (wasScanning && status.state != 'failed') {
-        result = await _readIndexedMedia();
+        result = await _readIndexedMedia(cancelToken: requestToken);
+        if (!mounted || requestToken.isCancelled || !_routeIsCurrent) return;
         found = result.items;
         status = result.status;
       }
 
-      if ((status.state == 'failed' || status.state == 'partial') && found.isEmpty) {
+      if ((status.state == 'failed' || status.state == 'partial') &&
+          found.isEmpty) {
         await _scanLegacy();
-        return;      }
-      if (mounted) {
-        setState(() {
-          _media = List.unmodifiable(found);
-          _scannedDirectories = status.scannedDirectories;
-          _skippedDirectories = status.skipped;
-          _scanLocation = '';
-          _loading = false;
-          _error = status.state == 'partial' && found.isEmpty
-              ? status.lastError
-              : null;
-        });
-        WidgetsBinding.instance.addPostFrameCallback((_) => _restoreScrollOffset());
+        return;
       }
+      setState(() {
+        _media = List.unmodifiable(found);
+        _scannedDirectories = status.scannedDirectories;
+        _skippedDirectories = status.skipped;
+        _scanLocation = '';
+        _loading = false;
+        _error = status.state == 'partial' && found.isEmpty
+            ? status.lastError
+            : null;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) => _restoreScrollOffset());
     } on DioException {
+      if (requestToken.isCancelled || !_routeIsCurrent) return;
       await _scanLegacy(refresh: refresh);
     } catch (_) {
+      if (requestToken.isCancelled || !_routeIsCurrent) return;
       await _scanLegacy(refresh: refresh);
+    } finally {
+      if (identical(_indexRequestToken, requestToken)) {
+        _indexRequestToken = null;
+      }
     }
   }
 
@@ -549,7 +587,7 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   }
 
   Widget _buildVideoArtwork(MediaFileItem media, {required BoxFit fit}) {
-    if (!_routeIsCurrent) {
+    if (!_routeIsCurrent || !_videoRequestsReady) {
       return VideoArtwork(future: Future<Uint8List?>.value(null), fit: fit);
     }
     final key = _favoriteKey(media);
@@ -565,7 +603,9 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   }
 
   Future<VideoMetadata?> _videoMetadataFor(MediaFileItem media) {
-    if (!_routeIsCurrent) return Future<VideoMetadata?>.value(null);
+    if (!_routeIsCurrent || !_videoRequestsReady) {
+      return Future<VideoMetadata?>.value(null);
+    }
     final key = _favoriteKey(media);
     if (_videoMetadataTokens[key]?.isCancelled ?? false) {
       _videoMetadataCache.remove(key);
@@ -830,9 +870,11 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     widget.onBackHandlerChanged?.call(null);
     if (_isMusic) HomeActivityStore.instance.removeListener(_onHomeActivityChanged);
     _saveState();
+    _indexRequestToken?.cancel('Media library disposed');
+    _videoRequestDebounceTimer?.cancel();
     _cancelAllVideoRequests();
     _searchController.dispose();
-    _contentScrollController.removeListener(_saveScrollOffset);
+    _contentScrollController.removeListener(_onContentScroll);
     _contentScrollController.dispose();
     super.dispose();
   }
