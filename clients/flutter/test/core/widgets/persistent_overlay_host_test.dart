@@ -12,6 +12,8 @@ void main() {
         );
 
     await tester.pumpWidget(PersistentOverlayHost(child: portal('first')));
+    controller.show();
+    await tester.pump();
     expect(find.text('first'), findsOneWidget);
     expect(find.text('overlay child'), findsOneWidget);
 
