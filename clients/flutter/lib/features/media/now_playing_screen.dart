@@ -1544,9 +1544,18 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     final animation = widget.morphAnimation;
     final listenables = <Listenable>[AppSettings.instance, _lyricsController];
     if (animation != null) listenables.add(animation);
-    return AnimatedBuilder(
-      animation: Listenable.merge(listenables),
-      builder: (context, _) {
+    return PopScope(
+      // Back first exits the lyrics layer. Only pop the Now Playing route
+      // after the lyrics transition has fully closed.
+      canPop: _lyricsController.value <= 0.001,
+      onPopInvoked: (didPop) {
+        if (!didPop && _lyricsController.value > 0.001) {
+          unawaited(_lyricsController.reverse());
+        }
+      },
+      child: AnimatedBuilder(
+        animation: Listenable.merge(listenables),
+        builder: (context, _) {
         final progress = animation?.value ?? 1.0;
         final contentOpacity = const Interval(
           0.55,
@@ -1661,7 +1670,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
           ),
           ),
         );
-      },
+        },
+      ),
     );
   }
 
