@@ -1814,10 +1814,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                         }
                       : null,
                   child: SafeArea(
-                    child: Transform.translate(
-                      offset: Offset(0, 12 * (1 - contentOpacity)),
-                      child: _themeLayout(theme, contentOpacity),
-                    ),
+                    // Keep the artwork target's global rect stable while
+                    // the parent morph overlay interpolates toward it. A
+                    // second translation here makes the artwork drift during
+                    // both expansion and collapse.
+                    child: _themeLayout(theme, contentOpacity),
                   ),
                     ),
                     ),
