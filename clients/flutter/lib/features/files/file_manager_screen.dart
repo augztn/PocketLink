@@ -77,6 +77,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   String _sortBy = 'name';
   double _pendingScrollOffset = 0;
   Timer? _scrollOffsetSaveTimer;
+  bool _initialLoadStarted = false;
   int _loadGeneration = 0;
   List<StorageVolume> _volumes = const [];
   String? _selectedVolume;
@@ -139,6 +140,9 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     if (oldWidget.initialVolume != widget.initialVolume && widget.initialVolume != null) {
       _selectPartition(widget.initialVolume);
     }
+    if (!oldWidget.isActive && widget.isActive) {
+      _startInitialLoad();
+    }
     if (oldWidget.isActive != widget.isActive ||
         oldWidget.onBackHandlerChanged != widget.onBackHandlerChanged) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -172,12 +176,27 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     _pendingScrollOffset = saved.scrollOffset;
     _selectedVolume = widget.locationRequest > 0 ? widget.requestedVolume : widget.initialVolume ?? saved.selectedVolume;
     _scrollController.addListener(_saveScrollOffset);
-    _loadVolumesAndDirectory(selectFirstExternal: widget.locationRequest == 0 && widget.externalDriveRequest > 0);
+    // Embedded Files lives in an IndexedStack. Do not start volume and folder
+    // requests until the user actually opens that tab. Standalone routes still
+    // load immediately, as do explicit deep-link requests.
+    if (widget.isActive || widget.onBackAtRoot == null ||
+        widget.locationRequest > 0 || widget.externalDriveRequest > 0) {
+      _startInitialLoad();
+    }
     if (widget.uploadRequest > 0) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _uploadFile();
       });
     }
+  }
+
+  void _startInitialLoad() {
+    if (_initialLoadStarted) return;
+    _initialLoadStarted = true;
+    unawaited(_loadVolumesAndDirectory(
+      selectFirstExternal: widget.locationRequest == 0 &&
+          widget.externalDriveRequest > 0,
+    ));
   }
 
   void _restoreScrollOffset() {
