@@ -98,8 +98,6 @@ void main() {
 
     await settings.setDownloadOptions(concurrency: 3, wifiOnly: true, autoResume: false);
     await settings.setNowPlayingOptions(miniPlayer: false, gestures: false, statsForNerds: false);
-    await settings.setNowPlayingScrubberStyle('waveform');
-    await settings.setNowPlayingTheme('aether');
     await settings.setVideoPlayerOptions(
       controlsTimeoutSeconds: 5,
       seekSeconds: 15,
@@ -121,8 +119,6 @@ void main() {
     expect(settings.showMiniPlayer, isFalse);
     expect(settings.enableNowPlayingGestures, isFalse);
     expect(settings.showStatsForNerds, isFalse);
-    expect(settings.nowPlayingScrubberStyle, 'waveform');
-    expect(settings.nowPlayingTheme, 'aether');
     expect(settings.videoControlsTimeoutSeconds, 5);
     expect(settings.videoSeekSeconds, 15);
     expect(settings.videoDefaultSpeed, 1.5);
@@ -135,23 +131,19 @@ void main() {
     expect(settings.videoAutoFullscreen, isTrue);
     expect(settings.videoFullscreenOrientation, 'portrait');
     expect(preferences.getInt('settings_download_concurrency'), 3);
-    expect(preferences.getString('settings_now_playing_theme'), 'aether');
     expect(preferences.getString('settings_video_fit_mode'), 'cover');
 
     await expectLater(settings.setDownloadOptions(concurrency: 4), throwsArgumentError);
-    await expectLater(settings.setNowPlayingTheme('unsupported'), throwsArgumentError);
 
     await settings.resetNowPlayingOptions();
     await settings.resetVideoPlayerOptions();
     expect(settings.showMiniPlayer, isTrue);
     expect(settings.enableNowPlayingGestures, isTrue);
     expect(settings.showStatsForNerds, isTrue);
-    expect(settings.nowPlayingTheme, 'apple');
     expect(settings.videoSeekSeconds, 10);
     expect(settings.videoDefaultSpeed, 1);
     expect(settings.videoFitMode, 'contain');
     expect(settings.videoFullscreenOrientation, 'landscape');
-    expect(preferences.getString('settings_now_playing_theme'), isNull);
     expect(preferences.getInt('settings_video_seek_seconds'), isNull);
   });
 }
