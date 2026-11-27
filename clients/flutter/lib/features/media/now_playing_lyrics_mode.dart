@@ -167,7 +167,6 @@ class NowPlayingLyricsMode extends StatelessWidget {
               );
             },
           ),
-        ),
     );
   }
 }
