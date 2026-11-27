@@ -476,7 +476,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       'Maintenance': 'Back up settings, restore preferences and export diagnostic logs.',
       'Dashboard & Shortcuts': 'Choose which Home sections appear and arrange their order.',
       'Discover': 'Configure music discovery, matching, playback preferences and playlists.',
-      'Storage': 'Manage download location, transfer behavior and temporary cache.',
     };
     final description = descriptions[category];
     if (description == null) return const SizedBox.shrink();
