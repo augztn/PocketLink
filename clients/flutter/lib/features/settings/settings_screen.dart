@@ -467,10 +467,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _categoryIntro(String category) {
     final descriptions = <String, String>{
-      'Appearance': 'Theme, OLED black mode, blur, colors and visual effects.',
+      'Appearance': 'Theme, AMOLED black mode, blur, colors and visual effects.',
       'Navigation': 'Dock, destinations, dashboard sections and floating shortcuts.',
       'Music': 'Music library, playback, Discover, lyrics and video preferences.',
-      'Storage': 'Download location, transfer behavior and temporary cache.',
+      'Storage': 'Download location, download behavior and temporary cache.',
       'Network': 'Manage saved PocketLink servers and connection switching.',
       'Diagnostics': 'Back up settings, restore preferences and export diagnostic logs.',
       'Dashboard & Shortcuts': 'Choose which Home sections appear and arrange their order.',
@@ -553,7 +553,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         icon: Icons.storage_rounded,
         tint: const Color(0xFFFBBF24),
         title: 'Storage',
-        subtitle: 'Volumes, downloads, transfers and cache',
+        subtitle: 'Downloads, transfer behavior and cache',
         badge: '${_settings.downloadConcurrency} concurrent',
       ),
     if (_categoryMatches('music'))
