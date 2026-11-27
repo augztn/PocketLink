@@ -207,6 +207,7 @@ class _NowPlayingScrubberState extends State<NowPlayingScrubber>
             ),
           ),
         ),
+        const SizedBox(height: 6),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4),
           child: Row(
