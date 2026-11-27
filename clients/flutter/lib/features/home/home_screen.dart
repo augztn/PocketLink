@@ -450,6 +450,10 @@ class _HomeScreenState extends State<HomeScreen> {
       HomeDashboard(
         api: widget.api,
         serverName: widget.serverName,
+        isActive: _selectedIndex == 0 &&
+            !_libraryOpen &&
+            !_hostSetupOpen &&
+            !PocketLinkNavigation.drawerOpen.value,
         onOpenExplore: _openExplore,
         onOpenLibrary: _openLibrary,
         onOpenFiles: () => _openTab(2),
