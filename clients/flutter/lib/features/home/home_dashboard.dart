@@ -75,6 +75,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
   String? _volumeError;
   String? _recentFilesError;
   int _refreshGeneration = 0;
+  CancelToken? _recentFilesToken;
   Timer? _telemetryTimer;
   Future<void>? _telemetryRequest;
   DateTime? _lastTelemetryRequestAt;
@@ -97,6 +98,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
 
   @override
   void dispose() {
+    _recentFilesToken?.cancel('Dashboard disposed');
     _telemetryTimer?.cancel();
     _observedNowPlayingProgress?.removeListener(_onNowPlayingProgressChanged);
     AppSettings.instance.removeListener(_homeSettingsChanged);
@@ -112,8 +114,13 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
   void didUpdateWidget(covariant HomeDashboard oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.isActive != widget.isActive) {
-      if (widget.isActive && _serverOnline == null) {
+      if (!widget.isActive) {
+        _recentFilesToken?.cancel('Dashboard became inactive');
+        _recentFilesToken = null;
+      } else if (_serverOnline == null) {
         unawaited(_refreshStatus());
+      } else {
+        unawaited(_refreshVolumesAndRecentFiles(_refreshGeneration));
       }
       _startTelemetryPolling(refreshIfDue: true);
     }
@@ -934,30 +941,53 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
   }
 
   Future<void> _refreshVolumesAndRecentFiles(int generation) async {
+    if (!mounted || !widget.isActive) return;
     List<StorageVolume> volumes;
     try {
       volumes = await widget.api.listStorageVolumes();
-      if (!mounted || generation != _refreshGeneration) return;
+      if (!mounted || generation != _refreshGeneration || !widget.isActive) {
+        return;
+      }
       setState(() {
         _volumes = volumes;
         _volumeError = null;
       });
     } catch (_) {
-      if (!mounted || generation != _refreshGeneration) return;
+      if (!mounted || generation != _refreshGeneration || !widget.isActive) {
+        return;
+      }
       setState(() => _volumeError = 'Could not load mounted storage from the host.');
       return;
     }
 
+    _recentFilesToken?.cancel('Superseded dashboard recent-file scan');
+    final requestToken = CancelToken();
+    _recentFilesToken = requestToken;
     try {
-      final recentFiles = await widget.api.listRecentFiles(volumes: volumes);
-      if (!mounted || generation != _refreshGeneration) return;
+      final recentFiles = await widget.api.listRecentFiles(
+        volumes: volumes,
+        cancelToken: requestToken,
+      );
+      if (!mounted ||
+          generation != _refreshGeneration ||
+          !widget.isActive ||
+          requestToken.isCancelled) {
+        return;
+      }
       setState(() {
         _recentFiles = recentFiles;
         _recentFilesError = null;
       });
     } catch (_) {
-      if (mounted && generation == _refreshGeneration) {
+      if (mounted &&
+          generation == _refreshGeneration &&
+          widget.isActive &&
+          !requestToken.isCancelled) {
         setState(() => _recentFilesError = 'Could not load recent files from the host.');
+      }
+    } finally {
+      if (identical(_recentFilesToken, requestToken)) {
+        _recentFilesToken = null;
       }
     }
   }
