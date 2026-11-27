@@ -61,11 +61,20 @@ class _ServerApiTransport {
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
         final queueStopwatch = Stopwatch()..start();
-        final background = options.extra['pocketlink.priority'] == 'background';
-        final gate = background ? _mediaRequestGate : _requestGate;
+        final priority = options.extra['pocketlink.priority'];
+        final lane = priority == 'telemetry'
+            ? 'telemetry'
+            : priority == 'background'
+                ? 'media'
+                : 'core';
+        final gate = lane == 'telemetry'
+            ? _telemetryRequestGate
+            : lane == 'media'
+                ? _mediaRequestGate
+                : _requestGate;
         try {
           await gate.acquire(options.cancelToken);
-          options.extra['pocketlink.requestGate'] = background ? 'media' : 'core';
+          options.extra['pocketlink.requestGate'] = lane;
           options.extra['pocketlink.requestSlot'] = true;
         } on DioException catch (error) {
           handler.reject(error);
@@ -87,7 +96,7 @@ class _ServerApiTransport {
           'queueWaitMs': options.extra['pocketlink.queueWaitMs'],
           'retry': options.extra['pocketlink.retryCount'] ?? 0,
           'concurrencyLimit': 4,
-          'requestLane': background ? 'media' : 'core',
+          'requestLane': lane,
         });
         handler.next(options);
       },
@@ -193,6 +202,7 @@ class _ServerApiTransport {
   static final _RequestGate _requestGate = _RequestGate(4);
   // Media metadata/thumbnail extraction is deliberately isolated from core API traffic.
   static final _RequestGate _mediaRequestGate = _RequestGate(1);
+  static final _RequestGate _telemetryRequestGate = _RequestGate(1);
   static final Map<String, Future<Object?>> _sharedReadRequests = {};
 
   Dio get client => _dio;
@@ -289,7 +299,10 @@ String _stableDiagnosticHash(String value) {
 void _releaseRequestSlot(RequestOptions options) {
     if (options.extra['pocketlink.requestSlot'] == true) {
       options.extra['pocketlink.requestSlot'] = false;
-      if (options.extra['pocketlink.requestGate'] == 'media') {
+      final lane = options.extra['pocketlink.requestGate'];
+      if (lane == 'telemetry') {
+        _telemetryRequestGate.release();
+      } else if (lane == 'media') {
         _mediaRequestGate.release();
       } else {
         _requestGate.release();
