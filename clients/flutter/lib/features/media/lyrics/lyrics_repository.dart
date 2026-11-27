@@ -403,7 +403,7 @@ class _LocalProvider extends _Provider {
     final side=(dot>path.lastIndexOf('/')?path.substring(0,dot):path)+'.lrc';
     String? raw;
     if(q.track.localPath!=null) { final f=File(side); if(await f.exists()) raw=await f.readAsString(); }
-    else if(q.api!=null && q.track.streamUrl==null) { try { final b=q.track.volume==null?await q.api!.downloadFile(side,cancelToken:_cancelToken):await q.api!.downloadStorageFile(q.track.volume!,side,cancelToken:_cancelToken); raw=utf8.decode(b,allowMalformed:true); } catch(_){} }
+    else if(q.api!=null && !q.track.isDiscover && q.track.streamUrl==null) { try { final b=q.track.volume==null?await q.api!.downloadFile(side,cancelToken:_cancelToken):await q.api!.downloadStorageFile(q.track.volume!,side,cancelToken:_cancelToken); raw=utf8.decode(b,allowMalformed:true); } catch(_){} }
     // Embedded tag lyrics are not exposed by the current media metadata API.
     return LyricsRepository.parseRawLyricsText(raw ?? '', providerId: id, providerName: name);
   }
