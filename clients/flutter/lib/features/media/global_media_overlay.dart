@@ -13,6 +13,7 @@ import '../../core/settings/app_settings.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
 import 'global_mini_player_bar.dart';
 import 'now_playing_screen.dart';
+import 'now_playing_artwork_palette.dart';
 import 'persistent_audio_player.dart';
 import 'now_playing_overlay_controller.dart';
 
@@ -36,7 +37,6 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   bool _closingNowPlaying = false;
   Rect? _nowPlayingOriginRect;
   double _nowPlayingOriginRadius = 20;
-  bool _nowPlayingUsesMiniAnchor = true;
   final ValueNotifier<Uint8List?> _sharedArtwork = ValueNotifier(null);
   late final AnimationController _nowPlayingController;
   MediaQueueItem? _lastTrack;
@@ -177,7 +177,6 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
             64,
             64,
           );
-    _nowPlayingUsesMiniAnchor = useMini;
     _nowPlayingOriginRect = measured ?? fallback;
     _nowPlayingOriginRadius =
         useMini ? 20 : _nowPlayingOriginRect!.shortestSide / 2;
@@ -492,7 +491,6 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
                         onDismiss: () => _closeNowPlaying(),
                         originRect: _nowPlayingOriginRect,
                         originRadius: _nowPlayingOriginRadius,
-                        usesMiniAnchor: _nowPlayingUsesMiniAnchor,
                         onDragStart: () {},
                         onDragUpdate: _updateNowPlayingDrag,
                         onDragEnd: _endNowPlayingDrag,
@@ -561,7 +559,6 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
     required this.onDismiss,
     required this.originRect,
     required this.originRadius,
-    required this.usesMiniAnchor,
     required this.onDragStart,
     required this.onDragUpdate,
     required this.onDragEnd,
@@ -575,7 +572,6 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
   final VoidCallback onDismiss;
   final Rect? originRect;
   final double originRadius;
-  final bool usesMiniAnchor;
   final VoidCallback onDragStart;
   final ValueChanged<double> onDragUpdate;
   final ValueChanged<double> onDragEnd;
@@ -617,7 +613,18 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
           final radius = originRadius * (1.0 - curvedT);
           final foregroundOpacity =
               ((t - 0.32) / 0.50).clamp(0.0, 1.0).toDouble();
-          final ambientColor = Theme.of(context).colorScheme.surface;
+          final track = player.currentItem;
+          final folderName = track == null || !track.path.contains('/')
+              ? 'Internal storage'
+              : track.path.substring(0, track.path.lastIndexOf('/')).split('/').last;
+          final palette = track == null
+              ? const <Color>[Color(0xFF252832), Color(0xFF17181B)]
+              : NowPlayingArtworkPalette.fallback(
+                  title: track.title,
+                  folderName: folderName,
+                  path: track.path,
+                );
+          final ambientColor = Color.lerp(palette[0], palette[1], 0.32)!;
           final surfaceColor = Color.lerp(
             const Color(0xFF17181B),
             ambientColor,
