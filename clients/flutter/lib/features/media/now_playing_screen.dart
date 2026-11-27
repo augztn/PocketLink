@@ -856,14 +856,14 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     return '${value.toStringAsFixed(1)} ${units[unit]}';
   }
 
-  Widget _frostedCircle({required Widget child, required BorderRadius radius}) => ClipRRect(
+  Widget _frostedCircle({required Widget child, required BorderRadius radius, double intensity = 1}) => ClipRRect(
         borderRadius: radius,
         child: BackdropFilter(
-          filter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          filter: ui.ImageFilter.blur(sigmaX: 16 * intensity, sigmaY: 16 * intensity),
           child: DecoratedBox(
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.16),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+              color: Colors.white.withValues(alpha: 0.16 * intensity),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.18 * intensity)),
               borderRadius: radius,
             ),
             child: child,
@@ -876,6 +876,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
         height: 40,
         child: _frostedCircle(
           radius: BorderRadius.circular(20),
+          intensity: contentOpacity,
           child: SmokedGlassPopoverMenu<String>(
             tooltip: 'More playback options',
             items: [
@@ -939,6 +940,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
       height: 40,
       child: _frostedCircle(
         radius: BorderRadius.circular(20),
+        intensity: contentOpacity,
         child: Opacity(
           opacity: contentOpacity,
           child: IconButton(
