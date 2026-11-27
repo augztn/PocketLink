@@ -388,7 +388,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     // Discover tracks are remote streams. If their remote thumbnail is
     // unavailable, keep the generated artwork fallback; never probe the
     // PocketLink server using a YouTube video ID as a filesystem path.
-    if (_track.streamUrl != null) {
+    if (_track.isDiscover || _track.streamUrl != null) {
       if (mounted && request == _artworkRequest) {
         setState(() {
           _artwork = null;
@@ -516,7 +516,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   }
 
   Future<Uint8List> _fileBytes() async {
-    if (_track.streamUrl != null) {
+    if (_track.isDiscover || _track.streamUrl != null) {
       throw StateError('Discover streams are not server files.');
     }
     if (_track.localPath != null) {
@@ -532,7 +532,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   }
 
   Future<void> _downloadTrack() async {
-    if (_track.streamUrl != null) {
+    if (_track.isDiscover || _track.streamUrl != null) {
       _message('Downloads are unavailable for Discover streams.');
       return;
     }
@@ -574,7 +574,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   }
 
   Future<int?> _resolveFileSize() async {
-    if (_track.streamUrl != null) return null;
+    if (_track.isDiscover || _track.streamUrl != null) return null;
     if (_track.size != null) return _track.size;
     if (_track.localPath != null) {
       try {
