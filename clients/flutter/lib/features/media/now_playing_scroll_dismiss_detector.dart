@@ -1,8 +1,8 @@
 import 'package:flutter/gestures.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// Adds a downward-dismiss fallback to scrollable Now Playing content without
-/// taking vertical gestures away from the scrollable itself.
+/// Mirrors a downward drag from the top of scrollable Now Playing content
+/// without competing with the scrollable's gesture recognizer.
 class NowPlayingScrollDismissDetector extends StatefulWidget {
   const NowPlayingScrollDismissDetector({
     required this.child,
@@ -28,17 +28,21 @@ class NowPlayingScrollDismissDetector extends StatefulWidget {
 
 class _NowPlayingScrollDismissDetectorState
     extends State<NowPlayingScrollDismissDetector> {
+  static const double _touchSlop = 8;
   static const double _dismissDistance = 140;
   static const double _minimumDismissVelocity = 650;
 
   double _scrollOffset = 0;
   double _scrollOffsetAtPointerDown = 0;
   Offset? _pointerStart;
+  Offset? _lastPointerPosition;
   VelocityTracker? _velocityTracker;
+  bool _dismissDragStarted = false;
 
   void _handlePointerDown(PointerDownEvent event) {
     if (!widget.enabled) return;
     _pointerStart = event.position;
+    _lastPointerPosition = event.position;
     _scrollOffsetAtPointerDown = _scrollOffset;
     final key = widget.scrollableKey;
     if (key != null) {
@@ -50,41 +54,84 @@ class _NowPlayingScrollDismissDetectorState
         _scrollOffsetAtPointerDown = 0;
       }
     }
+    _dismissDragStarted = false;
     _velocityTracker = VelocityTracker.withKind(event.kind)
       ..addPosition(event.timeStamp, event.position);
   }
 
   void _handlePointerMove(PointerMoveEvent event) {
-    if (widget.enabled) _velocityTracker?.addPosition(event.timeStamp, event.position);
+    if (!widget.enabled) return;
+    _velocityTracker?.addPosition(event.timeStamp, event.position);
+    _applyPointerPosition(event.position);
+  }
+
+  void _applyPointerPosition(Offset position) {
+    final start = _pointerStart;
+    final previous = _lastPointerPosition;
+    if (start == null || previous == null ||
+        _scrollOffsetAtPointerDown > 0.5) {
+      _lastPointerPosition = position;
+      return;
+    }
+
+    final total = position - start;
+    if (!_dismissDragStarted) {
+      if (total.distance < _touchSlop ||
+          total.dy <= 0 ||
+          total.dy <= total.dx.abs() * 1.15) {
+        return;
+      }
+      _dismissDragStarted = true;
+      widget.onDismissDragStart();
+      widget.onDismissDragUpdate(total.dy);
+    } else {
+      final delta = position.dy - previous.dy;
+      if (delta != 0) widget.onDismissDragUpdate(delta);
+    }
+    _lastPointerPosition = position;
   }
 
   void _handlePointerUp(PointerUpEvent event) {
     if (!widget.enabled) return;
-    final start = _pointerStart;
     final tracker = _velocityTracker;
-    _resetPointer();
-    if (start == null || tracker == null || _scrollOffsetAtPointerDown > 0.5) {
+    if (tracker == null) {
+      _resetPointer();
       return;
     }
-
     tracker.addPosition(event.timeStamp, event.position);
-    final delta = event.position - start;
+    _applyPointerPosition(event.position);
+    final start = _pointerStart;
+    final total = start == null ? Offset.zero : event.position - start;
     final velocity = tracker.getVelocity().pixelsPerSecond.dy;
-    final isDownwardSwipe = delta.dy > 0 && delta.dy > delta.dx.abs() * 1.15;
-    if (!isDownwardSwipe ||
-        (delta.dy < _dismissDistance &&
-            velocity < _minimumDismissVelocity)) {
-      return;
+
+    if (!_dismissDragStarted &&
+        _scrollOffsetAtPointerDown <= 0.5 &&
+        total.dy > 0 &&
+        total.dy > total.dx.abs() * 1.15 &&
+        (total.dy >= _dismissDistance ||
+            velocity >= _minimumDismissVelocity)) {
+      _dismissDragStarted = true;
+      widget.onDismissDragStart();
+      widget.onDismissDragUpdate(total.dy);
     }
 
-    widget.onDismissDragStart();
-    widget.onDismissDragUpdate(delta.dy);
-    widget.onDismissDragEnd(velocity);
+    final shouldEnd = _dismissDragStarted;
+    _resetPointer();
+    if (shouldEnd) widget.onDismissDragEnd(velocity);
+  }
+
+  void _handlePointerCancel(PointerCancelEvent event) {
+    final shouldEnd = _dismissDragStarted;
+    _resetPointer();
+    if (shouldEnd) widget.onDismissDragEnd(0);
   }
 
   void _resetPointer() {
     _pointerStart = null;
+    _lastPointerPosition = null;
     _velocityTracker = null;
+    _dismissDragStarted = false;
+    _scrollOffsetAtPointerDown = 0;
   }
 
   bool _handleScrollNotification(ScrollNotification notification) {
@@ -102,7 +149,7 @@ class _NowPlayingScrollDismissDetectorState
           onPointerDown: _handlePointerDown,
           onPointerMove: _handlePointerMove,
           onPointerUp: _handlePointerUp,
-          onPointerCancel: (_) => _resetPointer(),
+          onPointerCancel: _handlePointerCancel,
           child: widget.child,
         ),
       );

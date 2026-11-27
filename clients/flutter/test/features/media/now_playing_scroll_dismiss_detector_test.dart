@@ -5,12 +5,13 @@ import 'package:pocketlink_client/features/media/now_playing_scroll_dismiss_dete
 void main() {
   Widget buildSubject({
     required VoidCallback onDismiss,
+    ValueChanged<double>? onUpdate,
   }) {
     return MaterialApp(
       home: Scaffold(
         body: NowPlayingScrollDismissDetector(
           onDismissDragStart: () {},
-          onDismissDragUpdate: (_) {},
+          onDismissDragUpdate: onUpdate ?? (_) {},
           onDismissDragEnd: (_) => onDismiss(),
           child: SizedBox(
             height: 300,
@@ -31,6 +32,44 @@ void main() {
     await tester.pump();
 
     expect(dismissals, 1);
+  });
+
+  testWidgets('downward drag follows the finger before release', (tester) async {
+    final updates = <double>[];
+    var starts = 0;
+    var ends = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: NowPlayingScrollDismissDetector(
+            onDismissDragStart: () => starts++,
+            onDismissDragUpdate: updates.add,
+            onDismissDragEnd: (_) => ends++,
+            child: const SizedBox(
+              height: 300,
+              child: SingleChildScrollView(
+                child: SizedBox(height: 700, child: Text('Scrollable content')),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(SingleChildScrollView)),
+    );
+    await gesture.moveBy(const Offset(0, 48));
+    await tester.pump();
+
+    expect(starts, 1);
+    expect(updates, isNotEmpty);
+    expect(updates.fold<double>(0, (sum, value) => sum + value), 48);
+    expect(ends, 0);
+
+    await gesture.up();
+    await tester.pump();
+    expect(ends, 1);
   });
 
   testWidgets('downward swipe while content is scrolled preserves scrolling', (tester) async {

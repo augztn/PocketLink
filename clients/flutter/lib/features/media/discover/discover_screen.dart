@@ -492,6 +492,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         _homeContinuation = snapshot.continuation;
         _error = null;
       });
+      if (_recentlyPlayed.isEmpty && _listeningPicks.isEmpty) {
+        final tracks = shelves.expand((shelf) => shelf.tracks).toList(growable: false);
+        if (tracks.isNotEmpty) unawaited(_loadListeningPicks(tracks.first));
+      }
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _onDiscoverScroll();
       });
@@ -1755,6 +1759,14 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     );
   }
 
+  bool _isRecentHomeShelf(_DiscoverShelf shelf) {
+    final normalized = shelf.title.trim().toLowerCase();
+    return normalized == 'recent' ||
+        normalized == 'recents' ||
+        normalized == 'recently played' ||
+        normalized == 'recently played tracks';
+  }
+
   bool _isListLayoutShelf(_DiscoverShelf shelf) {
     final title = shelf.title.toLowerCase();
     return title.contains('recents') ||
@@ -2088,6 +2100,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 _listeningPicksShelf(),
                 _recentlyPlayedShelf(),
                 for (var index = 0; index < _homeShelves.length; index++) ...[
+                  if (_recentlyPlayed.isEmpty ||
+                      !_isRecentHomeShelf(_homeShelves[index])) ...[
                   _isCommunityShelf(_homeShelves[index])
                       ? _communityHomeShelf(_homeShelves[index])
                       : _isListLayoutShelf(_homeShelves[index]) &&
@@ -2097,6 +2111,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                           ? _trackPager(_homeShelves[index])
                           : _homeShelf(_homeShelves[index]),
                   if (index == 0) _moodHomeShelf(),
+                  ],
                 ],
               ] else ...[
                 SliverToBoxAdapter(
