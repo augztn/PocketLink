@@ -698,11 +698,12 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
             ambientFill,
             (t / 0.3).clamp(0.0, 1.0).toDouble(),
           )!;
+          // Remove docked controls before expanded controls begin appearing.
           final miniOpacity = 1.0 -
               const Interval(
-                0.25,
-                0.55,
-                curve: Curves.easeInOut,
+                0.0,
+                0.22,
+                curve: Curves.easeOutCubic,
               ).transform(t);
           final isGradientTheme =
               AppSettings.instance.nowPlayingTheme == 'gradient';
@@ -925,11 +926,14 @@ class _MiniPlayerMorphContents extends StatelessWidget {
                             ),
                       ),
                       Text(
-                        'NOW PLAYING · SWIPE TO SKIP',
+                        item.artist?.trim().isNotEmpty == true
+                            ? item.artist!.trim()
+                            : item.sourceLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: secondaryForeground,
-                          fontSize: 8,
-                          letterSpacing: 0.45,
+                          fontSize: 10,
                         ),
                       ),
                     ],
