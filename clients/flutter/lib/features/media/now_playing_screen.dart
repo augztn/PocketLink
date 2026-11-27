@@ -197,7 +197,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                 ),
               ),
             ),
-          ColoredBox(color: Colors.black.withValues(alpha: lyricsMode ? 0.38 : 0.28)),
+          ColoredBox(color: Colors.black.withValues(alpha: lyricsMode ? 0.32 : 0.28)),
         ],
       ),
     );
