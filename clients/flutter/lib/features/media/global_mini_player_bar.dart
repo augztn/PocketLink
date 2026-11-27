@@ -304,52 +304,67 @@ class _MiniPlayerGestureSurface extends StatefulWidget {
 }
 
 class _MiniPlayerGestureSurfaceState extends State<_MiniPlayerGestureSurface> {
+  int? _activePointer;
   Offset? _pointerDownPosition;
+  Offset? _lastPointerPosition;
+  Duration? _lastPointerTime;
+  VelocityTracker? _velocityTracker;
   double _deliveredVerticalDistance = 0;
   double _horizontalDistance = 0;
   Axis? _lockedAxis;
   bool _expandStarted = false;
 
   void _onPointerDown(PointerDownEvent event) {
+    if (_activePointer != null) return;
+    _activePointer = event.pointer;
     _pointerDownPosition = event.position;
+    _lastPointerPosition = event.position;
+    _lastPointerTime = event.timeStamp;
+    _velocityTracker = VelocityTracker.withKind(event.kind)
+      ..addPosition(event.timeStamp, event.position);
     _deliveredVerticalDistance = 0;
     _horizontalDistance = 0;
     _lockedAxis = null;
     _expandStarted = false;
   }
 
-  void _onPanStart(DragStartDetails details) {
-    _pointerDownPosition ??= details.globalPosition;
-  }
+  void _onPointerMove(PointerMoveEvent event) {
+    if (event.pointer != _activePointer) return;
+    final origin = _pointerDownPosition;
+    if (origin == null) return;
+    _velocityTracker?.addPosition(event.timeStamp, event.position);
+    final total = event.position - origin;
 
-  void _onPanUpdate(DragUpdateDetails details) {
-    final origin = _pointerDownPosition ?? details.globalPosition;
-    final total = details.globalPosition - origin;
-
-    // Decide the axis from the complete pointer displacement, not only the
-    // first post-slop delta. This preserves upward travel after diagonal jitter.
+    // Observe pointer movement directly. A parent Scrollable can otherwise win
+    // Flutter's gesture arena against this surface's pan recognizer, preventing
+    // the mini-player from ever receiving the drag in the real app.
     if (_lockedAxis == null && total.distance >= 8) {
       _lockedAxis = total.dy.abs() > total.dx.abs()
           ? Axis.vertical
           : Axis.horizontal;
     }
     if (_lockedAxis == Axis.vertical) {
-      final delta = total.dy - _deliveredVerticalDistance;
-      _deliveredVerticalDistance = total.dy;
       if (!_expandStarted && total.dy < 0) {
         _expandStarted = true;
+        _deliveredVerticalDistance = total.dy;
         widget.onExpandDragStart?.call();
-      }
-      if (_expandStarted && delta.abs() > 0.001) {
-        widget.onExpandDragUpdate?.call(delta);
+      } else if (_expandStarted) {
+        final delta = total.dy - _deliveredVerticalDistance;
+        _deliveredVerticalDistance = total.dy;
+        if (delta.abs() > 0.001) widget.onExpandDragUpdate?.call(delta);
       }
     } else if (_lockedAxis == Axis.horizontal) {
       _horizontalDistance = total.dx;
     }
+    _lastPointerPosition = event.position;
+    _lastPointerTime = event.timeStamp;
   }
 
-  void _onPanEnd(DragEndDetails details) {
-    final velocity = details.velocity.pixelsPerSecond;
+  void _onPointerUp(PointerUpEvent event) {
+    if (event.pointer != _activePointer) return;
+    _velocityTracker?.addPosition(event.timeStamp, event.position);
+    final velocity = _velocityTracker?.getVelocity().pixelsPerSecond ??
+        Offset.zero;
     if (_lockedAxis == Axis.vertical) {
       if (_expandStarted) {
         widget.onExpandDragEnd?.call(velocity.dy);
@@ -368,13 +383,18 @@ class _MiniPlayerGestureSurfaceState extends State<_MiniPlayerGestureSurface> {
     _resetGesture();
   }
 
-  void _onPanCancel() {
+  void _onPointerCancel(PointerCancelEvent event) {
+    if (event.pointer != _activePointer) return;
     if (_expandStarted) widget.onExpandDragEnd?.call(0);
     _resetGesture();
   }
 
   void _resetGesture() {
+    _activePointer = null;
     _pointerDownPosition = null;
+    _lastPointerPosition = null;
+    _lastPointerTime = null;
+    _velocityTracker = null;
     _deliveredVerticalDistance = 0;
     _horizontalDistance = 0;
     _lockedAxis = null;
@@ -383,15 +403,14 @@ class _MiniPlayerGestureSurfaceState extends State<_MiniPlayerGestureSurface> {
 
   @override
   Widget build(BuildContext context) => Listener(
+        behavior: HitTestBehavior.opaque,
         onPointerDown: _onPointerDown,
+        onPointerMove: _onPointerMove,
+        onPointerUp: _onPointerUp,
+        onPointerCancel: _onPointerCancel,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          dragStartBehavior: DragStartBehavior.down,
           onTap: widget.onTap,
-          onPanStart: _onPanStart,
-          onPanUpdate: _onPanUpdate,
-          onPanEnd: _onPanEnd,
-          onPanCancel: _onPanCancel,
           child: widget.child,
         ),
       );
