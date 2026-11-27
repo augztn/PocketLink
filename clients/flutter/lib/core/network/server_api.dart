@@ -326,11 +326,26 @@ class ServerApi {
     int limit = 8,
     List<StorageVolume> volumes = const [],
   }) async {
+    const internalCandidates = [
+      'DCIM', 'Pictures', 'Download', 'Documents', 'Music', 'Movies',
+    ];
+    var availableInternal = internalCandidates.toSet();
+    try {
+      // Authentication already warmed the internal root snapshot. Reuse it
+      // to avoid probing folders that do not exist on this host.
+      final root = await listDirectory('', background: true);
+      availableInternal = root.items
+          .where((item) => item.isDirectory)
+          .map((item) => item.name.toLowerCase())
+          .toSet();
+    } catch (_) {
+      // If root metadata is temporarily unavailable, retain the bounded
+      // common-folder fallback rather than suppressing all recent results.
+    }
     final candidates = <({String path, String? volume, String volumeName})>[
-      for (final path in const [
-        'DCIM', 'Pictures', 'Download', 'Documents', 'Music', 'Movies',
-      ])
-        (path: path, volume: null, volumeName: 'Internal storage'),
+      for (final path in internalCandidates)
+        if (availableInternal.contains(path.toLowerCase()))
+          (path: path, volume: null, volumeName: 'Internal storage'),
       for (final volume in volumes.where((item) => item.available))
         (path: '', volume: volume.id, volumeName: volume.name),
     ];
