@@ -12,11 +12,11 @@ void main() {
           body: Stack(
             key: PocketLinkNavigation.mediaOverlayKey,
             children: [
-              const Positioned(
+              Positioned(
                 left: 12,
                 top: 34,
                 child: SizedBox(
-                  key: ValueKey('mini-anchor-test'),
+                  key: PocketLinkNavigation.miniPlayerAnchorKey,
                   width: 300,
                   height: 60,
                 ),
@@ -38,9 +38,9 @@ void main() {
     await tester.pump();
 
     final miniRect = PocketLinkNavigation.resolveMediaRect(
-      GlobalKey(),
+      PocketLinkNavigation.miniPlayerAnchorKey,
     );
-    expect(miniRect, isNull);
+    expect(miniRect, const Rect.fromLTWH(12, 34, 300, 60));
     final dockRect = PocketLinkNavigation.resolveMediaRect(
       PocketLinkNavigation.nowPlayingDockButtonKey,
     );
