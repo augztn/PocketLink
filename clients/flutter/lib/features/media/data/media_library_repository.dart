@@ -31,7 +31,6 @@ class MediaLibraryRepository {
     final category = type == MediaLibraryType.music ? 'music' : 'video';
     final found = <MediaFileItem>[];
     var offset = 0;
-    var indexedMetadataComplete = type == MediaLibraryType.music;
     var status = const MediaIndexStatus(
       state: 'idle',
       scanned: 0,
@@ -62,9 +61,6 @@ class MediaLibraryRepository {
                   mime: item.mime,
                 ))
             .map((item) {
-              if (type == MediaLibraryType.music && item.volume == 'internal' && !item.metadataScanned) {
-                indexedMetadataComplete = false;
-              }
               return MediaFileItem(
                 entry: item.toFileEntry(),
                 path: item.path,
@@ -81,31 +77,9 @@ class MediaLibraryRepository {
       if (page.items.length < _pageSize) break;
     } while (true);
 
-    if (type == MediaLibraryType.music && found.isNotEmpty && !indexedMetadataComplete) {
-      try {
-        final metadata = await api.musicLibrary();
-        final byPath = <String, MusicLibraryTrack>{
-          for (final track in metadata) track.path: track,
-        };
-        for (var index = 0; index < found.length; index++) {
-          final item = found[index];
-          // Older Termux hosts may still expose the optional full music catalog.
-          // Native PocketLink hosts now return cached tags with indexed media rows.
-          final track = item.volume == null ? byPath[item.path] : null;
-          if (track == null) continue;
-          found[index] = item.copyWith(
-            title: track.title,
-            artist: track.artist,
-            album: track.album,
-            durationMs: track.durationMs,
-            artworkAvailable: track.artworkAvailable,
-          );
-        }
-      } on DioException {
-        // Older or third-party hosts may not implement the optional music API.
-      }
-    }
-
+    // Keep this indexed-media read self-contained. The optional legacy
+    // /api/music/library endpoint is absent on current PocketLink hosts and
+    // caused a guaranteed 404 during Discover enrichment.
     final normalizedQuery = query.trim().toLowerCase();
     final results = normalizedQuery.isEmpty
         ? found
