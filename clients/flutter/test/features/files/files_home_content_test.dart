@@ -5,8 +5,8 @@ import 'package:pocketlink_client/features/files/files_home_content.dart';
 void main() {
   testWidgets('Files home respects pinned header and floating overlay clearance',
       (tester) async {
-    await tester.view.physicalSize = const Size(432, 960);
-    await tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(432, 960);
+    tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
