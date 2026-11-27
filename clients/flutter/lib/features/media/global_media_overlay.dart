@@ -636,7 +636,9 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
         ),
         builder: (context, screen) {
           final t = animation.value.clamp(0.0, 1.0).toDouble();
-          final curvedT = Curves.easeOutCubic.transform(t);
+          // The controller is eased for programmatic motion; pointer drags set
+          // its value directly, keeping geometry 1:1 with the finger.
+          final curvedT = t;
           final fullScreen = Offset.zero & media.size;
           final source = originRect ?? Rect.fromLTWH(
             media.size.width - 78,
