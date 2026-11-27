@@ -32,9 +32,7 @@ class NowPlayingLyricsMode extends StatelessWidget {
   Widget build(BuildContext context) {
     return IgnorePointer(
       ignoring: progress < 0.02,
-      child: Padding(
-          padding: EdgeInsets.only(top: MediaQuery.paddingOf(context).top + 8),
-          child: LayoutBuilder(
+      child: LayoutBuilder(
             builder: (context, constraints) {
               final width = constraints.maxWidth;
               final height = constraints.maxHeight;
@@ -74,7 +72,9 @@ class NowPlayingLyricsMode extends StatelessWidget {
                       ),
                     ),
                   ),
-                  Column(
+                  Padding(
+                    padding: EdgeInsets.only(top: MediaQuery.paddingOf(context).top + 8),
+                    child: Column(
                     children: [
                       Padding(
                         padding: const EdgeInsets.only(left: 68, right: 12, top: 8),
@@ -161,6 +161,7 @@ class NowPlayingLyricsMode extends StatelessWidget {
                         ),
                       footer,
                     ],
+                    ),
                   ),
                 ],
               );
