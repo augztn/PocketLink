@@ -30,7 +30,7 @@ void main() {
     );
 
     expect(insets.topClearance, 94);
-    expect(insets.bottomClearance, 192);
+    expect(insets.bottomClearance, 214);
     expect(insets.hasFloatingNavBar, isTrue);
     expect(insets.hasActiveMiniPlayer, isTrue);
   });
@@ -84,7 +84,7 @@ void main() {
       ),
     );
 
-    expect(insets.bottomClearance, 120);
+    expect(insets.bottomClearance, 144);
   });
 
   testWidgets('keeps header clearance stable and isolated per route', (tester) async {
