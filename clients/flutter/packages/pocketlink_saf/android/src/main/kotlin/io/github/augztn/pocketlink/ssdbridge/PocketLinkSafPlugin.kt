@@ -1,8 +1,11 @@
 package io.github.augztn.pocketlink.ssdbridge
 
 import android.app.Activity
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.media.AudioManager
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -28,6 +31,20 @@ class PocketLinkSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
     private var binding: ActivityPluginBinding? = null
     private var pendingVolumeId: String? = null
     private var originalVideoBrightness: Float? = null
+    private var volumeReceiverRegistered = false
+    private val audioManager by lazy {
+        context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    }
+    private val volumeReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action != "android.media.VOLUME_CHANGED_ACTION") return
+            val stream = intent.getIntExtra(
+                "android.media.EXTRA_VOLUME_STREAM_TYPE",
+                AudioManager.STREAM_MUSIC
+            )
+            if (stream == AudioManager.STREAM_MUSIC) publishSystemMediaVolume()
+        }
+    }
     private val prefs by lazy { context.getSharedPreferences("ssd-bridge", Context.MODE_PRIVATE) }
     private var storageManager: StorageManager? = null
     private val volumeCallback by lazy {
@@ -51,6 +68,17 @@ class PocketLinkSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
         mediaChannel = MethodChannel(binding.binaryMessenger, "pocketlink/media")
         channel.setMethodCallHandler(this)
         mediaChannel.setMethodCallHandler(this)
+        try {
+            ContextCompat.registerReceiver(
+                context,
+                volumeReceiver,
+                IntentFilter("android.media.VOLUME_CHANGED_ACTION"),
+                ContextCompat.RECEIVER_NOT_EXPORTED
+            )
+            volumeReceiverRegistered = true
+        } catch (_: RuntimeException) {
+            volumeReceiverRegistered = false
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             storageManager = context.getSystemService(Context.STORAGE_SERVICE) as? StorageManager
             try {
@@ -211,6 +239,18 @@ class PocketLinkSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
                 context.stopService(Intent(context, MediaPlaybackService::class.java))
                 result.success(true)
             }
+            "getSystemMediaVolume" -> result.success(systemMediaVolume())
+            "setSystemMediaVolume" -> {
+                val requested = call.argument<Number>("volume")?.toDouble()
+                if (requested == null || !requested.isFinite()) {
+                    result.error("INVALID_VOLUME", "A finite media volume is required.", null)
+                    return
+                }
+                val max = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                val target = (requested.coerceIn(0.0, 100.0) * max / 100.0).toInt()
+                audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, target, 0)
+                result.success(systemMediaVolume())
+            }
             "status" -> result.success(status())
             "readNativeDiagnostics" -> result.success(NativeDiagnostics.read())
             "nativeDiagnosticsSize" -> result.success(NativeDiagnostics.read().toByteArray(Charsets.UTF_8).size)
@@ -352,6 +392,16 @@ class PocketLinkSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
             }
             else -> result.notImplemented()
         }
+    }
+
+    private fun systemMediaVolume(): Map<String, Any> {
+        val max = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
+        val current = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+        return mapOf("volume" to (current * 100.0 / max), "current" to current, "max" to max)
+    }
+
+    private fun publishSystemMediaVolume() {
+        mediaChannel.invokeMethod("systemMediaVolumeChanged", systemMediaVolume())
     }
 
     private fun requestBackgroundAccess(): Boolean {
@@ -587,6 +637,14 @@ class PocketLinkSafPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCa
         storageManager = null
         channel.setMethodCallHandler(null)
         mediaChannel.setMethodCallHandler(null)
+        if (volumeReceiverRegistered) {
+            try {
+                context.unregisterReceiver(volumeReceiver)
+            } catch (_: IllegalArgumentException) {
+                // Receiver was already detached.
+            }
+            volumeReceiverRegistered = false
+        }
     }
 
     companion object {
