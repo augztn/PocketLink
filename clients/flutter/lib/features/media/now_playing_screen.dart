@@ -1274,7 +1274,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     final hasArtwork = _artwork != null && _artworkKey == _trackKey;
     final palette = _trackPalette;
     final image = hasArtwork
-        ? Image.memory(_artwork!, cacheWidth: 544, fit: BoxFit.cover, gaplessPlayback: true)
+        ? Image.memory(_artwork!, cacheWidth: 544, cacheHeight: 544, fit: BoxFit.cover, gaplessPlayback: true)
         : DecoratedBox(
             decoration: BoxDecoration(gradient: LinearGradient(colors: [palette[0], palette[1], palette[2]])),
             child: const Center(child: Icon(Icons.music_note_rounded, color: Colors.white, size: 34)),
