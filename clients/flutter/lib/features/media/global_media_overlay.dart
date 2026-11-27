@@ -713,17 +713,9 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
           // Use the same artwork-derived ambient gradient as Now Playing
           // throughout the morph. A fixed slate fill here caused a visible
           // color swap and dark horizontal band as soon as a drag began.
-          final sheetGradient = LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color.lerp(artworkPalette[0], const Color(0xFFB65D38), 0.22)!,
-              Color.lerp(artworkPalette[1], const Color(0xFF6D3427), 0.32)!,
-              Color.lerp(artworkPalette[2], artworkPalette[1], 0.24)!,
-              Color.lerp(artworkPalette[2], artworkPalette[1], 0.38)!,
-            ],
-            stops: const [0, 0.34, 0.70, 1],
-          );
+          // Keep the in-flight sheet neutral. Artwork is painted separately;
+          // sampling the artwork palette here created an olive proxy pill.
+          const sheetColor = Color(0xFF0A0B0E);
           // The real docked player is the only collapsed control surface.
           // The morph sheet must not paint a second miniature proxy.
           // Match the fixed full-bleed hero geometry in Now Playing.
@@ -751,7 +743,13 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
                   Positioned.fill(
                     child: IgnorePointer(
                       child: ColoredBox(
-                        color: Colors.black.withValues(alpha: 0.45 * t),
+                        color: sheetColor.withValues(
+                          alpha: const Interval(
+                            0.0,
+                            0.06,
+                            curve: Curves.easeOutCubic,
+                          ).transform(t),
+                        ),
                       ),
                     ),
                   ),
@@ -769,7 +767,7 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
                           child: IgnorePointer(
                             child: DecoratedBox(
                               decoration: BoxDecoration(
-                                gradient: sheetGradient,
+                                color: sheetColor,
                                 borderRadius: radius,
                               ),
                               child: Stack(
@@ -815,17 +813,13 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
                               ),
                             ),
                           ),
+                        // The screen's own artwork/background is full-bleed and
+                        // opaque. Fading the entire Scaffold over the palette
+                        // proxy washed out metadata and hid playback controls.
                         Positioned.fill(
                           child: IgnorePointer(
                             ignoring: t < 0.35,
-                            child: Opacity(
-                              opacity: const Interval(
-                                0.18,
-                                0.72,
-                                curve: Curves.easeOutCubic,
-                              ).transform(t),
-                              child: animatedChild!,
-                            ),
+                            child: animatedChild!,
                           ),
                         ),
                       ],
