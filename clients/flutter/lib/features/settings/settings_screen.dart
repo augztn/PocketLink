@@ -9,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../core/logging/app_logger.dart';
 import '../../core/network/server_api.dart';
+import '../../core/navigation/pocketlink_navigation.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/settings/settings_backup_service.dart';
 import 'widgets/settings_components.dart';
@@ -47,6 +48,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return;
     }
     await Navigator.of(context).push<void>(MaterialPageRoute<void>(
+      settings: const RouteSettings(
+        name: PocketLinkRouteNames.discoverPlaylists,
+      ),
       builder: (_) => ImportedPlaylistManagerScreen(api: api),
     ));
   }
@@ -322,7 +326,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // Diagnostic isolation: Settings category routes temporarily bypass the
   // app-wide custom PageTransitionsTheme. If the pop hesitation disappears,
   // the category route transition is implicated; other app routes are unchanged.
-  PageRoute<void> _categoryRoute(WidgetBuilder builder) => PageRouteBuilder<void>(
+  PageRoute<void> _categoryRoute(String id, WidgetBuilder builder) => PageRouteBuilder<void>(
+        settings: RouteSettings(
+          name: PocketLinkRouteNames.settingsCategory(id),
+        ),
         pageBuilder: (context, animation, secondaryAnimation) =>
             builder(context),
         transitionDuration: Duration.zero,
@@ -332,16 +339,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _openCategory(String id) {
     final route = switch (id) {
       'navigation-customize' => _categoryRoute(
+          id,
           (_) => const NavigationCustomizationScreen(),
         ),
       'audio' => _categoryRoute(
+          id,
           (_) => const NowPlayingSettingsScreen(),
         ),
       'video' => _categoryRoute(
+          id,
           (_) => const VideoPlayerSettingsScreen(),
         ),
-      'about' => _categoryRoute((_) => const AboutScreen()),
+      'about' => _categoryRoute(id, (_) => const AboutScreen()),
       _ => _categoryRoute(
+          id,
           (_) => SettingsScreen(
             api: widget.api,
             onOpenSavedServers: widget.onOpenSavedServers,
