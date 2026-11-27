@@ -1163,18 +1163,30 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   Widget _lyricsArtwork(double progress) {
     final hasArtwork = _artwork != null && _artworkKey == _trackKey;
     final palette = _trackPalette;
+    final image = hasArtwork
+        ? Image.memory(_artwork!, cacheWidth: 544, fit: BoxFit.cover, gaplessPlayback: true)
+        : DecoratedBox(
+            decoration: BoxDecoration(gradient: LinearGradient(colors: [palette[0], palette[1], palette[2]])),
+            child: const Center(child: Icon(Icons.music_note_rounded, color: Colors.white, size: 34)),
+          );
     return ClipRRect(
       borderRadius: BorderRadius.lerp(
         BorderRadius.circular(26),
         BorderRadius.circular(10),
         progress,
       )!,
-      child: hasArtwork
-          ? Image.memory(_artwork!, cacheWidth: 544, fit: BoxFit.cover, gaplessPlayback: true)
-          : DecoratedBox(
-              decoration: BoxDecoration(gradient: LinearGradient(colors: [palette[0], palette[1], palette[2]])),
-              child: const Center(child: Icon(Icons.music_note_rounded, color: Colors.white, size: 34)),
-            ),
+      child: progress < 0.98
+          ? ShaderMask(
+              blendMode: BlendMode.dstIn,
+              shaderCallback: (bounds) => const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.white, Colors.white, Colors.transparent],
+                stops: [0, 0.58, 1],
+              ).createShader(bounds),
+              child: image,
+            )
+          : image,
     );
   }
 
