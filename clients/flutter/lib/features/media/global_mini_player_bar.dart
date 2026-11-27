@@ -117,8 +117,6 @@ class GlobalMiniPlayerBar extends StatelessWidget {
               onExpandDragStart: onExpandDragStart,
               onExpandDragUpdate: onExpandDragUpdate,
               onExpandDragEnd: onExpandDragEnd,
-              onHorizontalSkipNext: onSkipNext,
-              onHorizontalSkipPrevious: onSkipPrevious,
               child: Material(
                   type: MaterialType.transparency,
                 borderRadius: BorderRadius.circular(22),
@@ -284,8 +282,6 @@ class _MiniPlayerGestureSurface extends StatefulWidget {
     required this.onExpandDragStart,
     required this.onExpandDragUpdate,
     required this.onExpandDragEnd,
-    required this.onHorizontalSkipNext,
-    required this.onHorizontalSkipPrevious,
   });
 
   final Widget child;
@@ -297,8 +293,6 @@ class _MiniPlayerGestureSurface extends StatefulWidget {
   final VoidCallback? onExpandDragStart;
   final ValueChanged<double>? onExpandDragUpdate;
   final ValueChanged<double>? onExpandDragEnd;
-  final VoidCallback onHorizontalSkipNext;
-  final VoidCallback onHorizontalSkipPrevious;
 
   @override
   State<_MiniPlayerGestureSurface> createState() =>
@@ -336,15 +330,6 @@ class _MiniPlayerGestureSurfaceState extends State<_MiniPlayerGestureSurface> {
     _reset();
   }
 
-  void _onHorizontalDragEnd(DragEndDetails details) {
-    final velocity = details.velocity.pixelsPerSecond.dx;
-    if (velocity < -300 && widget.canSkipNext) {
-      widget.onHorizontalSkipNext();
-    } else if (velocity > 300 && widget.canSkipPrevious) {
-      widget.onHorizontalSkipPrevious();
-    }
-  }
-
   void _reset() {
     _expandStarted = false;
     _verticalDistance = 0;
@@ -358,7 +343,6 @@ class _MiniPlayerGestureSurfaceState extends State<_MiniPlayerGestureSurface> {
         onVerticalDragUpdate: _onVerticalDragUpdate,
         onVerticalDragEnd: _onVerticalDragEnd,
         onVerticalDragCancel: _onVerticalDragCancel,
-        onHorizontalDragEnd: _onHorizontalDragEnd,
         child: widget.child,
       );
 }
