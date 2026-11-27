@@ -166,7 +166,7 @@ void main() {
         .whereType<LinearGradient>();
     expect(
       gradients.any((gradient) =>
-          gradient.colors.first == const Color(0xE6000000) &&
+          gradient.colors.first == const Color(0xF2000000) &&
           gradient.colors.last == Colors.transparent),
       isTrue,
     );
@@ -197,7 +197,7 @@ void main() {
     expect(
       gradients.any((gradient) =>
           gradient.colors.length == 5 &&
-          gradient.colors.first == const Color(0xE6000000) &&
+          gradient.colors.first == const Color(0xF2000000) &&
           gradient.colors.last == Colors.transparent &&
           gradient.colors.length == gradient.stops!.length),
       isTrue,
@@ -225,7 +225,7 @@ void main() {
         .whereType<LinearGradient>();
     expect(
       gradients.any((gradient) =>
-          gradient.colors.first == const Color(0xE6000000) &&
+          gradient.colors.first == const Color(0xF2000000) &&
           gradient.colors.last == Colors.transparent),
       isTrue,
     );
