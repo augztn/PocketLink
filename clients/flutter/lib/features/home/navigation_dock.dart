@@ -68,8 +68,7 @@ class FloatingNavigationDock extends StatelessWidget {
           animation: progress,
           builder: (context, _) {
             final value = progress.value.clamp(0.0, 1.0).toDouble();
-            // Keep the dock in the same progress domain as the player
-            // morph so it travels continuously across the full transition.
+            // Clear the dock during the first 42% of the container morph.
             final dockT = (value / 0.42).clamp(0.0, 1.0).toDouble();
             final dockTotalHeight = 82.0 + MediaQuery.paddingOf(context).bottom;
             return IgnorePointer(
@@ -202,7 +201,11 @@ class FloatingNavigationDock extends StatelessWidget {
               clipBehavior: Clip.none,
               children: [
                  Positioned.fill(
-                  child: _MusicDockButton(
+                  child: Opacity(
+                    opacity: (1.0 - dockT * (0.42 / 0.18))
+                        .clamp(0.0, 1.0)
+                        .toDouble(),
+                    child: _MusicDockButton(
                     preview: preview,
                     glassIntensity: 1.0 - dockT,
                     isPlaying: isPlaying,
@@ -215,6 +218,7 @@ class FloatingNavigationDock extends StatelessWidget {
                     onLongPress: onMusicShortcutLongPress,
                     onSwipeNext: onBrowseSwipeLeft,
                     onSwipePrevious: onBrowseSwipeRight,
+                    ),
                   ),
                 ),
               ],
