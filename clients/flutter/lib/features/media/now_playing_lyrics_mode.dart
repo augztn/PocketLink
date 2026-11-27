@@ -60,10 +60,7 @@ class NowPlayingLyricsMode extends StatelessWidget {
                 child: GestureDetector(
                   key: const ValueKey('lyrics-mode-artwork'),
                   onTap: onClose,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: artwork,
-                  ),
+                  child: artwork,
                 ),
               ),
               Positioned(
