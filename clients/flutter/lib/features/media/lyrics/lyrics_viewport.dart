@@ -14,6 +14,7 @@ class LyricsViewport extends StatefulWidget {
     required this.onSeek,
     required this.onChooseProvider,
     required this.onToggleTranslation,
+    required this.onRetry,
     required this.translationEnabled,
     super.key,
   });
@@ -26,6 +27,7 @@ class LyricsViewport extends StatefulWidget {
   final ValueChanged<Duration> onSeek;
   final VoidCallback onChooseProvider;
   final VoidCallback onToggleTranslation;
+  final VoidCallback onRetry;
   final bool translationEnabled;
 
   @override
@@ -83,9 +85,23 @@ class _LyricsViewportState extends State<LyricsViewport> {
     final doc = widget.document;
     if (doc == null) {
       return Center(
-        child: Text(
-          widget.loading ? 'Searching lyrics…' : 'No matching lyrics were found.',
-          style: TextStyle(color: Colors.white.withValues(alpha: .62), fontSize: 15),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              widget.loading ? 'Searching lyrics…' : 'No lyrics found.',
+              style: TextStyle(color: Colors.white.withValues(alpha: .72), fontSize: 15),
+            ),
+            if (!widget.loading) ...[
+              const SizedBox(height: 12),
+              TextButton.icon(
+                onPressed: widget.onRetry,
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: const Text('Retry'),
+                style: TextButton.styleFrom(foregroundColor: Colors.white),
+              ),
+            ],
+          ],
         ),
       );
     }
@@ -103,7 +119,7 @@ class _LyricsViewportState extends State<LyricsViewport> {
             child: ListView.builder(
               controller: _scroll,
               physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(22, 38, 22, 96),
+              padding: const EdgeInsets.fromLTRB(24, 42, 24, 112),
               itemCount: doc.lines.length,
               itemBuilder: (context, index) {
                 final line = doc.lines[index];
@@ -147,14 +163,19 @@ class _LyricsViewportState extends State<LyricsViewport> {
                   onTap: doc.synced ? () => widget.onSeek(Duration(milliseconds: line.timeMs)) : null,
                   child: AnimatedOpacity(
                     duration: const Duration(milliseconds: 220),
-                    opacity: active ? 1 : past ? .42 : .48,
+                    opacity: active ? 1 : .32,
                     child: AnimatedScale(
                       duration: const Duration(milliseconds: 240),
-                      scale: active ? 1.015 : 1,
+                      scale: active ? 1 : .96,
                       alignment: Alignment.centerLeft,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        child: Column(
+                      child: ImageFiltered(
+                        imageFilter: ImageFilter.blur(
+                          sigmaX: active ? 0 : 1.7,
+                          sigmaY: active ? 0 : 1.7,
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             lyricText,
@@ -164,6 +185,7 @@ class _LyricsViewportState extends State<LyricsViewport> {
                                 child: _InstrumentalDots(),
                               ),
                           ],
+                          ),
                         ),
                       ),
                     ),
