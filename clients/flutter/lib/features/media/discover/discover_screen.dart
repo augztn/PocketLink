@@ -26,6 +26,7 @@ import 'discover_thumbnail_cache.dart';
 import 'discover_recently_played_store.dart';
 import 'discover_home_feed_store.dart';
 import 'discover_moods_screen.dart';
+import '../media_metadata.dart';
 
 class _DiscoverShelf {
   const _DiscoverShelf(this.title, this.tracks, {this.items = const []});
@@ -1565,8 +1566,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                               Text(track.title, maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: Theme.of(context).textTheme.titleSmall),
-                              Text(track.artist, maxLines: 1,
+                              Text(formatDiscoverArtist(track.artist), maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
+                                textDirection: Directionality.of(context),
                                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                                 )),
