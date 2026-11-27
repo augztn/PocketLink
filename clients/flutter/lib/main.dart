@@ -13,6 +13,9 @@ import 'features/media/persistent_audio_player.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  PaintingBinding.instance.imageCache
+    ..maximumSizeBytes = 60 << 20
+    ..maximumSize = 120;
   await AppLogger.initialize();
   try {
     await shader_blur.ProgressiveBlur.precache();
