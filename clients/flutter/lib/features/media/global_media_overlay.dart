@@ -450,11 +450,17 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
           // completed its first layout and paint. The overlay artwork starts
           // at the captured source rect; hiding this surface earlier exposes
           // the Discover page for a frame and causes the artwork to flash.
+          final morphProgress =
+              _nowPlayingController.value.clamp(0.0, 1.0).toDouble();
+          // Keep the real mini-player above the morph sheet, then fade it
+          // only after the sheet has visibly moved away from its source.
+          final miniPlayerOpacity = 1.0 -
+              const Interval(0.04, 0.22, curve: Curves.easeInCubic)
+                  .transform(morphProgress);
           final visible = shouldRenderMiniPlayer &&
-              (!_nowPlayingOpen || !_morphLayoutReady) &&
               !observer.isNowPlayingVisible &&
               !observer.isModalRouteOnTop &&
-              _nowPlayingController.value <= 0.0;
+              miniPlayerOpacity > 0.01;
           final onDashboard = observer.isDashboardVisible;
           final compactDiscoverControls =
               PocketLinkNavigation.discoverSearchVisible.value && onDashboard;
@@ -509,39 +515,6 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
                     ),
                   ),
                 ),
-              if (shouldRenderMiniPlayer)
-                Positioned(
-                  left: compactDiscoverControls ? 14 : 0,
-                  right: compactDiscoverControls ? 88 : 0,
-                  bottom: bottomInset +
-                      (onDashboard && !compactDiscoverControls ? _homeDockHeight : 10),
-                  child: IgnorePointer(
-                    ignoring: !visible && !_miniPlayerGestureActive,
-                    child: AnimatedSlide(
-                      offset: Offset.zero,
-                      duration: reduceMotion || drawerOpen
-                          ? Duration.zero
-                          : const Duration(milliseconds: 280),
-                      curve: Curves.easeOutCubic,
-                      child: _GlobalMiniPlayerBar(
-                        compact: compactDiscoverControls,
-                        visible: visible,
-                        hasFloatingNavBar: onDashboard,
-                        reduceMotion: reduceMotion ||
-                            _nowPlayingOpen ||
-                            _snapMiniPlayerVisibility,
-                        player: player,
-                        artworkBytes: _sharedArtwork,
-                        surfaceIntensity: visible ? 1.0 : 0.0,
-                        onOpen: _openNowPlaying,
-                        onDismiss: player.dismissMiniPlayer,
-                        onExpandDragStart: _onMiniPlayerDragStart,
-                        onExpandDragUpdate: _updateMiniPlayerDrag,
-                        onExpandDragEnd: _endMiniPlayerDrag,
-                      ),
-                    ),
-                  ),
-                ),
               if (player.isMusic && player.isActive && player.currentItem != null)
                 Positioned.fill(
                   child: AnimatedBuilder(
@@ -568,6 +541,40 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
                       child: TickerMode(
                         enabled: _nowPlayingOpen && _nowPlayingController.value > 0.01,
                         child: child!,
+                      ),
+                    ),
+                  ),
+                ),
+              if (shouldRenderMiniPlayer)
+                Positioned(
+                  left: compactDiscoverControls ? 14 : 0,
+                  right: compactDiscoverControls ? 88 : 0,
+                  bottom: bottomInset +
+                      (onDashboard && !compactDiscoverControls ? _homeDockHeight : 10),
+                  child: IgnorePointer(
+                    ignoring: !visible && !_miniPlayerGestureActive,
+                    child: AnimatedSlide(
+                      offset: Offset.zero,
+                      duration: reduceMotion || drawerOpen
+                          ? Duration.zero
+                          : const Duration(milliseconds: 280),
+                      curve: Curves.easeOutCubic,
+                      child: _GlobalMiniPlayerBar(
+                        compact: compactDiscoverControls,
+                        visible: visible,
+                        hasFloatingNavBar: onDashboard,
+                        reduceMotion: reduceMotion ||
+                            _nowPlayingOpen ||
+                            _snapMiniPlayerVisibility,
+                        player: player,
+                        artworkBytes: _sharedArtwork,
+                        surfaceIntensity: _nowPlayingOpen ? 0.0 : 1.0,
+                        opacity: visible ? miniPlayerOpacity : 0.0,
+                        onOpen: _openNowPlaying,
+                        onDismiss: player.dismissMiniPlayer,
+                        onExpandDragStart: _onMiniPlayerDragStart,
+                        onExpandDragUpdate: _updateMiniPlayerDrag,
+                        onExpandDragEnd: _endMiniPlayerDrag,
                       ),
                     ),
                   ),
