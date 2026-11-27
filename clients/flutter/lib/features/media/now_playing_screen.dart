@@ -874,8 +874,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
       );
 
   Widget _moreMenuButton({double contentOpacity = 1}) => SizedBox(
-        width: 40,
-        height: 40,
+        width: 38,
+        height: 38,
         child: _frostedCircle(
           radius: BorderRadius.circular(20),
           intensity: contentOpacity,
@@ -920,8 +920,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
             child: Opacity(
               opacity: contentOpacity,
               child: const SizedBox(
-                width: 40,
-                height: 40,
+                width: 38,
+                height: 38,
                 child: Icon(Icons.more_horiz_rounded, color: Colors.white, size: 20),
               ),
             ),
@@ -938,8 +938,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     double contentOpacity = 1,
   }) {
     return SizedBox(
-      width: 40,
-      height: 40,
+      width: 38,
+      height: 38,
       child: _frostedCircle(
         radius: BorderRadius.circular(20),
         intensity: contentOpacity,
@@ -951,7 +951,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
           padding: EdgeInsets.zero,
           iconSize: 19,
           style: IconButton.styleFrom(
-            fixedSize: const Size(40, 40),
+            fixedSize: const Size(38, 38),
             shape: const CircleBorder(),
             backgroundColor: Colors.transparent,
             foregroundColor: foreground,
@@ -1223,7 +1223,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
             onTap: () => unawaited(_toggleFavorite()),
             contentOpacity: progress,
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 10),
           _moreMenuButton(contentOpacity: progress),
         ],
       ),
@@ -1254,7 +1254,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   Widget _trackMetadata({double contentOpacity = 1}) {
     final artist = resolveMediaArtist(artist: _track.artist, title: _track.title, path: _track.path, fallback: _folderName);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(22, 0, 22, 0),
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -1267,12 +1267,12 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                 children: [
                   _ArtworkTitleMarquee(
                     text: _fileName,
-                    style: const TextStyle(color: Colors.white, fontSize: 25, height: 1.08, fontWeight: FontWeight.w800, letterSpacing: -0.55),
+                    style: const TextStyle(color: Colors.white, fontSize: 22, height: 1.18, fontWeight: FontWeight.w700),
                   ),
-                  const SizedBox(height: 5),
+                  const SizedBox(height: 2),
                   LayoutBuilder(
                     builder: (context, constraints) {
-                      const style = TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500);
+                      const style = TextStyle(color: Colors.white.withValues(alpha: 0.68), fontSize: 18, height: 1.2, fontWeight: FontWeight.w400);
                       final painter = TextPainter(
                         text: TextSpan(text: artist, style: style),
                         maxLines: 1,
@@ -1295,7 +1295,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           _roundAction(
             icon: _isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
             tooltip: _isFavorite ? 'Remove favorite' : 'Favorite',
@@ -1318,9 +1318,13 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
           final index = _activeLyrics?.synced == true
               ? lines.lastIndexWhere((line) => line.timeMs <= position)
               : 0;
-          final preview = lines.isEmpty
-              ? (_lyricsLoading ? 'Finding lyrics…' : 'Tap to view lyrics')
-              : lines[index < 0 ? 0 : index].text;
+          final inInstrumentalGap = _activeLyrics?.synced == true &&
+              (index < 0 || (index < lines.length - 1 && lines[index + 1].timeMs - position > 12000));
+          final preview = inInstrumentalGap
+              ? 'Instrumental'
+              : lines.isEmpty
+                  ? (_lyricsLoading ? 'Finding lyrics…' : 'Tap to view lyrics')
+                  : lines[index < 0 ? 0 : index].text;
           return GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: () => unawaited(_showTrackLyrics()),
@@ -1330,14 +1334,18 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 22),
                 child: Row(children: [
-                  Expanded(
+                  if (inInstrumentalGap) ...[
+                    const Icon(Icons.music_note_rounded, color: Colors.white, size: 18),
+                    const SizedBox(width: 6),
+                  ],
+                  Flexible(
                     child: _lyricsLoading && lines.isEmpty
                         ? const _LyricsSearchingPulse()
                         : Text(preview, maxLines: 1, overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+                            style: TextStyle(color: Colors.white.withValues(alpha: 0.72), fontSize: 17, fontWeight: FontWeight.w500)),
                   ),
-                  const SizedBox(width: 8),
-                  const Icon(Icons.chevron_right_rounded, color: Colors.white38, size: 19),
+                  const SizedBox(width: 6),
+                  const Icon(Icons.chevron_right_rounded, color: Colors.white54, size: 16),
                 ]),
               ),
             ),
@@ -1410,7 +1418,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
         padding: const EdgeInsets.only(bottom: 8),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           _trackMetadata(contentOpacity: contentOpacity),
-          const SizedBox(height: 12),
+          const SizedBox(height: 18),
           Opacity(opacity: contentOpacity, child: _lyricPreview()),
         ]),
       );
@@ -1437,7 +1445,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
             _outputDeviceLabel,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: Colors.white38, fontSize: 10),
+            style: const TextStyle(color: Colors.white54, fontSize: 11),
           ),
         ]),
       );
@@ -1518,10 +1526,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 5),
                     child: Container(
-                      width: 36,
-                      height: 4,
+                      width: 40,
+                      height: 4.5,
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.7),
+                        color: Colors.white.withValues(alpha: 0.55),
                         borderRadius: BorderRadius.circular(99),
                       ),
                     ),
@@ -1530,6 +1538,26 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
               ),
             ),
           ),
+        Positioned(
+          top: MediaQuery.paddingOf(context).top + 17,
+          left: 24,
+          right: 24,
+          child: IgnorePointer(
+            child: Center(
+              child: Text(
+                'Playing from ${_track.sourceLabel}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.90),
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  shadows: const [Shadow(color: Colors.black38, blurRadius: 6)],
+                ),
+              ),
+            ),
+          ),
+        ),
         SafeArea(
           child: Column(children: [
             const Spacer(),
