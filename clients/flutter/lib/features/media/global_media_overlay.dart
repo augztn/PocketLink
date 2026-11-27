@@ -722,11 +722,20 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
                       : 'Internal storage',
                   path: currentItem.path,
                 );
-          // Keep the morph surface fully opaque and consistently dark.
-          // Artwork-derived ambient colors belong in the expanded player
-          // content, not in the container being transformed; interpolating
-          // them here can expose a pale panel during the reverse transition.
-          const sheetFill = Color(0xFF0A0B0E);
+          // Use the same artwork-derived ambient gradient as Now Playing
+          // throughout the morph. A fixed slate fill here caused a visible
+          // color swap and dark horizontal band as soon as a drag began.
+          final sheetGradient = LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color.lerp(artworkPalette[0], const Color(0xFFB65D38), 0.22)!,
+              Color.lerp(artworkPalette[1], const Color(0xFF6D3427), 0.32)!,
+              Color.lerp(artworkPalette[2], artworkPalette[1], 0.24)!,
+              Color.lerp(artworkPalette[2], artworkPalette[1], 0.38)!,
+            ],
+            stops: const [0, 0.34, 0.70, 1],
+          );
           // Remove docked controls before expanded controls begin appearing.
           final miniOpacity = 1.0 -
               const Interval(
@@ -788,10 +797,18 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
                           child: IgnorePointer(
                             child: DecoratedBox(
                               decoration: BoxDecoration(
-                                color: sheetFill,
+                                gradient: sheetGradient,
                                 borderRadius: radius,
                               ),
-                              child: const SizedBox.expand(),
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  const SizedBox.expand(),
+                                  ColoredBox(
+                                    color: Colors.black.withValues(alpha: 0.24),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -812,6 +829,11 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
                                       artworkUrl: currentItem?.artworkUrl,
                                       fallbackColors: artworkPalette,
                                       fallbackIconSize: 19 + (73 * t),
+                                      fallbackAlignment: Alignment.lerp(
+                                        Alignment.center,
+                                        const Alignment(0, 0.26),
+                                        t,
+                                      )!,
                                       borderRadius: artworkRadius,
                                       fadeBottom: true,
                                     ),
@@ -840,7 +862,11 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
                             ignoring: t > 0.1,
                             child: Opacity(
                               opacity: miniOpacity,
-                              child: _MiniPlayerMorphContents(player: player),
+                              child: _MiniPlayerMorphContents(
+                                player: player,
+                                artworkBytes: artworkBytes,
+                                artworkPalette: artworkPalette,
+                              ),
                             ),
                           ),
                         ),
@@ -875,9 +901,15 @@ class _NowPlayingMorphClipper extends CustomClipper<Path> {
 }
 
 class _MiniPlayerMorphContents extends StatelessWidget {
-  const _MiniPlayerMorphContents({required this.player});
+  const _MiniPlayerMorphContents({
+    required this.player,
+    required this.artworkBytes,
+    required this.artworkPalette,
+  });
 
   final PersistentAudioPlayer player;
+  final ValueListenable<Uint8List?> artworkBytes;
+  final List<Color> artworkPalette;
 
   @override
   Widget build(BuildContext context) {
@@ -898,7 +930,20 @@ class _MiniPlayerMorphContents extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 10),
             child: Row(
               children: [
-                const SizedBox(width: 34, height: 34),
+                ValueListenableBuilder<Uint8List?>(
+                  valueListenable: artworkBytes,
+                  builder: (context, bytes, _) => SizedBox(
+                    width: 34,
+                    height: 34,
+                    child: TrackArtworkView(
+                      bytes: bytes,
+                      artworkUrl: item.artworkUrl,
+                      fallbackColors: artworkPalette,
+                      fallbackIconSize: 19,
+                      borderRadius: BorderRadius.circular(11),
+                    ),
+                  ),
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Column(
