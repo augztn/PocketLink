@@ -122,8 +122,9 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
     setState(() => _favoriteKeys = prefs.getStringList(key)?.toSet() ?? <String>{});
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool refresh = false}) async {
     if (!mounted || !_routeIsCurrent) return;
+    if (refresh) widget.api.invalidateIndexedMediaCache();
     _indexRequestToken?.cancel('Superseded music index request');
     final requestToken = CancelToken();
     _indexRequestToken = requestToken;
@@ -232,11 +233,11 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
         leadingWidth: 56,
         title: const Text('Library'),
         actions: [
-          PocketLinkAppBarAction(label: 'Refresh library', icon: Icons.refresh_rounded, onPressed: _loading ? null : _load),
+          PocketLinkAppBarAction(label: 'Refresh library', icon: Icons.refresh_rounded, onPressed: _loading ? null : () => _load(refresh: true)),
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: _load,
+        onRefresh: () => _load(refresh: true),
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.fromLTRB(16 + media.padding.left, layout.topClearance + 12, 16 + media.padding.right, bottom),
