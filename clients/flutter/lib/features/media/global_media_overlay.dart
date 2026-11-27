@@ -737,10 +737,13 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
             stops: const [0, 0.34, 0.70, 1],
           );
           // Remove docked controls before expanded controls begin appearing.
+          // The source mini-player remains visible until the sheet is
+          // laid out. Do not paint a second miniature control box inside the
+          // expanding sheet; it creates the green proxy/overlap seen mid-morph.
           final miniOpacity = 1.0 -
               const Interval(
                 0.0,
-                0.75,
+                0.18,
                 curve: Curves.easeOutCubic,
               ).transform(t);
           // Match the fixed full-bleed hero geometry in Now Playing.
@@ -849,8 +852,8 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
                             ignoring: t < 0.35,
                             child: Opacity(
                               opacity: const Interval(
-                                0.45,
-                                0.90,
+                                0.18,
+                                0.72,
                                 curve: Curves.easeOutCubic,
                               ).transform(t),
                               child: animatedChild!,
