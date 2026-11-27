@@ -798,6 +798,7 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
                                       fallbackColors: artworkPalette,
                                       fallbackIconSize: 19 + (73 * t),
                                       borderRadius: artworkRadius,
+                                      fadeBottom: true,
                                     ),
 
                                   ],
