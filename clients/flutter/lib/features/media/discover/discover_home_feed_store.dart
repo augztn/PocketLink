@@ -15,7 +15,7 @@ class DiscoverHomeFeedStore {
   static const int _maxTracksPerShelf = 50;
 
   static String _key(String region) =>
-      'discover_home_feed_v2_${region.trim().toUpperCase()}';
+      'discover_home_feed_v1_${region.trim().toUpperCase()}';
 
   static Future<DiscoverCachedHomeFeed?> read(
     String region, {
