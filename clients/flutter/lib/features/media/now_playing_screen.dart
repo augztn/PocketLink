@@ -1060,20 +1060,35 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   Widget _bottomUtilities({bool lyricsActive = false}) => Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _utilityButton(icon: Icons.lyrics_rounded, label: 'Lyrics',
-              selected: lyricsActive, onTap: () => unawaited(_showTrackLyrics())),
-            _utilityButton(icon: Icons.cast_rounded, label: 'Audio Output',
-              onTap: _showAudioOutput),
-            _utilityButton(icon: Icons.queue_music_rounded, label: 'Queue',
-              onTap: _showQueue),
-            if (lyricsActive)
-              LyricsTranslationControlPill(
-                translationEnabled: _lyricsTranslationEnabled,
-                onChooseProvider: _chooseLyricsProvider,
-                onToggleTranslation: _toggleLyricsTranslation,
+            Expanded(
+              child: Center(
+                child: _utilityButton(
+                  icon: Icons.lyrics_rounded,
+                  label: 'Lyrics',
+                  selected: lyricsActive,
+                  onTap: () => unawaited(_showTrackLyrics()),
+                ),
               ),
+            ),
+            Expanded(
+              child: Center(
+                child: _utilityButton(
+                  icon: Icons.cast_rounded,
+                  label: 'Audio Output',
+                  onTap: _showAudioOutput,
+                ),
+              ),
+            ),
+            Expanded(
+              child: Center(
+                child: _utilityButton(
+                  icon: Icons.queue_music_rounded,
+                  label: 'Queue',
+                  onTap: _showQueue,
+                ),
+              ),
+            ),
           ],
         ),
       );
@@ -1229,7 +1244,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     return ClipRRect(
       borderRadius: BorderRadius.lerp(
         BorderRadius.circular(26),
-        BorderRadius.circular(10),
+        BorderRadius.circular(8),
         progress,
       )!,
       child: progress < 0.98
@@ -1288,6 +1303,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
       ),
       providerLabel: _activeLyrics == null ? '' : 'Lyrics by ${_activeLyrics!.providerName}',
       onChooseProvider: _chooseLyricsProvider,
+      translationControl: LyricsTranslationControlPill(
+        translationEnabled: _lyricsTranslationEnabled,
+        onChooseProvider: _chooseLyricsProvider,
+        onToggleTranslation: _toggleLyricsTranslation,
+      ),
       footer: const SizedBox(height: _playerChromeHeight),
     );
   }
