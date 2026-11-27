@@ -270,8 +270,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
   }
 }
 
-/// Uses axis-specific recognizers so vertical expansion cannot be lost to
-/// horizontal track-skip handling or child tap controls.
+/// Locks a shared pan gesture to its dominant axis after pointer-down jitter.
 class _MiniPlayerGestureSurface extends StatefulWidget {
   const _MiniPlayerGestureSurface({
     required this.child,
@@ -326,7 +325,6 @@ class _MiniPlayerGestureSurfaceState extends State<_MiniPlayerGestureSurface> {
   void _onPanUpdate(DragUpdateDetails details) {
     final origin = _pointerDownPosition ?? details.globalPosition;
     final total = details.globalPosition - origin;
-    _lastPosition = details.globalPosition;
 
     // Decide the axis from the complete pointer displacement, not only the
     // first post-slop delta. This preserves upward travel after diagonal jitter.
@@ -336,7 +334,7 @@ class _MiniPlayerGestureSurfaceState extends State<_MiniPlayerGestureSurface> {
           : Axis.horizontal;
     }
     if (_lockedAxis == Axis.vertical) {
-        final delta = total.dy - _deliveredVerticalDistance;
+      final delta = total.dy - _deliveredVerticalDistance;
       _deliveredVerticalDistance = total.dy;
       if (!_expandStarted && total.dy < 0) {
         _expandStarted = true;
