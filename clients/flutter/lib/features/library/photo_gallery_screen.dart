@@ -278,7 +278,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
 
   Widget image(_Photo p) => Image.network(
     widget.api.mediaStreamUrl(p.path, volume: p.volume),
-    headers: widget.api.mediaHeaders, fit: BoxFit.cover, cacheWidth: 480,
+    headers: widget.api.mediaHeaders, fit: BoxFit.cover, cacheWidth: 480, cacheHeight: 480,
     gaplessPlayback: true,
     errorBuilder: (_,__,___) => ColoredBox(
       color: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -797,7 +797,7 @@ class _PhotoAlbum extends StatelessWidget {
       gridDelegate:const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount:3,crossAxisSpacing:2,mainAxisSpacing:2),
       itemCount:photos.length,
       itemBuilder:(_,i)=>GestureDetector(onTap:()=>onOpen(i),child:Image.network(
-        api.mediaStreamUrl(photos[i].path,volume:photos[i].volume),headers:api.mediaHeaders,fit:BoxFit.cover,cacheWidth:480,
+        api.mediaStreamUrl(photos[i].path,volume:photos[i].volume),headers:api.mediaHeaders,fit:BoxFit.cover,cacheWidth:480,cacheHeight:480,
         errorBuilder:(_,__,___)=>const ColoredBox(color:Color(0xFFE5E5E5),child:Icon(Icons.broken_image_outlined)),
       )),
     ),
