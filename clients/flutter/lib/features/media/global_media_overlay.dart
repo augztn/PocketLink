@@ -355,8 +355,8 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     final source = _miniArtworkOriginRect;
     final target = _sharedArtworkTargetRect.value;
     if (source != null && target != null) {
-      final measured = (source.center.dy - target.center.dy).abs();
-      if (measured.isFinite && measured > 1) return measured;
+      final sheetTravel = _nowPlayingOriginRect?.top ?? source.top;
+      if (sheetTravel.isFinite && sheetTravel > 1) return sheetTravel;
     }
     return math.max(1.0, fallback).toDouble();
   }
@@ -809,32 +809,7 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
                                       fallbackIconSize: 19 + (73 * t),
                                       borderRadius: artworkRadius,
                                     ),
-                                    if (bytes != null && !isGradientTheme)
-                                      DecoratedBox(
-                                        decoration: BoxDecoration(
-                                          borderRadius: artworkRadius,
-                                          gradient: RadialGradient(
-                                            center: const Alignment(-0.55, -0.7),
-                                            radius: 1.1,
-                                            colors: [
-                                              Colors.white.withValues(
-                                                alpha: 0.18 * t,
-                                              ),
-                                              Colors.transparent,
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    if (!isGradientTheme)
-                                      DecoratedBox(
-                                        decoration: BoxDecoration(
-                                          borderRadius: artworkRadius,
-                                          border: Border.all(
-                                            color: Colors.white
-                                                .withValues(alpha: 0.16 * t),
-                                          ),
-                                        ),
-                                      ),
+
                                   ],
                                 ),
                               ),
