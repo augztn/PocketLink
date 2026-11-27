@@ -1481,6 +1481,23 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   }
 
   Widget _themeBackground(String theme, {double lyricsProgress = 0}) {
+    if (_usesSharedArtwork) {
+      return const DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            stops: [0, 0.12, 0.58, 1],
+            colors: [
+              Color(0x73000000),
+              Color(0x00000000),
+              Color(0x00000000),
+              Color(0xF5000000),
+            ],
+          ),
+        ),
+      );
+    }
     final palette = _trackPalette;
     final hasArtwork = _artwork != null && _artworkKey == _trackKey;
     if (theme == 'aether') {
@@ -1624,6 +1641,18 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   }
 
   Widget _themeLayout(String theme, double contentOpacity) {
+    if (_usesSharedArtwork) {
+      // The morph overlay supplies one full-width hero for every theme.
+      // Keep the expanded foreground geometry identical so it cannot cover
+      // the shared artwork with a second, theme-specific square card.
+      return Column(
+        children: [
+          _header(contentOpacity: contentOpacity),
+          const Expanded(child: SizedBox.expand()),
+          _playerDetails(contentOpacity: contentOpacity),
+        ],
+      );
+    }
     if (theme == 'blur') {
       return Column(
         children: [
