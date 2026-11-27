@@ -435,7 +435,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     await _fetchHome(cacheKey, showLoading: true);
     // Prioritize the first Discover feed over the independent host-library
     // scan used only for optional local-lossless matching.
-    if (AppSettings.instance.discoverLocalLossless) {
+    if (mounted && AppSettings.instance.discoverLocalLossless) {
       unawaited(_loadLocalLibrary());
     }
   }
