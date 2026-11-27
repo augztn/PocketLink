@@ -193,6 +193,62 @@ void main() {
     messenger.setMockMethodCallHandler(channel, null);
   });
 
+  test('retains collection-only shelves without inventing tracks', () {
+    final feed = DiscoverHomeFeed.fromJson({
+      'shelves': [
+        {
+          'title': 'From the community',
+          'items': [
+            {
+              'type': 'playlist',
+              'id': 'VLPL1234567890',
+              'title': 'Sunday songs',
+              'browseId': 'VLPL1234567890',
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(feed.shelves, hasLength(1));
+    expect(feed.shelves.single.tracks, isEmpty);
+    expect(feed.shelves.single.items.single.type, DiscoverHomeItemType.playlist);
+  });
+
+  test('merges collection cards across Home continuation pages', () {
+    const current = [
+      DiscoverHomeShelf(title: 'From the community', tracks: [], items: [
+        DiscoverHomeItem(
+          type: DiscoverHomeItemType.playlist,
+          id: 'VLPL1234567890',
+          title: 'Sunday songs',
+          browseId: 'VLPL1234567890',
+        ),
+      ]),
+    ];
+    const incoming = [
+      DiscoverHomeShelf(title: 'From the community', tracks: [], items: [
+        DiscoverHomeItem(
+          type: DiscoverHomeItemType.playlist,
+          id: 'VLPL1234567890',
+          title: 'Duplicate',
+          browseId: 'VLPL1234567890',
+        ),
+        DiscoverHomeItem(
+          type: DiscoverHomeItemType.playlist,
+          id: 'VLPL0987654321',
+          title: 'Favourite',
+          browseId: 'VLPL0987654321',
+        ),
+      ]),
+    ];
+
+    final merged = mergeDiscoverHomeShelves(current, incoming);
+
+    expect(merged, hasLength(1));
+    expect(merged.single.items.map((item) => item.id),
+        ['VLPL1234567890', 'VLPL0987654321']);
+  });
   test('moreHome forwards the continuation token and region', () async {
     SharedPreferences.setMockInitialValues({});
     await AppSettings.instance.reloadPreferences();
