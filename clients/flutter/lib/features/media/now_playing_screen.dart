@@ -69,7 +69,7 @@ class NowPlayingScreen extends StatefulWidget {
 
 class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerProviderStateMixin {
   static const _secureStorage = FlutterSecureStorage();
-  static const double _playerChromeHeight = 286;
+  static const double _playerChromeHeight = 292;
 
   late final PersistentAudioPlayer _persistent;
   late final Player _player;
@@ -1530,7 +1530,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                       height: 4.5,
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.55),
-                        borderRadius: BorderRadius.circular(99),
+                        borderRadius: BorderRadius.circular(999),
                       ),
                     ),
                   ),
