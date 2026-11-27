@@ -206,15 +206,6 @@ class _LyricsViewportState extends State<LyricsViewport> {
             ),
           ),
         ),
-        Positioned(
-          right: 18,
-          bottom: 12,
-          child: _LyricsControlPill(
-            translationEnabled: widget.translationEnabled,
-            onChooseProvider: widget.onChooseProvider,
-            onToggleTranslation: widget.onToggleTranslation,
-          ),
-        ),
       ],
     );
   }
@@ -252,8 +243,8 @@ class _InstrumentalDotsState extends State<_InstrumentalDots> with SingleTickerP
   );
 }
 
-class _LyricsControlPill extends StatelessWidget {
-  const _LyricsControlPill({
+class LyricsTranslationControlPill extends StatelessWidget {
+  const LyricsTranslationControlPill({
     required this.translationEnabled,
     required this.onChooseProvider,
     required this.onToggleTranslation,
