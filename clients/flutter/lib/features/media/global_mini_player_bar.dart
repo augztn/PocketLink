@@ -402,6 +402,7 @@ class _MiniPlayerGestureSurfaceState
   @override
   Widget build(BuildContext context) => GestureDetector(
         behavior: HitTestBehavior.opaque,
+        dragStartBehavior: DragStartBehavior.down,
         onTap: widget.onTap,
         onPanDown: _onPanDown,
         onPanStart: _onPanStart,
