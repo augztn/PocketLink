@@ -182,22 +182,35 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
         fit: StackFit.expand,
         children: [
           if (hasArtwork)
-            ImageFiltered(
-              imageFilter: ui.ImageFilter.blur(
-                sigmaX: 48,
-                sigmaY: 48,
-                tileMode: TileMode.mirror,
-              ),
-              child: Opacity(
-                opacity: 0.68,
-                child: ColorFiltered(
-                  colorFilter: const ColorFilter.matrix([
-                    1.18, -0.09, -0.09, 0, 0,
-                    -0.09, 1.18, -0.09, 0, 0,
-                    -0.09, -0.09, 1.18, 0, 0,
-                    0, 0, 0, 1, 0,
-                  ]),
-                  child: Image.memory(_artwork!, cacheWidth: 720, fit: BoxFit.cover, gaplessPlayback: true),
+            RepaintBoundary(
+              child: ImageFiltered(
+                // A 48px decode keeps the ambient wash inexpensive to rasterize.
+                // The sharp foreground artwork is painted separately below.
+                imageFilter: ui.ImageFilter.blur(
+                  sigmaX: 14,
+                  sigmaY: 14,
+                  tileMode: TileMode.mirror,
+                ),
+                child: Opacity(
+                  opacity: 0.68,
+                  child: ColorFiltered(
+                    colorFilter: const ColorFilter.matrix([
+                      1.18, -0.09, -0.09, 0, 0,
+                      -0.09, 1.18, -0.09, 0, 0,
+                      -0.09, -0.09, 1.18, 0, 0,
+                      0, 0, 0, 1, 0,
+                    ]),
+                    child: Image(
+                      image: ResizeImage(
+                        MemoryImage(_artwork!),
+                        width: 48,
+                        height: 48,
+                      ),
+                      fit: BoxFit.cover,
+                      filterQuality: FilterQuality.medium,
+                      gaplessPlayback: true,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -858,20 +871,36 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     return '${value.toStringAsFixed(1)} ${units[unit]}';
   }
 
-  Widget _frostedCircle({required Widget child, required BorderRadius radius, double intensity = 1}) => ClipRRect(
-        borderRadius: radius,
-        child: BackdropFilter(
-          filter: ui.ImageFilter.blur(sigmaX: 16 * intensity, sigmaY: 16 * intensity),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.16 * intensity),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.14 * intensity)),
-              borderRadius: radius,
-            ),
-            child: child,
-          ),
+  Widget _frostedCircle({
+    required Widget child,
+    required BorderRadius radius,
+    double intensity = 1,
+  }) {
+    final transitioning = widget.morphAnimation != null &&
+        widget.morphAnimation!.value < 0.999;
+    final surface = DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.16 * intensity),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.14 * intensity),
         ),
-      );
+        borderRadius: radius,
+      ),
+      child: child,
+    );
+    return ClipRRect(
+      borderRadius: radius,
+      child: transitioning
+          ? surface
+          : BackdropFilter(
+              filter: ui.ImageFilter.blur(
+                sigmaX: 16 * intensity,
+                sigmaY: 16 * intensity,
+              ),
+              child: surface,
+            ),
+    );
+  }
 
   Widget _moreMenuButton({double contentOpacity = 1}) => SizedBox(
         width: 38,
