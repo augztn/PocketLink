@@ -129,8 +129,8 @@ class _PocketLinkScaffoldState extends State<PocketLinkScaffold> {
         ? statusBarHeight + kToolbarHeight + pocketLinkTopContentGap
         : renderedHeaderHeight + pocketLinkTopContentGap;
     final bottomClearance = media.padding.bottom +
-        (widget.hasFloatingNavBar ? 84.0 : 12.0) +
-        (widget.hasActiveMiniPlayer ? pocketLinkMiniPlayerHeight : 0.0);
+        (widget.hasFloatingNavBar ? 82.0 : 12.0) +
+        (widget.hasActiveMiniPlayer ? 62.0 + 24.0 : 0.0);
 
     return LayoutInsetsScope(
       topClearance: topClearance,
