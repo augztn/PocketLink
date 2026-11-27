@@ -195,8 +195,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     }
 
     _captureNowPlayingOrigin(
-      preferMiniPlayer: fromMiniPlayer ||
-          (AppSettings.instance.showMiniPlayer && player.shouldShowMiniPlayer),
+      preferMiniPlayer: fromMiniPlayer || _shouldShowMiniPlayer(),
     );
     _openingNowPlaying = true;
     _nowPlayingController.value = 0;
