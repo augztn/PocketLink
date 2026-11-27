@@ -442,7 +442,7 @@ class ServerApi {
         }
       }
 
-      final workerCount = batch.length.clamp(0, 2);
+      final workerCount = batch.length.clamp(0, 2).toInt();
       await Future.wait(List.generate(workerCount, (_) => worker()));
     }
 
