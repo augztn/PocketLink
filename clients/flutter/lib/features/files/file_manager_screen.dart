@@ -64,6 +64,18 @@ class FileManagerScreen extends StatefulWidget {
 
   @override
   State<FileManagerScreen> createState() => _FileManagerScreenState();
+  @override
+  void dispose() {
+    _scrollOffsetSaveTimer?.cancel();
+    if (_scrollController.hasClients) {
+      _saveState();
+    }
+    _scrollController
+      ..removeListener(_saveScrollOffset)
+      ..dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
 }
 
 class _FileManagerScreenState extends State<FileManagerScreen> {
@@ -76,6 +88,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
   late final FileBrowserStateStore _browserState;
   String _sortBy = 'name';
   double _pendingScrollOffset = 0;
+  Timer? _scrollOffsetSaveTimer;
   int _loadGeneration = 0;
   List<StorageVolume> _volumes = const [];
   String? _selectedVolume;
@@ -198,7 +211,16 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     ));
   }
 
-  void _saveScrollOffset() => _saveState();
+  void _saveScrollOffset() {
+    // ScrollController listeners fire at display refresh frequency. Persist
+    // the final position after scrolling settles instead of rebuilding the
+    // app-scoped Files state on every pixel/frame.
+    _scrollOffsetSaveTimer?.cancel();
+    _scrollOffsetSaveTimer = Timer(const Duration(milliseconds: 180), () {
+      _scrollOffsetSaveTimer = null;
+      if (mounted) _saveState();
+    });
+  }
 
   void _onHomeActivityChanged() {
     if (mounted) setState(() {});
