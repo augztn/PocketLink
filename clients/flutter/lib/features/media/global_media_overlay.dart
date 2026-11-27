@@ -710,9 +710,6 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
                       : 'Internal storage',
                   path: currentItem.path,
                 );
-          // Use the same artwork-derived ambient gradient as Now Playing
-          // throughout the morph. A fixed slate fill here caused a visible
-          // color swap and dark horizontal band as soon as a drag began.
           // Keep the in-flight sheet neutral. Artwork is painted separately;
           // sampling the artwork palette here created an olive proxy pill.
           const sheetColor = Color(0xFF0A0B0E);
