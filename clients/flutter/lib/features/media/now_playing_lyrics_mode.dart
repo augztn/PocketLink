@@ -31,7 +31,9 @@ class NowPlayingLyricsMode extends StatelessWidget {
     return IgnorePointer(
       ignoring: progress < 0.02,
       child: SafeArea(
-        child: LayoutBuilder(
+        child: Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: LayoutBuilder(
             builder: (context, constraints) {
               final width = constraints.maxWidth;
               final height = constraints.maxHeight;
@@ -46,6 +48,19 @@ class NowPlayingLyricsMode extends StatelessWidget {
                     child: GestureDetector(
                       onTap: onClose,
                       child: artwork,
+                    ),
+                  ),
+                  Positioned(
+                    left: 8,
+                    top: 56,
+                    child: Material(
+                      color: Colors.black.withValues(alpha: .38),
+                      shape: const CircleBorder(),
+                      child: IconButton(
+                        tooltip: 'Back to artwork',
+                        onPressed: onClose,
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white),
+                      ),
                     ),
                   ),
                   const Positioned.fill(
@@ -92,22 +107,23 @@ class NowPlayingLyricsMode extends StatelessWidget {
                         ),
                       ),
                       Expanded(child: lyricsContent),
-                      GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: onChooseProvider,
-                        child: Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Text(
-                            providerLabel,
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12,
-                              decoration: TextDecoration.underline,
-                              decorationColor: Colors.white54,
+                      if (providerLabel.isNotEmpty)
+                        GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: onChooseProvider,
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Text(
+                              providerLabel,
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                                decoration: TextDecoration.underline,
+                                decorationColor: Colors.white54,
+                              ),
                             ),
                           ),
                         ),
-                      ),
                       footer,
                     ],
                   ),
