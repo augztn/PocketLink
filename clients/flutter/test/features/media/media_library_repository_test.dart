@@ -90,7 +90,6 @@ void main() {
       final adapter = _MediaPageAdapter([
         _page(firstPage),
         _page(secondPage),
-        {'items': <dynamic>[]}, // Optional /api/music/library metadata response.
       ]);
       final api = ServerApi(
         baseUrl: 'http://127.0.0.1:8000',
@@ -112,8 +111,8 @@ void main() {
         expect(result.items.first.volume, isNull);
         expect(result.items.last.volume, 'usb1');
         expect(result.status.state, 'complete');
-        expect(adapter.requests, hasLength(3));
-        expect(adapter.requests.last.path, '/api/music/library');
+        expect(adapter.requests, hasLength(2));
+        expect(adapter.requests.last.path, '/api/index/media');
         expect(
           adapter.requests.take(2).map((request) => request.queryParameters['category']),
           everyElement('music'),
@@ -170,31 +169,27 @@ void main() {
     });
 
     test('searches embedded title, artist and album metadata after indexing', () async {
+      final firstTrack = _indexedFile(
+        name: 'track_001.mp3',
+        path: 'Music/track_001.mp3',
+      )..addAll({
+          'title': 'Midnight City',
+          'artist': 'M83',
+          'album': 'Hurry Up, We Are Dreaming',
+          'duration_ms': 243000,
+          'metadata_scanned': true,
+        });
+      final secondTrack = _indexedFile(
+        name: 'track_002.mp3',
+        path: 'Music/track_002.mp3',
+      )..addAll({
+          'title': 'Outro',
+          'artist': 'M83',
+          'album': 'Hurry Up, We Are Dreaming',
+          'metadata_scanned': true,
+        });
       final adapter = _MediaPageAdapter([
-        _page([
-          _indexedFile(name: 'track_001.mp3', path: 'Music/track_001.mp3'),
-          _indexedFile(name: 'track_002.mp3', path: 'Music/track_002.mp3'),
-        ]),
-        {
-          'items': [
-            {
-              'path': 'Music/track_001.mp3',
-              'name': 'track_001.mp3',
-              'title': 'Midnight City',
-              'artist': 'M83',
-              'album': 'Hurry Up, We Are Dreaming',
-              'duration': 4.03,
-              'artwork_available': true,
-            },
-            {
-              'path': 'Music/track_002.mp3',
-              'name': 'track_002.mp3',
-              'title': 'Outro',
-              'artist': 'M83',
-              'album': 'Hurry Up, We Are Dreaming',
-            },
-          ],
-        },
+        _page([firstTrack, secondTrack]),
       ]);
       final api = ServerApi(
         baseUrl: 'http://127.0.0.1:8000',
@@ -212,6 +207,8 @@ void main() {
         expect(result.items, hasLength(1));
         expect(result.items.single.title, 'Midnight City');
         expect(result.items.single.artist, 'M83');
+        expect(adapter.requests, hasLength(1));
+        expect(adapter.requests.single.path, '/api/index/media');
         expect(adapter.requests.first.queryParameters['q'], '');
       } finally {
         api.close(force: true);
