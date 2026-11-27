@@ -14,6 +14,7 @@ import '../../core/widgets/pocketlink_scaffold.dart';
 import 'global_mini_player_bar.dart';
 import 'now_playing_screen.dart';
 import 'now_playing_artwork_palette.dart';
+import 'track_artwork_view.dart';
 import 'persistent_audio_player.dart';
 import 'now_playing_overlay_controller.dart';
 
@@ -36,6 +37,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   bool _nowPlayingOpen = false;
   bool _closingNowPlaying = false;
   Rect? _nowPlayingOriginRect;
+  Rect? _miniArtworkOriginRect;
   double _nowPlayingOriginRadius = 20;
   final ValueNotifier<Uint8List?> _sharedArtwork = ValueNotifier(null);
   late final AnimationController _nowPlayingController;
@@ -178,6 +180,9 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
             64,
           );
     _nowPlayingOriginRect = measured ?? fallback;
+    _miniArtworkOriginRect = useMini
+        ? PocketLinkNavigation.resolveMediaRect(PocketLinkNavigation.miniArtworkKey)
+        : null;
     _nowPlayingOriginRadius =
         useMini ? 20 : _nowPlayingOriginRect!.shortestSide / 2;
   }
@@ -265,6 +270,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     _openingNowPlaying = false;
     _closingNowPlaying = false;
     _nowPlayingOriginRect = null;
+    _miniArtworkOriginRect = null;
     setState(() => _nowPlayingOpen = false);
   }
 
@@ -491,6 +497,8 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
                         onDismiss: () => _closeNowPlaying(),
                         originRect: _nowPlayingOriginRect,
                         originRadius: _nowPlayingOriginRadius,
+                        miniArtworkRect: _miniArtworkOriginRect,
+                        sharedArtwork: _sharedArtwork,
                         onDragStart: () {},
                         onDragUpdate: _updateNowPlayingDrag,
                         onDragEnd: _endNowPlayingDrag,
@@ -559,6 +567,8 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
     required this.onDismiss,
     required this.originRect,
     required this.originRadius,
+    required this.miniArtworkRect,
+    required this.sharedArtwork,
     required this.onDragStart,
     required this.onDragUpdate,
     required this.onDragEnd,
@@ -572,6 +582,8 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
   final VoidCallback onDismiss;
   final Rect? originRect;
   final double originRadius;
+  final Rect? miniArtworkRect;
+  final ValueListenable<Uint8List?> sharedArtwork;
   final VoidCallback onDragStart;
   final ValueChanged<double> onDragUpdate;
   final ValueChanged<double> onDragEnd;
@@ -631,6 +643,16 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
             (curvedT / 0.30).clamp(0.0, 1.0),
           )!;
 
+          final heroArtworkRect = Rect.fromLTWH(
+            0,
+            0,
+            media.size.width,
+            media.size.height * 0.56,
+          );
+          final movingArtworkRect = miniArtworkRect == null
+              ? null
+              : Rect.lerp(miniArtworkRect!, heroArtworkRect, curvedT);
+
           return Stack(
             fit: StackFit.expand,
             children: [
@@ -641,6 +663,28 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
                   ),
                 ),
               ),
+              if (movingArtworkRect != null && t < 1)
+                ValueListenableBuilder<Uint8List?>(
+                  valueListenable: sharedArtwork,
+                  builder: (context, bytes, _) => Positioned.fromRect(
+                    rect: movingArtworkRect,
+                    child: IgnorePointer(
+                      child: Opacity(
+                        opacity: (1.0 - ((t - 0.75) / 0.25))
+                            .clamp(0.0, 1.0)
+                            .toDouble(),
+                        child: TrackArtworkView(
+                          bytes: bytes,
+                          artworkUrl: track?.artworkUrl,
+                          fallbackColors: palette,
+                          fallbackIconSize: 92,
+                          fit: BoxFit.cover,
+                          borderRadius: BorderRadius.circular(11 * (1 - curvedT)),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               Positioned.fromRect(
                 rect: rect,
                 child: ClipRRect(
