@@ -344,6 +344,7 @@ class _MiniPlayerGestureSurfaceState extends State<_MiniPlayerGestureSurface> {
         _expandStarted = true;
         _deliveredVerticalDistance = total.dy;
         widget.onExpandDragStart?.call();
+        widget.onExpandDragUpdate?.call(total.dy);
       } else if (_expandStarted) {
         final delta = total.dy - _deliveredVerticalDistance;
         _deliveredVerticalDistance = total.dy;
