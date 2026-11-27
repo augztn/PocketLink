@@ -1690,8 +1690,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                   ),
                 ),
               ),
-                ),
-              ),
             ],
           ),
         );
