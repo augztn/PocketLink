@@ -353,8 +353,6 @@ class _MiniPlayerGestureSurfaceState extends State<_MiniPlayerGestureSurface> {
     } else if (_lockedAxis == Axis.horizontal) {
       _horizontalDistance = total.dx;
     }
-    _lastPointerPosition = event.position;
-    _lastPointerTime = event.timeStamp;
   }
 
   void _onPointerUp(PointerUpEvent event) {
