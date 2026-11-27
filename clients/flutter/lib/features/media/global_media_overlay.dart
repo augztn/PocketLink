@@ -714,18 +714,19 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
               ).transform(t);
           final isGradientTheme =
               AppSettings.instance.nowPlayingTheme == 'gradient';
-          final targetArt = isGradientTheme
-              ? Rect.fromLTWH(0, 0, size.width, size.height * 0.64)
-              : artworkTargetRect.value ??
-                  Rect.fromCenter(
-                    center: Offset(size.width / 2, size.height * 0.34),
-                    width: 260,
-                    height: 260,
-                  );
+          // Every player theme shares the same full-bleed artwork hero
+          // during the morph. A theme-specific square target caused the cover
+          // to jump left as soon as the drag left progress 1.0.
+          final targetArt = Rect.fromLTWH(
+            0,
+            0,
+            size.width,
+            size.height * 0.64,
+          );
           final artworkRect = Rect.lerp(sourceArt, targetArt, t)!;
           final artworkRadius = BorderRadius.lerp(
             BorderRadius.circular(11),
-            isGradientTheme ? BorderRadius.zero : BorderRadius.circular(26),
+            BorderRadius.zero,
             t,
           )!;
 
