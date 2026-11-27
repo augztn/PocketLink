@@ -98,12 +98,12 @@ class _LyricsViewportState extends State<LyricsViewport> {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [Colors.transparent, Colors.white, Colors.white, Colors.transparent],
-              stops: [0, .09, .88, 1],
+              stops: [0, .16, .82, 1],
             ).createShader(bounds),
             child: ListView.builder(
               controller: _scroll,
               physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(22, 26, 22, 84),
+              padding: const EdgeInsets.fromLTRB(22, 38, 22, 96),
               itemCount: doc.lines.length,
               itemBuilder: (context, index) {
                 final line = doc.lines[index];
