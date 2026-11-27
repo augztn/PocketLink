@@ -719,7 +719,7 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
           final miniOpacity = 1.0 -
               const Interval(
                 0.0,
-                0.22,
+                0.75,
                 curve: Curves.easeOutCubic,
               ).transform(t);
           // Match the fixed full-bleed hero geometry in Now Playing.
@@ -814,8 +814,8 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
                             ignoring: t < 0.35,
                             child: Opacity(
                               opacity: const Interval(
-                                0.55,
-                                1.0,
+                                0.45,
+                                0.90,
                                 curve: Curves.easeOutCubic,
                               ).transform(t),
                               child: animatedChild!,
