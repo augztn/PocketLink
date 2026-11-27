@@ -56,10 +56,10 @@ abstract interface class LyricsProvider {
   Future<LyricsDocument?> fetch(LyricsTrackQuery query);
   static String clean(String s) => cleanArtist(s)
     .replaceAll(RegExp(r'^\s*\d+\s*[-.)]\s*'), '')
-    .replaceAll(RegExp(r'\s*\([^)]*\)\s*$'), '')
-    .replaceAll(RegExp(r'\s*\[[^\]]*\]\s*$'), '')
     .replaceAll(RegExp(r'\.(flac|alac|wav|aiff|aif|mp3|m4a|opus|ogg|wv|ape|dsf|dff)$', caseSensitive: false), '')
     .replaceAll(RegExp(r'\s+(feat\.?|ft\.?|featuring)\s+.*$', caseSensitive: false), '')
+    .replaceAll(RegExp(r'\s*\([^)]*\)\s*$'), '')
+    .replaceAll(RegExp(r'\s*\[[^\]]*\]\s*$'), '')
     .replaceAll(RegExp(r'\s+'), ' ').trim();
 
   static String cleanArtist(String value) => value
