@@ -37,6 +37,7 @@ class LyricsViewport extends StatefulWidget {
 class _LyricsViewportState extends State<LyricsViewport> {
   final ScrollController _scroll = ScrollController();
   int _lastActive = -1;
+  bool _manualScrollActive = false;
 
   @override
   void didUpdateWidget(covariant LyricsViewport oldWidget) {
@@ -116,7 +117,19 @@ class _LyricsViewportState extends State<LyricsViewport> {
               colors: [Colors.transparent, Colors.white, Colors.white, Colors.transparent],
               stops: [0, .16, .82, 1],
             ).createShader(bounds),
-            child: ListView.builder(
+            child: NotificationListener<ScrollNotification>(
+              onNotification: (notification) {
+                if (notification is ScrollStartNotification &&
+                    notification.dragDetails != null &&
+                    !_manualScrollActive) {
+                  setState(() => _manualScrollActive = true);
+                } else if (notification is ScrollEndNotification &&
+                    _manualScrollActive) {
+                  setState(() => _manualScrollActive = false);
+                }
+                return false;
+              },
+              child: ListView.builder(
               controller: _scroll,
               physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(24, 42, 24, 112),
@@ -169,8 +182,8 @@ class _LyricsViewportState extends State<LyricsViewport> {
                       alignment: Alignment.centerLeft,
                       child: ImageFiltered(
                         imageFilter: ImageFilter.blur(
-                          sigmaX: active ? 0 : 1.7,
-                          sigmaY: active ? 0 : 1.7,
+                          sigmaX: active || _manualScrollActive ? 0 : 1.7,
+                          sigmaY: active || _manualScrollActive ? 0 : 1.7,
                         ),
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -191,6 +204,7 @@ class _LyricsViewportState extends State<LyricsViewport> {
                   ),
                 );
               },
+              ),
             ),
           ),
         ),
