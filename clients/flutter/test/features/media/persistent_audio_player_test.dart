@@ -11,6 +11,7 @@ void main() {
     );
 
     expect(item.sourceLabel, 'Discover');
+    expect(item.stableTrackId, 'discover:abcdefghijk');
     expect(
       item.mergeMetadata(const MediaQueueItem(
         title: 'Discover track',
