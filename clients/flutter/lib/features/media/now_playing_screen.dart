@@ -96,6 +96,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
       _persistent.currentItem ??
       widget.queue[widget.initialIndex.clamp(0, widget.queue.length - 1).toInt()];
 
+  BuildContext? get _rootNavigatorContext =>
+      PocketLinkNavigation.navigatorKey.currentContext;
+
   String get _trackIdentity =>
       '${widget.api?.baseUrl ?? 'discover'}|${_track.stableTrackId}';
 
@@ -602,8 +605,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
 
   void _showFileInfo() {
     final fileName = _track.path.split('/').last;
+    final navigatorContext = _rootNavigatorContext;
+    if (navigatorContext == null) return;
     showDialog<void>(
-      context: context,
+      context: navigatorContext,
       useRootNavigator: true,
       builder: (dialogContext) => FutureBuilder<int?>(
         future: _resolveFileSize(),
@@ -639,8 +644,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   }
 
   Future<void> _chooseSleepTimer() async {
+    final navigatorContext = _rootNavigatorContext;
+    if (navigatorContext == null) return;
     final minutes = await showModalBottomSheet<int>(
-      context: context,
+      context: navigatorContext,
       useRootNavigator: true,
       backgroundColor: const Color(0xFF1C1C1E),
       builder: (context) => SafeArea(
@@ -680,12 +687,14 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
       _message('Discover tracks do not have a server folder.');
       return;
     }
+    final navigator = PocketLinkNavigation.navigatorKey.currentState;
+    if (navigator == null) return;
     if (_track.volume == null) {
-      Navigator.of(context).push(MaterialPageRoute<void>(
+      navigator.push(MaterialPageRoute<void>(
         builder: (_) => FileManagerScreen(api: api, initialPath: _folder),
       ));
     } else {
-      Navigator.of(context).push(MaterialPageRoute<void>(
+      navigator.push(MaterialPageRoute<void>(
         builder: (_) => StorageBrowserScreen(
           api: api,
           initialVolume: _track.volume,
@@ -717,8 +726,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   }
 
   Future<void> _showQueue() async {
+    final navigatorContext = _rootNavigatorContext;
+    if (navigatorContext == null) return;
     await showModalBottomSheet<void>(
-      context: context,
+      context: navigatorContext,
       useRootNavigator: true,
       backgroundColor: const Color(0xFF1C1C1E),
       isScrollControlled: true,
@@ -765,8 +776,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   void _showStatsForNerds() {
     const surfaceColor = Color(0xFF171717);
     final accentColor = Theme.of(context).colorScheme.primary;
+    final navigatorContext = _rootNavigatorContext;
+    if (navigatorContext == null) return;
     showModalBottomSheet<void>(
-      context: context,
+      context: navigatorContext,
       useRootNavigator: true,
       backgroundColor: surfaceColor,
       shape: const RoundedRectangleBorder(
@@ -1473,8 +1486,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
 
   Future<void> _showAudioOutput() async {
     final deviceName = _outputDeviceLabel;
+    final navigatorContext = _rootNavigatorContext;
+    if (navigatorContext == null) return;
     await showModalBottomSheet<void>(
-      context: context,
+      context: navigatorContext,
       useRootNavigator: true,
       backgroundColor: const Color(0xFF171717),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
