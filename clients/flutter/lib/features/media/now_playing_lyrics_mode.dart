@@ -12,6 +12,7 @@ class NowPlayingLyricsMode extends StatelessWidget {
     required this.lyricsContent,
     required this.providerLabel,
     required this.onChooseProvider,
+    required this.translationControl,
     required this.footer,
     super.key,
   });
@@ -26,6 +27,7 @@ class NowPlayingLyricsMode extends StatelessWidget {
   final Widget lyricsContent;
   final String providerLabel;
   final VoidCallback onChooseProvider;
+  final Widget translationControl;
   final Widget footer;
 
   @override
@@ -33,140 +35,155 @@ class NowPlayingLyricsMode extends StatelessWidget {
     return IgnorePointer(
       ignoring: progress < 0.02,
       child: LayoutBuilder(
-            builder: (context, constraints) {
-              final width = constraints.maxWidth;
-              final height = constraints.maxHeight;
-              final startRect = Rect.fromLTWH(0, 0, width, height * 0.56);
-              final compactArtRect = Rect.fromLTWH(12, MediaQuery.paddingOf(context).top + 3, 48, 48);
-              final artRect = Rect.lerp(startRect, compactArtRect, progress)!;
-              return Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Positioned.fill(child: background),
-                  Positioned.fromRect(
-                    rect: artRect,
-                    child: GestureDetector(
-                      onTap: onClose,
-                      child: artwork,
-                    ),
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          final height = constraints.maxHeight;
+          final topInset = MediaQuery.paddingOf(context).top;
+          const headerTopSpacing = 8.0;
+          const handleHeight = 4.5;
+          const handleToHeaderGap = 12.0;
+          final compactArtRect = Rect.fromLTWH(
+            24,
+            topInset + headerTopSpacing + handleHeight + handleToHeaderGap,
+            48,
+            48,
+          );
+          final startRect = Rect.fromLTWH(0, 0, width, height * 0.56);
+          final artRect = Rect.lerp(startRect, compactArtRect, progress)!;
+
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned.fill(child: background),
+              Positioned.fromRect(
+                rect: artRect,
+                child: GestureDetector(
+                  key: const ValueKey('lyrics-mode-artwork'),
+                  onTap: onClose,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: artwork,
                   ),
-                  Positioned(
-                    top: MediaQuery.paddingOf(context).top,
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: onClose,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 5),
-                          child: Container(
-                            width: 36,
-                            height: 4,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.7),
-                              borderRadius: BorderRadius.circular(99),
-                            ),
-                          ),
+                ),
+              ),
+              Positioned(
+                top: topInset + headerTopSpacing,
+                left: 0,
+                right: 0,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: onClose,
+                      child: Container(
+                        key: const ValueKey('lyrics-mode-grab-handle'),
+                        width: 40,
+                        height: handleHeight,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.7),
+                          borderRadius: BorderRadius.circular(99),
                         ),
                       ),
                     ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.only(top: MediaQuery.paddingOf(context).top + 8),
-                    child: Column(
-                    children: [
+                    const SizedBox(height: handleToHeaderGap),
+                    Padding(
+                      key: const ValueKey('lyrics-mode-compact-header'),
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: SizedBox(
+                        height: 48,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            const SizedBox(width: 48),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    trackTitle,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  Text(
+                                    artistLabel,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: Colors.white.withValues(alpha: 0.7),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w400,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            actions,
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                top: topInset + headerTopSpacing + handleHeight +
+                    handleToHeaderGap + 48 + 12,
+                bottom: 0,
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: ClipRect(child: lyricsContent),
+                    ),
+                    if (providerLabel.isNotEmpty || translationControl is! SizedBox)
                       Padding(
-                        padding: const EdgeInsets.only(left: 68, right: 12, top: 8),
-                        child: SizedBox(
-                          height: 54,
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      trackTitle,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w700,
+                        key: const ValueKey('lyrics-mode-attribution-footer'),
+                        padding: const EdgeInsets.fromLTRB(24, 8, 24, 12),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Expanded(
+                              child: providerLabel.isEmpty
+                                  ? const SizedBox.shrink()
+                                  : GestureDetector(
+                                      behavior: HitTestBehavior.opaque,
+                                      onTap: onChooseProvider,
+                                      child: Text(
+                                        providerLabel,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          color: Colors.white.withValues(alpha: 0.72),
+                                          fontSize: 13,
+                                          decoration: TextDecoration.underline,
+                                          decorationColor: Colors.white.withValues(alpha: 0.54),
+                                        ),
                                       ),
                                     ),
-                                    LayoutBuilder(
-                                      builder: (context, constraints) {
-                                        const style = TextStyle(
-                                          color: Colors.white60,
-                                          fontSize: 12,
-                                        );
-                                        final painter = TextPainter(
-                                          text: TextSpan(text: artistLabel, style: style),
-                                          maxLines: 1,
-                                          textDirection: Directionality.of(context),
-                                        )..layout(maxWidth: constraints.maxWidth);
-                                        final text = Text(
-                                          artistLabel,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: style,
-                                        );
-                                        if (!painter.didExceedMaxLines &&
-                                            painter.width <= constraints.maxWidth) {
-                                          return text;
-                                        }
-                                        return ShaderMask(
-                                          blendMode: BlendMode.dstIn,
-                                          shaderCallback: (bounds) => const LinearGradient(
-                                            begin: Alignment.centerLeft,
-                                            end: Alignment.centerRight,
-                                            colors: [Colors.white, Colors.white, Colors.transparent],
-                                            stops: [0, .78, 1],
-                                          ).createShader(bounds),
-                                          child: text,
-                                        );
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              actions,
-                            ],
-                          ),
+                            ),
+                            const SizedBox(width: 12),
+                            translationControl,
+                          ],
                         ),
                       ),
-                      Expanded(child: lyricsContent),
-                      if (providerLabel.isNotEmpty)
-                        GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: onChooseProvider,
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                              providerLabel,
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 12,
-                                decoration: TextDecoration.underline,
-                                decorationColor: Colors.white54,
-                              ),
-                            ),
-                            ),
-                          ),
-                        ),
-                      footer,
-                    ],
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
+                    footer,
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 }
