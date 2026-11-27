@@ -1,12 +1,9 @@
-import 'dart:ui' as ui;
-
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/settings/app_settings.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
 import 'music_shortcut_customization_screen.dart';
 import 'widgets/settings_components.dart';
-import '../media/now_playing_scrubber.dart';
 
 class NowPlayingSettingsScreen extends StatelessWidget {
   const NowPlayingSettingsScreen({super.key});
@@ -30,7 +27,7 @@ class NowPlayingSettingsScreen extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(bottom: 18),
               child: Text(
-                'Configure the Music button, Now Playing appearance, scrubber and mini-player behavior.',
+                'Configure the Music button and mini-player behavior.',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -90,77 +87,6 @@ class NowPlayingSettingsScreen extends StatelessWidget {
                 ),
               ),
             ]),
-            const SizedBox(height: 20),
-            const SettingsSectionHeader('Now Playing scrubber'),
-            SettingsGroupCard(children: NowPlayingScrubberStyle.values.map((style) {
-              final selected = settings.nowPlayingScrubberStyle == style.key;
-              return RadioListTile<String>(
-                value: style.key,
-                groupValue: settings.nowPlayingScrubberStyle,
-                onChanged: (value) {
-                  if (value != null) {
-                    settings.setNowPlayingScrubberStyle(value);
-                  }
-                },
-                title: Text(style.label),
-                subtitle: Padding(
-                  padding: const EdgeInsets.only(top: 7, right: 12),
-                  child: NowPlayingScrubberPreview(style: style),
-                ),
-                selected: selected,
-                dense: false,
-              );
-            }).toList(growable: false)),
-            const SizedBox(height: 20),
-            const SettingsSectionHeader('Now Playing theme'),
-            SettingsGroupCard(
-              padding: const EdgeInsets.all(8),
-              children: [
-                SizedBox(
-                  height: 132,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: [
-                      _NowPlayingThemeOption(
-                        value: 'apple',
-                        label: 'Apple Glass',
-                        description: 'Default',
-                        selected: settings.nowPlayingTheme == 'apple',
-                        onTap: () => settings.setNowPlayingTheme('apple'),
-                      ),
-                      _NowPlayingThemeOption(
-                        value: 'blur',
-                        label: 'Blur',
-                        description: 'Full-screen blur',
-                        selected: settings.nowPlayingTheme == 'blur',
-                        onTap: () => settings.setNowPlayingTheme('blur'),
-                      ),
-                      _NowPlayingThemeOption(
-                        value: 'blurCard',
-                        label: 'Blur Card',
-                        description: 'Floating glass card',
-                        selected: settings.nowPlayingTheme == 'blurCard',
-                        onTap: () => settings.setNowPlayingTheme('blurCard'),
-                      ),
-                      _NowPlayingThemeOption(
-                        value: 'gradient',
-                        label: 'Gradient',
-                        description: 'Artwork fade',
-                        selected: settings.nowPlayingTheme == 'gradient',
-                        onTap: () => settings.setNowPlayingTheme('gradient'),
-                      ),
-                      _NowPlayingThemeOption(
-                        value: 'aether',
-                        label: 'Aether',
-                        description: 'Artwork glass',
-                        selected: settings.nowPlayingTheme == 'aether',
-                        onTap: () => settings.setNowPlayingTheme('aether'),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
             const SizedBox(height: 20),
             const SettingsSectionHeader('Mini-player and playback'),
             SettingsGroupCard(children: [
@@ -244,170 +170,3 @@ class _SwipeActionTile extends StatelessWidget {
   );
 }
 
-
-class _NowPlayingThemeOption extends StatelessWidget {
-  const _NowPlayingThemeOption({
-    required this.value,
-    required this.label,
-    required this.description,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String value;
-  final String label;
-  final String description;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.only(right: 10),
-      child: SizedBox(
-        width: 132,
-        child: Material(
-          color: selected
-              ? colors.primaryContainer.withValues(alpha: 0.52)
-              : colors.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(16),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(16),
-            onTap: onTap,
-            child: Container(
-              padding: const EdgeInsets.all(9),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: selected ? colors.primary : colors.outlineVariant,
-                  width: selected ? 1.5 : 1,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: _themeThumbnail(value)),
-                  const SizedBox(height: 7),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-                        ),
-                      ),
-                      if (selected)
-                        Icon(Icons.check_circle_rounded, color: colors.primary, size: 15),
-                    ],
-                  ),
-                  Text(
-                    description,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 9, color: colors.onSurfaceVariant),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _themeThumbnail(String theme) {
-    const palette = [Color(0xFF8B5CF6), Color(0xFFDB2777), Color(0xFF10111A)];
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(9),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: theme == 'gradient'
-                    ? palette
-                    : const [Color(0xFF272333), Color(0xFF101116)],
-              ),
-            ),
-          ),
-          if (theme == 'blur' || theme == 'blurCard')
-            Positioned.fill(
-              child: ImageFiltered(
-                imageFilter: ui.ImageFilter.blur(sigmaX: 7, sigmaY: 7),
-                child: const DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [Color(0xFF8B5CF6), Color(0xFFDB2777)]),
-                  ),
-                ),
-              ),
-            ),
-          if (theme == 'gradient')
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Colors.transparent, const Color(0xFF101116).withValues(alpha: 0.9)],
-                    stops: const [0.2, 1],
-                  ),
-                ),
-              ),
-            ),
-          if (theme == 'apple')
-            Center(
-              child: Container(
-                width: 37,
-                height: 37,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(9),
-                  gradient: const LinearGradient(colors: [Color(0xFF8B5CF6), Color(0xFFDB2777)]),
-                ),
-              ),
-            ),
-          if (theme == 'blurCard')
-            Center(
-              child: Container(
-                width: 82,
-                height: 37,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.22),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.32)),
-                ),
-                child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 20),
-              ),
-            ),
-          if (theme == 'blur')
-            const Center(
-              child: Icon(Icons.play_circle_fill_rounded, color: Colors.white, size: 25),
-            ),
-          if (theme == 'aether')
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: Padding(
-                padding: const EdgeInsets.all(7),
-                child: Container(
-                  height: 25,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.20),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.28)),
-                  ),
-                  child: const Center(
-                    child: Icon(Icons.graphic_eq_rounded, color: Colors.white, size: 15),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
