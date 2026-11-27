@@ -34,6 +34,9 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   bool _openingNowPlaying = false;
   bool _nowPlayingOpen = false;
   bool _closingNowPlaying = false;
+  Rect? _nowPlayingOriginRect;
+  double _nowPlayingOriginRadius = 20;
+  bool _nowPlayingUsesMiniAnchor = true;
   final ValueNotifier<Uint8List?> _sharedArtwork = ValueNotifier(null);
   late final AnimationController _nowPlayingController;
   MediaQueueItem? _lastTrack;
@@ -52,8 +55,8 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     _lastTrackIndex = _player.currentIndex;
     _nowPlayingController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 380),
-      reverseDuration: const Duration(milliseconds: 320),
+      duration: const Duration(milliseconds: 360),
+      reverseDuration: const Duration(milliseconds: 300),
     );
     NowPlayingOverlayController.register(
       _openNowPlaying,
@@ -146,16 +149,51 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
 
   void _onMiniPlayerDragStart() {
     if (!mounted) return;
-    _prepareNowPlaying();
+    _prepareNowPlaying(fromMiniPlayer: true);
   }
 
-  void _prepareNowPlaying() {
+  void _captureNowPlayingOrigin({required bool preferMiniPlayer}) {
+    final overlayObject = PocketLinkNavigation.mediaOverlayKey.currentContext
+        ?.findRenderObject();
+    final overlaySize = overlayObject is RenderBox && overlayObject.hasSize
+        ? overlayObject.size
+        : MediaQuery.sizeOf(context);
+    final useMini = preferMiniPlayer && _shouldShowMiniPlayer();
+    final anchorKey = useMini
+        ? PocketLinkNavigation.miniPlayerAnchorKey
+        : PocketLinkNavigation.nowPlayingDockButtonKey;
+    final measured = PocketLinkNavigation.resolveMediaRect(anchorKey);
+    final safeBottom = MediaQuery.paddingOf(context).bottom;
+    final fallback = useMini
+        ? Rect.fromLTWH(
+            16,
+            overlaySize.height - safeBottom - _homeDockHeight - _miniPlayerHeight,
+            math.max(1.0, overlaySize.width - 32),
+            _miniPlayerHeight,
+          )
+        : Rect.fromLTWH(
+            math.max(0.0, overlaySize.width - 14 - 64),
+            math.max(0.0, overlaySize.height - safeBottom - 10 - 64),
+            64,
+            64,
+          );
+    _nowPlayingUsesMiniAnchor = useMini;
+    _nowPlayingOriginRect = measured ?? fallback;
+    _nowPlayingOriginRadius =
+        useMini ? 20 : _nowPlayingOriginRect!.shortestSide / 2;
+  }
+
+  void _prepareNowPlaying({bool fromMiniPlayer = false}) {
     if (_nowPlayingOpen || _openingNowPlaying) return;
     final player = _player;
     if (!player.isMusic || !player.isActive || player.currentItem == null) {
       return;
     }
 
+    _captureNowPlayingOrigin(
+      preferMiniPlayer: fromMiniPlayer ||
+          (AppSettings.instance.showMiniPlayer && player.shouldShowMiniPlayer),
+    );
     _openingNowPlaying = true;
     _nowPlayingController.value = 0;
     setState(() => _nowPlayingOpen = true);
@@ -196,8 +234,10 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     if (velocity.abs() < 0.01) {
       await _nowPlayingController.animateTo(
         target,
-        duration: Duration(milliseconds: target > _nowPlayingController.value ? 420 : 320),
-        curve: Curves.easeOutCubic,
+        duration: Duration(milliseconds: target > _nowPlayingController.value ? 360 : 300),
+        curve: target > _nowPlayingController.value
+            ? Curves.easeOutCubic
+            : Curves.easeInOutCubicEmphasized,
       );
       return;
     }
@@ -225,11 +265,12 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     _nowPlayingController.value = 0;
     _openingNowPlaying = false;
     _closingNowPlaying = false;
+    _nowPlayingOriginRect = null;
     setState(() => _nowPlayingOpen = false);
   }
 
   void _updateMiniPlayerDrag(double delta) {
-    if (!_nowPlayingOpen && delta < 0) _prepareNowPlaying();
+    if (!_nowPlayingOpen && delta < 0) _prepareNowPlaying(fromMiniPlayer: true);
     if (!_nowPlayingOpen) return;
     _applyMiniPlayerDrag(delta);
   }
@@ -449,6 +490,9 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
                         player: player,
                         api: player.api,
                         onDismiss: () => _closeNowPlaying(),
+                        originRect: _nowPlayingOriginRect,
+                        originRadius: _nowPlayingOriginRadius,
+                        usesMiniAnchor: _nowPlayingUsesMiniAnchor,
                         onDragStart: () {},
                         onDragUpdate: _updateNowPlayingDrag,
                         onDragEnd: _endNowPlayingDrag,
@@ -515,6 +559,9 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
     required this.player,
     required this.api,
     required this.onDismiss,
+    required this.originRect,
+    required this.originRadius,
+    required this.usesMiniAnchor,
     required this.onDragStart,
     required this.onDragUpdate,
     required this.onDragEnd,
@@ -526,6 +573,9 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
   final PersistentAudioPlayer player;
   final ServerApi? api;
   final VoidCallback onDismiss;
+  final Rect? originRect;
+  final double originRadius;
+  final bool usesMiniAnchor;
   final VoidCallback onDragStart;
   final ValueChanged<double> onDragUpdate;
   final ValueChanged<double> onDragEnd;
@@ -556,7 +606,23 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
         builder: (context, screen) {
           final t = animation.value.clamp(0.0, 1.0).toDouble();
           final curvedT = Curves.easeOutCubic.transform(t);
-          final topRadius = 24.0 * (1.0 - curvedT);
+          final fullScreen = Offset.zero & media.size;
+          final source = originRect ?? Rect.fromLTWH(
+            media.size.width - 78,
+            media.size.height - media.padding.bottom - 74,
+            56,
+            56,
+          );
+          final rect = Rect.lerp(source, fullScreen, curvedT)!;
+          final radius = originRadius * (1.0 - curvedT);
+          final foregroundOpacity =
+              ((t - 0.32) / 0.50).clamp(0.0, 1.0).toDouble();
+          final ambientColor = Theme.of(context).colorScheme.surface;
+          final surfaceColor = Color.lerp(
+            const Color(0xFF17181B),
+            ambientColor,
+            (curvedT / 0.30).clamp(0.0, 1.0),
+          )!;
 
           return Stack(
             fit: StackFit.expand,
@@ -564,19 +630,34 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
               Positioned.fill(
                 child: IgnorePointer(
                   child: ColoredBox(
-                    color: Colors.black.withValues(alpha: 0.52 * curvedT),
+                    color: Colors.black.withValues(alpha: 0.45 * curvedT),
                   ),
                 ),
               ),
-              Transform.translate(
-                offset: Offset(0, screenHeight * (1.0 - curvedT)),
+              Positioned.fromRect(
+                rect: rect,
                 child: ClipRRect(
-                  borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(topRadius),
-                  ),
-                  child: IgnorePointer(
-                    ignoring: t <= 0.05,
-                    child: screen!,
+                  borderRadius: BorderRadius.circular(radius),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(color: surfaceColor),
+                    child: OverflowBox(
+                      alignment: Alignment.topLeft,
+                      minWidth: media.size.width,
+                      maxWidth: media.size.width,
+                      minHeight: screenHeight,
+                      maxHeight: screenHeight,
+                      child: IgnorePointer(
+                        ignoring: t < 0.38,
+                        child: Opacity(
+                          opacity: foregroundOpacity,
+                          child: Transform.scale(
+                            alignment: Alignment.topLeft,
+                            scale: 0.92 + 0.08 * curvedT,
+                            child: RepaintBoundary(child: screen!),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
