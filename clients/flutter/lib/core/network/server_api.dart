@@ -625,6 +625,7 @@ class ServerApi {
     final response = await _dio.get<Map<String, dynamic>>(
       '/api/index/media',
       queryParameters: {'category': category, 'q': query, 'limit': limit, 'offset': offset},
+      options: Options(extra: {'pocketlink.priority': 'background'}),
     );
     final data = response.data ?? const <String, dynamic>{};
     return IndexedMediaPage(
