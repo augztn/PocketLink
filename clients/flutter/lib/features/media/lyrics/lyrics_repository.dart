@@ -55,8 +55,8 @@ abstract interface class LyricsProvider {
   String get name;
   Future<LyricsDocument?> fetch(LyricsTrackQuery query);
   static String clean(String s) => cleanArtist(s)
-    .replaceAll(RegExp(r'^\\s*\\d+\\s*[-.)]\\s*'), '')
-    .replaceAll(RegExp(r'\\s*[([][^)\\]]*[)\\]]\\s*
+    .replaceAll(RegExp(r'^\s*\d+\s*[-.)]\s*'), '')
+    .replaceAll(RegExp(r'\s*[([][^)\]]*[)\]]\s*
 }
 class _LyricsLookupSession {
   final Map<String, CancelToken> providerTokens = {};
@@ -577,7 +577,7 @@ class _GeniusProvider extends _Provider {
   }
 }
 ), '')
-    .replaceAll(RegExp(r'\\.(flac|alac|wav|aiff|aif|mp3|m4a|opus|ogg|wv|ape|dsf|dff)
+    .replaceAll(RegExp(r'\.(flac|alac|wav|aiff|aif|mp3|m4a|opus|ogg|wv|ape|dsf|dff)
 }
 class _LyricsLookupSession {
   final Map<String, CancelToken> providerTokens = {};
@@ -1098,7 +1098,7 @@ class _GeniusProvider extends _Provider {
   }
 }
 , caseSensitive: false), '')
-    .replaceAll(RegExp(r'\\s+(feat\\.?|ft\\.?|featuring)\\s+.*
+    .replaceAll(RegExp(r'\s+(feat\.?|ft\.?|featuring)\s+.*
 }
 class _LyricsLookupSession {
   final Map<String, CancelToken> providerTokens = {};
@@ -1619,10 +1619,10 @@ class _GeniusProvider extends _Provider {
   }
 }
 , caseSensitive: false), '')
-    .replaceAll(RegExp(r'\\s+'), ' ').trim();
+    .replaceAll(RegExp(r'\s+'), ' ').trim();
 
   static String cleanArtist(String value) => value
-      .replaceAll(RegExp(r'\\s*[•·]\\s*[0-9][0-9.,]*\\s*[KMB]?\\s+views?\\s*
+      .replaceAll(RegExp(r'\s*[•·]\s*[0-9][0-9.,]*\s*[KMB]?\s+views?\s*
 }
 class _LyricsLookupSession {
   final Map<String, CancelToken> providerTokens = {};
@@ -2143,7 +2143,7 @@ class _GeniusProvider extends _Provider {
   }
 }
 , caseSensitive: false), '')
-      .replaceAll(RegExp(r'\\s+'), ' ')
+      .replaceAll(RegExp(r'\s+'), ' ')
       .trim();
 }
 class _LyricsLookupSession {
