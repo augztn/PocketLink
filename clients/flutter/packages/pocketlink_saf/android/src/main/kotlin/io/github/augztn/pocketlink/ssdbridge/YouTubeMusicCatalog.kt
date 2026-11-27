@@ -100,11 +100,11 @@ internal class YouTubeMusicCatalog(
             if (items.isEmpty()) return@mapNotNull null
             val tracks = items.filter { it["type"] == "track" }.map { item ->
                 mapOf(
-                    "videoId" to item["videoId"].orEmpty(),
-                    "title" to item["title"].orEmpty(),
-                    "artist" to item["subtitle"].orEmpty(),
-                    "durationText" to item["durationText"].orEmpty(),
-                    "thumbnailUrl" to item["thumbnailUrl"].orEmpty()
+                    "videoId" to item["videoId"]?.toString().orEmpty(),
+                    "title" to item["title"]?.toString().orEmpty(),
+                    "artist" to item["subtitle"]?.toString().orEmpty(),
+                    "durationText" to item["durationText"]?.toString().orEmpty(),
+                    "thumbnailUrl" to item["thumbnailUrl"]?.toString().orEmpty()
                 )
             }
             mapOf("title" to title, "tracks" to tracks, "items" to items)
@@ -125,9 +125,16 @@ internal class YouTubeMusicCatalog(
                 ?: watchEndpoint?.optString("videoId")?.takeIf { VIDEO_ID.matches(it) }
                 ?: renderer.optString("videoId").takeIf { VIDEO_ID.matches(it) }
                 ?: ""
-            val browseId = browseEndpoint?.optString("browseId").orEmpty()
             val playlistId = renderer.optString("playlistId")
                 .ifBlank { watchPlaylistEndpoint?.optString("playlistId").orEmpty() }
+            val browseId = browseEndpoint?.optString("browseId").orEmpty()
+                .ifBlank {
+                    when {
+                        playlistId.startsWith("VL") -> playlistId
+                        playlistId.startsWith("PL") -> "VL$playlistId"
+                        else -> ""
+                    }
+                }
             val id = videoId.ifBlank { playlistId.ifBlank { browseId } }
             if (id.isBlank()) continue
 
