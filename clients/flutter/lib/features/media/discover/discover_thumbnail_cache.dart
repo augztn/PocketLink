@@ -129,6 +129,7 @@ class DiscoverThumbnail extends StatelessWidget {
   Widget _image(Uint8List bytes) => Image.memory(
         bytes,
         cacheWidth: cacheWidth,
+        cacheHeight: cacheWidth,
         fit: fit,
         gaplessPlayback: true,
         errorBuilder: (_, __, ___) => errorFallback ?? fallback,
