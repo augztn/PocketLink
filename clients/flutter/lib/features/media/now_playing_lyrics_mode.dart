@@ -116,7 +116,6 @@ class NowPlayingLyricsMode extends StatelessWidget {
             },
           ),
         ),
-      ),
     );
   }
 }
