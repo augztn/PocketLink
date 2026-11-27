@@ -11,13 +11,23 @@ void main() {
           child: Text(label),
         );
 
-    await tester.pumpWidget(PersistentOverlayHost(child: portal('first')));
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: PersistentOverlayHost(child: portal('first')),
+      ),
+    );
     controller.show();
     await tester.pump();
     expect(find.text('first'), findsOneWidget);
     expect(find.text('overlay child'), findsOneWidget);
 
-    await tester.pumpWidget(PersistentOverlayHost(child: portal('second')));
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: PersistentOverlayHost(child: portal('second')),
+      ),
+    );
     await tester.pump();
 
     expect(find.text('first'), findsNothing);
