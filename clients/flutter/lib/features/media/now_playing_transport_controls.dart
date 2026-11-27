@@ -52,7 +52,7 @@ class NowPlayingTransportControls extends StatelessWidget {
                   _TransportGlyph(
                     tooltip: 'Previous track',
                     icon: Icons.fast_rewind_rounded,
-                    size: 42,
+                    size: 40,
                     enabled: hasMultipleTracks(),
                     onTap: onPrevious,
                   ),
@@ -64,7 +64,7 @@ class NowPlayingTransportControls extends StatelessWidget {
                       icon: isPlaying
                           ? Icons.pause_rounded
                           : Icons.play_arrow_rounded,
-                      size: 58,
+                      size: 45,
                       enabled: !loading,
                       onTap: onPlayPause,
                     ),
