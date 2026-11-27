@@ -183,7 +183,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
         children: [
           if (hasArtwork)
             ImageFiltered(
-              imageFilter: ui.ImageFilter.blur(sigmaX: 48, sigmaY: 48),
+              imageFilter: ui.ImageFilter.blur(
+                sigmaX: 48,
+                sigmaY: 48,
+                tileMode: TileMode.mirror,
+              ),
               child: Opacity(
                 opacity: 0.68,
                 child: ColorFiltered(
@@ -197,7 +201,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                 ),
               ),
             ),
-          ColoredBox(color: Colors.black.withValues(alpha: lyricsMode ? 0.32 : 0.28)),
+          // Keep the ambient artwork continuous beneath the full-screen
+          // sharp layer, including the bottom safe area.
+          ColoredBox(color: Colors.black.withValues(alpha: lyricsMode ? 0.32 : 0.24)),
         ],
       ),
     );
@@ -1580,7 +1586,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
           1.0,
           curve: Curves.easeOutCubic,
         ).transform(progress);
-        final isMorphing = widget.morphAnimation != null;
+        // The morph animation object remains attached for the route's entire
+        // lifetime. Only use the clipped morph artwork while the controller is
+        // actually between its collapsed and fully expanded states.
+        final isMorphing = progress < 1.0;
         return AnnotatedRegion<SystemUiOverlayStyle>(
           value: const SystemUiOverlayStyle(
             statusBarColor: Colors.transparent,
