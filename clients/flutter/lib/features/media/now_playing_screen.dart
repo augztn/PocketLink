@@ -18,7 +18,6 @@ import '../../core/widgets/smoked_glass_popover_menu.dart';
 import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
 import '../storage/storage_browser_screen.dart';
-import 'now_playing_artwork_card.dart';
 import 'track_artwork_view.dart';
 import 'now_playing_lyrics_mode.dart';
 import 'now_playing_scrubber.dart';
@@ -100,7 +99,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
 
   String get _trackKey => _trackIdentity;
 
-  bool get _usesSharedArtwork => widget.useSharedArtwork;
 
   String get _favoriteId => '${_track.volume ?? 'internal'}:${_track.path}';
 
@@ -947,16 +945,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
         ),
       );
 
-  Widget _artworkCard() => NowPlayingArtworkCard(
-        artwork: _artwork,
-        artworkKey: _artworkKey,
-        trackKey: _trackKey,
-        palette: _trackPalette,
-        usesSharedArtwork: _usesSharedArtwork,
-        artworkTargetKey: widget.artworkTargetKey,
-        artworkUrl: _track.artworkUrl,
-      );
-
   Widget _roundAction({
     required IconData icon,
     required String tooltip,
@@ -1419,7 +1407,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     return Stack(
       fit: StackFit.expand,
       children: [
-        if (!isMorphing) Positioned.fill(child: _ambientBackground()),
         Positioned(
           top: 0, left: 0, right: 0, height: heroHeight,
           child: SizedBox(
@@ -1476,16 +1463,12 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                 const Positioned.fill(
                   child: ColoredBox(color: Color(0xFF0A0B0E)),
                 ),
-              if (!isMorphing)
-                Positioned.fill(
-                  child: _ambientBackground(),
-                ),
               Positioned.fill(
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
                     Opacity(
-                      opacity: 1 - lyricsProgress,
+                      opacity: 1 - _lyricsController.value,
                       child: GestureDetector(
                   behavior: HitTestBehavior.translucent,
                   onVerticalDragStart: AppSettings.instance.enableNowPlayingGestures
@@ -1518,13 +1501,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                           _trackSwipeDistance = 0;
                         }
                       : null,
-                  child: SafeArea(
-                    // Keep the artwork target's global rect stable while
-                    // the parent morph overlay interpolates toward it. A
-                    // second translation here makes the artwork drift during
-                    // both expansion and collapse.
-                    child: _playerLayout(contentOpacity, isMorphing: isMorphing),
-                  ),
+                  // The artwork remains edge-to-edge; only player controls
+                  // are inset by SafeArea inside _playerLayout.
+                  child: _playerLayout(contentOpacity, isMorphing: isMorphing),
                     ),
                     ),
                     Positioned.fill(
