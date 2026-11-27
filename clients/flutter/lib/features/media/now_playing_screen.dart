@@ -1205,9 +1205,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     );
   }
 
-  Widget _lyricsMode(String theme, double progress) {
+  Widget _lyricsMode(double progress) {
     return NowPlayingLyricsMode(
-      theme: theme,
       progress: progress,
       artwork: _lyricsArtwork(progress),
       trackTitle: _fileName,
@@ -1566,7 +1565,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                         onDismissDragUpdate: widget.onDismissDragUpdate,
                         onDismissDragEnd: widget.onDismissDragEnd,
                         scrollableKey: _lyricsViewportKey,
-                        child: _lyricsMode('apple', Curves.easeOutCubic.transform(_lyricsController.value)),
+                        child: _lyricsMode(Curves.easeOutCubic.transform(_lyricsController.value)),
                       ),
                     ),
                   ],
