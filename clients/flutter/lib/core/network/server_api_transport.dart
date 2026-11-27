@@ -149,8 +149,8 @@ class _ServerApiTransport {
         final failedOptions = error.requestOptions;
         final stopwatch = failedOptions.extra['pocketlink.requestStopwatch'] as Stopwatch?;
         final requestId = failedOptions.extra['pocketlink.requestId']?.toString() ?? 'unknown';
-        final cancelled = failedOptions.cancelToken?.isCancelled ?? false;
-        final cancellation = cancelled || error.type == DioExceptionType.cancel;
+        final requestCancelled = failedOptions.cancelToken?.isCancelled ?? false;
+        final cancellation = requestCancelled || error.type == DioExceptionType.cancel;
         if (cancellation) {
           // Requests cancelled before acquiring a slot never reached the wire;
           // omit them from diagnostics instead of emitting fake transport warnings.
