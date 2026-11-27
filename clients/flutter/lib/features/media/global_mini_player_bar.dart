@@ -305,69 +305,104 @@ class _MiniPlayerGestureSurface extends StatefulWidget {
 }
 
 class _MiniPlayerGestureSurfaceState extends State<_MiniPlayerGestureSurface> {
+  Offset? _pointerDownPosition;
+  Offset _lastPosition = Offset.zero;
+  double _deliveredVerticalDistance = 0;
   double _horizontalDistance = 0;
+  double _verticalDistance = 0;
+  Axis? _lockedAxis;
   bool _expandStarted = false;
 
-  void _onVerticalDragStart(DragStartDetails details) {
+  void _onPointerDown(PointerDownEvent event) {
+    _pointerDownPosition = event.position;
+    _lastPosition = event.position;
+    _deliveredVerticalDistance = 0;
+    _horizontalDistance = 0;
+    _verticalDistance = 0;
+    _lockedAxis = null;
     _expandStarted = false;
   }
 
-  void _onVerticalDragUpdate(DragUpdateDetails details) {
-    final delta = details.primaryDelta ?? 0;
-    if (!_expandStarted && delta < 0) {
-      _expandStarted = true;
-      widget.onExpandDragStart?.call();
-    }
-    if (_expandStarted) widget.onExpandDragUpdate?.call(delta);
+  void _onPanStart(DragStartDetails details) {
+    _pointerDownPosition ??= details.globalPosition;
+    _lastPosition = details.globalPosition;
   }
 
-  void _onVerticalDragEnd(DragEndDetails details) {
-    final velocity = details.primaryVelocity ?? 0;
-    if (_expandStarted) {
-      widget.onExpandDragEnd?.call(velocity);
-    } else if (!widget.isPlaying && velocity > 300) {
-      widget.onDismiss();
+  void _onPanUpdate(DragUpdateDetails details) {
+    final origin = _pointerDownPosition ?? details.globalPosition;
+    final total = details.globalPosition - origin;
+    _lastPosition = details.globalPosition;
+
+    // Decide the axis from the complete pointer displacement, not only the
+    // first post-slop delta. This preserves upward travel after diagonal jitter.
+    if (_lockedAxis == null && total.distance >= 8) {
+      _lockedAxis = total.dy.abs() > total.dx.abs()
+          ? Axis.vertical
+          : Axis.horizontal;
     }
-    _expandStarted = false;
+    if (_lockedAxis == Axis.vertical) {
+      _verticalDistance = total.dy;
+      final delta = total.dy - _deliveredVerticalDistance;
+      _deliveredVerticalDistance = total.dy;
+      if (!_expandStarted && total.dy < 0) {
+        _expandStarted = true;
+        widget.onExpandDragStart?.call();
+      }
+      if (_expandStarted && delta.abs() > 0.001) {
+        widget.onExpandDragUpdate?.call(delta);
+      }
+    } else if (_lockedAxis == Axis.horizontal) {
+      _horizontalDistance = total.dx;
+    }
   }
 
-  void _onVerticalDragCancel() {
+  void _onPanEnd(DragEndDetails details) {
+    final velocity = details.velocity.pixelsPerSecond;
+    if (_lockedAxis == Axis.vertical) {
+      if (_expandStarted) {
+        widget.onExpandDragEnd?.call(velocity.dy);
+      } else if (!widget.isPlaying && velocity.dy > 300) {
+        widget.onDismiss();
+      }
+    } else if (_lockedAxis == Axis.horizontal) {
+      if (widget.canSkipNext &&
+          (_horizontalDistance < -80 || velocity.dx < -500)) {
+        widget.onSkipNext();
+      } else if (widget.canSkipPrevious &&
+          (_horizontalDistance > 80 || velocity.dx > 500)) {
+        widget.onSkipPrevious();
+      }
+    }
+    _resetGesture();
+  }
+
+  void _onPanCancel() {
     if (_expandStarted) widget.onExpandDragEnd?.call(0);
+    _resetGesture();
+  }
+
+  void _resetGesture() {
+    _pointerDownPosition = null;
+    _lastPosition = Offset.zero;
+    _deliveredVerticalDistance = 0;
+    _horizontalDistance = 0;
+    _verticalDistance = 0;
+    _lockedAxis = null;
     _expandStarted = false;
-  }
-
-  void _onHorizontalDragStart(DragStartDetails details) {
-    _horizontalDistance = 0;
-  }
-
-  void _onHorizontalDragUpdate(DragUpdateDetails details) {
-    _horizontalDistance += details.primaryDelta ?? 0;
-  }
-
-  void _onHorizontalDragEnd(DragEndDetails details) {
-    final velocity = details.primaryVelocity ?? 0;
-    if (widget.canSkipNext &&
-        (_horizontalDistance < -80 || velocity < -500)) {
-      widget.onSkipNext();
-    } else if (widget.canSkipPrevious &&
-        (_horizontalDistance > 80 || velocity > 500)) {
-      widget.onSkipPrevious();
-    }
-    _horizontalDistance = 0;
   }
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        dragStartBehavior: DragStartBehavior.down,
-        onTap: widget.onTap,
-        onVerticalDragStart: _onVerticalDragStart,
-        onVerticalDragUpdate: _onVerticalDragUpdate,
-        onVerticalDragEnd: _onVerticalDragEnd,
-        onVerticalDragCancel: _onVerticalDragCancel,
-        onHorizontalDragStart: _onHorizontalDragStart,
-        onHorizontalDragUpdate: _onHorizontalDragUpdate,
-        onHorizontalDragEnd: _onHorizontalDragEnd,
-        child: widget.child,
+  Widget build(BuildContext context) => Listener(
+        onPointerDown: _onPointerDown,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          dragStartBehavior: DragStartBehavior.down,
+          onTap: widget.onTap,
+          onPanStart: _onPanStart,
+          onPanUpdate: _onPanUpdate,
+          onPanEnd: _onPanEnd,
+          onPanCancel: _onPanCancel,
+          child: widget.child,
+        ),
       );
 }
