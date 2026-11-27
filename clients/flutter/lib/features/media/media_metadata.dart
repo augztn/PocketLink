@@ -39,14 +39,27 @@ String resolveMediaArtist({
     return tagged;
   }
 
-  var stem = title.trim();
-  final dot = stem.lastIndexOf('.');
-  if (dot > 0) stem = stem.substring(0, dot);
-  final separator = stem.lastIndexOf(' - ');
-  if (separator > 0 && separator + 3 < stem.length) {
+  String? parseArtistSuffix(String raw) {
+    var stem = raw.trim();
+    final dot = stem.lastIndexOf('.');
+    if (dot > 0) stem = stem.substring(0, dot);
+    final separator = stem.lastIndexOf(' - ');
+    if (separator <= 0 || separator + 3 >= stem.length) return null;
     final parsed = stem.substring(separator + 3).trim();
-    if (parsed.isNotEmpty && parsed.length <= 100) return parsed;
+    if (parsed.isEmpty || parsed.length > 100 ||
+        const {'pocketlink', 'discover', 'unknown'}.contains(parsed.toLowerCase())) {
+      return null;
+    }
+    return parsed;
   }
+
+  // Metadata title is preferred, but server/local indexes sometimes expose
+  // only a display title while the actual filename retains "Title - Artist".
+  final parsedTitleArtist = parseArtistSuffix(title);
+  if (parsedTitleArtist != null) return parsedTitleArtist;
+  final fileName = path.split('/').where((part) => part.isNotEmpty).lastOrNull ?? '';
+  final parsedFileArtist = parseArtistSuffix(fileName);
+  if (parsedFileArtist != null) return parsedFileArtist;
 
   final parts = path.split('/').where((part) => part.trim().isNotEmpty).toList();
   if (parts.length > 1) {
