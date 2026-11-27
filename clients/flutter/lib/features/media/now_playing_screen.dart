@@ -385,6 +385,21 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
       }
     }
 
+    // Discover tracks are remote streams. If their remote thumbnail is
+    // unavailable, keep the generated artwork fallback; never probe the
+    // PocketLink server using a YouTube video ID as a filesystem path.
+    if (_track.streamUrl != null) {
+      if (mounted && request == _artworkRequest) {
+        setState(() {
+          _artwork = null;
+          _artworkKey = key;
+          _artworkPalette = null;
+        });
+      }
+      widget.onArtworkChanged?.call(null);
+      return;
+    }
+
     if (_track.localPath != null || _folder.isEmpty) {
       if (mounted) {
         setState(() {
@@ -501,6 +516,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   }
 
   Future<Uint8List> _fileBytes() async {
+    if (_track.streamUrl != null) {
+      throw StateError('Discover streams are not server files.');
+    }
     if (_track.localPath != null) {
       return File(_track.localPath!).readAsBytes();
     }
@@ -514,6 +532,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   }
 
   Future<void> _downloadTrack() async {
+    if (_track.streamUrl != null) {
+      _message('Downloads are unavailable for Discover streams.');
+      return;
+    }
     if (_track.localPath != null) {
       _message('This track is already stored on this device.');
       return;
@@ -552,6 +574,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   }
 
   Future<int?> _resolveFileSize() async {
+    if (_track.streamUrl != null) return null;
     if (_track.size != null) return _track.size;
     if (_track.localPath != null) {
       try {
