@@ -95,7 +95,7 @@ class _ServerApiTransport {
           'queryKey': options.extra['pocketlink.queryKey'],
           'queueWaitMs': options.extra['pocketlink.queueWaitMs'],
           'retry': options.extra['pocketlink.retryCount'] ?? 0,
-          'concurrencyLimit': 4,
+          'concurrencyLimit': lane == 'core' ? 4 : 1,
           'requestLane': lane,
         });
         handler.next(options);
