@@ -32,15 +32,14 @@ class NowPlayingLyricsMode extends StatelessWidget {
   Widget build(BuildContext context) {
     return IgnorePointer(
       ignoring: progress < 0.02,
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.only(top: 8),
+      child: Padding(
+          padding: EdgeInsets.only(top: MediaQuery.paddingOf(context).top + 8),
           child: LayoutBuilder(
             builder: (context, constraints) {
               final width = constraints.maxWidth;
               final height = constraints.maxHeight;
               final startRect = Rect.fromLTWH(0, 0, width, height * 0.46);
-              const compactArtRect = Rect.fromLTWH(12, 3, 48, 48);
+              final compactArtRect = Rect.fromLTWH(12, MediaQuery.paddingOf(context).top + 3, 48, 48);
               final artRect = Rect.lerp(startRect, compactArtRect, progress)!;
               return Stack(
                 clipBehavior: Clip.none,
@@ -54,7 +53,7 @@ class NowPlayingLyricsMode extends StatelessWidget {
                     ),
                   ),
                   Positioned(
-                    top: 0,
+                    top: MediaQuery.paddingOf(context).top,
                     left: 0,
                     right: 0,
                     child: Center(
@@ -168,7 +167,6 @@ class NowPlayingLyricsMode extends StatelessWidget {
             },
           ),
         ),
-      ),
     );
   }
 }
