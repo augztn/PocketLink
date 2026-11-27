@@ -773,19 +773,6 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
                             ),
                           ),
                         ),
-                        Positioned.fill(
-                          child: IgnorePointer(
-                            ignoring: t < 0.35,
-                            child: Opacity(
-                              opacity: const Interval(
-                                0.50,
-                                1.0,
-                                curve: Curves.easeOutCubic,
-                              ).transform(t),
-                              child: animatedChild!,
-                            ),
-                          ),
-                        ),
                         Positioned.fromRect(
                             rect: artworkRect,
                             child: ValueListenableBuilder<Uint8List?>(
@@ -852,6 +839,19 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
                               ),
                             ),
                           ),
+                        Positioned.fill(
+                          child: IgnorePointer(
+                            ignoring: t < 0.35,
+                            child: Opacity(
+                              opacity: const Interval(
+                                0.50,
+                                1.0,
+                                curve: Curves.easeOutCubic,
+                              ).transform(t),
+                              child: animatedChild!,
+                            ),
+                          ),
+                        ),
                         Positioned.fromRect(
                           rect: rect,
                           child: IgnorePointer(
