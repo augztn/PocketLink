@@ -12,7 +12,6 @@ import 'package:share_plus/share_plus.dart';
 import '../../core/network/offline_file_cache.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/settings/app_settings.dart';
-import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/liquid_glass_pill.dart';
 import '../../core/widgets/smoked_glass_popover_menu.dart';
 import '../../core/network/server_api.dart';
@@ -95,7 +94,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
       widget.queue[widget.initialIndex.clamp(0, widget.queue.length - 1).toInt()];
 
   String get _trackIdentity =>
-      (widget.api?.baseUrl ?? 'discover') + '|' + _track.stableTrackId;
+      '${widget.api?.baseUrl ?? 'discover'}|${_track.stableTrackId}';
 
   String get _trackKey => _trackIdentity;
 
@@ -355,11 +354,13 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     }
 
     if (_track.localPath != null || _folder.isEmpty) {
-      if (mounted) setState(() {
-        _artwork = null;
-        _artworkKey = key;
-        _artworkPalette = null;
-      });
+      if (mounted) {
+        setState(() {
+          _artwork = null;
+          _artworkKey = key;
+          _artworkPalette = null;
+        });
+      }
       widget.onArtworkChanged?.call(null);
       return;
     }
@@ -369,11 +370,13 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     // compact artwork fallback rather than a blank full-height region.
     final api = widget.api;
     if (api == null) {
-      if (mounted && request == _artworkRequest) setState(() {
-        _artwork = null;
-        _artworkKey = key;
-        _artworkPalette = null;
-      });
+      if (mounted && request == _artworkRequest) {
+        setState(() {
+          _artwork = null;
+          _artworkKey = key;
+          _artworkPalette = null;
+        });
+      }
       widget.onArtworkChanged?.call(null);
       return;
     }
@@ -1182,9 +1185,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     } catch (_) {
       if (mounted) _message('Could not save the lyrics display preference.');
     }
-    if (mounted) _message(next
-        ? 'Translation is enabled when a translated lyric source is available.'
-        : 'Original lyrics displayed.');
+    if (mounted) {
+      _message(next
+          ? 'Translation is enabled when a translated lyric source is available.'
+          : 'Original lyrics displayed.');
+    }
   }
 
   Widget _lyricsArtwork(double progress) {
