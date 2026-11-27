@@ -51,6 +51,37 @@ void main() {
     expect(await DiscoverHomeFeedStore.read('US'), isNull);
   });
 
+  test('persists collection cards with their navigation metadata', () async {
+    final feed = DiscoverHomeFeed(
+      shelves: [
+        DiscoverHomeShelf(
+          title: 'From the community',
+          tracks: const [],
+          items: const [
+            DiscoverHomeItem(
+              type: DiscoverHomeItemType.playlist,
+              id: 'VLPL1234567890',
+              title: 'Sunday songs',
+              subtitle: 'Community playlist',
+              browseId: 'VLPL1234567890',
+              params: 'playlist-params',
+              thumbnailUrl: 'https://example.test/playlist.jpg',
+            ),
+          ],
+        ),
+      ],
+    );
+
+    await DiscoverHomeFeedStore.write('IN', feed);
+    final cached = await DiscoverHomeFeedStore.read('IN');
+
+    expect(cached, isNotNull);
+    final item = cached!.feed.shelves.single.items.single;
+    expect(item.type, DiscoverHomeItemType.playlist);
+    expect(item.browseId, 'VLPL1234567890');
+    expect(item.params, 'playlist-params');
+  });
+
   test('keeps stale shelves for offline display but drops continuation', () async {
     final updatedAt = DateTime.utc(2026, 11, 26, 10);
     await DiscoverHomeFeedStore.write(
@@ -72,10 +103,10 @@ void main() {
 
   test('removes malformed persisted data', () async {
     final preferences = await SharedPreferences.getInstance();
-    await preferences.setString('discover_home_feed_v1_IN', '{invalid');
+    await preferences.setString('discover_home_feed_v2_IN', '{invalid');
 
     expect(await DiscoverHomeFeedStore.read('IN'), isNull);
-    expect(preferences.getString('discover_home_feed_v1_IN'), isNull);
+    expect(preferences.getString('discover_home_feed_v2_IN'), isNull);
   });
 
   test('clear removes only the selected region snapshot', () async {
