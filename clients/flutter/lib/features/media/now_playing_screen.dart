@@ -1393,7 +1393,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  _track.sourceLabel,
+                  _track.artist?.trim().isNotEmpty == true
+                      ? _track.artist!.trim()
+                      : _track.sourceLabel,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(color: Colors.white54, fontSize: 13),
