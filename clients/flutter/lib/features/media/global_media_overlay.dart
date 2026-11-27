@@ -473,8 +473,12 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
               (_nowPlayingOpen ||
                   (!observer.isNowPlayingVisible &&
                       !observer.isModalRouteOnTop));
+          // Keep the real mini-player painted until the morph route has
+          // completed its first layout and paint. The overlay artwork starts
+          // at the captured source rect; hiding this surface earlier exposes
+          // the Discover page for a frame and causes the artwork to flash.
           final visible = shouldRenderMiniPlayer &&
-              !_nowPlayingOpen &&
+              (!_nowPlayingOpen || !_morphLayoutReady) &&
               !observer.isNowPlayingVisible &&
               !observer.isModalRouteOnTop &&
               _nowPlayingController.value <= 0.0;
