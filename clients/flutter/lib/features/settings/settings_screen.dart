@@ -307,13 +307,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       );
 
-  Widget _settingsGroupTitle(String title) => SettingsSectionHeader(title);
-
   String _pageTitle(String? category) => switch (category) {
         'Appearance' => 'Appearance',
+        'Navigation' => 'Navigation',
+        'Music' => 'Music & Playback',
         'Dashboard & Shortcuts' => 'Dashboard',
-        'Connectivity' => 'Connectivity',
-        'Maintenance' => 'Maintenance',
+        'Connectivity' => 'Network',
+        'Maintenance' => 'Diagnostics',
         'Music / Now Playing Button' => 'Music & Player',
         'Customize Navigation Bar' => 'Navigation',
         _ => category ?? 'Settings',
@@ -331,7 +331,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _openCategory(String id) {
     final route = switch (id) {
-      'navigation' => _categoryRoute(
+      'navigation-customize' => _categoryRoute(
           (_) => const NavigationCustomizationScreen(),
         ),
       'audio' => _categoryRoute(
@@ -347,11 +347,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onOpenSavedServers: widget.onOpenSavedServers,
             category: switch (id) {
               'appearance' => 'Appearance',
+              'navigation' => 'Navigation',
               'dashboard' => 'Dashboard & Shortcuts',
-              'storage' => 'Storage',
+              'music' => 'Music',
               'discover' => 'Discover',
-              'maintenance' => 'Maintenance',
-              'connectivity' => 'Connectivity',
+              'storage' => 'Storage',
+              'network' || 'connectivity' => 'Connectivity',
+              'diagnostics' || 'maintenance' => 'Maintenance',
               _ => 'Connectivity',
             },
           ),
@@ -376,54 +378,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'Reset appearance': 'reset defaults restore theme',
       },
       'navigation': {
-        'Navigation bar and dock': 'navigation dock tabs destinations visible hidden',
-        'Reorder destinations': 'reorder drag sort order position',
-        'Show or hide destinations': 'show hide visible tabs',
+        'Navigation bar and dock': 'navigation dock tabs destinations visible hidden reorder',
         'Music button': 'browse music player shortcut button',
-      },
-      'dashboard': {
-        'Quick actions': 'quick actions shortcuts upload drives favorites',
-        'Continue browsing': 'continue library recently opened folders files tracks',
-        'Recent files': 'recent history files server',
-        'Global search': 'global search',
-        'Active transfers': 'upload download progress transfers',
-        'Storage overview': 'storage host health mounted volumes media scan',
-        'Section order': 'reorder layout customize home order',
-      },
-      'audio': {
-        'Music button tap': 'tap open now playing',
-        'Swipe actions': 'swipe left right next previous track',
-        'Hold for shortcuts': 'long press hold destinations',
-        'Shortcut destinations': 'customize music shortcuts reorder',
-        'Scrubber style': 'seek progress bar waveform wavy classic apple',
-        'Now Playing theme': 'player appearance apple glass blur gradient aether',
-        'Mini-player': 'mini player compact player',
-        'Player gestures': 'now playing swipe down dismiss change tracks',
-        'Stats for nerds': 'codec bitrate sample rate audio details',
-      },
-      'discover': {
-        'Enable Discover': 'discover explore enable disable availability',
-        'Local lossless matching': 'lossless flac alac wav matching',
-        'Lyrics': 'synced plain lyrics',
-        'Auto-queue': 'auto queue remaining results playback',
-        'Artwork': 'show thumbnails images artwork',
-        'Audio quality': 'best available balanced data saver bitrate',
-        'Resolver profile': 'automatic newpipe player api stream resolver',
-        'Playlist import and export': 'import export playlists spotify csv m3u',
-        'Content region': 'region catalogue country',
-      },
-      'video': {
-        'Controls auto-hide': 'controls timeout hide never seconds',
-        'Double-tap seek': 'seek skip forward backward seconds',
-        'Default playback speed': 'speed rate',
-        'Player gestures': 'gesture horizontal swipe brightness volume',
-        'Pinch to zoom': 'pinch zoom pan enlarge',
-        'Tap to play or pause': 'tap toggle playback',
-        'Open videos in fullscreen': 'fullscreen automatically',
-        'Fullscreen orientation': 'landscape portrait rotate',
-        'Video scaling': 'fit contain cover crop stretch fill',
-        'Subtitle text size': 'subtitle font size captions',
-        'Subtitle background': 'subtitle captions background',
+        'Dashboard sections': 'dashboard home quick actions continue browsing recent files global search transfers storage overview',
+        'Floating FAB': 'floating action button fab shortcuts appearance',
       },
       'storage': {
         'Download location': 'download directory folder location',
@@ -432,13 +390,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'Auto-resume': 'resume unfinished downloads launch',
         'Clear cache': 'temporary files image cache clear',
       },
-      'maintenance': {
+      'music': {
+        'Music button and mini-player': 'audio now playing gestures shortcuts mini player',
+        'Playback gestures': 'swipe dismiss change tracks seek',
+        'Scrubber and player theme': 'progress bar waveform appearance glass blur gradient',
+        'Discover': 'music discovery explore recommendations',
+        'Lossless matching': 'flac alac wav matching',
+        'Lyrics and artwork': 'synced plain lyrics thumbnails images artwork',
+        'Video player': 'video playback controls scaling subtitles',
+        'Playlist import and export': 'import export playlists spotify csv m3u',
+        'Audio quality and resolver': 'best available balanced data saver bitrate newpipe player api stream resolver',
+        'Content region': 'region catalogue country',
+      },
+      'network': {
+        'Saved servers': 'server connections switch host profiles network connectivity',
+      },
+      'diagnostics': {
         'Export settings': 'backup export json preferences',
         'Import settings': 'restore import json preferences',
         'Diagnostic logs': 'diagnostics troubleshooting logs export share',
-      },
-      'connectivity': {
-        'Saved servers': 'server connections switch host profiles',
+        'Clear cache': 'temporary files image cache clear',
       },
       'about': {
         'Version information': 'version about pocketlink',
@@ -450,14 +421,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (tokens.isEmpty) return options.keys.toList(growable: false);
     const categoryTerms = <String, String>{
       'appearance': 'appearance visual effects',
-      'navigation': 'navigation bar dock',
-      'dashboard': 'dashboard home',
-      'audio': 'audio music media',
-      'discover': 'discover explore media',
-      'video': 'video player media',
-      'storage': 'storage downloads',
-      'maintenance': 'maintenance backup restore diagnostics logs',
-      'connectivity': 'connectivity connection network server',
+      'navigation': 'navigation bar dock dashboard home fab',
+      'storage': 'storage downloads files transfers',
+      'music': 'music audio playback discover video lyrics playlists',
+      'network': 'network connectivity connection server',
+      'diagnostics': 'diagnostics maintenance backup restore logs troubleshooting',
       'about': 'about pocketlink',
     };
     return options.entries
@@ -500,12 +468,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _categoryIntro(String category) {
     final descriptions = <String, String>{
-      'Appearance': 'Control PocketLink’s theme, OLED appearance and visual effects.',
+      'Appearance': 'Theme, OLED black mode, blur, colors and visual effects.',
+      'Navigation': 'Dock, destinations, dashboard sections and floating shortcuts.',
+      'Music': 'Music library, playback, Discover, lyrics and video preferences.',
+      'Storage': 'Volumes, downloads, transfer behavior and temporary cache.',
+      'Connectivity': 'Manage saved PocketLink servers and connection switching.',
+      'Maintenance': 'Back up settings, restore preferences and export diagnostic logs.',
       'Dashboard & Shortcuts': 'Choose which Home sections appear and arrange their order.',
       'Discover': 'Configure music discovery, matching, playback preferences and playlists.',
       'Storage': 'Manage download location, transfer behavior and temporary cache.',
-      'Maintenance': 'Back up settings, restore preferences and export diagnostic logs.',
-      'Connectivity': 'Manage saved PocketLink server connections.',
     };
     final description = descriptions[category];
     if (description == null) return const SizedBox.shrink();
@@ -550,108 +521,72 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
     ),
-    if (_categoryMatches('appearance') || _categoryMatches('navigation') || _categoryMatches('dashboard'))
+    if (_categoryMatches('appearance') || _categoryMatches('navigation'))
       _settingsGroupTitle('Personalization'),
     if (_categoryMatches('appearance'))
       _categoryTile(
         id: 'appearance',
         icon: Icons.palette_rounded,
         tint: const Color(0xFF8D72E8),
-        title: 'Appearance & Theme',
-        subtitle: 'Theme, OLED mode, blur and visual effects',
-        badge: _settings.themeMode == ThemeMode.dark
-            ? (_settings.amoled ? 'AMOLED' : 'Dark')
-            : _settings.themeMode == ThemeMode.light ? 'Light' : 'System',
+        title: 'Appearance',
+        subtitle: 'Theme, blur, OLED black mode and colors',
+        badge: _settings.amoled
+            ? 'AMOLED'
+            : _settings.themeMode == ThemeMode.dark
+                ? 'Dark'
+                : _settings.themeMode == ThemeMode.light
+                    ? 'Light'
+                    : 'System',
       ),
     if (_categoryMatches('navigation'))
       _categoryTile(
         id: 'navigation',
         icon: Icons.tune_rounded,
         tint: const Color(0xFF60A5FA),
-        title: 'Navigation Bar & Dock',
-        subtitle: 'Reorder tabs and choose which destinations appear',
+        title: 'Navigation',
+        subtitle: 'Dock, FAB, dashboard sections and shortcuts',
         badge: '${_settings.visibleNavigationItems.length} tabs',
       ),
-    if (_categoryMatches('dashboard'))
-      _categoryTile(
-        id: 'dashboard',
-        icon: Icons.dashboard_customize_rounded,
-        tint: const Color(0xFF2DD4BF),
-        title: 'Dashboard & Shortcuts',
-        subtitle: 'Home sections, quick actions and dashboard layout',
-        badge: '${[
-          _settings.showGlobalSearch,
-          _settings.showQuickActions,
-          _settings.showActiveTransfers,
-          _settings.showLibrary,
-          _settings.showRecentFiles,
-          _settings.showStorageOverview,
-        ].where((visible) => visible).length}/6 sections',
-      ),
-    if (_categoryMatches('audio') || _categoryMatches('discover') || _categoryMatches('video'))
-      _settingsGroupTitle('Media'),
-    if (_categoryMatches('audio'))
-      _categoryTile(
-        id: 'audio',
-        icon: Icons.graphic_eq_rounded,
-        tint: const Color(0xFF8D72E8),
-        title: 'Audio & Now Playing',
-        subtitle: 'Music button gestures, shortcuts and mini-player',
-        badge: _settings.showMiniPlayer ? 'Mini On' : 'Mini Off',
-      ),
-    if (_categoryMatches('discover'))
-      _categoryTile(
-        id: 'discover',
-        icon: Icons.explore_rounded,
-        tint: const Color(0xFFDB79A8),
-        title: 'Discover',
-        subtitle: 'Music discovery, local lossless matching, lyrics and playlists',
-        badge: _settings.discoverEnabled ? 'Enabled' : 'Off',
-      ),
-    if (_categoryMatches('video'))
-      _categoryTile(
-        id: 'video',
-        icon: Icons.movie_creation_rounded,
-        tint: const Color(0xFF28B8C8),
-        title: 'Video Player',
-        subtitle: 'Playback gestures, controls, scaling and subtitles',
-        badge: '${_settings.videoDefaultSpeed.toStringAsFixed(2)}×',
-      ),
-    if (_categoryMatches('storage'))
-      _settingsGroupTitle('Storage'),
+    if (_categoryMatches('storage') || _categoryMatches('music'))
+      _settingsGroupTitle('Storage & Media'),
     if (_categoryMatches('storage'))
       _categoryTile(
         id: 'storage',
         icon: Icons.storage_rounded,
         tint: const Color(0xFFFBBF24),
-        title: 'Storage & Downloads',
-        subtitle: 'Download location, concurrency, network behavior and cache',
+        title: 'Storage',
+        subtitle: 'Volumes, downloads, transfers and cache',
         badge: '${_settings.downloadConcurrency} concurrent',
       ),
-    if (_categoryMatches('connectivity'))
-      _settingsGroupTitle('Connectivity'),
-    if (_categoryMatches('connectivity'))
+    if (_categoryMatches('music'))
       _categoryTile(
-        id: 'connectivity',
+        id: 'music',
+        icon: Icons.graphic_eq_rounded,
+        tint: const Color(0xFFDB79A8),
+        title: 'Music',
+        subtitle: 'Library, playback, Discover, lyrics and video',
+        badge: _settings.discoverEnabled ? 'Discover On' : 'Discover Off',
+      ),
+    if (_categoryMatches('network') || _categoryMatches('diagnostics') || _categoryMatches('about'))
+      _settingsGroupTitle('Network & System'),
+    if (_categoryMatches('network'))
+      _categoryTile(
+        id: 'network',
         icon: Icons.wifi_rounded,
         tint: const Color(0xFF4ADE80),
-        title: 'Server Connections',
-        subtitle: 'Saved PocketLink servers and connection switching',
+        title: 'Network',
+        subtitle: 'Saved servers and connection settings',
         badge: 'Manage',
       ),
-    if (_categoryMatches('maintenance'))
-      _settingsGroupTitle('Maintenance'),
-    if (_categoryMatches('maintenance'))
+    if (_categoryMatches('diagnostics'))
       _categoryTile(
-        id: 'maintenance',
+        id: 'diagnostics',
         icon: Icons.build_circle_outlined,
         tint: const Color(0xFF60A5FA),
-        title: 'Maintenance & Backups',
-        subtitle: 'Settings backup, restore and diagnostic logs',
+        title: 'Diagnostics',
+        subtitle: 'Backups, restore, logs and troubleshooting',
         badge: 'Tools',
       ),
-    if (_categoryMatches('about'))
-      _settingsGroupTitle('About'),
     if (_categoryMatches('about'))
       _categoryTile(
         id: 'about',
@@ -663,13 +598,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     if (!_categoryMatches('appearance') &&
         !_categoryMatches('navigation') &&
-        !_categoryMatches('dashboard') &&
-        !_categoryMatches('audio') &&
-        !_categoryMatches('discover') &&
-        !_categoryMatches('video') &&
         !_categoryMatches('storage') &&
-        !_categoryMatches('connectivity') &&
-        !_categoryMatches('maintenance') &&
+        !_categoryMatches('music') &&
+        !_categoryMatches('network') &&
+        !_categoryMatches('diagnostics') &&
         !_categoryMatches('about'))
       Padding(
         padding: const EdgeInsets.symmetric(vertical: 36),
@@ -839,6 +771,50 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ? _homeSettingsChildren()
               : [
                 if (widget.category != null) _categoryIntro(widget.category!),
+                if (widget.category == 'Navigation')
+                  _section('Navigation & Home', [
+                    ListTile(
+                      leading: const Icon(Icons.dock_rounded),
+                      title: const Text('Customize Navigation Bar'),
+                      subtitle: const Text('Choose, show, hide and reorder destinations'),
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      onTap: () => _openCategory('navigation-customize'),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.dashboard_customize_rounded),
+                      title: const Text('Dashboard & Shortcuts'),
+                      subtitle: const Text('Home sections, quick actions and floating shortcuts'),
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      onTap: () => _openCategory('dashboard'),
+                    ),
+                  ]),
+                if (widget.category == 'Music')
+                  _section('Music & Playback', [
+                    ListTile(
+                      leading: const Icon(Icons.graphic_eq_rounded),
+                      title: const Text('Audio & Now Playing'),
+                      subtitle: const Text('Music button gestures, shortcuts and mini-player'),
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      onTap: () => _openCategory('audio'),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.explore_rounded),
+                      title: const Text('Discover'),
+                      subtitle: const Text('Discovery feed, matching, lyrics and playlists'),
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      onTap: () => _openCategory('discover'),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.movie_creation_rounded),
+                      title: const Text('Video Player'),
+                      subtitle: const Text('Playback gestures, controls, scaling and subtitles'),
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      onTap: () => _openCategory('video'),
+                    ),
+                  ]),
                 if (widget.category == 'Maintenance')
                   _section('Settings Backup', [
                     ListTile(
