@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import '../../../core/network/server_api.dart';
 import '../media_library_catalog.dart';
 
@@ -25,6 +26,7 @@ class MediaLibraryRepository {
   Future<MediaLibraryResult> readIndexedMedia({
     String query = '',
     bool Function()? shouldContinue,
+    CancelToken? cancelToken,
   }) async {
     final category = type == MediaLibraryType.music ? 'music' : 'video';
     final found = <MediaFileItem>[];
@@ -39,6 +41,10 @@ class MediaLibraryRepository {
     );
 
     do {
+      if ((cancelToken?.isCancelled ?? false) ||
+          (shouldContinue != null && !shouldContinue())) {
+        break;
+      }
       final page = await api.indexedMedia(
         category,
         // The host index only searches file paths/names. Music queries must
@@ -47,9 +53,13 @@ class MediaLibraryRepository {
         query: type == MediaLibraryType.music ? '' : query,
         limit: _pageSize,
         offset: offset,
+        cancelToken: cancelToken,
       );
       status = page.status;
-      if (shouldContinue != null && !shouldContinue()) break;
+      if ((cancelToken?.isCancelled ?? false) ||
+          (shouldContinue != null && !shouldContinue())) {
+        break;
+      }
 
       found.addAll(
         page.items
