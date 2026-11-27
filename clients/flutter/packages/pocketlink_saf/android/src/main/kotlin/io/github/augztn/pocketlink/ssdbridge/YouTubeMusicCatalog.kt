@@ -88,15 +88,89 @@ internal class YouTubeMusicCatalog(
     internal fun parseHomeShelves(root: JSONObject, limit: Int): List<Map<String, Any>> {
         val renderers = mutableListOf<JSONObject>()
         collectHomeShelves(root, renderers)
-        val seenVideoIds = mutableSetOf<String>()
+        val seenItemKeys = mutableSetOf<String>()
+        val boundedLimit = limit.coerceIn(1, 50)
         return renderers.mapNotNull { shelf ->
             val title = homeShelfTitle(shelf)
             if (title.isBlank()) return@mapNotNull null
-            val tracks = parseTracks(shelf, limit).filter { track ->
-                seenVideoIds.add(track["videoId"]?.toString().orEmpty())
+            val items = parseHomeItems(shelf, boundedLimit).filter { item ->
+                val key = "${item["type"]}:${item["id"]}"
+                seenItemKeys.add(key)
             }
-            if (tracks.isEmpty()) null else mapOf("title" to title, "tracks" to tracks)
+            if (items.isEmpty()) return@mapNotNull null
+            val tracks = items.filter { it["type"] == "track" }.map { item ->
+                mapOf(
+                    "videoId" to item["videoId"].orEmpty(),
+                    "title" to item["title"].orEmpty(),
+                    "artist" to item["subtitle"].orEmpty(),
+                    "durationText" to item["durationText"].orEmpty(),
+                    "thumbnailUrl" to item["thumbnailUrl"].orEmpty()
+                )
+            }
+            mapOf("title" to title, "tracks" to tracks, "items" to items)
         }
+    }
+
+    internal fun parseHomeItems(root: JSONObject, limit: Int): List<Map<String, Any>> {
+        val renderers = mutableListOf<JSONObject>()
+        collectRenderers(root, renderers)
+        val unique = LinkedHashMap<String, Map<String, Any>>()
+        for (renderer in renderers) {
+            val navigation = renderer.optJSONObject("navigationEndpoint")
+            val watchEndpoint = navigation?.optJSONObject("watchEndpoint")
+            val browseEndpoint = navigation?.optJSONObject("browseEndpoint")
+            val watchPlaylistEndpoint = navigation?.optJSONObject("watchPlaylistEndpoint")
+            val videoId = renderer.optJSONObject("playlistItemData")?.optString("videoId")
+                ?.takeIf { VIDEO_ID.matches(it) }
+                ?: watchEndpoint?.optString("videoId")?.takeIf { VIDEO_ID.matches(it) }
+                ?: renderer.optString("videoId").takeIf { VIDEO_ID.matches(it) }
+                ?: ""
+            val browseId = browseEndpoint?.optString("browseId").orEmpty()
+            val playlistId = renderer.optString("playlistId")
+                .ifBlank { watchPlaylistEndpoint?.optString("playlistId").orEmpty() }
+            val id = videoId.ifBlank { playlistId.ifBlank { browseId } }
+            if (id.isBlank()) continue
+
+            val columns = renderer.optJSONArray("flexColumns")
+            val title = if (columns != null && columns.length() > 0) {
+                columnText(columns.optJSONObject(0))
+            } else {
+                renderer.optJSONObject("title")?.let(::textValue).orEmpty()
+            }.ifBlank {
+                renderer.optJSONObject("title")?.let(::textValue).orEmpty()
+            }.trim()
+            if (title.isBlank()) continue
+            val subtitle = if (columns != null && columns.length() > 1) {
+                columnText(columns.optJSONObject(1))
+            } else {
+                renderer.optJSONObject("subtitle")?.let(::textValue).orEmpty()
+            }.trim()
+            val duration = if (columns != null && columns.length() > 2) {
+                columnText(columns.optJSONObject(2))
+            } else ""
+            val type = when {
+                videoId.isNotBlank() -> "track"
+                playlistId.isNotBlank() || browseId.startsWith("VL") -> "playlist"
+                browseId.startsWith("UC") -> "artist"
+                browseId.startsWith("MPRE") || browseId.startsWith("MPLA") -> "album"
+                else -> "collection"
+            }
+            val item = linkedMapOf<String, Any>(
+                "type" to type,
+                "id" to id,
+                "title" to title,
+                "subtitle" to subtitle,
+                "thumbnailUrl" to (findThumbnail(renderer) ?: ""),
+                "videoId" to videoId,
+                "browseId" to browseId,
+                "durationText" to duration
+            )
+            browseEndpoint?.optString("params")?.takeIf { it.isNotBlank() }
+                ?.let { item["params"] = it }
+            unique.putIfAbsent("$type:$id", item)
+            if (unique.size >= limit.coerceIn(1, 50)) break
+        }
+        return unique.values.toList()
     }
 
     private fun collectHomeShelves(value: Any?, output: MutableList<JSONObject>) {
