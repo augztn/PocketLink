@@ -456,7 +456,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           region != AppSettings.instance.discoverRegion) return;
       final shelves = feed.shelves
           .map((shelf) => _DiscoverShelf(shelf.title, shelf.tracks, items: shelf.items))
-          .where((shelf) => shelf.tracks.isNotEmpty)
+          .where((shelf) => shelf.tracks.isNotEmpty || shelf.items.isNotEmpty)
           .toList(growable: false);
       if (shelves.isEmpty) {
         if (_homeShelves.isEmpty) {
@@ -556,7 +556,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           .toList(growable: false);
       if (merged.length == _homeShelves.length &&
           merged.every((shelf) => _homeShelves.any((old) =>
-              old.title == shelf.title && old.tracks.length == shelf.tracks.length))) {
+              old.title == shelf.title &&
+              old.tracks.length == shelf.tracks.length &&
+              old.items.length == shelf.items.length))) {
         final snapshot = _DiscoverFeedSnapshot(
           List.unmodifiable(_homeShelves),
           'Discover in $_regionName',
@@ -2045,7 +2047,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 _listeningPicksShelf(),
                 _recentlyPlayedShelf(),
                 for (var index = 0; index < _homeShelves.length; index++) ...[
-                  _isListLayoutShelf(_homeShelves[index])
+                  _isListLayoutShelf(_homeShelves[index]) && _homeShelves[index].tracks.isNotEmpty
                       ? _trackPager(_homeShelves[index])
                       : _homeShelf(_homeShelves[index]),
                   if (index == 0) _moodHomeShelf(),
