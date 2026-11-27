@@ -20,6 +20,7 @@ import '../../core/widgets/pocketlink_scaffold.dart';
 import 'explore_search_screens.dart';
 import '../media/persistent_audio_player.dart';
 import '../media/now_playing_overlay_controller.dart';
+import '../media/now_playing_overlay_controller.dart';
 import '../../core/network/server_api.dart';
 import '../../core/logging/app_logger.dart';
 import '../transfers/transfer_manager_screen.dart';
@@ -30,6 +31,7 @@ class HomeDashboard extends StatefulWidget {
   const HomeDashboard({
     required this.api,
     required this.serverName,
+    this.isActive = true,
     required this.onOpenExplore,
     required this.onOpenLibrary,
     required this.onOpenFiles,
@@ -42,6 +44,7 @@ class HomeDashboard extends StatefulWidget {
 
   final ServerApi api;
   final String? serverName;
+  final bool isActive;
   final void Function(ExploreCategory category, {String? fileCategory}) onOpenExplore;
   final ValueChanged<String> onOpenLibrary;
   final VoidCallback onOpenFiles;
@@ -75,6 +78,8 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
   int _refreshGeneration = 0;
   Timer? _telemetryTimer;
   Future<void>? _telemetryRequest;
+  DateTime? _lastTelemetryRequestAt;
+  Animation<double>? _observedNowPlayingProgress;
   final QuickActionsStore _quickActionsStore = QuickActionsStore();
   List<String> _quickActions = List.of(QuickActionsStore.defaults);
 
@@ -83,15 +88,18 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     AppSettings.instance.addListener(_homeSettingsChanged);
+    _observedNowPlayingProgress = NowPlayingOverlayController.expandProgress;
+    _observedNowPlayingProgress?.addListener(_onNowPlayingProgressChanged);
     _loadQuickActions();
     HomeActivityStore.instance.load();
-    _refreshStatus();
+    if (widget.isActive) _refreshStatus();
     _startTelemetryPolling();
   }
 
   @override
   void dispose() {
     _telemetryTimer?.cancel();
+    _observedNowPlayingProgress?.removeListener(_onNowPlayingProgressChanged);
     AppSettings.instance.removeListener(_homeSettingsChanged);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -102,23 +110,54 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _startTelemetryPolling();
-      if (_serverOnline == true) unawaited(_refreshHostTelemetry());
-    } else {
-      _telemetryTimer?.cancel();
-      _telemetryTimer = null;
+  void didUpdateWidget(covariant HomeDashboard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isActive != widget.isActive) {
+      if (widget.isActive && _serverOnline == null) {
+        unawaited(_refreshStatus());
+      }
+      _startTelemetryPolling(refreshIfDue: true);
     }
   }
 
-  void _startTelemetryPolling() {
-    _telemetryTimer?.cancel();
-    if (WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) return;
-    _telemetryTimer = Timer.periodic(const Duration(seconds: 20), (_) {
-      if (!mounted || _serverOnline != true || _checking) return;
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _startTelemetryPolling(refreshIfDue: state == AppLifecycleState.resumed);
+  }
+
+  void _onNowPlayingProgressChanged() {
+    _startTelemetryPolling(refreshIfDue: true);
+  }
+
+  bool get _shouldPollTelemetry =>
+      widget.isActive &&
+      WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed &&
+      (NowPlayingOverlayController.expandProgress?.value ?? 0.0) <= 0.01;
+
+  bool get _telemetryCooldownElapsed =>
+      _lastTelemetryRequestAt == null ||
+      DateTime.now().difference(_lastTelemetryRequestAt!) >=
+          const Duration(seconds: 20);
+
+  void _startTelemetryPolling({bool refreshIfDue = false}) {
+    if (!_shouldPollTelemetry) {
+      _telemetryTimer?.cancel();
+      _telemetryTimer = null;
+      return;
+    }
+
+    _telemetryTimer ??= Timer.periodic(const Duration(seconds: 20), (_) {
+      if (!mounted || !_shouldPollTelemetry || _serverOnline != true || _checking) {
+        return;
+      }
       unawaited(_refreshHostTelemetry());
     });
+
+    // Notification-shade pulls and brief lifecycle resumes must not trigger
+    // another telemetry request inside the existing 20-second cooldown.
+    if (refreshIfDue && _serverOnline == true && _telemetryCooldownElapsed) {
+      unawaited(_refreshHostTelemetry());
+    }
   }
 
   static const _quickActionDetails = <String, ({String label, IconData icon})>{
@@ -465,6 +504,7 @@ class HomeDashboardState extends State<HomeDashboard> with WidgetsBindingObserve
     final pending = _telemetryRequest;
     if (pending != null) return pending;
 
+    _lastTelemetryRequestAt = DateTime.now();
     late final Future<void> request;
     request = () async {
       try {
