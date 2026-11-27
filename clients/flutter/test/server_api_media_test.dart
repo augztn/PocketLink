@@ -26,6 +26,23 @@ void main() {
       expect(uri.queryParameters['path'], 'Music/Track 1.mp3');
     });
 
+    test('uses the mounted volume path in external media stream URLs', () {
+      final api = ServerApi(
+        baseUrl: 'http://127.0.0.1:8000',
+        username: 'admin',
+        password: 'secret',
+      );
+
+      final uri = Uri.parse(
+        api.mediaStreamUrl('Movies/Clip 1.mp4', volume: 'usb1'),
+      );
+
+      expect(uri.path, '/api/storage/usb1/download');
+      expect(uri.queryParameters['path'], 'Movies/Clip 1.mp4');
+      expect(uri.queryParameters.containsKey('volume'), isFalse);
+      api.close();
+    });
+
     test('provides the Basic Authentication header to the player', () {
       final api = ServerApi(
         baseUrl: 'http://127.0.0.1:8000',
