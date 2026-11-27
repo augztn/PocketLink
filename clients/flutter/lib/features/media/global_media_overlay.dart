@@ -38,6 +38,9 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   bool _openingNowPlaying = false;
   bool _miniPlayerGestureActive = false;
   bool _nowPlayingOpen = false;
+  bool _morphLayoutReady = false;
+  double _pendingMiniPlayerDragDelta = 0;
+  double? _pendingMiniPlayerDragEndVelocity;
   final ValueNotifier<bool> _isNowPlayingDragging = ValueNotifier<bool>(false);
   bool _closingNowPlaying = false;
   bool _snapMiniPlayerVisibility = false;
@@ -193,6 +196,9 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     _miniArtworkOriginRect =
         PocketLinkNavigation.resolveMediaRect(PocketLinkNavigation.miniArtworkKey);
     _nowPlayingController.value = 0;
+    _morphLayoutReady = false;
+    _pendingMiniPlayerDragDelta = 0;
+    _pendingMiniPlayerDragEndVelocity = null;
     setState(() {
       _nowPlayingOpen = true;
       _isNowPlayingDragging.value = false;
@@ -231,6 +237,9 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
       _closingNowPlaying = false;
       _openingNowPlaying = false;
       _nowPlayingController.value = 0;
+      _morphLayoutReady = false;
+      _pendingMiniPlayerDragDelta = 0;
+      _pendingMiniPlayerDragEndVelocity = null;
       _snapMiniPlayerVisibility = true;
       setState(() {
         _nowPlayingOpen = false;
@@ -243,6 +252,19 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
         setState(() => _snapMiniPlayerVisibility = false);
       });
     }));
+    // Interactive expansion can begin before the new route has completed its
+    // first layout. Hold those initial deltas until the artwork target has a
+    // real RenderBox, otherwise the morph starts toward a guessed center rect.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_nowPlayingOpen) return;
+      _morphLayoutReady = true;
+      final pendingDelta = _pendingMiniPlayerDragDelta;
+      _pendingMiniPlayerDragDelta = 0;
+      if (pendingDelta != 0) _applyMiniPlayerDrag(pendingDelta);
+      final pendingVelocity = _pendingMiniPlayerDragEndVelocity;
+      _pendingMiniPlayerDragEndVelocity = null;
+      if (pendingVelocity != null) _finishMiniPlayerDrag(pendingVelocity);
+    });
   }
 
   Future<void> _openNowPlaying() async {
@@ -312,6 +334,15 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     // dismiss shortcut and never opens an intermediate route.
     if (!_nowPlayingOpen && delta < 0) _prepareNowPlaying();
     if (!_nowPlayingOpen) return;
+    if (!_morphLayoutReady) {
+      _pendingMiniPlayerDragDelta += delta;
+      return;
+    }
+    _applyMiniPlayerDrag(delta);
+  }
+
+  void _applyMiniPlayerDrag(double delta) {
+    if (!_nowPlayingOpen) return;
     _openingNowPlaying = false;
     if (MediaQuery.of(context).disableAnimations) {
       _nowPlayingController.value = 1;
@@ -322,8 +353,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
       1.0,
       height - (_nowPlayingOriginRect?.height ?? _miniPlayerHeight),
     ).toDouble();
-    _nowPlayingController.value =
-        PocketLinkNavigation.updateMorphProgress(
+    _nowPlayingController.value = PocketLinkNavigation.updateMorphProgress(
       current: _nowPlayingController.value,
       dragDelta: delta,
       extent: travelDistance,
@@ -340,6 +370,15 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
       }
       return;
     }
+    if (!_morphLayoutReady) {
+      _pendingMiniPlayerDragEndVelocity = velocity;
+      return;
+    }
+    _finishMiniPlayerDrag(velocity);
+  }
+
+  void _finishMiniPlayerDrag(double velocity) {
+    if (!_nowPlayingOpen) return;
     _openingNowPlaying = false;
     final height = math.max(1.0, MediaQuery.sizeOf(context).height);
     final expand = PocketLinkNavigation.shouldExpandFromMiniPlayer(
@@ -347,10 +386,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
       upwardVelocity: velocity,
     );
     if (expand) {
-      unawaited(_animateNowPlayingTo(
-        1,
-        velocity: -velocity / height,
-      ));
+      unawaited(_animateNowPlayingTo(1, velocity: -velocity / height));
     } else {
       unawaited(_closeNowPlaying(velocity: -velocity / height));
     }
