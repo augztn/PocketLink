@@ -318,6 +318,14 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
       stiffness: 520,
       ratio: 0.90,
     );
+    if (velocity.abs() < 0.01) {
+      await _nowPlayingController.animateTo(
+        target,
+        duration: Duration(milliseconds: target > _nowPlayingController.value ? 420 : 320),
+        curve: Curves.easeOutCubic,
+      );
+      return;
+    }
     await _nowPlayingController.animateWith(
       SpringSimulation(
         spring,
