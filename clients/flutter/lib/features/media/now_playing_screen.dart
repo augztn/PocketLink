@@ -1415,6 +1415,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                     fallbackColors: _trackPalette,
                     fallbackIconSize: 92,
                     fadeBottom: true,
+                    fadeBottomStart: 0.30,
                   ),
           ),
         ),
