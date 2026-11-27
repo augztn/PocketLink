@@ -119,7 +119,6 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   }
   Set<String> _favoriteKeys = <String>{};
   final Map<String, Future<Uint8List?>> _musicArtworkCache = {};
-  final Map<String, Future<VideoMetadata?>> _videoMetadataCache = {};
   final Map<String, CancelToken> _videoThumbnailTokens = {};
   final Map<String, CancelToken> _videoMetadataTokens = {};
   final Map<String, Future<int>> _musicDurationRequests = {};
@@ -607,17 +606,12 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
       return Future<VideoMetadata?>.value(null);
     }
     final key = _favoriteKey(media);
-    if (_videoMetadataTokens[key]?.isCancelled ?? false) {
-      _videoMetadataCache.remove(key);
-    }
-    return _videoMetadataCache.putIfAbsent(key, () {
-      final token = _requestToken(_videoMetadataTokens, key);
-      return widget.api.videoMetadata(
-        media.path,
-        volume: media.volume,
-        cancelToken: token,
-      );
-    });
+    final token = _requestToken(_videoMetadataTokens, key);
+    return widget.api.videoMetadata(
+      media.path,
+      volume: media.volume,
+      cancelToken: token,
+    );
   }
 
   void _releaseVideoRequests(MediaFileItem media) {
@@ -631,7 +625,6 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
     if (metadata != null && !metadata.isCancelled) {
       metadata.cancel('Video card left the viewport');
     }
-    _videoMetadataCache.remove(key);
   }
 
   void _cancelAllVideoRequests() {
@@ -650,7 +643,6 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         token.cancel('Video library is closing');
       }
     }
-    _videoMetadataCache.clear();
   }
 
   Widget _videoMetadataLabel(MediaFileItem media) => VideoMetadataLabel(
