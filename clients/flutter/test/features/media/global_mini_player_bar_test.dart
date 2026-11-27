@@ -166,6 +166,8 @@ void main() {
 
     expect(dragDeltas, isNotEmpty);
     expect(dragDeltas.any((delta) => delta < 0), isTrue);
+    expect(dragDeltas.fold<double>(0, (total, delta) => total + delta),
+        closeTo(-140, 1));
     expect(releaseVelocity, isNotNull);
     expect(releaseVelocity, lessThan(0));
   });
@@ -193,6 +195,18 @@ void main() {
     expect(dragDeltas.any((delta) => delta < 0), isTrue);
     expect(releaseVelocity, isNotNull);
     expect(releaseVelocity, lessThan(0));
+  });
+
+  testWidgets('hidden mini-player fades its glass shell but keeps drag hit testing',
+      (tester) async {
+    await pumpMiniPlayer(tester, visible: false);
+    final surface = find.byType(SmokedGlassSurface);
+    expect(surface, findsOneWidget);
+    final opacityFinder = find.ancestor(
+      of: surface,
+      matching: find.byType(Opacity),
+    ).first;
+    expect(tester.widget<Opacity>(opacityFinder).opacity, 0);
   });
 
   testWidgets('vertical drag start is reported before expansion begins', (tester) async {
