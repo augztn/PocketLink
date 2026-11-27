@@ -96,8 +96,7 @@ class LyricsRepository {
 
   void cancel(String key) {
     final session = _sessions.remove(key);
-    if (session == null) return;
-    session.cancel();
+    session?.cancel();
     _pending.remove(key);
     _states.remove(key);
     _active.remove(key);
