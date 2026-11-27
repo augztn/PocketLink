@@ -172,6 +172,39 @@ void main() {
     expect(releaseVelocity, lessThan(0));
   });
 
+  testWidgets('upward swipe retains displacement after initial diagonal jitter',
+      (tester) async {
+    final dragDeltas = <double>[];
+    double? releaseVelocity;
+    await pumpMiniPlayer(
+      tester,
+      onExpandDragStart: () {},
+      onExpandDragUpdate: dragDeltas.add,
+      onExpandDragEnd: (velocity) => releaseVelocity = velocity,
+    );
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(GlobalMiniPlayerBar)),
+    );
+    await gesture.moveBy(const Offset(7, 0));
+    await tester.pump();
+    await gesture.moveBy(const Offset(-2, -30));
+    await tester.pump();
+    await gesture.moveBy(const Offset(0, -30));
+    await tester.pump();
+    await gesture.up();
+    await tester.pump();
+
+    expect(dragDeltas, isNotEmpty);
+    expect(dragDeltas.every((delta) => delta <= 0), isTrue);
+    expect(
+      dragDeltas.fold<double>(0, (total, delta) => total + delta),
+      closeTo(-60, 1),
+    );
+    expect(releaseVelocity, isNotNull);
+    expect(releaseVelocity, lessThan(0));
+  });
+
   testWidgets('hidden mini-player keeps its active drag recognizer hit-testable',
       (tester) async {
     final dragDeltas = <double>[];
