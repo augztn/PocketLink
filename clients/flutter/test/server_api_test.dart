@@ -26,6 +26,57 @@ class _RequestCaptureAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+class _RouteMissingAdapter implements HttpClientAdapter {
+  final Map<String, int> requests = {};
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    requests.update(options.uri.path, (count) => count + 1, ifAbsent: () => 1);
+    return ResponseBody.fromString(
+      '{"detail":"Not Found"}',
+      404,
+      headers: {Headers.contentTypeHeader: ['application/json']},
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+class _StorageRoutesAdapter implements HttpClientAdapter {
+  final List<RequestOptions> requests = [];
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    requests.add(options);
+    final body = options.uri.path.endsWith('/download')
+        ? 'file-bytes'
+        : '{"path":"Movies","items":[]}';
+    return ResponseBody.fromString(
+      body,
+      200,
+      headers: {
+        Headers.contentTypeHeader: [
+          options.uri.path.endsWith('/download')
+              ? 'application/octet-stream'
+              : 'application/json',
+        ],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
 class _CloseTrackingAdapter implements HttpClientAdapter {
   int closeCalls = 0;
   bool? force;
@@ -286,12 +337,88 @@ void main() {
       expect(adapter.requests[0].uri.path, '/api/files/item');
       expect(adapter.requests[0].queryParameters['path'], 'Music/internal.mp3');
       expect(adapter.requests[1].method, 'DELETE');
-      expect(adapter.requests[1].uri.path, '/api/storage/item');
-      expect(adapter.requests[1].queryParameters['volume'], 'usb1');
+      expect(adapter.requests[1].uri.path, '/api/storage/usb1/item');
+      expect(adapter.requests[1].queryParameters.containsKey('volume'), isFalse);
       expect(adapter.requests[1].queryParameters['path'], 'Music/usb.mp3');
       api.close();
     });
 
+
+    test('SAF storage methods use the mounted volume route contract', () async {
+      final adapter = _StorageRoutesAdapter();
+      final api = ServerApi(
+        baseUrl: 'http://127.0.0.1:8000',
+        username: 'admin',
+        password: 'secret',
+        httpClientAdapter: adapter,
+      );
+
+      await api.listStorageDirectory('usb1', 'Movies');
+      await api.uploadStorageFile(
+        'usb1',
+        'Movies/clip.mp4',
+        'clip.mp4',
+        Uint8List.fromList([1, 2, 3]),
+      );
+      await api.downloadStorageFile('usb1', 'Movies/clip.mp4');
+      await api.createStorageFolder('usb1', 'Movies', 'New folder');
+      await api.renameStorageItem('usb1', 'Movies/old.mp4', 'new.mp4');
+      await api.deleteStorageItem('usb1', 'Movies/new.mp4');
+
+      expect(adapter.requests.map((request) => request.uri.path), [
+        '/api/storage/usb1/',
+        '/api/storage/usb1/upload',
+        '/api/storage/usb1/download',
+        '/api/storage/usb1/mkdir',
+        '/api/storage/usb1/rename',
+        '/api/storage/usb1/item',
+      ]);
+      expect(adapter.requests.map((request) => request.method), [
+        'GET', 'PUT', 'GET', 'POST', 'POST', 'DELETE',
+      ]);
+      expect(adapter.requests[0].queryParameters['path'], 'Movies');
+      expect(adapter.requests[1].queryParameters['path'], 'Movies/clip.mp4');
+      expect(adapter.requests[3].queryParameters['name'], 'New folder');
+      expect(adapter.requests[4].queryParameters['name'], 'new.mp4');
+      api.close();
+    });
+
+    test('indexed media pages are cached until invalidated', () async {
+      final adapter = _RequestCaptureAdapter();
+      final api = ServerApi(
+        baseUrl: 'http://127.0.0.1:8000',
+        username: 'admin',
+        password: 'secret',
+        httpClientAdapter: adapter,
+      );
+
+      await api.indexedMedia('music');
+      await api.indexedMedia('music');
+      expect(adapter.requests, hasLength(1));
+
+      api.invalidateIndexedMediaCache();
+      await api.indexedMedia('music');
+      expect(adapter.requests, hasLength(2));
+      api.close();
+    });
+
+    test('route-level 404 disables unsupported video endpoints for this session', () async {
+      final adapter = _RouteMissingAdapter();
+      final api = ServerApi(
+        baseUrl: 'http://127.0.0.1:8000',
+        username: 'admin',
+        password: 'secret',
+        httpClientAdapter: adapter,
+      );
+
+      expect(await api.videoThumbnail('Movies/one.mp4'), isNull);
+      expect(await api.videoThumbnail('Movies/two.mp4'), isNull);
+      expect(await api.videoMetadata('Movies/one.mp4'), isNull);
+      expect(await api.videoMetadata('Movies/two.mp4'), isNull);
+      expect(adapter.requests['/api/media/thumbnail'], 1);
+      expect(adapter.requests['/api/media/metadata'], 1);
+      api.close();
+    });
 
     test('media thumbnail work cannot occupy the core API request lane', () async {
       final adapter = _PriorityLaneAdapter();
