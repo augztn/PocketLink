@@ -491,7 +491,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   List<Widget> _homeSettingsChildren() => [
     Padding(
-      padding: const EdgeInsets.only(bottom: 18),
+      padding: const EdgeInsets.only(bottom: 24),
       child: TextField(
         controller: _settingsSearchController,
         onChanged: (value) => setState(() => _settingsSearchQuery = value),
