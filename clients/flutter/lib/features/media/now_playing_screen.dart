@@ -1053,6 +1053,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
             child: Icon(icon, size: 25, color: selected ? Colors.black : Colors.white),
           ),
         ]),
+        ),
       );
 
   Future<void> _showTrackLyrics() async {
