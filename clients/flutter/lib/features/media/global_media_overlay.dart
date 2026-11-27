@@ -39,6 +39,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   Rect? _nowPlayingOriginRect;
   Rect? _miniArtworkOriginRect;
   double _nowPlayingOriginRadius = 20;
+  bool _nowPlayingUsesMiniAnchor = true;
   final ValueNotifier<Uint8List?> _sharedArtwork = ValueNotifier(null);
   late final AnimationController _nowPlayingController;
   MediaQueueItem? _lastTrack;
@@ -154,7 +155,10 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     _prepareNowPlaying(fromMiniPlayer: true);
   }
 
-  void _captureNowPlayingOrigin({required bool preferMiniPlayer}) {
+  void _captureNowPlayingOrigin({
+    required bool preferMiniPlayer,
+    bool compensateDockTranslation = false,
+  }) {
     final overlayObject = PocketLinkNavigation.mediaOverlayKey.currentContext
         ?.findRenderObject();
     final overlaySize = overlayObject is RenderBox && overlayObject.hasSize
@@ -179,7 +183,15 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
             64,
             64,
           );
-    _nowPlayingOriginRect = measured ?? fallback;
+    final dockProgress = (_nowPlayingController.value / 0.42)
+        .clamp(0.0, 1.0)
+        .toDouble();
+    _nowPlayingOriginRect = measured == null
+        ? fallback
+        : (!useMini && compensateDockTranslation
+            ? measured.shift(Offset(0, -(82.0 + safeBottom) * dockProgress))
+            : measured);
+    _nowPlayingUsesMiniAnchor = useMini;
     _miniArtworkOriginRect = useMini
         ? PocketLinkNavigation.resolveMediaRect(PocketLinkNavigation.miniArtworkKey)
         : null;
@@ -256,6 +268,10 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
 
   Future<void> _closeNowPlaying({double velocity = 0}) async {
     if (!_nowPlayingOpen || _closingNowPlaying) return;
+    _captureNowPlayingOrigin(
+      preferMiniPlayer: _nowPlayingUsesMiniAnchor,
+      compensateDockTranslation: true,
+    );
     _closingNowPlaying = true;
     try {
       await _animateNowPlayingTo(0, velocity: velocity);
@@ -325,6 +341,14 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     } else {
       unawaited(_closeNowPlaying(velocity: -velocity / extent));
     }
+  }
+
+  void _onNowPlayingDragStart() {
+    if (!_nowPlayingOpen) return;
+    _captureNowPlayingOrigin(
+      preferMiniPlayer: _nowPlayingUsesMiniAnchor,
+      compensateDockTranslation: true,
+    );
   }
 
   void _updateNowPlayingDrag(double delta) {
@@ -498,7 +522,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
                         originRadius: _nowPlayingOriginRadius,
                         miniArtworkRect: _miniArtworkOriginRect,
                         sharedArtwork: _sharedArtwork,
-                        onDragStart: () {},
+                        onDragStart: _onNowPlayingDragStart,
                         onDragUpdate: _updateNowPlayingDrag,
                         onDragEnd: _endNowPlayingDrag,
                       ),
