@@ -207,22 +207,15 @@ class _LyricsViewportState extends State<LyricsViewport> {
           ),
         ),
         Positioned(
-          left: 12,
+          left: 0,
+          right: 0,
           bottom: 12,
-          child: _LyricsFloatingButton(
-            icon: Icons.language_rounded,
-            tooltip: 'Choose lyrics provider',
-            onTap: widget.onChooseProvider,
-          ),
-        ),
-        Positioned(
-          right: 12,
-          bottom: 12,
-          child: _LyricsFloatingButton(
-            icon: Icons.translate_rounded,
-            tooltip: 'Toggle translation / romanization',
-            selected: widget.translationEnabled,
-            onTap: widget.onToggleTranslation,
+          child: Center(
+            child: _LyricsControlPill(
+              translationEnabled: widget.translationEnabled,
+              onChooseProvider: widget.onChooseProvider,
+              onToggleTranslation: widget.onToggleTranslation,
+            ),
           ),
         ),
       ],
@@ -262,32 +255,102 @@ class _InstrumentalDotsState extends State<_InstrumentalDots> with SingleTickerP
   );
 }
 
-class _LyricsFloatingButton extends StatelessWidget {
-  const _LyricsFloatingButton({required this.icon, required this.tooltip, required this.onTap, this.selected = false});
+class _LyricsControlPill extends StatelessWidget {
+  const _LyricsControlPill({
+    required this.translationEnabled,
+    required this.onChooseProvider,
+    required this.onToggleTranslation,
+  });
+
+  final bool translationEnabled;
+  final VoidCallback onChooseProvider;
+  final VoidCallback onToggleTranslation;
+
+  @override
+  Widget build(BuildContext context) => ClipRRect(
+        borderRadius: BorderRadius.circular(99),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+          child: Container(
+            height: 48,
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: const Color(0xFF24252A).withValues(alpha: .72),
+              borderRadius: BorderRadius.circular(99),
+              border: Border.all(color: Colors.white.withValues(alpha: .18)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: .18),
+                  blurRadius: 18,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _LyricsPillAction(
+                  icon: Icons.language_rounded,
+                  tooltip: 'Choose lyrics provider',
+                  onTap: onChooseProvider,
+                ),
+                Container(
+                  width: 1,
+                  height: 22,
+                  margin: const EdgeInsets.symmetric(horizontal: 2),
+                  color: Colors.white.withValues(alpha: .18),
+                ),
+                _LyricsPillAction(
+                  icon: Icons.translate_rounded,
+                  tooltip: translationEnabled
+                      ? 'Disable translation / romanization'
+                      : 'Enable translation / romanization',
+                  selected: translationEnabled,
+                  onTap: onToggleTranslation,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+}
+
+class _LyricsPillAction extends StatelessWidget {
+  const _LyricsPillAction({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+    this.selected = false,
+  });
+
   final IconData icon;
   final String tooltip;
   final VoidCallback onTap;
   final bool selected;
 
   @override
-  Widget build(BuildContext context) => ClipOval(
-    child: BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-      child: Material(
-        color: Colors.white.withValues(alpha: 0.16),
-        shape: CircleBorder(side: BorderSide(color: Colors.white.withValues(alpha: 0.18))),
-        child: IconButton(
-          tooltip: tooltip,
-          onPressed: onTap,
-          constraints: const BoxConstraints.tightFor(width: 38, height: 38),
-          padding: EdgeInsets.zero,
-          iconSize: 19,
-          style: IconButton.styleFrom(fixedSize: const Size(38, 38)),
-          icon: Icon(icon, color: Colors.white, size: 19),
+  Widget build(BuildContext context) => Tooltip(
+        message: tooltip,
+        child: Material(
+          color: selected
+              ? Colors.white.withValues(alpha: .16)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(99),
+          child: InkWell(
+            onTap: onTap,
+            customBorder: const StadiumBorder(),
+            child: SizedBox(
+              width: 40,
+              height: 40,
+              child: Icon(
+                icon,
+                color: Colors.white,
+                size: 19,
+              ),
+            ),
+          ),
         ),
-      ),
-    ),
-  );
+      );
 }
 
 Future<String?> showLyricsProviderSheet(
