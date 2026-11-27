@@ -249,7 +249,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     }
     final height = MediaQuery.sizeOf(context).height;
     final travelDistance = _morphTravelExtent(
-      fallback: height - (_nowPlayingOriginRect?.height ?? _miniPlayerHeight),
+      fallback: height,
     );
     _nowPlayingController.value = PocketLinkNavigation.updateMorphProgress(
       current: _nowPlayingController.value,
