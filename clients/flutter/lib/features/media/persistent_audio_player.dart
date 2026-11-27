@@ -32,13 +32,17 @@ class MediaQueueItem {
   /// Stable identity for artwork, lyrics, and track-scoped UI state.
   /// Mutable playback state is deliberately excluded.
   String get stableTrackId {
+    final videoId = lyricsVideoId?.trim();
+    if ((isDiscover || streamUrl != null) &&
+        videoId != null && videoId.isNotEmpty) {
+      return 'discover:' + videoId.toLowerCase();
+    }
     final normalizedPath = path.trim().toLowerCase();
     if (normalizedPath.isNotEmpty) {
       return 'file:' + (volume ?? 'internal').trim().toLowerCase() + ':' + normalizedPath;
     }
     final local = localPath?.trim();
     if (local != null && local.isNotEmpty) return 'local:' + local;
-    final videoId = lyricsVideoId?.trim();
     if (videoId != null && videoId.isNotEmpty) return 'discover:' + videoId;
     String normalize(String value) => value.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
     return 'metadata:' + normalize(title) + '|' + normalize(artist ?? '');
@@ -328,7 +332,8 @@ class PersistentAudioPlayer extends ChangeNotifier {
     final current = currentItem;
     final api = _api;
     if (!player.state.playing || !_active || !_music || api == null ||
-        current == null || current.localPath != null || current.streamUrl != null) {
+        current == null || current.isDiscover ||
+        current.localPath != null || current.streamUrl != null) {
       return;
     }
     final key = '$_queueSession:$_playbackTransition:${current.stableTrackId}';
