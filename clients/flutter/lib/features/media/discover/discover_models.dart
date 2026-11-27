@@ -23,23 +23,112 @@ class DiscoverTrack {
 }
 
 
+enum DiscoverHomeItemType { track, playlist, album, artist, collection }
+
+class DiscoverHomeItem {
+  const DiscoverHomeItem({
+    required this.type,
+    required this.id,
+    required this.title,
+    this.subtitle = '',
+    this.thumbnailUrl = '',
+    this.videoId = '',
+    this.browseId = '',
+    this.params,
+    this.durationText = '',
+  });
+
+  final DiscoverHomeItemType type;
+  final String id;
+  final String title;
+  final String subtitle;
+  final String thumbnailUrl;
+  final String videoId;
+  final String browseId;
+  final String? params;
+  final String durationText;
+
+  bool get isPlayableTrack => type == DiscoverHomeItemType.track && videoId.isNotEmpty;
+
+  factory DiscoverHomeItem.fromJson(Map<String, dynamic> json) {
+    final videoId = json['videoId']?.toString() ?? '';
+    final rawType = json['type']?.toString().toLowerCase() ?? '';
+    final type = DiscoverHomeItemType.values.firstWhere(
+      (value) => value.name == rawType,
+      orElse: () => videoId.isNotEmpty
+          ? DiscoverHomeItemType.track
+          : DiscoverHomeItemType.collection,
+    );
+    return DiscoverHomeItem(
+      type: type,
+      id: json['id']?.toString() ?? videoId,
+      title: json['title']?.toString() ?? '',
+      subtitle: json['subtitle']?.toString() ?? json['artist']?.toString() ?? '',
+      thumbnailUrl: json['thumbnailUrl']?.toString() ?? '',
+      videoId: videoId,
+      browseId: json['browseId']?.toString() ?? '',
+      params: json['params']?.toString(),
+      durationText: json['durationText']?.toString() ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'type': type.name,
+    'id': id,
+    'title': title,
+    'subtitle': subtitle,
+    'thumbnailUrl': thumbnailUrl,
+    'videoId': videoId,
+    'browseId': browseId,
+    if (params != null) 'params': params,
+    'durationText': durationText,
+  };
+
+  DiscoverTrack toTrack() => DiscoverTrack(
+    videoId: videoId,
+    title: title,
+    artist: subtitle.isEmpty ? 'Discover' : subtitle,
+    durationText: durationText,
+    thumbnailUrl: thumbnailUrl,
+  );
+}
+
 class DiscoverHomeShelf {
-  const DiscoverHomeShelf({required this.title, required this.tracks});
+  const DiscoverHomeShelf({
+    required this.title,
+    required this.tracks,
+    this.items = const [],
+  });
 
   final String title;
   final List<DiscoverTrack> tracks;
+  final List<DiscoverHomeItem> items;
 
-  factory DiscoverHomeShelf.fromJson(Map<String, dynamic> json) =>
-      DiscoverHomeShelf(
-        title: json['title']?.toString() ?? '',
-        tracks: (json['tracks'] as List? ?? const [])
-            .whereType<Map>()
-            .map((item) => DiscoverTrack.fromJson(
-                  item.map((key, value) => MapEntry(key.toString(), value)),
-                ))
-            .where((track) => track.videoId.isNotEmpty)
-            .toList(growable: false),
-      );
+  factory DiscoverHomeShelf.fromJson(Map<String, dynamic> json) {
+    final rawItems = (json['items'] as List? ?? const [])
+        .whereType<Map>()
+        .map((item) => DiscoverHomeItem.fromJson(
+              item.map((key, value) => MapEntry(key.toString(), value)),
+            ))
+        .where((item) => item.title.isNotEmpty && item.id.isNotEmpty)
+        .toList(growable: false);
+    final rawTracks = (json['tracks'] as List? ?? const [])
+        .whereType<Map>()
+        .map((item) => DiscoverTrack.fromJson(
+              item.map((key, value) => MapEntry(key.toString(), value)),
+            ))
+        .where((track) => track.videoId.isNotEmpty && track.title.isNotEmpty)
+        .toList(growable: false);
+    final tracks = rawTracks.isNotEmpty
+        ? rawTracks
+        : rawItems.where((item) => item.isPlayableTrack)
+            .map((item) => item.toTrack()).toList(growable: false);
+    return DiscoverHomeShelf(
+      title: json['title']?.toString() ?? '',
+      tracks: tracks,
+      items: rawItems,
+    );
+  }
 }
 
 class DiscoverHomeFeed {
@@ -58,46 +147,60 @@ class DiscoverHomeFeed {
             .map((item) => DiscoverHomeShelf.fromJson(
                   item.map((key, value) => MapEntry(key.toString(), value)),
                 ))
-            .where((shelf) => shelf.title.isNotEmpty && shelf.tracks.isNotEmpty)
+            .where((shelf) => shelf.title.isNotEmpty &&
+                (shelf.tracks.isNotEmpty || shelf.items.isNotEmpty))
             .toList(growable: false),
         continuation: json['continuation']?.toString() ?? '',
       );
 }
 
-
-/// Appends a continuation page without repeating a track across Home shelves.
+/// Appends continuation content without duplicating a track or collection.
 List<DiscoverHomeShelf> mergeDiscoverHomeShelves(
   List<DiscoverHomeShelf> current,
   List<DiscoverHomeShelf> incoming,
 ) {
-  final seenVideoIds = <String>{};
-  final merged = current.map((shelf) {
-    final tracks = shelf.tracks
-        .where((track) => seenVideoIds.add(track.videoId))
-        .toList(growable: false);
-    return DiscoverHomeShelf(title: shelf.title, tracks: tracks);
-  }).toList();
+  final merged = <DiscoverHomeShelf>[];
+  final seenKeys = <String>{};
+
+  List<DiscoverHomeItem> uniqueItems(List<DiscoverHomeItem> items) =>
+      items.where((item) => seenKeys.add('${item.type.name}:${item.id}'))
+          .toList(growable: false);
+
+  List<DiscoverTrack> uniqueTracks(List<DiscoverTrack> tracks) =>
+      tracks.where((track) => seenKeys.add('track:${track.videoId}'))
+          .toList(growable: false);
+
+  for (final shelf in current) {
+    merged.add(DiscoverHomeShelf(
+      title: shelf.title,
+      tracks: uniqueTracks(shelf.tracks),
+      items: uniqueItems(shelf.items),
+    ));
+  }
 
   for (final shelf in incoming) {
-    final freshTracks = shelf.tracks
-        .where((track) => seenVideoIds.add(track.videoId))
-        .toList(growable: false);
-    if (freshTracks.isEmpty) continue;
     final index = merged.indexWhere(
       (item) => item.title.toLowerCase() == shelf.title.toLowerCase(),
     );
+    final freshItems = uniqueItems(shelf.items);
+    final freshTracks = uniqueTracks(shelf.tracks);
+    if (freshItems.isEmpty && freshTracks.isEmpty) continue;
     if (index < 0) {
-      merged.add(DiscoverHomeShelf(title: shelf.title, tracks: freshTracks));
+      merged.add(DiscoverHomeShelf(
+        title: shelf.title,
+        tracks: freshTracks,
+        items: freshItems,
+      ));
     } else {
       merged[index] = DiscoverHomeShelf(
         title: merged[index].title,
         tracks: [...merged[index].tracks, ...freshTracks],
+        items: [...merged[index].items, ...freshItems],
       );
     }
   }
   return List.unmodifiable(merged);
 }
-
 
 class DiscoverMoodSection {
   const DiscoverMoodSection({required this.title, required this.items});
