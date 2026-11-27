@@ -126,9 +126,7 @@ class _TransportGlyphState extends State<_TransportGlyph> {
                 child: Icon(
                   widget.icon,
                   size: widget.size,
-                  color: Colors.white.withValues(
-                    alpha: widget.enabled ? 1 : 0.32,
-                  ),
+                  color: Colors.white,
                 ),
               ),
             ),
