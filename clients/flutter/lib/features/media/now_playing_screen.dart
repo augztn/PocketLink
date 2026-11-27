@@ -1017,9 +1017,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
       );
 
   Widget _bottomUtilities({bool lyricsActive = false}) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 34, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             _utilityButton(icon: Icons.lyrics_rounded, label: 'Lyrics',
               selected: lyricsActive, onTap: () => unawaited(_showTrackLyrics())),
@@ -1027,6 +1027,12 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
               onTap: _showAudioOutput),
             _utilityButton(icon: Icons.queue_music_rounded, label: 'Queue',
               onTap: _showQueue),
+            if (lyricsActive)
+              LyricsTranslationControlPill(
+                translationEnabled: _lyricsTranslationEnabled,
+                onChooseProvider: _chooseLyricsProvider,
+                onToggleTranslation: _toggleLyricsTranslation,
+              ),
           ],
         ),
       );
