@@ -52,13 +52,13 @@ class NowPlayingTransportControls extends StatelessWidget {
                   _TransportGlyph(
                     tooltip: 'Previous track',
                     icon: Icons.skip_previous_rounded,
-                    size: 32,
+                    size: 38,
                     enabled: hasMultipleTracks(),
                     onTap: onPrevious,
                   ),
                   PlaybackLoadingIndicator(
                     loading: loading,
-                    size: 68,
+                    size: 78,
                     child: _TransportGlyph(
                       tooltip: isPlaying ? 'Pause' : 'Play',
                       icon: isPlaying
@@ -116,8 +116,8 @@ class _TransportGlyphState extends State<_TransportGlyph> {
           onTapUp: widget.enabled ? (_) => setState(() => _pressed = false) : null,
           onTapCancel: () => setState(() => _pressed = false),
           child: SizedBox(
-            width: 68,
-            height: 68,
+            width: 78,
+            height: 78,
             child: Center(
               child: AnimatedScale(
                 scale: _pressed ? 0.88 : 1,
