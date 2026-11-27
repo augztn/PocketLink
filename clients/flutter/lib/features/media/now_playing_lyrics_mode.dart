@@ -96,14 +96,38 @@ class NowPlayingLyricsMode extends StatelessWidget {
                                         fontWeight: FontWeight.w700,
                                       ),
                                     ),
-                                    Text(
-                                      artistLabel,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        color: Colors.white60,
-                                        fontSize: 12,
-                                      ),
+                                    LayoutBuilder(
+                                      builder: (context, constraints) {
+                                        const style = TextStyle(
+                                          color: Colors.white60,
+                                          fontSize: 12,
+                                        );
+                                        final painter = TextPainter(
+                                          text: TextSpan(text: artistLabel, style: style),
+                                          maxLines: 1,
+                                          textDirection: Directionality.of(context),
+                                        )..layout(maxWidth: constraints.maxWidth);
+                                        final text = Text(
+                                          artistLabel,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: style,
+                                        );
+                                        if (!painter.didExceedMaxLines &&
+                                            painter.width <= constraints.maxWidth) {
+                                          return text;
+                                        }
+                                        return ShaderMask(
+                                          blendMode: BlendMode.dstIn,
+                                          shaderCallback: (bounds) => const LinearGradient(
+                                            begin: Alignment.centerLeft,
+                                            end: Alignment.centerRight,
+                                            colors: [Colors.white, Colors.white, Colors.transparent],
+                                            stops: [0, .78, 1],
+                                          ).createShader(bounds),
+                                          child: text,
+                                        );
+                                      },
                                     ),
                                   ],
                                 ),
