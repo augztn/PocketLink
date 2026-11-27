@@ -705,9 +705,9 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
           final rect = Rect.lerp(origin, destination, t)!;
           const miniPlayerRadius = 22.0;
           final radius = BorderRadius.lerp(
-            BorderRadius.zero,
             BorderRadius.circular(miniPlayerRadius),
-            1.0 - t,
+            BorderRadius.zero,
+            t,
           )!;
           final currentItem = player.currentItem;
           final artworkPalette = currentItem == null
@@ -912,7 +912,7 @@ class _MiniPlayerMorphContents extends StatelessWidget {
                             ),
                       ),
                       Text(
-                        cleanMediaArtist(item.artist, fallback: item.sourceLabel),
+                        resolveMediaArtist(artist: item.artist, title: item.title, path: item.path, fallback: item.sourceLabel),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(

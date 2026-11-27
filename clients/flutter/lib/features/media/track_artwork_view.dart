@@ -15,6 +15,7 @@ class TrackArtworkView extends StatelessWidget {
     this.fadeBottom = false,
     this.fadeBottomStart = 0.56,
     this.fit = BoxFit.cover,
+    this.fallbackAlignment = Alignment.center,
     super.key,
   });
 
@@ -26,6 +27,7 @@ class TrackArtworkView extends StatelessWidget {
   final bool fadeBottom;
   final double fadeBottomStart;
   final BoxFit fit;
+  final Alignment fallbackAlignment;
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +43,8 @@ class TrackArtworkView extends StatelessWidget {
           ],
         ),
       ),
-      child: Center(
+      child: Align(
+        alignment: fallbackAlignment,
         child: Icon(
           Icons.music_note_rounded,
           size: fallbackIconSize,

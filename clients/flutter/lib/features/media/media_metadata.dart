@@ -22,3 +22,45 @@ String formatDiscoverArtist(String? value) {
   }
   return '$artist$suffix';
 }
+
+
+/// Resolves an artist without exposing the generic source label as metadata.
+/// Embedded tags win; otherwise parse "Title - Artist", then a meaningful
+/// parent folder/album name.
+String resolveMediaArtist({
+  required String? artist,
+  required String title,
+  required String path,
+  String fallback = '',
+}) {
+  final tagged = cleanMediaArtist(artist);
+  if (tagged.isNotEmpty) return tagged;
+
+  var stem = title.trim();
+  final dot = stem.lastIndexOf('.');
+  if (dot > 0) stem = stem.substring(0, dot);
+  final separator = stem.lastIndexOf(' - ');
+  if (separator > 0 && separator + 3 < stem.length) {
+    final parsed = stem.substring(separator + 3).trim();
+    if (parsed.isNotEmpty && parsed.length <= 100) return parsed;
+  }
+
+  final parts = path.split('/').where((part) => part.trim().isNotEmpty).toList();
+  if (parts.length > 1) {
+    final folder = parts[parts.length - 2].trim();
+    const genericFolders = {
+      'music', 'audio', 'downloads', 'download', 'internal storage',
+      'external storage', 'pocketlink', 'songs',
+    };
+    if (folder.isNotEmpty && !genericFolders.contains(folder.toLowerCase())) {
+      return folder;
+    }
+  }
+
+  final cleanFallback = fallback.trim();
+  if (cleanFallback.isEmpty ||
+      const {'pocketlink', 'discover', 'unknown'}.contains(cleanFallback.toLowerCase())) {
+    return 'Unknown artist';
+  }
+  return cleanFallback;
+}

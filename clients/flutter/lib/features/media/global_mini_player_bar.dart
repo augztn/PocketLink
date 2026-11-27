@@ -167,7 +167,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
                                   ),
                                   Text(
                                     isPlaying
-                                        ? cleanMediaArtist(item.artist, fallback: item.sourceLabel)
+                                        ? resolveMediaArtist(artist: item.artist, title: item.title, path: item.path, fallback: item.sourceLabel)
                                         : 'PAUSED',
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
