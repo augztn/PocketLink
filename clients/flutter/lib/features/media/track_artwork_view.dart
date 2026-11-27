@@ -57,6 +57,7 @@ class TrackArtworkView extends StatelessWidget {
         ? Image.memory(
             bytes!,
             cacheWidth: 544,
+            cacheHeight: 544,
             fit: fit,
             gaplessPlayback: true,
             errorBuilder: (_, __, ___) => fallback,
