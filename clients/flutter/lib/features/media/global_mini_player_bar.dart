@@ -31,6 +31,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
     this.hasFloatingNavBar = true,
     this.compact = false,
     this.surfaceIntensity = 1.0,
+    this.opacity = 1.0,
     this.artworkBytes,
     this.artworkKey,
     this.onExpandDragStart,
@@ -57,6 +58,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
   final bool hasFloatingNavBar;
   final bool compact;
   final double surfaceIntensity;
+  final double opacity;
   final Uint8List? artworkBytes;
   final Key? artworkKey;
   final VoidCallback? onExpandDragStart;
@@ -104,12 +106,17 @@ class GlobalMiniPlayerBar extends StatelessWidget {
         // Fade the entire docked surface, not just its controls. The opaque
         // glass shell otherwise remains above the morph overlay as a grey box.
         child: Opacity(
-          opacity: visible ? 1 : 0,
-          child: SmokedGlassSurface(
-            key: surfaceKey,
-            radius: BorderRadius.circular(22),
-            intensity: surfaceIntensity,
-            child: _MiniPlayerGestureSurface(
+          opacity: visible ? opacity.clamp(0.0, 1.0).toDouble() : 0.0,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: const Color(0xFF17181B),
+              borderRadius: BorderRadius.circular(22),
+            ),
+            child: SmokedGlassSurface(
+              key: surfaceKey,
+              radius: BorderRadius.circular(22),
+              intensity: surfaceIntensity,
+              child: _MiniPlayerGestureSurface(
               onTap: onOpen,
               onDismiss: onDismiss,
               isPlaying: isPlaying,
