@@ -52,8 +52,6 @@ class AppSettings extends ChangeNotifier {
   static const _nowPlayingMiniPlayerKey = 'settings_now_playing_mini_player';
   static const _nowPlayingGesturesKey = 'settings_now_playing_gestures';
   static const _nowPlayingStatsForNerdsKey = 'settings_now_playing_stats_for_nerds';
-  static const _nowPlayingScrubberStyleKey = 'settings_now_playing_scrubber_style';
-  static const _nowPlayingThemeKey = 'settings_now_playing_theme';
   static const _downloadConcurrencyKey = 'settings_download_concurrency';
   static const _downloadWifiOnlyKey = 'settings_download_wifi_only';
   static const _downloadAutoResumeKey = 'settings_download_auto_resume';
@@ -131,8 +129,6 @@ class AppSettings extends ChangeNotifier {
   bool _showMiniPlayer = true;
   bool _enableNowPlayingGestures = true;
   bool _showStatsForNerds = true;
-  String _nowPlayingScrubberStyle = 'apple';
-  String _nowPlayingTheme = 'apple';
   int _downloadConcurrency = 2;
   bool _downloadWifiOnly = false;
   bool _downloadAutoResume = true;
@@ -180,8 +176,6 @@ class AppSettings extends ChangeNotifier {
   bool get showMiniPlayer => _showMiniPlayer;
   bool get enableNowPlayingGestures => _enableNowPlayingGestures;
   bool get showStatsForNerds => _showStatsForNerds;
-  String get nowPlayingScrubberStyle => _nowPlayingScrubberStyle;
-  String get nowPlayingTheme => _nowPlayingTheme;
   int get downloadConcurrency => _downloadConcurrency;
   bool get downloadWifiOnly => _downloadWifiOnly;
   bool get downloadAutoResume => _downloadAutoResume;
@@ -223,19 +217,11 @@ class AppSettings extends ChangeNotifier {
       _showMiniPlayer = preferences.getBool(_nowPlayingMiniPlayerKey) ?? true;
       _enableNowPlayingGestures = preferences.getBool(_nowPlayingGesturesKey) ?? true;
       _showStatsForNerds = preferences.getBool(_nowPlayingStatsForNerdsKey) ?? true;
-      _nowPlayingTheme = const {'apple', 'blur', 'blurCard', 'gradient', 'aether'}
-          .contains(preferences.getString(_nowPlayingThemeKey))
-          ? preferences.getString(_nowPlayingThemeKey)!
-          : 'apple';
       _downloadConcurrency = const {1, 2, 3, 5}.contains(preferences.getInt(_downloadConcurrencyKey))
           ? preferences.getInt(_downloadConcurrencyKey)!
           : 2;
       _downloadWifiOnly = preferences.getBool(_downloadWifiOnlyKey) ?? false;
       _downloadAutoResume = preferences.getBool(_downloadAutoResumeKey) ?? true;
-      _nowPlayingScrubberStyle = const {'apple', 'wavy', 'classic', 'waveform'}
-          .contains(preferences.getString(_nowPlayingScrubberStyleKey))
-          ? preferences.getString(_nowPlayingScrubberStyleKey)!
-          : 'apple';
       final controlsTimeout = preferences.get(_videoControlsTimeoutKey);
       _videoControlsTimeoutSeconds = controlsTimeout is num ? controlsTimeout.toDouble() : 3.5;
       _videoSeekSeconds = preferences.getInt(_videoSeekSecondsKey) ?? 10;
