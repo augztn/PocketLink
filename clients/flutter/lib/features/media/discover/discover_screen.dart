@@ -28,9 +28,10 @@ import 'discover_home_feed_store.dart';
 import 'discover_moods_screen.dart';
 
 class _DiscoverShelf {
-  const _DiscoverShelf(this.title, this.tracks);
+  const _DiscoverShelf(this.title, this.tracks, {this.items = const []});
   final String title;
   final List<DiscoverTrack> tracks;
+  final List<DiscoverHomeItem> items;
 }
 
 class _DiscoverFeedSnapshot {
@@ -370,7 +371,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       if (persisted != null) {
         final snapshot = _DiscoverFeedSnapshot(
           List.unmodifiable(persisted.feed.shelves.map(
-            (shelf) => _DiscoverShelf(shelf.title, shelf.tracks),
+            (shelf) => _DiscoverShelf(shelf.title, shelf.tracks, items: shelf.items),
           )),
           'Discover in ${AppSettings.discoverRegions[region] ?? region}',
           persisted.feed.continuation,
@@ -454,7 +455,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       if (!mounted || generation != _requestGeneration ||
           region != AppSettings.instance.discoverRegion) return;
       final shelves = feed.shelves
-          .map((shelf) => _DiscoverShelf(shelf.title, shelf.tracks))
+          .map((shelf) => _DiscoverShelf(shelf.title, shelf.tracks, items: shelf.items))
           .where((shelf) => shelf.tracks.isNotEmpty)
           .toList(growable: false);
       if (shelves.isEmpty) {
@@ -545,12 +546,13 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             .map((shelf) => DiscoverHomeShelf(
                   title: shelf.title,
                   tracks: shelf.tracks,
+                  items: shelf.items,
                 ))
             .toList(growable: false),
         feed.shelves,
       );
       final merged = mergedFeed
-          .map((shelf) => _DiscoverShelf(shelf.title, shelf.tracks))
+          .map((shelf) => _DiscoverShelf(shelf.title, shelf.tracks, items: shelf.items))
           .toList(growable: false);
       if (merged.length == _homeShelves.length &&
           merged.every((shelf) => _homeShelves.any((old) =>
@@ -568,7 +570,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           region,
           DiscoverHomeFeed(
             shelves: _homeShelves.map((shelf) => DiscoverHomeShelf(
-              title: shelf.title, tracks: shelf.tracks,
+              title: shelf.title, tracks: shelf.tracks, items: shelf.items,
             )).toList(growable: false),
           ),
         ).catchError((Object error) {
@@ -592,7 +594,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         region,
         DiscoverHomeFeed(
           shelves: snapshot.shelves.map((shelf) => DiscoverHomeShelf(
-            title: shelf.title, tracks: shelf.tracks,
+            title: shelf.title, tracks: shelf.tracks, items: shelf.items,
           )).toList(growable: false),
           continuation: snapshot.continuation,
         ),
@@ -1760,20 +1762,102 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         title.contains('top songs');
   }
 
+  void _openHomeItem(DiscoverHomeItem item, List<DiscoverHomeItem> shelfItems) {
+    if (item.isPlayableTrack) {
+      final queue = shelfItems.where((entry) => entry.isPlayableTrack)
+          .map((entry) => entry.toTrack()).toList(growable: false);
+      _play(item.toTrack(), queueOverride: queue.isEmpty ? null : queue);
+      return;
+    }
+    if (item.browseId.isNotEmpty) {
+      _openMood(DiscoverMood(
+        title: item.title,
+        browseId: item.browseId,
+        params: item.params,
+      ));
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('This collection cannot be opened right now.')),
+    );
+  }
+
+  Widget _homeItemCard(DiscoverHomeItem item, List<DiscoverHomeItem> shelfItems) {
+    final track = item.toTrack();
+    final isArtist = item.type == DiscoverHomeItemType.artist;
+    return SizedBox(
+      width: 168,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: () => _openHomeItem(item, shelfItems),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AspectRatio(
+              aspectRatio: 1,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(isArtist ? 84 : 8),
+                child: _art(track, size: double.infinity, radius: isArtist ? 84 : 8),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              item.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              item.subtitle.isNotEmpty
+                  ? item.subtitle
+                  : switch (item.type) {
+                      DiscoverHomeItemType.playlist => 'Playlist',
+                      DiscoverHomeItemType.album => 'Album',
+                      DiscoverHomeItemType.artist => 'Artist',
+                      DiscoverHomeItemType.collection => 'Collection',
+                      DiscoverHomeItemType.track => 'Song',
+                    },
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _homeShelf(_DiscoverShelf shelf) {
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.only(top: 24),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          _shelfHeading(shelf.title, onSeeAll: () => _showShelf(shelf)),
+          _shelfHeading(
+            shelf.title,
+            onSeeAll: shelf.tracks.isEmpty ? null : () => _showShelf(shelf),
+          ),
           SizedBox(
             height: 214,
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               scrollDirection: Axis.horizontal,
-              itemCount: shelf.tracks.length.clamp(0, 12),
+              itemCount: (shelf.items.isNotEmpty
+                      ? shelf.items.length
+                      : shelf.tracks.length).clamp(0, 12),
               separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (context, index) => _feedCard(shelf.tracks[index]),
+              itemBuilder: (context, index) {
+                if (shelf.items.isNotEmpty) {
+                  return _homeItemCard(shelf.items[index], shelf.items);
+                }
+                return _feedCard(shelf.tracks[index]);
+              },
             ),
           ),
         ]),
