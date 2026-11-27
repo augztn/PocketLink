@@ -227,7 +227,8 @@ class ServerApi {
             error.response?.statusCode == 404) {
           _rememberFailedMediaKey(_failedMetadataKeys, key);
         }
-        if ((cancelToken?.isCancelled ?? false) &&
+        if (((cancelToken?.isCancelled ?? false) ||
+                error.type == DioExceptionType.cancel) &&
             identical(_metadataCache[key], future)) {
           _metadataCache.remove(key);
         }
@@ -240,7 +241,7 @@ class ServerApi {
       }
     })();
     _metadataCache[key] = future;
-    if (_metadataCache.length > 512) _metadataCache.remove(_metadataCache.keys.first);
+    if (_metadataCache.length > 128) _metadataCache.remove(_metadataCache.keys.first);
     return future;
   }
 
@@ -281,7 +282,8 @@ class ServerApi {
             error.response?.statusCode == 404) {
           _rememberFailedMediaKey(_failedThumbnailKeys, key);
         }
-        if ((cancelToken?.isCancelled ?? false) &&
+        if (((cancelToken?.isCancelled ?? false) ||
+                error.type == DioExceptionType.cancel) &&
             identical(_thumbnailCache[key], future)) {
           _thumbnailCache.remove(key);
         }
@@ -294,7 +296,7 @@ class ServerApi {
       }
     })();
     _thumbnailCache[key] = future;
-    if (_thumbnailCache.length > 512) _thumbnailCache.remove(_thumbnailCache.keys.first);
+    if (_thumbnailCache.length > 96) _thumbnailCache.remove(_thumbnailCache.keys.first);
     return future;
   }
   Future<DirectoryListing> authenticate({CancelToken? cancelToken}) =>
