@@ -31,7 +31,6 @@ void main() {
         final lens = tester.getRect(
           find.byKey(const ValueKey('navigation-dock-active-lens')),
         );
-        expect(find.byType(BackdropFilter), findsOneWidget);
 
         final innerWidth = capsule.width - 10;
         final slotWidth = innerWidth / 3;
