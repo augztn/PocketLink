@@ -1107,12 +1107,15 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     }
 
     final cachedStates = _lyricsRepository.resultsFor(query.key);
+    final cachedDocument = _lyricsRepository.current(query.key);
     final hasCompletedCache = cachedStates.isNotEmpty &&
         cachedStates.values.every((value) => value.status != LyricsLookupStatus.loading);
     setState(() {
       _lyricsQueryKey = query.key;
-      _lyricsLoading = !hasCompletedCache;
-      _activeLyrics = _lyricsRepository.current(query.key);
+      // Keep an already-resolved lyric document visible when other providers
+      // are still enriching the cache in the background after a sheet reopen.
+      _lyricsLoading = !hasCompletedCache && cachedDocument == null;
+      _activeLyrics = cachedDocument;
       _lyricsProviderStates = cachedStates;
       if (_lyricsProviderStates.isEmpty) {
         _lyricsProviderStates = {
@@ -1318,26 +1321,24 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
           final preview = lines.isEmpty
               ? (_lyricsLoading ? 'Finding lyrics…' : 'Tap to view lyrics')
               : lines[index < 0 ? 0 : index].text;
-          return SizedBox(
-            width: double.infinity,
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => unawaited(_showTrackLyrics()),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: 44),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 8),
-                  child: Row(children: [
-                    Expanded(
-                      child: _lyricsLoading && lines.isEmpty
-                          ? const _LyricsSearchingPulse()
-                          : Text(preview, maxLines: 1, overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
-                    ),
-                    const SizedBox(width: 8),
-                    const Icon(Icons.chevron_right_rounded, color: Colors.white38, size: 19),
-                  ]),
-                ),
+          return GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => unawaited(_showTrackLyrics()),
+            child: SizedBox(
+              width: double.infinity,
+              height: 44,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 22),
+                child: Row(children: [
+                  Expanded(
+                    child: _lyricsLoading && lines.isEmpty
+                        ? const _LyricsSearchingPulse()
+                        : Text(preview, maxLines: 1, overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.chevron_right_rounded, color: Colors.white38, size: 19),
+                ]),
               ),
             ),
           );
