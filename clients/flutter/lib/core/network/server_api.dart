@@ -387,8 +387,9 @@ class ServerApi {
         }
       }
 
-      final workers = batch.length < 2 ? batch.length : 2;
-      await Future.wait(List.generate(workers, (_) => worker()));
+      // The media lane intentionally has a single slot; one worker avoids
+      // accumulating waiters while the core lane remains fully available.
+      if (batch.isNotEmpty) await worker();
     }
 
     await scanBatch(candidates, collectChildren: true);
