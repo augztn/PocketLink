@@ -124,7 +124,6 @@ class _LyricsViewportState extends State<LyricsViewport> {
               itemBuilder: (context, index) {
                 final line = doc.lines[index];
                 final active = index == _activeIndex;
-                final past = _activeIndex >= 0 && index < _activeIndex;
                 final nextLine = index + 1 < doc.lines.length ? doc.lines[index + 1] : null;
                 final instrumentalGap = active && nextLine != null &&
                     nextLine.timeMs - line.timeMs >= 12000 &&
