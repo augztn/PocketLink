@@ -189,12 +189,21 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     final globalOrigin = PocketLinkNavigation.resolveMediaOriginRect(
       preferMiniPlayer: _shouldShowMiniPlayer(),
     );
-    _nowPlayingOriginRect =
-        globalOrigin != null && mediaOverlayBox is RenderBox
-            ? globalOrigin.shift(
-                -mediaOverlayBox.localToGlobal(Offset.zero),
-              )
-            : globalOrigin;
+    final overlayOrigin = globalOrigin != null &&
+            mediaOverlayBox is RenderBox
+        ? globalOrigin.shift(-mediaOverlayBox.localToGlobal(Offset.zero))
+        : globalOrigin;
+    // Discover can render a compact player beside its search affordance.
+    // The morph sheet itself must still originate at full viewport width;
+    // only the artwork uses the measured thumbnail rect.
+    _nowPlayingOriginRect = overlayOrigin == null
+        ? null
+        : Rect.fromLTWH(
+            0,
+            overlayOrigin.top,
+            media.size.width,
+            overlayOrigin.height,
+          );
     _miniArtworkOriginRect =
         PocketLinkNavigation.resolveMediaRect(PocketLinkNavigation.miniArtworkKey);
     _sharedArtworkTargetRect.value = null;
@@ -821,7 +830,7 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
                             ignoring: t < 0.35,
                             child: Opacity(
                               opacity: const Interval(
-                                0.50,
+                                0.55,
                                 1.0,
                                 curve: Curves.easeOutCubic,
                               ).transform(t),
