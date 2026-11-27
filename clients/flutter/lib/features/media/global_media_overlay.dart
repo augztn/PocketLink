@@ -449,6 +449,9 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
 
   void _endNowPlayingDrag(double velocity) {
     if (!_nowPlayingOpen) return;
+    // Always leave the interactive-drag state before settling. Both a normal
+    // pointer-up and a recognizer cancellation converge on this path.
+    _isNowPlayingDragging.value = false;
     final extent = _morphTravelExtent(
       fallback: math.max(1.0, MediaQuery.sizeOf(context).height),
     );
@@ -740,7 +743,7 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
           );
           // Expand the cover toward the edge-to-edge hero early in the
           // gesture so it never looks like a narrow card near completion.
-          final artworkProgress = Curves.easeOutCubic.transform(t);
+          final artworkProgress = t;
           final artworkRect = Rect.lerp(sourceArt, targetArt, artworkProgress)!;
           final artworkRadius = BorderRadius.lerp(
             BorderRadius.circular(10),
