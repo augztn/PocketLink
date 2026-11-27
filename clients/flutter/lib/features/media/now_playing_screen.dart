@@ -1651,16 +1651,19 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
         // The morph animation object remains attached for the route's entire
         // lifetime. Only use the clipped morph artwork while the controller is
         // actually between its collapsed and fully expanded states.
+        final morphProgress = widget.morphAnimation?.value ?? 0.0;
+        final overlayExpanded = widget.morphAnimation != null &&
+            morphProgress > 0.01;
         return PopScope(
-          // In overlay mode, system back collapses Now Playing instead of
-          // popping the page beneath it. Lyrics consume the first back press.
-          canPop: widget.morphAnimation == null &&
-              _lyricsController.value <= 0.001,
+          // The persistent screen remains mounted while collapsed, so it must
+          // not intercept navigation until its overlay is actually expanded.
+          // Lyrics consume the first back press while Now Playing is open.
+          canPop: !overlayExpanded && _lyricsController.value <= 0.001,
           onPopInvoked: (didPop) {
             if (didPop) return;
             if (_lyricsController.value > 0.001) {
               unawaited(_lyricsController.reverse());
-            } else if (widget.morphAnimation != null) {
+            } else if (overlayExpanded) {
               widget.onDismiss();
             }
           },
