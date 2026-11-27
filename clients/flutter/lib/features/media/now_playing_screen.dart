@@ -1652,12 +1652,16 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
         // lifetime. Only use the clipped morph artwork while the controller is
         // actually between its collapsed and fully expanded states.
         return PopScope(
-          // Back first exits the lyrics layer. Only pop Now Playing after
-          // the lyrics transition has fully closed.
-          canPop: _lyricsController.value <= 0.001,
+          // In overlay mode, system back collapses Now Playing instead of
+          // popping the page beneath it. Lyrics consume the first back press.
+          canPop: widget.morphAnimation == null &&
+              _lyricsController.value <= 0.001,
           onPopInvoked: (didPop) {
-            if (!didPop && _lyricsController.value > 0.001) {
+            if (didPop) return;
+            if (_lyricsController.value > 0.001) {
               unawaited(_lyricsController.reverse());
+            } else if (widget.morphAnimation != null) {
+              widget.onDismiss();
             }
           },
           child: AnnotatedRegion<SystemUiOverlayStyle>(
