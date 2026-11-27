@@ -15,7 +15,7 @@ class DiscoverHomeFeedStore {
   static const int _maxTracksPerShelf = 50;
 
   static String _key(String region) =>
-      'discover_home_feed_v1_${region.trim().toUpperCase()}';
+      'discover_home_feed_v2_${region.trim().toUpperCase()}';
 
   static Future<DiscoverCachedHomeFeed?> read(
     String region, {
@@ -69,6 +69,8 @@ class DiscoverHomeFeedStore {
         'durationText': track.durationText,
         'thumbnailUrl': track.thumbnailUrl,
       }).toList(growable: false),
+      'items': shelf.items.take(_maxTracksPerShelf)
+          .map((item) => item.toJson()).toList(growable: false),
     }).toList(growable: false);
     await preferences.setString(_key(region), jsonEncode({
       'updatedAtMs': (clock ?? DateTime.now)().millisecondsSinceEpoch,
