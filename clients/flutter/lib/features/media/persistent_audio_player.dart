@@ -77,6 +77,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
     player = Player();
     if (defaultTargetPlatform == TargetPlatform.android) {
       _mediaChannel.setMethodCallHandler(_handleMediaCommand);
+      unawaited(refreshSystemMediaVolume());
     }
     _playlistSubscription = player.stream.playlist.listen((playlist) {
       _currentIndex = playlist.index.clamp(0, _queue.isEmpty ? 0 : _queue.length - 1).toInt();
@@ -126,8 +127,57 @@ class PersistentAudioPlayer extends ChangeNotifier {
   static final PersistentAudioPlayer instance = PersistentAudioPlayer._();
   static const MethodChannel _mediaChannel = MethodChannel('pocketlink/media');
   static const MethodChannel _discoverChannel = MethodChannel('pocketlink/saf');
+  final StreamController<double> _systemMediaVolumeController =
+      StreamController<double>.broadcast();
+  double _systemMediaVolume = 100;
 
   late final Player player;
+
+  double get systemMediaVolume => _systemMediaVolume;
+  Stream<double> get systemMediaVolumeStream =>
+      _systemMediaVolumeController.stream;
+
+  Future<void> refreshSystemMediaVolume() async {
+    if (defaultTargetPlatform != TargetPlatform.android) return;
+    try {
+      final result = await _mediaChannel.invokeMapMethod<String, dynamic>(
+        'getSystemMediaVolume',
+      );
+      final volume = result?['volume'];
+      if (volume is num) _publishSystemMediaVolume(volume.toDouble());
+    } on PlatformException {
+      // Playback remains available if the optional native volume bridge is unavailable.
+    } on MissingPluginException {
+      // Non-Android and test environments do not register the native bridge.
+    }
+  }
+
+  Future<void> setSystemMediaVolume(double value) async {
+    final normalized = value.clamp(0.0, 100.0).toDouble();
+    if (defaultTargetPlatform != TargetPlatform.android) {
+      await player.setVolume(normalized);
+      return;
+    }
+    try {
+      final result = await _mediaChannel.invokeMapMethod<String, dynamic>(
+        'setSystemMediaVolume',
+        {'volume': normalized},
+      );
+      final volume = result?['volume'];
+      if (volume is num) _publishSystemMediaVolume(volume.toDouble());
+    } on PlatformException {
+      // Keep this control bound to Android's media stream, not software gain.
+    } on MissingPluginException {
+      // Non-Android and test environments do not register the native bridge.
+    }
+  }
+
+  void _publishSystemMediaVolume(double value) {
+    _systemMediaVolume = value.clamp(0.0, 100.0).toDouble();
+    if (!_systemMediaVolumeController.isClosed) {
+      _systemMediaVolumeController.add(_systemMediaVolume);
+    }
+  }
   VideoController? _videoController;
 
   /// Reuse one video output for the lifetime of the app-scoped Player.
@@ -565,6 +615,12 @@ class PersistentAudioPlayer extends ChangeNotifier {
 
 
   Future<void> _handleMediaCommand(MethodCall call) async {
+    if (call.method == 'systemMediaVolumeChanged' && call.arguments is Map) {
+      final args = Map<Object?, Object?>.from(call.arguments as Map);
+      final volume = args['volume'];
+      if (volume is num) _publishSystemMediaVolume(volume.toDouble());
+      return;
+    }
     if (call.method != 'mediaCommand' || call.arguments is! Map) return;
     final args = Map<Object?, Object?>.from(call.arguments as Map);
     final action = args['action']?.toString();
@@ -624,6 +680,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
     unawaited(_completedSubscription?.cancel());
     unawaited(_errorSubscription?.cancel());
     _mediaChannel.setMethodCallHandler(null);
+    unawaited(_systemMediaVolumeController.close());
     unawaited(player.dispose());
     super.dispose();
   }
