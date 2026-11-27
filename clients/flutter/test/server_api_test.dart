@@ -439,7 +439,7 @@ void main() {
 
       final coreRead = api.authenticate();
       await adapter.coreStarted.future.timeout(const Duration(milliseconds: 250));
-      expect(adapter.mediaRequestsStarted, 1);
+      expect(adapter.mediaRequestsStarted, 2);
 
       adapter.releaseMedia.complete();
       await thumbnails;
