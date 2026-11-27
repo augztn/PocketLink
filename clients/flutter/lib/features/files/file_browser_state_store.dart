@@ -10,11 +10,15 @@ class FileBrowserStateStore extends ChangeNotifier {
       _states.putIfAbsent(serverKey, FileBrowserState.new);
 
   void update(String serverKey, FileBrowserState state) {
+    // Scroll and rebuild callbacks can submit the same snapshot repeatedly.
+    // Do not notify dependents or emit diagnostics unless durable state changed.
+    if (_states[serverKey] == state) return;
+
+    _states[serverKey] = state;
     AppLogger.event('files.browser_state_updated', category: 'files',
       component: 'file_browser_state',
       fields: {'has_selected_volume': state.selectedVolume != null,
         'category': state.category, 'sort_by': state.sortBy, 'grid_view': state.gridView});
-    _states[serverKey] = state;
     notifyListeners();
   }
 }
@@ -36,6 +40,21 @@ class FileBrowserState {
   final String sortBy;
   final bool gridView;
   final double scrollOffset;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FileBrowserState &&
+          path == other.path &&
+          selectedVolume == other.selectedVolume &&
+          category == other.category &&
+          sortBy == other.sortBy &&
+          gridView == other.gridView &&
+          scrollOffset == other.scrollOffset;
+
+  @override
+  int get hashCode => Object.hash(
+        path, selectedVolume, category, sortBy, gridView, scrollOffset);
 
   FileBrowserState copyWith({
     String? path,
