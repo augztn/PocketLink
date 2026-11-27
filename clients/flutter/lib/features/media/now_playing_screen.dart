@@ -1613,6 +1613,28 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
           ),
         ),
         Positioned(
+          top: MediaQuery.sizeOf(context).height * 0.42,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withValues(alpha: 0.36),
+                    Colors.black.withValues(alpha: 0.28),
+                  ],
+                  stops: const [0, 0.46, 1],
+                ),
+              ),
+            ),
+          ),
+        ),
+        Positioned(
             top: MediaQuery.paddingOf(context).top,
             left: 0,
             right: 0,
@@ -1620,7 +1642,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
               child: Opacity(
                 // The overlay paints the same handle outside its morph clip.
                 // Keep this tap target active, but avoid drawing it twice.
-                opacity: widget.morphAnimation == null ? 1 : 0,
+                opacity: 1,
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () => unawaited(_showTrackLyrics()),
@@ -1885,50 +1907,53 @@ class _ArtworkTitleMarqueeState extends State<_ArtworkTitleMarquee>
           return SizedBox(
             width: constraints.maxWidth,
             height: painter.height,
-            child: ShaderMask(
-              blendMode: BlendMode.dstIn,
-              shaderCallback: (bounds) => LinearGradient(
-                colors: scroll.value > 0.001
-                    ? const [
-                        Colors.transparent,
-                        Colors.white,
-                        Colors.white,
-                        Colors.transparent,
-                      ]
-                    : const [
-                        Colors.white,
-                        Colors.white,
-                        Colors.white,
-                        Colors.transparent,
-                      ],
-                stops: const [0, 0.04, 0.90, 1],
-              ).createShader(bounds),
-              child: ClipRect(
-                child: OverflowBox(
-                  alignment: Alignment.centerLeft,
-                  minWidth: constraints.maxWidth,
-                  maxWidth: double.infinity,
-                  minHeight: painter.height,
-                  maxHeight: painter.height,
-                  child: AnimatedBuilder(
-                    animation: _controller,
-                    builder: (context, _) => Transform.translate(
-                      offset: Offset(-scroll.value, 0),
-                      child: SizedBox(
-                        width: painter.width * 2 + _gap,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(widget.text, maxLines: 1, softWrap: false, style: widget.style),
-                            const SizedBox(width: _gap),
-                            Text(widget.text, maxLines: 1, softWrap: false, style: widget.style),
+            child: AnimatedBuilder(
+              animation: _controller,
+              builder: (context, _) {
+                final scrollOffset = scroll.value;
+                return ShaderMask(
+                  blendMode: BlendMode.dstIn,
+                  shaderCallback: (bounds) => LinearGradient(
+                    colors: scrollOffset > 1.0
+                        ? const [
+                            Colors.transparent,
+                            Colors.white,
+                            Colors.white,
+                            Colors.transparent,
+                          ]
+                        : const [
+                            Colors.white,
+                            Colors.white,
+                            Colors.white,
+                            Colors.transparent,
                           ],
+                    stops: const [0, 0.06, 0.90, 1],
+                  ).createShader(bounds),
+                  child: ClipRect(
+                    child: OverflowBox(
+                      alignment: Alignment.centerLeft,
+                      minWidth: constraints.maxWidth,
+                      maxWidth: double.infinity,
+                      minHeight: painter.height,
+                      maxHeight: painter.height,
+                      child: Transform.translate(
+                        offset: Offset(-scrollOffset, 0),
+                        child: SizedBox(
+                          width: painter.width * 2 + _gap,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(widget.text, maxLines: 1, softWrap: false, style: widget.style),
+                              const SizedBox(width: _gap),
+                              Text(widget.text, maxLines: 1, softWrap: false, style: widget.style),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
           );
         },
