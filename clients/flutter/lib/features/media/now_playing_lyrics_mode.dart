@@ -50,6 +50,9 @@ class NowPlayingLyricsMode extends StatelessWidget {
                       child: artwork,
                     ),
                   ),
+                  const Positioned.fill(
+                    child: ColoredBox(color: Color(0xA6000000)),
+                  ),
                   Positioned(
                     left: 8,
                     top: 56,
@@ -62,9 +65,6 @@ class NowPlayingLyricsMode extends StatelessWidget {
                         icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white),
                       ),
                     ),
-                  ),
-                  const Positioned.fill(
-                    child: ColoredBox(color: Color(0xA6000000)),
                   ),
                   Column(
                     children: [
