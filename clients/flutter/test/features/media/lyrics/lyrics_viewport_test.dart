@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:pocketlink_client/features/media/lyrics/lyrics_repository.dart';
 import 'package:pocketlink_client/features/media/lyrics/lyrics_viewport.dart';
 
 void main() {
@@ -11,21 +10,12 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: LyricsViewport(
-            document: const LyricsDocument(
-              providerId: 'lrclib',
-              providerName: 'LRCLIB',
-              lines: [LyricsLine(0, 'Test lyric line')],
-              synced: false,
+          body: Center(
+            child: LyricsTranslationControlPill(
+              translationEnabled: false,
+              onChooseProvider: () => providerTaps++,
+              onToggleTranslation: () => translationTaps++,
             ),
-            position: Duration.zero,
-            results: const {},
-            providers: const [],
-            onSeek: (_) {},
-            onChooseProvider: () => providerTaps++,
-            onToggleTranslation: () => translationTaps++,
-            onRetry: () {},
-            translationEnabled: false,
           ),
         ),
       ),
@@ -44,5 +34,19 @@ void main() {
 
     expect(providerTaps, 1);
     expect(translationTaps, 1);
+    expect(
+      find.ancestor(
+        of: providerControl,
+        matching: find.byType(ClipRRect),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.ancestor(
+        of: translationControl,
+        matching: find.byType(ClipRRect),
+      ),
+      findsOneWidget,
+    );
   });
 }
