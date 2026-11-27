@@ -1703,7 +1703,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
           // The morph sheet owns the opaque backdrop. Keep this route
           // transparent while morphing so its shared artwork remains visible
           // behind the foreground title, badges and controls.
-          backgroundColor: const Color(0xFF0A0B0E),
+          backgroundColor: Colors.transparent,
           body: Stack(
             fit: StackFit.expand,
             children: [
