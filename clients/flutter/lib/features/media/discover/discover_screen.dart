@@ -410,11 +410,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         restore();
       }
       _ensureListeningPicks(cacheEntry.value.shelves);
-      // Local lossless matching is optional enrichment. Start its index read
-      // only after cached recommendations are already visible.
-      if (AppSettings.instance.discoverLocalLossless) {
-        unawaited(_loadLocalLibrary());
-      }
       final stale = persistedStale || DiscoverCache.instance.isStale(cacheEntry);
       AppLogger.event('discover.home_cache_restored', category: 'discover',
         component: 'discover_screen',
@@ -433,11 +428,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       });
     }
     await _fetchHome(cacheKey, showLoading: true);
-    // Prioritize the first Discover feed over the independent host-library
-    // scan used only for optional local-lossless matching.
-    if (mounted && AppSettings.instance.discoverLocalLossless) {
-      unawaited(_loadLocalLibrary());
-    }
   }
 
   Future<void> _fetchHome(
@@ -876,20 +866,27 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         expectedSession: session,
       );
     }
-    if (!_canContinueQueueResolution(resolverGeneration, session, player) ||
-        !AppSettings.instance.discoverAutoQueue) return;
+    if (!_canContinueQueueResolution(resolverGeneration, session, player)) return;
 
-    for (final index in order.skip(immediate.length)) {
-      if (!_canContinueQueueResolution(resolverGeneration, session, player)) return;
-      final item = await resolveAt(index);
-      if (item != null &&
+    // Keep at most two upcoming remote streams resolved ahead of playback.
+    // The first next track is in the immediate batch above; only resolve the
+    // second next track here instead of walking the entire recommendation list.
+    if (AppSettings.instance.discoverAutoQueue &&
+        selectedIndex + 2 < tracks.length) {
+      final nextItem = await resolveAt(selectedIndex + 2);
+      if (nextItem != null &&
           _canContinueQueueResolution(resolverGeneration, session, player)) {
-        await player.enqueue(
-          item,
-          insertAtStart: index < selectedIndex,
-          expectedSession: session,
-        );
+        await player.enqueue(nextItem, expectedSession: session);
       }
+    }
+
+    // Optional lossless matching must not compete with Discover's initial
+    // feed or first stream resolution. Warm the local index only after the
+    // selected track and immediate queue neighbours have been prepared.
+    if (_canContinueQueueResolution(resolverGeneration, session, player) &&
+        AppSettings.instance.discoverLocalLossless &&
+        _localLibrary.isEmpty) {
+      unawaited(_loadLocalLibrary());
     }
   }
 
