@@ -84,6 +84,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   Future<void>? _homeRequest;
   final ScrollController _scrollController = ScrollController();
   late String _lastRegion;
+  late bool _lastLocalLossless;
 
   @override
   bool get wantKeepAlive => true;
@@ -100,9 +101,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       duration: const Duration(milliseconds: 1500),
     )..repeat();
     _lastRegion = AppSettings.instance.discoverRegion;
+    _lastLocalLossless = AppSettings.instance.discoverLocalLossless;
     _scrollController.addListener(_onDiscoverScroll);
     AppSettings.instance.addListener(_onSettingsChanged);
-    _loadLocalLibrary();
     _loadHome();
     unawaited(_loadRecentlyPlayed());
   }
@@ -216,7 +217,15 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   }
 
   void _onSettingsChanged() {
-    final region = AppSettings.instance.discoverRegion;
+    final settings = AppSettings.instance;
+    final region = settings.discoverRegion;
+    final localLossless = settings.discoverLocalLossless;
+    if (localLossless != _lastLocalLossless) {
+      _lastLocalLossless = localLossless;
+      if (localLossless && _homeShelves.isNotEmpty) {
+        unawaited(_loadLocalLibrary());
+      }
+    }
     if (region == _lastRegion) return;
     _lastRegion = region;
     if (!mounted) return;
@@ -291,6 +300,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   }
 
   Future<void> _loadLocalLibrary({bool forceRefresh = false}) async {
+    if (!AppSettings.instance.discoverLocalLossless) return;
     final api = widget.api;
     if (api == null) return;
     final cacheKey = api.baseUrl;
@@ -400,6 +410,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         restore();
       }
       _ensureListeningPicks(cacheEntry.value.shelves);
+      // Local lossless matching is optional enrichment. Start its index read
+      // only after cached recommendations are already visible.
+      if (AppSettings.instance.discoverLocalLossless) {
+        unawaited(_loadLocalLibrary());
+      }
       final stale = persistedStale || DiscoverCache.instance.isStale(cacheEntry);
       AppLogger.event('discover.home_cache_restored', category: 'discover',
         component: 'discover_screen',
@@ -418,6 +433,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       });
     }
     await _fetchHome(cacheKey, showLoading: true);
+    // Prioritize the first Discover feed over the independent host-library
+    // scan used only for optional local-lossless matching.
+    if (AppSettings.instance.discoverLocalLossless) {
+      unawaited(_loadLocalLibrary());
+    }
   }
 
   Future<void> _fetchHome(
