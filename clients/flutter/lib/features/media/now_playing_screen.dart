@@ -1486,23 +1486,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
       children: [
         if (!isMorphing) Positioned.fill(child: _ambientBackground()),
         Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 190,
-          child: IgnorePointer(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Colors.black.withValues(alpha: .45), Colors.transparent],
-                ),
-              ),
-            ),
-          ),
-        ),
-        Positioned(
           top: 0, left: 0, right: 0, height: heroHeight,
           child: SizedBox(
             key: widget.artworkTargetKey,
@@ -1559,6 +1542,23 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
               ),
             ),
           ),
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 190,
+          child: IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.black.withValues(alpha: .45), Colors.transparent],
+                ),
+              ),
+            ),
+          ),
+        ),
         SafeArea(
           child: Column(children: [
             if (_lyricsController.value < 0.42)
