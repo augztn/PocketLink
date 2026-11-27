@@ -1451,13 +1451,23 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                 stops: [0.0, 0.34, 0.46, 0.56, 0.65, 0.74, 1.0],
               ).createShader(bounds),
               child: TrackArtworkView(
-                key: widget.artworkTargetKey,
                 bytes: hasArtwork ? _artwork : null,
                 artworkUrl: _track.artworkUrl,
                 fallbackColors: _trackPalette,
                 fallbackIconSize: 92,
                 fit: BoxFit.cover,
               ),
+            ),
+          ),
+        if (!isMorphing)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: heroHeight,
+            child: SizedBox(
+              key: widget.artworkTargetKey,
+              child: const SizedBox.expand(),
             ),
           ),
         if (isMorphing && hasArtwork)
