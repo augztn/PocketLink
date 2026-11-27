@@ -1562,7 +1562,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
         ),
         SafeArea(
           child: Column(children: [
-            if (_lyricsController.value < 0.42)
+            if (_lyricsController.value < 0.32)
               _header(contentOpacity: contentOpacity),
             const Spacer(),
             _playerDetails(
