@@ -217,8 +217,9 @@ class _NowPlayingScrubberState extends State<NowPlayingScrubber>
                     ? _displayPosition
                     : _durationAt(progress)),
                 style: const TextStyle(
-                  color: Colors.white54,
-                  fontSize: 11,
+                  color: Colors.white.withValues(alpha: 0.75),
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w500,
                   fontFeatures: [ui.FontFeature.tabularFigures()],
                 ),
               ),
