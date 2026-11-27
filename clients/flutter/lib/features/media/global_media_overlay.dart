@@ -35,17 +35,9 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   static const Duration _trackPopupDuration = Duration(milliseconds: 2300);
 
   bool _openingNowPlaying = false;
-  bool _miniPlayerGestureActive = false;
   bool _nowPlayingOpen = false;
-  bool _morphLayoutReady = false;
-  double _pendingMiniPlayerDragDelta = 0;
-  double? _pendingMiniPlayerDragEndVelocity;
   bool _closingNowPlaying = false;
-  bool _snapMiniPlayerVisibility = false;
-  Rect? _nowPlayingOriginRect;
-  Rect? _miniArtworkOriginRect;
   final ValueNotifier<Uint8List?> _sharedArtwork = ValueNotifier(null);
-  final ValueNotifier<Rect?> _sharedArtworkTargetRect = ValueNotifier(null);
   late final AnimationController _nowPlayingController;
   MediaQueueItem? _lastTrack;
   int _lastTrackIndex = 0;
@@ -81,7 +73,6 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     NowPlayingOverlayController.unregister();
     _nowPlayingController.stop();
     _sharedArtwork.dispose();
-    _sharedArtworkTargetRect.dispose();
     _nowPlayingController.dispose();
     super.dispose();
   }
@@ -158,75 +149,19 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
 
   void _onMiniPlayerDragStart() {
     if (!mounted) return;
-    if (!_miniPlayerGestureActive) {
-      setState(() => _miniPlayerGestureActive = true);
-    }
-    // Mount the morph sheet as soon as a vertical drag is recognized. Waiting
-    // for the first update lets the source player disappear before the sheet
-    // has had a frame to paint.
     _prepareNowPlaying();
   }
 
   void _prepareNowPlaying() {
     if (_nowPlayingOpen || _openingNowPlaying) return;
     final player = _player;
-    final item = player.currentItem;
-    if (!player.isMusic || !player.isActive || item == null) return;
+    if (!player.isMusic || !player.isActive || player.currentItem == null) {
+      return;
+    }
 
     _openingNowPlaying = true;
-    final media = MediaQuery.of(context);
-    final mediaOverlayBox =
-        PocketLinkNavigation.mediaOverlayKey.currentContext?.findRenderObject();
-    final globalOrigin = PocketLinkNavigation.resolveMediaOriginRect(
-      preferMiniPlayer: _shouldShowMiniPlayer(),
-    );
-    final overlayOrigin = globalOrigin != null &&
-            mediaOverlayBox is RenderBox
-        ? globalOrigin.shift(-mediaOverlayBox.localToGlobal(Offset.zero))
-        : globalOrigin;
-    // Discover can render a compact player beside its search affordance.
-    // The morph sheet itself must still originate at full viewport width;
-    // only the artwork uses the measured thumbnail rect.
-    _nowPlayingOriginRect = overlayOrigin == null
-        ? null
-        : Rect.fromLTWH(
-            0,
-            overlayOrigin.top,
-            media.size.width,
-            overlayOrigin.height,
-          );
-    _miniArtworkOriginRect =
-        PocketLinkNavigation.resolveMediaRect(PocketLinkNavigation.miniArtworkKey);
-    _sharedArtworkTargetRect.value = null;
     _nowPlayingController.value = 0;
-    _morphLayoutReady = false;
-    _pendingMiniPlayerDragDelta = 0;
-    _pendingMiniPlayerDragEndVelocity = null;
-    setState(() {
-      _nowPlayingOpen = true;
-    });
-
-    // The persistent Now Playing surface is already mounted by this overlay.
-    // Opening only updates its geometry and animation state.
-    // Interactive expansion can begin before the new route has completed its
-    // first layout. Hold those initial deltas until the artwork target has a
-    // real RenderBox, otherwise the morph starts toward a guessed center rect.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_nowPlayingOpen) return;
-      // Capture the expanded artwork target once, after the route has laid
-      // out. Re-measuring it on every animation tick can shift the image while
-      // the user is dragging, especially as Now Playing fades in.
-      _sharedArtworkTargetRect.value = PocketLinkNavigation.resolveMediaRect(
-        PocketLinkNavigation.nowPlayingArtworkKey,
-      );
-      setState(() => _morphLayoutReady = true);
-      final pendingDelta = _pendingMiniPlayerDragDelta;
-      _pendingMiniPlayerDragDelta = 0;
-      if (pendingDelta != 0) _applyMiniPlayerDrag(pendingDelta);
-      final pendingVelocity = _pendingMiniPlayerDragEndVelocity;
-      _pendingMiniPlayerDragEndVelocity = null;
-      if (pendingVelocity != null) _finishMiniPlayerDrag(pendingVelocity);
-    });
+    setState(() => _nowPlayingOpen = true);
   }
 
   Future<void> _openNowPlaying() async {
@@ -285,53 +220,25 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     try {
       await _animateNowPlayingTo(0, velocity: velocity);
     } on TickerCanceled {
-      // The route is already being removed.
+      // A close gesture can interrupt the opening animation.
     }
 
-    // Paint the exact t == 0 source frame before revealing the static player.
     await WidgetsBinding.instance.endOfFrame;
     if (!mounted) return;
     _nowPlayingController.value = 0;
     _openingNowPlaying = false;
     _closingNowPlaying = false;
-    _morphLayoutReady = false;
-    _pendingMiniPlayerDragDelta = 0;
-    _pendingMiniPlayerDragEndVelocity = null;
-    _snapMiniPlayerVisibility = true;
-    setState(() {
-      _nowPlayingOpen = false;
-      _nowPlayingOriginRect = null;
-      _miniArtworkOriginRect = null;
-      _sharedArtworkTargetRect.value = null;
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_snapMiniPlayerVisibility) return;
-      setState(() => _snapMiniPlayerVisibility = false);
-    });
+    setState(() => _nowPlayingOpen = false);
   }
 
   void _updateMiniPlayerDrag(double delta) {
-    // Only an upward drag expands. A downward swipe retains the paused-player
-    // dismiss shortcut and never opens an intermediate route.
     if (!_nowPlayingOpen && delta < 0) _prepareNowPlaying();
     if (!_nowPlayingOpen) return;
-    if (!_morphLayoutReady) {
-      _pendingMiniPlayerDragDelta += delta;
-      return;
-    }
     _applyMiniPlayerDrag(delta);
   }
 
-  double _morphTravelExtent({required double fallback}) {
-    // The sheet travels from the mini-player's top edge to screen top.
-    // Artwork-centre distance is shorter and makes drag progress nonlinear
-    // relative to the visible sheet movement.
-    final sheetTravel = _nowPlayingOriginRect?.top;
-    if (sheetTravel != null && sheetTravel.isFinite && sheetTravel > 1) {
-      return sheetTravel;
-    }
-    return math.max(1.0, fallback).toDouble();
-  }
+  double _morphTravelExtent({required double fallback}) =>
+      math.max(1.0, fallback).toDouble();
 
   void _applyMiniPlayerDrag(double delta) {
     if (!_nowPlayingOpen) return;
@@ -352,17 +259,10 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   }
 
   void _endMiniPlayerDrag(double velocity) {
-    if (_miniPlayerGestureActive && mounted) {
-      setState(() => _miniPlayerGestureActive = false);
-    }
     if (!_nowPlayingOpen) {
       if (!_player.player.state.playing && velocity > 300) {
         _player.dismissMiniPlayer();
       }
-      return;
-    }
-    if (!_morphLayoutReady) {
-      _pendingMiniPlayerDragEndVelocity = velocity;
       return;
     }
     _finishMiniPlayerDrag(velocity);
@@ -446,17 +346,10 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
               (_nowPlayingOpen ||
                   (!observer.isNowPlayingVisible &&
                       !observer.isModalRouteOnTop));
-          // Keep the real mini-player painted until the morph route has
-          // completed its first layout and paint. The overlay artwork starts
-          // at the captured source rect; hiding this surface earlier exposes
-          // the Discover page for a frame and causes the artwork to flash.
           final morphProgress =
               _nowPlayingController.value.clamp(0.0, 1.0).toDouble();
-          // Keep the real mini-player above the morph sheet, then fade it
-          // only after the sheet has visibly moved away from its source.
-          final miniPlayerOpacity = 1.0 -
-              const Interval(0.04, 0.22, curve: Curves.easeInCubic)
-                  .transform(morphProgress);
+          final miniPlayerOpacity =
+              (1.0 - morphProgress / 0.18).clamp(0.0, 1.0).toDouble();
           final visible = shouldRenderMiniPlayer &&
               !observer.isNowPlayingVisible &&
               !observer.isModalRouteOnTop &&
@@ -515,6 +408,38 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
                     ),
                   ),
                 ),
+              if (shouldRenderMiniPlayer)
+                Positioned(
+                  left: compactDiscoverControls ? 14 : 0,
+                  right: compactDiscoverControls ? 88 : 0,
+                  bottom: bottomInset +
+                      (onDashboard && !compactDiscoverControls ? _homeDockHeight : 10),
+                  child: IgnorePointer(
+                    ignoring: morphProgress > 0.05 || !visible,
+                    child: AnimatedSlide(
+                      offset: Offset.zero,
+                      duration: reduceMotion || drawerOpen
+                          ? Duration.zero
+                          : const Duration(milliseconds: 280),
+                      curve: Curves.easeOutCubic,
+                      child: _GlobalMiniPlayerBar(
+                        compact: compactDiscoverControls,
+                        visible: visible,
+                        hasFloatingNavBar: onDashboard,
+                        reduceMotion: reduceMotion || _nowPlayingOpen,
+                        player: player,
+                        artworkBytes: _sharedArtwork,
+                        surfaceIntensity: _nowPlayingOpen ? 0.0 : 1.0,
+                        opacity: visible ? miniPlayerOpacity : 0.0,
+                        onOpen: _openNowPlaying,
+                        onDismiss: player.dismissMiniPlayer,
+                        onExpandDragStart: _onMiniPlayerDragStart,
+                        onExpandDragUpdate: _updateMiniPlayerDrag,
+                        onExpandDragEnd: _endMiniPlayerDrag,
+                      ),
+                    ),
+                  ),
+                ),
               if (player.isMusic && player.isActive && player.currentItem != null)
                 Positioned.fill(
                   child: AnimatedBuilder(
@@ -523,10 +448,6 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
                       child: _NowPlayingMorphOverlay(
                         animation: _nowPlayingController,
                         media: media,
-                        originRect: _nowPlayingOriginRect,
-                        sourceArtworkRect: _miniArtworkOriginRect,
-                        artworkBytes: _sharedArtwork,
-                        artworkTargetRect: _sharedArtworkTargetRect,
                         onArtworkChanged: _publishSharedArtwork,
                         player: player,
                         api: player.api,
@@ -541,40 +462,6 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
                       child: TickerMode(
                         enabled: _nowPlayingOpen && _nowPlayingController.value > 0.01,
                         child: child!,
-                      ),
-                    ),
-                  ),
-                ),
-              if (shouldRenderMiniPlayer)
-                Positioned(
-                  left: compactDiscoverControls ? 14 : 0,
-                  right: compactDiscoverControls ? 88 : 0,
-                  bottom: bottomInset +
-                      (onDashboard && !compactDiscoverControls ? _homeDockHeight : 10),
-                  child: IgnorePointer(
-                    ignoring: !visible && !_miniPlayerGestureActive,
-                    child: AnimatedSlide(
-                      offset: Offset.zero,
-                      duration: reduceMotion || drawerOpen
-                          ? Duration.zero
-                          : const Duration(milliseconds: 280),
-                      curve: Curves.easeOutCubic,
-                      child: _GlobalMiniPlayerBar(
-                        compact: compactDiscoverControls,
-                        visible: visible,
-                        hasFloatingNavBar: onDashboard,
-                        reduceMotion: reduceMotion ||
-                            _nowPlayingOpen ||
-                            _snapMiniPlayerVisibility,
-                        player: player,
-                        artworkBytes: _sharedArtwork,
-                        surfaceIntensity: _nowPlayingOpen ? 0.0 : 1.0,
-                        opacity: visible ? miniPlayerOpacity : 0.0,
-                        onOpen: _openNowPlaying,
-                        onDismiss: player.dismissMiniPlayer,
-                        onExpandDragStart: _onMiniPlayerDragStart,
-                        onExpandDragUpdate: _updateMiniPlayerDrag,
-                        onExpandDragEnd: _endMiniPlayerDrag,
                       ),
                     ),
                   ),
@@ -627,10 +514,6 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
   const _NowPlayingMorphOverlay({
     required this.animation,
     required this.media,
-    required this.originRect,
-    required this.sourceArtworkRect,
-    required this.artworkBytes,
-    required this.artworkTargetRect,
     required this.onArtworkChanged,
     required this.player,
     required this.api,
@@ -642,10 +525,6 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
 
   final Animation<double> animation;
   final MediaQueryData media;
-  final Rect? originRect;
-  final Rect? sourceArtworkRect;
-  final ValueNotifier<Uint8List?> artworkBytes;
-  final ValueListenable<Rect?> artworkTargetRect;
   final ValueChanged<Uint8List?> onArtworkChanged;
   final PersistentAudioPlayer player;
   final ServerApi? api;
@@ -656,25 +535,11 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final size = media.size;
-    final destination = Offset.zero & size;
-    final safeInsets = media.padding;
-    final dockHeight = 82.0 + safeInsets.bottom;
-    final miniBottom = size.height - dockHeight;
-    final origin = originRect ??
-        Rect.fromLTRB(
-          safeInsets.left + 16.0,
-          miniBottom - 60.0,
-          size.width - safeInsets.right - 16.0,
-          miniBottom,
-        );
-    final sourceArt = sourceArtworkRect ??
-        Rect.fromLTWH(origin.left + 10, origin.top + 10, 34, 34);
-
+    final screenHeight = media.size.height;
     return MediaQuery(
       data: media,
       child: AnimatedBuilder(
-        animation: Listenable.merge(<Listenable>[animation, artworkTargetRect]),
+        animation: animation,
         child: RepaintBoundary(
           child: NowPlayingScreen(
             api: api,
@@ -691,184 +556,39 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
             onDismissDragEnd: onDragEnd,
           ),
         ),
-        builder: (context, animatedChild) {
+        builder: (context, screen) {
           final t = animation.value.clamp(0.0, 1.0).toDouble();
-          final rect = Rect.lerp(origin, destination, t)!;
-          const miniPlayerRadius = 22.0;
-          final radius = BorderRadius.lerp(
-            BorderRadius.circular(miniPlayerRadius),
-            BorderRadius.zero,
-            t,
-          )!;
-          final currentItem = player.currentItem;
-          final artworkPalette = currentItem == null
-              ? const [Color(0xFF6559A8), Color(0xFF24243D), Color(0xFF171326)]
-              : NowPlayingArtworkPalette.fallback(
-                  title: currentItem.title,
-                  folderName: currentItem.path.split('/').length > 1
-                      ? currentItem.path.split('/')[currentItem.path.split('/').length - 2]
-                      : 'Internal storage',
-                  path: currentItem.path,
-                );
-          // Keep the in-flight sheet neutral. Artwork is painted separately;
-          // sampling the artwork palette here created an olive proxy pill.
-          const sheetColor = Color(0xFF0A0B0E);
-          // The real docked player is the only collapsed control surface.
-          // The morph sheet must not paint a second miniature proxy.
-          // Match the fixed full-bleed hero geometry in Now Playing.
-          final targetArt = Rect.fromLTWH(
-            0,
-            0,
-            size.width,
-            size.height * 0.46,
-          );
-          // Expand the cover toward the edge-to-edge hero early in the
-          // gesture so it never looks like a narrow card near completion.
-          final artworkProgress = t;
-          final artworkRect = Rect.lerp(sourceArt, targetArt, artworkProgress)!;
-          final artworkRadius = BorderRadius.lerp(
-            BorderRadius.circular(10),
-            BorderRadius.zero,
-            artworkProgress,
-          )!;
+          final curvedT = Curves.easeOutCubic.transform(t);
+          final topRadius = 24.0 * (1.0 - curvedT);
 
-          return Material(
-              type: MaterialType.transparency,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      child: ColoredBox(
-                        color: sheetColor.withValues(
-                          alpha: const Interval(
-                            0.0,
-                            0.06,
-                            curve: Curves.easeOutCubic,
-                          ).transform(t),
-                        ),
-                      ),
-                    ),
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: ColoredBox(
+                    color: Colors.black.withValues(alpha: 0.52 * curvedT),
                   ),
-                  ClipPath(
-                    clipper: _NowPlayingMorphClipper(
-                      rect: rect,
-                      radius: radius,
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        Positioned.fromRect(
-                          rect: rect,
-                          child: IgnorePointer(
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                color: sheetColor,
-                                borderRadius: radius,
-                              ),
-                              child: Stack(
-                                fit: StackFit.expand,
-                                children: [
-                                  const SizedBox.expand(),
-                                  ColoredBox(
-                                    color: Colors.black.withValues(alpha: 0.24),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        Positioned.fromRect(
-                            rect: artworkRect,
-                            child: ValueListenableBuilder<Uint8List?>(
-                              valueListenable: artworkBytes,
-                              builder: (context, bytes, _) => DecoratedBox(
-                                decoration: BoxDecoration(
-                                  borderRadius: artworkRadius,
-                                  boxShadow: const [],
-                                ),
-                                child: Stack(
-                                  fit: StackFit.expand,
-                                  children: [
-                                    TrackArtworkView(
-                                      bytes: bytes,
-                                      artworkUrl: currentItem?.artworkUrl,
-                                      fallbackColors: artworkPalette,
-                                      fallbackIconSize: 19 + (73 * t),
-                                      fallbackAlignment: Alignment.lerp(
-                                        Alignment.center,
-                                        const Alignment(0, 0.26),
-                                        t,
-                                      )!,
-                                      borderRadius: artworkRadius,
-                                      fadeBottom: true,
-                                    ),
-
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        // The screen's own artwork/background is full-bleed and
-                        // opaque. Fading the entire Scaffold over the palette
-                        // proxy washed out metadata and hid playback controls.
-                        Positioned.fill(
-                          child: IgnorePointer(
-                            ignoring: t < 0.35,
-                            child: animatedChild!,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // The route's grab handle is clipped while the sheet is
-                  // between the mini-player and full-screen bounds. Paint the
-                  // same handle above the morph clip so it never vanishes.
-                  Positioned(
-                    top: safeInsets.top + 5,
-                    left: 0,
-                    right: 0,
-                    child: IgnorePointer(
-                      child: Opacity(
-                        opacity: t,
-                        child: Center(
-                          child: Container(
-                            width: 36,
-                            height: 4,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.7),
-                              borderRadius: BorderRadius.circular(99),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
-            );
+              Transform.translate(
+                offset: Offset(0, screenHeight * (1.0 - curvedT)),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(topRadius),
+                  ),
+                  child: IgnorePointer(
+                    ignoring: t <= 0.05,
+                    child: screen!,
+                  ),
+                ),
+              ),
+            ],
+          );
         },
       ),
     );
   }
-}
-
-class _NowPlayingMorphClipper extends CustomClipper<Path> {
-  const _NowPlayingMorphClipper({
-    required this.rect,
-    required this.radius,
-  });
-
-  final Rect rect;
-  final BorderRadius radius;
-
-  @override
-  Path getClip(Size size) => Path()..addRRect(radius.toRRect(rect));
-
-  @override
-  bool shouldReclip(_NowPlayingMorphClipper oldClipper) =>
-      oldClipper.rect != rect || oldClipper.radius != radius;
 }
 
 class _TrackChangePopup extends StatelessWidget {
