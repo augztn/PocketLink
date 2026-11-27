@@ -68,6 +68,7 @@ class NowPlayingScreen extends StatefulWidget {
 
 class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerProviderStateMixin {
   static const _secureStorage = FlutterSecureStorage();
+  static const double _playerChromeHeight = 260;
 
   late final PersistentAudioPlayer _persistent;
   late final Player _player;
@@ -1289,32 +1290,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
       ),
       providerLabel: _activeLyrics == null ? '' : 'Lyrics by ${_activeLyrics!.providerName}',
       onChooseProvider: _chooseLyricsProvider,
-      footer: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 22),
-            child: _timeline(),
-          ),
-          const SizedBox(height: 10),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 22),
-            child: _transport(),
-          ),
-          const SizedBox(height: 6),
-          _volumeControl(),
-          const SizedBox(height: 2),
-          _bottomUtilities(lyricsActive: true),
-          const SizedBox(height: 2),
-          Text(
-            _outputDeviceLabel,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: Colors.white38, fontSize: 10),
-          ),
-          const SizedBox(height: 8),
-        ],
-      ),
+      footer: const SizedBox(height: _playerChromeHeight),
     );
   }
 
@@ -1472,20 +1448,33 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
           _trackMetadata(contentOpacity: contentOpacity),
           const SizedBox(height: 12),
           Opacity(opacity: contentOpacity, child: _lyricPreview()),
-          const SizedBox(height: 4),
-          Opacity(opacity: contentOpacity, child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 22), child: _timeline())),
+        ]),
+      );
+
+  /// One persistent lower chrome instance shared by Artwork and Lyrics modes.
+  Widget _playerChrome() => Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 22),
+            child: _timeline(),
+          ),
           const SizedBox(height: 9),
-          Opacity(opacity: contentOpacity, child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18), child: _transport())),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            child: _transport(),
+          ),
           const SizedBox(height: 5),
-          Opacity(opacity: contentOpacity, child: _volumeControl()),
+          _volumeControl(),
           const SizedBox(height: 3),
-          Opacity(opacity: contentOpacity, child: _bottomUtilities()),
+          _bottomUtilities(lyricsActive: _lyricsController.value > 0.5),
           const SizedBox(height: 3),
-          Text(_outputDeviceLabel,
-            maxLines: 1, overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: Colors.white38, fontSize: 10)),
+          Text(
+            _outputDeviceLabel,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Colors.white38, fontSize: 10),
+          ),
         ]),
       );
 
@@ -1580,6 +1569,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                   (1 - const Interval(0.30, 0.44, curve: Curves.easeInCubic)
                       .transform(_lyricsController.value)),
             ),
+            const SizedBox(height: _playerChromeHeight),
           ]),
         ),
       ],
@@ -1667,25 +1657,39 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                     ),
                     Positioned.fill(
                       child: IgnorePointer(
-                        ignoring: _lyricsController.value <= 0.44,
+                        ignoring: _lyricsController.value <= 0.30,
                         child: Opacity(
                           opacity: const Interval(
-                            0.44,
+                            0.30,
                             1.0,
                             curve: Curves.easeOutCubic,
                           ).transform(_lyricsController.value),
                           child: NowPlayingScrollDismissDetector(
-                        enabled: AppSettings.instance.enableNowPlayingGestures,
-                        onDismissDragStart: widget.onDismissDragStart,
-                        onDismissDragUpdate: widget.onDismissDragUpdate,
-                        onDismissDragEnd: widget.onDismissDragEnd,
-                        scrollableKey: _lyricsViewportKey,
+                            enabled: AppSettings.instance.enableNowPlayingGestures,
+                            onDismissDragStart: widget.onDismissDragStart,
+                            onDismissDragUpdate: widget.onDismissDragUpdate,
+                            onDismissDragEnd: widget.onDismissDragEnd,
+                            scrollableKey: _lyricsViewportKey,
                             child: _lyricsMode(_lyricsController.value),
                           ),
                         ),
                       ),
                     ),
                   ],
+                ),
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: SafeArea(
+                  top: false,
+                  child: Opacity(
+                    opacity: contentOpacity,
+                    child: _playerChrome(),
+                  ),
+                ),
+              ),
                 ),
               ),
             ],
