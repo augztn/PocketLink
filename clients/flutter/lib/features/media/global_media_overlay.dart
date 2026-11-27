@@ -267,7 +267,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
       _sharedArtworkTargetRect.value = PocketLinkNavigation.resolveMediaRect(
         PocketLinkNavigation.nowPlayingArtworkKey,
       );
-      _morphLayoutReady = true;
+      setState(() => _morphLayoutReady = true);
       final pendingDelta = _pendingMiniPlayerDragDelta;
       _pendingMiniPlayerDragDelta = 0;
       if (pendingDelta != 0) _applyMiniPlayerDrag(pendingDelta);
