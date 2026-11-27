@@ -277,6 +277,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
   Future<void> _openHost() async {
     await Navigator.of(context).push(
       PageRouteBuilder<void>(
+        settings: const RouteSettings(name: PocketLinkRouteNames.hostSetup),
         pageBuilder: (context, animation, secondaryAnimation) =>
             const LocalStorageSetupScreen(),
         transitionDuration: Duration.zero,
@@ -487,6 +488,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
           onReturnToConnection: () {
             Navigator.of(context).pushAndRemoveUntil(
               MaterialPageRoute<void>(
+                settings: const RouteSettings(name: PocketLinkRouteNames.connection),
                 builder: (_) => const ConnectionScreen(autoConnect: false),
               ),
               (route) => false,
@@ -578,6 +580,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
             icon: Icons.settings_outlined,
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
+                settings: const RouteSettings(name: PocketLinkRouteNames.settings),
                 builder: (_) => const SettingsScreen(),
               ),
             ),
@@ -598,7 +601,10 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
             label: 'Diagnostics & logs',
             icon: Icons.bug_report_outlined,
             onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const DiagnosticsScreen()),
+              MaterialPageRoute<void>(
+                settings: const RouteSettings(name: PocketLinkRouteNames.diagnostics),
+                builder: (_) => const DiagnosticsScreen(),
+              ),
             ),
           ),
         ],
