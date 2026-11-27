@@ -110,6 +110,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
 
   bool get _isFavorite => _favorites.contains(_favoriteId);
 
+  String get _outputDeviceLabel {
+    final host = Platform.localHostname.trim();
+    return host.isEmpty || host.toLowerCase() == 'localhost' ? 'This device' : host;
+  }
+
   String get _fileName {
     final pathName = _track.path.split('/').last;
     final raw = _track.title.trim().isNotEmpty ? _track.title : pathName;
@@ -903,7 +908,32 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                         ),
                       ),
                       const SizedBox(width: 8),
-                      const Icon(Icons.graphic_eq_rounded, color: Colors.white, size: 19),
+                      StreamBuilder<bool>(
+                        stream: _player.stream.playing,
+                        initialData: _player.state.playing,
+                        builder: (context, snapshot) {
+                          final playing = snapshot.data ?? false;
+                          const heights = [7.0, 13.0, 9.0, 16.0, 10.0];
+                          return Row(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              for (var index = 0; index < heights.length; index++)
+                                AnimatedContainer(
+                                  duration: Duration(milliseconds: 180 + index * 35),
+                                  curve: Curves.easeInOut,
+                                  width: 2.5,
+                                  height: playing ? heights[index] : 4,
+                                  margin: const EdgeInsets.only(right: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(3),
+                                  ),
+                                ),
+                            ],
+                          );
+                        },
+                      ),
                     ]),
                   ),
                 ],
@@ -1351,7 +1381,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
       );
 
   Future<void> _showAudioOutput() async {
-    final deviceName = Platform.localHostname.trim().isEmpty ? 'This device' : Platform.localHostname;
+    final deviceName = _outputDeviceLabel;
     await showModalBottomSheet<void>(
       context: context,
       useRootNavigator: true,
@@ -1395,7 +1425,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
           const SizedBox(height: 3),
           Opacity(opacity: contentOpacity, child: _bottomUtilities()),
           const SizedBox(height: 3),
-          Text(Platform.localHostname.trim().isEmpty ? 'This device' : Platform.localHostname,
+          Text(_outputDeviceLabel,
             maxLines: 1, overflow: TextOverflow.ellipsis,
             style: const TextStyle(color: Colors.white38, fontSize: 10)),
         ]),
@@ -1407,6 +1437,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     return Stack(
       fit: StackFit.expand,
       children: [
+        if (!isMorphing) Positioned.fill(child: _ambientBackground()),
         Positioned(
           top: 0, left: 0, right: 0, height: heroHeight,
           child: SizedBox(
