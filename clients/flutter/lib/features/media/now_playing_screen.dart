@@ -177,7 +177,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
             path: _track.path,
           )
         : _trackPalette;
-    final hasArtwork = _artwork != null && _artworkKey == _trackKey;
+    final hasArtwork = !isMorphing && _artwork != null && _artworkKey == _trackKey;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 650),
       curve: Curves.easeInOut,
