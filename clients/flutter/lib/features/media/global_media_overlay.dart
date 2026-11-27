@@ -789,6 +789,7 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
                       rect: rect,
                       radius: radius,
                     ),
+                    clipBehavior: Clip.antiAlias,
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
@@ -871,6 +872,29 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
                           ),
                         ),
                       ],
+                    ),
+                  ),
+                  // The route's grab handle is clipped while the sheet is
+                  // between the mini-player and full-screen bounds. Paint the
+                  // same handle above the morph clip so it never vanishes.
+                  Positioned(
+                    top: safeInsets.top + 5,
+                    left: 0,
+                    right: 0,
+                    child: IgnorePointer(
+                      child: Opacity(
+                        opacity: t,
+                        child: Center(
+                          child: Container(
+                            width: 36,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.7),
+                              borderRadius: BorderRadius.circular(99),
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ],
