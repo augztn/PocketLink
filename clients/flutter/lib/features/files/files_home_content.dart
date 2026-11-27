@@ -164,7 +164,6 @@ class FilesHomeContent extends StatelessWidget {
             _CategoryTile(label: 'Videos', icon: Icons.movie_outlined, onTap: () => onBrowseCategory('Videos')),
             _CategoryTile(label: 'Audio', icon: Icons.music_note_rounded, onTap: () => onBrowseCategory('Music')),
             _CategoryTile(label: 'Documents', icon: Icons.description_outlined, onTap: () => onBrowseCategory('Documents')),
-            _CategoryTile(label: 'Archives', icon: Icons.archive_outlined, onTap: () => onBrowseCategory('Archives')),
           ],
         ),
         if (recent.isNotEmpty) ...[
