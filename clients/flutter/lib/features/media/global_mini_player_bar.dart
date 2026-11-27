@@ -377,7 +377,6 @@ class _MiniPlayerGestureSurfaceState extends State<_MiniPlayerGestureSurface> {
     _pointerDownPosition = null;
     _deliveredVerticalDistance = 0;
     _horizontalDistance = 0;
-    _verticalDistance = 0;
     _lockedAxis = null;
     _expandStarted = false;
   }
