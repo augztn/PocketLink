@@ -1144,7 +1144,16 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
 
   Future<void> _loadTrackLyrics({bool retry = false}) async {
     final query = LyricsTrackQuery(track: _track, api: widget.api);
-    if (retry) _lyricsRepository.cancel(query.key);
+    if (retry) {
+      _lyricsRepository.cancel(query.key);
+      if (mounted) {
+        setState(() {
+          _lyricsProviderStates = const {};
+          _activeLyrics = null;
+          _lyricsLoading = false;
+        });
+      }
+    }
     if (_lyricsQueryKey == query.key &&
         (_lyricsLoading || _activeLyrics != null || _lyricsProviderStates.isNotEmpty)) {
       return;
