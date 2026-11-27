@@ -341,6 +341,18 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     _applyMiniPlayerDrag(delta);
   }
 
+  double _morphTravelExtent({required double fallback}) {
+    final source = _miniArtworkOriginRect;
+    final target = PocketLinkNavigation.resolveMediaRect(
+      PocketLinkNavigation.nowPlayingArtworkKey,
+    );
+    if (source != null && target != null) {
+      final measured = (source.center.dy - target.center.dy).abs();
+      if (measured.isFinite && measured > 1) return measured;
+    }
+    return math.max(1.0, fallback).toDouble();
+  }
+
   void _applyMiniPlayerDrag(double delta) {
     if (!_nowPlayingOpen) return;
     _openingNowPlaying = false;
@@ -349,10 +361,9 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
       return;
     }
     final height = MediaQuery.sizeOf(context).height;
-    final travelDistance = math.max(
-      1.0,
-      height - (_nowPlayingOriginRect?.height ?? _miniPlayerHeight),
-    ).toDouble();
+    final travelDistance = _morphTravelExtent(
+      fallback: height - (_nowPlayingOriginRect?.height ?? _miniPlayerHeight),
+    );
     _nowPlayingController.value = PocketLinkNavigation.updateMorphProgress(
       current: _nowPlayingController.value,
       dragDelta: delta,
@@ -380,15 +391,17 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   void _finishMiniPlayerDrag(double velocity) {
     if (!_nowPlayingOpen) return;
     _openingNowPlaying = false;
-    final height = math.max(1.0, MediaQuery.sizeOf(context).height);
+    final extent = _morphTravelExtent(
+      fallback: math.max(1.0, MediaQuery.sizeOf(context).height),
+    );
     final expand = PocketLinkNavigation.shouldExpandFromMiniPlayer(
       progress: _nowPlayingController.value,
       upwardVelocity: velocity,
     );
     if (expand) {
-      unawaited(_animateNowPlayingTo(1, velocity: -velocity / height));
+      unawaited(_animateNowPlayingTo(1, velocity: -velocity / extent));
     } else {
-      unawaited(_closeNowPlaying(velocity: -velocity / height));
+      unawaited(_closeNowPlaying(velocity: -velocity / extent));
     }
   }
 
@@ -403,24 +416,26 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
         PocketLinkNavigation.updateMorphProgress(
       current: _nowPlayingController.value,
       dragDelta: delta,
-      extent: height,
+      extent: _morphTravelExtent(fallback: height),
     );
   }
 
   void _endNowPlayingDrag(double velocity) {
     if (!_nowPlayingOpen) return;
-    final height = math.max(1.0, MediaQuery.sizeOf(context).height);
+    final extent = _morphTravelExtent(
+      fallback: math.max(1.0, MediaQuery.sizeOf(context).height),
+    );
     final collapse = PocketLinkNavigation.shouldCollapseNowPlaying(
       progress: _nowPlayingController.value,
       downwardVelocity: velocity,
     );
     _isNowPlayingDragging.value = false;
     if (collapse) {
-      unawaited(_closeNowPlaying(velocity: -velocity / height));
+      unawaited(_closeNowPlaying(velocity: -velocity / extent));
     } else {
       unawaited(_animateNowPlayingTo(
         1,
-        velocity: -velocity / height,
+        velocity: -velocity / extent,
       ));
     }
   }

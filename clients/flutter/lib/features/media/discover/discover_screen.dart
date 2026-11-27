@@ -186,6 +186,20 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     }
   }
 
+  void _ensureListeningPicks(List<_DiscoverShelf> shelves) {
+    if (_recentlyPlayed.isNotEmpty ||
+        _listeningPicks.isNotEmpty ||
+        _listeningPicksSeed.isNotEmpty) {
+      return;
+    }
+    for (final shelf in shelves) {
+      if (shelf.tracks.isNotEmpty) {
+        unawaited(_loadListeningPicks(shelf.tracks.first));
+        return;
+      }
+    }
+  }
+
   Future<void> _loadListeningPicks(DiscoverTrack seed) async {
     if (_listeningPicksSeed == seed.videoId) return;
     final generation = ++_listeningPicksGeneration;
@@ -400,6 +414,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       } else {
         restore();
       }
+      _ensureListeningPicks(cacheEntry.value.shelves);
       final stale = persistedStale || DiscoverCache.instance.isStale(cacheEntry);
       AppLogger.event('discover.home_cache_restored', category: 'discover',
         component: 'discover_screen',
@@ -492,10 +507,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         _homeContinuation = snapshot.continuation;
         _error = null;
       });
-      if (_recentlyPlayed.isEmpty && _listeningPicks.isEmpty) {
-        final tracks = shelves.expand((shelf) => shelf.tracks).toList(growable: false);
-        if (tracks.isNotEmpty) unawaited(_loadListeningPicks(tracks.first));
-      }
+      _ensureListeningPicks(shelves);
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _onDiscoverScroll();
       });

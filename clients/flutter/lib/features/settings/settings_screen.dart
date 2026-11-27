@@ -476,7 +476,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       'Appearance': 'Control PocketLink’s theme, OLED appearance and visual effects.',
       'Dashboard & Shortcuts': 'Choose which Home sections appear and arrange their order.',
       'Discover': 'Configure music discovery, matching, playback preferences and playlists.',
-      'Media & Storage': 'Manage download behavior, download location and temporary cache.',
       'Storage': 'Manage download location, transfer behavior and temporary cache.',
       'Maintenance': 'Back up settings, restore preferences and export diagnostic logs.',
       'Connectivity': 'Manage saved PocketLink server connections.',
