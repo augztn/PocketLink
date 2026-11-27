@@ -198,11 +198,24 @@ class ServerApi {
 
   bool _isRouteLevelNotFound(DioException error) {
     if (error.response?.statusCode != 404) return false;
-    final body = error.response?.data;
-    if (body is Map) {
-      return body['detail']?.toString().trim().toLowerCase() == 'not found';
+    var body = error.response?.data;
+    if (body is List<int>) {
+      try {
+        body = jsonDecode(utf8.decode(body));
+      } on FormatException {
+        return false;
+      }
+    } else if (body is String) {
+      final text = body.trim();
+      if (text.toLowerCase() == 'not found') return true;
+      try {
+        body = jsonDecode(text);
+      } on FormatException {
+        return false;
+      }
     }
-    return body is String && body.trim().toLowerCase() == 'not found';
+    return body is Map &&
+        body['detail']?.toString().trim().toLowerCase() == 'not found';
   }
 
   String _mediaCacheKey(String path, String? volume) => '${volume ?? 'internal'}:$path';
