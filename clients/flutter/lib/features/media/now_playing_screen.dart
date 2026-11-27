@@ -318,7 +318,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
 
   Future<void> _refreshCacheStatus() async {
     final api = widget.api;
-    if (api == null || _track.streamUrl != null || _track.localPath != null) {
+    if (api == null || _track.isDiscover ||
+        _track.streamUrl != null || _track.localPath != null) {
       if (mounted) setState(() => _cached = false);
       return;
     }
