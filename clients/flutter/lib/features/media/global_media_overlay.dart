@@ -40,14 +40,12 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   bool _morphLayoutReady = false;
   double _pendingMiniPlayerDragDelta = 0;
   double? _pendingMiniPlayerDragEndVelocity;
-  final ValueNotifier<bool> _isNowPlayingDragging = ValueNotifier<bool>(false);
   bool _closingNowPlaying = false;
   bool _snapMiniPlayerVisibility = false;
   Rect? _nowPlayingOriginRect;
   Rect? _miniArtworkOriginRect;
   final ValueNotifier<Uint8List?> _sharedArtwork = ValueNotifier(null);
   final ValueNotifier<Rect?> _sharedArtworkTargetRect = ValueNotifier(null);
-  Route<void>? _nowPlayingRoute;
   late final AnimationController _nowPlayingController;
   MediaQueueItem? _lastTrack;
   int _lastTrackIndex = 0;
@@ -81,9 +79,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     _player.removeListener(_onPlayerChanged);
     _trackPopupTimer?.cancel();
     NowPlayingOverlayController.unregister();
-    _nowPlayingRoute = null;
     _nowPlayingController.stop();
-    _isNowPlayingDragging.dispose();
     _sharedArtwork.dispose();
     _sharedArtworkTargetRect.dispose();
     _nowPlayingController.dispose();
@@ -172,14 +168,10 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   }
 
   void _prepareNowPlaying() {
-    if (_nowPlayingOpen || _openingNowPlaying ||
-        (_nowPlayingRoute?.isActive ?? false)) return;
+    if (_nowPlayingOpen || _openingNowPlaying) return;
     final player = _player;
     final item = player.currentItem;
-    final navigator = PocketLinkNavigation.navigatorKey.currentState;
-    if (!player.isMusic || !player.isActive || item == null || navigator == null) {
-      return;
-    }
+    if (!player.isMusic || !player.isActive || item == null) return;
 
     _openingNowPlaying = true;
     final media = MediaQuery.of(context);
@@ -212,58 +204,10 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     _pendingMiniPlayerDragEndVelocity = null;
     setState(() {
       _nowPlayingOpen = true;
-      _isNowPlayingDragging.value = false;
     });
 
-    final route = PageRouteBuilder<void>(
-      opaque: false,
-      barrierColor: Colors.transparent,
-      maintainState: true,
-      settings: const RouteSettings(name: PocketLinkRouteNames.nowPlaying),
-      transitionDuration: Duration.zero,
-      reverseTransitionDuration: Duration.zero,
-      pageBuilder: (_, __, ___) => ValueListenableBuilder<bool>(
-        valueListenable: _isNowPlayingDragging,
-        builder: (context, isDragging, _) => _NowPlayingMorphOverlay(
-          animation: _nowPlayingController,
-          media: media,
-          originRect: _nowPlayingOriginRect,
-          sourceArtworkRect: _miniArtworkOriginRect,
-          artworkBytes: _sharedArtwork,
-          artworkTargetRect: _sharedArtworkTargetRect,
-          onArtworkChanged: _publishSharedArtwork,
-          player: player,
-          api: player.api,
-          onDismiss: () => _closeNowPlaying(),
-          onDragStart: () => _isNowPlayingDragging.value = true,
-          onDragUpdate: _updateNowPlayingDrag,
-          onDragEnd: _endNowPlayingDrag,
-        ),
-      ),
-    );
-    _nowPlayingRoute = route;
-    unawaited(navigator.push<void>(route).then((_) {
-      if (!mounted || !identical(_nowPlayingRoute, route)) return;
-      _nowPlayingRoute = null;
-      _closingNowPlaying = false;
-      _openingNowPlaying = false;
-      _nowPlayingController.value = 0;
-      _morphLayoutReady = false;
-      _pendingMiniPlayerDragDelta = 0;
-      _pendingMiniPlayerDragEndVelocity = null;
-      _snapMiniPlayerVisibility = true;
-      setState(() {
-        _nowPlayingOpen = false;
-        _isNowPlayingDragging.value = false;
-        _nowPlayingOriginRect = null;
-        _miniArtworkOriginRect = null;
-        _sharedArtworkTargetRect.value = null;
-      });
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted || !_snapMiniPlayerVisibility) return;
-        setState(() => _snapMiniPlayerVisibility = false);
-      });
-    }));
+    // The persistent Now Playing surface is already mounted by this overlay.
+    // Opening only updates its geometry and animation state.
     // Interactive expansion can begin before the new route has completed its
     // first layout. Hold those initial deltas until the artwork target has a
     // real RenderBox, otherwise the morph starts toward a guessed center rect.
@@ -346,13 +290,24 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
 
     // Paint the exact t == 0 source frame before revealing the static player.
     await WidgetsBinding.instance.endOfFrame;
-    _isNowPlayingDragging.value = false;
-    final navigator = PocketLinkNavigation.navigatorKey.currentState;
-    final route = _nowPlayingRoute;
-    if (navigator != null && route != null && route.isActive) {
-      // Remove only after the shared controller has completed its reverse spring.
-      navigator.removeRoute(route);
-    }
+    if (!mounted) return;
+    _nowPlayingController.value = 0;
+    _openingNowPlaying = false;
+    _closingNowPlaying = false;
+    _morphLayoutReady = false;
+    _pendingMiniPlayerDragDelta = 0;
+    _pendingMiniPlayerDragEndVelocity = null;
+    _snapMiniPlayerVisibility = true;
+    setState(() {
+      _nowPlayingOpen = false;
+      _nowPlayingOriginRect = null;
+      _miniArtworkOriginRect = null;
+      _sharedArtworkTargetRect.value = null;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_snapMiniPlayerVisibility) return;
+      setState(() => _snapMiniPlayerVisibility = false);
+    });
   }
 
   void _updateMiniPlayerDrag(double delta) {
@@ -414,7 +369,6 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   }
 
   void _finishMiniPlayerDrag(double velocity) {
-    _isNowPlayingDragging.value = false;
     if (!_nowPlayingOpen) return;
     _openingNowPlaying = false;
     final extent = _morphTravelExtent(
@@ -449,7 +403,6 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   void _endNowPlayingDrag(double velocity) {
     // Clear the gesture state even if another close path removed the route
     // before the recognizer delivered its end/cancel callback.
-    _isNowPlayingDragging.value = false;
     if (!_nowPlayingOpen) return;
     final extent = _morphTravelExtent(
       fallback: math.max(1.0, MediaQuery.sizeOf(context).height),
@@ -585,6 +538,36 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
                         onExpandDragStart: _onMiniPlayerDragStart,
                         onExpandDragUpdate: _updateMiniPlayerDrag,
                         onExpandDragEnd: _endMiniPlayerDrag,
+                      ),
+                    ),
+                  ),
+                ),
+              if (player.isMusic && player.isActive && player.currentItem != null)
+                Positioned.fill(
+                  child: AnimatedBuilder(
+                    animation: _nowPlayingController,
+                    child: RepaintBoundary(
+                      child: _NowPlayingMorphOverlay(
+                        animation: _nowPlayingController,
+                        media: media,
+                        originRect: _nowPlayingOriginRect,
+                        sourceArtworkRect: _miniArtworkOriginRect,
+                        artworkBytes: _sharedArtwork,
+                        artworkTargetRect: _sharedArtworkTargetRect,
+                        onArtworkChanged: _publishSharedArtwork,
+                        player: player,
+                        api: player.api,
+                        onDismiss: () => _closeNowPlaying(),
+                        onDragStart: () {},
+                        onDragUpdate: _updateNowPlayingDrag,
+                        onDragEnd: _endNowPlayingDrag,
+                      ),
+                    ),
+                    builder: (context, child) => Offstage(
+                      offstage: !_nowPlayingOpen,
+                      child: TickerMode(
+                        enabled: _nowPlayingOpen && _nowPlayingController.value > 0.01,
+                        child: child!,
                       ),
                     ),
                   ),
@@ -753,19 +736,7 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
             artworkProgress,
           )!;
 
-          return PopScope<void>(
-            canPop: !PocketLinkNavigation.shouldCollapseNowPlayingOnBack(
-              progress: animation.value,
-            ),
-            onPopInvokedWithResult: (didPop, result) {
-              if (!didPop &&
-                  PocketLinkNavigation.shouldCollapseNowPlayingOnBack(
-                    progress: animation.value,
-                  )) {
-                onDismiss();
-              }
-            },
-            child: Material(
+          return Material(
               type: MaterialType.transparency,
               child: Stack(
                 fit: StackFit.expand,
@@ -878,8 +849,7 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
                   ),
                 ],
               ),
-            ),
-          );
+            );
         },
       ),
     );
