@@ -170,11 +170,11 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
         ? Rect.fromLTWH(
             16,
             overlaySize.height - safeBottom - _homeDockHeight - _miniPlayerHeight,
-            math.max(1.0, overlaySize.width - 32),
+            math.max(1.0, overlaySize.width - 32).toDouble(),
             _miniPlayerHeight,
           )
         : Rect.fromLTWH(
-            math.max(0.0, overlaySize.width - 14 - 64),
+            math.max(0.0, overlaySize.width - 14 - 64).toDouble(),
             math.max(0.0, overlaySize.height - safeBottom - 10 - 64),
             64,
             64,
