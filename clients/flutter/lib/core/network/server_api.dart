@@ -39,6 +39,7 @@ class ServerApi {
   bool _musicLibraryUnavailable = false;
   bool _videoMetadataEndpointUnavailable = false;
   bool _videoThumbnailEndpointUnavailable = false;
+  bool? _storageUsesVolumeScopedRoutes;
   final Set<CancelToken> _mediaRequestTokens = {};
   final Map<String, CancelToken> _thumbnailRequestTokens = {};
   final Map<String, CancelToken> _metadataRequestTokens = {};
@@ -110,12 +111,16 @@ class ServerApi {
 
   /// Builds an authenticated streaming URL without downloading media into memory.
   String mediaStreamUrl(String path, {String? volume}) {
+    final scopedStorageRoute = _storageUsesVolumeScopedRoutes == true;
     final endpoint = volume == null
         ? '/api/files/stream'
-        : '/api/storage/$volume/download';
-    final query = volume == null
-        ? <String, String>{'path': path}
-        : <String, String>{'path': path};
+        : scopedStorageRoute
+            ? '/api/storage/$volume/download'
+            : '/api/storage/download';
+    final query = <String, String>{
+      'path': path,
+      if (volume != null && !scopedStorageRoute) 'volume': volume,
+    };
     return Uri.parse(_dio.options.baseUrl)
         .resolve(endpoint)
         .replace(queryParameters: query)
@@ -130,8 +135,16 @@ class ServerApi {
     CancelToken? cancelToken,
   }) {
     return _dio.get<ResponseBody>(
-      volume == null ? '/api/files/stream' : '/api/storage/$volume/download',
-      queryParameters: {'path': path},
+      volume == null
+          ? '/api/files/stream'
+          : _storageUsesVolumeScopedRoutes == true
+              ? '/api/storage/$volume/download'
+              : '/api/storage/download',
+      queryParameters: {
+        'path': path,
+        if (volume != null && _storageUsesVolumeScopedRoutes != true)
+          'volume': volume,
+      },
       options: Options(
         responseType: ResponseType.stream,
         headers: offset > 0 ? {'Range': 'bytes=$offset-'} : null,
@@ -796,7 +809,7 @@ class ServerApi {
         _directoryCache,
         _directoryRequests,
         () {
-          Future<DirectoryListing> load() async {
+          Future<DirectoryListing> requestScoped() async {
             final response = await _dio.get<Map<String, dynamic>>(
               '/api/storage/$volume/',
               queryParameters: {'path': path},
@@ -808,6 +821,30 @@ class ServerApi {
               cancelToken: cancelToken,
             );
             return DirectoryListing.fromJson(response.data ?? const {});
+          }
+
+          Future<DirectoryListing> load() async {
+            if (_storageUsesVolumeScopedRoutes == true) {
+              return requestScoped();
+            }
+            try {
+              final response = await _dio.get<Map<String, dynamic>>(
+                '/api/storage/list',
+                queryParameters: {'volume': volume, 'path': path},
+                options: Options(
+                  extra: {
+                    if (background) 'pocketlink.priority': 'background',
+                  },
+                ),
+                cancelToken: cancelToken,
+              );
+              _storageUsesVolumeScopedRoutes = false;
+              return DirectoryListing.fromJson(response.data ?? const {});
+            } on DioException catch (error) {
+              if (!_isRouteLevelNotFound(error)) rethrow;
+              _storageUsesVolumeScopedRoutes = true;
+              return requestScoped();
+            }
           }
 
           return cancelToken == null
@@ -824,17 +861,38 @@ class ServerApi {
     ProgressCallback? onSendProgress,
     CancelToken? cancelToken,
   }) async {
-    final form = FormData.fromMap({
-      'file': MultipartFile.fromBytes(bytes, filename: filename),
-    });
-    await _dio.put<void>(
-      '/api/storage/$volume/upload',
-      queryParameters: {'path': path},
-      data: form,
-      options: Options(method: 'PUT'),
-      onSendProgress: onSendProgress,
-      cancelToken: cancelToken,
-    );
+    Future<FormData> formData() async => FormData.fromMap({
+          'file': MultipartFile.fromBytes(bytes, filename: filename),
+        });
+
+    Future<void> scopedUpload() async {
+      await _dio.put<void>(
+        '/api/storage/$volume/upload',
+        queryParameters: {'path': path},
+        data: await formData(),
+        onSendProgress: onSendProgress,
+        cancelToken: cancelToken,
+      );
+    }
+
+    if (_storageUsesVolumeScopedRoutes == true) {
+      await scopedUpload();
+    } else {
+      try {
+        await _dio.post<void>(
+          '/api/storage/upload',
+          queryParameters: {'volume': volume, 'path': path},
+          data: await formData(),
+          onSendProgress: onSendProgress,
+          cancelToken: cancelToken,
+        );
+        _storageUsesVolumeScopedRoutes = false;
+      } on DioException catch (error) {
+        if (!_isRouteLevelNotFound(error)) rethrow;
+        _storageUsesVolumeScopedRoutes = true;
+        await scopedUpload();
+      }
+    }
     invalidateDirectoryCache();
   }
 
@@ -844,14 +902,33 @@ class ServerApi {
     ProgressCallback? onReceiveProgress,
     CancelToken? cancelToken,
   }) async {
-    final response = await _dio.get<List<int>>(
-      '/api/storage/$volume/download',
-      queryParameters: {'path': path},
-      options: Options(responseType: ResponseType.bytes),
-      onReceiveProgress: onReceiveProgress,
-      cancelToken: cancelToken,
-    );
-    return Uint8List.fromList(response.data ?? const <int>[]);
+    Future<Uint8List> scopedDownload() async {
+      final response = await _dio.get<List<int>>(
+        '/api/storage/$volume/download',
+        queryParameters: {'path': path},
+        options: Options(responseType: ResponseType.bytes),
+        onReceiveProgress: onReceiveProgress,
+        cancelToken: cancelToken,
+      );
+      return Uint8List.fromList(response.data ?? const <int>[]);
+    }
+
+    if (_storageUsesVolumeScopedRoutes == true) return scopedDownload();
+    try {
+      final response = await _dio.get<List<int>>(
+        '/api/storage/download',
+        queryParameters: {'volume': volume, 'path': path},
+        options: Options(responseType: ResponseType.bytes),
+        onReceiveProgress: onReceiveProgress,
+        cancelToken: cancelToken,
+      );
+      _storageUsesVolumeScopedRoutes = false;
+      return Uint8List.fromList(response.data ?? const <int>[]);
+    } on DioException catch (error) {
+      if (!_isRouteLevelNotFound(error)) rethrow;
+      _storageUsesVolumeScopedRoutes = true;
+      return scopedDownload();
+    }
   }
 
   Future<void> createStorageFolder(
@@ -859,10 +936,26 @@ class ServerApi {
     String path,
     String name,
   ) async {
-    await _dio.post<void>(
-      '/api/storage/$volume/mkdir',
-      queryParameters: {'path': path, 'name': name},
-    );
+    Future<void> scopedCreate() => _dio.post<void>(
+          '/api/storage/$volume/mkdir',
+          queryParameters: {'path': path, 'name': name},
+        );
+
+    if (_storageUsesVolumeScopedRoutes == true) {
+      await scopedCreate();
+    } else {
+      try {
+        await _dio.post<void>(
+          '/api/storage/mkdir',
+          data: {'volume': volume, 'path': path, 'name': name},
+        );
+        _storageUsesVolumeScopedRoutes = false;
+      } on DioException catch (error) {
+        if (!_isRouteLevelNotFound(error)) rethrow;
+        _storageUsesVolumeScopedRoutes = true;
+        await scopedCreate();
+      }
+    }
     invalidateDirectoryCache();
   }
 
@@ -871,18 +964,50 @@ class ServerApi {
     String path,
     String name,
   ) async {
-    await _dio.post<void>(
-      '/api/storage/$volume/rename',
-      queryParameters: {'path': path, 'name': name},
-    );
+    Future<void> scopedRename() => _dio.post<void>(
+          '/api/storage/$volume/rename',
+          queryParameters: {'path': path, 'name': name},
+        );
+
+    if (_storageUsesVolumeScopedRoutes == true) {
+      await scopedRename();
+    } else {
+      try {
+        await _dio.post<void>(
+          '/api/storage/rename',
+          data: {'volume': volume, 'path': path, 'new_name': name},
+        );
+        _storageUsesVolumeScopedRoutes = false;
+      } on DioException catch (error) {
+        if (!_isRouteLevelNotFound(error)) rethrow;
+        _storageUsesVolumeScopedRoutes = true;
+        await scopedRename();
+      }
+    }
     invalidateDirectoryCache();
   }
 
   Future<void> deleteStorageItem(String volume, String path) async {
-    await _dio.delete<void>(
-      '/api/storage/$volume/item',
-      queryParameters: {'path': path},
-    );
+    Future<void> scopedDelete() => _dio.delete<void>(
+          '/api/storage/$volume/item',
+          queryParameters: {'path': path},
+        );
+
+    if (_storageUsesVolumeScopedRoutes == true) {
+      await scopedDelete();
+    } else {
+      try {
+        await _dio.delete<void>(
+          '/api/storage/item',
+          queryParameters: {'volume': volume, 'path': path},
+        );
+        _storageUsesVolumeScopedRoutes = false;
+      } on DioException catch (error) {
+        if (!_isRouteLevelNotFound(error)) rethrow;
+        _storageUsesVolumeScopedRoutes = true;
+        await scopedDelete();
+      }
+    }
     invalidateDirectoryCache();
   }
 }
