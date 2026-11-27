@@ -92,13 +92,6 @@ abstract final class DiscoverThumbnailCache {
     });
   }
 
-  Widget _image(Uint8List bytes) => Image.memory(
-        bytes,
-        cacheWidth: cacheWidth,
-        fit: fit,
-        gaplessPlayback: true,
-        errorBuilder: (_, __, ___) => errorFallback ?? fallback,
-      );
 }
 
 class DiscoverThumbnail extends StatelessWidget {
@@ -132,4 +125,12 @@ class DiscoverThumbnail extends StatelessWidget {
       },
     );
   }
+
+  Widget _image(Uint8List bytes) => Image.memory(
+        bytes,
+        cacheWidth: cacheWidth,
+        fit: fit,
+        gaplessPlayback: true,
+        errorBuilder: (_, __, ___) => errorFallback ?? fallback,
+      );
 }
