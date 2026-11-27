@@ -15,6 +15,7 @@ void main() {
     bool isPlaying = true,
     bool canSkip = true,
     bool visible = true,
+    double opacity = 1.0,
     VoidCallback? onOpen,
     VoidCallback? onDismiss,
     VoidCallback? onTogglePlayback,
@@ -33,6 +34,7 @@ void main() {
             child: GlobalMiniPlayerBar(
               item: item,
               visible: visible,
+              opacity: opacity,
               surfaceIntensity: visible ? 1.0 : 0.0,
               reduceMotion: true,
               isPlaying: isPlaying,
@@ -69,6 +71,20 @@ void main() {
       find.byType(LinearProgressIndicator),
     );
     expect(progress.value, 0.5);
+  });
+
+  testWidgets('transition opacity fades the real mini-player without removing controls', (tester) async {
+    await pumpMiniPlayer(tester, opacity: 0.5);
+
+    final opacityFinder = find.descendant(
+      of: find.byType(GlobalMiniPlayerBar),
+      matching: find.byType(Opacity),
+    ).first;
+    expect(tester.widget<Opacity>(opacityFinder).opacity, 0.5);
+    expect(find.text('A long song title.mp3'), findsOneWidget);
+    expect(find.byTooltip('Previous track'), findsOneWidget);
+    expect(find.byTooltip('Pause'), findsOneWidget);
+    expect(find.byTooltip('Next track'), findsOneWidget);
   });
 
   testWidgets('transport controls invoke the matching callbacks', (tester) async {
