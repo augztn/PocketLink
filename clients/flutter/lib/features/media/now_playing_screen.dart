@@ -1454,6 +1454,26 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                   ),
           ),
         ),
+        if (isMorphing)
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.transparent,
+                    _trackPalette[0].withValues(alpha: 0.28),
+                    _trackPalette[1].withValues(alpha: 0.54),
+                    _trackPalette[2].withValues(alpha: 0.88),
+                    const Color(0xF5000000),
+                  ],
+                  stops: const [0, 0.34, 0.48, 0.64, 0.84, 1],
+                ),
+              ),
+            ),
+          ),
         SafeArea(
           child: Column(children: [
             _header(contentOpacity: contentOpacity),
