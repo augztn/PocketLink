@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'dart:async';
 import 'dart:ui' as ui;
 
@@ -41,8 +42,23 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
   int _importedPlaylistCount = 0;
   Set<String> _favoriteKeys = <String>{};
   bool _loading = true;
+  bool _routeIsCurrent = true;
+  CancelToken? _indexRequestToken;
   String? _error;
   _LibraryScope _scope = _LibraryScope.all;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final isCurrent = ModalRoute.of(context)?.isCurrent ?? true;
+    if (_routeIsCurrent == isCurrent) return;
+    _routeIsCurrent = isCurrent;
+    if (!isCurrent) {
+      _indexRequestToken?.cancel('Music library route became inactive');
+    } else {
+      unawaited(_load());
+    }
+  }
 
   @override
   void initState() {
@@ -58,6 +74,7 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
 
   @override
   void dispose() {
+    _indexRequestToken?.cancel('Music library disposed');
     DownloadManagerService.instance.removeListener(_downloadsChanged);
     _search.dispose();
     super.dispose();
@@ -106,16 +123,37 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
   }
 
   Future<void> _load() async {
+    if (!mounted || !_routeIsCurrent) return;
+    _indexRequestToken?.cancel('Superseded music index request');
+    final requestToken = CancelToken();
+    _indexRequestToken = requestToken;
     setState(() { _loading = true; _error = null; });
     try {
-      final result = await MediaLibraryRepository(api: widget.api, type: MediaLibraryType.music).readIndexedMedia(
-        shouldContinue: () => mounted,
+      final result = await MediaLibraryRepository(
+        api: widget.api,
+        type: MediaLibraryType.music,
+      ).readIndexedMedia(
+        cancelToken: requestToken,
+        shouldContinue: () => mounted && _routeIsCurrent,
       );
-      if (!mounted) return;
+      if (!mounted || requestToken.isCancelled || !_routeIsCurrent) return;
       setState(() { _tracks = result.items; _loading = false; });
+    } on DioException {
+      if (!mounted || requestToken.isCancelled || !_routeIsCurrent) return;
+      setState(() {
+        _loading = false;
+        _error = 'Could not read the indexed music library.';
+      });
     } catch (_) {
-      if (!mounted) return;
-      setState(() { _loading = false; _error = 'Could not read the indexed music library.'; });
+      if (!mounted || requestToken.isCancelled || !_routeIsCurrent) return;
+      setState(() {
+        _loading = false;
+        _error = 'Could not read the indexed music library.';
+      });
+    } finally {
+      if (identical(_indexRequestToken, requestToken)) {
+        _indexRequestToken = null;
+      }
     }
   }
 
