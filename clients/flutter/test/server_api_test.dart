@@ -47,6 +47,48 @@ class _RouteMissingAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+class _FastApiStorageAdapter implements HttpClientAdapter {
+  final List<RequestOptions> requests = [];
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    requests.add(options);
+    if (options.uri.path == '/api/storage/list' ||
+        options.uri.path == '/api/storage/upload' ||
+        options.uri.path == '/api/storage/download' ||
+        options.uri.path == '/api/storage/mkdir' ||
+        options.uri.path == '/api/storage/rename' ||
+        options.uri.path == '/api/storage/item') {
+      return ResponseBody.fromString(
+        '{"detail":"Not Found"}',
+        404,
+        headers: {Headers.contentTypeHeader: ['application/json']},
+      );
+    }
+    final body = options.uri.path.endsWith('/download')
+        ? 'file-bytes'
+        : '{"path":"Movies","items":[]}';
+    return ResponseBody.fromString(
+      body,
+      200,
+      headers: {
+        Headers.contentTypeHeader: [
+          options.uri.path.endsWith('/download')
+              ? 'application/octet-stream'
+              : 'application/json',
+        ],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
 class _StorageRoutesAdapter implements HttpClientAdapter {
   final List<RequestOptions> requests = [];
 
@@ -337,8 +379,8 @@ void main() {
       expect(adapter.requests[0].uri.path, '/api/files/item');
       expect(adapter.requests[0].queryParameters['path'], 'Music/internal.mp3');
       expect(adapter.requests[1].method, 'DELETE');
-      expect(adapter.requests[1].uri.path, '/api/storage/usb1/item');
-      expect(adapter.requests[1].queryParameters.containsKey('volume'), isFalse);
+      expect(adapter.requests[1].uri.path, '/api/storage/item');
+      expect(adapter.requests[1].queryParameters['volume'], 'usb1');
       expect(adapter.requests[1].queryParameters['path'], 'Music/usb.mp3');
       api.close();
     });
@@ -366,20 +408,62 @@ void main() {
       await api.deleteStorageItem('usb1', 'Movies/new.mp4');
 
       expect(adapter.requests.map((request) => request.uri.path), [
-        '/api/storage/usb1/',
-        '/api/storage/usb1/upload',
-        '/api/storage/usb1/download',
-        '/api/storage/usb1/mkdir',
-        '/api/storage/usb1/rename',
-        '/api/storage/usb1/item',
+        '/api/storage/list',
+        '/api/storage/upload',
+        '/api/storage/download',
+        '/api/storage/mkdir',
+        '/api/storage/rename',
+        '/api/storage/item',
       ]);
       expect(adapter.requests.map((request) => request.method), [
-        'GET', 'PUT', 'GET', 'POST', 'POST', 'DELETE',
+        'GET', 'POST', 'GET', 'POST', 'POST', 'DELETE',
       ]);
+      expect(adapter.requests[0].queryParameters['volume'], 'usb1');
       expect(adapter.requests[0].queryParameters['path'], 'Movies');
+      expect(adapter.requests[1].queryParameters['volume'], 'usb1');
       expect(adapter.requests[1].queryParameters['path'], 'Movies/clip.mp4');
-      expect(adapter.requests[3].queryParameters['name'], 'New folder');
-      expect(adapter.requests[4].queryParameters['name'], 'new.mp4');
+      expect(adapter.requests[3].data, containsPair('name', 'New folder'));
+      expect(adapter.requests[4].data, containsPair('new_name', 'new.mp4'));
+      api.close();
+    });
+
+    test('falls back to volume-scoped FastAPI storage routes after route-level 404', () async {
+      final adapter = _FastApiStorageAdapter();
+      final api = ServerApi(
+        baseUrl: 'http://127.0.0.1:8000',
+        username: 'admin',
+        password: 'secret',
+        httpClientAdapter: adapter,
+      );
+
+      await api.listStorageDirectory('usb1', 'Movies');
+      await api.uploadStorageFile(
+        'usb1',
+        'Movies/clip.mp4',
+        'clip.mp4',
+        Uint8List.fromList([1, 2, 3]),
+      );
+      await api.downloadStorageFile('usb1', 'Movies/clip.mp4');
+      await api.createStorageFolder('usb1', 'Movies', 'New folder');
+      await api.renameStorageItem('usb1', 'Movies/old.mp4', 'new.mp4');
+      await api.deleteStorageItem('usb1', 'Movies/new.mp4');
+
+      expect(adapter.requests.take(2).map((request) => request.uri.path), [
+        '/api/storage/list',
+        '/api/storage/usb1/',
+      ]);
+      expect(adapter.requests[2].uri.path, '/api/storage/usb1/upload');
+      expect(adapter.requests[2].method, 'PUT');
+      expect(adapter.requests[3].uri.path, '/api/storage/usb1/download');
+      expect(adapter.requests[4].uri.path, '/api/storage/usb1/mkdir');
+      expect(adapter.requests[5].uri.path, '/api/storage/usb1/rename');
+      expect(adapter.requests[6].uri.path, '/api/storage/usb1/item');
+
+      final streamUri = Uri.parse(
+        api.mediaStreamUrl('Movies/clip.mp4', volume: 'usb1'),
+      );
+      expect(streamUri.path, '/api/storage/usb1/download');
+      expect(streamUri.queryParameters['path'], 'Movies/clip.mp4');
       api.close();
     });
 
