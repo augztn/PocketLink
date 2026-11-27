@@ -127,6 +127,11 @@ void main() {
 
     expect(find.byKey(const ValueKey('navigation-dock-tabs-capsule')), findsNothing);
     expect(find.byKey(PocketLinkNavigation.musicButtonKey), findsOneWidget);
+    expect(find.byKey(PocketLinkNavigation.nowPlayingDockButtonKey), findsOneWidget);
+    expect(
+      tester.getRect(find.byKey(PocketLinkNavigation.nowPlayingDockButtonKey)),
+      tester.getRect(find.byKey(PocketLinkNavigation.musicButtonKey)),
+    );
     expect(tester.getCenter(find.byKey(PocketLinkNavigation.musicButtonKey)).dx,
         greaterThan(tester.getSize(find.byType(Scaffold)).width / 2));
 
