@@ -292,7 +292,14 @@ internal class MediaIndexDatabase(context: Context) :
     }
 
     @Synchronized fun upsertMedia(batch: List<IndexedFile>, scanId: String) {
-        val mediaItems = batch.filter { it.category != null && it.type == "file" }
+        // Keep the indexed category trustworthy even when callers provide
+        // stale or malformed rows. queryMedia can then use its category index
+        // without repeating extension/MIME checks on every library read.
+        val mediaItems = batch.filter { item ->
+            item.type == "file" &&
+                item.category != null &&
+                MediaFileClassifier.categoryFor(item.name, item.mime) == item.category
+        }
         if (mediaItems.isEmpty()) return
         val db = writableDatabase
         db.beginTransaction()
