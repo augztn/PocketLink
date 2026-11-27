@@ -164,7 +164,9 @@ class GlobalMiniPlayerBar extends StatelessWidget {
                                   ),
                                   Text(
                                     isPlaying
-                                        ? 'NOW PLAYING · SWIPE TO SKIP'
+                                        ? (item.artist?.trim().isNotEmpty == true
+                                            ? item.artist!.trim()
+                                            : item.sourceLabel)
                                         : 'PAUSED',
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
