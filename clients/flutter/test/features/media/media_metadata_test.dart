@@ -17,4 +17,40 @@ void main() {
   test('Discover artist keeps ordinary LTR metadata unchanged', () {
     expect(formatDiscoverArtist('Maher Zain • 11M views'), 'Maher Zain • 11M views');
   });
+
+  test('artist falls back to the artist suffix in a track title', () {
+    expect(
+      resolveMediaArtist(
+        artist: null,
+        title: 'Indrajaalam - Vishnu Vijay',
+        path: '/Music/Indrajaalam.flac',
+        fallback: 'PocketLink',
+      ),
+      'Vishnu Vijay',
+    );
+  });
+
+  test('artist falls back to a meaningful album folder', () {
+    expect(
+      resolveMediaArtist(
+        artist: null,
+        title: 'Indrajaalam',
+        path: '/Music/Vishnu Vijay/Indrajaalam.flac',
+        fallback: 'PocketLink',
+      ),
+      'Vishnu Vijay',
+    );
+  });
+
+  test('generic source labels are never presented as artist metadata', () {
+    expect(
+      resolveMediaArtist(
+        artist: null,
+        title: 'Indrajaalam',
+        path: '/Music/Indrajaalam.flac',
+        fallback: 'PocketLink',
+      ),
+      'Unknown artist',
+    );
+  });
 }
