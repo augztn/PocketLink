@@ -536,6 +536,9 @@ class _HomeScreenState extends State<HomeScreen> {
             onOpenDownloads: () => _openLibrary('downloads'),
             onOpenSettings: () => Navigator.of(context).push<void>(
               MaterialPageRoute<void>(
+                settings: const RouteSettings(
+                  name: PocketLinkRouteNames.settings,
+                ),
                 builder: (_) => SettingsScreen(
                   api: widget.api,
                   onOpenSavedServers: widget.onReturnToConnection,
