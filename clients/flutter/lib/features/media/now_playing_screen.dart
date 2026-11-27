@@ -1329,10 +1329,12 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
       );
 
   Widget _volumeControl() => StreamBuilder<double>(
-        stream: _player.stream.volume,
-        initialData: _player.state.volume,
+        stream: _persistent.systemMediaVolumeStream,
+        initialData: _persistent.systemMediaVolume,
         builder: (context, snapshot) {
-          final volume = (snapshot.data ?? 100).clamp(0.0, 100.0).toDouble();
+          final volume = (snapshot.data ?? _persistent.systemMediaVolume)
+              .clamp(0.0, 100.0)
+              .toDouble();
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 22),
             child: Row(children: [
@@ -1349,7 +1351,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                   ),
                   child: Slider(
                     min: 0, max: 100, value: volume,
-                    onChanged: (value) => unawaited(_player.setVolume(value)),
+                    onChanged: (value) => unawaited(_persistent.setSystemMediaVolume(value)),
                   ),
                 ),
               ),
@@ -1398,7 +1400,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
 
   /// One persistent lower chrome instance shared by Artwork and Lyrics modes.
   Widget _playerChrome() => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.only(bottom: 12),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 22),
@@ -1430,23 +1432,34 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
       fit: StackFit.expand,
       children: [
         if (!isMorphing) Positioned.fill(child: _ambientBackground()),
-        Positioned(
-          top: 0, left: 0, right: 0, height: heroHeight,
-          child: SizedBox(
-            key: widget.artworkTargetKey,
-            width: double.infinity,
-            child: isMorphing
-                ? const SizedBox.expand()
-                : TrackArtworkView(
-                    bytes: hasArtwork ? _artwork : null,
-                    artworkUrl: _track.artworkUrl,
-                    fallbackColors: _trackPalette,
-                    fallbackIconSize: 92,
-                    fadeBottom: true,
-                    fadeBottomStart: 0.58,
-                  ),
+        if (!isMorphing)
+          Positioned.fill(
+            child: ShaderMask(
+              blendMode: BlendMode.dstIn,
+              shaderCallback: (bounds) => const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.white,
+                  Colors.white,
+                  Color(0xCCFFFFFF),
+                  Color(0x55FFFFFF),
+                  Color(0x14FFFFFF),
+                  Colors.transparent,
+                  Colors.transparent,
+                ],
+                stops: [0.0, 0.34, 0.46, 0.56, 0.65, 0.74, 1.0],
+              ).createShader(bounds),
+              child: TrackArtworkView(
+                key: widget.artworkTargetKey,
+                bytes: hasArtwork ? _artwork : null,
+                artworkUrl: _track.artworkUrl,
+                fallbackColors: _trackPalette,
+                fallbackIconSize: 92,
+                fit: BoxFit.cover,
+              ),
+            ),
           ),
-        ),
         if (isMorphing && hasArtwork)
           Positioned(
             top: heroHeight,
