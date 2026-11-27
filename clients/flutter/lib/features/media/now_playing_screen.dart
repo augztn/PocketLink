@@ -69,7 +69,7 @@ class NowPlayingScreen extends StatefulWidget {
 
 class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerProviderStateMixin {
   static const _secureStorage = FlutterSecureStorage();
-  static const double _playerChromeHeight = 270;
+  static const double _playerChromeHeight = 286;
 
   late final PersistentAudioPlayer _persistent;
   late final Player _player;
@@ -865,7 +865,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
           child: DecoratedBox(
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.16 * intensity),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.18 * intensity)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.14 * intensity)),
               borderRadius: radius,
             ),
             child: child,
@@ -1272,7 +1272,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                   const SizedBox(height: 2),
                   LayoutBuilder(
                     builder: (context, constraints) {
-                      const style = TextStyle(color: Colors.white.withValues(alpha: 0.68), fontSize: 18, height: 1.2, fontWeight: FontWeight.w400);
+                      final style = TextStyle(color: Colors.white.withValues(alpha: 0.68), fontSize: 18, height: 1.2, fontWeight: FontWeight.w400);
                       final painter = TextPainter(
                         text: TextSpan(text: artist, style: style),
                         maxLines: 1,
@@ -1415,7 +1415,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   }
 
   Widget _playerDetails({double contentOpacity = 1}) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.only(bottom: 12),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           _trackMetadata(contentOpacity: contentOpacity),
           const SizedBox(height: 18),
@@ -1428,7 +1428,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
         padding: const EdgeInsets.only(bottom: 12),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 22),
+            padding: const EdgeInsets.symmetric(horizontal: 24),
             child: _timeline(),
           ),
           const SizedBox(height: 6),
@@ -1436,7 +1436,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
             padding: const EdgeInsets.symmetric(horizontal: 18),
             child: _transport(),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
           _volumeControl(),
           const SizedBox(height: 20),
           _bottomUtilities(lyricsActive: _lyricsController.value > 0.5),
