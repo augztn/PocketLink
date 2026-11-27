@@ -29,6 +29,7 @@ import 'widgets/media_info_row.dart';
 import 'track_options_sheet.dart';
 import '../downloads/download_manager_service.dart';
 import 'lyrics/lyrics_repository.dart';
+import 'media_metadata.dart';
 import 'lyrics/lyrics_viewport.dart';
 
 class NowPlayingScreen extends StatefulWidget {
@@ -1080,13 +1081,13 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
         onNext: _persistent.skipToNext,
       );
 
-  Widget _bottomUtilities() => Padding(
+  Widget _bottomUtilities({bool lyricsActive = false}) => Padding(
         padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 2),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             _utilityButton(icon: Icons.lyrics_rounded, label: 'Lyrics',
-              onTap: () => unawaited(_showTrackLyrics())),
+              selected: lyricsActive, onTap: () => unawaited(_showTrackLyrics())),
             _utilityButton(icon: Icons.cast_rounded, label: 'Audio Output',
               onTap: _showAudioOutput),
             _utilityButton(icon: Icons.queue_music_rounded, label: 'Queue',
@@ -1099,6 +1100,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     required IconData icon,
     required String label,
     required VoidCallback onTap,
+    bool selected = false,
   }) => TextButton(
         onPressed: onTap,
         style: TextButton.styleFrom(
@@ -1107,9 +1109,18 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 21, color: Colors.white),
+          Container(
+            width: 36,
+            height: 32,
+            decoration: BoxDecoration(
+              color: selected ? Colors.white : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            alignment: Alignment.center,
+            child: Icon(icon, size: 20, color: selected ? Colors.black : Colors.white),
+          ),
           const SizedBox(height: 3),
-          Text(label, style: const TextStyle(fontSize: 10, color: Colors.white60)),
+          Text(label, style: TextStyle(fontSize: 10, color: selected ? Colors.white : Colors.white60)),
         ]),
       );
 
@@ -1131,8 +1142,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     } catch (_) {}
   }
 
-  Future<void> _loadTrackLyrics() async {
+  Future<void> _loadTrackLyrics({bool retry = false}) async {
     final query = LyricsTrackQuery(track: _track, api: widget.api);
+    if (retry) _lyricsRepository.cancel(query.key);
     if (_lyricsQueryKey == query.key &&
         (_lyricsLoading || _activeLyrics != null || _lyricsProviderStates.isNotEmpty)) {
       return;
@@ -1225,7 +1237,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
       progress: progress,
       artwork: _lyricsArtwork(progress),
       trackTitle: _fileName,
-      artistLabel: _track.artist ?? _folderName,
+      artistLabel: cleanMediaArtist(_track.artist, fallback: _folderName),
       actions: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -1254,10 +1266,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
           onSeek: (position) => unawaited(_player.seek(position)),
           onChooseProvider: _chooseLyricsProvider,
           onToggleTranslation: _toggleLyricsTranslation,
+          onRetry: () => unawaited(_loadTrackLyrics(retry: true)),
           translationEnabled: _lyricsTranslationEnabled,
         ),
       ),
-      providerLabel: 'Lyrics by ${_activeLyrics?.providerName ?? (_lyricsLoading ? 'Searching' : 'Unavailable')}',
+      providerLabel: _activeLyrics == null ? '' : 'Lyrics by ${_activeLyrics!.providerName}',
       onChooseProvider: _chooseLyricsProvider,
       footer: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1271,6 +1284,17 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
             padding: const EdgeInsets.symmetric(horizontal: 22),
             child: _transport(),
           ),
+          const SizedBox(height: 6),
+          _volumeControl(),
+          const SizedBox(height: 2),
+          _bottomUtilities(lyricsActive: true),
+          const SizedBox(height: 2),
+          Text(
+            _outputDeviceLabel,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Colors.white38, fontSize: 10),
+          ),
           const SizedBox(height: 8),
         ],
       ),
@@ -1278,7 +1302,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   }
 
   Widget _trackMetadata({double contentOpacity = 1}) {
-    final artist = _track.artist?.trim().isNotEmpty == true ? _track.artist!.trim() : _track.sourceLabel;
+    final artist = cleanMediaArtist(_track.artist, fallback: _track.sourceLabel);
     return Padding(
       padding: const EdgeInsets.fromLTRB(22, 0, 22, 0),
       child: Row(
@@ -1296,15 +1320,26 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                     style: const TextStyle(color: Colors.white, fontSize: 25, height: 1.08, fontWeight: FontWeight.w800, letterSpacing: -0.55),
                   ),
                   const SizedBox(height: 5),
-                  ShaderMask(
-                    blendMode: BlendMode.dstIn,
-                    shaderCallback: (bounds) => const LinearGradient(
-                      begin: Alignment.centerLeft, end: Alignment.centerRight,
-                      colors: [Colors.white, Colors.white, Colors.transparent],
-                      stops: [0, 0.72, 1],
-                    ).createShader(bounds),
-                    child: Text(artist, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500)),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      const style = TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500);
+                      final painter = TextPainter(
+                        text: TextSpan(text: artist, style: style),
+                        maxLines: 1,
+                        textDirection: Directionality.of(context),
+                      )..layout(maxWidth: constraints.maxWidth);
+                      final child = Text(artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: style);
+                      if (!painter.didExceedMaxLines && painter.width <= constraints.maxWidth) return child;
+                      return ShaderMask(
+                        blendMode: BlendMode.dstIn,
+                        shaderCallback: (bounds) => const LinearGradient(
+                          begin: Alignment.centerLeft, end: Alignment.centerRight,
+                          colors: [Colors.white, Colors.white, Colors.transparent],
+                          stops: [0, 0.72, 1],
+                        ).createShader(bounds),
+                        child: child,
+                      );
+                    },
                   ),
                 ],
               ),
@@ -1445,6 +1480,23 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
       children: [
         if (!isMorphing) Positioned.fill(child: _ambientBackground()),
         Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 190,
+          child: IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.black.withValues(alpha: .45), Colors.transparent],
+                ),
+              ),
+            ),
+          ),
+        ),
+        Positioned(
           top: 0, left: 0, right: 0, height: heroHeight,
           child: SizedBox(
             key: widget.artworkTargetKey,
@@ -1550,7 +1602,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                       child: Opacity(
                         opacity: 1 - const Interval(
                           0.0,
-                          0.42,
+                          0.48,
                           curve: Curves.easeInCubic,
                         ).transform(_lyricsController.value),
                         child: GestureDetector(
@@ -1593,7 +1645,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                     ),
                     Positioned.fill(
                       child: IgnorePointer(
-                        ignoring: _lyricsController.value <= 0.58,
+                        ignoring: _lyricsController.value <= 0.52,
                         child: Opacity(
                           opacity: const Interval(
                             0.58,
