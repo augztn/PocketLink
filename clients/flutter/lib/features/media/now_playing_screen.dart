@@ -11,6 +11,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../core/navigation/pocketlink_navigation.dart';
 import '../../core/network/offline_file_cache.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/settings/app_settings.dart';
