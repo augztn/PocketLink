@@ -54,15 +54,22 @@ class NowPlayingLyricsMode extends StatelessWidget {
                     child: ColoredBox(color: Color(0xA6000000)),
                   ),
                   Positioned(
-                    left: 8,
-                    top: 56,
+                    left: 34,
+                    top: 12,
                     child: Material(
-                      color: Colors.black.withValues(alpha: .38),
+                      color: Colors.black.withValues(alpha: .62),
                       shape: const CircleBorder(),
-                      child: IconButton(
-                        tooltip: 'Back to artwork',
-                        onPressed: onClose,
-                        icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white),
+                      child: SizedBox(
+                        width: 30,
+                        height: 30,
+                        child: IconButton(
+                          tooltip: 'Back to artwork',
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints.tightFor(width: 30, height: 30),
+                          iconSize: 18,
+                          onPressed: onClose,
+                          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white),
+                        ),
                       ),
                     ),
                   ),
