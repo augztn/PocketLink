@@ -7,6 +7,7 @@ import 'features/media/media_browser_state_store.dart';
 
 import 'core/settings/app_settings.dart';
 import 'core/logging/diagnostic_observer.dart';
+import 'core/widgets/persistent_overlay_host.dart';
 import 'core/navigation/pocketlink_navigation.dart';
 import 'core/navigation/pocketlink_page_transitions.dart';
 import 'features/media/global_media_overlay.dart';
@@ -197,7 +198,7 @@ class _PocketLinkAppState extends State<PocketLinkApp> {
                 isLight ? Brightness.dark : Brightness.light,
           ),
           child: MaterialUiCompatibilityBridge(
-            child: _MediaOverlayHost(
+            child: PersistentOverlayHost(
               child: GlobalMediaOverlay(
                 child: child ?? const SizedBox.shrink(),
               ),
@@ -208,45 +209,4 @@ class _PocketLinkAppState extends State<PocketLinkApp> {
       ),
     );
   }
-}
-
-
-/// Gives app-level media surfaces an Overlay ancestor while they sit above
-/// the root Navigator in MaterialApp.builder. The entry is kept stable across
-/// rebuilds so OverlayPortal-backed controls do not lose their Overlay state.
-class _MediaOverlayHost extends StatefulWidget {
-  const _MediaOverlayHost({required this.child});
-
-  final Widget child;
-
-  @override
-  State<_MediaOverlayHost> createState() => _MediaOverlayHostState();
-}
-
-class _MediaOverlayHostState extends State<_MediaOverlayHost> {
-  late final OverlayEntry _entry;
-
-  @override
-  void initState() {
-    super.initState();
-    _entry = OverlayEntry(builder: (_) => widget.child);
-  }
-
-  @override
-  void didUpdateWidget(covariant _MediaOverlayHost oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.child != widget.child) _entry.markNeedsBuild();
-  }
-
-  @override
-  void dispose() {
-    _entry.remove();
-    _entry.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => Overlay(
-        initialEntries: <OverlayEntry>[_entry],
-      );
 }
