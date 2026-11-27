@@ -160,14 +160,15 @@ List<DiscoverHomeShelf> mergeDiscoverHomeShelves(
   List<DiscoverHomeShelf> incoming,
 ) {
   final merged = <DiscoverHomeShelf>[];
-  final seenKeys = <String>{};
+  final seenItemKeys = <String>{};
+  final seenTrackIds = <String>{};
 
   List<DiscoverHomeItem> uniqueItems(List<DiscoverHomeItem> items) =>
-      items.where((item) => seenKeys.add('${item.type.name}:${item.id}'))
+      items.where((item) => seenItemKeys.add('${item.type.name}:${item.id}'))
           .toList(growable: false);
 
   List<DiscoverTrack> uniqueTracks(List<DiscoverTrack> tracks) =>
-      tracks.where((track) => seenKeys.add('track:${track.videoId}'))
+      tracks.where((track) => seenTrackIds.add(track.videoId))
           .toList(growable: false);
 
   for (final shelf in current) {
