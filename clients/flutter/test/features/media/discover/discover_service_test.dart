@@ -158,6 +158,23 @@ void main() {
                 'artist': 'Fresh artist',
               },
             ],
+            'items': [
+              {
+                'type': 'track',
+                'id': 'abcdefghijk',
+                'videoId': 'abcdefghijk',
+                'title': 'Fresh track',
+                'subtitle': 'Fresh artist',
+              },
+              {
+                'type': 'playlist',
+                'id': 'VLPL1234567890',
+                'title': 'Sunday songs',
+                'subtitle': 'Community playlist',
+                'browseId': 'VLPL1234567890',
+                'thumbnailUrl': 'https://example.com/playlist.jpg',
+              },
+            ],
           },
         ],
         'continuation': 'next-page-token',
@@ -169,6 +186,9 @@ void main() {
     expect(feed.shelves, hasLength(1));
     expect(feed.shelves.single.title, 'Trending now');
     expect(feed.shelves.single.tracks.single.videoId, 'abcdefghijk');
+    expect(feed.shelves.single.items, hasLength(2));
+    expect(feed.shelves.single.items.last.type, DiscoverHomeItemType.playlist);
+    expect(feed.shelves.single.items.last.browseId, 'VLPL1234567890');
     expect(feed.continuation, 'next-page-token');
     messenger.setMockMethodCallHandler(channel, null);
   });
