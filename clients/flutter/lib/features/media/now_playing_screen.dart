@@ -1067,17 +1067,17 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
       );
 
   Future<void> _showTrackLyrics() async {
-    if (_lyricsController.status == AnimationStatus.reverse) {
-      unawaited(_lyricsController.forward());
-      return;
-    }
-    if (_lyricsController.status == AnimationStatus.forward ||
-        _lyricsController.value > 0.5) {
-      // Keep the resolved document and provider state alive while the lyrics
-      // view animates out; clearing it here flashes the unavailable state.
+    if (!mounted) return;
+
+    // Toggle from the visible state rather than AnimationStatus. A system
+    // Back gesture can interrupt an in-flight transition, leaving status as
+    // reverse/forward while the controller is already near the opposite end.
+    if (_lyricsController.value >= 0.5) {
       await _lyricsController.reverse();
       return;
     }
+
+    // Start the visual transition immediately; lyric lookup runs alongside it.
     unawaited(_lyricsController.forward());
     await _loadTrackLyrics();
   }
