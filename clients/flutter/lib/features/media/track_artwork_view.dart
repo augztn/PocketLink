@@ -13,6 +13,7 @@ class TrackArtworkView extends StatelessWidget {
     this.fallbackIconSize = 30,
     this.borderRadius = BorderRadius.zero,
     this.fadeBottom = false,
+    this.fadeBottomStart = 0.56,
     this.fit = BoxFit.cover,
     super.key,
   });
@@ -23,6 +24,7 @@ class TrackArtworkView extends StatelessWidget {
   final double fallbackIconSize;
   final BorderRadius borderRadius;
   final bool fadeBottom;
+  final double fadeBottomStart;
   final BoxFit fit;
 
   @override
@@ -75,7 +77,7 @@ class TrackArtworkView extends StatelessWidget {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [Colors.white, Colors.white, Colors.transparent],
-                stops: [0, 0.56, 1],
+                stops: [0, fadeBottomStart, 1],
               ).createShader(bounds),
               child: image,
             )
