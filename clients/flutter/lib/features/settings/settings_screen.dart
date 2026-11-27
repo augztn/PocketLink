@@ -312,8 +312,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'Navigation' => 'Navigation',
         'Music' => 'Music & Playback',
         'Dashboard & Shortcuts' => 'Dashboard',
-        'Connectivity' => 'Network',
-        'Maintenance' => 'Diagnostics',
+        'Network' => 'Network',
+        'Diagnostics' => 'Diagnostics',
         'Music / Now Playing Button' => 'Music & Player',
         'Customize Navigation Bar' => 'Navigation',
         _ => category ?? 'Settings',
@@ -352,8 +352,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               'music' => 'Music',
               'discover' => 'Discover',
               'storage' => 'Storage',
-              'network' || 'connectivity' => 'Connectivity',
-              'diagnostics' || 'maintenance' => 'Maintenance',
+              'network' || 'connectivity' => 'Network',
+              'diagnostics' || 'maintenance' => 'Diagnostics',
               _ => 'Connectivity',
             },
           ),
@@ -472,8 +472,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       'Navigation': 'Dock, destinations, dashboard sections and floating shortcuts.',
       'Music': 'Music library, playback, Discover, lyrics and video preferences.',
       'Storage': 'Volumes, downloads, transfer behavior and temporary cache.',
-      'Connectivity': 'Manage saved PocketLink servers and connection switching.',
-      'Maintenance': 'Back up settings, restore preferences and export diagnostic logs.',
+      'Network': 'Manage saved PocketLink servers and connection switching.',
+      'Diagnostics': 'Back up settings, restore preferences and export diagnostic logs.',
       'Dashboard & Shortcuts': 'Choose which Home sections appear and arrange their order.',
       'Discover': 'Configure music discovery, matching, playback preferences and playlists.',
     };
@@ -591,7 +591,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         id: 'about',
         icon: Icons.info_outline_rounded,
         tint: const Color(0xFFFBBF24),
-        title: 'About PocketLink',
+        title: 'About',
         subtitle: 'Version information, architecture and licenses',
         badge: 'Info',
       ),
@@ -814,7 +814,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onTap: () => _openCategory('video'),
                     ),
                   ]),
-                if (widget.category == 'Maintenance')
+                if (widget.category == 'Diagnostics')
                   _section('Settings Backup', [
                     ListTile(
                       leading: const Icon(Icons.file_upload_outlined),
@@ -1214,7 +1214,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onTap: _clearingCache ? null : _clearCache,
                     ),
                   ]),
-                  if (widget.category == 'Connectivity')
+                  if (widget.category == 'Network')
                     _section('Server Connections', [
                       ListTile(
                         leading: const Icon(Icons.dns_outlined),
@@ -1224,7 +1224,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         onTap: widget.onOpenSavedServers,
                       ),
                     ]),
-                  if (widget.category == 'Maintenance')
+                  if (widget.category == 'Diagnostics')
                     _section('Diagnostics', [
                       ListTile(
                         leading: const Icon(Icons.bug_report_outlined),
