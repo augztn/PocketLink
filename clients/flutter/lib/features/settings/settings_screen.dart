@@ -354,7 +354,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               'storage' => 'Storage',
               'network' || 'connectivity' => 'Network',
               'diagnostics' || 'maintenance' => 'Diagnostics',
-              _ => 'Connectivity',
+              _ => 'Network',
             },
           ),
         ),
