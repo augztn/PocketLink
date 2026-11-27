@@ -813,6 +813,8 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
             if (_showFilesHome)
               Positioned.fill(
                 child: FilesHomeContent(
+                  topInset: LayoutInsetsScope.of(context).topClearance,
+                  bottomInset: LayoutInsetsScope.of(context).bottomClearance,
                   volumes: _volumes,
                   recent: HomeActivityStore.instance.itemsForServer(widget.api.baseUrl)
                       .where((item) => item.kind != 'track').take(5).toList(growable: false),
