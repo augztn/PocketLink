@@ -912,92 +912,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
         ),
       );
 
-  Widget _header({double contentOpacity = 1}) => SizedBox(
-        height: 86,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18),
-          child: Row(
-            children: [
-              _roundAction(
-                icon: Icons.keyboard_arrow_down_rounded,
-                tooltip: 'Minimize player',
-                onTap: widget.onDismiss,
-                contentOpacity: contentOpacity,
-              ),
-              const Spacer(),
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'PLAYING FROM ${_track.sourceLabel.toUpperCase()}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white, fontSize: 9, letterSpacing: 1.15,
-                      fontWeight: FontWeight.w800,
-                      shadows: [Shadow(color: Colors.black87, blurRadius: 12), Shadow(color: Colors.black54, blurRadius: 4)],
-                    ),
-                  ),
-                  const SizedBox(height: 7),
-                  Container(
-                    height: 32,
-                    padding: const EdgeInsets.symmetric(horizontal: 9),
-                    decoration: BoxDecoration(
-                      color: const Color(0xE9000000),
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
-                      boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 14, offset: Offset(0, 4))],
-                    ),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(5),
-                        child: SizedBox(
-                          width: 21, height: 21,
-                          child: TrackArtworkView(
-                            bytes: _artworkKey == _trackKey ? _artwork : null,
-                            artworkUrl: _track.artworkUrl,
-                            fallbackColors: _trackPalette,
-                            fallbackIconSize: 12,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      StreamBuilder<bool>(
-                        stream: _player.stream.playing,
-                        initialData: _player.state.playing,
-                        builder: (context, snapshot) {
-                          final playing = snapshot.data ?? false;
-                          const heights = [7.0, 13.0, 9.0, 16.0, 10.0];
-                          return Row(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              for (var index = 0; index < heights.length; index++)
-                                AnimatedContainer(
-                                  duration: Duration(milliseconds: 180 + index * 35),
-                                  curve: Curves.easeInOut,
-                                  width: 2.5,
-                                  height: playing ? heights[index] : 4,
-                                  margin: const EdgeInsets.only(right: 2),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(3),
-                                  ),
-                                ),
-                            ],
-                          );
-                        },
-                      ),
-                    ]),
-                  ),
-                ],
-              ),
-              const Spacer(),
-              _moreMenuButton(contentOpacity: contentOpacity),
-            ],
-          ),
-        ),
-      );
 
   Widget _roundAction({
     required IconData icon,
@@ -1346,6 +1260,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
             foreground: _isFavorite ? const Color(0xFFFFD66B) : Colors.white,
             onTap: () => unawaited(_toggleFavorite()), contentOpacity: contentOpacity,
           ),
+          const SizedBox(width: 6),
+          _moreMenuButton(contentOpacity: contentOpacity),
         ],
       ),
     );
@@ -1562,8 +1478,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
         ),
         SafeArea(
           child: Column(children: [
-            if (_lyricsController.value < 0.32)
-              _header(contentOpacity: contentOpacity),
             const Spacer(),
             _playerDetails(
               contentOpacity: contentOpacity *
