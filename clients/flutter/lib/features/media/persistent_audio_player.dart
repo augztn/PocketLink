@@ -130,6 +130,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
   final StreamController<double> _systemMediaVolumeController =
       StreamController<double>.broadcast();
   double _systemMediaVolume = 100;
+  int _systemMediaVolumeRequest = 0;
 
   late final Player player;
 
@@ -158,17 +159,24 @@ class PersistentAudioPlayer extends ChangeNotifier {
       await player.setVolume(normalized);
       return;
     }
+
+    // Update the slider immediately while Android applies the stream volume.
+    // Ignore stale method-channel replies when the user is still dragging.
+    final request = ++_systemMediaVolumeRequest;
+    _publishSystemMediaVolume(normalized);
     try {
       final result = await _mediaChannel.invokeMapMethod<String, dynamic>(
         'setSystemMediaVolume',
         {'volume': normalized},
       );
       final volume = result?['volume'];
-      if (volume is num) _publishSystemMediaVolume(volume.toDouble());
+      if (request == _systemMediaVolumeRequest && volume is num) {
+        _publishSystemMediaVolume(volume.toDouble());
+      }
     } on PlatformException {
-      // Keep this control bound to Android's media stream, not software gain.
+      await refreshSystemMediaVolume();
     } on MissingPluginException {
-      // Non-Android and test environments do not register the native bridge.
+      await refreshSystemMediaVolume();
     }
   }
 
