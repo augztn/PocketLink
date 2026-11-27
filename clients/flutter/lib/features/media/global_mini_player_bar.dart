@@ -303,7 +303,7 @@ class _MiniPlayerGestureSurfaceState extends State<_MiniPlayerGestureSurface> {
   bool _expandStarted = false;
   double _verticalDistance = 0;
 
-  void _onVerticalDragUpdate(DragUpdateDetails details) {
+  void _onPanUpdate(DragUpdateDetails details) {
     final delta = details.delta.dy;
     _verticalDistance += delta;
     if (!_expandStarted && _verticalDistance < 0) {
@@ -315,7 +315,7 @@ class _MiniPlayerGestureSurfaceState extends State<_MiniPlayerGestureSurface> {
     if (_expandStarted) widget.onExpandDragUpdate?.call(delta);
   }
 
-  void _onVerticalDragEnd(DragEndDetails details) {
+  void _onPanEnd(DragEndDetails details) {
     final velocity = details.velocity.pixelsPerSecond.dy;
     if (_expandStarted) {
       widget.onExpandDragEnd?.call(velocity);
@@ -325,7 +325,7 @@ class _MiniPlayerGestureSurfaceState extends State<_MiniPlayerGestureSurface> {
     _reset();
   }
 
-  void _onVerticalDragCancel() {
+  void _onPanCancel() {
     if (_expandStarted) widget.onExpandDragEnd?.call(0);
     _reset();
   }
@@ -340,9 +340,9 @@ class _MiniPlayerGestureSurfaceState extends State<_MiniPlayerGestureSurface> {
         behavior: HitTestBehavior.opaque,
         dragStartBehavior: DragStartBehavior.down,
         onTap: widget.onTap,
-        onVerticalDragUpdate: _onVerticalDragUpdate,
-        onVerticalDragEnd: _onVerticalDragEnd,
-        onVerticalDragCancel: _onVerticalDragCancel,
+        onPanUpdate: _onPanUpdate,
+        onPanEnd: _onPanEnd,
+        onPanCancel: _onPanCancel,
         child: widget.child,
       );
 }
