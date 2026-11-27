@@ -688,16 +688,11 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
                       : 'Internal storage',
                   path: currentItem.path,
                 );
-          final ambientFill = Color.lerp(
-            artworkPalette[2],
-            const Color(0xFF0A0B0E),
-            0.55,
-          )!;
-          final sheetFill = Color.lerp(
-            const Color(0xFF1E2025),
-            ambientFill,
-            (t / 0.3).clamp(0.0, 1.0).toDouble(),
-          )!;
+          // Keep the morph surface fully opaque and consistently dark.
+          // Artwork-derived ambient colors belong in the expanded player
+          // content, not in the container being transformed; interpolating
+          // them here can expose a pale panel during the reverse transition.
+          const sheetFill = Color(0xFF0A0B0E);
           // Remove docked controls before expanded controls begin appearing.
           final miniOpacity = 1.0 -
               const Interval(
