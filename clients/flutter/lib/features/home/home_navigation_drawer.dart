@@ -70,7 +70,7 @@ class PocketLinkHomeDrawer extends StatelessWidget {
                 bottom: false,
                 child: ListView(
           padding: EdgeInsets.fromLTRB(
-            14, 14, 14, MediaQuery.paddingOf(context).bottom + 16,
+            14, 14, 14, MediaQuery.paddingOf(context).bottom + 20,
           ),
           children: [
             Padding(
