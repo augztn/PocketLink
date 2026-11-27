@@ -248,4 +248,47 @@ class YouTubeMusicCatalogTest {
         assertEquals("next-page-token", catalog.findContinuationToken(json))
     }
 
+    @Test
+    fun parsesPlaylistAndArtistCardsWithoutRequiringVideoIds() {
+        val json = JSONObject(
+            """
+            {
+              "contents": [
+                {"musicTwoRowItemRenderer": {
+                  "title": {"simpleText": "Sunday songs"},
+                  "subtitle": {"simpleText": "Community playlist"},
+                  "playlistId": "PL1234567890",
+                  "navigationEndpoint": {
+                    "browseEndpoint": {"browseId": "VLPL1234567890", "params": "playlist-params"}
+                  },
+                  "thumbnail": {"thumbnails": [
+                    {"url": "https://example.com/playlist.jpg", "width": 544, "height": 544}
+                  ]}
+                }},
+                {"musicTwoRowItemRenderer": {
+                  "title": {"simpleText": "Anirudh Ravichander"},
+                  "subtitle": {"simpleText": "Artist"},
+                  "navigationEndpoint": {
+                    "browseEndpoint": {"browseId": "UCabcdefghijk"}
+                  },
+                  "thumbnail": {"thumbnails": [
+                    {"url": "https://example.com/artist.jpg", "width": 544, "height": 544}
+                  ]}
+                }}
+              ]
+            }
+            """.trimIndent()
+        )
+
+        val items = catalog.parseHomeItems(json, 20)
+
+        assertEquals(2, items.size)
+        assertEquals("playlist", items[0]["type"])
+        assertEquals("Sunday songs", items[0]["title"])
+        assertEquals("VLPL1234567890", items[0]["browseId"])
+        assertEquals("playlist-params", items[0]["params"])
+        assertEquals("artist", items[1]["type"])
+        assertEquals("UCabcdefghijk", items[1]["browseId"])
+    }
+
 }
