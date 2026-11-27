@@ -1271,8 +1271,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
             padding: const EdgeInsets.symmetric(horizontal: 22),
             child: _transport(),
           ),
-          const SizedBox(height: 6),
-          _bottomUtilities(),
           const SizedBox(height: 8),
         ],
       ),
