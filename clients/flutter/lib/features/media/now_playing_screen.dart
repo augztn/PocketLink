@@ -863,12 +863,14 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
               const SmokedGlassPopoverMenuItem(value: 'queue', label: 'Queue', icon: Icons.queue_music_rounded),
               const SmokedGlassPopoverMenuItem(value: 'shuffle', label: 'Shuffle', icon: Icons.shuffle_rounded),
               const SmokedGlassPopoverMenuItem(value: 'repeat', label: 'Repeat', icon: Icons.repeat_rounded),
-              const SmokedGlassPopoverMenuItem(value: 'share', label: 'Share', icon: Icons.ios_share_rounded, dividerBefore: true),
+              if (widget.api != null || _track.localPath != null)
+                const SmokedGlassPopoverMenuItem(value: 'share', label: 'Share', icon: Icons.ios_share_rounded, dividerBefore: true),
               const SmokedGlassPopoverMenuItem(value: 'play_next', label: 'Play next', icon: Icons.skip_next_rounded),
               const SmokedGlassPopoverMenuItem(value: 'add_queue', label: 'Add to queue', icon: Icons.playlist_add_rounded),
               if (widget.api != null)
                 const SmokedGlassPopoverMenuItem(value: 'show_folder', label: 'Show in folder', icon: Icons.folder_open_rounded),
-              const SmokedGlassPopoverMenuItem(value: 'file_info', label: 'File info', icon: Icons.info_outline_rounded),
+              if (widget.api != null || _track.localPath != null)
+                const SmokedGlassPopoverMenuItem(value: 'file_info', label: 'File info', icon: Icons.info_outline_rounded),
               const SmokedGlassPopoverMenuItem(value: 'sleep_timer', label: 'Sleep timer', icon: Icons.bedtime_outlined),
               if (widget.api != null)
                 const SmokedGlassPopoverMenuItem(value: 'download', label: 'Download track', icon: Icons.download_rounded),
