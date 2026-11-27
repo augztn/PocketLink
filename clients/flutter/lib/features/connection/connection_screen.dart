@@ -349,7 +349,7 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
     _authenticationCancelToken = authenticationCancelToken;
     try {
       await api.authenticate(cancelToken: authenticationCancelToken).timeout(
-        Duration(seconds: restoringSession ? 20 : 55),
+        Duration(seconds: restoringSession ? 12 : 15),
         onTimeout: () {
           authenticationCancelToken.cancel('Authentication deadline exceeded.');
           throw TimeoutException('Server authentication timed out.');
