@@ -210,6 +210,7 @@ class _LyricsViewportState extends State<LyricsViewport> {
             ),
           ),
         ),
+        ),
       ],
     );
   }
