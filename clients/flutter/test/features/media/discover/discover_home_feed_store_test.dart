@@ -103,10 +103,10 @@ void main() {
 
   test('removes malformed persisted data', () async {
     final preferences = await SharedPreferences.getInstance();
-    await preferences.setString('discover_home_feed_v2_IN', '{invalid');
+    await preferences.setString('discover_home_feed_v1_IN', '{invalid');
 
     expect(await DiscoverHomeFeedStore.read('IN'), isNull);
-    expect(preferences.getString('discover_home_feed_v2_IN'), isNull);
+    expect(preferences.getString('discover_home_feed_v1_IN'), isNull);
   });
 
   test('clear removes only the selected region snapshot', () async {
