@@ -80,7 +80,9 @@ class PersistentAudioPlayer extends ChangeNotifier {
       unawaited(refreshSystemMediaVolume());
     }
     _playlistSubscription = player.stream.playlist.listen((playlist) {
+      final previousIndex = _currentIndex;
       _currentIndex = playlist.index.clamp(0, _queue.isEmpty ? 0 : _queue.length - 1).toInt();
+      if (previousIndex != _currentIndex) _lastCompletedPlaybackKey = null;
       final signature = playlist.medias.map((media) => media.uri).join('\\u0000');
       if (_lastPlaylistSignature != null &&
           signature == _lastPlaylistSignature &&
@@ -95,6 +97,17 @@ class PersistentAudioPlayer extends ChangeNotifier {
       unawaited(_syncMediaSession());
     });
     _playingSubscription = player.stream.playing.listen((playing) {
+      final playbackKey = _currentPlaybackKey;
+      if (playing && playbackKey != null &&
+          _lastCompletedPlaybackKey == playbackKey) {
+        // Some backends emit a transient playing=true while restoring a
+        // completed queue. Do not publish a false start or flash the player.
+        AppLogger.warning('Ignored playback start after track completion',
+          category: 'media', component: 'persistent_player',
+          fields: {'queue_index': _currentIndex, 'queue_session': _queueSession});
+        unawaited(player.pause());
+        return;
+      }
       AppLogger.event(playing ? 'playback.started' : 'playback.paused',
         category: 'media', component: 'persistent_player',
         fields: {'queue_length': _queue.length, 'queue_index': _currentIndex,
@@ -106,7 +119,14 @@ class PersistentAudioPlayer extends ChangeNotifier {
       notifyListeners();
       unawaited(_syncMediaSession());
     });
-    _completedSubscription = player.stream.completed.listen((_) {
+    _completedSubscription = player.stream.completed.listen((completed) {
+      // media_kit emits both true and false completion-state changes. Only
+      // true is a completed track; duplicate true events are keyed to the
+      // current queue session and index.
+      if (!completed) return;
+      final playbackKey = _currentPlaybackKey;
+      if (playbackKey == null || _lastCompletedPlaybackKey == playbackKey) return;
+      _lastCompletedPlaybackKey = playbackKey;
       AppLogger.event('playback.completed', category: 'media',
         component: 'persistent_player',
         fields: {'queue_length': _queue.length, 'queue_index': _currentIndex});
@@ -210,6 +230,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
   DateTime? _pendingTrackDirectionAt;
   int _queueSession = 0;
   String? _lastRecordedTrackKey;
+  String? _lastCompletedPlaybackKey;
   String? _lastPlaylistSignature;
   int? _lastPlaylistIndex;
   int _playbackTransition = 0;
@@ -219,6 +240,22 @@ class PersistentAudioPlayer extends ChangeNotifier {
 
   List<MediaQueueItem> get queue => _queue;
   int get queueSession => _queueSession;
+
+  String? get _currentPlaybackKey {
+    final item = currentItem;
+    if (item == null || _queue.isEmpty) return null;
+    return '$_queueSession:$_currentIndex:${item.stableTrackId}';
+  }
+
+  Future<void> _playFromCurrentPosition() async {
+    if (_lastCompletedPlaybackKey == _currentPlaybackKey) {
+      // Explicit Play after completion means replay the current item; app
+      // lifecycle restoration is handled separately by the stream guard.
+      await player.seek(Duration.zero);
+      _lastCompletedPlaybackKey = null;
+    }
+    await player.play();
+  }
 
   Future<void> _serializeQueueMutation(Future<void> Function() operation) {
     final pending = _queueMutationTail.then((_) => operation());
@@ -241,6 +278,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
     final session = ++_queueSession;
     _api = api;
     _lastRecordedTrackKey = null;
+    _lastCompletedPlaybackKey = null;
     _lastPlaylistSignature = null;
     _lastPlaylistIndex = null;
     _playbackTransition = 0;
@@ -320,6 +358,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
     }
     _api = api;
     _lastRecordedTrackKey = null;
+    _lastCompletedPlaybackKey = null;
     _lastPlaylistSignature = null;
     _lastPlaylistIndex = null;
     _playbackTransition = 0;
@@ -561,7 +600,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
     if (player.state.playing) {
       await player.pause();
     } else {
-      await player.play();
+      await _playFromCurrentPosition();
     }
     notifyListeners();
   }
@@ -615,6 +654,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
     _currentIndex = 0;
     _api = null;
     _lastRecordedTrackKey = null;
+    _lastCompletedPlaybackKey = null;
     _lastPlaylistSignature = null;
     _lastPlaylistIndex = null;
     _playbackTransition = 0;
@@ -634,7 +674,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
     final action = args['action']?.toString();
     switch (action) {
       case 'io.github.augztn.pocketlink.media.PLAY':
-        await player.play();
+        await _playFromCurrentPosition();
         break;
       case 'io.github.augztn.pocketlink.media.PAUSE':
         await player.pause();
