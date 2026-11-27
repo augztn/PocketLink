@@ -1738,31 +1738,52 @@ class _ArtworkTitleMarqueeState extends State<_ArtworkTitleMarquee>
             TweenSequenceItem<double>(tween: ConstantTween<double>(0), weight: 1.5),
             TweenSequenceItem<double>(tween: Tween<double>(begin: 0, end: distance), weight: 7),
           ]).animate(_controller);
-          return ClipRect(
-            child: AnimatedBuilder(
-              animation: _controller,
-              builder: (context, _) => ShaderMask(
-                blendMode: BlendMode.dstIn,
-                shaderCallback: (bounds) => LinearGradient(
-                  colors: [
-                    _controller.value > 0.001 ? Colors.transparent : Colors.white,
-                    Colors.white,
-                    Colors.white,
-                    Colors.transparent,
-                  ],
-                  stops: [0, _controller.value > 0.001 ? 0.04 : 0.0, 0.90, 1],
-                ).createShader(bounds),
-                child: Transform.translate(
-                  offset: Offset(-scroll.value, 0),
-                  child: SizedBox(
-                    width: painter.width * 2 + _gap,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(widget.text, maxLines: 1, softWrap: false, style: widget.style),
-                        const SizedBox(width: _gap),
-                        Text(widget.text, maxLines: 1, softWrap: false, style: widget.style),
+          // The mask must use the viewport width, not the duplicated text
+          // strip width. Masking the strip itself makes the fade travel with
+          // the text and leaves hard-clipped glyphs at the viewport edges.
+          return SizedBox(
+            width: constraints.maxWidth,
+            height: painter.height,
+            child: ShaderMask(
+              blendMode: BlendMode.dstIn,
+              shaderCallback: (bounds) => LinearGradient(
+                colors: scroll.value > 0.001
+                    ? const [
+                        Colors.transparent,
+                        Colors.white,
+                        Colors.white,
+                        Colors.transparent,
+                      ]
+                    : const [
+                        Colors.white,
+                        Colors.white,
+                        Colors.white,
+                        Colors.transparent,
                       ],
+                stops: const [0, 0.04, 0.90, 1],
+              ).createShader(bounds),
+              child: ClipRect(
+                child: OverflowBox(
+                  alignment: Alignment.centerLeft,
+                  minWidth: constraints.maxWidth,
+                  maxWidth: double.infinity,
+                  minHeight: painter.height,
+                  maxHeight: painter.height,
+                  child: AnimatedBuilder(
+                    animation: _controller,
+                    builder: (context, _) => Transform.translate(
+                      offset: Offset(-scroll.value, 0),
+                      child: SizedBox(
+                        width: painter.width * 2 + _gap,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(widget.text, maxLines: 1, softWrap: false, style: widget.style),
+                            const SizedBox(width: _gap),
+                            Text(widget.text, maxLines: 1, softWrap: false, style: widget.style),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
