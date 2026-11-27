@@ -57,21 +57,23 @@ class NowPlayingLyricsMode extends StatelessWidget {
                     child: ColoredBox(color: Color(0xA6000000)),
                   ),
                   Positioned(
-                    left: 34,
-                    top: 12,
-                    child: Material(
-                      color: Colors.black.withValues(alpha: .62),
-                      shape: const CircleBorder(),
-                      child: SizedBox(
-                        width: 30,
-                        height: 30,
-                        child: IconButton(
-                          tooltip: 'Back to artwork',
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints.tightFor(width: 30, height: 30),
-                          iconSize: 18,
-                          onPressed: onClose,
-                          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white),
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: onClose,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 5),
+                          child: Container(
+                            width: 36,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.7),
+                              borderRadius: BorderRadius.circular(99),
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -79,7 +81,7 @@ class NowPlayingLyricsMode extends StatelessWidget {
                   Column(
                     children: [
                       Padding(
-                        padding: const EdgeInsets.only(left: 68, right: 12),
+                        padding: const EdgeInsets.only(left: 68, right: 12, top: 8),
                         child: SizedBox(
                           height: 54,
                           child: Row(
@@ -146,8 +148,10 @@ class NowPlayingLyricsMode extends StatelessWidget {
                           behavior: HitTestBehavior.opaque,
                           onTap: onChooseProvider,
                           child: Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: Text(
+                            padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
                               providerLabel,
                               style: const TextStyle(
                                 color: Colors.white70,
@@ -155,6 +159,7 @@ class NowPlayingLyricsMode extends StatelessWidget {
                                 decoration: TextDecoration.underline,
                                 decorationColor: Colors.white54,
                               ),
+                            ),
                             ),
                           ),
                         ),
