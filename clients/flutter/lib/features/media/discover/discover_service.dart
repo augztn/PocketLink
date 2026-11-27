@@ -72,14 +72,56 @@ class DiscoverService {
   }
 
   Future<DiscoverHomeFeed> homeFeed({int limit = 30, String? region}) async {
-    final raw = await _channel.invokeMapMethod<String, dynamic>(
-      'discoverHomeFeed',
-      {
-        'limit': limit.clamp(1, 50),
-        'region': region ?? AppSettings.instance.discoverRegion,
-      },
+    final selectedRegion = region ?? AppSettings.instance.discoverRegion;
+    final stopwatch = Stopwatch()..start();
+    AppLogger.event(
+      'discover.home_feed_request_started',
+      category: 'discover',
+      component: 'discover_service',
+      fields: {'limit': limit.clamp(1, 50), 'region': selectedRegion},
     );
-    return DiscoverHomeFeed.fromJson(raw ?? const {});
+    try {
+      final raw = await _channel.invokeMapMethod<String, dynamic>(
+        'discoverHomeFeed',
+        {
+          'limit': limit.clamp(1, 50),
+          'region': selectedRegion,
+        },
+      );
+      final feed = DiscoverHomeFeed.fromJson(raw ?? const {});
+      stopwatch.stop();
+      AppLogger.event(
+        'discover.home_feed_request_completed',
+        category: 'discover',
+        component: 'discover_service',
+        fields: {
+          'duration_ms': stopwatch.elapsedMilliseconds,
+          'shelf_count': feed.shelves.length,
+          'track_count': feed.shelves.fold<int>(
+            0,
+            (sum, shelf) => sum + shelf.tracks.length,
+          ),
+          'item_count': feed.shelves.fold<int>(
+            0,
+            (sum, shelf) => sum + shelf.items.length,
+          ),
+          'has_continuation': feed.continuation.isNotEmpty,
+        },
+      );
+      return feed;
+    } catch (error) {
+      stopwatch.stop();
+      AppLogger.warning(
+        'Discover home feed request failed',
+        category: 'discover',
+        component: 'discover_service',
+        fields: {
+          'duration_ms': stopwatch.elapsedMilliseconds,
+          'failure_type': error.runtimeType.toString(),
+        },
+      );
+      rethrow;
+    }
   }
 
   Future<DiscoverHomeFeed> moreHome(
