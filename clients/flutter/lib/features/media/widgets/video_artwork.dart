@@ -24,7 +24,7 @@ class VideoArtwork extends StatelessWidget {
                 final pixelRatio = MediaQuery.devicePixelRatioOf(context);
                 int? decodeSize(double logicalSize) {
                   if (!logicalSize.isFinite || logicalSize <= 0) return null;
-                  return (logicalSize * pixelRatio).round().clamp(1, 960);
+                  return (logicalSize * pixelRatio).round().clamp(1, 960).toInt();
                 }
 
                 return Image.memory(
