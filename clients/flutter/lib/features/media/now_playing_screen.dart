@@ -326,7 +326,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
       _refreshCacheStatus(),
       _loadArtwork(),
     ]);
-    if (_lyricsController.value > 0.5) await _loadTrackLyrics();
+    if (_lyricsController.status == AnimationStatus.forward ||
+        _lyricsController.value > 0.5) {
+      await _loadTrackLyrics();
+    }
   }
 
   Future<void> _loadArtwork() async {
@@ -1125,7 +1128,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
       );
 
   Future<void> _showTrackLyrics() async {
-    if (_lyricsController.value > 0.5) {
+    if (_lyricsController.status == AnimationStatus.forward ||
+        _lyricsController.value > 0.5) {
       // Keep the resolved document and provider state alive while the lyrics
       // view animates out; clearing it here flashes the unavailable state.
       await _lyricsController.reverse();
