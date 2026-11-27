@@ -217,7 +217,7 @@ class _NowPlayingScrubberState extends State<NowPlayingScrubber>
                 _time(_dragProgress == null
                     ? _displayPosition
                     : _durationAt(progress)),
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.75),
                   fontSize: 12.5,
                   fontWeight: FontWeight.w500,
