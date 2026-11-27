@@ -205,6 +205,58 @@ void main() {
     expect(releaseVelocity, lessThan(0));
   });
 
+  testWidgets('upward swipe is still observed when an ancestor wins the gesture arena',
+      (tester) async {
+    final dragDeltas = <double>[];
+    var parentDragUpdates = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: GestureDetector(
+            onVerticalDragUpdate: (_) => parentDragUpdates++,
+            child: Center(
+              child: GlobalMiniPlayerBar(
+                item: item,
+                visible: true,
+                reduceMotion: true,
+                isPlaying: true,
+                position: const Duration(seconds: 30),
+                duration: const Duration(seconds: 60),
+                canSkipPrevious: true,
+                canSkipNext: true,
+                onOpen: () {},
+                onDismiss: () {},
+                onTogglePlayback: () {},
+                onSkipPrevious: () {},
+                onSkipNext: () {},
+                onExpandDragStart: () {},
+                onExpandDragUpdate: dragDeltas.add,
+                onExpandDragEnd: (_) {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(GlobalMiniPlayerBar)),
+    );
+    await gesture.moveBy(const Offset(0, -24));
+    await tester.pump(const Duration(milliseconds: 16));
+    await gesture.moveBy(const Offset(0, -36));
+    await tester.pump(const Duration(milliseconds: 16));
+    await gesture.up();
+    await tester.pump();
+
+    expect(parentDragUpdates, greaterThan(0));
+    expect(dragDeltas, isNotEmpty);
+    expect(
+      dragDeltas.fold<double>(0, (total, delta) => total + delta),
+      closeTo(-60, 1),
+    );
+  });
+
   testWidgets('hidden mini-player keeps its active drag recognizer hit-testable',
       (tester) async {
     final dragDeltas = <double>[];
