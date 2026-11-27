@@ -352,11 +352,12 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   }
 
   double _morphTravelExtent({required double fallback}) {
-    final source = _miniArtworkOriginRect;
-    final target = _sharedArtworkTargetRect.value;
-    if (source != null && target != null) {
-      final sheetTravel = _nowPlayingOriginRect?.top ?? source.top;
-      if (sheetTravel.isFinite && sheetTravel > 1) return sheetTravel;
+    // The sheet travels from the mini-player's top edge to screen top.
+    // Artwork-centre distance is shorter and makes drag progress nonlinear
+    // relative to the visible sheet movement.
+    final sheetTravel = _nowPlayingOriginRect?.top;
+    if (sheetTravel != null && sheetTravel.isFinite && sheetTravel > 1) {
+      return sheetTravel;
     }
     return math.max(1.0, fallback).toDouble();
   }
