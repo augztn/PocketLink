@@ -290,6 +290,7 @@ class ServerApi {
     Duration? connectTimeout,
     Duration? receiveTimeout,
     int? maxRetries,
+    bool background = false,
   }) => _cachedGet(
         'files:$path',
         _directoryCache,
@@ -304,6 +305,7 @@ class ServerApi {
                 receiveTimeout: receiveTimeout,
                 extra: {
                   if (maxRetries != null) 'pocketlink.maxRetries': maxRetries,
+                  if (background) 'pocketlink.priority': 'background',
                 },
               ),
               cancelToken: cancelToken,
@@ -341,15 +343,16 @@ class ServerApi {
     }) async {
       try {
         final listing = candidate.volume == null
-            ? await listDirectory(candidate.path)
-            : await listStorageDirectory(candidate.volume!, candidate.path);
+            ? await listDirectory(candidate.path, background: true)
+            : await listStorageDirectory(
+                candidate.volume!, candidate.path, background: true);
         for (final item in listing.items) {
           if (item.name.startsWith('.')) continue;
           final path = candidate.path.isEmpty
               ? item.name
               : '${candidate.path}/${item.name}';
           if (item.isDirectory) {
-            if (collectChildren && childDirectories.length < 6) {
+            if (collectChildren && childDirectories.length < 3) {
               childDirectories.add((
                 path: path,
                 volume: candidate.volume,
@@ -370,10 +373,26 @@ class ServerApi {
       }
     }
 
-    await Future.wait(candidates.map(
-      (candidate) => scan(candidate, collectChildren: true),
-    ));
-    await Future.wait(childDirectories.map(scan));
+    // Keep the dashboard's optional recent-file scan off the core lane and
+    // limit active scans so startup cannot flood the transport queue.
+    Future<void> scanBatch(
+      List<({String path, String? volume, String volumeName})> batch, {
+      bool collectChildren = false,
+    }) async {
+      var next = 0;
+      Future<void> worker() async {
+        while (next < batch.length) {
+          final candidate = batch[next++];
+          await scan(candidate, collectChildren: collectChildren);
+        }
+      }
+
+      final workers = batch.length < 2 ? batch.length : 2;
+      await Future.wait(List.generate(workers, (_) => worker()));
+    }
+
+    await scanBatch(candidates, collectChildren: true);
+    await scanBatch(childDirectories);
 
     found.sort((a, b) => b.modifiedAt.compareTo(a.modifiedAt));
     return found.take(limit.clamp(1, 50).toInt()).toList(growable: false);
@@ -674,8 +693,9 @@ class ServerApi {
 
   Future<DirectoryListing> listStorageDirectory(
     String volume,
-    String path,
-  ) => _cachedGet(
+    String path, {
+    bool background = false,
+  }) => _cachedGet(
         'storage:$volume:$path',
         _directoryCache,
         _directoryRequests,
@@ -683,6 +703,11 @@ class ServerApi {
           final response = await _dio.get<Map<String, dynamic>>(
             '/api/storage/list',
             queryParameters: {'volume': volume, 'path': path},
+            options: Options(
+              extra: {
+                if (background) 'pocketlink.priority': 'background',
+              },
+            ),
           );
           return DirectoryListing.fromJson(response.data ?? const {});
         }),
