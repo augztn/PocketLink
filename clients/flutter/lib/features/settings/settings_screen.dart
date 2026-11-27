@@ -489,131 +489,195 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  List<Widget> _homeSettingsChildren() => [
-    Padding(
-      padding: const EdgeInsets.only(bottom: 18),
-      child: TextField(
-        controller: _settingsSearchController,
-        onChanged: (value) => setState(() => _settingsSearchQuery = value),
-        textInputAction: TextInputAction.search,
-        decoration: InputDecoration(
-          hintText: 'Search settings',
-          prefixIcon: const Icon(Icons.search_rounded),
-          suffixIcon: _settingsSearchQuery.isEmpty
-              ? null
-              : IconButton(
-                  tooltip: 'Clear search',
-                  onPressed: () {
-                    _settingsSearchController.clear();
-                    setState(() => _settingsSearchQuery = '');
-                  },
-                  icon: const Icon(Icons.close_rounded),
-                ),
-          filled: true,
-          fillColor: Theme.of(context).colorScheme.surfaceContainerLow,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
-          contentPadding: const EdgeInsets.symmetric(vertical: 14),
+  Widget _categoryGrid(List<Widget> tiles) => LayoutBuilder(
+        builder: (context, constraints) {
+          final columns = constraints.maxWidth >= 620 ? 3 : 2;
+          final gap = 12.0;
+          final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
+          return Wrap(
+            spacing: gap,
+            runSpacing: gap,
+            children: tiles
+                .map((tile) => SizedBox(width: width, child: tile))
+                .toList(growable: false),
+          );
+        },
+      );
+
+  List<Widget> _homeSettingsChildren() {
+    final appearance = _categoryMatches('appearance')
+        ? _categoryTile(
+            id: 'appearance',
+            icon: Icons.palette_rounded,
+            tint: const Color(0xFF9B83F5),
+            title: 'Appearance',
+            subtitle: 'Theme, AMOLED, blur and visual effects',
+            badge: _settings.amoled
+                ? 'AMOLED'
+                : _settings.themeMode == ThemeMode.dark
+                    ? 'Dark'
+                    : _settings.themeMode == ThemeMode.light
+                        ? 'Light'
+                        : 'System',
+          )
+        : null;
+    final navigation = _categoryMatches('navigation')
+        ? _categoryTile(
+            id: 'navigation',
+            icon: Icons.tune_rounded,
+            tint: const Color(0xFF69AFFF),
+            title: 'Navigation',
+            subtitle: 'Dock, dashboard and shortcuts',
+            badge: '${_settings.visibleNavigationItems.length} tabs',
+          )
+        : null;
+    final storage = _categoryMatches('storage')
+        ? _categoryTile(
+            id: 'storage',
+            icon: Icons.storage_rounded,
+            tint: const Color(0xFFF0BD55),
+            title: 'Storage',
+            subtitle: 'Downloads, behavior and cache',
+            badge: '${_settings.downloadConcurrency} active',
+          )
+        : null;
+    final music = _categoryMatches('music')
+        ? _categoryTile(
+            id: 'music',
+            icon: Icons.graphic_eq_rounded,
+            tint: const Color(0xFFE58AB8),
+            title: 'Music',
+            subtitle: 'Playback, Discover, lyrics and video',
+            badge: _settings.discoverEnabled ? 'Discover on' : 'Discover off',
+          )
+        : null;
+    final network = _categoryMatches('network')
+        ? _categoryTile(
+            id: 'network',
+            icon: Icons.wifi_rounded,
+            tint: const Color(0xFF63D49A),
+            title: 'Network',
+            subtitle: 'Servers and connections',
+            badge: 'Manage',
+          )
+        : null;
+    final diagnostics = _categoryMatches('diagnostics')
+        ? _categoryTile(
+            id: 'diagnostics',
+            icon: Icons.build_circle_outlined,
+            tint: const Color(0xFF77A9EF),
+            title: 'Diagnostics',
+            subtitle: 'Backups and troubleshooting',
+            badge: 'Tools',
+          )
+        : null;
+    final about = _categoryMatches('about')
+        ? _categoryTile(
+            id: 'about',
+            icon: Icons.info_outline_rounded,
+            tint: const Color(0xFFDBB96B),
+            title: 'About',
+            subtitle: 'Version, architecture and licenses',
+            badge: 'Info',
+          )
+        : null;
+    final any = [
+      appearance, navigation, storage, music, network, diagnostics, about,
+    ].any((tile) => tile != null);
+
+    return [
+      Padding(
+        padding: const EdgeInsets.only(top: 4, bottom: 18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Settings',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                  ),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              'Make PocketLink work the way you want.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+          ],
         ),
       ),
-    ),
-    if (_categoryMatches('appearance') || _categoryMatches('navigation'))
-      SettingsSectionHeader('Personalization'),
-    if (_categoryMatches('appearance'))
-      _categoryTile(
-        id: 'appearance',
-        icon: Icons.palette_rounded,
-        tint: const Color(0xFF8D72E8),
-        title: 'Appearance',
-        subtitle: 'Theme, blur, OLED black mode and colors',
-        badge: _settings.amoled
-            ? 'AMOLED'
-            : _settings.themeMode == ThemeMode.dark
-                ? 'Dark'
-                : _settings.themeMode == ThemeMode.light
-                    ? 'Light'
-                    : 'System',
-      ),
-    if (_categoryMatches('navigation'))
-      _categoryTile(
-        id: 'navigation',
-        icon: Icons.tune_rounded,
-        tint: const Color(0xFF60A5FA),
-        title: 'Navigation',
-        subtitle: 'Dock, FAB, dashboard sections and shortcuts',
-        badge: '${_settings.visibleNavigationItems.length} tabs',
-      ),
-    if (_categoryMatches('storage') || _categoryMatches('music'))
-      SettingsSectionHeader('Storage & Media'),
-    if (_categoryMatches('storage'))
-      _categoryTile(
-        id: 'storage',
-        icon: Icons.storage_rounded,
-        tint: const Color(0xFFFBBF24),
-        title: 'Storage',
-        subtitle: 'Downloads, transfer behavior and cache',
-        badge: '${_settings.downloadConcurrency} concurrent',
-      ),
-    if (_categoryMatches('music'))
-      _categoryTile(
-        id: 'music',
-        icon: Icons.graphic_eq_rounded,
-        tint: const Color(0xFFDB79A8),
-        title: 'Music',
-        subtitle: 'Library, playback, Discover, lyrics and video',
-        badge: _settings.discoverEnabled ? 'Discover On' : 'Discover Off',
-      ),
-    if (_categoryMatches('network') || _categoryMatches('diagnostics') || _categoryMatches('about'))
-      SettingsSectionHeader('Network & System'),
-    if (_categoryMatches('network'))
-      _categoryTile(
-        id: 'network',
-        icon: Icons.wifi_rounded,
-        tint: const Color(0xFF4ADE80),
-        title: 'Network',
-        subtitle: 'Saved servers and connection settings',
-        badge: 'Manage',
-      ),
-    if (_categoryMatches('diagnostics'))
-      _categoryTile(
-        id: 'diagnostics',
-        icon: Icons.build_circle_outlined,
-        tint: const Color(0xFF60A5FA),
-        title: 'Diagnostics',
-        subtitle: 'Backups, restore, logs and troubleshooting',
-        badge: 'Tools',
-      ),
-    if (_categoryMatches('about'))
-      _categoryTile(
-        id: 'about',
-        icon: Icons.info_outline_rounded,
-        tint: const Color(0xFFFBBF24),
-        title: 'About',
-        subtitle: 'Version information, architecture and licenses',
-        badge: 'Info',
-      ),
-    if (!_categoryMatches('appearance') &&
-        !_categoryMatches('navigation') &&
-        !_categoryMatches('storage') &&
-        !_categoryMatches('music') &&
-        !_categoryMatches('network') &&
-        !_categoryMatches('diagnostics') &&
-        !_categoryMatches('about'))
       Padding(
-        padding: const EdgeInsets.symmetric(vertical: 36),
-        child: Center(
-          child: Text(
-            'No settings found for “$_settingsSearchQuery”.',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+        padding: const EdgeInsets.only(bottom: 22),
+        child: TextField(
+          controller: _settingsSearchController,
+          onChanged: (value) => setState(() => _settingsSearchQuery = value),
+          textInputAction: TextInputAction.search,
+          decoration: InputDecoration(
+            hintText: 'Search settings',
+            prefixIcon: const Icon(Icons.search_rounded),
+            suffixIcon: _settingsSearchQuery.isEmpty
+                ? null
+                : IconButton(
+                    tooltip: 'Clear search',
+                    onPressed: () {
+                      _settingsSearchController.clear();
+                      setState(() => _settingsSearchQuery = '');
+                    },
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+            filled: true,
+            fillColor: Theme.of(context).colorScheme.surfaceContainerLow,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(18),
+              borderSide: BorderSide(
+                color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.45),
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(18),
+              borderSide: BorderSide(
+                color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.45),
+              ),
+            ),
+            contentPadding: const EdgeInsets.symmetric(vertical: 16),
+          ),
+        ),
+      ),
+      if (appearance != null || navigation != null) ...[
+        const SettingsSectionHeader('Personalization'),
+        _categoryGrid([if (appearance != null) appearance, if (navigation != null) navigation]),
+        const SizedBox(height: 22),
+      ],
+      if (storage != null || music != null) ...[
+        const SettingsSectionHeader('Storage & Media'),
+        _categoryGrid([if (storage != null) storage, if (music != null) music]),
+        const SizedBox(height: 22),
+      ],
+      if (network != null || diagnostics != null || about != null) ...[
+        const SettingsSectionHeader('Network & System'),
+        _categoryGrid([
+          if (network != null) network,
+          if (diagnostics != null) diagnostics,
+          if (about != null) about,
+        ]),
+      ],
+      if (!any)
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 36),
+          child: Center(
+            child: Text(
+              'No settings found for “$_settingsSearchQuery”.',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
             ),
           ),
         ),
-      ),
-  ];
+    ];
+  }
 
   Widget _categoryTile({
     required String id,
@@ -628,17 +692,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final query = _settingsSearchQuery.trim();
     final visibleSubtitle = query.isEmpty || matches.isEmpty
         ? subtitle
-        : '$subtitle · Matches: ${matches.join(', ')}';
+        : '${matches.length} matching setting${matches.length == 1 ? '' : 's'}';
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 280),
+      duration: const Duration(milliseconds: 260),
       curve: Curves.easeOutCubic,
       builder: (context, value, child) {
         final progress = MediaQuery.of(context).disableAnimations ? 1.0 : value;
         return Opacity(
           opacity: progress,
           child: Transform.translate(
-            offset: Offset(0, 10 * (1 - progress)),
+            offset: Offset(0, 8 * (1 - progress)),
             child: Transform.scale(
               scale: 0.985 + (0.015 * progress),
               child: child,
@@ -647,75 +711,89 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
       },
       child: Card(
-        margin: const EdgeInsets.only(bottom: 10),
+        margin: EdgeInsets.zero,
         color: colors.surfaceContainerLow,
         elevation: 0,
         clipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(22),
           side: BorderSide(
-            color: colors.outlineVariant.withValues(alpha: 0.56),
+            color: colors.outlineVariant.withValues(alpha: 0.48),
           ),
         ),
         child: InkWell(
           onTap: () => _openCategory(id),
-          borderRadius: BorderRadius.circular(20),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
-            child: Row(
-              children: [
-                Container(
-                  width: 46,
-                  height: 46,
-                  decoration: BoxDecoration(
-                    color: tint.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  child: Icon(icon, color: tint, size: 23),
-                ),
-                const SizedBox(width: 13),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+          borderRadius: BorderRadius.circular(22),
+          child: SizedBox(
+            height: 154,
+            child: Padding(
+              padding: const EdgeInsets.all(15),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                      Text(
-                        title,
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w800,
-                            ),
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: tint.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Icon(icon, color: tint, size: 22),
                       ),
-                      const SizedBox(height: 3),
-                      Text(
-                        visibleSubtitle,
-                        maxLines: query.isEmpty ? 2 : 4,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: colors.onSurfaceVariant,
+                      const Spacer(),
+                      if (badge != null)
+                        Flexible(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: tint.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(20),
                             ),
-                      ),
+                            child: Text(
+                              badge,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: tint,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
-                ),
-                if (badge != null) ...[
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: tint.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      badge,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: tint,
-                            fontWeight: FontWeight.w800,
-                          ),
-                    ),
+                  const Spacer(),
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.2,
+                        ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          visibleSubtitle,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: colors.onSurfaceVariant,
+                                height: 1.25,
+                              ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(Icons.arrow_forward_rounded, size: 16, color: colors.onSurfaceVariant),
+                    ],
                   ),
                 ],
-                const SizedBox(width: 4),
-                Icon(Icons.chevron_right_rounded, color: colors.onSurfaceVariant),
-              ],
+              ),
             ),
           ),
         ),
