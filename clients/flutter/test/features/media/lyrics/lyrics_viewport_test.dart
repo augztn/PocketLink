@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:pocketlink_client/features/media/lyrics/lyrics_repository.dart';
 import 'package:pocketlink_client/features/media/lyrics/lyrics_viewport.dart';
 
 void main() {
@@ -16,8 +17,8 @@ void main() {
       ],
     );
 
-    await tester.view.setPhysicalSize(const Size(432, 900));
-    await tester.view.setDevicePixelRatio(1);
+    tester.view.physicalSize = const Size(432, 900);
+    tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
