@@ -306,26 +306,21 @@ class _MiniPlayerGestureSurface extends StatefulWidget {
 
 class _MiniPlayerGestureSurfaceState extends State<_MiniPlayerGestureSurface> {
   Offset? _pointerDownPosition;
-  Offset _lastPosition = Offset.zero;
   double _deliveredVerticalDistance = 0;
   double _horizontalDistance = 0;
-  double _verticalDistance = 0;
   Axis? _lockedAxis;
   bool _expandStarted = false;
 
   void _onPointerDown(PointerDownEvent event) {
     _pointerDownPosition = event.position;
-    _lastPosition = event.position;
     _deliveredVerticalDistance = 0;
     _horizontalDistance = 0;
-    _verticalDistance = 0;
     _lockedAxis = null;
     _expandStarted = false;
   }
 
   void _onPanStart(DragStartDetails details) {
     _pointerDownPosition ??= details.globalPosition;
-    _lastPosition = details.globalPosition;
   }
 
   void _onPanUpdate(DragUpdateDetails details) {
@@ -341,8 +336,7 @@ class _MiniPlayerGestureSurfaceState extends State<_MiniPlayerGestureSurface> {
           : Axis.horizontal;
     }
     if (_lockedAxis == Axis.vertical) {
-      _verticalDistance = total.dy;
-      final delta = total.dy - _deliveredVerticalDistance;
+        final delta = total.dy - _deliveredVerticalDistance;
       _deliveredVerticalDistance = total.dy;
       if (!_expandStarted && total.dy < 0) {
         _expandStarted = true;
@@ -383,7 +377,6 @@ class _MiniPlayerGestureSurfaceState extends State<_MiniPlayerGestureSurface> {
 
   void _resetGesture() {
     _pointerDownPosition = null;
-    _lastPosition = Offset.zero;
     _deliveredVerticalDistance = 0;
     _horizontalDistance = 0;
     _verticalDistance = 0;
