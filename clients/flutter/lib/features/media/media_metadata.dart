@@ -57,11 +57,10 @@ String resolveMediaArtist({
   // only a display title while the actual filename retains "Title - Artist".
   final parsedTitleArtist = parseArtistSuffix(title);
   if (parsedTitleArtist != null) return parsedTitleArtist;
-  final fileName = path.split('/').where((part) => part.isNotEmpty).lastOrNull ?? '';
+  final parts = path.split('/').where((part) => part.trim().isNotEmpty).toList();
+  final fileName = parts.isEmpty ? '' : parts.last;
   final parsedFileArtist = parseArtistSuffix(fileName);
   if (parsedFileArtist != null) return parsedFileArtist;
-
-  final parts = path.split('/').where((part) => part.trim().isNotEmpty).toList();
   if (parts.length > 1) {
     final folder = parts[parts.length - 2].trim();
     const genericFolders = {
