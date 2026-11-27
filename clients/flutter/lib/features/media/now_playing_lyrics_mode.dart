@@ -30,10 +30,8 @@ class NowPlayingLyricsMode extends StatelessWidget {
   Widget build(BuildContext context) {
     return IgnorePointer(
       ignoring: progress < 0.02,
-      child: Opacity(
-        opacity: progress,
-        child: SafeArea(
-          child: LayoutBuilder(
+      child: SafeArea(
+        child: LayoutBuilder(
             builder: (context, constraints) {
               final width = constraints.maxWidth;
               final height = constraints.maxHeight;
@@ -43,6 +41,9 @@ class NowPlayingLyricsMode extends StatelessWidget {
               return Stack(
                 clipBehavior: Clip.none,
                 children: [
+                  const Positioned.fill(
+                    child: ColoredBox(color: Color(0x9E000000)),
+                  ),
                   Positioned.fromRect(
                     rect: artRect,
                     child: GestureDetector(
