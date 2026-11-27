@@ -53,7 +53,8 @@ class DiscoverScreen extends StatefulWidget {
 }
 
 class _DiscoverScreenState extends State<DiscoverScreen>
-    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver,
+        AutomaticKeepAliveClientMixin<DiscoverScreen> {
   static final Map<String, List<IndexedFile>> _localLibraryCache = {};
   static final Map<String, DateTime> _localLibraryCacheUpdated = {};
   final DiscoverService _service = DiscoverService();
@@ -84,6 +85,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   Future<void>? _homeRequest;
   final ScrollController _scrollController = ScrollController();
   late String _lastRegion;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -1052,6 +1056,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     DiscoverTrack track, {
     double size = 56,
     double radius = 7,
+    BoxFit fit = BoxFit.cover,
   }) {
     final show = AppSettings.instance.discoverArtwork && track.thumbnailUrl.isNotEmpty;
     final placeholder = Container(
@@ -1071,6 +1076,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                   size <= 60 ? 160 : 544,
                 ),
                 cacheWidth: size <= 60 ? 160 : 544,
+                fit: fit,
                 fallback: placeholder,
                 errorFallback: _artFallback(size),
               )
@@ -1385,7 +1391,14 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             child: Stack(
               fit: StackFit.expand,
               children: [
-                _art(track, size: double.infinity, radius: 0),
+                _art(
+                  track,
+                  size: double.infinity,
+                  radius: 0,
+                  // Discover thumbnails are often 16:9 video frames; contain
+                  // them in the hero card instead of cropping embedded text.
+                  fit: BoxFit.contain,
+                ),
                 const DecoratedBox(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
@@ -1996,6 +2009,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   }
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final top = LayoutInsetsScope.of(context).topClearance;
     final bottom = LayoutInsetsScope.of(context).bottomClearance;
     final hasTracks = _tracks.isNotEmpty;
