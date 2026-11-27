@@ -312,7 +312,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _pageTitle(String? category) => switch (category) {
         'Appearance' => 'Appearance',
         'Dashboard & Shortcuts' => 'Dashboard',
-        'Connection & Diagnostics' => 'Diagnostics',
+        'Connectivity' => 'Connectivity',
+        'Maintenance' => 'Maintenance',
         'Music / Now Playing Button' => 'Music & Player',
         'Customize Navigation Bar' => 'Navigation',
         _ => category ?? 'Settings',
@@ -346,10 +347,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             category: switch (id) {
               'appearance' => 'Appearance',
               'dashboard' => 'Dashboard & Shortcuts',
-              'media' => 'Media & Storage',
+              'storage' => 'Storage',
               'discover' => 'Discover',
-              'backup' => 'Backup & Restore',
-              _ => 'Connection & Diagnostics',
+              'maintenance' => 'Maintenance',
+              'connectivity' => 'Connectivity',
+              _ => 'Connectivity',
             },
           ),
         ),
@@ -396,20 +398,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'Playback controls': 'video controls seek speed fullscreen gestures',
         'Display and subtitles': 'fit scaling subtitles font size orientation',
       },
-      'media': {
+      'storage': {
         'Download location': 'download directory folder location',
         'Download concurrency': 'concurrent simultaneous downloads',
         'Wi-Fi only': 'wifi mobile data network',
         'Auto-resume': 'resume unfinished downloads launch',
         'Cache': 'temporary files image cache clear',
       },
-      'backup': {
+      'maintenance': {
         'Export settings': 'backup export json preferences',
         'Import settings': 'restore import json preferences',
-      },
-      'connection': {
-        'Saved servers': 'server connections switch',
         'Diagnostic logs': 'diagnostics troubleshooting logs export',
+      },
+      'connectivity': {
+        'Saved servers': 'server connections switch',
       },
       'about': {
         'Version information': 'version about pocketlink',
@@ -426,9 +428,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       'audio': 'audio music',
       'discover': 'discover explore',
       'video': 'video player',
-      'media': 'media storage downloads',
-      'backup': 'backup restore',
-      'connection': 'connection network',
+      'storage': 'storage downloads',
+      'maintenance': 'maintenance backup restore diagnostics logs',
+      'connectivity': 'connectivity connection network server',
       'about': 'about pocketlink',
     };
     return options.entries
@@ -475,8 +477,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       'Dashboard & Shortcuts': 'Choose which Home sections appear and arrange their order.',
       'Discover': 'Configure music discovery, matching, playback preferences and playlists.',
       'Media & Storage': 'Manage download behavior, download location and temporary cache.',
-      'Backup & Restore': 'Export or restore supported PocketLink preferences.',
-      'Connection & Diagnostics': 'Manage saved server connections and export troubleshooting logs.',
+      'Storage': 'Manage download location, transfer behavior and temporary cache.',
+      'Maintenance': 'Back up settings, restore preferences and export diagnostic logs.',
+      'Connectivity': 'Manage saved PocketLink server connections.',
     };
     final description = descriptions[category];
     if (description == null) return const SizedBox.shrink();
@@ -559,8 +562,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _settings.showStorageOverview,
         ].where((visible) => visible).length}/6 sections',
       ),
-    if (_categoryMatches('audio') || _categoryMatches('discover') || _categoryMatches('video') || _categoryMatches('media') || _categoryMatches('backup'))
-      _settingsGroupTitle('Media & Storage'),
+    if (_categoryMatches('audio') || _categoryMatches('discover') || _categoryMatches('video'))
+      _settingsGroupTitle('Media'),
     if (_categoryMatches('audio'))
       _categoryTile(
         id: 'audio',
@@ -588,35 +591,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
         subtitle: 'Playback gestures, controls, scaling and subtitles',
         badge: '${_settings.videoDefaultSpeed.toStringAsFixed(2)}×',
       ),
-    if (_categoryMatches('media'))
+    if (_categoryMatches('storage'))
+      _settingsGroupTitle('Storage'),
+    if (_categoryMatches('storage'))
       _categoryTile(
-        id: 'media',
-        icon: Icons.perm_media_rounded,
+        id: 'storage',
+        icon: Icons.storage_rounded,
         tint: const Color(0xFFFBBF24),
-        title: 'Media Library & Storage',
-        subtitle: 'Download location, download behavior and temporary cache',
+        title: 'Storage & Downloads',
+        subtitle: 'Download location, concurrency, network behavior and cache',
         badge: '${_settings.downloadConcurrency} concurrent',
       ),
-    if (_categoryMatches('backup'))
+    if (_categoryMatches('connectivity'))
+      _settingsGroupTitle('Connectivity'),
+    if (_categoryMatches('connectivity'))
       _categoryTile(
-        id: 'backup',
-        icon: Icons.backup_rounded,
-        tint: const Color(0xFF60A5FA),
-        title: 'Backup & Restore',
-        subtitle: 'Export or restore your PocketLink preferences',
-        badge: 'JSON',
-      ),
-    if (_categoryMatches('connection') || _categoryMatches('about'))
-      _settingsGroupTitle('Network & System'),
-    if (_categoryMatches('connection'))
-      _categoryTile(
-        id: 'connection',
+        id: 'connectivity',
         icon: Icons.wifi_rounded,
         tint: const Color(0xFF4ADE80),
-        title: 'Connection & Diagnostics',
-        subtitle: 'Saved servers, connectivity help and logs',
+        title: 'Server Connections',
+        subtitle: 'Saved PocketLink servers and connection switching',
         badge: 'Manage',
       ),
+    if (_categoryMatches('maintenance'))
+      _settingsGroupTitle('Maintenance'),
+    if (_categoryMatches('maintenance'))
+      _categoryTile(
+        id: 'maintenance',
+        icon: Icons.build_circle_outlined,
+        tint: const Color(0xFF60A5FA),
+        title: 'Maintenance & Backups',
+        subtitle: 'Settings backup, restore and diagnostic logs',
+        badge: 'Tools',
+      ),
+    if (_categoryMatches('about'))
+      _settingsGroupTitle('About'),
     if (_categoryMatches('about'))
       _categoryTile(
         id: 'about',
@@ -632,9 +641,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         !_categoryMatches('audio') &&
         !_categoryMatches('discover') &&
         !_categoryMatches('video') &&
-        !_categoryMatches('media') &&
-        !_categoryMatches('backup') &&
-        !_categoryMatches('connection') &&
+        !_categoryMatches('storage') &&
+        !_categoryMatches('connectivity') &&
+        !_categoryMatches('maintenance') &&
         !_categoryMatches('about'))
       Padding(
         padding: const EdgeInsets.symmetric(vertical: 36),
@@ -804,7 +813,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ? _homeSettingsChildren()
               : [
                 if (widget.category != null) _categoryIntro(widget.category!),
-                if (widget.category == 'Backup & Restore')
+                if (widget.category == 'Maintenance')
                   _section('Settings Backup', [
                     ListTile(
                       leading: const Icon(Icons.file_upload_outlined),
@@ -1119,7 +1128,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                   ]),
-                if (widget.category == 'Media & Storage')
+                if (widget.category == 'Storage')
                   _section('Media Library & Storage', [
                     FutureBuilder<String>(
                       future: DownloadManagerService.instance.defaultDirectory(),
@@ -1204,25 +1213,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onTap: _clearingCache ? null : _clearCache,
                     ),
                   ]),
-                  if (widget.category == 'Connection & Diagnostics')
-                            _section('Connection & Diagnostics', [
-                                ListTile(
-                                  leading: const Icon(Icons.dns_outlined),
-                                  title: const Text('Saved servers'),
-                                  subtitle: const Text('Manage and switch PocketLink connections'),
-                                  trailing: const Icon(Icons.chevron_right_rounded),
-                                  onTap: widget.onOpenSavedServers,
-                                ),
-                                ListTile(
-                                  leading: const Icon(Icons.bug_report_outlined),
-                                  title: const Text('Export diagnostic logs'),
-                                  subtitle: const Text('Generate and share the app troubleshooting log'),
-                                  trailing: _exportingLogs
-                                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                                      : const Icon(Icons.ios_share_rounded),
-                                  onTap: _exportingLogs ? null : _exportLogs,
-                                ),
-                              ]),
+                  if (widget.category == 'Connectivity')
+                    _section('Server Connections', [
+                      ListTile(
+                        leading: const Icon(Icons.dns_outlined),
+                        title: const Text('Saved servers'),
+                        subtitle: const Text('Manage and switch PocketLink connections'),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: widget.onOpenSavedServers,
+                      ),
+                    ]),
+                  if (widget.category == 'Maintenance')
+                    _section('Diagnostics', [
+                      ListTile(
+                        leading: const Icon(Icons.bug_report_outlined),
+                        title: const Text('Export diagnostic logs'),
+                        subtitle: const Text('Generate and share the app troubleshooting log'),
+                        trailing: _exportingLogs
+                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                            : const Icon(Icons.ios_share_rounded),
+                        onTap: _exportingLogs ? null : _exportLogs,
+                      ),
+                    ]),
                 ],
                 ),
               ],
