@@ -41,15 +41,15 @@ class NowPlayingLyricsMode extends StatelessWidget {
               return Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  const Positioned.fill(
-                    child: ColoredBox(color: Color(0x9E000000)),
-                  ),
                   Positioned.fromRect(
                     rect: artRect,
                     child: GestureDetector(
                       onTap: onClose,
                       child: artwork,
                     ),
+                  ),
+                  const Positioned.fill(
+                    child: ColoredBox(color: Color(0x9E000000)),
                   ),
                   Column(
                     children: [
