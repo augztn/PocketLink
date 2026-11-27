@@ -304,100 +304,56 @@ class _MiniPlayerGestureSurface extends StatefulWidget {
       _MiniPlayerGestureSurfaceState();
 }
 
-enum _MiniPlayerDragAxis { undecided, vertical, horizontal }
-
 class _MiniPlayerGestureSurfaceState extends State<_MiniPlayerGestureSurface> {
-  Offset? _startPosition;
-  Offset _lastAppliedOffset = Offset.zero;
-  _MiniPlayerDragAxis _axis = _MiniPlayerDragAxis.undecided;
+  double _horizontalDistance = 0;
   bool _expandStarted = false;
 
-  void _onPanDown(DragDownDetails details) {
-    _startPosition = details.globalPosition;
-    _lastAppliedOffset = Offset.zero;
-    _axis = _MiniPlayerDragAxis.undecided;
+  void _onVerticalDragStart(DragStartDetails details) {
     _expandStarted = false;
   }
 
-  void _onPanStart(DragStartDetails details) {
-    _lockGestureAxis(details.globalPosition);
-  }
-
-  void _onPanUpdate(DragUpdateDetails details) {
-    final totalOffset = _startPosition == null
-        ? _lastAppliedOffset + details.delta
-        : details.globalPosition - _startPosition!;
-
-    if (_axis == _MiniPlayerDragAxis.undecided) {
-      if (totalOffset.distance < 8) {
-        _lastAppliedOffset = totalOffset;
-        return;
-      }
-      _lockGestureAxis(details.globalPosition);
-    }
-
-    final delta = totalOffset - _lastAppliedOffset;
-    _lastAppliedOffset = totalOffset;
-    if (_axis != _MiniPlayerDragAxis.vertical) return;
-
-    // Apply the full pointer-down displacement when the axis locks; subsequent
-    // updates are incremental. Small initial diagonal jitter cannot steal an
-    // otherwise vertical swipe.
-    if (!_expandStarted && totalOffset.dy < 0) {
+  void _onVerticalDragUpdate(DragUpdateDetails details) {
+    final delta = details.primaryDelta ?? 0;
+    if (!_expandStarted && delta < 0) {
       _expandStarted = true;
       widget.onExpandDragStart?.call();
-      widget.onExpandDragUpdate?.call(totalOffset.dy);
-    } else if (_expandStarted) {
-      widget.onExpandDragUpdate?.call(delta.dy);
     }
+    if (_expandStarted) widget.onExpandDragUpdate?.call(delta);
   }
 
-  void _lockGestureAxis(Offset globalPosition) {
-    if (_axis != _MiniPlayerDragAxis.undecided) return;
-    final start = _startPosition;
-    if (start == null) return;
-    final offset = globalPosition - start;
-    if (offset.distance < 8) return;
-    _axis = offset.dy.abs() > offset.dx.abs()
-        ? _MiniPlayerDragAxis.vertical
-        : _MiniPlayerDragAxis.horizontal;
-    _lastAppliedOffset = offset;
-    if (_axis == _MiniPlayerDragAxis.vertical && offset.dy < 0) {
-      _expandStarted = true;
-      widget.onExpandDragStart?.call();
-      widget.onExpandDragUpdate?.call(offset.dy);
-    }
-  }
-
-  void _onPanEnd(DragEndDetails details) {
-    final velocity = details.velocity.pixelsPerSecond;
-    if (_axis == _MiniPlayerDragAxis.horizontal) {
-      final horizontalDistance = _lastAppliedOffset.dx;
-      if (widget.canSkipNext &&
-          (horizontalDistance < -80 || velocity.dx < -500)) {
-        widget.onSkipNext();
-      } else if (widget.canSkipPrevious &&
-          (horizontalDistance > 80 || velocity.dx > 500)) {
-        widget.onSkipPrevious();
-      }
-    } else if (_expandStarted) {
-      widget.onExpandDragEnd?.call(velocity.dy);
-    } else if (!widget.isPlaying && velocity.dy > 300) {
+  void _onVerticalDragEnd(DragEndDetails details) {
+    final velocity = details.primaryVelocity ?? 0;
+    if (_expandStarted) {
+      widget.onExpandDragEnd?.call(velocity);
+    } else if (!widget.isPlaying && velocity > 300) {
       widget.onDismiss();
     }
-    _reset();
-  }
-
-  void _onPanCancel() {
-    if (_expandStarted) widget.onExpandDragEnd?.call(0);
-    _reset();
-  }
-
-  void _reset() {
-    _startPosition = null;
-    _lastAppliedOffset = Offset.zero;
-    _axis = _MiniPlayerDragAxis.undecided;
     _expandStarted = false;
+  }
+
+  void _onVerticalDragCancel() {
+    if (_expandStarted) widget.onExpandDragEnd?.call(0);
+    _expandStarted = false;
+  }
+
+  void _onHorizontalDragStart(DragStartDetails details) {
+    _horizontalDistance = 0;
+  }
+
+  void _onHorizontalDragUpdate(DragUpdateDetails details) {
+    _horizontalDistance += details.primaryDelta ?? 0;
+  }
+
+  void _onHorizontalDragEnd(DragEndDetails details) {
+    final velocity = details.primaryVelocity ?? 0;
+    if (widget.canSkipNext &&
+        (_horizontalDistance < -80 || velocity < -500)) {
+      widget.onSkipNext();
+    } else if (widget.canSkipPrevious &&
+        (_horizontalDistance > 80 || velocity > 500)) {
+      widget.onSkipPrevious();
+    }
+    _horizontalDistance = 0;
   }
 
   @override
@@ -405,11 +361,13 @@ class _MiniPlayerGestureSurfaceState extends State<_MiniPlayerGestureSurface> {
         behavior: HitTestBehavior.opaque,
         dragStartBehavior: DragStartBehavior.down,
         onTap: widget.onTap,
-        onPanDown: _onPanDown,
-        onPanStart: _onPanStart,
-        onPanUpdate: _onPanUpdate,
-        onPanEnd: _onPanEnd,
-        onPanCancel: _onPanCancel,
+        onVerticalDragStart: _onVerticalDragStart,
+        onVerticalDragUpdate: _onVerticalDragUpdate,
+        onVerticalDragEnd: _onVerticalDragEnd,
+        onVerticalDragCancel: _onVerticalDragCancel,
+        onHorizontalDragStart: _onHorizontalDragStart,
+        onHorizontalDragUpdate: _onHorizontalDragUpdate,
+        onHorizontalDragEnd: _onHorizontalDragEnd,
         child: widget.child,
       );
 }
