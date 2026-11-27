@@ -601,7 +601,7 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
             initialIndex: player.currentIndex,
             resumeExisting: true,
             morphAnimation: animation,
-            useSharedArtwork: true,
+            useSharedArtwork: miniArtworkRect != null,
             artworkTargetKey: PocketLinkNavigation.nowPlayingArtworkKey,
             onArtworkChanged: onArtworkChanged,
             onDismiss: onDismiss,
