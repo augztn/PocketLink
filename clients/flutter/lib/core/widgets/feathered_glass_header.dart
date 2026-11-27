@@ -11,10 +11,10 @@ import 'liquid_glass_pill.dart';
 abstract final class PocketLinkHeaderBlurStyle {
   static const double sigma = 24.0;
   static const List<Color> darkScrim = [
-    Color(0xE6000000),
-    Color(0xD9000000),
-    Color(0xB3000000),
-    Color(0x59000000),
+    Color(0xF2000000),
+    Color(0xE8000000),
+    Color(0xC9000000),
+    Color(0x66000000),
     Colors.transparent,
   ];
   static const List<double> scrimStops = [0.0, 0.16, 0.38, 0.68, 1.0];
