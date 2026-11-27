@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter/physics.dart';
-import 'package:flutter/foundation.dart' show ValueListenable;
+import 'package:flutter/foundation.dart' show ValueListenable, kIsWeb;
 
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/scheduler.dart' show TickerCanceled;
@@ -44,6 +44,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   Rect? _nowPlayingOriginRect;
   Rect? _miniArtworkOriginRect;
   final ValueNotifier<Uint8List?> _sharedArtwork = ValueNotifier(null);
+  final SnapshotController _transitionSnapshot = SnapshotController();
   Route<void>? _nowPlayingRoute;
   late final AnimationController _nowPlayingController;
   MediaQueueItem? _lastTrack;
@@ -65,6 +66,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
       duration: const Duration(milliseconds: 380),
       reverseDuration: const Duration(milliseconds: 320),
     );
+    _nowPlayingController.addStatusListener(_onMorphAnimationStatus);
     NowPlayingOverlayController.register(
       _openNowPlaying,
       progress: _nowPlayingController,
@@ -79,11 +81,21 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     _trackPopupTimer?.cancel();
     NowPlayingOverlayController.unregister();
     _nowPlayingRoute = null;
+    _nowPlayingController.removeStatusListener(_onMorphAnimationStatus);
     _nowPlayingController.stop();
     _isNowPlayingDragging.dispose();
     _sharedArtwork.dispose();
+    _transitionSnapshot.dispose();
     _nowPlayingController.dispose();
     super.dispose();
+  }
+
+  void _onMorphAnimationStatus(AnimationStatus status) {
+    // Freeze the expensive expanded-player subtree only while its shared
+    // geometry is moving. Playback and player state remain live underneath.
+    _transitionSnapshot.allowSnapshotting = !kIsWeb &&
+        (status == AnimationStatus.forward ||
+            status == AnimationStatus.reverse);
   }
 
   void _publishSharedArtwork(Uint8List? bytes) {
@@ -213,6 +225,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
           originRect: _nowPlayingOriginRect,
           sourceArtworkRect: _miniArtworkOriginRect,
           artworkBytes: _sharedArtwork,
+          transitionSnapshot: _transitionSnapshot,
           artworkTargetKey: PocketLinkNavigation.nowPlayingArtworkKey,
           onArtworkChanged: _publishSharedArtwork,
           player: player,
@@ -557,6 +570,7 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
     required this.originRect,
     required this.sourceArtworkRect,
     required this.artworkBytes,
+    required this.transitionSnapshot,
     required this.artworkTargetKey,
     required this.onArtworkChanged,
     required this.player,
@@ -572,6 +586,7 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
   final Rect? originRect;
   final Rect? sourceArtworkRect;
   final ValueNotifier<Uint8List?> artworkBytes;
+  final SnapshotController transitionSnapshot;
   final GlobalKey artworkTargetKey;
   final ValueChanged<Uint8List?> onArtworkChanged;
   final PersistentAudioPlayer player;
@@ -602,7 +617,12 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
       data: media,
       child: AnimatedBuilder(
         animation: animation,
-        child: NowPlayingScreen(
+        child: SnapshotWidget(
+          controller: transitionSnapshot,
+          mode: SnapshotMode.permissive,
+          autoresize: true,
+          child: RepaintBoundary(
+            child: NowPlayingScreen(
           api: api,
           queue: player.queue,
           initialIndex: player.currentIndex,
@@ -615,6 +635,8 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
           onDismissDragStart: onDragStart,
           onDismissDragUpdate: onDragUpdate,
           onDismissDragEnd: onDragEnd,
+            ),
+          ),
         ),
         builder: (context, animatedChild) {
           final t = animation.value.clamp(0.0, 1.0).toDouble();
