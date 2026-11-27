@@ -1577,95 +1577,99 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   Widget _moodHomeShelf() {
     final sections = _moodSections.where((item) => item.items.isNotEmpty).toList();
     if (sections.isEmpty) return const SliverToBoxAdapter();
-    final section = sections.first;
     return SliverToBoxAdapter(
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        _shelfHeading(section.title, onSeeAll: _openMoodsAndMoments),
-        SizedBox(
-          height: 116,
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            scrollDirection: Axis.horizontal,
-            itemCount: section.items.length.clamp(0, 12),
-            separatorBuilder: (_, __) => const SizedBox(width: 10),
-            itemBuilder: (context, index) {
-              final mood = section.items[index];
-              final base = mood.stripeColor == 0
-                  ? Theme.of(context).colorScheme.surfaceContainerHighest
-                  : Color(mood.stripeColor);
-              return SizedBox(
-                width: 148,
-                child: Material(
-                  borderRadius: BorderRadius.circular(12),
-                  clipBehavior: Clip.antiAlias,
-                  child: InkWell(
-                    onTap: () => _openMood(mood),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                Color.lerp(base, Colors.white, .12)!,
-                                base,
-                                Color.lerp(base, Colors.black, .28)!,
-                              ],
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          right: -18,
-                          top: -28,
-                          child: Container(
-                            width: 112,
-                            height: 112,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: .18),
-                                width: 1.2,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final section in sections) ...[
+            _shelfHeading(section.title, onSeeAll: _openMoodsAndMoments),
+            SizedBox(
+              height: 116,
+              child: ListView.separated(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                scrollDirection: Axis.horizontal,
+                itemCount: section.items.length.clamp(0, 12),
+                separatorBuilder: (_, __) => const SizedBox(width: 10),
+                itemBuilder: (context, index) {
+                  final mood = section.items[index];
+                  final base = mood.stripeColor == 0
+                      ? Theme.of(context).colorScheme.surfaceContainerHighest
+                      : Color(mood.stripeColor);
+                  return SizedBox(
+                    width: 148,
+                    child: Material(
+                      borderRadius: BorderRadius.circular(12),
+                      clipBehavior: Clip.antiAlias,
+                      child: InkWell(
+                        onTap: () => _openMood(mood),
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Color.lerp(base, Colors.white, .12)!,
+                                    base,
+                                    Color.lerp(base, Colors.black, .28)!,
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                        ),
-                        Positioned(
-                          right: 6,
-                          top: 12,
-                          child: Icon(
-                            Icons.graphic_eq_rounded,
-                            size: 42,
-                            color: Colors.white.withValues(alpha: .22),
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(13, 12, 13, 12),
-                          child: Align(
-                            alignment: Alignment.bottomLeft,
-                            child: Text(
-                              mood.title,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                                height: 1.15,
+                            Positioned(
+                              right: -18,
+                              top: -28,
+                              child: Container(
+                                width: 112,
+                                height: 112,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: .18),
+                                    width: 1.2,
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
+                            Positioned(
+                              right: 6,
+                              top: 12,
+                              child: Icon(
+                                Icons.graphic_eq_rounded,
+                                size: 42,
+                                color: Colors.white.withValues(alpha: .22),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(13, 12, 13, 12),
+                              child: Align(
+                                alignment: Alignment.bottomLeft,
+                                child: Text(
+                                  mood.title,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                    height: 1.15,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 22),
-      ]),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 22),
+          ],
+        ],
+      ),
     );
   }
 
@@ -1844,6 +1848,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     final top = LayoutInsetsScope.of(context).topClearance;
     final bottom = LayoutInsetsScope.of(context).bottomClearance;
     final hasTracks = _tracks.isNotEmpty;
+    final hasPersonalContent = _recentlyPlayed.isNotEmpty ||
+        _listeningPicks.isNotEmpty ||
+        _moodSections.any((section) => section.items.isNotEmpty);
+    final hasHomeContent = hasTracks || _homeShelves.isNotEmpty || hasPersonalContent;
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: PocketLinkAppBar(
@@ -1907,9 +1915,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 ),
               ),
             ),
-            if (_loading && !hasTracks)
+            if (_loading && !hasHomeContent)
               _discoverHomeSkeleton()
-            else if (_error != null && !hasTracks)
+            else if (_error != null && !hasHomeContent)
               SliverFillRemaining(hasScrollBody: false, child: Center(child: Padding(
                 padding: const EdgeInsets.all(28),
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -1920,7 +1928,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                   FilledButton.icon(onPressed: _loadHome, icon: const Icon(Icons.refresh_rounded), label: const Text('Try again')),
                 ]),
               )))
-            else if (hasTracks) ...[
+            else if (hasHomeContent) ...[
               if (_loading) const SliverToBoxAdapter(child: LinearProgressIndicator(minHeight: 2)),
               if (_homeShelves.isNotEmpty) ...[
                 SliverToBoxAdapter(
@@ -1962,15 +1970,54 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
-                    child: PocketLinkSectionHeader(_sectionTitle),
+                    child: Text(
+                      'Listen now',
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.7,
+                      ),
+                    ),
                   ),
                 ),
-                SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) => _feedRow(_tracks[index]),
-                    childCount: _tracks.length,
+                _listeningPicksShelf(),
+                _recentlyPlayedShelf(),
+                _moodHomeShelf(),
+                if (_tracks.isNotEmpty) ...[
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
+                      child: PocketLinkSectionHeader(_sectionTitle),
+                    ),
                   ),
-                ),
+                  SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) => _feedRow(_tracks[index]),
+                      childCount: _tracks.length,
+                    ),
+                  ),
+                ],
+                if (_error != null)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Online recommendations are unavailable. Your saved and local content is still available.',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: _loadHome,
+                            child: const Text('Retry'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
               ],
             ],
           if (_loadingMore)
