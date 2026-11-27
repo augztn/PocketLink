@@ -64,7 +64,7 @@ class NowPlayingLyricsMode extends StatelessWidget {
                     ),
                   ),
                   const Positioned.fill(
-                    child: ColoredBox(color: Color(0x9E000000)),
+                    child: ColoredBox(color: Color(0xA6000000)),
                   ),
                   Column(
                     children: [
