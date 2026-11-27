@@ -109,15 +109,21 @@ class _LyricsViewportState extends State<LyricsViewport> {
     return Stack(
       children: [
         Positioned.fill(
-          child: ShaderMask(
-            blendMode: BlendMode.dstIn,
-            shaderCallback: (bounds) => const LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Colors.transparent, Colors.white, Colors.white, Colors.transparent],
-              stops: [0, .16, .82, 1],
-            ).createShader(bounds),
-            child: NotificationListener<ScrollNotification>(
+          child: ClipRect(
+            child: ShaderMask(
+              blendMode: BlendMode.dstIn,
+              shaderCallback: (bounds) => const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.transparent,
+                  Colors.white,
+                  Colors.white,
+                  Colors.transparent,
+                ],
+                stops: [0, .16, .82, 1],
+              ).createShader(bounds),
+              child: NotificationListener<ScrollNotification>(
               onNotification: (notification) {
                 if (notification is ScrollStartNotification &&
                     notification.dragDetails != null &&
@@ -158,9 +164,7 @@ class _LyricsViewportState extends State<LyricsViewport> {
                               TextSpan(
                                 text: word.text,
                                 style: TextStyle(
-                                  color: !active ||
-                                          (widget.position.inMilliseconds >= word.startMs &&
-                                              widget.position.inMilliseconds < word.endMs)
+                                  color: active
                                       ? Colors.white
                                       : Colors.white.withValues(alpha: .58),
                                 ),
@@ -204,6 +208,7 @@ class _LyricsViewportState extends State<LyricsViewport> {
               },
               ),
             ),
+          ),
           ),
         ),
       ],
@@ -258,21 +263,14 @@ class LyricsTranslationControlPill extends StatelessWidget {
   Widget build(BuildContext context) => ClipRRect(
         borderRadius: BorderRadius.circular(99),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
           child: Container(
-            height: 38,
-            padding: const EdgeInsets.all(3),
+            height: 34,
+            padding: const EdgeInsets.all(2),
             decoration: BoxDecoration(
-              color: const Color(0xFF24252A).withValues(alpha: .72),
-              borderRadius: BorderRadius.circular(99),
-              border: Border.all(color: Colors.white.withValues(alpha: .18)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: .18),
-                  blurRadius: 18,
-                  offset: const Offset(0, 5),
-                ),
-              ],
+              color: Colors.white.withValues(alpha: .14),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: Colors.white.withValues(alpha: .16)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -328,8 +326,8 @@ class _LyricsPillAction extends StatelessWidget {
             onTap: onTap,
             customBorder: const StadiumBorder(),
             child: SizedBox(
-              width: 32,
-              height: 32,
+              width: 28,
+              height: 28,
               child: Icon(
                 icon,
                 color: Colors.white,
