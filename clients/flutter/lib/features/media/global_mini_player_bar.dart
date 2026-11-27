@@ -98,13 +98,15 @@ class GlobalMiniPlayerBar extends StatelessWidget {
                 safeInsets.right + 16.0,
                 0,
               ),
-        child: SmokedGlassSurface(
-          key: surfaceKey,
-          radius: BorderRadius.circular(22),
-          intensity: surfaceIntensity,
-          // The overlay paints the shared morphing player while expanding.
-          // Hide this docked source immediately so two control sets never overlap.
-          child: _MiniPlayerGestureSurface(
+        // Fade the entire docked surface, not just its controls. The opaque
+        // glass shell otherwise remains above the morph overlay as a grey box.
+        child: Opacity(
+          opacity: visible ? 1 : 0,
+          child: SmokedGlassSurface(
+            key: surfaceKey,
+            radius: BorderRadius.circular(22),
+            intensity: surfaceIntensity,
+            child: _MiniPlayerGestureSurface(
               onTap: onOpen,
               onDismiss: onDismiss,
               isPlaying: isPlaying,
@@ -115,9 +117,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
               onExpandDragEnd: onExpandDragEnd,
               onHorizontalSkipNext: onSkipNext,
               onHorizontalSkipPrevious: onSkipPrevious,
-              child: Opacity(
-                opacity: visible ? 1 : 0,
-                child: Material(
+              child: Material(
                   type: MaterialType.transparency,
                 borderRadius: BorderRadius.circular(22),
                 child: Column(
@@ -260,7 +260,6 @@ class GlobalMiniPlayerBar extends StatelessWidget {
                       ),
                     ],
                   ),
-                ),
               ),
             ),
           ),
