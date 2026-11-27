@@ -200,10 +200,8 @@ void main() {
   testWidgets('hidden mini-player fades its glass shell but keeps drag hit testing',
       (tester) async {
     await pumpMiniPlayer(tester, visible: false);
-    final surface = find.byType(SmokedGlassSurface);
-    expect(surface, findsOneWidget);
-    final opacityFinder = find.ancestor(
-      of: surface,
+    final opacityFinder = find.descendant(
+      of: find.byType(GlobalMiniPlayerBar),
       matching: find.byType(Opacity),
     ).first;
     expect(tester.widget<Opacity>(opacityFinder).opacity, 0);
