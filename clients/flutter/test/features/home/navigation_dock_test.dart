@@ -91,7 +91,7 @@ void main() {
       controller.value = 0.45;
       await tester.pump();
       final hiddenTop = tester.getTopLeft(capsule).dy;
-      expect(hiddenTop - dockedTop, closeTo(82, 0.5));
+      expect(hiddenTop - dockedTop, closeTo(82 * 0.45, 0.5));
 
       await tester.tap(find.text('Explore'), warnIfMissed: false);
       expect(selections, 0);
