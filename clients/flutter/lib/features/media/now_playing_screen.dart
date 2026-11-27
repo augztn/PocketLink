@@ -4,6 +4,8 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:flutter/services.dart';
+
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:media_kit/media_kit.dart';
@@ -158,7 +160,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
         path: _track.path,
       );
 
-  Widget _ambientBackground() {
+  Widget _ambientBackground({bool lyricsMode = false}) {
     final palette = _trackPalette;
     final hasArtwork = _artwork != null && _artworkKey == _trackKey;
     return AnimatedContainer(
@@ -171,8 +173,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
           colors: [
             Color.lerp(palette[0], const Color(0xFFB65D38), 0.22)!,
             Color.lerp(palette[1], const Color(0xFF6D3427), 0.32)!,
-            Color.lerp(palette[2], const Color(0xFF160D0B), 0.38)!,
-            const Color(0xFF050505),
+            Color.lerp(palette[2], const Color(0xFF160D0B), 0.28)!,
+            Color.lerp(palette[2], const Color(0xFF160D0B), 0.12)!,
           ],
           stops: const [0, 0.34, 0.70, 1],
         ),
@@ -184,20 +186,19 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
             ImageFiltered(
               imageFilter: ui.ImageFilter.blur(sigmaX: 48, sigmaY: 48),
               child: Opacity(
-                opacity: 0.48,
-                child: Image.memory(_artwork!, cacheWidth: 720, fit: BoxFit.cover, gaplessPlayback: true),
+                opacity: 0.68,
+                child: ColorFiltered(
+                  colorFilter: const ColorFilter.matrix([
+                    1.18, -0.09, -0.09, 0, 0,
+                    -0.09, 1.18, -0.09, 0, 0,
+                    -0.09, -0.09, 1.18, 0, 0,
+                    0, 0, 0, 1, 0,
+                  ]),
+                  child: Image.memory(_artwork!, cacheWidth: 720, fit: BoxFit.cover, gaplessPlayback: true),
+                ),
               ),
             ),
-          const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0x00000000), Color(0x26000000), Color(0xB8000000), Color(0xF5000000)],
-                stops: [0, 0.40, 0.78, 1],
-              ),
-            ),
-          ),
+          ColoredBox(color: Colors.black.withValues(alpha: lyricsMode ? 0.38 : 0.28)),
         ],
       ),
     );
@@ -1167,7 +1168,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   Widget _lyricsMode(double progress) {
     return NowPlayingLyricsMode(
       progress: progress,
-      background: _ambientBackground(),
+      background: _ambientBackground(lyricsMode: true),
       artwork: _lyricsArtwork(progress),
       trackTitle: _fileName,
       artistLabel: cleanMediaArtist(_track.artist, fallback: _folderName),
@@ -1313,7 +1314,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                 child: SliderTheme(
                   data: SliderTheme.of(context).copyWith(
                     trackHeight: 3,
-                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
+                    thumbShape: SliderComponentShape.noThumb,
                     overlayShape: SliderComponentShape.noOverlay,
                     activeTrackColor: Colors.white,
                     inactiveTrackColor: Colors.white24,
@@ -1396,7 +1397,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
       );
 
   Widget _playerLayout(double contentOpacity, {required bool isMorphing}) {
-    final heroHeight = MediaQuery.sizeOf(context).height * 0.46;
+    final heroHeight = MediaQuery.sizeOf(context).height * 0.56;
     final hasArtwork = _artwork != null && _artworkKey == _trackKey;
     return Stack(
       fit: StackFit.expand,
@@ -1415,7 +1416,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                     fallbackColors: _trackPalette,
                     fallbackIconSize: 92,
                     fadeBottom: true,
-                    fadeBottomStart: 0.30,
+                    fadeBottomStart: 0.58,
                   ),
           ),
         ),
@@ -1507,7 +1508,15 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
           curve: Curves.easeOutCubic,
         ).transform(progress);
         final isMorphing = widget.morphAnimation != null;
-        return Scaffold(
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: const SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.light,
+            statusBarBrightness: Brightness.dark,
+            systemNavigationBarColor: Colors.transparent,
+            systemNavigationBarIconBrightness: Brightness.light,
+          ),
+          child: Scaffold(
           // The morph sheet owns the opaque backdrop. Keep this route
           // transparent while morphing so its shared artwork remains visible
           // behind the foreground title, badges and controls.
@@ -1607,6 +1616,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                 ),
               ),
             ],
+          ),
           ),
         );
       },
