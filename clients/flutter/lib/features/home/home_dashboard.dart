@@ -20,7 +20,6 @@ import '../../core/widgets/pocketlink_scaffold.dart';
 import 'explore_search_screens.dart';
 import '../media/persistent_audio_player.dart';
 import '../media/now_playing_overlay_controller.dart';
-import '../media/now_playing_overlay_controller.dart';
 import '../../core/network/server_api.dart';
 import '../../core/logging/app_logger.dart';
 import '../transfers/transfer_manager_screen.dart';
