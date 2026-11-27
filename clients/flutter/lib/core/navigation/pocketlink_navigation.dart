@@ -95,7 +95,9 @@ class PocketLinkNavigationObserver extends NavigatorObserver {
 abstract final class PocketLinkNavigation {
   static final navigatorKey = GlobalKey<NavigatorState>();
   static final musicButtonKey = GlobalKey();
-  static final miniPlayerKey = GlobalKey();
+  static final miniPlayerAnchorKey = GlobalKey();
+  static final miniPlayerKey = miniPlayerAnchorKey;
+  static final nowPlayingDockButtonKey = GlobalKey();
   static final miniArtworkKey = GlobalKey();
   static final nowPlayingArtworkKey = GlobalKey();
   static final mediaOverlayKey = GlobalKey();
@@ -134,13 +136,13 @@ abstract final class PocketLinkNavigation {
     required double progress,
     required double downwardVelocity,
   }) =>
-      progress <= 0.82 || downwardVelocity > 650;
+      progress < 0.75 || downwardVelocity > 280;
 
   static bool shouldExpandFromMiniPlayer({
     required double progress,
     required double upwardVelocity,
   }) =>
-      progress > 0.2 || upwardVelocity < -250;
+      progress >= 0.75 || upwardVelocity < -280;
 
   /// A nested tab navigator may consume Back only while its tab is visible.
   static bool shouldHandleNestedBack({
