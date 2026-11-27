@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 class NowPlayingLyricsMode extends StatelessWidget {
   const NowPlayingLyricsMode({
     required this.progress,
+    required this.background,
     required this.artwork,
     required this.trackTitle,
     required this.artistLabel,
@@ -16,6 +17,7 @@ class NowPlayingLyricsMode extends StatelessWidget {
   });
 
   final double progress;
+  final Widget background;
   final Widget artwork;
   final String trackTitle;
   final String artistLabel;
@@ -43,6 +45,7 @@ class NowPlayingLyricsMode extends StatelessWidget {
               return Stack(
                 clipBehavior: Clip.none,
                 children: [
+                  Positioned.fill(child: background),
                   Positioned.fromRect(
                     rect: artRect,
                     child: GestureDetector(
