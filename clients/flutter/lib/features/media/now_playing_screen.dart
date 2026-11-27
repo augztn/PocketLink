@@ -327,7 +327,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
       _loadArtwork(),
     ]);
     if (_lyricsController.status == AnimationStatus.forward ||
-        _lyricsController.value > 0.5) {
+        _lyricsController.status == AnimationStatus.completed) {
       await _loadTrackLyrics();
     }
   }
@@ -1128,6 +1128,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
       );
 
   Future<void> _showTrackLyrics() async {
+    if (_lyricsController.status == AnimationStatus.reverse) {
+      unawaited(_lyricsController.forward());
+      return;
+    }
     if (_lyricsController.status == AnimationStatus.forward ||
         _lyricsController.value > 0.5) {
       // Keep the resolved document and provider state alive while the lyrics
