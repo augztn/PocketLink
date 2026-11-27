@@ -181,7 +181,26 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
       minTop,
       media.size.height - media.padding.bottom - 54,
     );
-    final top = (anchor.bottom + (titleMenu ? 6 : gap)).clamp(minTop, maxTop).toDouble();
+    final maxMenuHeight = mathMin(
+      media.size.height * 0.55,
+      media.size.height - minTop - media.padding.bottom - 8,
+    );
+    final desiredMenuHeight = items.length * itemHeight +
+        items.where((item) => item.dividerBefore).length * 9 +
+        menuVerticalPadding * 2;
+    final availableAbove = anchor.top - gap - minTop;
+    // Player action menus open upward from the lower metadata row. Title
+    // selectors intentionally remain below their anchor.
+    final openAbove = !titleMenu && availableAbove >= 120;
+    final menuHeight = mathMin(desiredMenuHeight, maxMenuHeight);
+    final top = (openAbove
+            ? anchor.top - gap - mathMin(menuHeight, availableAbove)
+            : anchor.bottom + (titleMenu ? 6 : gap))
+        .clamp(minTop, maxTop)
+        .toDouble();
+    final constrainedMenuHeight = openAbove
+        ? mathMin(maxMenuHeight, availableAbove)
+        : mathMin(maxMenuHeight, media.size.height - top - media.padding.bottom - 8);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final curved = CurvedAnimation(
       parent: animation,
@@ -203,20 +222,21 @@ class _SmokedGlassPopoverRoute<T> extends PopupRoute<T> {
               opacity: curved,
               child: SlideTransition(
                 position: Tween<Offset>(
-                  begin: const Offset(0, -0.04),
+                  begin: Offset(0, openAbove ? 0.04 : -0.04),
                   end: Offset.zero,
                 ).animate(curved),
                 child: ScaleTransition(
-                  alignment: titleMenu ? Alignment.topLeft : Alignment.topRight,
+                  alignment: titleMenu
+                      ? Alignment.topLeft
+                      : openAbove
+                          ? Alignment.bottomRight
+                          : Alignment.topRight,
                   scale: Tween<double>(begin: 0.84, end: 1).animate(curved),
                   child: ConstrainedBox(
                     constraints: BoxConstraints(
                       minWidth: menuWidth,
                       maxWidth: menuWidth,
-                      maxHeight: mathMin(
-                        media.size.height * 0.55,
-                        media.size.height - top - media.padding.bottom - 8,
-                      ),
+                      maxHeight: constrainedMenuHeight,
                     ),
                     child: ClipRRect(
                 borderRadius: BorderRadius.circular(22),
