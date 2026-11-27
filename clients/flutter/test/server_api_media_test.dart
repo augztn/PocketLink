@@ -37,9 +37,9 @@ void main() {
         api.mediaStreamUrl('Movies/Clip 1.mp4', volume: 'usb1'),
       );
 
-      expect(uri.path, '/api/storage/usb1/download');
+      expect(uri.path, '/api/storage/download');
+      expect(uri.queryParameters['volume'], 'usb1');
       expect(uri.queryParameters['path'], 'Movies/Clip 1.mp4');
-      expect(uri.queryParameters.containsKey('volume'), isFalse);
       api.close();
     });
 
