@@ -194,6 +194,33 @@ void main() {
         LyricsLookupStatus.notFound);
   });
 
+  test('cancelling a completed lookup clears cached results for retry', () async {
+    final provider = _FakeLyricsProvider(
+      'lrclib',
+      Completer<LyricsDocument?>(),
+    );
+    final repository = LyricsRepository(providers: [provider]);
+    const track = MediaQueueItem(
+      title: 'Track',
+      path: '/music/retry.flac',
+    );
+    final query = LyricsTrackQuery(track: track, api: null);
+    final lookup = repository.lookup(query);
+    provider.completer.complete(LyricsDocument(
+      providerId: 'lrclib',
+      providerName: 'LRCLIB',
+      lines: const [LyricsLine(1000, 'Cached lyric')],
+      synced: true,
+    ));
+    await lookup;
+
+    expect(repository.current(query.key), isNotNull);
+    expect(repository.resultsFor(query.key), isNotEmpty);
+    repository.cancel(query.key);
+    expect(repository.current(query.key), isNull);
+    expect(repository.resultsFor(query.key), isEmpty);
+  });
+
   test('lyrics lookup deduplicates concurrent requests for one track ID', () async {
     final provider = _FakeLyricsProvider(
       'lrclib',
