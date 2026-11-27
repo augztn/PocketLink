@@ -19,6 +19,7 @@ import 'now_playing_overlay_controller.dart';
 import 'now_playing_scrubber.dart';
 import 'now_playing_artwork_palette.dart';
 import 'track_artwork_view.dart';
+import 'media_metadata.dart';
 
 class GlobalMediaOverlay extends StatefulWidget {
   const GlobalMediaOverlay({required this.child, super.key});
@@ -911,9 +912,7 @@ class _MiniPlayerMorphContents extends StatelessWidget {
                             ),
                       ),
                       Text(
-                        item.artist?.trim().isNotEmpty == true
-                            ? item.artist!.trim()
-                            : item.sourceLabel,
+                        cleanMediaArtist(item.artist, fallback: item.sourceLabel),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
