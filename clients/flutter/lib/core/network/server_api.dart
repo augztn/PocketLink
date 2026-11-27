@@ -37,6 +37,8 @@ class ServerApi {
 
   bool _closed = false;
   bool _musicLibraryUnavailable = false;
+  bool _videoMetadataEndpointUnavailable = false;
+  bool _videoThumbnailEndpointUnavailable = false;
   final Set<CancelToken> _mediaRequestTokens = {};
   final Map<String, CancelToken> _thumbnailRequestTokens = {};
   final Map<String, CancelToken> _metadataRequestTokens = {};
@@ -44,6 +46,8 @@ class ServerApi {
   final Set<String> _failedMetadataKeys = {};
   static const _directoryCacheTtl = Duration(seconds: 20);
   static const _maxCachedDirectories = 512;
+  static const _indexedMediaCacheTtl = Duration(seconds: 45);
+  final Map<String, _CacheEntry<IndexedMediaPage>> _indexedMediaCache = {};
   final Map<String, _CacheEntry<DirectoryListing>> _directoryCache = {};
   final Map<String, Future<DirectoryListing>> _directoryRequests = {};
   _CacheEntry<List<StorageVolume>>? _volumesCache;
@@ -88,6 +92,7 @@ class ServerApi {
     _cacheGeneration++;
     _directoryCache.clear();
     _directoryRequests.clear();
+    _indexedMediaCache.clear();
     _volumesCache = null;
     _volumesRequest = null;
   }
@@ -107,10 +112,10 @@ class ServerApi {
   String mediaStreamUrl(String path, {String? volume}) {
     final endpoint = volume == null
         ? '/api/files/stream'
-        : '/api/storage/download';
+        : '/api/storage/$volume/download';
     final query = volume == null
         ? <String, String>{'path': path}
-        : <String, String>{'volume': volume, 'path': path};
+        : <String, String>{'path': path};
     return Uri.parse(_dio.options.baseUrl)
         .resolve(endpoint)
         .replace(queryParameters: query)
@@ -125,8 +130,8 @@ class ServerApi {
     CancelToken? cancelToken,
   }) {
     return _dio.get<ResponseBody>(
-      volume == null ? '/api/files/stream' : '/api/storage/download',
-      queryParameters: {'path': path, if (volume != null) 'volume': volume},
+      volume == null ? '/api/files/stream' : '/api/storage/$volume/download',
+      queryParameters: {'path': path},
       options: Options(
         responseType: ResponseType.stream,
         headers: offset > 0 ? {'Range': 'bytes=$offset-'} : null,
@@ -178,6 +183,15 @@ class ServerApi {
   bool _isKnownFailedMediaKey(Set<String> failures, String key) =>
       failures.contains(key);
 
+  bool _isRouteLevelNotFound(DioException error) {
+    if (error.response?.statusCode != 404) return false;
+    final body = error.response?.data;
+    if (body is Map) {
+      return body['detail']?.toString().trim().toLowerCase() == 'not found';
+    }
+    return body is String && body.trim().toLowerCase() == 'not found';
+  }
+
   String _mediaCacheKey(String path, String? volume) => '${volume ?? 'internal'}:$path';
 
   Future<VideoMetadata?> videoMetadata(
@@ -186,7 +200,8 @@ class ServerApi {
     CancelToken? cancelToken,
   }) {
     final key = _mediaCacheKey(path, volume);
-    if (_isKnownFailedMediaKey(_failedMetadataKeys, key)) {
+    if (_videoMetadataEndpointUnavailable ||
+        _isKnownFailedMediaKey(_failedMetadataKeys, key)) {
       return Future<VideoMetadata?>.value(null);
     }
     final cached = _metadataCache[key];
@@ -206,7 +221,10 @@ class ServerApi {
         );
         return VideoMetadata.fromJson(response.data ?? const {});
       } on DioException catch (error) {
-        if (error.response?.statusCode == 400 || error.response?.statusCode == 404) {
+        if (_isRouteLevelNotFound(error)) {
+          _videoMetadataEndpointUnavailable = true;
+        } else if (error.response?.statusCode == 400 ||
+            error.response?.statusCode == 404) {
           _rememberFailedMediaKey(_failedMetadataKeys, key);
         }
         if ((cancelToken?.isCancelled ?? false) &&
@@ -232,7 +250,8 @@ class ServerApi {
     CancelToken? cancelToken,
   }) {
     final key = _mediaCacheKey(path, volume);
-    if (_isKnownFailedMediaKey(_failedThumbnailKeys, key)) {
+    if (_videoThumbnailEndpointUnavailable ||
+        _isKnownFailedMediaKey(_failedThumbnailKeys, key)) {
       return Future<Uint8List?>.value(null);
     }
     final cached = _thumbnailCache[key];
@@ -256,7 +275,10 @@ class ServerApi {
         final bytes = response.data;
         return bytes == null || bytes.isEmpty ? null : Uint8List.fromList(bytes);
       } on DioException catch (error) {
-        if (error.response?.statusCode == 400 || error.response?.statusCode == 404) {
+        if (_isRouteLevelNotFound(error)) {
+          _videoThumbnailEndpointUnavailable = true;
+        } else if (error.response?.statusCode == 400 ||
+            error.response?.statusCode == 404) {
           _rememberFailedMediaKey(_failedThumbnailKeys, key);
         }
         if ((cancelToken?.isCancelled ?? false) &&
@@ -596,13 +618,20 @@ class ServerApi {
     return HostSystemTelemetry.fromJson(response.data ?? const {});
   }
 
-  Future<MediaIndexStatus> mediaIndexStatus() async {
-    final response = await _dio.get<Map<String, dynamic>>('/api/index/status');
+  Future<MediaIndexStatus> mediaIndexStatus({CancelToken? cancelToken}) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/index/status',
+      cancelToken: cancelToken,
+    );
     return MediaIndexStatus.fromJson(response.data ?? const {});
   }
 
-  Future<MediaIndexStatus> startMediaIndexScan() async {
-    final response = await _dio.post<Map<String, dynamic>>('/api/index/scan');
+  Future<MediaIndexStatus> startMediaIndexScan({CancelToken? cancelToken}) async {
+    invalidateIndexedMediaCache();
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/api/index/scan',
+      cancelToken: cancelToken,
+    );
     return MediaIndexStatus.fromJson(response.data ?? const {});
   }
 
@@ -673,21 +702,50 @@ class ServerApi {
     return future;
   }
 
+  void invalidateIndexedMediaCache() => _indexedMediaCache.clear();
+
   Future<IndexedMediaPage> indexedMedia(
-    String category, {String query = '', int limit = 500, int offset = 0}
-  ) async {
+    String category, {
+    String query = '',
+    int limit = 500,
+    int offset = 0,
+    CancelToken? cancelToken,
+  }) async {
+    final key = '$category::$query::$limit::$offset';
+    final cached = _indexedMediaCache[key];
+    if (cached != null && cached.expiresAt.isAfter(DateTime.now())) {
+      return cached.value;
+    }
     final response = await _dio.get<Map<String, dynamic>>(
       '/api/index/media',
-      queryParameters: {'category': category, 'q': query, 'limit': limit, 'offset': offset},
+      queryParameters: {
+        'category': category,
+        'q': query,
+        'limit': limit,
+        'offset': offset,
+      },
       options: Options(extra: {'pocketlink.priority': 'background'}),
+      cancelToken: cancelToken,
     );
     final data = response.data ?? const <String, dynamic>{};
-    return IndexedMediaPage(
+    final page = IndexedMediaPage(
       items: (data['items'] as List<dynamic>? ?? const [])
           .map((item) => IndexedFile.fromJson(item as Map<String, dynamic>))
           .toList(growable: false),
-      status: MediaIndexStatus.fromJson(data['status'] as Map<String, dynamic>? ?? const {}),
+      status: MediaIndexStatus.fromJson(
+        data['status'] as Map<String, dynamic>? ?? const {},
+      ),
     );
+    if (!(cancelToken?.isCancelled ?? false)) {
+      if (_indexedMediaCache.length >= 64 && !_indexedMediaCache.containsKey(key)) {
+        _indexedMediaCache.remove(_indexedMediaCache.keys.first);
+      }
+      _indexedMediaCache[key] = _CacheEntry(
+        page,
+        DateTime.now().add(_indexedMediaCacheTtl),
+      );
+    }
+    return page;
   }
 
   Future<IndexedMediaPage> searchIndexedFiles(
@@ -716,8 +774,8 @@ class ServerApi {
         _directoryRequests,
         () => _transport._sharedRead('storage:$volume:$path', () async {
           final response = await _dio.get<Map<String, dynamic>>(
-            '/api/storage/list',
-            queryParameters: {'volume': volume, 'path': path},
+            '/api/storage/$volume/',
+            queryParameters: {'path': path},
             options: Options(
               extra: {
                 if (background) 'pocketlink.priority': 'background',
@@ -740,9 +798,10 @@ class ServerApi {
       'file': MultipartFile.fromBytes(bytes, filename: filename),
     });
     await _dio.post<void>(
-      '/api/storage/upload',
-      queryParameters: {'volume': volume, 'path': path},
+      '/api/storage/$volume/upload',
+      queryParameters: {'path': path},
       data: form,
+      options: Options(method: 'PUT'),
       onSendProgress: onSendProgress,
       cancelToken: cancelToken,
     );
@@ -756,8 +815,8 @@ class ServerApi {
     CancelToken? cancelToken,
   }) async {
     final response = await _dio.get<List<int>>(
-      '/api/storage/download',
-      queryParameters: {'volume': volume, 'path': path},
+      '/api/storage/$volume/download',
+      queryParameters: {'path': path},
       options: Options(responseType: ResponseType.bytes),
       onReceiveProgress: onReceiveProgress,
       cancelToken: cancelToken,
@@ -771,8 +830,8 @@ class ServerApi {
     String name,
   ) async {
     await _dio.post<void>(
-      '/api/storage/mkdir',
-      data: {'volume': volume, 'path': path, 'name': name},
+      '/api/storage/$volume/mkdir',
+      queryParameters: {'path': path, 'name': name},
     );
     invalidateDirectoryCache();
   }
@@ -783,16 +842,16 @@ class ServerApi {
     String name,
   ) async {
     await _dio.post<void>(
-      '/api/storage/rename',
-      data: {'volume': volume, 'path': path, 'new_name': name},
+      '/api/storage/$volume/rename',
+      queryParameters: {'path': path, 'name': name},
     );
     invalidateDirectoryCache();
   }
 
   Future<void> deleteStorageItem(String volume, String path) async {
     await _dio.delete<void>(
-      '/api/storage/item',
-      queryParameters: {'volume': volume, 'path': path},
+      '/api/storage/$volume/item',
+      queryParameters: {'path': path},
     );
     invalidateDirectoryCache();
   }
