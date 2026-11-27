@@ -716,6 +716,7 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
 
   @override
   void dispose() {
+    _scrollOffsetSaveTimer?.cancel();
     widget.onBackHandlerChanged?.call(null);
     HomeActivityStore.instance.removeListener(_onHomeActivityChanged);
     _saveState();
@@ -999,14 +1000,4 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     );
   }
 
-  @override
-  void dispose() {
-    _scrollOffsetSaveTimer?.cancel();
-    if (_scrollController.hasClients) _saveState();
-    _scrollController
-      ..removeListener(_saveScrollOffset)
-      ..dispose();
-    _searchController.dispose();
-    super.dispose();
-  }
 }
