@@ -158,19 +158,19 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     final palette = _trackPalette;
     final hasArtwork = _artwork != null && _artworkKey == _trackKey;
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 680),
+      duration: const Duration(milliseconds: 650),
       curve: Curves.easeInOut,
       decoration: BoxDecoration(
-        gradient: RadialGradient(
-          center: const Alignment(-0.3, -0.72),
-          radius: 1.4,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: [
-            palette[0].withValues(alpha: 0.40),
-            palette[1].withValues(alpha: 0.25),
-            palette[2].withValues(alpha: 0.72),
-            Colors.black.withValues(alpha: 0.88),
+            Color.lerp(palette[0], const Color(0xFFB65D38), 0.22)!,
+            Color.lerp(palette[1], const Color(0xFF6D3427), 0.32)!,
+            Color.lerp(palette[2], const Color(0xFF160D0B), 0.38)!,
+            const Color(0xFF050505),
           ],
-          stops: const [0, 0.38, 0.72, 1],
+          stops: const [0, 0.34, 0.70, 1],
         ),
       ),
       child: Stack(
@@ -178,27 +178,19 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
         children: [
           if (hasArtwork)
             ImageFiltered(
-              imageFilter: ui.ImageFilter.blur(sigmaX: 42, sigmaY: 42),
+              imageFilter: ui.ImageFilter.blur(sigmaX: 48, sigmaY: 48),
               child: Opacity(
-                opacity: 0.34,
-                child: Image.memory(
-                  _artwork!,
-                  cacheWidth: 544,
-                  fit: BoxFit.cover,
-                  gaplessPlayback: true,
-                ),
+                opacity: 0.48,
+                child: Image.memory(_artwork!, cacheWidth: 720, fit: BoxFit.cover, gaplessPlayback: true),
               ),
             ),
-          DecoratedBox(
+          const DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [
-                  Colors.black.withValues(alpha: 0.12),
-                  Colors.black.withValues(alpha: 0.46),
-                  Colors.black.withValues(alpha: 0.78),
-                ],
+                colors: [Color(0x00000000), Color(0x26000000), Color(0xB8000000), Color(0xF5000000)],
+                stops: [0, 0.40, 0.78, 1],
               ),
             ),
           ),
@@ -719,21 +711,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   }
 
   void _showStatsForNerds() {
-    final playerTheme = AppSettings.instance.nowPlayingTheme;
-    final palette = _trackPalette;
-    final surfaceColor = switch (playerTheme) {
-      'blur' => const Color(0xFF201C2B),
-      'blurCard' => const Color(0xFF25202F),
-      'gradient' => const Color(0xFF171923),
-      'aether' => Color.alphaBlend(
-          palette[1].withValues(alpha: 0.34),
-          const Color(0xFF17151F),
-        ),
-      _ => const Color(0xFF1C1C1E),
-    };
-    final accentColor = playerTheme == 'aether'
-        ? palette[0]
-        : Theme.of(context).colorScheme.primary;
+    const surfaceColor = Color(0xFF171717);
+    final accentColor = Theme.of(context).colorScheme.primary;
     showModalBottomSheet<void>(
       context: context,
       useRootNavigator: true,
@@ -877,126 +856,96 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   }
 
   Widget _header({double contentOpacity = 1}) => SizedBox(
-    height: 64,
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          _roundAction(
-            icon: Icons.keyboard_arrow_down_rounded,
-            tooltip: 'Minimize player',
-            onTap: widget.onDismiss,
-            contentOpacity: contentOpacity,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Opacity(
-              opacity: contentOpacity,
-              child: Column(
+        height: 86,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          child: Row(
+            children: [
+              _roundAction(
+                icon: Icons.keyboard_arrow_down_rounded,
+                tooltip: 'Minimize player',
+                onTap: widget.onDismiss,
+                contentOpacity: contentOpacity,
+              ),
+              const Spacer(),
+              Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Container(
-                    width: 34,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.42),
-                      borderRadius: BorderRadius.circular(99),
-                    ),
-                  ),
-                  const SizedBox(height: 7),
                   Text(
                     'PLAYING FROM ${_track.sourceLabel.toUpperCase()}',
-                    textAlign: TextAlign.center,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      color: Colors.white54,
-                      fontSize: 10,
-                      letterSpacing: 1.2,
-                      fontWeight: FontWeight.w700,
+                      color: Colors.white, fontSize: 9, letterSpacing: 1.15,
+                      fontWeight: FontWeight.w800,
+                      shadows: [Shadow(color: Colors.black87, blurRadius: 12), Shadow(color: Colors.black54, blurRadius: 4)],
                     ),
+                  ),
+                  const SizedBox(height: 7),
+                  Container(
+                    height: 32,
+                    padding: const EdgeInsets.symmetric(horizontal: 9),
+                    decoration: BoxDecoration(
+                      color: const Color(0xE9000000),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+                      boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 14, offset: Offset(0, 4))],
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(5),
+                        child: SizedBox(
+                          width: 21, height: 21,
+                          child: TrackArtworkView(
+                            bytes: _artworkKey == _trackKey ? _artwork : null,
+                            artworkUrl: _track.artworkUrl,
+                            fallbackColors: _trackPalette,
+                            fallbackIconSize: 12,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.graphic_eq_rounded, color: Colors.white, size: 19),
+                    ]),
                   ),
                 ],
               ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          SizedBox(
-            width: 38,
-            height: 38,
-            child: LiquidGlassPill(
-              radius: BorderRadius.circular(19),
-              intensity: contentOpacity,
-              child: Opacity(
-                opacity: contentOpacity,
-                child: SmokedGlassPopoverMenu<String>(
-                  tooltip: 'Quick destinations',
-                  items: [
-                    const SmokedGlassPopoverMenuItem(
-                      value: 'home',
-                      label: 'Home',
-                      icon: Icons.home_outlined,
-                    ),
-                    const SmokedGlassPopoverMenuItem(
-                      value: 'queue',
-                      label: 'Queue',
-                      icon: Icons.queue_music_rounded,
-                    ),
-                    if (AppSettings.instance.showStatsForNerds)
-                      const SmokedGlassPopoverMenuItem(
-                        value: 'stats',
-                        label: 'Stats for nerds',
-                        icon: Icons.query_stats_rounded,
-                      ),
-                    if (widget.api != null)
-                      const SmokedGlassPopoverMenuItem(
-                        value: 'download',
-                        label: 'Download track',
-                        icon: Icons.download_rounded,
-                        dividerBefore: true,
-                      ),
-                    const SmokedGlassPopoverMenuItem(
-                      value: 'track_options',
-                      label: 'Track options',
-                      icon: Icons.more_horiz_rounded,
-                    ),
-                  ],
-                  onSelected: (value) {
-                    switch (value) {
-                      case 'home':
-                        PocketLinkAppBar.goToDashboard(context);
-                        break;
-                      case 'stats':
-                        _showStatsForNerds();
-                        break;
-                      case 'download':
-                        unawaited(_downloadTrack());
-                        break;
-                      case 'track_options':
-                        _showOptions();
-                        break;
-                      case 'queue':
-                        _showQueue();
-                        break;
-                    }
-                  },
-                  child: const SizedBox(
-                    width: 38,
-                    height: 38,
-                    child: Icon(
-                      Icons.more_vert_rounded,
-                      color: Colors.white,
-                      size: 19,
-                    ),
+              const Spacer(),
+              SizedBox(
+                width: 40, height: 40,
+                child: LiquidGlassPill(
+                  radius: BorderRadius.circular(20),
+                  intensity: contentOpacity,
+                  child: SmokedGlassPopoverMenu<String>(
+                    tooltip: 'More playback options',
+                    items: [
+                      const SmokedGlassPopoverMenuItem(value: 'queue', label: 'Queue', icon: Icons.queue_music_rounded),
+                      const SmokedGlassPopoverMenuItem(value: 'shuffle', label: 'Shuffle', icon: Icons.shuffle_rounded),
+                      const SmokedGlassPopoverMenuItem(value: 'repeat', label: 'Repeat', icon: Icons.repeat_rounded),
+                      const SmokedGlassPopoverMenuItem(value: 'track_options', label: 'Track options', icon: Icons.more_horiz_rounded),
+                      if (AppSettings.instance.showStatsForNerds)
+                        const SmokedGlassPopoverMenuItem(value: 'stats', label: 'Stats for nerds', icon: Icons.query_stats_rounded),
+                      if (widget.api != null)
+                        const SmokedGlassPopoverMenuItem(value: 'download', label: 'Download track', icon: Icons.download_rounded),
+                    ],
+                    onSelected: (value) {
+                      switch (value) {
+                        case 'queue': _showQueue(); break;
+                        case 'shuffle': unawaited(_toggleShuffle()); break;
+                        case 'repeat': unawaited(_cycleRepeat()); break;
+                        case 'track_options': _showOptions(); break;
+                        case 'stats': _showStatsForNerds(); break;
+                        case 'download': unawaited(_downloadTrack()); break;
+                      }
+                    },
+                    child: const SizedBox(width: 40, height: 40, child: Icon(Icons.more_horiz_rounded, color: Colors.white, size: 20)),
                   ),
                 ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
-    ),
-  );
+        ),
+      );
 
   Widget _artworkCard() => NowPlayingArtworkCard(
         artwork: _artwork,
@@ -1064,9 +1013,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
               return AnimatedBuilder(
                 animation: AppSettings.instance,
                 builder: (context, _) => NowPlayingScrubber(
-                  style: NowPlayingScrubberStyle.fromKey(
-                    AppSettings.instance.nowPlayingScrubberStyle,
-                  ),
+                  style: NowPlayingScrubberStyle.appleCapsule,
                   position: position,
                   duration: duration,
                   bufferedPosition: bufferSnapshot.data ?? Duration.zero,
@@ -1324,8 +1271,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   }
 
   Widget _trackMetadata({double contentOpacity = 1}) {
+    final artist = _track.artist?.trim().isNotEmpty == true ? _track.artist!.trim() : _track.sourceLabel;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(22, 8, 22, 0),
+      padding: const EdgeInsets.fromLTRB(22, 0, 22, 0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -1333,444 +1281,186 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
             child: Opacity(
               opacity: contentOpacity,
               child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      _formatTag,
-                      maxLines: 1,
-                      style: const TextStyle(
-                        color: Colors.white38,
-                        fontSize: 10,
-                        letterSpacing: 1.3,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    StreamBuilder<bool>(
-                      stream: _player.stream.buffering,
-                      initialData: _player.state.buffering,
-                      builder: (context, bufferingSnapshot) =>
-                          StreamBuilder<Duration>(
-                        stream: _player.stream.duration,
-                        initialData: _player.state.duration,
-                        builder: (context, durationSnapshot) {
-                          final loading = _persistent.isSelectionLoading ||
-                              (bufferingSnapshot.data ?? false) ||
-                              (durationSnapshot.data ?? Duration.zero) <=
-                                  Duration.zero;
-                          return AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 220),
-                            switchInCurve: Curves.easeOut,
-                            switchOutCurve: Curves.easeIn,
-                            child: loading
-                                ? const BufferingBadge(
-                                    key: ValueKey('buffering'),
-                                  )
-                                : const SizedBox.shrink(
-                                    key: ValueKey('ready'),
-                                  ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  _fileName,
-                  maxLines: 2,
-                  softWrap: true,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.35,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _fileName, maxLines: 2, softWrap: true, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white, fontSize: 25, height: 1.08, fontWeight: FontWeight.w800, letterSpacing: -0.55),
+                  ),
+                  const SizedBox(height: 5),
+                  ShaderMask(
+                    blendMode: BlendMode.dstIn,
+                    shaderCallback: (bounds) => const LinearGradient(
+                      begin: Alignment.centerLeft, end: Alignment.centerRight,
+                      colors: [Colors.white, Colors.white, Colors.transparent],
+                      stops: [0, 0.72, 1],
+                    ).createShader(bounds),
+                    child: Text(artist, maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          _roundAction(
+            icon: _isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
+            tooltip: _isFavorite ? 'Remove favorite' : 'Favorite',
+            foreground: _isFavorite ? const Color(0xFFFFD66B) : Colors.white,
+            onTap: () => unawaited(_toggleFavorite()), contentOpacity: contentOpacity,
+          ),
+          const SizedBox(width: 8),
+          _roundAction(icon: Icons.more_horiz_rounded, tooltip: 'Track options',
+            onTap: _showOptions, contentOpacity: contentOpacity),
+        ],
+      ),
+    );
+  }
+
+  Widget _lyricPreview() => StreamBuilder<Duration>(
+        stream: _player.stream.position,
+        initialData: _player.state.position,
+        builder: (context, snapshot) {
+          final lines = _activeLyrics?.lines ?? const <LyricsLine>[];
+          final position = snapshot.data?.inMilliseconds ?? 0;
+          final index = lines.lastIndexWhere((line) => line.timeMs <= position);
+          final preview = lines.isEmpty
+              ? (_lyricsLoading ? 'Finding lyrics…' : 'Tap to view lyrics')
+              : lines[index < 0 ? 0 : index].text;
+          return Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => unawaited(_showTrackLyrics()),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 8),
+                child: Row(children: [
+                  const Icon(Icons.lyrics_rounded, color: Colors.white54, size: 17),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(preview, maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600))),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.chevron_right_rounded, color: Colors.white38, size: 19),
+                ]),
+              ),
+            ),
+          );
+        },
+      );
+
+  Widget _volumeControl() => StreamBuilder<double>(
+        stream: _player.stream.volume,
+        initialData: _player.state.volume,
+        builder: (context, snapshot) {
+          final volume = (snapshot.data ?? 100).clamp(0.0, 100.0).toDouble();
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 22),
+            child: Row(children: [
+              const Icon(Icons.volume_down_rounded, color: Colors.white54, size: 19),
+              Expanded(
+                child: SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    trackHeight: 3,
+                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
+                    overlayShape: SliderComponentShape.noOverlay,
+                    activeTrackColor: Colors.white,
+                    inactiveTrackColor: Colors.white24,
+                    thumbColor: Colors.white,
+                  ),
+                  child: Slider(
+                    min: 0, max: 100, value: volume,
+                    onChanged: (value) => unawaited(_player.setVolume(value)),
                   ),
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  _track.artist?.trim().isNotEmpty == true
-                      ? _track.artist!.trim()
-                      : _track.sourceLabel,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white54, fontSize: 13),
-                ),
-              ],
-            ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          if (AppSettings.instance.discoverLyrics) ...[
-            _roundAction(
-              icon: Icons.lyrics_rounded,
-              tooltip: 'Lyrics',
-              onTap: () => unawaited(_showTrackLyrics()),
-              foreground: _lyricsController.value > 0.5 ? Colors.white : Colors.white54,
-              contentOpacity: contentOpacity,
-            ),
-            const SizedBox(width: 8),
-          ],
-          _roundAction(
-            icon: _isFavorite
-                ? Icons.star_rounded
-                : Icons.star_border_rounded,
-            tooltip: _isFavorite ? 'Remove favorite' : 'Favorite',
-            foreground: _isFavorite
-                ? const Color(0xFFFFD66B)
-                : Colors.white,
-            onTap: () => unawaited(_toggleFavorite()),
-            contentOpacity: contentOpacity,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _playerDetails({
-    bool glassCard = false,
-    double contentOpacity = 1,
-  }) {
-    final content = Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _trackMetadata(contentOpacity: contentOpacity),
-        const SizedBox(height: 16),
-        Opacity(
-          opacity: contentOpacity,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 22),
-            child: _timeline(),
-          ),
-        ),
-        const SizedBox(height: 14),
-        Opacity(
-          opacity: contentOpacity,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 22),
-            child: _transport(),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Opacity(
-          opacity: contentOpacity,
-          child: _bottomUtilities(),
-        ),
-        const SizedBox(height: 2),
-        const Text(
-          'This device',
-          style: TextStyle(color: Colors.white38, fontSize: 11),
-        ),
-        const SizedBox(height: 8),
-      ],
-    );
-    if (!glassCard) return content;
-    return SmokedGlassSurface(
-      radius: BorderRadius.circular(28),
-      intensity: contentOpacity,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(0, 12, 0, 4),
-        child: content,
-      ),
-    );
-  }
-
-  Widget _themeBackground(String theme, {double lyricsProgress = 0}) {
-    if (_usesSharedArtwork) {
-      return const DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            stops: [0, 0.12, 0.58, 1],
-            colors: [
-              Color(0x73000000),
-              Color(0x00000000),
-              Color(0x00000000),
-              Color(0xF5000000),
-            ],
-          ),
-        ),
+              ),
+              const Icon(Icons.volume_up_rounded, color: Colors.white54, size: 19),
+            ]),
+          );
+        },
       );
-    }
-    final palette = _trackPalette;
+
+  Future<void> _showAudioOutput() async {
+    final deviceName = Platform.localHostname.trim().isEmpty ? 'This device' : Platform.localHostname;
+    await showModalBottomSheet<void>(
+      context: context,
+      useRootNavigator: true,
+      backgroundColor: const Color(0xFF171717),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 26),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Audio output', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 14),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.smartphone_rounded, color: Colors.white),
+              title: Text(deviceName, style: const TextStyle(color: Colors.white)),
+              subtitle: const Text('Current device · managed by Android', style: TextStyle(color: Colors.white54)),
+              trailing: const Icon(Icons.check_circle_rounded, color: Colors.white),
+            ),
+            const Text('To switch to Bluetooth or a cast device, use Android’s media output selector.',
+              style: TextStyle(color: Colors.white54, fontSize: 12)),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  Widget _playerDetails({double contentOpacity = 1}) => Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          _trackMetadata(contentOpacity: contentOpacity),
+          const SizedBox(height: 12),
+          Opacity(opacity: contentOpacity, child: _lyricPreview()),
+          const SizedBox(height: 4),
+          Opacity(opacity: contentOpacity, child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 22), child: _timeline())),
+          const SizedBox(height: 9),
+          Opacity(opacity: contentOpacity, child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18), child: _transport())),
+          const SizedBox(height: 5),
+          Opacity(opacity: contentOpacity, child: _volumeControl()),
+          const SizedBox(height: 3),
+          Opacity(opacity: contentOpacity, child: _bottomUtilities()),
+          const SizedBox(height: 3),
+          Text(Platform.localHostname.trim().isEmpty ? 'This device' : Platform.localHostname,
+            maxLines: 1, overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Colors.white38, fontSize: 10)),
+        ]),
+      );
+
+  Widget _playerLayout(double contentOpacity, {required bool isMorphing}) {
+    final heroHeight = MediaQuery.sizeOf(context).height * 0.46;
     final hasArtwork = _artwork != null && _artworkKey == _trackKey;
-    if (theme == 'aether') {
-      return AnimatedContainer(
-        duration: const Duration(milliseconds: 700),
-        curve: Curves.easeInOut,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color.lerp(palette[0], Colors.white, 0.08)!,
-              Color.lerp(palette[1], palette[0], 0.28)!,
-              Color.lerp(palette[2], Colors.black, 0.42)!,
-              const Color(0xFF090910),
-            ],
-            stops: const [0, 0.36, 0.72, 1],
-          ),
-        ),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            if (hasArtwork)
-              ImageFiltered(
-                imageFilter: ui.ImageFilter.blur(sigmaX: 44, sigmaY: 44),
-                child: Opacity(
-                  opacity: 0.52,
-                  child: Image.memory(_artwork!, cacheWidth: 544, fit: BoxFit.cover, gaplessPlayback: true),
-                ),
-              ),
-            DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    palette[0].withValues(alpha: 0.22),
-                    palette[1].withValues(alpha: 0.34),
-                    Colors.black.withValues(alpha: 0.82),
-                  ],
-                  stops: const [0, 0.48, 1],
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-    if (theme == 'blur' || theme == 'blurCard') {
-      return Stack(
-        fit: StackFit.expand,
-        children: [
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [palette[0], palette[1], palette[2]],
-              ),
-            ),
-          ),
-          if (hasArtwork)
-            Opacity(
-              opacity: 1 - lyricsProgress,
-              child: ImageFiltered(
-                imageFilter: ui.ImageFilter.blur(sigmaX: 36, sigmaY: 36),
-                child: Image.memory(
-                  _artwork!,
-                  cacheWidth: 544,
-                  fit: BoxFit.cover,
-                  gaplessPlayback: true,
-                ),
-              ),
-            ),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.black.withValues(alpha: 0.38),
-                  Colors.black.withValues(alpha: 0.56),
-                  Colors.black.withValues(alpha: 0.82),
-                ],
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-    if (theme == 'gradient') {
-      return Stack(
-        fit: StackFit.expand,
-        children: [
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  palette[0].withValues(alpha: 0.72),
-                  palette[1].withValues(alpha: 0.46),
-                  palette[2],
-                  const Color(0xFF08090D),
-                ],
-                stops: const [0, 0.42, 0.76, 1],
-              ),
-            ),
-          ),
-          if (hasArtwork)
-            Positioned.fill(
-              child: ImageFiltered(
-                imageFilter: ui.ImageFilter.blur(sigmaX: 44, sigmaY: 44),
-                child: Opacity(
-                  opacity: 0.20,
-                  child: Image.memory(_artwork!, cacheWidth: 544, fit: BoxFit.cover, gaplessPlayback: true),
-                ),
-              ),
-            ),
-          if (!_usesSharedArtwork)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              height: MediaQuery.sizeOf(context).height * 0.64,
-              child: Opacity(
-                opacity: 1 - lyricsProgress,
-                child: TrackArtworkView(
-                  bytes: hasArtwork ? _artwork : null,
-                  artworkUrl: _track.artworkUrl,
-                  fallbackColors: palette,
-                  fallbackIconSize: 92,
-                  fadeBottom: true,
-                ),
-              ),
-            ),
-        ],
-      );
-    }
-    return _ambientBackground();
-  }
-
-  Widget _themeLayout(String theme, double contentOpacity) {
-    if (_usesSharedArtwork) {
-      // The morph overlay supplies one full-width hero for every theme.
-      // Keep the expanded foreground geometry identical so it cannot cover
-      // the shared artwork with a second, theme-specific square card.
-      return Column(
-        children: [
-          _header(contentOpacity: contentOpacity),
-          const Expanded(child: SizedBox.expand()),
-          _playerDetails(contentOpacity: contentOpacity),
-        ],
-      );
-    }
-    if (theme == 'blur') {
-      return Column(
-        children: [
-          _header(contentOpacity: contentOpacity),
-          Expanded(
-            flex: 3,
-            child: Center(
-              child: SizedBox(
-                width: 250,
-                height: 250,
-                child: _artworkCard(),
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 4,
-            child: NowPlayingScrollDismissDetector(
-              enabled: AppSettings.instance.enableNowPlayingGestures,
-              onDismissDragStart: widget.onDismissDragStart,
-              onDismissDragUpdate: widget.onDismissDragUpdate,
-              onDismissDragEnd: widget.onDismissDragEnd,
-              child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: _playerDetails(contentOpacity: contentOpacity),
-            ),
-              ),
-          ),
-        ],
-      );
-    }
-
-    if (theme == 'blurCard') {
-      return Column(
-        children: [
-          _header(contentOpacity: contentOpacity),
-          Expanded(
-            flex: 2,
-            child: Center(
-              child: SizedBox(
-                width: 210,
-                height: 210,
-                child: _artworkCard(),
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 4,
-            child: NowPlayingScrollDismissDetector(
-              enabled: AppSettings.instance.enableNowPlayingGestures,
-              onDismissDragStart: widget.onDismissDragStart,
-              onDismissDragUpdate: widget.onDismissDragUpdate,
-              onDismissDragEnd: widget.onDismissDragEnd,
-              child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
-              child: _playerDetails(
-                glassCard: true,
-                contentOpacity: contentOpacity,
-              ),
-            ),
-              ),
-          ),
-        ],
-      );
-    }
-
-    if (theme == 'aether') {
-      return Column(
-        children: [
-          _header(contentOpacity: contentOpacity),
-          Expanded(
-            flex: 5,
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-                child: _artworkCard(),
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 4,
-            child: NowPlayingScrollDismissDetector(
-              enabled: AppSettings.instance.enableNowPlayingGestures,
-              onDismissDragStart: widget.onDismissDragStart,
-              onDismissDragUpdate: widget.onDismissDragUpdate,
-              onDismissDragEnd: widget.onDismissDragEnd,
-              child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
-              child: _playerDetails(
-                glassCard: true,
-                contentOpacity: contentOpacity,
-              ),
-            ),
-              ),
-          ),
-        ],
-      );
-    }
-
-    if (theme == 'gradient') {
-      return Column(
-        children: [
-          _header(contentOpacity: contentOpacity),
-          const Expanded(child: SizedBox.expand()),
-          _playerDetails(contentOpacity: contentOpacity),
-        ],
-      );
-    }
-
-    // Apple Glass remains the default layout.
-    return Column(
+    return Stack(
+      fit: StackFit.expand,
       children: [
-        _header(contentOpacity: contentOpacity),
-        Expanded(
-          child: Center(child: _artworkCard()),
+        if (!isMorphing) Positioned.fill(child: _ambientBackground()),
+        Positioned(
+          top: 0, left: 0, right: 0, height: heroHeight,
+          child: SizedBox(
+            key: widget.artworkTargetKey,
+            width: double.infinity,
+            child: isMorphing
+                ? const SizedBox.expand()
+                : TrackArtworkView(
+                    bytes: hasArtwork ? _artwork : null,
+                    artworkUrl: _track.artworkUrl,
+                    fallbackColors: _trackPalette,
+                    fallbackIconSize: 92,
+                    fadeBottom: true,
+                  ),
+          ),
         ),
-        _playerDetails(contentOpacity: contentOpacity),
+        SafeArea(
+          child: Column(children: [
+            _header(contentOpacity: contentOpacity),
+            const Spacer(),
+            _playerDetails(contentOpacity: contentOpacity),
+          ]),
+        ),
       ],
     );
   }
@@ -1783,14 +1473,12 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     return AnimatedBuilder(
       animation: Listenable.merge(listenables),
       builder: (context, _) {
-        final theme = AppSettings.instance.nowPlayingTheme;
         final progress = animation?.value ?? 1.0;
         final contentOpacity = const Interval(
           0.55,
           1.0,
           curve: Curves.easeOutCubic,
         ).transform(progress);
-        final lyricsProgress = Curves.easeOutCubic.transform(_lyricsController.value);
         final isMorphing = widget.morphAnimation != null;
         return Scaffold(
           // The morph sheet owns the opaque backdrop. Keep this route
@@ -1808,7 +1496,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                 ),
               if (!isMorphing)
                 Positioned.fill(
-                  child: _themeBackground(theme, lyricsProgress: lyricsProgress),
+                  child: _ambientBackground(),
                 ),
               Positioned.fill(
                 child: Stack(
@@ -1853,7 +1541,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                     // the parent morph overlay interpolates toward it. A
                     // second translation here makes the artwork drift during
                     // both expansion and collapse.
-                    child: _themeLayout(theme, contentOpacity),
+                    child: _playerLayout(contentOpacity, isMorphing: isMorphing),
                   ),
                     ),
                     ),
@@ -1864,7 +1552,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                         onDismissDragUpdate: widget.onDismissDragUpdate,
                         onDismissDragEnd: widget.onDismissDragEnd,
                         scrollableKey: _lyricsViewportKey,
-                        child: _lyricsMode(theme, lyricsProgress),
+                        child: _lyricsMode('apple', Curves.easeOutCubic.transform(_lyricsController.value)),
                       ),
                     ),
                   ],
