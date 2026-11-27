@@ -729,11 +729,14 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
             size.width,
             size.height * 0.46,
           );
-          final artworkRect = Rect.lerp(sourceArt, targetArt, t)!;
+          // Expand the cover toward the edge-to-edge hero early in the
+          // gesture so it never looks like a narrow card near completion.
+          final artworkProgress = Curves.easeOutCubic.transform(t);
+          final artworkRect = Rect.lerp(sourceArt, targetArt, artworkProgress)!;
           final artworkRadius = BorderRadius.lerp(
-            BorderRadius.circular(11),
+            BorderRadius.circular(10),
             BorderRadius.zero,
-            t,
+            artworkProgress,
           )!;
 
           return PopScope<void>(
