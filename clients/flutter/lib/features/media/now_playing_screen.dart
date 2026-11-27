@@ -1564,9 +1564,14 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
           ),
         SafeArea(
           child: Column(children: [
-            _header(contentOpacity: contentOpacity),
+            if (_lyricsController.value < 0.42)
+              _header(contentOpacity: contentOpacity),
             const Spacer(),
-            _playerDetails(contentOpacity: contentOpacity),
+            _playerDetails(
+              contentOpacity: contentOpacity *
+                  (1 - const Interval(0.30, 0.48, curve: Curves.easeInCubic)
+                      .transform(_lyricsController.value)),
+            ),
           ]),
         ),
       ],
@@ -1654,10 +1659,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                     ),
                     Positioned.fill(
                       child: IgnorePointer(
-                        ignoring: _lyricsController.value <= 0.52,
+                        ignoring: _lyricsController.value <= 0.48,
                         child: Opacity(
                           opacity: const Interval(
-                            0.58,
+                            0.48,
                             1.0,
                             curve: Curves.easeOutCubic,
                           ).transform(_lyricsController.value),
