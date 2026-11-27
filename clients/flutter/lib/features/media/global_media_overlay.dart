@@ -976,6 +976,7 @@ class _GlobalMiniPlayerBar extends StatelessWidget {
     required this.player,
     required this.artworkBytes,
     required this.surfaceIntensity,
+    required this.opacity,
     required this.onOpen,
     required this.onDismiss,
     required this.onExpandDragStart,
@@ -990,6 +991,7 @@ class _GlobalMiniPlayerBar extends StatelessWidget {
   final PersistentAudioPlayer player;
   final ValueListenable<Uint8List?> artworkBytes;
   final double surfaceIntensity;
+  final double opacity;
   final VoidCallback onOpen;
   final VoidCallback onDismiss;
   final VoidCallback onExpandDragStart;
@@ -1015,6 +1017,7 @@ class _GlobalMiniPlayerBar extends StatelessWidget {
             builder: (context, durationSnapshot) => GlobalMiniPlayerBar(
               item: item,
               visible: visible,
+              opacity: opacity,
               reduceMotion: reduceMotion,
               isPlaying: playingSnapshot.data ?? false,
               isLoading: player.isSelectionLoading ||
