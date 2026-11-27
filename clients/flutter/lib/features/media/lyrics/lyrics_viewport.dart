@@ -130,8 +130,8 @@ class _LyricsViewportState extends State<LyricsViewport> {
                     widget.position.inMilliseconds - line.timeMs >= 6000;
                 final baseStyle = TextStyle(
                   color: Colors.white,
-                  fontSize: active ? 27 : 24,
-                  height: 1.28,
+                  fontSize: active ? 29 : 27,
+                  height: 1.22,
                   fontWeight: FontWeight.w700,
                   shadows: active
                       ? [Shadow(color: Colors.white.withValues(alpha: .18), blurRadius: 16)]
