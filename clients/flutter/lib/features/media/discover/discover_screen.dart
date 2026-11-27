@@ -697,6 +697,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       artworkUrl: track.thumbnailUrl,
       lyricsVideoId: track.videoId,
       durationText: track.durationText,
+      isDiscover: true,
     );
     final session = player.beginQueueSelection(
       api: widget.api,
@@ -900,6 +901,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       artworkUrl: track.thumbnailUrl,
       lyricsVideoId: track.videoId,
       durationText: track.durationText,
+      isDiscover: true,
       streamCodec: stream.codec,
       streamResolver: stream.resolver,
       streamBitrateBps: stream.bitrateBps,
