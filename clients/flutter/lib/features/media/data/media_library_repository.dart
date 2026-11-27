@@ -1,5 +1,3 @@
-import 'package:dio/dio.dart';
-
 import '../../../core/network/server_api.dart';
 import '../media_library_catalog.dart';
 
