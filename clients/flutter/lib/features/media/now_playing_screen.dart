@@ -1508,17 +1508,22 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
             left: 0,
             right: 0,
             child: Center(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => unawaited(_showTrackLyrics()),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 5),
-                  child: Container(
-                    width: 36,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.7),
-                      borderRadius: BorderRadius.circular(99),
+              child: Opacity(
+                // The overlay paints the same handle outside its morph clip.
+                // Keep this tap target active, but avoid drawing it twice.
+                opacity: widget.morphAnimation == null ? 1 : 0,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => unawaited(_showTrackLyrics()),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 5),
+                    child: Container(
+                      width: 36,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.7),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
                     ),
                   ),
                 ),
