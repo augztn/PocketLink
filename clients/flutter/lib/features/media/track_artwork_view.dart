@@ -73,10 +73,10 @@ class TrackArtworkView extends StatelessWidget {
       child: fadeBottom
           ? ShaderMask(
               blendMode: BlendMode.dstIn,
-              shaderCallback: (bounds) => const LinearGradient(
+              shaderCallback: (bounds) => LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Colors.white, Colors.white, Colors.transparent],
+                colors: const [Colors.white, Colors.white, Colors.transparent],
                 stops: [0, fadeBottomStart, 1],
               ).createShader(bounds),
               child: image,
