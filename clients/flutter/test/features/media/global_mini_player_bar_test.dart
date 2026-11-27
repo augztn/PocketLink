@@ -187,11 +187,11 @@ void main() {
       tester.getCenter(find.byType(GlobalMiniPlayerBar)),
     );
     await gesture.moveBy(const Offset(7, 0));
-    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 16));
     await gesture.moveBy(const Offset(-2, -30));
-    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 16));
     await gesture.moveBy(const Offset(0, -30));
-    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 16));
     await gesture.up();
     await tester.pump();
 
