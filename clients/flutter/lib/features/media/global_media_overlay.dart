@@ -16,10 +16,8 @@ import 'global_mini_player_bar.dart';
 import 'now_playing_screen.dart';
 import 'persistent_audio_player.dart';
 import 'now_playing_overlay_controller.dart';
-import 'now_playing_scrubber.dart';
 import 'now_playing_artwork_palette.dart';
 import 'track_artwork_view.dart';
-import 'media_metadata.dart';
 
 class GlobalMediaOverlay extends StatefulWidget {
   const GlobalMediaOverlay({required this.child, super.key});
