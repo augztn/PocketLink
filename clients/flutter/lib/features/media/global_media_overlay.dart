@@ -47,6 +47,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
   Rect? _nowPlayingOriginRect;
   Rect? _miniArtworkOriginRect;
   final ValueNotifier<Uint8List?> _sharedArtwork = ValueNotifier(null);
+  final ValueNotifier<Rect?> _sharedArtworkTargetRect = ValueNotifier(null);
   Route<void>? _nowPlayingRoute;
   late final AnimationController _nowPlayingController;
   MediaQueueItem? _lastTrack;
@@ -85,6 +86,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     _nowPlayingController.stop();
     _isNowPlayingDragging.dispose();
     _sharedArtwork.dispose();
+    _sharedArtworkTargetRect.dispose();
     _nowPlayingController.dispose();
     super.dispose();
   }
@@ -195,6 +197,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
             : globalOrigin;
     _miniArtworkOriginRect =
         PocketLinkNavigation.resolveMediaRect(PocketLinkNavigation.miniArtworkKey);
+    _sharedArtworkTargetRect.value = null;
     _nowPlayingController.value = 0;
     _morphLayoutReady = false;
     _pendingMiniPlayerDragDelta = 0;
@@ -219,6 +222,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
           originRect: _nowPlayingOriginRect,
           sourceArtworkRect: _miniArtworkOriginRect,
           artworkBytes: _sharedArtwork,
+          artworkTargetRect: _sharedArtworkTargetRect,
           artworkTargetKey: PocketLinkNavigation.nowPlayingArtworkKey,
           onArtworkChanged: _publishSharedArtwork,
           player: player,
@@ -246,6 +250,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
         _isNowPlayingDragging.value = false;
         _nowPlayingOriginRect = null;
         _miniArtworkOriginRect = null;
+        _sharedArtworkTargetRect.value = null;
       });
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || !_snapMiniPlayerVisibility) return;
@@ -257,6 +262,12 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     // real RenderBox, otherwise the morph starts toward a guessed center rect.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_nowPlayingOpen) return;
+      // Capture the expanded artwork target once, after the route has laid
+      // out. Re-measuring it on every animation tick can shift the image while
+      // the user is dragging, especially as Now Playing fades in.
+      _sharedArtworkTargetRect.value = PocketLinkNavigation.resolveMediaRect(
+        PocketLinkNavigation.nowPlayingArtworkKey,
+      );
       _morphLayoutReady = true;
       final pendingDelta = _pendingMiniPlayerDragDelta;
       _pendingMiniPlayerDragDelta = 0;
@@ -343,9 +354,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
 
   double _morphTravelExtent({required double fallback}) {
     final source = _miniArtworkOriginRect;
-    final target = PocketLinkNavigation.resolveMediaRect(
-      PocketLinkNavigation.nowPlayingArtworkKey,
-    );
+    final target = _sharedArtworkTargetRect.value;
     if (source != null && target != null) {
       final measured = (source.center.dy - target.center.dy).abs();
       if (measured.isFinite && measured > 1) return measured;
@@ -608,6 +617,7 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
     required this.originRect,
     required this.sourceArtworkRect,
     required this.artworkBytes,
+    required this.artworkTargetRect,
     required this.artworkTargetKey,
     required this.onArtworkChanged,
     required this.player,
@@ -623,6 +633,7 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
   final Rect? originRect;
   final Rect? sourceArtworkRect;
   final ValueNotifier<Uint8List?> artworkBytes;
+  final ValueListenable<Rect?> artworkTargetRect;
   final GlobalKey artworkTargetKey;
   final ValueChanged<Uint8List?> onArtworkChanged;
   final PersistentAudioPlayer player;
@@ -704,7 +715,7 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
               AppSettings.instance.nowPlayingTheme == 'gradient';
           final targetArt = isGradientTheme
               ? Rect.fromLTWH(0, 0, size.width, size.height * 0.64)
-              : PocketLinkNavigation.resolveMediaRect(artworkTargetKey) ??
+              : artworkTargetRect.value ??
                   Rect.fromCenter(
                     center: Offset(size.width / 2, size.height * 0.34),
                     width: 260,
