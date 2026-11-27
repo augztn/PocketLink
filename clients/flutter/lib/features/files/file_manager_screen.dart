@@ -132,9 +132,11 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
       _category = widget.initialCategory;
     }
     if (oldWidget.locationRequest != widget.locationRequest && widget.locationRequest > 0) {
+      _initialLoadStarted = true;
       _navigateToRequestedLocation();
     } else if (oldWidget.externalDriveRequest != widget.externalDriveRequest &&
         widget.externalDriveRequest > 0) {
+      _initialLoadStarted = true;
       _selectFirstExternalDrive();
     }
     if (oldWidget.initialVolume != widget.initialVolume && widget.initialVolume != null) {
