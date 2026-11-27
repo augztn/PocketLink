@@ -158,8 +158,9 @@ class _LyricsViewportState extends State<LyricsViewport> {
                               TextSpan(
                                 text: word.text,
                                 style: TextStyle(
-                                  color: widget.position.inMilliseconds >= word.startMs &&
-                                          widget.position.inMilliseconds < word.endMs
+                                  color: !active ||
+                                          (widget.position.inMilliseconds >= word.startMs &&
+                                              widget.position.inMilliseconds < word.endMs)
                                       ? Colors.white
                                       : Colors.white.withValues(alpha: .58),
                                 ),
@@ -172,7 +173,7 @@ class _LyricsViewportState extends State<LyricsViewport> {
                   onTap: doc.synced ? () => widget.onSeek(Duration(milliseconds: line.timeMs)) : null,
                   child: AnimatedOpacity(
                     duration: const Duration(milliseconds: 220),
-                    opacity: active ? 1 : .32,
+                    opacity: active ? 1 : .34,
                     child: AnimatedScale(
                       duration: const Duration(milliseconds: 240),
                       scale: active ? 1 : .96,
