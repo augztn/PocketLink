@@ -409,7 +409,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'Export settings': 'backup export json preferences',
         'Import settings': 'restore import json preferences',
         'Diagnostic logs': 'diagnostics troubleshooting logs export share',
-        'Clear cache': 'temporary files image cache clear',
       },
       'about': {
         'Version information': 'version about pocketlink',
@@ -422,7 +421,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     const categoryTerms = <String, String>{
       'appearance': 'appearance visual effects',
       'navigation': 'navigation bar dock dashboard home fab',
-      'storage': 'storage downloads files transfers',
+      'storage': 'storage downloads files transfers download location',
       'music': 'music audio playback discover video lyrics playlists',
       'network': 'network connectivity connection server',
       'diagnostics': 'diagnostics maintenance backup restore logs troubleshooting',
@@ -471,7 +470,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       'Appearance': 'Theme, OLED black mode, blur, colors and visual effects.',
       'Navigation': 'Dock, destinations, dashboard sections and floating shortcuts.',
       'Music': 'Music library, playback, Discover, lyrics and video preferences.',
-      'Storage': 'Volumes, downloads, transfer behavior and temporary cache.',
+      'Storage': 'Download location, transfer behavior and temporary cache.',
       'Network': 'Manage saved PocketLink servers and connection switching.',
       'Diagnostics': 'Back up settings, restore preferences and export diagnostic logs.',
       'Dashboard & Shortcuts': 'Choose which Home sections appear and arrange their order.',
