@@ -36,7 +36,7 @@ class NowPlayingLyricsMode extends StatelessWidget {
             builder: (context, constraints) {
               final width = constraints.maxWidth;
               final height = constraints.maxHeight;
-              final startRect = Rect.fromLTWH(0, 0, width, height * 0.46);
+              final startRect = Rect.fromLTWH(0, 0, width, height * 0.56);
               final compactArtRect = Rect.fromLTWH(12, MediaQuery.paddingOf(context).top + 3, 48, 48);
               final artRect = Rect.lerp(startRect, compactArtRect, progress)!;
               return Stack(
