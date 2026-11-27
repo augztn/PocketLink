@@ -14,7 +14,6 @@ import 'package:share_plus/share_plus.dart';
 import '../../core/network/offline_file_cache.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/settings/app_settings.dart';
-import '../../core/widgets/liquid_glass_pill.dart';
 import '../../core/widgets/smoked_glass_popover_menu.dart';
 import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
@@ -1033,7 +1032,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     required String label,
     required VoidCallback onTap,
     bool selected = false,
-  }) => TextButton(
+  }) => Tooltip(
+        message: label,
+        child: TextButton(
         onPressed: onTap,
         style: TextButton.styleFrom(
           foregroundColor: Colors.white70,
@@ -1324,7 +1325,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
               Expanded(
                 child: SliderTheme(
                   data: SliderTheme.of(context).copyWith(
-                    trackHeight: 3,
+                    trackHeight: 5,
                     thumbShape: SliderComponentShape.noThumb,
                     overlayShape: SliderComponentShape.noOverlay,
                     activeTrackColor: Colors.white,
