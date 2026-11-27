@@ -485,7 +485,7 @@ class MediaIndexScannerTest {
     }
 
     @Test
-    fun mediaQueriesRejectWrongExtensionsAndMismatchedMimeTypes() {
+    fun mediaIndexRejectsWrongExtensionsAndMismatchedMimeTypes() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         context.deleteDatabase("pocketlink_index.db")
         val database = MediaIndexDatabase(context)
@@ -496,6 +496,7 @@ class MediaIndexScannerTest {
                 IndexedFile("internal", "good.mp3", "good.mp3", "file", 1, 1, "audio/mpeg", "music"),
                 IndexedFile("internal", "good.mp4", "good.mp4", "file", 1, 1, "video/mp4", "video")
             ), "test")
+            assertEquals(2, database.counts()["media"])
             assertEquals("good.mp3", database.queryMedia("music", "", 10, 0).single().name)
             assertEquals("good.mp4", database.queryMedia("video", "", 10, 0).single().name)
         } finally {
