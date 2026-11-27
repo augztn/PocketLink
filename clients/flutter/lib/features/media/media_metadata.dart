@@ -11,10 +11,6 @@ String cleanMediaArtist(String? value, {String fallback = ''}) {
       .trim();
 }
 
-/// Keeps RTL artist names isolated from following LTR counts or separators.
-String isolateRtlMetadata(String artist, String suffix) =>
-    '\u2068$artist\u2069$suffix';
-
 String formatDiscoverArtist(String? value) {
   final raw = (value ?? '').trim();
   if (raw.isEmpty) return '';
