@@ -1455,6 +1455,27 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                   ),
           ),
         ),
+        if (isMorphing && hasArtwork)
+          Positioned(
+            top: heroHeight,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: ClipRect(
+              child: ImageFiltered(
+                imageFilter: ui.ImageFilter.blur(sigmaX: 46, sigmaY: 46),
+                child: Opacity(
+                  opacity: 0.42,
+                  child: Image.memory(
+                    _artwork!,
+                    cacheWidth: 720,
+                    fit: BoxFit.cover,
+                    gaplessPlayback: true,
+                  ),
+                ),
+              ),
+            ),
+          ),
         if (isMorphing)
           Positioned.fill(
             child: DecoratedBox(
@@ -1465,9 +1486,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                   colors: [
                     Colors.transparent,
                     Colors.transparent,
-                    _trackPalette[0].withValues(alpha: 0.28),
-                    _trackPalette[1].withValues(alpha: 0.54),
-                    _trackPalette[2].withValues(alpha: 0.88),
+                    Color.lerp(_trackPalette[0], const Color(0xFFB65D38), 0.24)!.withValues(alpha: 0.36),
+                    Color.lerp(_trackPalette[1], const Color(0xFF6D3427), 0.30)!.withValues(alpha: 0.66),
+                    Color.lerp(_trackPalette[2], const Color(0xFF160D0B), 0.28)!.withValues(alpha: 0.92),
                     const Color(0xF5000000),
                   ],
                   stops: const [0, 0.34, 0.48, 0.64, 0.84, 1],
