@@ -1043,56 +1043,38 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
         onNext: _persistent.skipToNext,
       );
 
-  Widget _bottomUtilities() => Row(
-    mainAxisAlignment: MainAxisAlignment.center,
-    children: [
-      StreamBuilder<bool>(
-        stream: _player.stream.shuffle,
-        initialData: _player.state.shuffle,
-        builder: (context, snapshot) => IconButton(
-          tooltip: 'Shuffle',
-          onPressed: () => unawaited(_toggleShuffle()),
-          iconSize: 22,
-          padding: const EdgeInsets.all(8),
-          constraints: const BoxConstraints.tightFor(width: 42, height: 42),
-          icon: Icon(
-            Icons.shuffle_rounded,
-            color: (snapshot.data ?? false) ? Colors.white : Colors.white54,
-          ),
+  Widget _bottomUtilities() => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 2),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _utilityButton(icon: Icons.lyrics_rounded, label: 'Lyrics',
+              onTap: () => unawaited(_showTrackLyrics())),
+            _utilityButton(icon: Icons.cast_rounded, label: 'Audio Output',
+              onTap: _showAudioOutput),
+            _utilityButton(icon: Icons.queue_music_rounded, label: 'Queue',
+              onTap: _showQueue),
+          ],
         ),
-      ),
-      const SizedBox(width: 28),
-      StreamBuilder<PlaylistMode>(
-        stream: _player.stream.playlistMode,
-        initialData: _player.state.playlistMode,
-        builder: (context, snapshot) {
-          final mode = snapshot.data ?? PlaylistMode.none;
-          return IconButton(
-            tooltip: 'Repeat',
-            onPressed: () => unawaited(_cycleRepeat()),
-            iconSize: 22,
-            padding: const EdgeInsets.all(8),
-            constraints: const BoxConstraints.tightFor(width: 42, height: 42),
-            icon: Icon(
-              mode == PlaylistMode.single
-                  ? Icons.repeat_one_rounded
-                  : Icons.repeat_rounded,
-              color: mode != PlaylistMode.none ? Colors.white : Colors.white54,
-            ),
-          );
-        },
-      ),
-      const SizedBox(width: 28),
-      IconButton(
-        tooltip: 'Queue',
-        onPressed: _showQueue,
-        iconSize: 22,
-        padding: const EdgeInsets.all(8),
-        constraints: const BoxConstraints.tightFor(width: 42, height: 42),
-        icon: const Icon(Icons.queue_music_rounded, color: Colors.white54),
-      ),
-    ],
-  );
+      );
+
+  Widget _utilityButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) => TextButton(
+        onPressed: onTap,
+        style: TextButton.styleFrom(
+          foregroundColor: Colors.white70,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, size: 21, color: Colors.white),
+          const SizedBox(height: 3),
+          Text(label, style: const TextStyle(fontSize: 10, color: Colors.white60)),
+        ]),
+      );
 
   Future<void> _showTrackLyrics() async {
     if (_lyricsController.value > 0.5) {
