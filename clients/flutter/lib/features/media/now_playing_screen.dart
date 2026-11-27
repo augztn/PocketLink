@@ -1681,7 +1681,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
           // The persistent screen remains mounted while collapsed, so it must
           // not intercept navigation until its overlay is actually expanded.
           // Lyrics consume the first back press while Now Playing is open.
-          canPop: !overlayExpanded && _lyricsController.value <= 0.001,
+          canPop: !overlayExpanded,
           onPopInvoked: (didPop) {
             if (didPop) return;
             if (_lyricsController.value > 0.001) {
