@@ -5,8 +5,8 @@ import 'package:pocketlink_client/features/media/now_playing_lyrics_mode.dart';
 
 void main() {
   testWidgets('compact lyrics header aligns artwork and actions to 24dp', (tester) async {
-    await tester.view.setPhysicalSize(const Size(432, 900));
-    await tester.view.setDevicePixelRatio(1);
+    tester.view.physicalSize = const Size(432, 900);
+    tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
