@@ -223,7 +223,6 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
           sourceArtworkRect: _miniArtworkOriginRect,
           artworkBytes: _sharedArtwork,
           artworkTargetRect: _sharedArtworkTargetRect,
-          artworkTargetKey: PocketLinkNavigation.nowPlayingArtworkKey,
           onArtworkChanged: _publishSharedArtwork,
           player: player,
           api: player.api,
@@ -618,7 +617,6 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
     required this.sourceArtworkRect,
     required this.artworkBytes,
     required this.artworkTargetRect,
-    required this.artworkTargetKey,
     required this.onArtworkChanged,
     required this.player,
     required this.api,
@@ -634,7 +632,6 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
   final Rect? sourceArtworkRect;
   final ValueNotifier<Uint8List?> artworkBytes;
   final ValueListenable<Rect?> artworkTargetRect;
-  final GlobalKey artworkTargetKey;
   final ValueChanged<Uint8List?> onArtworkChanged;
   final PersistentAudioPlayer player;
   final ServerApi? api;
@@ -663,7 +660,7 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
     return MediaQuery(
       data: media,
       child: AnimatedBuilder(
-        animation: animation,
+        animation: Listenable.merge(<Listenable>[animation, artworkTargetRect]),
         child: RepaintBoundary(
           child: NowPlayingScreen(
             api: api,
