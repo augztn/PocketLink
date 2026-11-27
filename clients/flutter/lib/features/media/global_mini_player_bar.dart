@@ -114,6 +114,8 @@ class GlobalMiniPlayerBar extends StatelessWidget {
               isPlaying: isPlaying,
               canSkipPrevious: canSkipPrevious,
               canSkipNext: canSkipNext,
+              onSkipPrevious: onSkipPrevious,
+              onSkipNext: onSkipNext,
               onExpandDragStart: onExpandDragStart,
               onExpandDragUpdate: onExpandDragUpdate,
               onExpandDragEnd: onExpandDragEnd,
@@ -279,6 +281,8 @@ class _MiniPlayerGestureSurface extends StatefulWidget {
     required this.isPlaying,
     required this.canSkipPrevious,
     required this.canSkipNext,
+    required this.onSkipPrevious,
+    required this.onSkipNext,
     required this.onExpandDragStart,
     required this.onExpandDragUpdate,
     required this.onExpandDragEnd,
@@ -290,6 +294,8 @@ class _MiniPlayerGestureSurface extends StatefulWidget {
   final bool isPlaying;
   final bool canSkipPrevious;
   final bool canSkipNext;
+  final VoidCallback onSkipPrevious;
+  final VoidCallback onSkipNext;
   final VoidCallback? onExpandDragStart;
   final ValueChanged<double>? onExpandDragUpdate;
   final ValueChanged<double>? onExpandDragEnd;
@@ -302,24 +308,39 @@ class _MiniPlayerGestureSurface extends StatefulWidget {
 class _MiniPlayerGestureSurfaceState extends State<_MiniPlayerGestureSurface> {
   bool _expandStarted = false;
   double _verticalDistance = 0;
+  double _horizontalDistance = 0;
+  Axis? _gestureAxis;
 
   void _onPanUpdate(DragUpdateDetails details) {
-    final delta = details.delta.dy;
-    _verticalDistance += delta;
+    _verticalDistance += details.delta.dy;
+    _horizontalDistance += details.delta.dx;
+    _gestureAxis ??= _horizontalDistance.abs() > _verticalDistance.abs()
+        ? Axis.horizontal
+        : Axis.vertical;
+
+    if (_gestureAxis == Axis.horizontal) return;
     if (!_expandStarted && _verticalDistance < 0) {
       _expandStarted = true;
       widget.onExpandDragStart?.call();
       widget.onExpandDragUpdate?.call(_verticalDistance);
       return;
     }
-    if (_expandStarted) widget.onExpandDragUpdate?.call(delta);
+    if (_expandStarted) widget.onExpandDragUpdate?.call(details.delta.dy);
   }
 
   void _onPanEnd(DragEndDetails details) {
-    final velocity = details.velocity.pixelsPerSecond.dy;
-    if (_expandStarted) {
-      widget.onExpandDragEnd?.call(velocity);
-    } else if (!widget.isPlaying && velocity > 300) {
+    final velocity = details.velocity.pixelsPerSecond;
+    if (_gestureAxis == Axis.horizontal) {
+      if (widget.canSkipNext &&
+          (_horizontalDistance < -80 || velocity.dx < -500)) {
+        widget.onSkipNext();
+      } else if (widget.canSkipPrevious &&
+          (_horizontalDistance > 80 || velocity.dx > 500)) {
+        widget.onSkipPrevious();
+      }
+    } else if (_expandStarted) {
+      widget.onExpandDragEnd?.call(velocity.dy);
+    } else if (!widget.isPlaying && velocity.dy > 300) {
       widget.onDismiss();
     }
     _reset();
@@ -333,6 +354,8 @@ class _MiniPlayerGestureSurfaceState extends State<_MiniPlayerGestureSurface> {
   void _reset() {
     _expandStarted = false;
     _verticalDistance = 0;
+    _horizontalDistance = 0;
+    _gestureAxis = null;
   }
 
   @override
