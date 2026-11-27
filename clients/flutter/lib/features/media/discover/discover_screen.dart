@@ -1374,134 +1374,124 @@ class _DiscoverScreenState extends State<DiscoverScreen>
 
   Widget _topPickCard(DiscoverTrack track) {
     final screenWidth = MediaQuery.sizeOf(context).width;
-    final width = (screenWidth * .60).clamp(190.0, 280.0).toDouble();
+    final width = (screenWidth * .56).clamp(184.0, 248.0).toDouble();
     final local = AppSettings.instance.discoverLocalLossless
         ? DiscoverService.findLocalLosslessMatch(track, _localLibrary)
         : null;
     return SizedBox(
       width: width,
-      child: AspectRatio(
-        aspectRatio: 16 / 9,
-        child: Material(
-          color: const Color(0xFF1A1B20),
-          borderRadius: BorderRadius.circular(12),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: () => _play(track, queueOverride: _listeningPicks),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                _art(
-                  track,
-                  size: double.infinity,
-                  radius: 0,
-                  // Match the 16:9 source frame so embedded thumbnail
-                  // titles remain legible without letterboxing.
-                  fit: BoxFit.cover,
-                ),
-                const DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      stops: [.34, .66, 1],
-                      colors: [
-                        Color(0x00000000),
-                        Color(0x52000000),
-                        Color(0xE6000000),
-                      ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Material(
+              color: const Color(0xFF1A1B20),
+              borderRadius: BorderRadius.circular(12),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: () => _play(track, queueOverride: _listeningPicks),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    _art(
+                      track,
+                      size: double.infinity,
+                      radius: 0,
+                      fit: BoxFit.cover,
                     ),
-                  ),
-                ),
-                if (local != null)
-                  Positioned(
-                    left: 14,
-                    top: 14,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: Colors.black54,
-                        borderRadius: BorderRadius.circular(5),
+                    if (local != null)
+                      Positioned(
+                        left: 10,
+                        top: 10,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black54,
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                          child: const Text(
+                            'LOSSLESS',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: .5,
+                            ),
+                          ),
+                        ),
                       ),
-                      child: const Text(
-                        'LOSSLESS',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: .5,
+                    Positioned(
+                      top: 2,
+                      right: 2,
+                      child: Material(
+                        color: Colors.black45,
+                        shape: const CircleBorder(),
+                        child: PopupMenuButton<String>(
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 40,
+                            minHeight: 40,
+                          ),
+                          iconSize: 20,
+                          icon: const Icon(
+                            Icons.more_horiz_rounded,
+                            color: Colors.white,
+                          ),
+                          onSelected: (value) {
+                            if (value == 'play') {
+                              _play(track, queueOverride: _listeningPicks);
+                            }
+                            if (value == 'radio') _loadRadio(track);
+                            if (value == 'lyrics') {
+                              _showLyrics(track, local: local);
+                            }
+                          },
+                          itemBuilder: (_) => [
+                            const PopupMenuItem(
+                              value: 'play',
+                              child: Text('Play'),
+                            ),
+                            const PopupMenuItem(
+                              value: 'radio',
+                              child: Text('Start radio'),
+                            ),
+                            if (AppSettings.instance.discoverLyrics)
+                              const PopupMenuItem(
+                                value: 'lyrics',
+                                child: Text('Lyrics'),
+                              ),
+                          ],
                         ),
                       ),
                     ),
-                  ),
-                Positioned(
-                  top: 5,
-                  right: 5,
-                  child: Material(
-                    color: Colors.black45,
-                    shape: const CircleBorder(),
-                    child: PopupMenuButton<String>(
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-                      iconSize: 20,
-                      icon: const Icon(Icons.more_horiz_rounded, color: Colors.white),
-                      onSelected: (value) {
-                        if (value == 'play') _play(track, queueOverride: _listeningPicks);
-                        if (value == 'radio') _loadRadio(track);
-                        if (value == 'lyrics') _showLyrics(track, local: local);
-                      },
-                      itemBuilder: (_) => [
-                        const PopupMenuItem(value: 'play', child: Text('Play')),
-                        const PopupMenuItem(value: 'radio', child: Text('Start radio')),
-                        if (AppSettings.instance.discoverLyrics)
-                          const PopupMenuItem(value: 'lyrics', child: Text('Lyrics')),
-                      ],
-                    ),
-                  ),
+                  ],
                 ),
-                Positioned(
-                  left: 16,
-                  right: 16,
-                  bottom: 16,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'BASED ON YOUR RECENT LISTENING',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: themeTextStyle(context, eyebrow: true),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        track.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: Colors.white,
-                          fontSize: 17,
-                          height: 1.2,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        track.artist,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.white.withValues(alpha: .86),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
-        ),
+          const SizedBox(height: 7),
+          Text(
+            track.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            track.artist,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 11,
+                ),
+          ),
+        ],
       ),
     );
   }
@@ -1519,12 +1509,12 @@ class _DiscoverScreenState extends State<DiscoverScreen>
 
   Widget _listeningPicksShelf() {
     if (_listeningPicks.isEmpty) return const SliverToBoxAdapter();
-    final cardWidth = (MediaQuery.sizeOf(context).width * .60).clamp(190.0, 280.0).toDouble();
+    final cardWidth = (MediaQuery.sizeOf(context).width * .56).clamp(184.0, 248.0).toDouble();
     return SliverToBoxAdapter(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         _shelfHeading('Top Picks for You'),
         SizedBox(
-          height: cardWidth / (16 / 9),
+          height: cardWidth / (16 / 9) + 52,
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             scrollDirection: Axis.horizontal,
