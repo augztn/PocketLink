@@ -278,7 +278,11 @@ class _LyricsFloatingButton extends StatelessWidget {
         child: IconButton(
           tooltip: tooltip,
           onPressed: onTap,
-          icon: Icon(icon, color: Colors.white, size: 21),
+          constraints: const BoxConstraints.tightFor(width: 38, height: 38),
+          padding: EdgeInsets.zero,
+          iconSize: 19,
+          style: IconButton.styleFrom(fixedSize: const Size(38, 38)),
+          icon: Icon(icon, color: Colors.white, size: 19),
         ),
       ),
     ),
