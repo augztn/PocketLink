@@ -144,8 +144,7 @@ class NowPlayingLyricsMode extends StatelessWidget {
                     Expanded(
                       child: ClipRect(child: lyricsContent),
                     ),
-                    if (providerLabel.isNotEmpty || translationControl is! SizedBox)
-                      Padding(
+                    Padding(
                         key: const ValueKey('lyrics-mode-attribution-footer'),
                         padding: const EdgeInsets.fromLTRB(24, 8, 24, 12),
                         child: Row(
