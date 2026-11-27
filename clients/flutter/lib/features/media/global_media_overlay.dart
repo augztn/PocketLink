@@ -736,16 +736,8 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
             ],
             stops: const [0, 0.34, 0.70, 1],
           );
-          // Remove docked controls before expanded controls begin appearing.
-          // The source mini-player remains visible until the sheet is
-          // laid out. Do not paint a second miniature control box inside the
-          // expanding sheet; it creates the green proxy/overlap seen mid-morph.
-          final miniOpacity = 1.0 -
-              const Interval(
-                0.0,
-                0.18,
-                curve: Curves.easeOutCubic,
-              ).transform(t);
+          // The real docked player is the only collapsed control surface.
+          // The morph sheet must not paint a second miniature proxy.
           // Match the fixed full-bleed hero geometry in Now Playing.
           final targetArt = Rect.fromLTWH(
             0,
