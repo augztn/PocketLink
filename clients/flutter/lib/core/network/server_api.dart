@@ -797,7 +797,7 @@ class ServerApi {
     final form = FormData.fromMap({
       'file': MultipartFile.fromBytes(bytes, filename: filename),
     });
-    await _dio.post<void>(
+    await _dio.put<void>(
       '/api/storage/$volume/upload',
       queryParameters: {'path': path},
       data: form,
