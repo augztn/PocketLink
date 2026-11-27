@@ -1382,7 +1382,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                 const SizedBox(height: 5),
                 Text(
                   _fileName,
-                  maxLines: 1,
+                  maxLines: 2,
+                  softWrap: true,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: Colors.white,
