@@ -1569,7 +1569,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
             const Spacer(),
             _playerDetails(
               contentOpacity: contentOpacity *
-                  (1 - const Interval(0.30, 0.48, curve: Curves.easeInCubic)
+                  (1 - const Interval(0.30, 0.44, curve: Curves.easeInCubic)
                       .transform(_lyricsController.value)),
             ),
           ]),
@@ -1616,7 +1616,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                       child: Opacity(
                         opacity: 1 - const Interval(
                           0.0,
-                          0.48,
+                          0.52,
                           curve: Curves.easeInCubic,
                         ).transform(_lyricsController.value),
                         child: GestureDetector(
@@ -1659,10 +1659,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                     ),
                     Positioned.fill(
                       child: IgnorePointer(
-                        ignoring: _lyricsController.value <= 0.48,
+                        ignoring: _lyricsController.value <= 0.44,
                         child: Opacity(
                           opacity: const Interval(
-                            0.48,
+                            0.44,
                             1.0,
                             curve: Curves.easeOutCubic,
                           ).transform(_lyricsController.value),
