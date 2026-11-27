@@ -70,7 +70,7 @@ class FloatingNavigationDock extends StatelessWidget {
             final value = progress.value.clamp(0.0, 1.0).toDouble();
             // Keep the dock in the same progress domain as the player
             // morph so it travels continuously across the full transition.
-            final dockT = value;
+            final dockT = (value / 0.42).clamp(0.0, 1.0).toDouble();
             final dockTotalHeight = 82.0 + MediaQuery.paddingOf(context).bottom;
             return IgnorePointer(
               ignoring: value > 0.05,
@@ -192,11 +192,13 @@ class FloatingNavigationDock extends StatelessWidget {
       if (id == 'browse') {
         addTabGroup();
         segments.add(
-          SizedBox(
-            key: preview ? null : PocketLinkNavigation.musicButtonKey,
-            width: 64,
-            height: 64,
-            child: Stack(
+          KeyedSubtree(
+            key: preview ? null : PocketLinkNavigation.nowPlayingDockButtonKey,
+            child: SizedBox(
+              key: preview ? null : PocketLinkNavigation.musicButtonKey,
+              width: 64,
+              height: 64,
+              child: Stack(
               clipBehavior: Clip.none,
               children: [
                  Positioned.fill(
@@ -216,6 +218,7 @@ class FloatingNavigationDock extends StatelessWidget {
                   ),
                 ),
               ],
+              ),
             ),
           ),
         );
