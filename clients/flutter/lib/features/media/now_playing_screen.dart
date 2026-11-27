@@ -857,12 +857,26 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     return '${value.toStringAsFixed(1)} ${units[unit]}';
   }
 
+  Widget _frostedCircle({required Widget child, required BorderRadius radius}) => ClipRRect(
+        borderRadius: radius,
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.16),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+              borderRadius: radius,
+            ),
+            child: child,
+          ),
+        ),
+      );
+
   Widget _moreMenuButton({double contentOpacity = 1}) => SizedBox(
         width: 40,
         height: 40,
-        child: LiquidGlassPill(
+        child: _frostedCircle(
           radius: BorderRadius.circular(20),
-          intensity: contentOpacity,
           child: SmokedGlassPopoverMenu<String>(
             tooltip: 'More playback options',
             items: [
@@ -924,9 +938,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     return SizedBox(
       width: 40,
       height: 40,
-      child: LiquidGlassPill(
+      child: _frostedCircle(
         radius: BorderRadius.circular(20),
-        intensity: contentOpacity,
         child: Opacity(
           opacity: contentOpacity,
           child: IconButton(
@@ -1001,7 +1014,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
       );
 
   Widget _bottomUtilities({bool lyricsActive = false}) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 34, vertical: 4),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
@@ -1024,22 +1037,20 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
         onPressed: onTap,
         style: TextButton.styleFrom(
           foregroundColor: Colors.white70,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Container(
-            width: 36,
-            height: 32,
+            width: 42,
+            height: 40,
             decoration: BoxDecoration(
               color: selected ? Colors.white : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
             ),
             alignment: Alignment.center,
-            child: Icon(icon, size: 20, color: selected ? Colors.black : Colors.white),
+            child: Icon(icon, size: 25, color: selected ? Colors.black : Colors.white),
           ),
-          const SizedBox(height: 3),
-          Text(label, style: TextStyle(fontSize: 10, color: selected ? Colors.white : Colors.white60)),
         ]),
       );
 
