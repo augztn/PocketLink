@@ -278,11 +278,12 @@ void main() {
         httpClientAdapter: adapter,
       );
 
+      var continuationChecks = 0;
       try {
         final result = await MediaLibraryRepository(
           api: api,
           type: MediaLibraryType.music,
-        ).readIndexedMedia(shouldContinue: () => false);
+        ).readIndexedMedia(shouldContinue: () => ++continuationChecks == 1);
 
         expect(result.items, isEmpty);
         expect(adapter.requests, hasLength(1));
