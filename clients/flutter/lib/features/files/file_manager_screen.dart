@@ -64,18 +64,6 @@ class FileManagerScreen extends StatefulWidget {
 
   @override
   State<FileManagerScreen> createState() => _FileManagerScreenState();
-  @override
-  void dispose() {
-    _scrollOffsetSaveTimer?.cancel();
-    if (_scrollController.hasClients) {
-      _saveState();
-    }
-    _scrollController
-      ..removeListener(_saveScrollOffset)
-      ..dispose();
-    _searchController.dispose();
-    super.dispose();
-  }
 }
 
 class _FileManagerScreenState extends State<FileManagerScreen> {
@@ -990,4 +978,14 @@ class _FileManagerScreenState extends State<FileManagerScreen> {
     );
   }
 
+  @override
+  void dispose() {
+    _scrollOffsetSaveTimer?.cancel();
+    if (_scrollController.hasClients) _saveState();
+    _scrollController
+      ..removeListener(_saveScrollOffset)
+      ..dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
 }
