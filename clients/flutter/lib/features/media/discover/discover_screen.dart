@@ -1784,11 +1784,15 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     );
   }
 
-  Widget _homeItemCard(DiscoverHomeItem item, List<DiscoverHomeItem> shelfItems) {
+  Widget _homeItemCard(
+    DiscoverHomeItem item,
+    List<DiscoverHomeItem> shelfItems, {
+    double cardWidth = 168,
+  }) {
     final track = item.toTrack();
     final isArtist = item.type == DiscoverHomeItemType.artist;
     return SizedBox(
-      width: 168,
+      width: cardWidth,
       child: InkWell(
         borderRadius: BorderRadius.circular(8),
         onTap: () => _openHomeItem(item, shelfItems),
@@ -1829,6 +1833,43 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
                 fontSize: 12,
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  bool _isCommunityShelf(_DiscoverShelf shelf) {
+    final title = shelf.title.toLowerCase();
+    return title.contains('community') &&
+        shelf.items.any((item) => item.type == DiscoverHomeItemType.playlist);
+  }
+
+  Widget _communityHomeShelf(_DiscoverShelf shelf) {
+    final items = shelf.items.take(4).toList(growable: false);
+    if (items.isEmpty) return _homeShelf(shelf);
+    final width = (MediaQuery.sizeOf(context).width - 52) / 2;
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.only(top: 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _shelfHeading(shelf.title),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 14,
+                mainAxisExtent: width + 52,
+              ),
+              itemCount: items.length,
+              itemBuilder: (context, index) =>
+                  _homeItemCard(items[index], items, cardWidth: width),
             ),
           ],
         ),
@@ -2047,12 +2088,14 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 _listeningPicksShelf(),
                 _recentlyPlayedShelf(),
                 for (var index = 0; index < _homeShelves.length; index++) ...[
-                  _isListLayoutShelf(_homeShelves[index]) &&
-                          _homeShelves[index].tracks.isNotEmpty &&
-                          (_homeShelves[index].items.isEmpty ||
-                              _homeShelves[index].items.every((item) => item.isPlayableTrack))
-                      ? _trackPager(_homeShelves[index])
-                      : _homeShelf(_homeShelves[index]),
+                  _isCommunityShelf(_homeShelves[index])
+                      ? _communityHomeShelf(_homeShelves[index])
+                      : _isListLayoutShelf(_homeShelves[index]) &&
+                              _homeShelves[index].tracks.isNotEmpty &&
+                              (_homeShelves[index].items.isEmpty ||
+                                  _homeShelves[index].items.every((item) => item.isPlayableTrack))
+                          ? _trackPager(_homeShelves[index])
+                          : _homeShelf(_homeShelves[index]),
                   if (index == 0) _moodHomeShelf(),
                 ],
               ] else ...[
