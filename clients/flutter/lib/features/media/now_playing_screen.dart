@@ -1324,7 +1324,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
         builder: (context, snapshot) {
           final lines = _activeLyrics?.lines ?? const <LyricsLine>[];
           final position = snapshot.data?.inMilliseconds ?? 0;
-          final index = lines.lastIndexWhere((line) => line.timeMs <= position);
+          final index = _activeLyrics?.synced == true
+              ? lines.lastIndexWhere((line) => line.timeMs <= position)
+              : 0;
           final preview = lines.isEmpty
               ? (_lyricsLoading ? 'Finding lyrics…' : 'Tap to view lyrics')
               : lines[index < 0 ? 0 : index].text;
