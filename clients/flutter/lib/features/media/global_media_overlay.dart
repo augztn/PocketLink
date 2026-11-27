@@ -722,16 +722,12 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
                 0.22,
                 curve: Curves.easeOutCubic,
               ).transform(t);
-          final isGradientTheme =
-              AppSettings.instance.nowPlayingTheme == 'gradient';
-          // Every player theme shares the same full-bleed artwork hero
-          // during the morph. A theme-specific square target caused the cover
-          // to jump left as soon as the drag left progress 1.0.
+          // Match the fixed full-bleed hero geometry in Now Playing.
           final targetArt = Rect.fromLTWH(
             0,
             0,
             size.width,
-            size.height * 0.64,
+            size.height * 0.46,
           );
           final artworkRect = Rect.lerp(sourceArt, targetArt, t)!;
           final artworkRadius = BorderRadius.lerp(
@@ -791,23 +787,7 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
                               builder: (context, bytes, _) => DecoratedBox(
                                 decoration: BoxDecoration(
                                   borderRadius: artworkRadius,
-                                  boxShadow: isGradientTheme
-                                      ? const []
-                                      : [
-                                          BoxShadow(
-                                            color: artworkPalette[0]
-                                                .withValues(alpha: 0.28 * t),
-                                            blurRadius: 38 * t,
-                                            spreadRadius: 2 * t,
-                                            offset: Offset(0, 16 * t),
-                                          ),
-                                          BoxShadow(
-                                            color: Colors.black
-                                                .withValues(alpha: 0.34 * t),
-                                            blurRadius: 24 * t,
-                                            offset: Offset(0, 12 * t),
-                                          ),
-                                        ],
+                                  boxShadow: const [],
                                 ),
                                 child: Stack(
                                   fit: StackFit.expand,
