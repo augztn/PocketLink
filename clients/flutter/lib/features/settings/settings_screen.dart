@@ -530,7 +530,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (dialogContext) => AlertDialog(
         title: const Text('Reset appearance settings?'),
         content: const Text(
-          'Restore System theme and accent colour, reset blur and artwork rounding, disable Liquid Glass, restore Progressive Blur, and reset PocketLink animations. Other settings will not change.',
+          'Restore System theme and accent colour, reset glass and header blur, artwork rounding, lyrics effects and PocketLink animations. Disable Liquid Glass and restore Progressive Blur. Other settings will not change.',
         ),
         actions: [
           TextButton(
