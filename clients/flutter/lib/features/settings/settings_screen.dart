@@ -1081,7 +1081,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     SwitchListTile(
                       secondary: const Icon(Icons.grid_view_rounded),
                       title: const Text('Artist grid layout'),
-                      subtitle: const Text('Use a two-column grid for shelves containing at least four artists'),
+                      subtitle: const Text('Optional two-column grid; off by default to match the horizontal artist shelves'),
                       value: _settings.discoverArtistGrid,
                       onChanged: (value) => _settings.setDiscoverOptions(artistGrid: value),
                     ),
