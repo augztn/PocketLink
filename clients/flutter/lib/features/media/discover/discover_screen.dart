@@ -1734,7 +1734,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 return _speedDialHeroPage();
               }
               final track = tracks[pageIndex];
-              return Material(
+              return AnimatedBuilder(
+                animation: _spotlightPageController,
+                child: Material(
                 color: const Color(0xFF08090C),
                 child: InkWell(
                   onTap: () => _play(track, queueOverride: tracks),
@@ -1862,6 +1864,28 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                     ],
                   ),
                 ),
+                ),
+                builder: (context, child) {
+                  final page = _spotlightPageController.hasClients
+                      ? (_spotlightPageController.page ?? index.toDouble())
+                      : index.toDouble();
+                  final distance = (index - page).clamp(-1.0, 1.0);
+                  final progress = distance.abs();
+                  final width = MediaQuery.sizeOf(context).width;
+                  return ClipRect(
+                    child: Transform.translate(
+                      offset: Offset(distance * width * .12, 0),
+                      child: Transform.scale(
+                        alignment: Alignment.center,
+                        scale: 1 - progress * .045,
+                        child: Opacity(
+                          opacity: 1 - progress * .12,
+                          child: child,
+                        ),
+                      ),
+                    ),
+                  );
+                },
               );
             },
             ),
