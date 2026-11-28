@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
+import '../../core/settings/app_settings.dart';
 import 'discover/discover_thumbnail_cache.dart';
 
 /// One artwork renderer shared by the mini-player, morph overlay and Now Playing.
@@ -11,7 +12,7 @@ class TrackArtworkView extends StatelessWidget {
     this.bytes,
     this.artworkUrl,
     this.fallbackIconSize = 30,
-    this.borderRadius = BorderRadius.zero,
+    this.borderRadius,
     this.fadeBottom = false,
     this.fadeBottomStart = 0.56,
     this.fit = BoxFit.cover,
@@ -23,7 +24,7 @@ class TrackArtworkView extends StatelessWidget {
   final String? artworkUrl;
   final List<Color> fallbackColors;
   final double fallbackIconSize;
-  final BorderRadius borderRadius;
+  final BorderRadius? borderRadius;
   final bool fadeBottom;
   final double fadeBottomStart;
   final BoxFit fit;
@@ -71,21 +72,25 @@ class TrackArtworkView extends StatelessWidget {
               )
             : fallback;
 
-    return ClipRRect(
-      borderRadius: borderRadius,
-      clipBehavior: Clip.antiAlias,
-      child: fadeBottom
-          ? ShaderMask(
-              blendMode: BlendMode.dstIn,
-              shaderCallback: (bounds) => LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: const [Colors.white, Colors.white, Colors.transparent],
-                stops: [0, fadeBottomStart, 1],
-              ).createShader(bounds),
-              child: image,
-            )
-          : image,
+    return AnimatedBuilder(
+      animation: AppSettings.instance,
+      builder: (context, _) => ClipRRect(
+        borderRadius: borderRadius ??
+            BorderRadius.circular(AppSettings.instance.thumbnailCornerRadius),
+        clipBehavior: Clip.antiAlias,
+        child: fadeBottom
+            ? ShaderMask(
+                blendMode: BlendMode.dstIn,
+                shaderCallback: (bounds) => LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: const [Colors.white, Colors.white, Colors.transparent],
+                  stops: [0, fadeBottomStart, 1],
+                ).createShader(bounds),
+                child: image,
+              )
+            : image,
+      ),
     );
   }
 }
