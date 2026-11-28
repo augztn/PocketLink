@@ -4,8 +4,45 @@ import '../../core/settings/app_settings.dart';
 import '../../core/widgets/pocketlink_app_bar.dart';
 import 'widgets/settings_components.dart';
 
-class VideoPlayerSettingsScreen extends StatelessWidget {
-  const VideoPlayerSettingsScreen({super.key});
+class VideoPlayerSettingsScreen extends StatefulWidget {
+  const VideoPlayerSettingsScreen({this.initialSearchQuery, super.key});
+
+  final String? initialSearchQuery;
+
+  @override
+  State<VideoPlayerSettingsScreen> createState() => _VideoPlayerSettingsScreenState();
+}
+
+class _VideoPlayerSettingsScreenState extends State<VideoPlayerSettingsScreen> {
+  late final TextEditingController _searchController;
+  String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _query = widget.initialSearchQuery ?? '';
+    _searchController = TextEditingController(text: _query);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  bool _matches(Widget child) {
+    final tokens = _query.toLowerCase().split(RegExp(r'[^a-z0-9]+')).where((token) => token.isNotEmpty);
+    if (tokens.isEmpty) return true;
+    final text = <String>[];
+    if (child is SettingsTile) text.add(child.title);
+    if (child is SwitchListTile) {
+      if (child.title is Text) text.add((child.title as Text).data ?? '');
+      if (child.subtitle is Text) text.add((child.subtitle as Text).data ?? '');
+    }
+    if (child is ListTile && child.title is Text) text.add((child.title as Text).data ?? '');
+    final corpus = text.join(' ').toLowerCase();
+    return tokens.every(corpus.contains);
+  }
 
   static const List<double> _timeouts = [
     2.0, 3.0, 3.5, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0, 0.0,
@@ -25,6 +62,32 @@ class VideoPlayerSettingsScreen extends StatelessWidget {
         body: ListView(
           padding: settingsListPadding(context),
           children: [
+            TextField(
+              controller: _searchController,
+              onChanged: (value) => setState(() => _query = value),
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                hintText: 'Search in Video Player',
+                prefixIcon: const Icon(Icons.search_rounded),
+                suffixIcon: _query.isEmpty
+                    ? null
+                    : IconButton(
+                        tooltip: 'Clear search',
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _query = '');
+                        },
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                filled: true,
+                fillColor: Theme.of(context).colorScheme.surfaceContainerLow,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(18),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
             Padding(
               padding: const EdgeInsets.only(bottom: 18),
               child: Text(
@@ -183,13 +246,17 @@ class VideoPlayerSettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _group(String title, List<Widget> children) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SettingsSectionHeader(title),
-          SettingsGroupCard(children: children),
-        ],
-      );
+  Widget _group(String title, List<Widget> children) {
+    final visible = children.where(_matches).toList(growable: false);
+    if (visible.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SettingsSectionHeader(title),
+        SettingsGroupCard(children: visible),
+      ],
+    );
+  }
 
   Widget _choice<T>({
     required IconData icon,
