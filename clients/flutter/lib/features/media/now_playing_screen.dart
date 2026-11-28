@@ -1943,10 +1943,21 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
                       ? (details) {
                           final distance = _trackSwipeDistance;
                           final velocity = details.primaryVelocity ?? 0;
-                          final canSkipNext = _persistent.currentIndex < _persistent.queue.length - 1;
-                          final canSkipPrevious = _persistent.currentIndex > 0;
-                          final skipNext = canSkipNext && (distance < -80 || velocity < -500);
-                          final skipPrevious = canSkipPrevious && (distance > 80 || velocity > 500);
+                          final queue = _persistent.queue.isNotEmpty
+                              ? _persistent.queue
+                              : widget.queue;
+                          final requestedIndex = _persistent.queue.isNotEmpty
+                              ? _persistent.currentIndex
+                              : widget.initialIndex;
+                          final index = queue.isEmpty
+                              ? 0
+                              : requestedIndex.clamp(0, queue.length - 1).toInt();
+                          final canSkipNext = index < queue.length - 1;
+                          final canSkipPrevious = index > 0;
+                          final skipNext = canSkipNext &&
+                              (distance < -80 || velocity < -500);
+                          final skipPrevious = canSkipPrevious &&
+                              (distance > 80 || velocity > 500);
                           _settleCarousel(velocity: velocity);
                           if (skipNext) {
                             unawaited(_persistent.skipToNext());
