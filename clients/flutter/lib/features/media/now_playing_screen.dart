@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/services.dart';
+import 'package:flutter/physics.dart';
 
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -68,7 +69,7 @@ class NowPlayingScreen extends StatefulWidget {
   State<NowPlayingScreen> createState() => _NowPlayingScreenState();
 }
 
-class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerProviderStateMixin {
+class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProviderStateMixin {
   static const _secureStorage = FlutterSecureStorage();
   static const double _playerChromeHeight = 292;
 
@@ -85,6 +86,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   bool _trackSwipeActive = false;
   int _trackChangeDirection = 1;
   late final AnimationController _lyricsController;
+  late final AnimationController _carouselSettleController;
   static final LyricsRepository _lyricsRepository = LyricsRepository();
   Map<String, LyricsProviderResult> _lyricsProviderStates = const {};
   LyricsDocument? _activeLyrics;
@@ -244,6 +246,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   void initState() {
     super.initState();
     _lyricsController = AnimationController(vsync: this, duration: const Duration(milliseconds: 350), reverseDuration: const Duration(milliseconds: 350));
+    _carouselSettleController = AnimationController.unbounded(vsync: this, value: 0);
     unawaited(_loadLyricsPreference());
     _persistent = PersistentAudioPlayer.instance;
     _player = _persistent.player;
@@ -1355,12 +1358,34 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   }
 
   double _carouselDragOffset(double width) {
+    final distance = _trackSwipeActive
+        ? _trackSwipeDistance
+        : _carouselSettleController.value;
     final hasPrevious = _persistent.currentIndex > 0;
     final hasNext = _persistent.currentIndex < _persistent.queue.length - 1;
-    final atBoundary = (_trackSwipeDistance > 0 && !hasPrevious) ||
-        (_trackSwipeDistance < 0 && !hasNext);
-    final resisted = atBoundary ? _trackSwipeDistance * 0.22 : _trackSwipeDistance;
+    final atBoundary = (distance > 0 && !hasPrevious) ||
+        (distance < 0 && !hasNext);
+    final resisted = atBoundary ? distance * 0.22 : distance;
     return resisted.clamp(-width, width).toDouble();
+  }
+
+  void _settleCarousel({double velocity = 0}) {
+    final start = _trackSwipeDistance;
+    _carouselSettleController
+      ..stop()
+      ..value = start;
+    setState(() {
+      _trackSwipeDistance = 0;
+      _trackSwipeActive = false;
+    });
+    unawaited(_carouselSettleController.animateWith(
+      SpringSimulation(
+        const SpringDescription(mass: 1, stiffness: 420, damping: 34),
+        start,
+        0,
+        velocity,
+      ),
+    ));
   }
 
   Widget _trackTransition({required Widget child, required String key, bool followDrag = true}) {
@@ -1814,7 +1839,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   @override
   Widget build(BuildContext context) {
     final animation = widget.morphAnimation;
-    final listenables = <Listenable>[AppSettings.instance, _lyricsController];
+    final listenables = <Listenable>[AppSettings.instance, _lyricsController, _carouselSettleController];
     if (animation != null) listenables.add(animation);
     return AnimatedBuilder(
       animation: Listenable.merge(listenables),
@@ -1881,10 +1906,13 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                       ? (details) => widget.onDismissDragUpdate(details.primaryDelta ?? 0)
                       : null,
                   onHorizontalDragStart: AppSettings.instance.enableNowPlayingGestures
-                      ? (_) => setState(() {
+                      ? (_) {
+                          _carouselSettleController.stop();
+                          setState(() {
                             _trackSwipeDistance = 0;
                             _trackSwipeActive = true;
-                          })
+                          });
+                        }
                       : null,
                   onHorizontalDragUpdate: AppSettings.instance.enableNowPlayingGestures
                       ? (details) => setState(() {
@@ -1908,10 +1936,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                           final canSkipPrevious = _persistent.currentIndex > 0;
                           final skipNext = canSkipNext && (distance < -80 || velocity < -500);
                           final skipPrevious = canSkipPrevious && (distance > 80 || velocity > 500);
-                          setState(() {
-                            _trackSwipeDistance = 0;
-                            _trackSwipeActive = false;
-                          });
+                          _settleCarousel(velocity: velocity);
                           if (skipNext) {
                             unawaited(_persistent.skipToNext());
                           } else if (skipPrevious) {
@@ -1920,10 +1945,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                         }
                       : null,
                   onHorizontalDragCancel: AppSettings.instance.enableNowPlayingGestures
-                      ? () => setState(() {
-                            _trackSwipeDistance = 0;
-                            _trackSwipeActive = false;
-                          })
+                      ? () => _settleCarousel()
                       : null,
                   // The artwork remains edge-to-edge; only player controls
                   // are inset by SafeArea inside _playerLayout.
@@ -1979,6 +2001,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   void dispose() {
     unawaited(_playlistSubscription?.cancel());
     _lyricsController.dispose();
+    _carouselSettleController.dispose();
     super.dispose();
   }
 }
