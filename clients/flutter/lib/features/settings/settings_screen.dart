@@ -72,6 +72,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _message('Select a .ttf or .otf font file.');
         return;
       }
+      if (picked.size > 20 * 1024 * 1024) {
+        _message('Font files must be 20 MB or smaller.');
+        return;
+      }
       final bytes = await picked.readAsBytes();
       if (bytes.length > 20 * 1024 * 1024) {
         _message('Font files must be 20 MB or smaller.');
