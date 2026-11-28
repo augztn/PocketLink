@@ -1477,7 +1477,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
         onChooseProvider: _chooseLyricsProvider,
         onToggleTranslation: _toggleLyricsTranslation,
       ),
-      footer: const SizedBox(height: _playerChromeHeight),
+      footer: const SizedBox(height: _playerChromeHeight + 12),
     );
   }
 
