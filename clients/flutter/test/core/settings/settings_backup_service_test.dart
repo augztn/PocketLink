@@ -13,6 +13,13 @@ void main() {
     SharedPreferences.setMockInitialValues({
       'settings_use_liquid_glass': true,
       'settings_progressive_blur': true,
+      'settings_page_transitions_enabled': false,
+      'settings_lyrics_animations_enabled': false,
+      'settings_lyrics_glow': true,
+      'settings_lyrics_bloom': true,
+      'settings_lyrics_soft_light': true,
+      'settings_glass_blur_strength': 13.0,
+      'settings_lyrics_inactive_blur': 2.5,
       'settings_discover_enabled': false,
       'settings_discover_artwork': false,
       'settings_discover_spotlight': false,
@@ -31,6 +38,13 @@ void main() {
 
     expect(payload['app'], 'pocketlink');
     expect(payload['schemaVersion'], 2);
+    expect(settings['settings_page_transitions_enabled'], isFalse);
+    expect(settings['settings_lyrics_animations_enabled'], isFalse);
+    expect(settings['settings_lyrics_glow'], isTrue);
+    expect(settings['settings_lyrics_bloom'], isTrue);
+    expect(settings['settings_lyrics_soft_light'], isTrue);
+    expect(settings['settings_glass_blur_strength'], 13.0);
+    expect(settings['settings_lyrics_inactive_blur'], 2.5);
     expect(settings['settings_discover_enabled'], isFalse);
     expect(settings['settings_discover_artwork'], isFalse);
     expect(settings['settings_discover_spotlight'], isFalse);
