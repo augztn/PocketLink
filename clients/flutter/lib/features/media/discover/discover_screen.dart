@@ -1918,10 +1918,34 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     );
   }
 
+  Widget _shelfReveal({required Widget child}) {
+    return AnimatedBuilder(
+      animation: AppSettings.instance,
+      child: child,
+      builder: (context, content) {
+        if (!AppSettings.instance.discoverMotion) return content!;
+        return TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0, end: 1),
+          duration: const Duration(milliseconds: 520),
+          curve: Curves.easeOutCubic,
+          child: content,
+          builder: (context, progress, animatedChild) => Opacity(
+            opacity: progress,
+            child: Transform.translate(
+              offset: Offset(0, 20 * (1 - progress)),
+              child: animatedChild,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _listeningPicksShelf() {
     if (_listeningPicks.isEmpty) return const SliverToBoxAdapter();
     return SliverToBoxAdapter(
-      child: Column(
+      child: _shelfReveal(
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _shelfHeading('Top Picks for You'),
@@ -1940,13 +1964,15 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           ),
         ],
       ),
+      ),
     );
   }
 
   Widget _recentlyPlayedShelf() {
     if (_recentlyPlayed.isEmpty) return const SliverToBoxAdapter();
     return SliverToBoxAdapter(
-      child: Column(
+      child: _shelfReveal(
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _shelfHeading('Recently Played'),
@@ -1964,6 +1990,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -2001,7 +2028,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     final width = MediaQuery.sizeOf(context).width * .86;
     final pageCount = (tracks.length / 4).ceil();
     return SliverToBoxAdapter(
-      child: Padding(
+      child: _shelfReveal(
+        child: Padding(
         padding: const EdgeInsets.only(top: 24),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           _shelfHeading(shelf.title, onSeeAll: () => _showShelf(shelf)),
@@ -2026,6 +2054,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             ),
           ),
         ]),
+      ),
       ),
     );
   }
@@ -2164,7 +2193,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     if (items.isEmpty) return _homeShelf(shelf);
     final width = (MediaQuery.sizeOf(context).width - 52) / 2;
     return SliverToBoxAdapter(
-      child: Padding(
+      child: _shelfReveal(
+        child: Padding(
         padding: const EdgeInsets.only(top: 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2186,6 +2216,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             ),
           ],
         ),
+      ),
       ),
     );
   }
@@ -2199,7 +2230,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     final items = shelf.items.take(8).toList(growable: false);
     final width = (MediaQuery.sizeOf(context).width - 52) / 2;
     return SliverToBoxAdapter(
-      child: Padding(
+      child: _shelfReveal(
+        child: Padding(
         padding: const EdgeInsets.only(top: 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2222,12 +2254,14 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           ],
         ),
       ),
+      ),
     );
   }
 
   Widget _homeShelf(_DiscoverShelf shelf) {
     return SliverToBoxAdapter(
-      child: Padding(
+      child: _shelfReveal(
+        child: Padding(
         padding: const EdgeInsets.only(top: 24),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           _shelfHeading(
@@ -2252,6 +2286,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             ),
           ),
         ]),
+      ),
       ),
     );
   }
