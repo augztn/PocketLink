@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/settings/app_settings.dart';
 import 'lyrics_repository.dart';
 
 class LyricsViewport extends StatefulWidget {
@@ -84,6 +85,7 @@ class _LyricsViewportState extends State<LyricsViewport> {
   @override
   Widget build(BuildContext context) {
     final doc = widget.document;
+    final settings = AppSettings.instance;
     if (doc == null) {
       return Center(
         child: Column(
@@ -149,8 +151,8 @@ class _LyricsViewportState extends State<LyricsViewport> {
                     widget.position.inMilliseconds - line.timeMs >= 6000;
                 final baseStyle = TextStyle(
                   color: Colors.white,
-                  fontSize: active ? 31 : 27,
-                  height: 1.22,
+                  fontSize: active ? settings.lyricsTextSize : settings.lyricsTextSize * (27 / 31),
+                  height: settings.lyricsLineSpacing,
                   fontWeight: FontWeight.w700,
                 );
                 final lyricText = line.words.isEmpty
@@ -172,35 +174,51 @@ class _LyricsViewportState extends State<LyricsViewport> {
                           ],
                         ),
                       );
-                return GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: doc.synced ? () => widget.onSeek(Duration(milliseconds: line.timeMs)) : null,
-                  child: AnimatedOpacity(
+                Widget emphasized = lyricText;
+                final inactiveOpacity = settings.lyricsMotionStyle == 'plain' ? 0.58 : 0.34;
+                if (settings.lyricsMotionStyle == 'motion') {
+                  emphasized = AnimatedOpacity(
                     duration: const Duration(milliseconds: 220),
-                    opacity: active ? 1 : .34,
+                    opacity: active ? 1 : inactiveOpacity,
                     child: AnimatedScale(
                       duration: const Duration(milliseconds: 240),
                       scale: active ? 1 : .96,
                       alignment: Alignment.centerLeft,
-                      child: ImageFiltered(
-                        imageFilter: ImageFilter.blur(
-                          sigmaX: active || _manualScrollActive ? 0 : 1.7,
-                          sigmaY: active || _manualScrollActive ? 0 : 1.7,
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            lyricText,
-                            if (instrumentalGap)
-                              const Padding(
-                                padding: EdgeInsets.only(top: 10),
-                                child: _InstrumentalDots(),
-                              ),
-                          ],
-                          ),
-                        ),
+                      child: lyricText,
+                    ),
+                  );
+                } else if (settings.lyricsMotionStyle == 'legacy') {
+                  emphasized = AnimatedOpacity(
+                    duration: const Duration(milliseconds: 220),
+                    opacity: active ? 1 : inactiveOpacity,
+                    child: lyricText,
+                  );
+                } else {
+                  emphasized = Opacity(
+                    opacity: active ? 1 : inactiveOpacity,
+                    child: lyricText,
+                  );
+                }
+                return GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: doc.synced ? () => widget.onSeek(Duration(milliseconds: line.timeMs)) : null,
+                  child: ImageFiltered(
+                    imageFilter: ImageFilter.blur(
+                      sigmaX: active || _manualScrollActive ? 0 : 1.7,
+                      sigmaY: active || _manualScrollActive ? 0 : 1.7,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          emphasized,
+                          if (instrumentalGap)
+                            const Padding(
+                              padding: EdgeInsets.only(top: 10),
+                              child: _InstrumentalDots(),
+                            ),
+                        ],
                       ),
                     ),
                   ),
