@@ -253,7 +253,7 @@ class _VideoPlayerSettingsScreenState extends State<VideoPlayerSettingsScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SettingsSectionHeader(title),
-        SettingsGroupCard(children: visible),
+        SettingsGroupCard(children: visible, searchQuery: _query),
       ],
     );
   }
