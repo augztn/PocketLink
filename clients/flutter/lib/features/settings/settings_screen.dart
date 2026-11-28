@@ -314,7 +314,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   String _pageTitle(String? category) => switch (category) {
         'Appearance' => 'Appearance',
-        'Customization' => 'Customization',
+        'Customisation' => 'Customisation',
         'Navigation' => 'Navigation',
         'Music' => 'Music & Playback',
         'Dashboard & Shortcuts' => 'Dashboard',
@@ -360,7 +360,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onOpenSavedServers: widget.onOpenSavedServers,
             category: switch (id) {
               'appearance' => 'Appearance',
-              'customization' => 'Customization',
+              'customization' => 'Customisation',
               'navigation' => 'Navigation',
               'dashboard' => 'Dashboard & Shortcuts',
               'music' => 'Music',
@@ -494,7 +494,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _categoryIntro(String category) {
     final descriptions = <String, String>{
       'Appearance': 'Theme, AMOLED black mode, blur, colors and visual effects.',
-      'Customization': 'Control PocketLink-wide motion, animation speed, theme and visual effects.',
+      'Customisation': 'Control PocketLink-wide motion, animation speed, theme and visual effects.',
       'Navigation': 'Dock, destinations, dashboard sections and floating shortcuts.',
       'Music': 'Music library, playback, Discover, lyrics and video preferences.',
       'Storage': 'Download location, download behavior and temporary cache.',
@@ -517,6 +517,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   List<Widget> _homeSettingsChildren() => [
+    Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.tune_rounded,
+              color: Theme.of(context).colorScheme.onSurface,
+              size: 23,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            'Settings',
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.7,
+            ),
+          ),
+        ],
+      ),
+    ),
     Padding(
       padding: const EdgeInsets.only(bottom: 24),
       child: TextField(
@@ -547,13 +575,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     ),
     if (_categoryMatches('appearance') || _categoryMatches('customization') || _categoryMatches('navigation'))
-      SettingsSectionHeader('Personalization'),
+
     if (_categoryMatches('customization') || _categoryMatches('appearance'))
       _categoryTile(
         id: 'customization',
         icon: Icons.palette_rounded,
         tint: const Color(0xFF8D72E8),
-        title: 'Customization',
+        title: 'Customisation',
         subtitle: 'Animations, theme, blur and visual effects',
         badge: _settings.animationsEnabled ? '${_settings.animationSpeed.toStringAsFixed(1)}×' : 'Motion Off',
       ),
@@ -567,7 +595,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         badge: '${_settings.visibleNavigationItems.length} tabs',
       ),
     if (_categoryMatches('storage') || _categoryMatches('music'))
-      SettingsSectionHeader('Storage & Media'),
+
     if (_categoryMatches('storage'))
       _categoryTile(
         id: 'storage',
@@ -587,7 +615,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         badge: _settings.discoverEnabled ? 'Discover On' : 'Discover Off',
       ),
     if (_categoryMatches('network') || _categoryMatches('diagnostics') || _categoryMatches('about'))
-      SettingsSectionHeader('Network & System'),
+
     if (_categoryMatches('network'))
       _categoryTile(
         id: 'network',
@@ -714,7 +742,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (context, _) => Scaffold(
         extendBodyBehindAppBar: true,
         appBar: PocketLinkAppBar(
-          title: Text(_pageTitle(widget.category), style: const TextStyle(fontSize: 20)),
+          title: widget.category == null
+              ? const SizedBox.shrink()
+              : Text(_pageTitle(widget.category), style: const TextStyle(fontSize: 20)),
           actions: [
             PocketLinkAppBarAction(
               label: 'Return to Home',
@@ -819,7 +849,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                   ]),
-                if (widget.category == 'Appearance' || widget.category == 'Customization')
+                if (widget.category == 'Appearance' || widget.category == 'Customisation')
                   _section('Motion', [
                     SwitchListTile(
                       secondary: const Icon(Icons.animation_rounded),
@@ -864,7 +894,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                   ]),
-                if (widget.category == 'Appearance' || widget.category == 'Customization')
+                if (widget.category == 'Appearance' || widget.category == 'Customisation')
                   _section('Appearance & Theme', [
                     ListTile(
                       leading: const Icon(Icons.palette_rounded),
