@@ -1871,6 +1871,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                       : index.toDouble();
                   final distance = (index - page).clamp(-1.0, 1.0).toDouble();
                   final progress = distance.abs();
+                  if (!AppSettings.instance.discoverMotion) return child!;
                   final width = MediaQuery.sizeOf(context).width;
                   return ClipRect(
                     child: Transform.translate(
