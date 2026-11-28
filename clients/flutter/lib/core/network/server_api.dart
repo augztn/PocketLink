@@ -653,6 +653,9 @@ class ServerApi {
   }
 
   Future<List<StorageVolume>> refreshStorageVolumes() async {
+    // Invalidate older volume and directory snapshots before the authoritative
+    // refresh so an in-flight stale read cannot overwrite the new mapping.
+    invalidateDirectoryCache();
     final response =
         await _dio.get<Map<String, dynamic>>('/api/storage/volumes');
     final volumes = (response.data?['items'] as List<dynamic>? ?? const [])
