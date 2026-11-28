@@ -1070,6 +1070,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onChanged: (value) => _settings.setDiscoverOptions(artwork: value),
                     ),
                     const Divider(height: 1),
+                    SwitchListTile(
+                      secondary: const Icon(Icons.view_carousel_rounded),
+                      title: const Text('Spotlight carousel'),
+                      subtitle: const Text('Show the featured, swipeable track cards at the top of Discover'),
+                      value: _settings.discoverSpotlight,
+                      onChanged: (value) => _settings.setDiscoverOptions(spotlight: value),
+                    ),
+                    const Divider(height: 1),
+                    SwitchListTile(
+                      secondary: const Icon(Icons.grid_view_rounded),
+                      title: const Text('Artist grid layout'),
+                      subtitle: const Text('Use a two-column grid for shelves containing at least four artists'),
+                      value: _settings.discoverArtistGrid,
+                      onChanged: (value) => _settings.setDiscoverOptions(artistGrid: value),
+                    ),
+                    const Divider(height: 1),
                     ListTile(
                       leading: const Icon(Icons.graphic_eq_rounded),
                       title: const Text('Audio quality'),
