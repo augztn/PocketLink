@@ -1119,7 +1119,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         Expanded(
           child: KeyedSubtree(
-            key: ValueKey('tablet-pane-${_selectedTabletCategory ?? 'empty'}'),
+            key: ValueKey('tablet-pane-${_selectedTabletCategory ?? 'empty'}-$_settingsSearchQuery'),
             child: _tabletCategoryPage(_selectedTabletCategory),
           ),
         ),
