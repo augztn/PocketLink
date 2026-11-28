@@ -131,7 +131,7 @@ class _VideoPlayerSettingsScreenState extends State<VideoPlayerSettingsScreen> {
                 ),
               ),
               SwitchListTile(
-                secondary: const Icon(Icons.gesture_rounded),
+                secondary: const SettingsIcon(Icons.gesture_rounded),
                 title: const Text('Player gestures'),
                 subtitle: const Text(
                   'Double-tap and horizontal swipe seeking; swipe left for brightness and right for volume',
@@ -142,7 +142,7 @@ class _VideoPlayerSettingsScreenState extends State<VideoPlayerSettingsScreen> {
                 ),
               ),
               SwitchListTile(
-                secondary: const Icon(Icons.zoom_in_rounded),
+                secondary: const SettingsIcon(Icons.zoom_in_rounded),
                 title: const Text('Pinch to zoom'),
                 subtitle: const Text(
                   'Pinch to enlarge the video and pan around the frame',
@@ -153,7 +153,7 @@ class _VideoPlayerSettingsScreenState extends State<VideoPlayerSettingsScreen> {
                 ),
               ),
               SwitchListTile(
-                secondary: const Icon(Icons.touch_app_rounded),
+                secondary: const SettingsIcon(Icons.touch_app_rounded),
                 title: const Text('Tap to play or pause'),
                 subtitle: const Text('Single tap on the video toggles playback'),
                 value: settings.videoTapToTogglePlayback,
@@ -162,7 +162,7 @@ class _VideoPlayerSettingsScreenState extends State<VideoPlayerSettingsScreen> {
                 ),
               ),
               SwitchListTile(
-                secondary: const Icon(Icons.fullscreen_rounded),
+                secondary: const SettingsIcon(Icons.fullscreen_rounded),
                 title: const Text('Open videos in fullscreen'),
                 subtitle: const Text(
                   'Automatically enter fullscreen when a video starts',
@@ -205,7 +205,7 @@ class _VideoPlayerSettingsScreenState extends State<VideoPlayerSettingsScreen> {
             const SizedBox(height: 20),
             _group('Subtitles', [
               ListTile(
-                leading: const Icon(Icons.text_fields_rounded),
+                leading: const SettingsIcon(Icons.text_fields_rounded),
                 title: const Text('Subtitle text size'),
                 subtitle: Slider(
                   min: 14,
@@ -220,7 +220,7 @@ class _VideoPlayerSettingsScreenState extends State<VideoPlayerSettingsScreen> {
                 trailing: Text('${settings.videoSubtitleFontSize.round()}'),
               ),
               SwitchListTile(
-                secondary: const Icon(Icons.subtitles_rounded),
+                secondary: const SettingsIcon(Icons.subtitles_rounded),
                 title: const Text('Subtitle background'),
                 subtitle: const Text(
                   'Translucent background behind subtitles',
