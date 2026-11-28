@@ -396,7 +396,7 @@ String settingsSearchableText(Widget widget) {
         '${settingsSearchableText(widget.subtitle ?? const SizedBox.shrink())}';
   }
   if (widget is SwitchListTile) {
-    return '${settingsSearchableText(widget.title)} '
+    return '${settingsSearchableText(widget.title ?? const SizedBox.shrink())} '
         '${settingsSearchableText(widget.subtitle ?? const SizedBox.shrink())}';
   }
   if (widget is Padding && widget.child != null) return settingsSearchableText(widget.child!);
