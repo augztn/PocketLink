@@ -704,7 +704,9 @@ class _NowPlayingMorphOverlay extends StatelessWidget {
                           fallbackColors: palette,
                           fallbackIconSize: 92,
                           fit: BoxFit.cover,
-                          borderRadius: BorderRadius.circular(11 * (1 - curvedT)),
+                          borderRadius: BorderRadius.circular(
+                            AppSettings.instance.thumbnailCornerRadius * (1 - curvedT),
+                          ),
                         ),
                       ),
                     ),
