@@ -1085,6 +1085,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       value: _settings.discoverMotion,
                       onChanged: _settings.setDiscoverMotion,
                     ),
+                    ListTile(
+                      leading: const Icon(Icons.speed_rounded),
+                      title: const Text('Animation speed'),
+                      subtitle: const Text('Adjust the speed of Discover hero and shelf motion'),
+                      trailing: DropdownButton<String>(
+                        value: _settings.discoverMotionSpeed,
+                        underline: const SizedBox.shrink(),
+                        items: const [
+                          DropdownMenuItem(value: 'fast', child: Text('Fast')),
+                          DropdownMenuItem(value: 'normal', child: Text('Normal')),
+                          DropdownMenuItem(value: 'slow', child: Text('Slow')),
+                        ],
+                        onChanged: _settings.discoverMotion
+                            ? (value) {
+                                if (value != null) _settings.setDiscoverMotionSpeed(value);
+                              }
+                            : null,
+                      ),
+                    ),
                     const Divider(height: 1),
                     SwitchListTile(
                       secondary: const Icon(Icons.grid_view_rounded),
