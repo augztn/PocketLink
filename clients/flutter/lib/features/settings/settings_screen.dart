@@ -466,7 +466,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (dialogContext) => AlertDialog(
         title: const Text('Reset appearance settings?'),
         content: const Text(
-          'Restore System theme and accent colour, reset blur and thumbnail rounding, disable Liquid Glass, restore Progressive Blur, and reset PocketLink animations. Other settings will not change.',
+          'Restore System theme and accent colour, reset blur and artwork rounding, disable Liquid Glass, restore Progressive Blur, and reset PocketLink animations. Other settings will not change.',
         ),
         actions: [
           TextButton(
@@ -1094,7 +1094,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         children: [
                           Row(
                             children: [
-                              const Expanded(child: Text('Thumbnail corner radius')),
+                              const Expanded(child: Text('Artwork corner radius')),
                               Text('${(_pendingThumbnailCornerRadius ?? _settings.thumbnailCornerRadius).round()} dp'),
                             ],
                           ),
