@@ -28,6 +28,7 @@ void main() {
 
   test('Discover preferences persist and reload', () async {
     final settings = AppSettings.instance;
+    expect(settings.discoverArtistGrid, isFalse);
     await settings.setDiscoverOptions(
       enabled: false,
       localLossless: false,
