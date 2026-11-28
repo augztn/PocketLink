@@ -34,6 +34,22 @@ extension AppSettingsAppearance on AppSettings {
     await preferences.setBool(AppSettings._animationsEnabledKey, value);
   }
 
+  Future<void> setPageTransitionsEnabled(bool value) async {
+    if (_pageTransitionsEnabled == value) return;
+    _pageTransitionsEnabled = value;
+    _notifySettingsChanged();
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(AppSettings._pageTransitionsEnabledKey, value);
+  }
+
+  Future<void> setLyricsAnimationsEnabled(bool value) async {
+    if (_lyricsAnimationsEnabled == value) return;
+    _lyricsAnimationsEnabled = value;
+    _notifySettingsChanged();
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(AppSettings._lyricsAnimationsEnabledKey, value);
+  }
+
   Future<void> setAnimationSpeed(double value) async {
     if (!value.isFinite || value < 0.5 || value > 2.0) {
       throw ArgumentError.value(value, 'value', 'Must be between 0.5x and 2.0x');
@@ -67,6 +83,17 @@ extension AppSettingsAppearance on AppSettings {
     await preferences.setDouble(AppSettings._blurStrengthKey, value);
   }
 
+  Future<void> setGlassBlurStrength(double value) async {
+    if (!value.isFinite || value < 0 || value > 32) {
+      throw ArgumentError.value(value, 'value', 'Must be between 0 and 32');
+    }
+    if ((_glassBlurStrength - value).abs() < 0.01) return;
+    _glassBlurStrength = value;
+    _notifySettingsChanged();
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setDouble(AppSettings._glassBlurStrengthKey, value);
+  }
+
   Future<void> setThumbnailCornerRadius(double value) async {
     if (!value.isFinite || value < 0 || value > 45) {
       throw ArgumentError.value(value, 'value', 'Must be between 0 and 45');
@@ -82,6 +109,10 @@ extension AppSettingsAppearance on AppSettings {
     double? textSize,
     double? lineSpacing,
     String? motionStyle,
+    bool? glow,
+    bool? bloom,
+    bool? softLight,
+    double? inactiveBlur,
   }) async {
     if (textSize != null && (!textSize.isFinite || textSize < 14 || textSize > 44)) {
       throw ArgumentError.value(textSize, 'textSize', 'Must be between 14 and 44');
@@ -92,15 +123,26 @@ extension AppSettingsAppearance on AppSettings {
     if (motionStyle != null && !const {'motion', 'legacy', 'boring', 'plain'}.contains(motionStyle)) {
       throw ArgumentError.value(motionStyle, 'motionStyle');
     }
+    if (inactiveBlur != null && (!inactiveBlur.isFinite || inactiveBlur < 0 || inactiveBlur > 4)) {
+      throw ArgumentError.value(inactiveBlur, 'inactiveBlur', 'Must be between 0 and 4');
+    }
     if (textSize != null) _lyricsTextSize = textSize;
     if (lineSpacing != null) _lyricsLineSpacing = lineSpacing;
     if (motionStyle != null) _lyricsMotionStyle = motionStyle;
+    if (glow != null) _lyricsGlow = glow;
+    if (bloom != null) _lyricsBloom = bloom;
+    if (softLight != null) _lyricsSoftLight = softLight;
+    if (inactiveBlur != null) _lyricsInactiveBlur = inactiveBlur;
     _notifySettingsChanged();
     final preferences = await SharedPreferences.getInstance();
     await Future.wait([
       if (textSize != null) preferences.setDouble(AppSettings._lyricsTextSizeKey, textSize),
       if (lineSpacing != null) preferences.setDouble(AppSettings._lyricsLineSpacingKey, lineSpacing),
       if (motionStyle != null) preferences.setString(AppSettings._lyricsMotionStyleKey, motionStyle),
+      if (glow != null) preferences.setBool(AppSettings._lyricsGlowKey, glow),
+      if (bloom != null) preferences.setBool(AppSettings._lyricsBloomKey, bloom),
+      if (softLight != null) preferences.setBool(AppSettings._lyricsSoftLightKey, softLight),
+      if (inactiveBlur != null) preferences.setDouble(AppSettings._lyricsInactiveBlurKey, inactiveBlur),
     ]);
   }
 
