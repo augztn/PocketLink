@@ -98,6 +98,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
   bool _lyricsLoading = false;
   bool _lyricsTranslationEnabled = false;
   String? _observedTrackIdentity;
+  int _observedQueueIndex = 0;
+  String? _carouselSwitcherKey;
   final GlobalKey _lyricsViewportKey = GlobalKey();
 
 
@@ -321,6 +323,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
     _persistent = PersistentAudioPlayer.instance;
     _player = _persistent.player;
     _observedTrackIdentity = _trackIdentity;
+    _observedQueueIndex = _carouselIndex;
+    _carouselSwitcherKey = _trackIdentity;
     unawaited(_loadTrackLyrics());
     unawaited(AppLogger.info('Now Playing screen initialized', fields: {
       'queueLength': widget.queue.length,
@@ -422,19 +426,30 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
       return;
     }
 
+    final nextIndex = _carouselIndex;
+    final indexDelta = nextIndex - _observedQueueIndex;
     _observedTrackIdentity = identity;
+    _observedQueueIndex = nextIndex;
     if (!(_carouselTrackChangeCompleter?.isCompleted ?? true)) {
       _carouselTrackChangeCompleter!.complete();
     }
     final requestedDirection = _persistent.takePendingTrackDirection();
-    // A previous track's drag spring must not move the newly selected track.
+    final direction = requestedDirection ?? (indexDelta < 0 ? -1 : 1);
+    final isAdjacentChange = indexDelta.abs() == 1;
+
+    // Adjacent changes use the same three-slot row as a swipe. Non-adjacent
+    // queue jumps retain the keyed switcher so the outgoing track can fade.
+    if (!isAdjacentChange) _carouselSwitcherKey = identity;
     _carouselSettleController
       ..stop()
-      ..value = 0;
+      ..value = !_carouselSkipInFlight && isAdjacentChange
+          ? direction * MediaQuery.sizeOf(context).width
+          : 0;
+
     setState(() {
       _trackSwipeDistance = 0;
       _trackSwipeActive = false;
-      _trackChangeDirection = requestedDirection ?? 1;
+      _trackChangeDirection = direction;
       _artwork = null;
       _artworkKey = null;
       _artworkPalette = null;
@@ -443,6 +458,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
       _lyricsProviderStates = const {};
       _lyricsLoading = false;
     });
+    if (!_carouselSkipInFlight && isAdjacentChange) {
+      unawaited(_settleCarousel());
+    }
     widget.onArtworkChanged?.call(null);
     unawaited(_loadTrackLyrics());
     await Future.wait([
@@ -1913,7 +1931,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
         padding: const EdgeInsets.only(bottom: 12),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           _trackTransition(
-            key: _trackIdentity,
+            key: _carouselSwitcherKey ?? _trackIdentity,
             followDrag: false,
             child: _trackMetadata(contentOpacity: contentOpacity),
           ),
@@ -1978,7 +1996,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
               child: AnimatedBuilder(
                 animation: _carouselSettleController,
                 builder: (context, _) => _trackTransition(
-                  key: _trackIdentity,
+                  key: _carouselSwitcherKey ?? _trackIdentity,
                   followDrag: false,
                   child: _artworkCarousel(),
                 ),
