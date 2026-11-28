@@ -38,6 +38,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _exportingLogs = false;
   bool _exportingSettings = false;
   bool _importingSettings = false;
+  double? _pendingAnimationSpeed;
   String _settingsSearchQuery = '';
   final TextEditingController _settingsSearchController = TextEditingController();
 
@@ -313,6 +314,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   String _pageTitle(String? category) => switch (category) {
         'Appearance' => 'Appearance',
+        'Customization' => 'Customization',
         'Navigation' => 'Navigation',
         'Music' => 'Music & Playback',
         'Dashboard & Shortcuts' => 'Dashboard',
@@ -358,6 +360,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onOpenSavedServers: widget.onOpenSavedServers,
             category: switch (id) {
               'appearance' => 'Appearance',
+              'customization' => 'Customization',
               'navigation' => 'Navigation',
               'dashboard' => 'Dashboard & Shortcuts',
               'music' => 'Music',
@@ -387,6 +390,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'Progressive Blur': 'progressive blur shader fade header',
         'Live preview': 'preview sample appearance',
         'Reset appearance': 'reset defaults restore theme',
+      },
+      'customization': {
+        'App animations': 'animations motion transition reduce motion disable global system wide',
+        'Animation speed': 'animations motion faster slower speed duration 0.5 2x',
+        'Theme mode': 'theme light dark system brightness',
+        'AMOLED mode': 'amoled oled black deep black',
+        'Liquid Glass UI': 'liquid glass frosted reflections surfaces',
+        'Progressive Blur': 'progressive blur shader fade header',
+        'Blur': 'blur glass frosted quality strength',
       },
       'navigation': {
         'Navigation bar and dock': 'navigation dock tabs destinations visible hidden reorder',
@@ -431,6 +443,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (tokens.isEmpty) return options.keys.toList(growable: false);
     const categoryTerms = <String, String>{
       'appearance': 'appearance visual effects',
+      'customization': 'customization appearance theme animations motion visual effects blur',
       'navigation': 'navigation bar dock dashboard home fab',
       'storage': 'storage downloads files transfers download location',
       'music': 'music audio playback discover video lyrics playlists',
@@ -455,7 +468,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (dialogContext) => AlertDialog(
         title: const Text('Reset appearance settings?'),
         content: const Text(
-          'Restore System theme, disable AMOLED mode, turn Liquid Glass off, and restore Progressive Blur to its default. Other settings will not change.',
+          'Restore System theme, disable AMOLED mode, turn Liquid Glass off, restore Progressive Blur, and reset PocketLink animations. Other settings will not change.',
         ),
         actions: [
           TextButton(
@@ -473,12 +486,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await _settings.setThemeMode(ThemeMode.system);
     await _settings.setUseLiquidGlass(false);
     await _settings.setProgressiveBlurEnabled(true);
+    await _settings.setAnimationsEnabled(true);
+    await _settings.setAnimationSpeed(1.0);
     if (mounted) _message('Appearance settings restored to defaults.');
   }
 
   Widget _categoryIntro(String category) {
     final descriptions = <String, String>{
       'Appearance': 'Theme, AMOLED black mode, blur, colors and visual effects.',
+      'Customization': 'Control PocketLink-wide motion, animation speed, theme and visual effects.',
       'Navigation': 'Dock, destinations, dashboard sections and floating shortcuts.',
       'Music': 'Music library, playback, Discover, lyrics and video preferences.',
       'Storage': 'Download location, download behavior and temporary cache.',
@@ -530,22 +546,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
     ),
-    if (_categoryMatches('appearance') || _categoryMatches('navigation'))
+    if (_categoryMatches('appearance') || _categoryMatches('customization') || _categoryMatches('navigation'))
       SettingsSectionHeader('Personalization'),
-    if (_categoryMatches('appearance'))
+    if (_categoryMatches('customization') || _categoryMatches('appearance'))
       _categoryTile(
-        id: 'appearance',
+        id: 'customization',
         icon: Icons.palette_rounded,
         tint: const Color(0xFF8D72E8),
-        title: 'Appearance',
-        subtitle: 'Theme, blur, OLED black mode and colors',
-        badge: _settings.amoled
-            ? 'AMOLED'
-            : _settings.themeMode == ThemeMode.dark
-                ? 'Dark'
-                : _settings.themeMode == ThemeMode.light
-                    ? 'Light'
-                    : 'System',
+        title: 'Customization',
+        subtitle: 'Animations, theme, blur and visual effects',
+        badge: _settings.animationsEnabled ? '${_settings.animationSpeed.toStringAsFixed(1)}×' : 'Motion Off',
       ),
     if (_categoryMatches('navigation'))
       _categoryTile(
@@ -606,6 +616,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         badge: 'Info',
       ),
     if (!_categoryMatches('appearance') &&
+        !_categoryMatches('customization') &&
         !_categoryMatches('navigation') &&
         !_categoryMatches('storage') &&
         !_categoryMatches('music') &&
@@ -635,11 +646,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     String? badge,
   }) {
     final colors = Theme.of(context).colorScheme;
-    final matches = _matchingSettingLabels(id);
-    final query = _settingsSearchQuery.trim();
-    final visibleSubtitle = query.isEmpty || matches.isEmpty
-        ? subtitle
-        : '$subtitle · Matches: ${matches.join(', ')}';
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: 0, end: 1),
       duration: const Duration(milliseconds: 280),
@@ -649,84 +655,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return Opacity(
           opacity: progress,
           child: Transform.translate(
-            offset: Offset(0, 10 * (1 - progress)),
-            child: Transform.scale(
-              scale: 0.985 + (0.015 * progress),
-              child: child,
-            ),
+            offset: Offset(0, 8 * (1 - progress)),
+            child: child,
           ),
         );
       },
-      child: Card(
-        margin: const EdgeInsets.only(bottom: 10),
+      child: Material(
         color: colors.surfaceContainerLow,
-        elevation: 0,
+        borderRadius: BorderRadius.circular(22),
         clipBehavior: Clip.antiAlias,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(
-            color: colors.outlineVariant.withValues(alpha: 0.56),
-          ),
-        ),
         child: InkWell(
           onTap: () => _openCategory(id),
-          borderRadius: BorderRadius.circular(20),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
-            child: Row(
-              children: [
-                Container(
-                  width: 46,
-                  height: 46,
-                  decoration: BoxDecoration(
-                    color: tint.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  child: Icon(icon, color: tint, size: 23),
-                ),
-                const SizedBox(width: 13),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w800,
-                            ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        visibleSubtitle,
-                        maxLines: query.isEmpty ? 2 : 4,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: colors.onSurfaceVariant,
-                            ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (badge != null) ...[
-                  const SizedBox(width: 8),
+          borderRadius: BorderRadius.circular(22),
+          child: SizedBox(
+            height: 64,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
-                      color: tint.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(20),
+                      color: colors.surfaceContainerHighest,
+                      shape: BoxShape.circle,
                     ),
+                    child: Icon(icon, color: tint, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
                     child: Text(
-                      badge,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: tint,
-                            fontWeight: FontWeight.w800,
-                          ),
+                      title,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
+                  Icon(Icons.chevron_right_rounded, color: colors.onSurfaceVariant),
                 ],
-                const SizedBox(width: 4),
-                Icon(Icons.chevron_right_rounded, color: colors.onSurfaceVariant),
-              ],
+              ),
             ),
           ),
         ),
@@ -852,7 +819,52 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                   ]),
-                if (widget.category == 'Appearance')
+                if (widget.category == 'Appearance' || widget.category == 'Customization')
+                  _section('Motion', [
+                    SwitchListTile(
+                      secondary: const Icon(Icons.animation_rounded),
+                      title: const Text('Animations'),
+                      subtitle: const Text('Apply motion preferences across PocketLink screens and controls'),
+                      value: _settings.animationsEnabled,
+                      onChanged: _settings.setAnimationsEnabled,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Expanded(child: Text('Animation speed')),
+                              Text('${(_pendingAnimationSpeed ?? _settings.animationSpeed).toStringAsFixed(1)}×'),
+                            ],
+                          ),
+                          Slider(
+                            min: 0.5,
+                            max: 2.0,
+                            divisions: 15,
+                            value: (_pendingAnimationSpeed ?? _settings.animationSpeed).clamp(0.5, 2.0),
+                            onChanged: _settings.animationsEnabled
+                                ? (value) => setState(() => _pendingAnimationSpeed = value)
+                                : null,
+                            onChangeEnd: _settings.animationsEnabled
+                                ? (value) async {
+                                    setState(() => _pendingAnimationSpeed = null);
+                                    await _settings.setAnimationSpeed(value);
+                                  }
+                                : null,
+                          ),
+                          Text(
+                            '0.5× is slower · 1× is normal · 2× is faster. This scales Flutter animations throughout PocketLink.',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ]),
+                if (widget.category == 'Appearance' || widget.category == 'Customization')
                   _section('Appearance & Theme', [
                     ListTile(
                       leading: const Icon(Icons.palette_rounded),
