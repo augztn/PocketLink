@@ -1694,6 +1694,94 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     );
   }
 
+  Widget _spotlightPageMotion(int index, Widget child) {
+    return AnimatedBuilder(
+      animation: Listenable.merge([
+        _spotlightPageController,
+        AppSettings.instance,
+      ]),
+      child: child,
+      builder: (context, child) {
+        final page = _spotlightPageController.hasClients
+            ? (_spotlightPageController.page ?? index.toDouble())
+            : index.toDouble();
+        final distance = (index - page).clamp(-1.0, 1.0).toDouble();
+        final progress = distance.abs();
+        if (!AppSettings.instance.discoverMotion) return child!;
+        final curve = _spotlightUserDragging ? 1.0 : .04;
+        final width = MediaQuery.sizeOf(context).width;
+        return ClipRect(
+          child: Transform.translate(
+            offset: Offset(-distance * width, 0),
+            child: ShaderMask(
+            blendMode: BlendMode.dstIn,
+            shaderCallback: (bounds) {
+              final width = bounds.width;
+              final height = bounds.height;
+              if (progress < .001) {
+                return ui.Gradient.linear(
+                  Offset.zero,
+                  Offset(width, 0),
+                  [Colors.white, Colors.white],
+                );
+              }
+              if (progress >= .999) {
+                return ui.Gradient.linear(
+                  Offset.zero,
+                  Offset(width, 0),
+                  [Colors.transparent, Colors.transparent],
+                );
+              }
+              const featherShare = .55;
+              const curveReach = .6;
+              const wipeTrail = .25;
+              final feather = width * featherShare;
+              final offset = width * curveReach / curve;
+              final center = Offset(width + offset, height / 2);
+              final farthest = math.sqrt(
+                center.dx * center.dx + center.dy * center.dy,
+              );
+              final wipeProgress = distance > 0 ? 1 - distance : -distance;
+              final radius = offset - feather +
+                  (farthest - (offset - feather)) * wipeProgress;
+              final incoming = distance > 0;
+              final inner = incoming ? radius : radius - feather * wipeTrail;
+              final outer = inner + feather;
+              final edge = (inner / outer).clamp(0.0, 1.0).toDouble();
+              const featherEase = [0.0, .104, .352, .648, .896, 1.0];
+              final stops = <double>[0, edge];
+              final colors = <Color>[
+                incoming ? Colors.white : Colors.transparent,
+                incoming ? Colors.white : Colors.transparent,
+              ];
+              for (var index = 1; index < featherEase.length; index++) {
+                final eased = featherEase[index];
+                stops.add(edge + (1 - edge) * index / (featherEase.length - 1));
+                final alpha = incoming ? 1 - eased : eased;
+                colors.add(Colors.white.withValues(alpha: alpha));
+              }
+              return ui.Gradient.radial(
+                center,
+                outer,
+                colors,
+                stops,
+              );
+            },
+            child: Transform.translate(
+              offset: Offset(distance * width * .18, 0),
+              child: Transform.scale(
+                alignment: Alignment.center,
+                scale: 1 + progress * .36,
+                child: child,
+              ),
+            ),
+          ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _spotlightHero() {
     final tracks = _spotlightTracks;
     final pageCount = _spotlightPageCount;
@@ -1736,15 +1824,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
               final pageIndex =
                   ((index - _spotlightInitialPage) % pageCount + pageCount) % pageCount;
               if (_speedDial.isNotEmpty && pageIndex == tracks.length) {
-                return _speedDialHeroPage();
+                return _spotlightPageMotion(index, _speedDialHeroPage());
               }
               final track = tracks[pageIndex];
-              return AnimatedBuilder(
-                animation: Listenable.merge([
-                  _spotlightPageController,
-                  AppSettings.instance,
-                ]),
-                child: Material(
+              return _spotlightPageMotion(index, Material(
                 color: const Color(0xFF08090C),
                 child: InkWell(
                   onTap: () => _play(track, queueOverride: tracks),
@@ -1872,86 +1955,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                     ],
                   ),
                 ),
-                ),
-                builder: (context, child) {
-                  final page = _spotlightPageController.hasClients
-                      ? (_spotlightPageController.page ?? index.toDouble())
-                      : index.toDouble();
-                  final distance = (index - page).clamp(-1.0, 1.0).toDouble();
-                  final progress = distance.abs();
-                  if (!AppSettings.instance.discoverMotion) return child!;
-                  final curve = _spotlightUserDragging ? 1.0 : .04;
-                  final width = MediaQuery.sizeOf(context).width;
-                  return ClipRect(
-                    child: Transform.translate(
-                      offset: Offset(-distance * width, 0),
-                      child: ShaderMask(
-                      blendMode: BlendMode.dstIn,
-                      shaderCallback: (bounds) {
-                        final width = bounds.width;
-                        final height = bounds.height;
-                        if (progress < .001) {
-                          return ui.Gradient.linear(
-                            Offset.zero,
-                            Offset(width, 0),
-                            [Colors.white, Colors.white],
-                          );
-                        }
-                        if (progress >= .999) {
-                          return ui.Gradient.linear(
-                            Offset.zero,
-                            Offset(width, 0),
-                            [Colors.transparent, Colors.transparent],
-                          );
-                        }
-                        const featherShare = .55;
-                        const curveReach = .6;
-                        const wipeTrail = .25;
-                        final feather = width * featherShare;
-                        final offset = width * curveReach / curve;
-                        final center = Offset(width + offset, height / 2);
-                        final farthest = math.sqrt(
-                          center.dx * center.dx + center.dy * center.dy,
-                        );
-                        final wipeProgress = distance > 0 ? 1 - distance : -distance;
-                        final radius = offset - feather +
-                            (farthest - (offset - feather)) * wipeProgress;
-                        final incoming = distance > 0;
-                        final inner = incoming ? radius : radius - feather * wipeTrail;
-                        final outer = inner + feather;
-                        final edge = (inner / outer).clamp(0.0, 1.0).toDouble();
-                        const featherEase = [0.0, .104, .352, .648, .896, 1.0];
-                        final stops = <double>[0, edge];
-                        final colors = <Color>[
-                          incoming ? Colors.white : Colors.transparent,
-                          incoming ? Colors.white : Colors.transparent,
-                        ];
-                        for (var index = 1; index < featherEase.length; index++) {
-                          final eased = featherEase[index];
-                          stops.add(edge + (1 - edge) * index / (featherEase.length - 1));
-                          final alpha = incoming ? 1 - eased : eased;
-                          colors.add(Colors.white.withValues(alpha: alpha));
-                        }
-                        return ui.Gradient.radial(
-                          center,
-                          outer,
-                          colors,
-                          stops,
-                        );
-                      },
-                      child: Transform.translate(
-                        offset: Offset(distance * width * .18, 0),
-                        child: Transform.scale(
-                          alignment: Alignment.center,
-                          scale: 1 + progress * .36,
-                          child: child,
-                        ),
-                      ),
-                    ),
-                    ),
-                  );
-                },
-              );
+                ));
             },
             ),
           ),
