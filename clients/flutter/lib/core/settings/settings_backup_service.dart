@@ -52,6 +52,8 @@ class SettingsBackupService {
     'settings_video_default_speed',
     'settings_video_subtitle_font_size',
     'settings_animation_speed',
+    'settings_blur_strength',
+    'settings_thumbnail_corner_radius',
   };
 
   static const _stringKeys = <String>{
@@ -82,6 +84,8 @@ class SettingsBackupService {
 
     if (key == 'settings_video_subtitle_font_size') return value is double && value >= 14 && value <= 32;
     if (key == 'settings_animation_speed') return value is double && value >= 0.5 && value <= 2.0;
+    if (key == 'settings_blur_strength') return value is double && value >= 0 && value <= 32;
+    if (key == 'settings_thumbnail_corner_radius') return value is double && value >= 0 && value <= 45;
     if (key == 'settings_video_default_speed') return value is double && const [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 3.0, 4.0].contains(value);
     if (value is! String || value.length > 16384) return false;
 
