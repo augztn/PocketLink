@@ -41,13 +41,20 @@ class AppSettings extends ChangeNotifier {
   static const _liquidGlassKey = 'settings_use_liquid_glass';
   static const _progressiveBlurKey = 'settings_progressive_blur_enabled';
   static const _animationsEnabledKey = 'settings_animations_enabled';
+  static const _pageTransitionsEnabledKey = 'settings_page_transitions_enabled';
+  static const _lyricsAnimationsEnabledKey = 'settings_lyrics_animations_enabled';
   static const _animationSpeedKey = 'settings_animation_speed';
   static const _accentColorKey = 'settings_accent_color';
   static const _blurStrengthKey = 'settings_blur_strength';
+  static const _glassBlurStrengthKey = 'settings_glass_blur_strength';
   static const _thumbnailCornerRadiusKey = 'settings_thumbnail_corner_radius';
   static const _lyricsTextSizeKey = 'settings_lyrics_text_size';
   static const _lyricsLineSpacingKey = 'settings_lyrics_line_spacing';
   static const _lyricsMotionStyleKey = 'settings_lyrics_motion_style';
+  static const _lyricsGlowKey = 'settings_lyrics_glow';
+  static const _lyricsBloomKey = 'settings_lyrics_bloom';
+  static const _lyricsSoftLightKey = 'settings_lyrics_soft_light';
+  static const _lyricsInactiveBlurKey = 'settings_lyrics_inactive_blur';
   static const _customFontPathKey = 'settings_custom_font_path';
   static const _customFontFamilyKey = 'settings_custom_font_family';
   static const _customFontNameKey = 'settings_custom_font_name';
@@ -145,13 +152,20 @@ class AppSettings extends ChangeNotifier {
   bool _useLiquidGlass = false;
   bool _progressiveBlurEnabled = true;
   bool _animationsEnabled = true;
+  bool _pageTransitionsEnabled = true;
+  bool _lyricsAnimationsEnabled = true;
   double _animationSpeed = 1.0;
   int _accentColorValue = 0xFF536DFE;
   double _blurStrength = 24.0;
+  double _glassBlurStrength = 20.0;
   double _thumbnailCornerRadius = 10.0;
   double _lyricsTextSize = 31.0;
   double _lyricsLineSpacing = 1.22;
   String _lyricsMotionStyle = 'motion';
+  bool _lyricsGlow = false;
+  bool _lyricsBloom = false;
+  bool _lyricsSoftLight = false;
+  double _lyricsInactiveBlur = 1.7;
   String? _customFontPath;
   String? _customFontFamily;
   String? _customFontName;
@@ -210,13 +224,20 @@ class AppSettings extends ChangeNotifier {
   bool get useLiquidGlass => _useLiquidGlass;
   bool get progressiveBlurEnabled => _progressiveBlurEnabled;
   bool get animationsEnabled => _animationsEnabled;
+  bool get pageTransitionsEnabled => _pageTransitionsEnabled;
+  bool get lyricsAnimationsEnabled => _lyricsAnimationsEnabled;
   double get animationSpeed => _animationSpeed;
   int get accentColorValue => _accentColorValue;
   double get blurStrength => _blurStrength;
+  double get glassBlurStrength => _glassBlurStrength;
   double get thumbnailCornerRadius => _thumbnailCornerRadius;
   double get lyricsTextSize => _lyricsTextSize;
   double get lyricsLineSpacing => _lyricsLineSpacing;
   String get lyricsMotionStyle => _lyricsMotionStyle;
+  bool get lyricsGlow => _lyricsGlow;
+  bool get lyricsBloom => _lyricsBloom;
+  bool get lyricsSoftLight => _lyricsSoftLight;
+  double get lyricsInactiveBlur => _lyricsInactiveBlur;
   String? get customFontPath => _customFontPath;
   String? get customFontFamily => _customFontFamily;
   String? get customFontName => _customFontName;
@@ -282,6 +303,8 @@ class AppSettings extends ChangeNotifier {
       _useLiquidGlass = preferences.getBool(_liquidGlassKey) ?? false;
       _progressiveBlurEnabled = preferences.getBool(_progressiveBlurKey) ?? true;
       _animationsEnabled = preferences.getBool(_animationsEnabledKey) ?? true;
+      _pageTransitionsEnabled = preferences.getBool(_pageTransitionsEnabledKey) ?? true;
+      _lyricsAnimationsEnabled = preferences.getBool(_lyricsAnimationsEnabledKey) ?? true;
       final storedAnimationSpeed = preferences.getDouble(_animationSpeedKey) ?? 1.0;
       _animationSpeed = storedAnimationSpeed.isFinite
           ? storedAnimationSpeed.clamp(0.5, 2.0).toDouble()
@@ -294,6 +317,10 @@ class AppSettings extends ChangeNotifier {
       _blurStrength = storedBlurStrength.isFinite
           ? storedBlurStrength.clamp(0.0, 32.0).toDouble()
           : 24.0;
+      final storedGlassBlurStrength = preferences.getDouble(_glassBlurStrengthKey) ?? 20.0;
+      _glassBlurStrength = storedGlassBlurStrength.isFinite
+          ? storedGlassBlurStrength.clamp(0.0, 32.0).toDouble()
+          : 20.0;
       final storedCornerRadius = preferences.getDouble(_thumbnailCornerRadiusKey) ?? 10.0;
       _thumbnailCornerRadius = storedCornerRadius.isFinite
           ? storedCornerRadius.clamp(0.0, 45.0).toDouble()
@@ -310,6 +337,13 @@ class AppSettings extends ChangeNotifier {
       _lyricsMotionStyle = const {'motion', 'legacy', 'boring', 'plain'}.contains(storedLyricsMotionStyle)
           ? storedLyricsMotionStyle
           : 'motion';
+      _lyricsGlow = preferences.getBool(_lyricsGlowKey) ?? false;
+      _lyricsBloom = preferences.getBool(_lyricsBloomKey) ?? false;
+      _lyricsSoftLight = preferences.getBool(_lyricsSoftLightKey) ?? false;
+      final storedLyricsInactiveBlur = preferences.getDouble(_lyricsInactiveBlurKey) ?? 1.7;
+      _lyricsInactiveBlur = storedLyricsInactiveBlur.isFinite
+          ? storedLyricsInactiveBlur.clamp(0.0, 4.0).toDouble()
+          : 1.7;
       final storedFontPath = preferences.getString(_customFontPathKey);
       final storedFontFamily = preferences.getString(_customFontFamilyKey);
       final storedFontName = preferences.getString(_customFontNameKey);
