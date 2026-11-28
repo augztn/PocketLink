@@ -7,9 +7,8 @@ import 'liquid_glass_pill.dart';
 
 /// Single source of truth for the top-edge blur used by every PocketLink section.
 ///
-/// Change these values once to update all shared headers consistently.
+/// Scrim styling is shared; blur strength is configured in Appearance settings.
 abstract final class PocketLinkHeaderBlurStyle {
-  static const double sigma = 24.0;
   static const List<Color> darkScrim = [
     Color(0xF2000000),
     Color(0xE8000000),
