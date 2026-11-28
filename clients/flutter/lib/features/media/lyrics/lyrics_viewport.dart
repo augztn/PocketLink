@@ -160,11 +160,23 @@ class _LyricsViewportState extends State<LyricsViewport> {
                 final instrumentalGap = active && nextLine != null &&
                     nextLine.timeMs - line.timeMs >= 12000 &&
                     widget.position.inMilliseconds - line.timeMs >= 6000;
+                final glowColor = Color(settings.accentColorValue);
+                final lyricShadows = <Shadow>[
+                  if (active && settings.lyricsGlow)
+                    Shadow(color: glowColor.withValues(alpha: .72), blurRadius: 14),
+                  if (active && settings.lyricsBloom)
+                    Shadow(color: Colors.white.withValues(alpha: .42), blurRadius: 28),
+                  if (active && settings.lyricsSoftLight)
+                    Shadow(color: Colors.white.withValues(alpha: .28), blurRadius: 5),
+                ];
                 final baseStyle = TextStyle(
-                  color: Colors.white,
+                  color: settings.lyricsSoftLight && active
+                      ? const Color(0xFFF5F0FF)
+                      : Colors.white,
                   fontSize: active ? settings.lyricsTextSize : settings.lyricsTextSize * (27 / 31),
                   height: settings.lyricsLineSpacing,
                   fontWeight: FontWeight.w700,
+                  shadows: lyricShadows.isEmpty ? null : lyricShadows,
                 );
                 final lyricText = line.words.isEmpty
                     ? Text(line.text, textAlign: TextAlign.left, style: baseStyle)
@@ -186,8 +198,12 @@ class _LyricsViewportState extends State<LyricsViewport> {
                         ),
                       );
                 Widget emphasized = lyricText;
-                final inactiveOpacity = settings.lyricsMotionStyle == 'plain' ? 0.58 : 0.34;
-                if (settings.lyricsMotionStyle == 'motion') {
+                final motionEnabled = settings.animationsEnabled &&
+                    settings.lyricsAnimationsEnabled &&
+                    !MediaQuery.disableAnimationsOf(context);
+                final motionStyle = motionEnabled ? settings.lyricsMotionStyle : 'plain';
+                final inactiveOpacity = motionStyle == 'plain' ? 0.58 : 0.34;
+                if (motionStyle == 'motion') {
                   emphasized = AnimatedOpacity(
                     duration: const Duration(milliseconds: 220),
                     opacity: active ? 1 : inactiveOpacity,
@@ -198,7 +214,7 @@ class _LyricsViewportState extends State<LyricsViewport> {
                       child: lyricText,
                     ),
                   );
-                } else if (settings.lyricsMotionStyle == 'legacy') {
+                } else if (motionStyle == 'legacy') {
                   emphasized = AnimatedOpacity(
                     duration: const Duration(milliseconds: 220),
                     opacity: active ? 1 : inactiveOpacity,
@@ -215,8 +231,8 @@ class _LyricsViewportState extends State<LyricsViewport> {
                   onTap: doc.synced ? () => widget.onSeek(Duration(milliseconds: line.timeMs)) : null,
                   child: ImageFiltered(
                     imageFilter: ImageFilter.blur(
-                      sigmaX: active || _manualScrollActive ? 0 : 1.7,
-                      sigmaY: active || _manualScrollActive ? 0 : 1.7,
+                      sigmaX: active || _manualScrollActive ? 0 : settings.lyricsInactiveBlur,
+                      sigmaY: active || _manualScrollActive ? 0 : settings.lyricsInactiveBlur,
                     ),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -227,7 +243,9 @@ class _LyricsViewportState extends State<LyricsViewport> {
                           if (instrumentalGap)
                             const Padding(
                               padding: EdgeInsets.only(top: 10),
-                              child: _InstrumentalDots(),
+                              child: motionEnabled
+                                  ? const _InstrumentalDots()
+                                  : const Text('•••', style: TextStyle(color: Colors.white70, fontSize: 19, letterSpacing: 4)),
                             ),
                         ],
                       ),
