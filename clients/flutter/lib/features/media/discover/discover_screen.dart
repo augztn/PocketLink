@@ -2750,7 +2750,12 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                     color: Theme.of(context).scaffoldBackgroundColor,
                     child: SingleChildScrollView(
                       physics: const NeverScrollableScrollPhysics(),
-                      child: _discoverHomeSkeletonContent(),
+                      child: Padding(
+                        padding: EdgeInsets.only(
+                          top: showSpotlightSkeleton ? 0 : top,
+                        ),
+                        child: _discoverHomeSkeletonContent(),
+                      ),
                     ),
                   ),
                 ),
