@@ -79,7 +79,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return;
     }
     if (widget is Padding) {
-      yield* _searchableText(widget.child);
+      if (widget.child != null) yield* _searchableText(widget.child!);
       return;
     }
     if (widget is Column) {
