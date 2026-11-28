@@ -113,10 +113,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  bool _matchesCategorySearch(Widget child) {
-    final query = _settingsSearchQuery.trim().toLowerCase();
-    if (query.isEmpty) return true;
-    return _searchableText(child).any((value) => value.toLowerCase().contains(query));
+  bool _matchesCategorySearch(Widget child, {String sectionTitle = ''}) {
+    final tokens = _settingsSearchQuery
+        .toLowerCase()
+        .split(RegExp(r'[^a-z0-9]+'))
+        .where((token) => token.isNotEmpty);
+    if (tokens.isEmpty) return true;
+    final corpus = '${sectionTitle.toLowerCase()} ${_searchableText(child).join(' ').toLowerCase()}';
+    return tokens.every(corpus.contains);
   }
 
   Future<void> _openDiscoverPlaylists() async {
@@ -428,7 +432,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _section(String title, List<Widget> children) {
-    final visibleChildren = children.where(_matchesCategorySearch).toList(growable: false);
+    final visibleChildren = children.where((child) => _matchesCategorySearch(child, sectionTitle: title)).toList(growable: false);
     if (visibleChildren.isEmpty) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(bottom: 18),
