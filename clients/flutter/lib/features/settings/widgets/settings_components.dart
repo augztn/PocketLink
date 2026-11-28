@@ -232,7 +232,7 @@ class SettingsNestedGroup extends StatefulWidget {
 }
 
 class _SettingsNestedGroupState extends State<SettingsNestedGroup> {
-  final Map<String, GlobalKey> _rowKeys = {};
+  final Map<int, GlobalKey> _rowKeys = {};
   Timer? _highlightTimer;
   int? _activeIndex;
 
