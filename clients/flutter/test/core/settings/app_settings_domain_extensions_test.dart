@@ -144,6 +144,27 @@ void main() {
     await expectLater(settings.setLyricsOptions(inactiveBlur: 4.1), throwsArgumentError);
   });
 
+  test('Now Playing style defaults to PocketLink and persists', () async {
+    final settings = AppSettings.instance;
+    expect(settings.nowPlayingPlayerStyle, 'pocketlink');
+
+    await settings.setNowPlayingPlayerStyle('poster');
+    expect(settings.nowPlayingPlayerStyle, 'poster');
+
+    final preferences = await SharedPreferences.getInstance();
+    expect(preferences.getString('settings_now_playing_player_style'), 'poster');
+
+    await settings.reloadPreferences();
+    expect(settings.nowPlayingPlayerStyle, 'poster');
+    await settings.setNowPlayingPlayerStyle('lyrics');
+    expect(settings.nowPlayingPlayerStyle, 'lyrics');
+
+    await expectLater(
+      settings.setNowPlayingPlayerStyle('not-a-style'),
+      throwsArgumentError,
+    );
+  });
+
   test('media settings persist, validate and reset through the facade', () async {
     final settings = AppSettings.instance;
 
