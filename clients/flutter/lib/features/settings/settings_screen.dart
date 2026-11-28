@@ -60,6 +60,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Iterable<String> _searchableText(Widget widget) sync* {
+    if (widget is SettingsTile) {
+      yield settingsSearchableText(widget);
+      return;
+    }
     if (widget is Text) {
       final value = widget.data;
       if (value != null) yield value;
@@ -440,7 +444,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SettingsSectionHeader(title),
-          SettingsGroupCard(children: visibleChildren),
+          SettingsGroupCard(children: visibleChildren, searchQuery: _settingsSearchQuery),
         ],
       ),
     );
