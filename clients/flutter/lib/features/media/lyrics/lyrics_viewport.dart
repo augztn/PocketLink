@@ -190,7 +190,9 @@ class _LyricsViewportState extends State<LyricsViewport> {
                                 text: word.text,
                                 style: TextStyle(
                                   color: active
-                                      ? Colors.white
+                                      ? (settings.lyricsSoftLight
+                                          ? const Color(0xFFF5F0FF)
+                                          : Colors.white)
                                       : Colors.white.withValues(alpha: .58),
                                 ),
                               ),
