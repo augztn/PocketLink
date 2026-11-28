@@ -2199,7 +2199,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 // upstream shelves. Find Your Mood is inserted after the
                 // lead feed shelf rather than before the feed.
                 _spotlightHero(),
-                _spotlightHero(),
                 _listeningPicksShelf(),
                 _recentlyPlayedShelf(),
                 for (var index = 0; index < _homeShelves.length; index++) ...[
@@ -2229,6 +2228,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                     ),
                   ),
                 ),
+                _spotlightHero(),
                 _listeningPicksShelf(),
                 _recentlyPlayedShelf(),
                 if (_tracks.isNotEmpty) ...[
