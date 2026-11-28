@@ -1294,7 +1294,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                     children: [
                       _skeletonLine(width: 72, height: 14),
                       const SizedBox(height: 8),
-                      _skeletonLine(width: math.min(220, screenWidth * .65), height: 22),
+                      _skeletonLine(width: math.min(220.0, screenWidth * .65).toDouble(), height: 22),
                       const SizedBox(height: 13),
                       _skeletonBlock(width: 93, height: 33, radius: 50),
                     ],
