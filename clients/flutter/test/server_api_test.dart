@@ -299,6 +299,35 @@ class _SharedReadAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+class _RemountedStorageAdapter implements HttpClientAdapter {
+  int volumeRequests = 0;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    if (options.uri.path == '/api/storage/volumes') {
+      volumeRequests++;
+      final id = volumeRequests == 1 ? 'usb-old' : 'usb-new';
+      return ResponseBody.fromString(
+        '{"items":[{"id":"$id","name":"External SSD","available":true,"writable":true}]}',
+        200,
+        headers: {Headers.contentTypeHeader: ['application/json']},
+      );
+    }
+    return ResponseBody.fromString(
+      '{"path":"","items":[]}',
+      200,
+      headers: {Headers.contentTypeHeader: ['application/json']},
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
 class _MediaFailureAdapter implements HttpClientAdapter {
   final Map<String, int> requests = {};
 
@@ -770,6 +799,25 @@ void main() {
       expect(results.first.single.id, 'usb1');
       expect(results.last.single.id, 'usb1');
       expect(firstAdapter.requests + secondAdapter.requests, 1);
+    });
+
+    test('remaps a stale USB volume ID after the server remounts it', () async {
+      final adapter = _RemountedStorageAdapter();
+      final api = ServerApi(
+        baseUrl: 'http://127.0.0.1:8000',
+        username: 'admin',
+        password: 'secret',
+        httpClientAdapter: adapter,
+      );
+
+      final initial = await api.listStorageVolumes();
+      expect(initial.single.id, 'usb-old');
+
+      final remapped = await api.resolveStorageVolumeId('usb-old');
+
+      expect(remapped, 'usb-new');
+      expect(adapter.volumeRequests, 2);
+      api.close();
     });
 
     test('does not return a directory response invalidated while in flight', () async {

@@ -88,7 +88,16 @@ class PersistentAudioPlayer extends ChangeNotifier {
     _playlistSubscription = player.stream.playlist.listen((playlist) {
       final previousIndex = _currentIndex;
       _currentIndex = playlist.index.clamp(0, _queue.isEmpty ? 0 : _queue.length - 1).toInt();
-      if (previousIndex != _currentIndex) _lastCompletedPlaybackKey = null;
+      if (previousIndex != _currentIndex) {
+        _lastCompletedPlaybackKey = null;
+        if (_storageFailureStreak > 0) {
+          _storageFailureResetTimer?.cancel();
+          _storageFailureResetTimer = Timer(const Duration(seconds: 5), () {
+            _storageFailureStreak = 0;
+            _storageFailureResetTimer = null;
+          });
+        }
+      }
       final signature = playlist.medias.map((media) => media.uri).join('\\u0000');
       if (_lastPlaylistSignature != null &&
           signature == _lastPlaylistSignature &&
@@ -120,6 +129,13 @@ class PersistentAudioPlayer extends ChangeNotifier {
           'source': currentItem?.sourceLabel ?? 'unknown'});
       if (playing) {
         _miniPlayerDismissed = false;
+        if (_storageFailureStreak > 0) {
+          _storageFailureResetTimer?.cancel();
+          _storageFailureResetTimer = Timer(const Duration(seconds: 5), () {
+            _storageFailureStreak = 0;
+            _storageFailureResetTimer = null;
+          });
+        }
         _recordCurrentTrackIfNeeded();
       }
       notifyListeners();
@@ -243,6 +259,10 @@ class PersistentAudioPlayer extends ChangeNotifier {
   Future<void> _queueMutationTail = Future<void>.value();
   final Set<String> _retriedDiscoverTracks = <String>{};
   bool _retryingDiscoverPlayback = false;
+  int _storageFailureStreak = 0;
+  Timer? _storageFailureResetTimer;
+  bool _refreshingStoragePlayback = false;
+  String? _storagePlaybackIssue;
 
   List<MediaQueueItem> get queue => _queue;
   int get queueSession => _queueSession;
@@ -273,6 +293,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
   bool get isActive => _active;
   bool get isMusic => _music;
   bool get isSelectionLoading => _selectionLoading;
+  String? get storagePlaybackIssue => _storagePlaybackIssue;
 
   /// Publishes track metadata immediately while its playable source resolves.
   /// The returned session invalidates any older in-flight selection.
@@ -296,6 +317,8 @@ class PersistentAudioPlayer extends ChangeNotifier {
     _selectionLoading = true;
     _retriedDiscoverTracks.clear();
     _retryingDiscoverPlayback = false;
+    _storageFailureStreak = 0;
+    _storagePlaybackIssue = null;
     notifyListeners();
     return session;
   }
@@ -372,6 +395,8 @@ class PersistentAudioPlayer extends ChangeNotifier {
     _queue = List.unmodifiable(queue);
     _retriedDiscoverTracks.clear();
     _retryingDiscoverPlayback = false;
+    _storageFailureStreak = 0;
+    _storagePlaybackIssue = null;
     _currentIndex = initialIndex.clamp(0, _queue.length - 1).toInt();
     _music = isMusic;
     _active = true;
@@ -413,6 +438,51 @@ class PersistentAudioPlayer extends ChangeNotifier {
   Future<void> _handlePlaybackError(String message) async {
     final item = currentItem;
     if (item == null) return;
+    _api?.cancelPendingMetadataRequests(
+      reason: 'Playback failed; prioritizing audio recovery',
+    );
+    final session = _queueSession;
+    final isServerVolumeTrack = item.volume != null &&
+        item.volume != 'internal' &&
+        item.localPath == null &&
+        item.streamUrl == null;
+    final normalizedError = message.toLowerCase();
+    final isNotFound = normalizedError.contains('404') ||
+        normalizedError.contains('not found');
+    final isTimeout = normalizedError.contains('timeout') ||
+        normalizedError.contains('timed out') ||
+        normalizedError.contains('connection');
+
+    if (isServerVolumeTrack && (isNotFound || isTimeout)) {
+      _storageFailureResetTimer?.cancel();
+      _storageFailureStreak++;
+      if (isNotFound) {
+        // A stale SAF volume ID must not cause the native playlist to skip
+        // through every queued file. Pause, refresh the volume map, and retry
+        // this exact queue item only when a replacement ID is found.
+        final failedIndex = _currentIndex;
+        await player.pause();
+        final recovered = await _refreshStoragePlayback(
+          requireRemap: true,
+          expectedSession: session,
+          expectedIndex: failedIndex,
+          expectedItem: item,
+        );
+        if (recovered || session != _queueSession) return;
+        _storagePlaybackIssue =
+            'Storage volume disconnected or remounted — tap to refresh';
+        notifyListeners();
+        return;
+      }
+      if (_storageFailureStreak >= 3) {
+        await player.pause();
+        _storagePlaybackIssue =
+            'Storage volume disconnected or remounted — tap to refresh';
+        notifyListeners();
+        return;
+      }
+    }
+
     // Stop the playlist's automatic advance while a failed Discover stream is retried.
     if (item.streamUrl != null && item.lyricsVideoId != null) {
       await player.pause();
@@ -438,7 +508,6 @@ class PersistentAudioPlayer extends ChangeNotifier {
     final retryKey = '$_queueSession:${item.lyricsVideoId}';
     if (!_retriedDiscoverTracks.add(retryKey)) return;
     _retryingDiscoverPlayback = true;
-    final session = _queueSession;
     try {
       final currentResolver = (item.streamResolver ?? '').toLowerCase();
       final alternateProfile = currentResolver.startsWith('newpipe')
@@ -547,6 +616,88 @@ class PersistentAudioPlayer extends ChangeNotifier {
     }
   }
 
+  /// Re-resolves a remounted USB/OTG volume and retries the current queue item.
+  Future<bool> refreshStoragePlayback() =>
+      _refreshStoragePlayback();
+
+  Future<bool> _refreshStoragePlayback({
+    bool requireRemap = false,
+    int? expectedSession,
+    int? expectedIndex,
+    MediaQueueItem? expectedItem,
+  }) async {
+    final session = expectedSession ?? _queueSession;
+    final index = expectedIndex ?? _currentIndex;
+    final item = expectedItem ?? (index == _currentIndex ? currentItem : null);
+    final api = _api;
+    if (item == null || api == null || item.volume == null ||
+        item.volume == 'internal' || _refreshingStoragePlayback ||
+        session != _queueSession || index != _currentIndex) {
+      return false;
+    }
+
+    _refreshingStoragePlayback = true;
+    final position = player.state.position;
+    try {
+      final replacementId = await api.resolveStorageVolumeId(item.volume!);
+      if (session != _queueSession || index != _currentIndex) return false;
+      if (replacementId == null ||
+          (requireRemap && replacementId == item.volume)) {
+        return false;
+      }
+
+      final replacement = item.mergeMetadata(MediaQueueItem(
+        title: item.title,
+        path: item.path,
+        volume: replacementId,
+      ));
+      await _serializeQueueMutation(() async {
+        if (session != _queueSession || index != _currentIndex) return;
+        final updated = _queue.toList();
+        updated[index] = replacement;
+        _queue = List.unmodifiable(updated);
+        final media = _queue.map((queued) => Media(
+          queued.localPath ?? queued.streamUrl ??
+              api.mediaStreamUrl(queued.path, volume: queued.volume),
+          httpHeaders: queued.localPath != null
+              ? const {}
+              : queued.streamUrl != null
+                  ? queued.httpHeaders
+                  : api.mediaHeaders,
+          extras: {
+            'title': queued.title,
+            if (queued.artist != null) 'artist': queued.artist,
+          },
+        )).toList(growable: false);
+        await player.open(Playlist(media, index: index));
+        if (position > Duration.zero) await player.seek(position);
+        await player.play();
+      });
+      if (session != _queueSession) return false;
+      _storageFailureResetTimer?.cancel();
+      _storageFailureStreak = 0;
+      _storagePlaybackIssue = null;
+      notifyListeners();
+      await AppLogger.info(
+        'Storage volume remapped for active playback',
+        category: 'media',
+        component: 'audio_player',
+        fields: {'queue_index': index, 'volume_changed': replacementId != item.volume},
+      );
+      return true;
+    } catch (error) {
+      await AppLogger.warning(
+        'Storage volume playback recovery failed',
+        category: 'media',
+        component: 'audio_player',
+        fields: {'failure_type': error.runtimeType.toString(), 'queue_index': index},
+      );
+      return false;
+    } finally {
+      _refreshingStoragePlayback = false;
+    }
+  }
+
   /// Adds an original server/local media item to the active queue.
   Future<void> enqueue(
     MediaQueueItem item, {
@@ -632,6 +783,9 @@ class PersistentAudioPlayer extends ChangeNotifier {
   }
 
   Future<void> skipToNext() async {
+    _storageFailureResetTimer?.cancel();
+    _storageFailureStreak = 0;
+    _storagePlaybackIssue = null;
     _recordTrackChangeDirection(1);
     await player.next();
   }
@@ -665,6 +819,9 @@ class PersistentAudioPlayer extends ChangeNotifier {
     _lastPlaylistSignature = null;
     _lastPlaylistIndex = null;
     _playbackTransition = 0;
+    _storageFailureResetTimer?.cancel();
+    _storageFailureStreak = 0;
+    _storagePlaybackIssue = null;
     notifyListeners();
   }
 
@@ -734,6 +891,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
     unawaited(_playingSubscription?.cancel());
     unawaited(_completedSubscription?.cancel());
     unawaited(_errorSubscription?.cancel());
+    _storageFailureResetTimer?.cancel();
     _mediaChannel.setMethodCallHandler(null);
     unawaited(_systemMediaVolumeController.close());
     unawaited(player.dispose());

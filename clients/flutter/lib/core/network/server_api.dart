@@ -53,6 +53,7 @@ class ServerApi {
   final Map<String, Future<DirectoryListing>> _directoryRequests = {};
   _CacheEntry<List<StorageVolume>>? _volumesCache;
   Future<List<StorageVolume>>? _volumesRequest;
+  final Map<String, String> _knownVolumeNames = {};
   int _cacheGeneration = 0;
 
   Future<T> _cachedGet<T>(
@@ -232,10 +233,12 @@ class ServerApi {
     }
     final cached = _metadataCache[key];
     if (cached != null) return cached;
-    if (cancelToken != null) {
-      _mediaRequestTokens.add(cancelToken);
-      _metadataRequestTokens[key] = cancelToken;
-    }
+
+    // Every metadata request is cancellable, including callers that do not
+    // provide a token (for example, music duration labels).
+    final requestToken = cancelToken ?? CancelToken();
+    _mediaRequestTokens.add(requestToken);
+    _metadataRequestTokens[key] = requestToken;
     late final Future<VideoMetadata?> future;
     future = (() async {
       try {
@@ -243,25 +246,32 @@ class ServerApi {
           '/api/media/metadata',
           queryParameters: {'path': path, if (volume != null) 'volume': volume},
           options: Options(extra: {'pocketlink.priority': 'background'}),
-          cancelToken: cancelToken,
+          cancelToken: requestToken,
         );
         return VideoMetadata.fromJson(response.data ?? const {});
       } on DioException catch (error) {
         if (_isRouteLevelNotFound(error)) {
           _videoMetadataEndpointUnavailable = true;
+          // A route-level 404 applies to the endpoint, not this file. Cancel
+          // other queued metadata reads so they cannot starve useful requests.
+          for (final pending in _metadataRequestTokens.values.toSet()) {
+            if (!identical(pending, requestToken) && !pending.isCancelled) {
+              pending.cancel('Media metadata endpoint is unavailable');
+            }
+          }
         } else if (error.response?.statusCode == 400 ||
             error.response?.statusCode == 404) {
           _rememberFailedMediaKey(_failedMetadataKeys, key);
         }
-        if (((cancelToken?.isCancelled ?? false) ||
+        if ((requestToken.isCancelled ||
                 error.type == DioExceptionType.cancel) &&
             identical(_metadataCache[key], future)) {
           _metadataCache.remove(key);
         }
         return null;
       } finally {
-        if (cancelToken != null) _mediaRequestTokens.remove(cancelToken);
-        if (identical(_metadataRequestTokens[key], cancelToken)) {
+        _mediaRequestTokens.remove(requestToken);
+        if (identical(_metadataRequestTokens[key], requestToken)) {
           _metadataRequestTokens.remove(key);
         }
       }
@@ -269,6 +279,18 @@ class ServerApi {
     _metadataCache[key] = future;
     if (_metadataCache.length > 128) _metadataCache.remove(_metadataCache.keys.first);
     return future;
+  }
+
+  /// Cancels all outstanding metadata reads when their owning screen closes.
+  void cancelPendingMetadataRequests({
+    String reason = 'Media metadata requests are no longer needed',
+  }) {
+    for (final token in _metadataRequestTokens.values.toSet()) {
+      if (!token.isCancelled) token.cancel(reason);
+      _mediaRequestTokens.remove(token);
+    }
+    _metadataRequestTokens.clear();
+    _metadataCache.clear();
   }
 
   Future<Uint8List?> videoThumbnail(
@@ -624,7 +646,59 @@ class ServerApi {
     clearMediaCache();
   }
 
-  Future<List<StorageVolume>> listStorageVolumes() async {
+  void _rememberStorageVolumes(List<StorageVolume> volumes) {
+    for (final volume in volumes) {
+      _knownVolumeNames[volume.id] = volume.name;
+    }
+  }
+
+  Future<List<StorageVolume>> refreshStorageVolumes() async {
+    // Invalidate older volume and directory snapshots before the authoritative
+    // refresh so an in-flight stale read cannot overwrite the new mapping.
+    invalidateDirectoryCache();
+    final response =
+        await _dio.get<Map<String, dynamic>>('/api/storage/volumes');
+    final volumes = (response.data?['items'] as List<dynamic>? ?? const [])
+        .map((item) => StorageVolume.fromJson(item as Map<String, dynamic>))
+        .toList(growable: false);
+    _rememberStorageVolumes(volumes);
+    _volumesCache = _CacheEntry(
+      volumes,
+      DateTime.now().add(_directoryCacheTtl),
+    );
+    return volumes;
+  }
+
+  /// Maps an obsolete mounted-volume ID to its current server ID.
+  /// Exact volume-name matches are preferred; a single available volume is
+  /// used only when no prior name is known, avoiding ambiguous remapping.
+  Future<String?> resolveStorageVolumeId(String previousId) async {
+    final previousName = _knownVolumeNames[previousId];
+    final volumes = await refreshStorageVolumes();
+    final stillMounted = volumes.where(
+      (volume) => volume.id == previousId && volume.available,
+    );
+    if (stillMounted.isNotEmpty) return previousId;
+
+    if (previousName != null && previousName.trim().isNotEmpty) {
+      final matches = volumes.where((volume) =>
+          volume.available &&
+          volume.id != 'internal' &&
+          volume.name.trim().toLowerCase() == previousName.trim().toLowerCase());
+      if (matches.length == 1) return matches.first.id;
+      return null;
+    }
+
+    final available = volumes
+        .where((volume) => volume.available && volume.id != 'internal')
+        .toList();
+    return available.length == 1 ? available.single.id : null;
+  }
+
+  Future<List<StorageVolume>> listStorageVolumes({
+    bool forceRefresh = false,
+  }) async {
+    if (forceRefresh) return refreshStorageVolumes();
     final cached = _volumesCache;
     if (cached != null && cached.expiresAt.isAfter(DateTime.now())) {
       return cached.value;
@@ -646,6 +720,7 @@ class ServerApi {
         if (_closed) return volumes;
         return await listStorageVolumes();
       }
+      _rememberStorageVolumes(volumes);
       _volumesCache = _CacheEntry(
         volumes,
         DateTime.now().add(_directoryCacheTtl),
