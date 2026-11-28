@@ -471,7 +471,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final route = switch (id) {
       'navigation-customize' => _categoryRoute(
           id,
-          (_) => const NavigationCustomizationScreen(),
+          (_) => NavigationCustomizationScreen(initialSearchQuery: searchQuery),
         ),
       'audio' || 'now-playing' => _categoryRoute(
           id,
@@ -479,7 +479,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       'video' => _categoryRoute(
           id,
-          (_) => const VideoPlayerSettingsScreen(),
+          (_) => VideoPlayerSettingsScreen(initialSearchQuery: searchQuery),
         ),
       'about' => _categoryRoute(id, (_) => const AboutScreen()),
       _ => _categoryRoute(
@@ -560,6 +560,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'Mini-player': 'mini player compact pill artwork playback controls',
         'Playback gestures': 'swipe dismiss change tracks seek',
       },
+      'video': {
+        'Controls auto-hide': 'video player controls hide timeout never seconds',
+        'Double-tap seek': 'video seek seconds fast forward rewind',
+        'Default playback speed': 'video playback speed rate',
+        'Player gestures': 'video gestures horizontal swipe brightness volume seek',
+        'Pinch to zoom': 'video zoom pinch pan enlarge',
+        'Tap to play or pause': 'video tap toggle playback pause',
+        'Open videos in fullscreen': 'video fullscreen automatic start',
+        'Fullscreen orientation': 'video portrait landscape orientation auto rotate',
+        'Video scaling': 'video fit contain cover crop stretch fill',
+        'Subtitle text size': 'subtitle captions font text size',
+        'Subtitle background': 'subtitle captions translucent background',
+      },
+      'navigation-customize': {
+        'Home destination': 'home dashboard navigation tab always visible',
+        'Explore destination': 'explore browse server media navigation tab',
+        'Files destination': 'files storage navigation tab',
+        'Browse / Music destination': 'browse music player shortcut navigation tab',
+      },
       'music': {
         'Music button and mini-player': 'audio now playing gestures shortcuts mini player',
         'Playback gestures': 'swipe dismiss change tracks seek',
@@ -595,6 +614,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       'storage': 'storage downloads files transfers download location',
       'music': 'music audio playback discover video lyrics playlists',
       'now-playing': 'now playing player mini-player poster lyrics playback',
+      'video': 'video player playback controls fullscreen subtitles scaling',
+      'navigation-customize': 'navigation dock destinations home explore files music reorder',
       'network': 'network connectivity connection server',
       'diagnostics': 'diagnostics maintenance backup restore logs troubleshooting',
       'about': 'about pocketlink',
@@ -618,6 +639,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       'navigation': 'Navigation',
       'storage': 'Storage',
       'now-playing': 'Now Playing',
+      'video': 'Video Player',
+      'navigation-customize': 'Navigation',
       'music': 'Music',
       'network': 'Network',
       'diagnostics': 'Diagnostics',
