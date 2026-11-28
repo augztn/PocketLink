@@ -27,20 +27,97 @@ class SettingsSectionHeader extends StatelessWidget {
 }
 
 /// One Settings surface with consistent shape, fill and row separators.
-class SettingsGroupCard extends StatelessWidget {
+class SettingsGroupCard extends StatefulWidget {
   const SettingsGroupCard({
     required this.children,
     super.key,
     this.padding = EdgeInsets.zero,
+    this.searchQuery = '',
   });
 
   final List<Widget> children;
   final EdgeInsetsGeometry padding;
+  final String searchQuery;
+
+  @override
+  State<SettingsGroupCard> createState() => _SettingsGroupCardState();
+}
+
+class _SettingsGroupCardState extends State<SettingsGroupCard> {
+  final Map<String, GlobalKey> _rowKeys = {};
+
+  String _rowIdentity(int index, Widget child) =>
+      '$index:${child.runtimeType}:${settingsSearchableText(child)}';
+
+  GlobalKey _keyFor(int index, Widget child) =>
+      _rowKeys.putIfAbsent(_rowIdentity(index, child), GlobalKey.new);
+
+  bool _matches(Widget child) {
+    final tokens = widget.searchQuery
+        .toLowerCase()
+        .split(RegExp(r'[^a-z0-9]+'))
+        .where((token) => token.isNotEmpty);
+    if (tokens.isEmpty) return false;
+    final corpus = settingsSearchableText(child).toLowerCase();
+    return tokens.every(corpus.contains);
+  }
+
+  void _scrollToFirstMatch() {
+    final query = widget.searchQuery.trim();
+    if (query.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || widget.searchQuery.trim() != query) return;
+      for (var index = 0; index < widget.children.length; index++) {
+        final child = widget.children[index];
+        if (!_matches(child)) continue;
+        final target = _keyFor(index, child).currentContext;
+        if (target != null) {
+          Scrollable.ensureVisible(
+            target,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOutCubic,
+            alignment: 0.18,
+          );
+        }
+        break;
+      }
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollToFirstMatch();
+  }
+
+  @override
+  void didUpdateWidget(covariant SettingsGroupCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.searchQuery != widget.searchQuery ||
+        oldWidget.children != widget.children) {
+      _scrollToFirstMatch();
+    }
+  }
 
   List<Widget> _animatedChildren(BuildContext context) => [
-        for (var index = 0; index < children.length; index++)
-          TweenAnimationBuilder<double>(
-            key: ValueKey('settings-row-${children[index].runtimeType}-$index'),
+        for (var index = 0; index < widget.children.length; index++)
+          AnimatedContainer(
+            key: _keyFor(index, widget.children[index]),
+            duration: const Duration(milliseconds: 450),
+            curve: Curves.easeOutCubic,
+            decoration: BoxDecoration(
+              color: _matches(widget.children[index])
+                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.13)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(14),
+              border: _matches(widget.children[index])
+                  ? Border.all(
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.24),
+                    )
+                  : null,
+            ),
+            child: TweenAnimationBuilder<double>(
+            key: ValueKey('settings-row-${widget.children[index].runtimeType}-$index'),
             tween: Tween<double>(begin: 0, end: 1),
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeOutCubic,
@@ -54,7 +131,8 @@ class SettingsGroupCard extends StatelessWidget {
                 ),
               );
             },
-            child: children[index],
+            child: widget.children[index],
+          ),
           ),
       ];
 
@@ -108,6 +186,26 @@ class SettingsGroupCard extends StatelessWidget {
 }
 
 /// Standard row for Settings content that does not need a specialised control.
+String settingsSearchableText(Widget widget) {
+  if (widget is SettingsTile) return '${widget.title} ${widget.subtitle ?? ''}';
+  if (widget is Text) return widget.data ?? '';
+  if (widget is ListTile) {
+    return '${settingsSearchableText(widget.title ?? const SizedBox.shrink())} '
+        '${settingsSearchableText(widget.subtitle ?? const SizedBox.shrink())}';
+  }
+  if (widget is SwitchListTile) {
+    return '${settingsSearchableText(widget.title)} '
+        '${settingsSearchableText(widget.subtitle ?? const SizedBox.shrink())}';
+  }
+  if (widget is Padding && widget.child != null) return settingsSearchableText(widget.child!);
+  if (widget is Container && widget.child != null) return settingsSearchableText(widget.child!);
+  if (widget is SizedBox && widget.child != null) return settingsSearchableText(widget.child!);
+  if (widget is Align && widget.child != null) return settingsSearchableText(widget.child!);
+  if (widget is Column) return widget.children.map(settingsSearchableText).join(' ');
+  if (widget is Row) return widget.children.map(settingsSearchableText).join(' ');
+  return '';
+}
+
 class SettingsTile extends StatelessWidget {
   const SettingsTile({
     required this.title,
