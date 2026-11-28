@@ -265,7 +265,7 @@ class _SwipeActionTile extends StatelessWidget {
           ? value
           : 'none',
       underline: const SizedBox.shrink(),
-      items: NowPlayingSettingsScreen._swipeActions.entries.map(
+      items: _NowPlayingSettingsScreenState._swipeActions.entries.map(
         (entry) => DropdownMenuItem<String>(
           value: entry.key,
           child: Text(entry.value),
