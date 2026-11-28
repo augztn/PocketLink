@@ -429,6 +429,9 @@ class PersistentAudioPlayer extends ChangeNotifier {
   Future<void> _handlePlaybackError(String message) async {
     final item = currentItem;
     if (item == null) return;
+    _api?.cancelPendingMetadataRequests(
+      reason: 'Playback failed; prioritizing audio recovery',
+    );
     final session = _queueSession;
     final isServerVolumeTrack = item.volume != null &&
         item.volume != 'internal' &&
