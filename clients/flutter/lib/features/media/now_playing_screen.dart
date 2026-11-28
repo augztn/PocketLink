@@ -448,7 +448,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
       _carouselTrackChangeCompleter!.complete();
     }
     final requestedDirection = _persistent.takePendingTrackDirection();
-    final isAdjacentChange = !sessionChanged && indexDelta.abs() == 1;
+    final isAdjacentChange =
+        identityChanged && !sessionChanged && indexDelta.abs() == 1;
     // The queue index is authoritative when an adjacent track actually
     // changes. A concurrent automatic advance can otherwise consume a stale
     // manual-skip direction and animate the incoming track from the wrong side.
