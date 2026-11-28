@@ -2572,9 +2572,10 @@ class _DiscoverShelfReveal extends StatefulWidget {
 class _DiscoverShelfRevealState extends State<_DiscoverShelfReveal>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
+  bool _visibilityCheckScheduled = false;
 
   @override
-  void initState() {
+  void initState {
     super.initState();
     _controller = AnimationController(
       vsync: this,
@@ -2611,7 +2612,12 @@ class _DiscoverShelfRevealState extends State<_DiscoverShelfReveal>
   }
 
   void _scheduleVisibilityCheck() {
-    WidgetsBinding.instance.addPostFrameCallback((_) => _checkVisibility());
+    if (_visibilityCheckScheduled) return;
+    _visibilityCheckScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _visibilityCheckScheduled = false;
+      _checkVisibility();
+    });
   }
 
   void _checkVisibility() {
@@ -2649,13 +2655,16 @@ class _DiscoverShelfRevealState extends State<_DiscoverShelfReveal>
     return AnimatedBuilder(
       animation: _controller,
       child: widget.child,
-      builder: (context, child) => Opacity(
-        opacity: _controller.value,
+      builder: (context, child) {
+        final progress = const Cubic(0.2, 0, 0, 1).transform(_controller.value);
+        return Opacity(
+        opacity: progress,
         child: Transform.translate(
-          offset: Offset(0, 20 * (1 - _controller.value)),
+          offset: Offset(0, 20 * (1 - progress)),
           child: child,
         ),
-      ),
+      );
+      },
     );
   }
 
