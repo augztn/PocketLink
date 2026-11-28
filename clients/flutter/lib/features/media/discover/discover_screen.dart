@@ -2048,6 +2048,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
 
   Widget _shelfReveal({required String key, required Widget child}) {
     return _DiscoverShelfReveal(
+      key: ValueKey(key),
       revealKey: key,
       child: child,
       scrollController: _scrollController,
@@ -2062,6 +2063,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     required Widget child,
   }) {
     return _DiscoverCardReveal(
+      key: ValueKey(key),
       revealKey: key,
       child: child,
       seenKeys: _revealedCardKeys,
