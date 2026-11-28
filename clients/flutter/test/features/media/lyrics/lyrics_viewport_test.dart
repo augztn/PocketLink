@@ -2,6 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:pocketlink_client/features/media/lyrics/lyrics_repository.dart';
 import 'package:pocketlink_client/features/media/lyrics/lyrics_viewport.dart';
+import 'package:pocketlink_client/core/settings/app_settings.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
 
@@ -61,6 +63,65 @@ void main() {
       ).first,
     );
     expect(blur.imageFilter, isNotNull);
+  });
+
+  testWidgets('lyrics visual effects and inactive blur follow preferences', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final settings = AppSettings.instance;
+    await settings.setLyricsOptions(
+      glow: true,
+      bloom: true,
+      softLight: true,
+      inactiveBlur: 3.0,
+    );
+
+    final document = LyricsDocument(
+      providerId: 'test',
+      providerName: 'Test',
+      synced: true,
+      lines: const [
+        LyricsLine(0, 'Active line'),
+        LyricsLine(10000, 'Inactive line'),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LyricsViewport(
+            document: document,
+            position: const Duration(seconds: 5),
+            results: const {},
+            providers: const [],
+            onSeek: (_) {},
+            onChooseProvider: () {},
+            onToggleTranslation: () {},
+            onRetry: () {},
+            translationEnabled: false,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final activeText = tester.widget<Text>(find.text('Active line'));
+    expect(activeText.style?.shadows, isNotEmpty);
+    expect(activeText.style?.color, const Color(0xFFF5F0FF));
+
+    final inactiveText = find.text('Inactive line');
+    final inactiveFilter = tester.widget<ImageFiltered>(
+      find.ancestor(of: inactiveText, matching: find.byType(ImageFiltered)).first,
+    );
+    final blur = inactiveFilter.imageFilter as ImageFilter;
+    expect(blur.sigmaX, 3.0);
+    expect(blur.sigmaY, 3.0);
+
+    await settings.setLyricsOptions(
+      glow: false,
+      bloom: false,
+      softLight: false,
+      inactiveBlur: 1.7,
+    );
   });
 
   testWidgets('provider and translation controls share one pill', (tester) async {
