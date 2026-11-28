@@ -48,11 +48,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
   double? _pendingLyricsLineSpacing;
   String _settingsSearchQuery = '';
   final TextEditingController _settingsSearchController = TextEditingController();
+  final FocusNode _settingsSearchFocusNode = FocusNode();
   String _selectedTabletCategory = 'customization';
+
+  bool get _isSearchActive =>
+      _settingsSearchQuery.trim().isNotEmpty || _settingsSearchFocusNode.hasFocus;
+
+  void _onSettingsSearchFocusChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _clearSettingsSearch() {
+    _settingsSearchController.clear();
+    _settingsSearchFocusNode.unfocus();
+    setState(() => _settingsSearchQuery = '');
+  }
 
   @override
   void initState() {
     super.initState();
+    _settingsSearchFocusNode.addListener(_onSettingsSearchFocusChanged);
     final initialQuery = widget.initialSearchQuery;
     if (initialQuery != null && initialQuery.trim().isNotEmpty) {
       _settingsSearchQuery = initialQuery;
@@ -1032,6 +1047,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                 child: TextField(
                   controller: _settingsSearchController,
+                  focusNode: _settingsSearchFocusNode,
+                              focusNode: _settingsSearchFocusNode,
                   onChanged: (value) => setState(() => _settingsSearchQuery = value),
                   textInputAction: TextInputAction.search,
                   decoration: InputDecoration(
@@ -1041,10 +1058,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ? null
                         : IconButton(
                             tooltip: 'Clear search',
-                            onPressed: () {
-                              _settingsSearchController.clear();
-                              setState(() => _settingsSearchQuery = '');
-                            },
+                            onPressed: _clearSettingsSearch,
                             icon: const Icon(Icons.close_rounded),
                           ),
                     filled: true,
@@ -1061,7 +1075,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   padding: EdgeInsets.fromLTRB(16, 8, 16, bottomClearance),
                   children: [
                     ..._globalSearchResultTiles(),
-                    ..._homeSettingsChildren(),
+                    if (!_isSearchActive) ..._homeSettingsChildren(),
                   ],
                 ),
               ),
@@ -1085,6 +1099,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   void dispose() {
+    _settingsSearchFocusNode.removeListener(_onSettingsSearchFocusChanged);
+    _settingsSearchFocusNode.dispose();
     _settingsSearchController.dispose();
     super.dispose();
   }
@@ -1093,7 +1109,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _settings,
-      builder: (context, _) => Scaffold(
+      builder: (context, _) => PopScope<Object?>(
+        canPop: !_isSearchActive,
+        onPopInvokedWithResult: (didPop, result) {
+          if (!didPop && _isSearchActive) _clearSettingsSearch();
+        },
+        child: Scaffold(
         extendBodyBehindAppBar: true,
         appBar: widget.category == null
             ? null
@@ -1207,10 +1228,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     ? null
                                     : IconButton(
                                         tooltip: 'Clear search',
-                                        onPressed: () {
-                                          _settingsSearchController.clear();
-                                          setState(() => _settingsSearchQuery = '');
-                                        },
+                                        onPressed: _clearSettingsSearch,
                                         icon: const Icon(Icons.close_rounded),
                                       ),
                                 filled: true,
@@ -1237,7 +1255,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           widget.category == null
                               ? [
                                   ..._globalSearchResultTiles(),
-                                  ..._homeSettingsChildren(),
+                                  if (!_isSearchActive) ..._homeSettingsChildren(),
                                 ]
                               : [
                 if (widget.category != null)
@@ -2122,6 +2140,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             );
           },
+        ),
         ),
       ),
     );
