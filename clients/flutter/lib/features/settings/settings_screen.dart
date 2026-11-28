@@ -60,6 +60,50 @@ class _SettingsScreenState extends State<SettingsScreen> {
     ));
   }
 
+  Future<void> _importCustomFont() async {
+    try {
+      final picked = await file_picker.FilePicker.pickFile(
+        type: file_picker.FileType.custom,
+        allowedExtensions: ['ttf', 'otf'],
+      );
+      if (!mounted || picked == null) return;
+      final extension = picked.extension?.toLowerCase();
+      if (extension != 'ttf' && extension != 'otf') {
+        _message('Select a .ttf or .otf font file.');
+        return;
+      }
+      final bytes = await picked.readAsBytes();
+      if (bytes.length > 20 * 1024 * 1024) {
+        _message('Font files must be 20 MB or smaller.');
+        return;
+      }
+      final directory = Directory('${(await getApplicationSupportDirectory()).path}/fonts');
+      await directory.create(recursive: true);
+      final family = 'PocketLinkCustom_${DateTime.now().microsecondsSinceEpoch}';
+      final safeName = picked.name.replaceAll(RegExp(r'[^A-Za-z0-9._ -]'), '_');
+      final destination = File('${directory.path}/$family.$extension');
+      await destination.writeAsBytes(bytes, flush: true);
+      try {
+        await _settings.setCustomFont(path: destination.path, family: family, name: safeName);
+      } catch (_) {
+        if (await destination.exists()) await destination.delete();
+        rethrow;
+      }
+      if (mounted) _message('Custom font applied throughout PocketLink.');
+    } catch (error) {
+      if (mounted) _message('Could not load this font. Choose a valid TTF or OTF file.');
+    }
+  }
+
+  Future<void> _resetCustomFont() async {
+    try {
+      await _settings.clearCustomFont();
+      if (mounted) _message('PocketLink default font restored.');
+    } catch (_) {
+      if (mounted) _message('Could not restore the default font.');
+    }
+  }
+
   Future<void> _chooseDownloadDirectory() async {
     try {
       final path = await file_picker.FilePicker.getDirectoryPath();
@@ -397,6 +441,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'Lyrics text size': 'lyrics font size text scale typography 14 44',
         'Lyrics line spacing': 'lyrics line height spacing vertical gap',
         'Lyrics motion style': 'lyrics animation motion legacy boring plain transition',
+        'Custom font': 'font typography typeface ttf otf import install default reset',
         'Theme mode': 'theme light dark system brightness',
         'AMOLED mode': 'amoled oled black deep black',
         'Liquid Glass UI': 'liquid glass frosted reflections surfaces',
@@ -879,6 +924,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ]),
                 if (widget.category == 'Customisation')
+                  _section('Typography', [
+                    ListTile(
+                      leading: const Icon(Icons.font_download_rounded),
+                      title: const Text('Custom font'),
+                      subtitle: Text(_settings.customFontName ?? 'PocketLink default font'),
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      onTap: _importCustomFont,
+                    ),
+                    if (_settings.customFontFamily != null)
+                      ListTile(
+                        leading: const Icon(Icons.restart_alt_rounded),
+                        title: const Text('Restore default font'),
+                        subtitle: const Text('Remove the imported font and use PocketLink typography'),
+                        onTap: _resetCustomFont,
+                      ),
+                  ]),
                   _section('Lyrics', [
                     ListTile(
                       leading: const Icon(Icons.lyrics_rounded),
