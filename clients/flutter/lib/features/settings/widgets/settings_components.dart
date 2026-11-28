@@ -93,8 +93,7 @@ class _SettingsGroupCardState extends State<SettingsGroupCard> {
   @override
   void didUpdateWidget(covariant SettingsGroupCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.searchQuery != widget.searchQuery ||
-        oldWidget.children != widget.children) {
+    if (oldWidget.searchQuery != widget.searchQuery) {
       _scrollToFirstMatch();
     }
   }
