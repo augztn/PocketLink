@@ -41,6 +41,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   double? _pendingAnimationSpeed;
   double? _pendingBlurStrength;
   double? _pendingThumbnailCornerRadius;
+  double? _pendingLyricsTextSize;
+  double? _pendingLyricsLineSpacing;
   String _settingsSearchQuery = '';
   final TextEditingController _settingsSearchController = TextEditingController();
 
@@ -392,6 +394,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       'customization': {
         'App animations': 'animations motion transition reduce motion disable global system wide',
         'Animation speed': 'animations motion faster slower speed duration 0.5 2x',
+        'Lyrics text size': 'lyrics font size text scale typography 14 44',
+        'Lyrics line spacing': 'lyrics line height spacing vertical gap',
+        'Lyrics motion style': 'lyrics animation motion legacy boring plain transition',
         'Theme mode': 'theme light dark system brightness',
         'AMOLED mode': 'amoled oled black deep black',
         'Liquid Glass UI': 'liquid glass frosted reflections surfaces',
@@ -865,6 +870,76 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                           Text(
                             '0.5× is slower · 1× is normal · 2× is faster. This scales Flutter animations throughout PocketLink.',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ]),
+                if (widget.category == 'Customisation')
+                  _section('Lyrics', [
+                    ListTile(
+                      leading: const Icon(Icons.lyrics_rounded),
+                      title: const Text('Lyrics motion style'),
+                      subtitle: Text(switch (_settings.lyricsMotionStyle) {
+                        'motion' => 'Motion · Fade and scale emphasis',
+                        'legacy' => 'Legacy · Fade emphasis',
+                        'boring' => 'Boring · Instant emphasis',
+                        _ => 'Plain · Minimal emphasis',
+                      }),
+                      trailing: DropdownButton<String>(
+                        value: _settings.lyricsMotionStyle,
+                        underline: const SizedBox.shrink(),
+                        items: const [
+                          DropdownMenuItem(value: 'motion', child: Text('Motion')),
+                          DropdownMenuItem(value: 'legacy', child: Text('Legacy')),
+                          DropdownMenuItem(value: 'boring', child: Text('Boring')),
+                          DropdownMenuItem(value: 'plain', child: Text('Plain')),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) _settings.setLyricsOptions(motionStyle: value);
+                        },
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(children: [
+                            const Expanded(child: Text('Lyrics text size')),
+                            Text('${(_pendingLyricsTextSize ?? _settings.lyricsTextSize).round()} sp'),
+                          ]),
+                          Slider(
+                            min: 14,
+                            max: 44,
+                            divisions: 30,
+                            value: (_pendingLyricsTextSize ?? _settings.lyricsTextSize).clamp(14.0, 44.0).toDouble(),
+                            onChanged: (value) => setState(() => _pendingLyricsTextSize = value),
+                            onChangeEnd: (value) async {
+                              setState(() => _pendingLyricsTextSize = null);
+                              await _settings.setLyricsOptions(textSize: value);
+                            },
+                          ),
+                          Row(children: [
+                            const Expanded(child: Text('Lyrics line spacing')),
+                            Text('${(_pendingLyricsLineSpacing ?? _settings.lyricsLineSpacing).toStringAsFixed(2)}×'),
+                          ]),
+                          Slider(
+                            min: 0.8,
+                            max: 2.0,
+                            divisions: 12,
+                            value: (_pendingLyricsLineSpacing ?? _settings.lyricsLineSpacing).clamp(0.8, 2.0).toDouble(),
+                            onChanged: (value) => setState(() => _pendingLyricsLineSpacing = value),
+                            onChangeEnd: (value) async {
+                              setState(() => _pendingLyricsLineSpacing = null);
+                              await _settings.setLyricsOptions(lineSpacing: value);
+                            },
+                          ),
+                          Text(
+                            'These controls affect the existing Now Playing lyrics view only.',
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
