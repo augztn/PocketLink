@@ -113,6 +113,7 @@ extension AppSettingsAppearance on AppSettings {
       throw ArgumentError('Font path, family and display name are required.');
     }
     await AppSettings._loadCustomFontFile(path, family);
+    final previousPath = _customFontPath;
     _customFontPath = path;
     _customFontFamily = family;
     _customFontName = name;
@@ -123,6 +124,13 @@ extension AppSettingsAppearance on AppSettings {
       preferences.setString(AppSettings._customFontFamilyKey, family),
       preferences.setString(AppSettings._customFontNameKey, name),
     ]);
+    if (previousPath != null && previousPath != path) {
+      try {
+        await File(previousPath).delete();
+      } on FileSystemException {
+        // Replacing a font should not fail because an old file is unavailable.
+      }
+    }
   }
 
   Future<void> clearCustomFont() async {
