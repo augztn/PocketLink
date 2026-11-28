@@ -71,6 +71,7 @@ class AppSettings extends ChangeNotifier {
   static const _musicButtonSwipeRightActionKey = 'settings_music_button_swipe_right_action';
   static const _musicButtonLongPressEnabledKey = 'settings_music_button_long_press_enabled';
   static const _nowPlayingMiniPlayerKey = 'settings_now_playing_mini_player';
+  static const _nowPlayingPlayerStyleKey = 'settings_now_playing_player_style';
   static const _nowPlayingGesturesKey = 'settings_now_playing_gestures';
   static const _nowPlayingStatsForNerdsKey = 'settings_now_playing_stats_for_nerds';
   static const _downloadConcurrencyKey = 'settings_download_concurrency';
@@ -181,6 +182,7 @@ class AppSettings extends ChangeNotifier {
   List<String> _musicButtonShortcuts = List.of(musicButtonShortcutDefaults);
   Future<void> _musicButtonShortcutsWrite = Future<void>.value();
   bool _showMiniPlayer = true;
+  String _nowPlayingPlayerStyle = 'pocketlink';
   bool _enableNowPlayingGestures = true;
   bool _showStatsForNerds = true;
   int _downloadConcurrency = 2;
@@ -251,6 +253,7 @@ class AppSettings extends ChangeNotifier {
   String get musicButtonSwipeRightAction => _musicButtonSwipeRightAction;
   bool get musicButtonLongPressEnabled => _musicButtonLongPressEnabled;
   bool get showMiniPlayer => _showMiniPlayer;
+  String get nowPlayingPlayerStyle => _nowPlayingPlayerStyle;
   bool get enableNowPlayingGestures => _enableNowPlayingGestures;
   bool get showStatsForNerds => _showStatsForNerds;
   int get downloadConcurrency => _downloadConcurrency;
@@ -367,6 +370,10 @@ class AppSettings extends ChangeNotifier {
         }
       }
       _showMiniPlayer = preferences.getBool(_nowPlayingMiniPlayerKey) ?? true;
+      final storedPlayerStyle = preferences.getString(_nowPlayingPlayerStyleKey) ?? 'pocketlink';
+      _nowPlayingPlayerStyle = const {'pocketlink', 'poster', 'lyrics'}.contains(storedPlayerStyle)
+          ? storedPlayerStyle
+          : 'pocketlink';
       _enableNowPlayingGestures = preferences.getBool(_nowPlayingGesturesKey) ?? true;
       _showStatsForNerds = preferences.getBool(_nowPlayingStatsForNerdsKey) ?? true;
       _downloadConcurrency = const {1, 2, 3, 5}.contains(preferences.getInt(_downloadConcurrencyKey))

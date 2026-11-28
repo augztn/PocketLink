@@ -35,6 +35,7 @@ class SettingsBackupService {
     'settings_now_playing_mini_player',
     'settings_now_playing_gestures',
     'settings_now_playing_stats_for_nerds',
+    'settings_now_playing_player_style',
     'settings_home_search',
     'settings_home_transfers',
     'settings_discover_enabled',
@@ -90,6 +91,7 @@ class SettingsBackupService {
     if (key == 'settings_download_concurrency') return value is int && const {1, 2, 3, 5}.contains(value);
     if (key == 'settings_accent_color') return value is int && const {0xFF536DFE, 0xFF8B5CF6, 0xFFEC4899, 0xFFEF4444, 0xFFF97316, 0xFF22C55E, 0xFF14B8A6, 0xFF06B6D4}.contains(value);
     if (key == 'settings_video_seek_seconds') return value is int && const {5, 10, 15, 30}.contains(value);
+    if (key == 'settings_now_playing_player_style') return value is String && const {'pocketlink', 'poster', 'lyrics'}.contains(value);
     if (key == 'settings_video_controls_timeout') return value is num && const [0.0, 2.0, 3.0, 3.5, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0].contains(value);
 
     if (key == 'settings_video_subtitle_font_size') return value is double && value >= 14 && value <= 32;

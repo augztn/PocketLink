@@ -110,11 +110,11 @@ class GlobalMiniPlayerBar extends StatelessWidget {
           child: DecoratedBox(
             decoration: BoxDecoration(
               color: const Color(0xFF17181B),
-              borderRadius: BorderRadius.circular(22),
+              borderRadius: BorderRadius.circular(34),
             ),
             child: SmokedGlassSurface(
               key: surfaceKey,
-              radius: BorderRadius.circular(22),
+              radius: BorderRadius.circular(34),
               intensity: surfaceIntensity,
               child: _MiniPlayerGestureSurface(
               onTap: onOpen,
@@ -129,29 +129,29 @@ class GlobalMiniPlayerBar extends StatelessWidget {
               onExpandDragEnd: onExpandDragEnd,
               child: Material(
                   type: MaterialType.transparency,
-                borderRadius: BorderRadius.circular(22),
+                borderRadius: BorderRadius.circular(34),
                 child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       SizedBox(
-                        height: 55,
+                        height: 64,
                         child: Row(
                           children: [
                             const SizedBox(width: 10),
                             Container(
                               key: artworkKey,
-                              width: 34,
-                              height: 34,
+                              width: 42,
+                              height: 42,
                               clipBehavior: Clip.antiAlias,
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(11),
+                                borderRadius: BorderRadius.circular(14),
                               ),
                               child: TrackArtworkView(
                                 bytes: artworkBytes,
                                 artworkUrl: item.artworkUrl,
                                 fallbackColors: artworkPalette,
                                 fallbackIconSize: 19,
-                                borderRadius: BorderRadius.circular(11),
+                                borderRadius: BorderRadius.circular(14),
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -226,10 +226,17 @@ class GlobalMiniPlayerBar extends StatelessWidget {
                                       ),
                                     )
                                   : Icon(
-                                      isPlaying
-                                          ? Icons.pause_rounded
-                                          : Icons.play_arrow_rounded,
-                                      size: 22,
+                                      : AnimatedSwitcher(
+                                      duration: const Duration(milliseconds: 180),
+                                      transitionBuilder: (child, animation) => ScaleTransition(
+                                        scale: animation,
+                                        child: FadeTransition(opacity: animation, child: child),
+                                      ),
+                                      child: Icon(
+                                        isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                                        key: ValueKey(isPlaying),
+                                        size: 22,
+                                      ),
                                     ),
                             ),
                             IconButton(
@@ -252,7 +259,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
                         ),
                       ),
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(19, 0, 19, 3),
+                        padding: const EdgeInsets.fromLTRB(24, 0, 24, 5),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(2),
                           child: LinearProgressIndicator(
