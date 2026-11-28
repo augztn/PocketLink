@@ -58,6 +58,13 @@ class _LyricsViewportState extends State<LyricsViewport> {
   @override
   void initState() {
     super.initState();
+    AppSettings.instance.addListener(_onSettingsChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToActive());
+  }
+
+  void _onSettingsChanged() {
+    if (!mounted) return;
+    setState(() {});
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToActive());
   }
 
@@ -81,6 +88,7 @@ class _LyricsViewportState extends State<LyricsViewport> {
 
   @override
   void dispose() {
+    AppSettings.instance.removeListener(_onSettingsChanged);
     _scroll.dispose();
     super.dispose();
   }
