@@ -113,8 +113,8 @@ class SmokedGlassPopoverMenu<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (anchorContext, _) {
+    return Builder(
+      builder: (anchorContext) {
         final trigger = GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: () => _open(anchorContext),
