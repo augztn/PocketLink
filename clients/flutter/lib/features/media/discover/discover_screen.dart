@@ -61,6 +61,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver,
         AutomaticKeepAliveClientMixin<DiscoverScreen> {
   final Set<String> _revealedShelfKeys = <String>{};
+  final Set<String> _revealedCardKeys = <String>{};
   DateTime? _shelfRevealBurstStartedAt;
   int _shelfRevealBurstCount = 0;
   static final Map<String, List<IndexedFile>> _localLibraryCache = {};
@@ -2005,6 +2006,19 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     );
   }
 
+  Widget _cardReveal({
+    required String key,
+    required int index,
+    required Widget child,
+  }) {
+    return _DiscoverCardReveal(
+      revealKey: key,
+      child: child,
+      seenKeys: _revealedCardKeys,
+      delay: Duration(milliseconds: math.min(index, 4).toInt() * 60),
+    );
+  }
+
   Widget _listeningPicksShelf() {
     if (_listeningPicks.isEmpty) return const SliverToBoxAdapter();
     return SliverToBoxAdapter(
@@ -2021,9 +2035,13 @@ class _DiscoverScreenState extends State<DiscoverScreen>
               scrollDirection: Axis.horizontal,
               itemCount: _listeningPicks.length,
               separatorBuilder: (_, __) => const SizedBox(width: 15),
-              itemBuilder: (context, index) => _feedCard(
-                _listeningPicks[index],
-                queueOverride: _listeningPicks,
+              itemBuilder: (context, index) => _cardReveal(
+                key: 'top_picks:${_listeningPicks[index].videoId}',
+                index: index,
+                child: _feedCard(
+                  _listeningPicks[index],
+                  queueOverride: _listeningPicks,
+                ),
               ),
             ),
           ),
@@ -2049,9 +2067,13 @@ class _DiscoverScreenState extends State<DiscoverScreen>
               scrollDirection: Axis.horizontal,
               itemCount: _recentlyPlayed.length,
               separatorBuilder: (_, __) => const SizedBox(width: 15),
-              itemBuilder: (context, index) => _feedCard(
-                _recentlyPlayed[index],
-                queueOverride: _recentlyPlayed,
+              itemBuilder: (context, index) => _cardReveal(
+                key: 'recently_played:${_recentlyPlayed[index].videoId}',
+                index: index,
+                child: _feedCard(
+                  _recentlyPlayed[index],
+                  queueOverride: _recentlyPlayed,
+                ),
               ),
             ),
           ),
@@ -2279,8 +2301,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 mainAxisExtent: width + 52,
               ),
               itemCount: items.length,
-              itemBuilder: (context, index) =>
-                  _homeItemCard(items[index], items, cardWidth: width),
+              itemBuilder: (context, index) => _cardReveal(
+                key: 'community:${shelf.title}:${items[index].id}',
+                index: index,
+                child: _homeItemCard(items[index], items, cardWidth: width),
+              ),
             ),
           ],
         ),
@@ -2317,8 +2342,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 mainAxisExtent: width + 52,
               ),
               itemCount: items.length,
-              itemBuilder: (context, index) =>
-                  _homeItemCard(items[index], items, cardWidth: width),
+              itemBuilder: (context, index) => _cardReveal(
+                key: 'artist:${shelf.title}:${items[index].id}',
+                index: index,
+                child: _homeItemCard(items[index], items, cardWidth: width),
+              ),
             ),
           ],
         ),
@@ -2349,9 +2377,17 @@ class _DiscoverScreenState extends State<DiscoverScreen>
               separatorBuilder: (_, __) => const SizedBox(width: 15),
               itemBuilder: (context, index) {
                 if (shelf.items.isNotEmpty) {
-                  return _homeItemCard(shelf.items[index], shelf.items);
+                  return _cardReveal(
+                    key: 'home:${shelf.title}:${shelf.items[index].id}',
+                    index: index,
+                    child: _homeItemCard(shelf.items[index], shelf.items),
+                  );
                 }
-                return _feedCard(shelf.tracks[index]);
+                return _cardReveal(
+                  key: 'home:${shelf.title}:${shelf.tracks[index].videoId}',
+                  index: index,
+                  child: _feedCard(shelf.tracks[index]),
+                );
               },
             ),
           ),
@@ -2732,6 +2768,85 @@ class _DiscoverShelfRevealState extends State<_DiscoverShelfReveal>
   @override
   void dispose() {
     widget.scrollController.removeListener(_scheduleVisibilityCheck);
+    AppSettings.instance.removeListener(_onSettingsChanged);
+    _controller.dispose();
+    super.dispose();
+  }
+}
+
+class _DiscoverCardReveal extends StatefulWidget {
+  const _DiscoverCardReveal({
+    required this.revealKey,
+    required this.child,
+    required this.seenKeys,
+    required this.delay,
+  });
+
+  final String revealKey;
+  final Widget child;
+  final Set<String> seenKeys;
+  final Duration delay;
+
+  @override
+  State<_DiscoverCardReveal> createState() => _DiscoverCardRevealState();
+}
+
+class _DiscoverCardRevealState extends State<_DiscoverCardReveal>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    final alreadySeen = widget.seenKeys.contains(widget.revealKey);
+    final motionEnabled = AppSettings.instance.discoverMotion;
+    if (!alreadySeen) widget.seenKeys.add(widget.revealKey);
+    _controller = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: AppSettings.instance.discoverShelfDurationMs),
+      value: alreadySeen || !motionEnabled ? 1 : 0,
+    );
+    AppSettings.instance.addListener(_onSettingsChanged);
+    if (!alreadySeen && motionEnabled) {
+      Future<void>.delayed(widget.delay, () {
+        if (mounted) _controller.forward();
+      });
+    }
+  }
+
+  void _onSettingsChanged() {
+    if (!mounted) return;
+    _controller.duration =
+        Duration(milliseconds: AppSettings.instance.discoverShelfDurationMs);
+    if (!AppSettings.instance.discoverMotion) {
+      widget.seenKeys.add(widget.revealKey);
+      _controller.value = 1;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!AppSettings.instance.discoverMotion || _controller.isCompleted) {
+      return widget.child;
+    }
+    return AnimatedBuilder(
+      animation: _controller,
+      child: widget.child,
+      builder: (context, child) {
+        final progress = const Cubic(0.2, 0, 0, 1).transform(_controller.value);
+        return Opacity(
+          opacity: progress,
+          child: Transform.translate(
+            offset: Offset(0, 20 * (1 - progress)),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  void dispose() {
     AppSettings.instance.removeListener(_onSettingsChanged);
     _controller.dispose();
     super.dispose();
