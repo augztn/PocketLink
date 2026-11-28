@@ -2143,6 +2143,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
                       : null,
                   onHorizontalDragStart: AppSettings.instance.enableNowPlayingGestures
                       ? (_) {
+                          if (_carouselSkipInFlight) return;
                           _carouselSettleController.stop();
                           setState(() {
                             _trackSwipeDistance = 0;
@@ -2151,7 +2152,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
                         }
                       : null,
                   onHorizontalDragUpdate: AppSettings.instance.enableNowPlayingGestures
-                      ? (details) => setState(() {
+                      ? (details) {
+                          if (_carouselSkipInFlight || !_trackSwipeActive) return;
+                          setState(() {
                             _trackSwipeDistance = (_trackSwipeDistance +
                                     (details.primaryDelta ?? 0))
                                 .clamp(
@@ -2159,7 +2162,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
                                   MediaQuery.sizeOf(context).width * 0.9,
                                 )
                                 .toDouble();
-                          })
+                          });
+                        }
                       : null,
                   onVerticalDragEnd: AppSettings.instance.enableNowPlayingGestures
                       ? (details) => widget.onDismissDragEnd(details.primaryVelocity ?? 0)
@@ -2169,25 +2173,19 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
                       : null,
                   onHorizontalDragEnd: AppSettings.instance.enableNowPlayingGestures
                       ? (details) {
+                          if (_carouselSkipInFlight || !_trackSwipeActive) return;
                           final distance = _trackSwipeDistance;
                           final velocity = details.primaryVelocity ?? 0;
-                          final queue = _persistent.queue.isNotEmpty
-                              ? _persistent.queue
-                              : widget.queue;
-                          final requestedIndex = _persistent.queue.isNotEmpty
-                              ? _persistent.currentIndex
-                              : widget.initialIndex;
-                          final index = queue.isEmpty
-                              ? 0
-                              : requestedIndex.clamp(0, queue.length - 1).toInt();
-                          final canSkipNext = index < queue.length - 1;
+                          final index = _carouselIndex;
+                          final canSkipNext = index < _carouselQueue.length - 1;
                           final canSkipPrevious = index > 0;
-                          final width = MediaQuery.sizeOf(context).width;
-                          final commitDistance = width * 0.5;
+                          final commitDistance =
+                              MediaQuery.sizeOf(context).width * 0.5;
+                          final isFling = velocity.abs() > 500;
                           final skipNext = canSkipNext &&
-                              (distance < -commitDistance || velocity < -500);
+                              (isFling ? velocity < -500 : distance < -commitDistance);
                           final skipPrevious = canSkipPrevious &&
-                              (distance > commitDistance || velocity > 500);
+                              (isFling ? velocity > 500 : distance > commitDistance);
                           if (skipNext) {
                             unawaited(_requestTrackSkip(1, velocity: velocity));
                           } else if (skipPrevious) {
@@ -2198,7 +2196,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
                         }
                       : null,
                   onHorizontalDragCancel: AppSettings.instance.enableNowPlayingGestures
-                      ? () => _settleCarousel()
+                      ? () {
+                          if (!_carouselSkipInFlight && _trackSwipeActive) {
+                            unawaited(_settleCarousel());
+                          }
+                        }
                       : null,
                   // The artwork remains edge-to-edge; only player controls
                   // are inset by SafeArea inside _playerLayout.
