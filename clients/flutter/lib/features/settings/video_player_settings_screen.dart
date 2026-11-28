@@ -15,17 +15,33 @@ class VideoPlayerSettingsScreen extends StatefulWidget {
 
 class _VideoPlayerSettingsScreenState extends State<VideoPlayerSettingsScreen> {
   late final TextEditingController _searchController;
+  final FocusNode _searchFocusNode = FocusNode();
   String _query = '';
+
+  bool get _isSearchActive => _query.trim().isNotEmpty || _searchFocusNode.hasFocus;
+
+  void _onSearchFocusChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
+    _searchFocusNode.unfocus();
+    setState(() => _query = '');
+  }
 
   @override
   void initState() {
     super.initState();
     _query = widget.initialSearchQuery ?? '';
     _searchController = TextEditingController(text: _query);
+    _searchFocusNode.addListener(_onSearchFocusChanged);
   }
 
   @override
   void dispose() {
+    _searchFocusNode.removeListener(_onSearchFocusChanged);
+    _searchFocusNode.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -55,7 +71,12 @@ class _VideoPlayerSettingsScreenState extends State<VideoPlayerSettingsScreen> {
     final settings = AppSettings.instance;
     return AnimatedBuilder(
       animation: settings,
-      builder: (context, _) => Scaffold(
+      builder: (context, _) => PopScope<void>(
+        canPop: !_isSearchActive,
+        onPopInvokedWithResult: (didPop, result) {
+          if (!didPop && _isSearchActive) _clearSearch();
+        },
+        child: Scaffold(
         appBar: PocketLinkAppBar(
           title: const Text('Video Player', style: TextStyle(fontSize: 20)),
         ),
@@ -64,6 +85,7 @@ class _VideoPlayerSettingsScreenState extends State<VideoPlayerSettingsScreen> {
           children: [
             TextField(
               controller: _searchController,
+              focusNode: _searchFocusNode,
               onChanged: (value) => setState(() => _query = value),
               textInputAction: TextInputAction.search,
               decoration: InputDecoration(
@@ -73,10 +95,7 @@ class _VideoPlayerSettingsScreenState extends State<VideoPlayerSettingsScreen> {
                     ? null
                     : IconButton(
                         tooltip: 'Clear search',
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() => _query = '');
-                        },
+                        onPressed: _clearSearch,
                         icon: const Icon(Icons.close_rounded),
                       ),
                 filled: true,
@@ -241,6 +260,7 @@ class _VideoPlayerSettingsScreenState extends State<VideoPlayerSettingsScreen> {
               ),
             ),
           ],
+        ),
         ),
       ),
     );
