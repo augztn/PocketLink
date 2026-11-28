@@ -67,7 +67,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final result = await file_picker.FilePicker.platform.pickFiles(
         type: file_picker.FileType.custom,
         allowedExtensions: ['ttf', 'otf'],
-        withData: true,
       );
       if (!mounted || result == null || result.files.isEmpty) return;
       final picked = result.files.single;
