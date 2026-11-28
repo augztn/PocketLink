@@ -1110,7 +1110,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             },
                           ),
                           Text(
-                            'Applies to music artwork thumbnails.',
+                            'Applies to music lists, mini-player and Now Playing artwork.',
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
