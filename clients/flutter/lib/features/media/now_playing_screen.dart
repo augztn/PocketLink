@@ -2075,7 +2075,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
                           if (skipNext) {
                             unawaited(_requestTrackSkip(1, velocity: velocity));
                           } else if (skipPrevious) {
-                            unawaited(_requestTrackSkip(1, velocity: velocity));
+                            unawaited(_requestTrackSkip(-1, velocity: velocity));
                           } else {
                             unawaited(_settleCarousel(velocity: velocity));
                           }
