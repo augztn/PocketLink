@@ -1079,6 +1079,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
+                      secondary: const Icon(Icons.animation_rounded),
+                      title: const Text('Mochy-style motion'),
+                      subtitle: const Text('Enable layered parallax, scale and fade during featured-track transitions'),
+                      value: _settings.discoverMotion,
+                      onChanged: _settings.setDiscoverMotion,
+                    ),
+                    const Divider(height: 1),
+                    SwitchListTile(
                       secondary: const Icon(Icons.grid_view_rounded),
                       title: const Text('Artist grid layout'),
                       subtitle: const Text('Optional two-column grid; off by default to match the horizontal artist shelves'),
