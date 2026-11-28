@@ -21,12 +21,13 @@ import '../downloads/download_manager_service.dart';
 import '../media/discover/imported_playlist_manager_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({this.api, this.onOpenSavedServers, this.category, super.key});
+  const SettingsScreen({this.api, this.onOpenSavedServers, this.category, this.initialSearchQuery, super.key});
 
   final ServerApi? api;
 
   final VoidCallback? onOpenSavedServers;
   final String? category;
+  final String? initialSearchQuery;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -47,6 +48,76 @@ class _SettingsScreenState extends State<SettingsScreen> {
   double? _pendingLyricsLineSpacing;
   String _settingsSearchQuery = '';
   final TextEditingController _settingsSearchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    final initialQuery = widget.initialSearchQuery;
+    if (initialQuery != null && initialQuery.trim().isNotEmpty) {
+      _settingsSearchQuery = initialQuery;
+      _settingsSearchController.text = initialQuery;
+    }
+  }
+
+  Iterable<String> _searchableText(Widget widget) sync* {
+    if (widget is Text) {
+      final value = widget.data;
+      if (value != null) yield value;
+      return;
+    }
+    if (widget is ListTile) {
+      if (widget.title != null) yield* _searchableText(widget.title!);
+      if (widget.subtitle != null) yield* _searchableText(widget.subtitle!);
+      if (widget.leading != null) yield* _searchableText(widget.leading!);
+      if (widget.trailing != null) yield* _searchableText(widget.trailing!);
+      return;
+    }
+    if (widget is SwitchListTile) {
+      yield* _searchableText(widget.title);
+      if (widget.subtitle != null) yield* _searchableText(widget.subtitle!);
+      if (widget.secondary != null) yield* _searchableText(widget.secondary!);
+      return;
+    }
+    if (widget is Padding) {
+      yield* _searchableText(widget.child);
+      return;
+    }
+    if (widget is Column) {
+      for (final child in widget.children) {
+        yield* _searchableText(child);
+      }
+      return;
+    }
+    if (widget is Row) {
+      for (final child in widget.children) {
+        yield* _searchableText(child);
+      }
+      return;
+    }
+    if (widget is Container && widget.child != null) {
+      yield* _searchableText(widget.child!);
+      return;
+    }
+    if (widget is SizedBox && widget.child != null) {
+      yield* _searchableText(widget.child!);
+      return;
+    }
+    if (widget is Align) {
+      yield* _searchableText(widget.child);
+      return;
+    }
+    if (widget is SettingsGroupCard) {
+      for (final child in widget.children) {
+        yield* _searchableText(child);
+      }
+    }
+  }
+
+  bool _matchesCategorySearch(Widget child) {
+    final query = _settingsSearchQuery.trim().toLowerCase();
+    if (query.isEmpty) return true;
+    return _searchableText(child).any((value) => value.toLowerCase().contains(query));
+  }
 
   Future<void> _openDiscoverPlaylists() async {
     final api = widget.api;
@@ -356,16 +427,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Widget _section(String title, List<Widget> children) => Padding(
-        padding: const EdgeInsets.only(bottom: 18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SettingsSectionHeader(title),
-            SettingsGroupCard(children: children),
-          ],
-        ),
-      );
+  Widget _section(String title, List<Widget> children) {
+    final visibleChildren = children.where(_matchesCategorySearch).toList(growable: false);
+    if (visibleChildren.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SettingsSectionHeader(title),
+          SettingsGroupCard(children: visibleChildren),
+        ],
+      ),
+    );
+  }
 
   String _pageTitle(String? category) => switch (category) {
         'Appearance' => 'Appearance',
@@ -388,7 +463,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         builder: builder,
       );
 
-  void _openCategory(String id) {
+  void _openCategory(String id, {String? searchQuery}) {
     final route = switch (id) {
       'navigation-customize' => _categoryRoute(
           id,
@@ -408,6 +483,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           (_) => SettingsScreen(
             api: widget.api,
             onOpenSavedServers: widget.onOpenSavedServers,
+            initialSearchQuery: searchQuery,
             category: switch (id) {
               'appearance' => 'Appearance',
               'customization' => 'Customisation',
@@ -555,7 +631,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
             subtitle: Text(entry.value),
             trailing: const Icon(Icons.north_east_rounded, size: 18),
-            onTap: () => _openCategory(entry.key),
+            onTap: () => _openCategory(entry.key, searchQuery: label),
           ),
         );
       }
@@ -926,6 +1002,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   ..._homeSettingsChildren().skip(2),
                                 ]
                               : [
+                if (widget.category != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: TextField(
+                      controller: _settingsSearchController,
+                      onChanged: (value) => setState(() => _settingsSearchQuery = value),
+                      textInputAction: TextInputAction.search,
+                      decoration: InputDecoration(
+                        hintText: 'Search in ${_pageTitle(widget.category)}',
+                        prefixIcon: const Icon(Icons.search_rounded),
+                        suffixIcon: _settingsSearchQuery.isEmpty
+                            ? null
+                            : IconButton(
+                                tooltip: 'Clear search',
+                                onPressed: () {
+                                  _settingsSearchController.clear();
+                                  setState(() => _settingsSearchQuery = '');
+                                },
+                                icon: const Icon(Icons.close_rounded),
+                              ),
+                        filled: true,
+                        fillColor: Theme.of(context).colorScheme.surfaceContainerLow,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(18),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                  ),
                 if (widget.category != null) _categoryIntro(widget.category!),
                 if (widget.category == 'Navigation')
                   _section('Navigation & Home', [
