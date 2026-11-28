@@ -156,38 +156,54 @@ class GlobalMiniPlayerBar extends StatelessWidget {
                             ),
                             const SizedBox(width: 8),
                             Expanded(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    item.title,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelLarge
-                                        ?.copyWith(
-                                          color: foreground,
-                                          fontWeight: FontWeight.w800,
-                                        ),
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 260),
+                                switchInCurve: Curves.easeOutCubic,
+                                switchOutCurve: Curves.easeInCubic,
+                                transitionBuilder: (child, animation) => FadeTransition(
+                                  opacity: animation,
+                                  child: SlideTransition(
+                                    position: Tween<Offset>(
+                                      begin: const Offset(0, 0.16),
+                                      end: Offset.zero,
+                                    ).animate(animation),
+                                    child: child,
                                   ),
-                                  Text(
-                                    isPlaying
-                                        ? resolveMediaArtist(artist: item.artist, title: item.title, path: item.path, fallback: item.sourceLabel)
-                                        : 'PAUSED',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelSmall
-                                        ?.copyWith(
-                                          fontSize: 8,
-                                          letterSpacing: 0.45,
-                                          color: secondaryForeground,
-                                        ),
-                                  ),
-                                ],
+                                ),
+                                child: Column(
+                                  key: ValueKey('${item.volume}:${item.path}:${item.title}'),
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      item.title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelLarge
+                                          ?.copyWith(
+                                            color: foreground,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                    ),
+                                    Text(
+                                      isPlaying
+                                          ? resolveMediaArtist(artist: item.artist, title: item.title, path: item.path, fallback: item.sourceLabel)
+                                          : 'PAUSED',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelSmall
+                                          ?.copyWith(
+                                            fontSize: 8,
+                                            letterSpacing: 0.45,
+                                            color: secondaryForeground,
+                                          ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                             IconButton(

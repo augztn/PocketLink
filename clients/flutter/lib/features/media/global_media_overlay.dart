@@ -29,7 +29,7 @@ class GlobalMediaOverlay extends StatefulWidget {
 
 class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
     with TickerProviderStateMixin {
-  static const double _miniPlayerHeight = 62;
+  static const double _miniPlayerHeight = 74;
   static const double _homeDockHeight = 82;
   static const Duration _trackPopupDuration = Duration(milliseconds: 2300);
 
@@ -483,7 +483,7 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
                   child: IgnorePointer(
                     ignoring: morphProgress > 0.05 || !visible,
                     child: AnimatedSlide(
-                      offset: Offset.zero,
+                      offset: visible ? Offset.zero : const Offset(0, 0.12),
                       duration: reduceMotion || drawerOpen
                           ? Duration.zero
                           : const Duration(milliseconds: 280),
