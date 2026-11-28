@@ -861,39 +861,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         );
       },
-      child: Material(
-        color: colors.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(22),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: () => _openCategory(id),
-          borderRadius: BorderRadius.circular(22),
-          child: SizedBox(
-            height: 64,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: colors.surfaceContainerHighest,
-                      shape: BoxShape.circle,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Material(
+          color: const Color(0xFF1C1C1E),
+          borderRadius: BorderRadius.circular(20),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () => _openCategory(id),
+            borderRadius: BorderRadius.circular(20),
+            child: SizedBox(
+              height: 66,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF333338),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(icon, color: tint, size: 18),
                     ),
-                    child: Icon(icon, color: tint, size: 20),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
+                    const SizedBox(width: 11),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-                  ),
-                  Icon(Icons.chevron_right_rounded, color: colors.onSurfaceVariant),
-                ],
+                    Icon(Icons.chevron_right_rounded, color: Colors.white54, size: 20),
+                  ],
+                ),
               ),
             ),
           ),
@@ -967,13 +971,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       child: Row(
                                         children: [
                                           Container(
-                                            width: 42,
-                                            height: 42,
-                                            decoration: BoxDecoration(
-                                              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                            width: 32,
+                                            height: 32,
+                                            decoration: const BoxDecoration(
+                                              color: Color(0xFF333338),
                                               shape: BoxShape.circle,
                                             ),
-                                            child: Icon(Icons.tune_rounded, color: Theme.of(context).colorScheme.onSurface),
+                                            child: const Icon(Icons.tune_rounded, color: Colors.white, size: 18),
                                           ),
                                           const SizedBox(width: 12),
                                           Text(
