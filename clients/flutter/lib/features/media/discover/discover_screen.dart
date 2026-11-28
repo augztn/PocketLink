@@ -144,9 +144,18 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       session == player.queueSession;
 
   Future<void> _loadSpeedDial() async {
-    final tracks = await DiscoverSpeedDialStore.read();
-    if (!mounted) return;
-    setState(() => _speedDial = tracks);
+    try {
+      final tracks = await DiscoverSpeedDialStore.read();
+      if (!mounted) return;
+      setState(() => _speedDial = tracks);
+    } catch (error) {
+      AppLogger.warning(
+        'Discover Speed Dial could not be restored',
+        category: 'discover',
+        component: 'discover_screen',
+        fields: {'failure_type': error.runtimeType.toString()},
+      );
+    }
   }
 
   bool _isSpeedDialPinned(DiscoverTrack track) =>
@@ -154,19 +163,32 @@ class _DiscoverScreenState extends State<DiscoverScreen>
 
   Future<void> _toggleSpeedDial(DiscoverTrack track) async {
     final wasPinned = _isSpeedDialPinned(track);
-    final updated = wasPinned
-        ? await DiscoverSpeedDialStore.remove(track.videoId)
-        : await DiscoverSpeedDialStore.pin(track);
-    if (!mounted) return;
-    setState(() => _speedDial = updated);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(wasPinned
-            ? 'Removed from Speed Dial'
-            : 'Added to Speed Dial'),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    try {
+      final updated = wasPinned
+          ? await DiscoverSpeedDialStore.remove(track.videoId)
+          : await DiscoverSpeedDialStore.pin(track);
+      if (!mounted) return;
+      setState(() => _speedDial = updated);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(wasPinned
+              ? 'Removed from Speed Dial'
+              : 'Added to Speed Dial'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } catch (error) {
+      AppLogger.warning(
+        'Discover Speed Dial update failed',
+        category: 'discover',
+        component: 'discover_screen',
+        fields: {'failure_type': error.runtimeType.toString()},
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not update Speed Dial.')),
+      );
+    }
   }
 
   Future<void> _loadRecentlyPlayed() async {
