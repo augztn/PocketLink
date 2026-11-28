@@ -1771,9 +1771,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
 
         final curve = .04 +
             .96 * Curves.easeOutCubic.transform(_spotlightWipeCurveController.value);
-        return ClipRect(
-          child: Transform.translate(
-            offset: Offset(-distance * MediaQuery.sizeOf(context).width, 0),
+        return Transform.translate(
+          offset: Offset(-distance * MediaQuery.sizeOf(context).width, 0),
+          child: ClipRect(
             child: ShaderMask(
               blendMode: BlendMode.dstIn,
               shaderCallback: (bounds) {
@@ -1833,7 +1833,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
               child: content,
             ),
           ),
-        );
+        ),
+      );
       },
     );
   }
