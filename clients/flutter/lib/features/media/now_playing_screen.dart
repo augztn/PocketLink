@@ -1361,8 +1361,12 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
     final distance = _trackSwipeActive
         ? _trackSwipeDistance
         : _carouselSettleController.value;
-    final hasPrevious = _persistent.currentIndex > 0;
-    final hasNext = _persistent.currentIndex < _persistent.queue.length - 1;
+    final queue = _persistent.queue.isNotEmpty ? _persistent.queue : widget.queue;
+    final index = _persistent.queue.isNotEmpty
+        ? _persistent.currentIndex
+        : widget.initialIndex;
+    final hasPrevious = index > 0;
+    final hasNext = index < queue.length - 1;
     final atBoundary = (distance > 0 && !hasPrevious) ||
         (distance < 0 && !hasNext);
     final resisted = atBoundary ? distance * 0.22 : distance;
@@ -1396,13 +1400,14 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
         : (_carouselDragOffset(screenWidth) / screenWidth)
             .clamp(-0.42, 0.42)
             .toDouble();
-    return AnimatedSlide(
-      offset: Offset(dragProgress, 0),
-      duration: _trackSwipeActive
-          ? Duration.zero
-          : const Duration(milliseconds: 380),
-      curve: Curves.easeOutCubic,
-      child: AnimatedSwitcher(
+    final metadataOpacity = (1 - dragProgress.abs() * 1.5)
+        .clamp(0.0, 1.0)
+        .toDouble();
+    return Transform.translate(
+      offset: Offset(dragProgress * screenWidth * 0.75, 0),
+      child: Opacity(
+        opacity: metadataOpacity,
+        child: AnimatedSwitcher(
         duration: const Duration(milliseconds: 420),
         reverseDuration: const Duration(milliseconds: 360),
         switchInCurve: Curves.easeOutCubic,
@@ -1418,6 +1423,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
           );
         },
         child: KeyedSubtree(key: ValueKey(key), child: child),
+        ),
       ),
     );
   }
