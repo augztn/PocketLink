@@ -94,7 +94,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         rethrow;
       }
       if (mounted) _message('Custom font applied throughout PocketLink.');
-    } catch (error) {
+    } catch (_) {
       if (mounted) _message('Could not load this font. Choose a valid TTF or OTF file.');
     }
   }
@@ -944,6 +944,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         onTap: _resetCustomFont,
                       ),
                   ]),
+                if (widget.category == 'Customisation')
                   _section('Lyrics', [
                     ListTile(
                       leading: const Icon(Icons.lyrics_rounded),
