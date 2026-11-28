@@ -120,7 +120,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     AppLogger.event('screen.opened', category: 'screen', component: 'discover');
     _shimmerController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 1050),
     )..repeat();
     _spotlightWipeCurveController = AnimationController(
       vsync: this,
@@ -1217,18 +1217,23 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     return AnimatedBuilder(
       animation: _shimmerController,
       builder: (context, child) {
-        final shift = -1.4 + (_shimmerController.value * 2.8);
+        // Mochy's ShimmerHost uses an 800ms linear sweep with a 250ms
+        // pause between sweeps and a 25/50/25 alpha shimmer profile.
+        final phase = ((_shimmerController.value * 1050 - 250) / 800)
+            .clamp(0.0, 1.0)
+            .toDouble();
+        final shift = -1.4 + (phase * 2.8);
         return ShaderMask(
           blendMode: BlendMode.srcATop,
           shaderCallback: (bounds) => LinearGradient(
             begin: Alignment(shift, 0),
             end: Alignment(shift + 1.2, 0),
             colors: const [
-              Color(0xFF1A1A1E),
-              Color(0xFF2A2A30),
-              Color(0xFF1A1A1E),
+              Color(0x401A1A1E),
+              Color(0x802A2A30),
+              Color(0x401A1A1E),
             ],
-            stops: const [0.25, 0.5, 0.75],
+            stops: const [0.0, 0.5, 1.0],
           ).createShader(bounds),
           child: child,
         );
@@ -1254,7 +1259,17 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   Widget _discoverHomeSkeletonContent() {
     final screenWidth = MediaQuery.sizeOf(context).width;
     final heroHeight = MediaQuery.sizeOf(context).height * .60;
-    return Column(
+    // Mochy's Home uses a dedicated hero bone followed by repeated section
+    // bones. Keep PocketLink's own hero/shelf geometry, but use the same
+    // vertical ShimmerHost fade so the placeholders dissolve into the feed.
+    return ShaderMask(
+      blendMode: BlendMode.dstIn,
+      shaderCallback: (bounds) => const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [Colors.black, Colors.transparent],
+      ).createShader(bounds),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
@@ -1262,20 +1277,26 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             child: Stack(
               fit: StackFit.expand,
               children: [
-                _skeletonBlock(width: screenWidth, height: heroHeight, radius: 0),
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Color(0x1F2A2A30), Colors.transparent],
+                    ),
+                  ),
+                ),
                 Positioned(
                   left: 36,
-                  bottom: 62,
+                  bottom: 64,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _skeletonLine(width: 112, height: 10),
-                      const SizedBox(height: 12),
-                      _skeletonLine(width: screenWidth * .62, height: 27),
+                      _skeletonLine(width: 72, height: 14),
                       const SizedBox(height: 8),
-                      _skeletonLine(width: screenWidth * .36, height: 12),
-                      const SizedBox(height: 18),
-                      _skeletonBlock(width: 88, height: 36, radius: 18),
+                      _skeletonLine(width: math.min(220, screenWidth * .65), height: 22),
+                      const SizedBox(height: 13),
+                      _skeletonBlock(width: 93, height: 33, radius: 50),
                     ],
                   ),
                 ),
@@ -1286,14 +1307,14 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           for (var shelf = 0; shelf < 4; shelf++) ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(36, 0, 28, 10),
-              child: _skeletonLine(width: 118 + shelf * 12, height: 14),
+              child: _skeletonLine(width: 128, height: 15),
             ),
             SizedBox(
               height: 190,
               child: ListView.separated(
                 padding: const EdgeInsets.symmetric(horizontal: 36),
                 scrollDirection: Axis.horizontal,
-                itemCount: 4,
+                itemCount: 3,
                 separatorBuilder: (_, __) => const SizedBox(width: 15),
                 itemBuilder: (_, __) => SizedBox(
                   width: 137,
@@ -1302,9 +1323,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                     children: [
                       _skeletonBlock(width: 137, height: 137, radius: 14),
                       const SizedBox(height: 8),
-                      _skeletonLine(width: 112, height: 10),
-                      const SizedBox(height: 6),
-                      _skeletonLine(width: 76, height: 8),
+                      _skeletonLine(width: 85, height: 15),
+                      const SizedBox(height: 3),
+                      _skeletonLine(width: 38, height: 11),
                     ],
                   ),
                 ),
@@ -1313,7 +1334,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             const SizedBox(height: 22),
           ],
         ],
-      );
+      ),
+    );
   }
 
   Widget _artFallback(double size) => Container(
