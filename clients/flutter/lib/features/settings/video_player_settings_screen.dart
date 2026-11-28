@@ -107,7 +107,8 @@ class _VideoPlayerSettingsScreenState extends State<VideoPlayerSettingsScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            Padding(
+            if (!_isSearchActive)
+              Padding(
               padding: const EdgeInsets.only(bottom: 18),
               child: Text(
                 'Set default video controls, gestures, display scaling, fullscreen behavior and subtitle appearance.',
