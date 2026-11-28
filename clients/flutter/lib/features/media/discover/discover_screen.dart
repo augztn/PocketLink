@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
@@ -89,6 +90,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   final PageController _spotlightPageController =
       PageController(viewportFraction: 1, initialPage: 10000);
   Timer? _spotlightAutoAdvanceTimer;
+  final ValueNotifier<double> _heroScrollProgress = ValueNotifier(0);
   int _spotlightPage = 10000;
   late String _lastRegion;
   late bool _lastLocalLossless;
@@ -332,6 +334,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     _scrollController.removeListener(_onDiscoverScroll);
     _scrollController.dispose();
     _spotlightAutoAdvanceTimer?.cancel();
+    _heroScrollProgress.dispose();
     _spotlightPageController.dispose();
     _shimmerController.dispose();
     super.dispose();
@@ -597,6 +600,13 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   }
 
   void _onDiscoverScroll() {
+    if (_scrollController.hasClients) {
+      final heroHeight = MediaQuery.sizeOf(context).height * .60;
+      final progress = (_scrollController.offset / heroHeight).clamp(0.0, 1.0);
+      if ((_heroScrollProgress.value - progress).abs() > .001) {
+        _heroScrollProgress.value = progress;
+      }
+    }
     if (!_scrollController.hasClients ||
         _loading ||
         _loadingMore ||
@@ -1460,21 +1470,23 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     return SliverToBoxAdapter(
       child: SizedBox(
         height: heroHeight,
-        child: NotificationListener<ScrollNotification>(
-          onNotification: (notification) {
-            if (notification is ScrollStartNotification &&
-                notification.dragDetails != null) {
-              _spotlightUserDragging = true;
-              _spotlightAutoAdvanceTimer?.cancel();
-              _spotlightAutoAdvanceTimer = null;
-            } else if (notification is ScrollEndNotification &&
-                _spotlightUserDragging) {
-              _spotlightUserDragging = false;
-              _startSpotlightAutoAdvance();
-            }
-            return false;
-          },
-          child: PageView.builder(
+        child: ValueListenableBuilder<double>(
+          valueListenable: _heroScrollProgress,
+          child: NotificationListener<ScrollNotification>(
+            onNotification: (notification) {
+              if (notification is ScrollStartNotification &&
+                  notification.dragDetails != null) {
+                _spotlightUserDragging = true;
+                _spotlightAutoAdvanceTimer?.cancel();
+                _spotlightAutoAdvanceTimer = null;
+              } else if (notification is ScrollEndNotification &&
+                  _spotlightUserDragging) {
+                _spotlightUserDragging = false;
+                _startSpotlightAutoAdvance();
+              }
+              return false;
+            },
+            child: PageView.builder(
             controller: _spotlightPageController,
             onPageChanged: (index) {
               if (!mounted) return;
@@ -1615,7 +1627,26 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 ),
               );
             },
-          ),
+            ),
+          builder: (context, progress, child) {
+            final blur = progress * 8;
+            return ClipRect(
+              child: Transform.translate(
+                offset: Offset(0, -heroHeight * .14 * progress),
+                child: Transform.scale(
+                  alignment: Alignment.topCenter,
+                  scale: 1 + progress * .08,
+                  child: Opacity(
+                    opacity: 1 - progress * .35,
+                    child: ImageFiltered(
+                      imageFilter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+                      child: child!,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       ),
     );
