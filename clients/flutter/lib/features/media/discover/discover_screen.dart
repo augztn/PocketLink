@@ -2136,7 +2136,13 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                   width: width,
                   child: Column(children: [
                     for (var index = start; index < end; index++)
-                      Expanded(child: _compactTrackRow(tracks[index])),
+                      Expanded(
+                        child: _cardReveal(
+                          key: 'track:${shelf.title}:${tracks[index].videoId}',
+                          index: index - start,
+                          child: _compactTrackRow(tracks[index]),
+                        ),
+                      ),
                   ]),
                 );
               },
