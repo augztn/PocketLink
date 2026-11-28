@@ -17,6 +17,11 @@ class SettingsBackupService {
   static const _booleanKeys = <String>{
     'settings_use_liquid_glass',
     'settings_animations_enabled',
+    'settings_page_transitions_enabled',
+    'settings_lyrics_animations_enabled',
+    'settings_lyrics_glow',
+    'settings_lyrics_bloom',
+    'settings_lyrics_soft_light',
     'settings_progressive_blur',
     'settings_download_wifi_only',
     'settings_download_auto_resume',
@@ -53,9 +58,11 @@ class SettingsBackupService {
     'settings_video_subtitle_font_size',
     'settings_animation_speed',
     'settings_blur_strength',
+    'settings_glass_blur_strength',
     'settings_thumbnail_corner_radius',
     'settings_lyrics_text_size',
     'settings_lyrics_line_spacing',
+    'settings_lyrics_inactive_blur',
   };
 
   static const _stringKeys = <String>{
@@ -87,10 +94,11 @@ class SettingsBackupService {
 
     if (key == 'settings_video_subtitle_font_size') return value is double && value >= 14 && value <= 32;
     if (key == 'settings_animation_speed') return value is double && value >= 0.5 && value <= 2.0;
-    if (key == 'settings_blur_strength') return value is double && value >= 0 && value <= 32;
+    if (key == 'settings_blur_strength' || key == 'settings_glass_blur_strength') return value is double && value >= 0 && value <= 32;
     if (key == 'settings_thumbnail_corner_radius') return value is double && value >= 0 && value <= 45;
     if (key == 'settings_lyrics_text_size') return value is double && value >= 14 && value <= 44;
     if (key == 'settings_lyrics_line_spacing') return value is double && value >= 0.8 && value <= 2.0;
+    if (key == 'settings_lyrics_inactive_blur') return value is double && value >= 0 && value <= 4;
     if (key == 'settings_video_default_speed') return value is double && const [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 3.0, 4.0].contains(value);
     if (value is! String || value.length > 16384) return false;
 
