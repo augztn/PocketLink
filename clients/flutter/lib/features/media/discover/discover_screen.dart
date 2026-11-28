@@ -1881,8 +1881,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                   final progress = distance.abs();
                   if (!AppSettings.instance.discoverMotion) return child!;
                   final curve = _spotlightUserDragging ? 1.0 : .04;
+                  final width = MediaQuery.sizeOf(context).width;
                   return ClipRect(
-                    child: ShaderMask(
+                    child: Transform.translate(
+                      offset: Offset(-distance * width, 0),
+                      child: ShaderMask(
                       blendMode: BlendMode.dstIn,
                       shaderCallback: (bounds) {
                         final width = bounds.width;
@@ -1937,13 +1940,14 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                         );
                       },
                       child: Transform.translate(
-                        offset: Offset(distance * MediaQuery.sizeOf(context).width * .18, 0),
+                        offset: Offset(distance * width * .18, 0),
                         child: Transform.scale(
                           alignment: Alignment.center,
-                          scale: 1 + progress * .08,
+                          scale: 1 + progress * .36,
                           child: child,
                         ),
                       ),
+                    ),
                     ),
                   );
                 },
