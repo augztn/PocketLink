@@ -631,15 +631,17 @@ class PersistentAudioPlayer extends ChangeNotifier {
     return direction;
   }
 
-  Future<void> skipToNext() async {
-    _recordTrackChangeDirection(1);
-    await player.next();
-  }
+  Future<void> skipToNext() => _serializeQueueMutation(() async {
+        if (!_active || _queue.isEmpty) return;
+        _recordTrackChangeDirection(1);
+        await player.next();
+      });
 
-  Future<void> skipToPrevious() async {
-    _recordTrackChangeDirection(-1);
-    await player.previous();
-  }
+  Future<void> skipToPrevious() => _serializeQueueMutation(() async {
+        if (!_active || _queue.isEmpty) return;
+        _recordTrackChangeDirection(-1);
+        await player.previous();
+      });
 
   Future<void> dismiss() async {
     cancelSleepTimer();
