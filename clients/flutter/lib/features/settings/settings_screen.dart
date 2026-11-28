@@ -650,15 +650,68 @@ class _SettingsScreenState extends State<SettingsScreen> {
     for (final entry in categories.entries) {
       for (final label in _matchingSettingLabels(entry.key)) {
         results.add(
-          ListTile(
+          TweenAnimationBuilder<double>(
             key: ValueKey('settings-search-${entry.key}-$label'),
-            dense: true,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-            leading: const Icon(Icons.tune_rounded, size: 20),
-            title: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
-            subtitle: Text(entry.value),
-            trailing: const Icon(Icons.north_east_rounded, size: 18),
-            onTap: () => _openCategory(entry.key, searchQuery: _settingsSearchQuery),
+            tween: Tween<double>(begin: 0, end: 1),
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOutCubic,
+            builder: (context, value, child) => Opacity(
+              opacity: MediaQuery.of(context).disableAnimations ? 1 : value,
+              child: Transform.translate(
+                offset: Offset(0, MediaQuery.of(context).disableAnimations ? 0 : 12 * (1 - value)),
+                child: child,
+              ),
+            ),
+            child: Material(
+              color: const Color(0xFF1C1C1E),
+              borderRadius: BorderRadius.circular(20),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: () => _openCategory(entry.key, searchQuery: _settingsSearchQuery),
+                borderRadius: BorderRadius.circular(20),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF333338),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.tune_rounded, color: Colors.white, size: 18),
+                      ),
+                      const SizedBox(width: 11),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              entry.value,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                fontSize: 12,
+                                color: Colors.white60,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.north_east_rounded, size: 18, color: Colors.white54),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
         );
       }
@@ -682,8 +735,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         padding: const EdgeInsets.only(bottom: 8),
         child: SettingsSectionHeader('Matching settings'),
       ),
-      SettingsGroupCard(children: results),
-      const SizedBox(height: 18),
+      ...results.expand((result) => [result, const SizedBox(height: 10)]),
+      const SizedBox(height: 8),
     ];
   }
 
