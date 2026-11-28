@@ -976,19 +976,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _tabletCategoryPage(String id) {
     switch (id) {
       case 'navigation-customize':
-        return const NavigationCustomizationScreen();
+        return NavigationCustomizationScreen(initialSearchQuery: _settingsSearchQuery);
       case 'audio':
       case 'now-playing':
-        return const NowPlayingSettingsScreen();
+        return NowPlayingSettingsScreen(initialSearchQuery: _settingsSearchQuery);
       case 'video':
-        return const VideoPlayerSettingsScreen();
+        return VideoPlayerSettingsScreen(initialSearchQuery: _settingsSearchQuery);
       case 'about':
         return const AboutScreen();
       default:
         return SettingsScreen(
-          key: ValueKey('tablet-settings-$id'),
+          key: ValueKey('tablet-settings-$id-$_settingsSearchQuery'),
           api: widget.api,
           onOpenSavedServers: widget.onOpenSavedServers,
+          initialSearchQuery: _settingsSearchQuery,
           category: switch (id) {
             'appearance' => 'Appearance',
             'customization' => 'Customisation',
