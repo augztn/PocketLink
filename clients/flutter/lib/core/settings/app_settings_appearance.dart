@@ -56,6 +56,28 @@ extension AppSettingsAppearance on AppSettings {
     await preferences.setInt(AppSettings._accentColorKey, value);
   }
 
+  Future<void> setBlurStrength(double value) async {
+    if (!value.isFinite || value < 0 || value > 32) {
+      throw ArgumentError.value(value, 'value', 'Must be between 0 and 32');
+    }
+    if ((_blurStrength - value).abs() < 0.01) return;
+    _blurStrength = value;
+    _notifySettingsChanged();
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setDouble(AppSettings._blurStrengthKey, value);
+  }
+
+  Future<void> setThumbnailCornerRadius(double value) async {
+    if (!value.isFinite || value < 0 || value > 45) {
+      throw ArgumentError.value(value, 'value', 'Must be between 0 and 45');
+    }
+    if ((_thumbnailCornerRadius - value).abs() < 0.01) return;
+    _thumbnailCornerRadius = value;
+    _notifySettingsChanged();
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setDouble(AppSettings._thumbnailCornerRadiusKey, value);
+  }
+
   Future<void> setProgressiveBlurEnabled(bool value) async {
     _progressiveBlurEnabled = value;
     _notifySettingsChanged();
