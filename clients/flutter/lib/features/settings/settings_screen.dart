@@ -895,7 +895,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required Color tint,
     required String title,
   }) {
-    final colors = Theme.of(context).colorScheme;
     return TweenAnimationBuilder<double>(
       key: ValueKey('$id:$_settingsSearchQuery'),
       tween: Tween<double>(begin: 0, end: 1),
