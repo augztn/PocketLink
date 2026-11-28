@@ -82,6 +82,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   bool _cached = false;
   Set<String> _favorites = <String>{};
   double _trackSwipeDistance = 0;
+  int _trackChangeDirection = 1;
   late final AnimationController _lyricsController;
   static final LyricsRepository _lyricsRepository = LyricsRepository();
   Map<String, LyricsProviderResult> _lyricsProviderStates = const {};
@@ -348,7 +349,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     }
 
     _observedTrackIdentity = identity;
+    final requestedDirection = _persistent.takePendingTrackDirection();
     setState(() {
+      _trackChangeDirection = requestedDirection ?? 1;
       _artwork = null;
       _artworkKey = null;
       _artworkPalette = null;
@@ -1350,6 +1353,27 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     );
   }
 
+  Widget _trackTransition({required Widget child, required String key}) {
+    final direction = _trackChangeDirection.toDouble();
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 420),
+      reverseDuration: const Duration(milliseconds: 360),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      transitionBuilder: (child, animation) {
+        final slide = Tween<Offset>(
+          begin: Offset(direction, 0),
+          end: Offset.zero,
+        ).animate(animation);
+        return FadeTransition(
+          opacity: animation,
+          child: SlideTransition(position: slide, child: child),
+        );
+      },
+      child: KeyedSubtree(key: ValueKey(key), child: child),
+    );
+  }
+
   Widget _trackMetadata({double contentOpacity = 1}) {
     final artist = resolveMediaArtist(artist: _track.artist, title: _track.title, path: _track.path, fallback: _folderName);
     return Padding(
@@ -1518,7 +1542,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   Widget _playerDetails({double contentOpacity = 1}) => Padding(
         padding: const EdgeInsets.only(bottom: 12),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          _trackMetadata(contentOpacity: contentOpacity),
+          _trackTransition(
+            key: _trackIdentity,
+            child: _trackMetadata(contentOpacity: contentOpacity),
+          ),
           const SizedBox(height: 18),
           Opacity(opacity: contentOpacity, child: _lyricPreview()),
         ]),
@@ -1578,13 +1605,16 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                 ],
                 stops: [0.0, 0.34, 0.46, 0.56, 0.65, 0.74, 1.0],
               ).createShader(bounds),
-              child: TrackArtworkView(
-                bytes: hasArtwork ? _artwork : null,
-                artworkUrl: _track.artworkUrl,
-                fallbackColors: _trackPalette,
-                fallbackIconSize: 92,
-                fallbackAlignment: const Alignment(0, -0.42),
-                fit: BoxFit.cover,
+              child: _trackTransition(
+                key: _trackIdentity,
+                child: TrackArtworkView(
+                  bytes: hasArtwork ? _artwork : null,
+                  artworkUrl: _track.artworkUrl,
+                  fallbackColors: _trackPalette,
+                  fallbackIconSize: 92,
+                  fallbackAlignment: const Alignment(0, -0.42),
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
             builder: (context, artwork) {
