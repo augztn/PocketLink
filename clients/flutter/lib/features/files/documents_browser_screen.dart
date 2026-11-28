@@ -4,6 +4,7 @@ import '../../core/widgets/pocketlink_app_bar.dart';
 import '../../core/widgets/pocketlink_scaffold.dart';
 import '../../core/widgets/compact_search_field.dart';
 import '../../core/widgets/pocketlink_file_icon.dart';
+import '../../core/widgets/pocketlink_skeleton.dart';
 import '../../core/widgets/smoked_glass_popover_menu.dart';
 import '../downloads/download_manager_service.dart';
 
@@ -311,8 +312,17 @@ tooltip: 'Filter document types',
         Positioned.fill(
           child: _error != null
               ? Center(child: Text(_error!, textAlign: TextAlign.center))
-              : filtered.isEmpty
-                  ? Center(child: Padding(
+              : _loading && filtered.isEmpty
+                  ? PocketLinkSkeleton.fileList(
+                      padding: EdgeInsets.fromLTRB(
+                        12,
+                        LayoutInsetsScope.of(context).topClearance + 52,
+                        12,
+                        LayoutInsetsScope.of(context).bottomClearance,
+                      ),
+                    )
+                  : filtered.isEmpty
+                      ? Center(child: Padding(
                       padding: const EdgeInsets.all(24),
                       child: ClipRRect(borderRadius: BorderRadius.circular(22), child: BackdropFilter(
                         filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
