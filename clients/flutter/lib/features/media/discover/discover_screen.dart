@@ -1631,7 +1631,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
               ),
             ),
             SizedBox(
-              height: 304,
+              height: (MediaQuery.sizeOf(context).height * .46)
+                  .clamp(320.0, 400.0)
+                  .toDouble(),
               child: PageView.builder(
                 controller: _spotlightPageController,
                 itemCount: tracks.length,
