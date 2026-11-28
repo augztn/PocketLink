@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
@@ -1523,6 +1524,13 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         recentlyPlayed: _recentlyPlayed,
       );
 
+  void _playRandomSpotlight() {
+    final tracks = _spotlightTracks;
+    if (tracks.isEmpty) return;
+    final selected = tracks[math.Random().nextInt(tracks.length)];
+    _play(selected, queueOverride: tracks);
+  }
+
   Widget _spotlightHero() {
     final tracks = _spotlightTracks;
     if (tracks.isEmpty) return const SliverToBoxAdapter();
@@ -1533,6 +1541,27 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         padding: const EdgeInsets.only(top: 2, bottom: 22),
         child: Column(
           children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Featured for you',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  if (tracks.length > 1)
+                    TextButton.icon(
+                      onPressed: _playRandomSpotlight,
+                      icon: const Icon(Icons.shuffle_rounded, size: 17),
+                      label: const Text('Shuffle'),
+                    ),
+                ],
+              ),
+            ),
             SizedBox(
               height: 304,
               child: PageView.builder(
