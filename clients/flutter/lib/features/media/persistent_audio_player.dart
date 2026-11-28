@@ -120,6 +120,13 @@ class PersistentAudioPlayer extends ChangeNotifier {
           'source': currentItem?.sourceLabel ?? 'unknown'});
       if (playing) {
         _miniPlayerDismissed = false;
+        if (_storageFailureStreak > 0) {
+          _storageFailureResetTimer?.cancel();
+          _storageFailureResetTimer = Timer(const Duration(seconds: 5), () {
+            _storageFailureStreak = 0;
+            _storageFailureResetTimer = null;
+          });
+        }
         _recordCurrentTrackIfNeeded();
       }
       notifyListeners();
@@ -244,6 +251,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
   final Set<String> _retriedDiscoverTracks = <String>{};
   bool _retryingDiscoverPlayback = false;
   int _storageFailureStreak = 0;
+  Timer? _storageFailureResetTimer;
   bool _refreshingStoragePlayback = false;
   String? _storagePlaybackIssue;
 
@@ -434,13 +442,20 @@ class PersistentAudioPlayer extends ChangeNotifier {
         normalizedError.contains('connection');
 
     if (isServerVolumeTrack && (isNotFound || isTimeout)) {
+      _storageFailureResetTimer?.cancel();
       _storageFailureStreak++;
       if (isNotFound) {
         // A stale SAF volume ID must not cause the native playlist to skip
         // through every queued file. Pause, refresh the volume map, and retry
         // this exact queue item only when a replacement ID is found.
+        final failedIndex = _currentIndex;
         await player.pause();
-        final recovered = await _refreshStoragePlayback(requireRemap: true);
+        final recovered = await _refreshStoragePlayback(
+          requireRemap: true,
+          expectedSession: session,
+          expectedIndex: failedIndex,
+          expectedItem: item,
+        );
         if (recovered || session != _queueSession) return;
         _storagePlaybackIssue =
             'Storage volume disconnected or remounted — tap to refresh';
@@ -593,17 +608,23 @@ class PersistentAudioPlayer extends ChangeNotifier {
   Future<bool> refreshStoragePlayback() =>
       _refreshStoragePlayback();
 
-  Future<bool> _refreshStoragePlayback({bool requireRemap = false}) async {
-    final item = currentItem;
+  Future<bool> _refreshStoragePlayback({
+    bool requireRemap = false,
+    int? expectedSession,
+    int? expectedIndex,
+    MediaQueueItem? expectedItem,
+  }) async {
+    final session = expectedSession ?? _queueSession;
+    final index = expectedIndex ?? _currentIndex;
+    final item = expectedItem ?? (index == _currentIndex ? currentItem : null);
     final api = _api;
     if (item == null || api == null || item.volume == null ||
-        item.volume == 'internal' || _refreshingStoragePlayback) {
+        item.volume == 'internal' || _refreshingStoragePlayback ||
+        session != _queueSession || index != _currentIndex) {
       return false;
     }
 
     _refreshingStoragePlayback = true;
-    final session = _queueSession;
-    final index = _currentIndex;
     final position = player.state.position;
     try {
       final replacementId = await api.resolveStorageVolumeId(item.volume!);
@@ -641,6 +662,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
         await player.play();
       });
       if (session != _queueSession) return false;
+      _storageFailureResetTimer?.cancel();
       _storageFailureStreak = 0;
       _storagePlaybackIssue = null;
       notifyListeners();
@@ -749,6 +771,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
   }
 
   Future<void> skipToNext() async {
+    _storageFailureResetTimer?.cancel();
     _storageFailureStreak = 0;
     _storagePlaybackIssue = null;
     _recordTrackChangeDirection(1);
@@ -784,6 +807,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
     _lastPlaylistSignature = null;
     _lastPlaylistIndex = null;
     _playbackTransition = 0;
+    _storageFailureResetTimer?.cancel();
     _storageFailureStreak = 0;
     _storagePlaybackIssue = null;
     notifyListeners();
@@ -855,6 +879,7 @@ class PersistentAudioPlayer extends ChangeNotifier {
     unawaited(_playingSubscription?.cancel());
     unawaited(_completedSubscription?.cancel());
     unawaited(_errorSubscription?.cancel());
+    _storageFailureResetTimer?.cancel();
     _mediaChannel.setMethodCallHandler(null);
     unawaited(_systemMediaVolumeController.close());
     unawaited(player.dispose());
