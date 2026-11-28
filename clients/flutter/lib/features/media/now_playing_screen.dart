@@ -1671,13 +1671,24 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
               folderName: item.path.contains('/') ? item.path.split('/').elementAt(item.path.split('/').length - 2) : 'Music',
               path: item.path,
             );
-      return TrackArtworkView(
-        bytes: current && _artworkKey == _trackKey ? _artwork : null,
-        artworkUrl: item.artworkUrl,
-        fallbackColors: palette,
-        fallbackIconSize: 92,
-        fallbackAlignment: const Alignment(0, -0.42),
-        fit: BoxFit.cover,
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          TrackArtworkView(
+            bytes: current && _artworkKey == _trackKey ? _artwork : null,
+            artworkUrl: item.artworkUrl,
+            fallbackColors: palette,
+            fallbackIconSize: 92,
+            fallbackAlignment: const Alignment(0, -0.42),
+            fit: BoxFit.cover,
+          ),
+          if (current && _artworkLoading)
+            Positioned.fill(
+              child: PocketLinkShimmer(
+                child: ColoredBox(color: Colors.white.withValues(alpha: 0.12)),
+              ),
+            ),
+        ],
       );
     }
 

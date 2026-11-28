@@ -225,8 +225,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
                                         valueColor: AlwaysStoppedAnimation<Color>(foreground),
                                       ),
                                     )
-                                  : Icon(
-                                      : AnimatedSwitcher(
+                                  : AnimatedSwitcher(
                                       duration: const Duration(milliseconds: 180),
                                       transitionBuilder: (child, animation) => ScaleTransition(
                                         scale: animation,

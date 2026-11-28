@@ -22,7 +22,7 @@ class _PocketLinkShimmerState extends State<PocketLinkShimmer>
   @override
   void didUpdateWidget(covariant PocketLinkShimmer oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.enabled && !oldWidget.enabled && !MediaQuery.disableAnimationsOf(context)) {
+    if (widget.enabled && !oldWidget.enabled && !MediaQuery.of(context).disableAnimations) {
       _controller.repeat();
     } else if (!widget.enabled || MediaQuery.disableAnimationsOf(context)) {
       _controller.stop();
