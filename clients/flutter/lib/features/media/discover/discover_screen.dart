@@ -1761,76 +1761,77 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         AppSettings.instance,
       ]),
       child: child,
-      builder: (context, child) {
+      builder: (context, content) {
         final page = _spotlightPageController.hasClients
             ? (_spotlightPageController.page ?? index.toDouble())
             : index.toDouble();
         final distance = (index - page).clamp(-1.0, 1.0).toDouble();
         final progress = distance.abs();
-        if (!AppSettings.instance.discoverMotion) return child!;
-        final curve = .04 + .96 * Curves.easeOutCubic.transform(
-          _spotlightWipeCurveController.value,
-        );
-        final width = MediaQuery.sizeOf(context).width;
+        if (!AppSettings.instance.discoverMotion) return content!;
+
+        final curve = .04 +
+            .96 * Curves.easeOutCubic.transform(_spotlightWipeCurveController.value);
         return ClipRect(
           child: Transform.translate(
-            offset: Offset(-distance * width, 0),
+            offset: Offset(-distance * MediaQuery.sizeOf(context).width, 0),
             child: ShaderMask(
-            blendMode: BlendMode.dstIn,
-            shaderCallback: (bounds) {
-              final width = bounds.width;
-              final height = bounds.height;
-              if (progress < .001) {
-                return ui.Gradient.linear(
-                  Offset.zero,
-                  Offset(width, 0),
-                  [Colors.white, Colors.white],
+              blendMode: BlendMode.dstIn,
+              shaderCallback: (bounds) {
+                final width = bounds.width;
+                final height = bounds.height;
+                if (progress < .001) {
+                  return ui.Gradient.linear(
+                    Offset.zero,
+                    Offset(width, 0),
+                    [Colors.white, Colors.white],
+                  );
+                }
+                if (progress >= .999) {
+                  return ui.Gradient.linear(
+                    Offset.zero,
+                    Offset(width, 0),
+                    [Colors.transparent, Colors.transparent],
+                  );
+                }
+
+                const featherShare = .55;
+                const curveReach = .6;
+                const wipeTrail = .25;
+                final feather = width * featherShare;
+                final offset = width * curveReach / curve;
+                final center = Offset(width + offset, height / 2);
+                final farthest = math.sqrt(
+                  center.dx * center.dx + center.dy * center.dy,
                 );
-              }
-              if (progress >= .999) {
-                return ui.Gradient.linear(
-                  Offset.zero,
-                  Offset(width, 0),
-                  [Colors.transparent, Colors.transparent],
-                );
-              }
-              const featherShare = .55;
-              const curveReach = .6;
-              const wipeTrail = .25;
-              final feather = width * featherShare;
-              final offset = width * curveReach / curve;
-              final center = Offset(width + offset, height / 2);
-              final farthest = math.sqrt(
-                center.dx * center.dx + center.dy * center.dy,
-              );
-              final wipeProgress = distance > 0 ? 1 - distance : -distance;
-              final radius = offset - feather +
-                  (farthest - (offset - feather)) * wipeProgress;
-              final incoming = distance > 0;
-              final inner = incoming ? radius : radius - feather * wipeTrail;
-              final outer = inner + feather;
-              final edge = (inner / outer).clamp(0.0, 1.0).toDouble();
-              const featherEase = [0.0, .104, .352, .648, .896, 1.0];
-              final stops = <double>[0, edge];
-              final colors = <Color>[
-                incoming ? Colors.white : Colors.transparent,
-                incoming ? Colors.white : Colors.transparent,
-              ];
-              for (var featherIndex = 1; featherIndex < featherEase.length; featherIndex++) {
-                final eased = featherEase[featherIndex];
-                stops.add(edge + (1 - edge) * featherIndex / (featherEase.length - 1));
-                final alpha = incoming ? 1 - eased : eased;
-                colors.add(Colors.white.withValues(alpha: alpha));
-              }
-              return ui.Gradient.radial(
-                center,
-                outer,
-                colors,
-                stops,
-              );
-            },
-            child: child,
-          ),
+                final wipeProgress = distance > 0 ? 1 - distance : -distance;
+                final radius = offset - feather +
+                    (farthest - (offset - feather)) * wipeProgress;
+                final incoming = distance > 0;
+                final inner = incoming ? radius : radius - feather * wipeTrail;
+                final outer = inner + feather;
+                final edge = (inner / outer).clamp(0.0, 1.0).toDouble();
+
+                // Smooth the feather so the radial edge does not form a visible crease.
+                const featherEase = [0.0, .104, .352, .648, .896, 1.0];
+                final stops = <double>[0, edge];
+                final colors = <Color>[
+                  incoming ? Colors.white : Colors.transparent,
+                  incoming ? Colors.white : Colors.transparent,
+                ];
+                for (var featherIndex = 1;
+                    featherIndex < featherEase.length;
+                    featherIndex++) {
+                  final eased = featherEase[featherIndex];
+                  stops.add(
+                    edge + (1 - edge) * featherIndex / (featherEase.length - 1),
+                  );
+                  final alpha = incoming ? 1 - eased : eased;
+                  colors.add(Colors.white.withValues(alpha: alpha));
+                }
+                return ui.Gradient.radial(center, outer, colors, stops);
+              },
+              child: content,
+            ),
           ),
         );
       },
@@ -2742,7 +2743,7 @@ class _DiscoverShelfRevealState extends State<_DiscoverShelfReveal>
   bool _visibilityCheckScheduled = false;
 
   @override
-  void initState {
+  void initState() {
     super.initState();
     _controller = AnimationController(
       vsync: this,
@@ -2760,10 +2761,6 @@ class _DiscoverShelfRevealState extends State<_DiscoverShelfReveal>
     if (oldWidget.scrollController != widget.scrollController) {
       oldWidget.scrollController.removeListener(_scheduleVisibilityCheck);
       widget.scrollController.addListener(_scheduleVisibilityCheck);
-    }
-    if (oldWidget.revealKey != widget.revealKey &&
-        widget.seenKeys.contains(widget.revealKey)) {
-      _controller.value = 1;
     }
     _controller.duration =
         Duration(milliseconds: AppSettings.instance.discoverShelfDurationMs);
@@ -2794,6 +2791,7 @@ class _DiscoverShelfRevealState extends State<_DiscoverShelfReveal>
         !widget.scrollController.hasClients) {
       return;
     }
+
     final renderObject = context.findRenderObject();
     if (renderObject is! RenderBox || !renderObject.attached) return;
     final viewport = RenderAbstractViewport.maybeOf(renderObject);
@@ -2806,6 +2804,7 @@ class _DiscoverShelfRevealState extends State<_DiscoverShelfReveal>
         top < position.pixels + position.viewportDimension;
     if (!visible) return;
 
+    // Mark before starting so a fast fling or sliver disposal never replays this reveal.
     widget.seenKeys.add(widget.revealKey);
     final delay = widget.revealDelay();
     Future<void>.delayed(delay, () {
@@ -2825,12 +2824,12 @@ class _DiscoverShelfRevealState extends State<_DiscoverShelfReveal>
       builder: (context, child) {
         final progress = const Cubic(0.2, 0, 0, 1).transform(_controller.value);
         return Opacity(
-        opacity: progress,
-        child: Transform.translate(
-          offset: Offset(0, 20 * (1 - progress)),
-          child: child,
-        ),
-      );
+          opacity: progress,
+          child: Transform.translate(
+            offset: Offset(0, 20 * (1 - progress)),
+            child: child,
+          ),
+        );
       },
     );
   }
@@ -2862,6 +2861,67 @@ class _DiscoverCardReveal extends StatefulWidget {
 }
 
 class _DiscoverCardRevealState extends State<_DiscoverCardReveal>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    final alreadySeen = widget.seenKeys.contains(widget.revealKey);
+    final motionEnabled = AppSettings.instance.discoverMotion;
+    if (!alreadySeen) widget.seenKeys.add(widget.revealKey);
+    _controller = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: AppSettings.instance.discoverShelfDurationMs),
+      value: alreadySeen || !motionEnabled ? 1 : 0,
+    );
+    AppSettings.instance.addListener(_onSettingsChanged);
+    if (!alreadySeen && motionEnabled) {
+      Future<void>.delayed(widget.delay, () {
+        if (mounted) _controller.forward();
+      });
+    }
+  }
+
+  void _onSettingsChanged() {
+    if (!mounted) return;
+    _controller.duration =
+        Duration(milliseconds: AppSettings.instance.discoverShelfDurationMs);
+    if (!AppSettings.instance.discoverMotion) {
+      widget.seenKeys.add(widget.revealKey);
+      _controller.value = 1;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!AppSettings.instance.discoverMotion || _controller.isCompleted) {
+      return widget.child;
+    }
+    return AnimatedBuilder(
+      animation: _controller,
+      child: widget.child,
+      builder: (context, child) {
+        final progress = const Cubic(0.2, 0, 0, 1).transform(_controller.value);
+        return Opacity(
+          opacity: progress,
+          child: Transform.translate(
+            offset: Offset(0, 20 * (1 - progress)),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    AppSettings.instance.removeListener(_onSettingsChanged);
+    _controller.dispose();
+    super.dispose();
+  }
+}
+
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
