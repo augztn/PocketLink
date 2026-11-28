@@ -1923,7 +1923,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                           incoming
                               ? [Colors.white, Colors.white, Colors.transparent]
                               : [Colors.transparent, Colors.transparent, Colors.white],
-                          stops: [0, edge, 1],
+                          [0, edge, 1],
                         );
                       },
                       child: Transform.translate(
