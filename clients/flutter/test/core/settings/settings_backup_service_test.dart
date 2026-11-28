@@ -30,7 +30,7 @@ void main() {
     final settings = payload['settings'] as Map<String, dynamic>;
 
     expect(payload['app'], 'pocketlink');
-    expect(payload['schemaVersion'], 1);
+    expect(payload['schemaVersion'], 2);
     expect(settings['settings_discover_enabled'], isFalse);
     expect(settings['settings_discover_artwork'], isFalse);
     expect(settings['settings_discover_spotlight'], isFalse);
