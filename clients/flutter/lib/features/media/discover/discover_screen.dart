@@ -284,9 +284,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         unawaited(_loadLocalLibrary());
       }
     }
+    if (!mounted) return;
+    setState(() {});
     if (region == _lastRegion) return;
     _lastRegion = region;
-    if (!mounted) return;
     _requestGeneration++;
     _listeningPicksSeed = '';
     final pendingHome = _homeRequest;
@@ -2178,6 +2179,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   }
 
   bool _isArtistShelf(_DiscoverShelf shelf) =>
+      AppSettings.instance.discoverArtistGrid &&
       shelf.items.length >= 4 &&
       shelf.items.every((item) => item.type == DiscoverHomeItemType.artist);
 
@@ -2425,7 +2427,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 // BitChord Home order: Top Picks, Recents, then the live
                 // upstream shelves. Find Your Mood is inserted after the
                 // lead feed shelf rather than before the feed.
-                _spotlightHero(),
+                if (AppSettings.instance.discoverSpotlight) _spotlightHero(),
                 _speedDialShelf(),
                 _listeningPicksShelf(),
                 _recentlyPlayedShelf(),
@@ -2460,7 +2462,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 ),
                 if (_sectionTitle == 'Top charts in India' ||
                     _sectionTitle.startsWith('Discover in ')) ...[
-                  _spotlightHero(),
+                  if (AppSettings.instance.discoverSpotlight) _spotlightHero(),
                   _speedDialShelf(),
                 ],
                 _listeningPicksShelf(),
