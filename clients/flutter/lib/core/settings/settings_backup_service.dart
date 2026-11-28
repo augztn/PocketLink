@@ -10,7 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class SettingsBackupService {
   SettingsBackupService._();
 
-  static const _schemaVersion = 1;
+  static const _schemaVersion = 2;
   static const _appId = 'pocketlink';
   static const _maxBackupBytes = 1024 * 1024;
 
@@ -193,7 +193,8 @@ class SettingsBackupService {
     final decoded = jsonDecode(utf8.decode(bytes, allowMalformed: false));
     if (decoded is! Map<String, dynamic> ||
         decoded['app'] != _appId ||
-        decoded['schemaVersion'] != _schemaVersion ||
+        decoded['schemaVersion'] is! int ||
+        !const {1, 2}.contains(decoded['schemaVersion']) ||
         decoded['createdAt'] is! String ||
         DateTime.tryParse(decoded['createdAt'] as String) == null ||
         decoded['settings'] is! Map<String, dynamic>) {
