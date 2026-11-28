@@ -174,6 +174,7 @@ class _NavigationCustomizationScreenState
         children: [
           TextField(
             controller: _searchController,
+            focusNode: _searchFocusNode,
             onChanged: _setQuery,
             textInputAction: TextInputAction.search,
             decoration: InputDecoration(
