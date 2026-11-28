@@ -1080,8 +1080,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const Divider(height: 1),
                     SwitchListTile(
                       secondary: const Icon(Icons.animation_rounded),
-                      title: const Text('Mochy-style motion'),
-                      subtitle: const Text('Enable layered parallax, scale and fade during featured-track transitions'),
+                      title: const Text('Discover Animations'),
+                      subtitle: const Text('Enable animated hero transitions and staggered Discover content reveals'),
                       value: _settings.discoverMotion,
                       onChanged: _settings.setDiscoverMotion,
                     ),
