@@ -49,7 +49,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _settingsSearchQuery = '';
   final TextEditingController _settingsSearchController = TextEditingController();
   final FocusNode _settingsSearchFocusNode = FocusNode();
-  String _selectedTabletCategory = 'customization';
+  String? _selectedTabletCategory;
 
   bool get _isSearchActive =>
       _settingsSearchQuery.trim().isNotEmpty || _settingsSearchFocusNode.hasFocus;
@@ -950,7 +950,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Padding(
         padding: const EdgeInsets.only(bottom: 12),
         child: Material(
-          color: const Color(0xFF1C1C1E),
+          color: widget.category == null &&
+                  MediaQuery.sizeOf(context).width >= 840 &&
+                  _selectedTabletCategory == id
+              ? const Color(0xFF3A3A3E)
+              : const Color(0xFF1C1C1E),
           borderRadius: BorderRadius.circular(20),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
@@ -992,7 +996,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _tabletCategoryPage(String id) {
+  Widget _tabletCategoryPage(String? id) {
+    if (id == null) {
+      return ColoredBox(
+        color: Colors.black,
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.tune_rounded, size: 40, color: Colors.white.withValues(alpha: 0.35)),
+              const SizedBox(height: 14),
+              Text(
+                'Choose a settings category',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white.withValues(alpha: 0.5),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     switch (id) {
       case 'navigation-customize':
         return NavigationCustomizationScreen(initialSearchQuery: _settingsSearchQuery);
@@ -1027,7 +1053,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildTabletSettingsPane(BuildContext context, double bottomClearance) {
     final width = MediaQuery.sizeOf(context).width;
-    final paneWidth = (width * 0.36).clamp(300.0, 400.0).toDouble();
+    final paneWidth = (width * 0.38).clamp(300.0, 400.0).toDouble();
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1093,7 +1119,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         Expanded(
           child: KeyedSubtree(
-            key: ValueKey('tablet-pane-$_selectedTabletCategory'),
+            key: ValueKey('tablet-pane-${_selectedTabletCategory ?? 'empty'}'),
             child: _tabletCategoryPage(_selectedTabletCategory),
           ),
         ),
