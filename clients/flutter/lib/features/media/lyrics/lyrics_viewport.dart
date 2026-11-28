@@ -121,7 +121,7 @@ class _LyricsViewportState extends State<LyricsViewport> {
                   Colors.white,
                   Colors.transparent,
                 ],
-                stops: [0, .16, .82, 1],
+                stops: [0, .16, .70, 1],
               ).createShader(bounds),
               child: NotificationListener<ScrollNotification>(
               onNotification: (notification) {
@@ -265,8 +265,8 @@ class LyricsTranslationControlPill extends StatelessWidget {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
           child: Container(
-            height: 34,
-            padding: const EdgeInsets.all(2),
+            height: 44,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: .14),
               borderRadius: BorderRadius.circular(999),
@@ -283,7 +283,7 @@ class LyricsTranslationControlPill extends StatelessWidget {
                 Container(
                   width: 1,
                   height: 18,
-                  margin: const EdgeInsets.symmetric(horizontal: 1),
+                  margin: const EdgeInsets.symmetric(horizontal: 8),
                   color: Colors.white.withValues(alpha: .18),
                 ),
                 _LyricsPillAction(
@@ -326,8 +326,8 @@ class _LyricsPillAction extends StatelessWidget {
             onTap: onTap,
             customBorder: const StadiumBorder(),
             child: SizedBox(
-              width: 28,
-              height: 28,
+              width: 36,
+              height: 36,
               child: Icon(
                 icon,
                 color: Colors.white,
