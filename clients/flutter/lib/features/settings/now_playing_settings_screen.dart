@@ -33,21 +33,24 @@ class _NowPlayingSettingsScreenState extends State<NowPlayingSettingsScreen> {
 
   bool _matches(Widget child) {
     if (_query.trim().isEmpty) return true;
-    final query = _query.trim().toLowerCase();
-    if (child is SettingsTile) return child.title.toLowerCase().contains(query) ||
-        (child.subtitle?.toLowerCase().contains(query) ?? false);
+    final tokens = _query.toLowerCase().split(RegExp(r'[^a-z0-9]+')).where((token) => token.isNotEmpty);
+    if (tokens.isEmpty) return true;
+    final searchable = <String>[];
+    if (child is SettingsTile) {
+      searchable.add(child.title);
+      if (child.subtitle != null) searchable.add(child.subtitle!);
+    }
     if (child is ListTile) {
-      final title = child.title is Text ? (child.title as Text).data ?? '' : '';
-      final subtitle = child.subtitle is Text ? (child.subtitle as Text).data ?? '' : '';
-      return title.toLowerCase().contains(query) || subtitle.toLowerCase().contains(query);
+      if (child.title is Text) searchable.add((child.title as Text).data ?? '');
+      if (child.subtitle is Text) searchable.add((child.subtitle as Text).data ?? '');
+    } else if (child is SwitchListTile) {
+      if (child.title is Text) searchable.add((child.title as Text).data ?? '');
+      if (child.subtitle is Text) searchable.add((child.subtitle as Text).data ?? '');
+    } else if (child is _SwipeActionTile) {
+      searchable.add(child.title);
     }
-    if (child is SwitchListTile) {
-      final title = child.title is Text ? (child.title as Text).data ?? '' : '';
-      final subtitle = child.subtitle is Text ? (child.subtitle as Text).data ?? '' : '';
-      return title.toLowerCase().contains(query) || subtitle.toLowerCase().contains(query);
-    }
-    if (child is _SwipeActionTile) return child.title.toLowerCase().contains(query);
-    return false;
+    final corpus = searchable.join(' ').toLowerCase();
+    return tokens.every(corpus.contains);
   }
 
   List<Widget> _filtered(List<Widget> children) =>
