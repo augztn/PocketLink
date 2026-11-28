@@ -543,11 +543,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       'diagnostics': 'Diagnostics',
       'about': 'About',
     };
-    final query = _settingsSearchQuery.trim().toLowerCase();
     final results = <Widget>[];
     for (final entry in categories.entries) {
       for (final label in _matchingSettingLabels(entry.key)) {
-        if (!label.toLowerCase().contains(query)) continue;
         results.add(
           ListTile(
             key: ValueKey('settings-search-${entry.key}-$label'),
