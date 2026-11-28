@@ -1740,7 +1740,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
   }
 
   Widget _trackMetadata({double contentOpacity = 1}) {
-    final artist = resolveMediaArtist(artist: _track.artist, title: _track.title, path: _track.path, fallback: _folderName);
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
       child: Row(
@@ -1749,7 +1748,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
           Expanded(
             child: Opacity(
               opacity: contentOpacity,
-              child: _metadataCarouselText(),
+              child: AnimatedBuilder(
+                animation: _carouselSettleController,
+                builder: (context, _) => _metadataCarouselText(),
+              ),
             ),
           ),
           const SizedBox(width: 10),
