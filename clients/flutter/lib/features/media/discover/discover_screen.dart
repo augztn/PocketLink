@@ -1754,9 +1754,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 incoming ? Colors.white : Colors.transparent,
                 incoming ? Colors.white : Colors.transparent,
               ];
-              for (var index = 1; index < featherEase.length; index++) {
-                final eased = featherEase[index];
-                stops.add(edge + (1 - edge) * index / (featherEase.length - 1));
+              for (var featherIndex = 1; featherIndex < featherEase.length; featherIndex++) {
+                final eased = featherEase[featherIndex];
+                stops.add(edge + (1 - edge) * featherIndex / (featherEase.length - 1));
                 final alpha = incoming ? 1 - eased : eased;
                 colors.add(Colors.white.withValues(alpha: alpha));
               }
