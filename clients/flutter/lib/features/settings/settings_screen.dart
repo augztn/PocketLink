@@ -581,8 +581,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         icon: Icons.palette_rounded,
         tint: const Color(0xFF8D72E8),
         title: 'Customisation',
-        subtitle: 'Animations, theme, blur and visual effects',
-        badge: _settings.animationsEnabled ? '${_settings.animationSpeed.toStringAsFixed(1)}×' : 'Motion Off',
       ),
     if (_categoryMatches('navigation'))
       _categoryTile(
@@ -590,8 +588,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         icon: Icons.tune_rounded,
         tint: const Color(0xFF60A5FA),
         title: 'Navigation',
-        subtitle: 'Dock, FAB, dashboard sections and shortcuts',
-        badge: '${_settings.visibleNavigationItems.length} tabs',
       ),
     if (_categoryMatches('storage'))
       _categoryTile(
@@ -599,8 +595,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         icon: Icons.storage_rounded,
         tint: const Color(0xFFFBBF24),
         title: 'Storage',
-        subtitle: 'Downloads, transfer behavior and cache',
-        badge: '${_settings.downloadConcurrency} concurrent',
       ),
     if (_categoryMatches('music'))
       _categoryTile(
@@ -608,8 +602,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         icon: Icons.graphic_eq_rounded,
         tint: const Color(0xFFDB79A8),
         title: 'Music',
-        subtitle: 'Library, playback, Discover, lyrics and video',
-        badge: _settings.discoverEnabled ? 'Discover On' : 'Discover Off',
       ),
     if (_categoryMatches('network'))
       _categoryTile(
@@ -617,8 +609,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         icon: Icons.wifi_rounded,
         tint: const Color(0xFF4ADE80),
         title: 'Network',
-        subtitle: 'Saved servers and connection settings',
-        badge: 'Manage',
       ),
     if (_categoryMatches('diagnostics'))
       _categoryTile(
@@ -626,8 +616,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         icon: Icons.build_circle_outlined,
         tint: const Color(0xFF60A5FA),
         title: 'Diagnostics',
-        subtitle: 'Backups, restore, logs and troubleshooting',
-        badge: 'Tools',
       ),
     if (_categoryMatches('about'))
       _categoryTile(
@@ -635,8 +623,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         icon: Icons.info_outline_rounded,
         tint: const Color(0xFFFBBF24),
         title: 'About',
-        subtitle: 'Version information, architecture and licenses',
-        badge: 'Info',
       ),
     if (!_categoryMatches('appearance') &&
         !_categoryMatches('customization') &&
@@ -665,8 +651,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required IconData icon,
     required Color tint,
     required String title,
-    required String subtitle,
-    String? badge,
   }) {
     final colors = Theme.of(context).colorScheme;
     return TweenAnimationBuilder<double>(
