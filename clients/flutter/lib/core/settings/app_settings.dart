@@ -75,6 +75,7 @@ class AppSettings extends ChangeNotifier {
   static const _discoverSpotlightKey = 'settings_discover_spotlight';
   static const _discoverArtistGridKey = 'settings_discover_artist_grid';
   static const _discoverMotionKey = 'settings_discover_motion';
+  static const _discoverMotionSpeedKey = 'settings_discover_motion_speed';
   static const _discoverAudioQualityKey = 'settings_discover_audio_quality';
   static const _discoverResolverProfileKey = 'settings_discover_resolver_profile';
   static const _discoverRegionKey = 'settings_discover_region';
@@ -155,6 +156,7 @@ class AppSettings extends ChangeNotifier {
   bool _discoverSpotlight = true;
   bool _discoverArtistGrid = false;
   bool _discoverMotion = true;
+  String _discoverMotionSpeed = 'normal';
   String _discoverAudioQuality = 'best_available';
   String _discoverResolverProfile = 'automatic';
   String _discoverRegion = 'IN';
@@ -205,6 +207,14 @@ class AppSettings extends ChangeNotifier {
   bool get discoverSpotlight => _discoverSpotlight;
   bool get discoverArtistGrid => _discoverArtistGrid;
   bool get discoverMotion => _discoverMotion;
+  String get discoverMotionSpeed => _discoverMotionSpeed;
+  int get discoverMotionDurationMs => switch (_discoverMotionSpeed) {
+        'fast' => 850,
+        'slow' => 1450,
+        _ => 1150,
+      };
+  int get discoverShelfDurationMs =>
+      (520 * discoverMotionDurationMs / 1150).round();
   String get discoverAudioQuality => _discoverAudioQuality;
   String get discoverResolverProfile => _discoverResolverProfile;
   String get discoverRegion => _discoverRegion;
@@ -252,6 +262,10 @@ class AppSettings extends ChangeNotifier {
       _discoverSpotlight = preferences.getBool(_discoverSpotlightKey) ?? true;
       _discoverArtistGrid = preferences.getBool(_discoverArtistGridKey) ?? false;
       _discoverMotion = preferences.getBool(_discoverMotionKey) ?? true;
+      _discoverMotionSpeed = const {'fast', 'normal', 'slow'}
+              .contains(preferences.getString(_discoverMotionSpeedKey))
+          ? preferences.getString(_discoverMotionSpeedKey)!
+          : 'normal';
       _discoverAudioQuality = const {'best_available', 'balanced', 'data_saver'}
           .contains(preferences.getString(_discoverAudioQualityKey))
           ? preferences.getString(_discoverAudioQualityKey)!
