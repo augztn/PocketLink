@@ -36,6 +36,8 @@ class SettingsBackupService {
     'settings_discover_lyrics',
     'settings_discover_auto_queue',
     'settings_discover_artwork',
+    'settings_discover_spotlight',
+    'settings_discover_artist_grid',
   };
 
   static const _integerKeys = <String>{
