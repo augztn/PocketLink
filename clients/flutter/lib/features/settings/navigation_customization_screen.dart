@@ -22,7 +22,20 @@ class _NavigationCustomizationScreenState
   late List<String> _order;
   late Set<String> _visibleItems;
   late final TextEditingController _searchController;
+  final FocusNode _searchFocusNode = FocusNode();
   String _query = '';
+
+  bool get _isSearchActive => _query.trim().isNotEmpty || _searchFocusNode.hasFocus;
+
+  void _onSearchFocusChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
+    _searchFocusNode.unfocus();
+    setState(() => _query = '');
+  }
   final Map<String, GlobalKey> _destinationKeys = {};
 
   static const _details = <String, ({String label, String description, IconData icon})>{
@@ -39,6 +52,7 @@ class _NavigationCustomizationScreenState
     _visibleItems = Set.of(_settings.visibleNavigationItems);
     _query = widget.initialSearchQuery ?? '';
     _searchController = TextEditingController(text: _query);
+    _searchFocusNode.addListener(_onSearchFocusChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToFirstMatch());
   }
 
@@ -66,6 +80,8 @@ class _NavigationCustomizationScreenState
 
   @override
   void dispose() {
+    _searchFocusNode.removeListener(_onSearchFocusChanged);
+    _searchFocusNode.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -144,7 +160,12 @@ class _NavigationCustomizationScreenState
     final isDefault = _settings.navigationLayoutIsDefault;
     final visibleOrder = _order.where(_matchesDestination).toList(growable: false);
 
-    return Scaffold(
+    return PopScope<void>(
+      canPop: !_isSearchActive,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && _isSearchActive) _clearSearch();
+      },
+      child: Scaffold(
       appBar: const PocketLinkAppBar(
         title: Text('Navigation', style: TextStyle(fontSize: 20)),
       ),
@@ -162,10 +183,7 @@ class _NavigationCustomizationScreenState
                   ? null
                   : IconButton(
                       tooltip: 'Clear search',
-                      onPressed: () {
-                        _searchController.clear();
-                        _setQuery('');
-                      },
+                      onPressed: _clearSearch,
                       icon: const Icon(Icons.close_rounded),
                     ),
               filled: true,
@@ -286,6 +304,7 @@ class _NavigationCustomizationScreenState
             label: const Text('Reset to Default'),
           ),
         ],
+      ),
       ),
     );
   }
