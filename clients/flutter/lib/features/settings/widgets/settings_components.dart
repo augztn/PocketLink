@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/widgets/pocketlink_scaffold.dart';
@@ -45,6 +47,8 @@ class SettingsGroupCard extends StatefulWidget {
 
 class _SettingsGroupCardState extends State<SettingsGroupCard> {
   final Map<String, GlobalKey> _rowKeys = {};
+  int? _activeHighlightIndex;
+  Timer? _highlightTimer;
 
   String _rowIdentity(int index, Widget child) =>
       '$index:${child.runtimeType}:${settingsSearchableText(child)}';
@@ -65,22 +69,38 @@ class _SettingsGroupCardState extends State<SettingsGroupCard> {
   void _scrollToFirstMatch() {
     final query = widget.searchQuery.trim();
     if (query.isEmpty) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted || widget.searchQuery.trim() != query) return;
+      var matchIndex = -1;
       for (var index = 0; index < widget.children.length; index++) {
-        final child = widget.children[index];
-        if (!_matches(child)) continue;
-        final target = _keyFor(index, child).currentContext;
-        if (target != null) {
-          Scrollable.ensureVisible(
-            target,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOutCubic,
-            alignment: 0.18,
-          );
+        if (_matches(widget.children[index])) {
+          matchIndex = index;
+          break;
         }
-        break;
       }
+      if (matchIndex < 0) return;
+
+      // Match Mochy's page transition settling delay before revealing the selected row.
+      await Future<void>.delayed(const Duration(milliseconds: 320));
+      if (!mounted || widget.searchQuery.trim() != query) return;
+      setState(() => _activeHighlightIndex = matchIndex);
+
+      final target = _keyFor(matchIndex, widget.children[matchIndex]).currentContext;
+      if (target != null) {
+        await Scrollable.ensureVisible(
+          target,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOutCubic,
+          alignment: 0.18,
+        );
+      }
+
+      _highlightTimer?.cancel();
+      _highlightTimer = Timer(const Duration(milliseconds: 2400), () {
+        if (mounted && _activeHighlightIndex == matchIndex) {
+          setState(() => _activeHighlightIndex = null);
+        }
+      });
     });
   }
 
@@ -94,8 +114,16 @@ class _SettingsGroupCardState extends State<SettingsGroupCard> {
   void didUpdateWidget(covariant SettingsGroupCard oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.searchQuery != widget.searchQuery) {
+      _highlightTimer?.cancel();
+      _activeHighlightIndex = null;
       _scrollToFirstMatch();
     }
+  }
+
+  @override
+  void dispose() {
+    _highlightTimer?.cancel();
+    super.dispose();
   }
 
   List<Widget> _animatedChildren(BuildContext context) => [
@@ -105,11 +133,11 @@ class _SettingsGroupCardState extends State<SettingsGroupCard> {
             duration: const Duration(milliseconds: 450),
             curve: Curves.easeOutCubic,
             decoration: BoxDecoration(
-              color: _matches(widget.children[index])
+              color: _activeHighlightIndex == index && _matches(widget.children[index])
                   ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.13)
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(14),
-              border: _matches(widget.children[index])
+              border: _activeHighlightIndex == index && _matches(widget.children[index])
                   ? Border.all(
                       color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.24),
                     )
