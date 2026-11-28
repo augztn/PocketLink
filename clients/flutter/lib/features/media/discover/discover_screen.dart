@@ -80,6 +80,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   List<_DiscoverShelf> _homeShelves = const [];
   List<IndexedFile> _localLibrary = const [];
   bool _loading = false;
+  bool _showSkeletonExit = false;
+  bool _skeletonFadingOut = false;
+  Timer? _skeletonRevealTimer;
   bool _localLibraryLoading = false;
   Future<void>? _localLibraryRequest;
   bool _startingPlayback = false;
@@ -349,6 +352,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     _scrollController.removeListener(_onDiscoverScroll);
     _scrollController.dispose();
     _spotlightAutoAdvanceTimer?.cancel();
+    _skeletonRevealTimer?.cancel();
     _heroScrollProgress.dispose();
     _spotlightPageController.dispose();
     _spotlightWipeCurveController.dispose();
@@ -577,6 +581,20 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           category: 'discover', component: 'discover_screen',
           fields: {'failure_type': error.runtimeType.toString()});
       }));
+      final shouldAnimateSkeletonExit = _loading && _homeShelves.isEmpty;
+      if (shouldAnimateSkeletonExit && AppSettings.instance.discoverMotion) {
+        _skeletonRevealTimer?.cancel();
+        _showSkeletonExit = true;
+        _skeletonFadingOut = false;
+        _skeletonRevealTimer = Timer(const Duration(milliseconds: 120), () {
+          if (!mounted) return;
+          setState(() => _skeletonFadingOut = true);
+          _skeletonRevealTimer = Timer(const Duration(milliseconds: 280), () {
+            if (!mounted) return;
+            setState(() => _showSkeletonExit = false);
+          });
+        });
+      }
       AppLogger.event('discover.home_loading_completed', category: 'discover',
         component: 'discover_screen',
         fields: {'generation': generation, 'shelf_count': snapshot.shelves.length,
@@ -1220,7 +1238,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     final screenWidth = MediaQuery.sizeOf(context).width;
     final heroHeight = MediaQuery.sizeOf(context).height * .60;
     return SliverToBoxAdapter(
-      child: Column(
+      child: AnimatedOpacity(
+        opacity: _skeletonFadingOut ? 0 : 1,
+        duration: const Duration(milliseconds: 280),
+        curve: const Cubic(0.2, 0, 0, 1),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
@@ -1279,6 +1301,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             const SizedBox(height: 22),
           ],
         ],
+        ),
       ),
     );
   }
@@ -2617,9 +2640,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 ),
               ),
             ),
-            if (_loading && !hasHomeContent)
+            if (_loading && !hasHomeContent || _showSkeletonExit)
               _discoverHomeSkeleton()
-            else if (_error != null && !hasHomeContent)
+            if (!_showSkeletonExit && _error != null && !hasHomeContent)
               SliverFillRemaining(hasScrollBody: false, child: Center(child: Padding(
                 padding: const EdgeInsets.all(28),
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -2630,7 +2653,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                   FilledButton.icon(onPressed: _loadHome, icon: const Icon(Icons.refresh_rounded), label: const Text('Try again')),
                 ]),
               )))
-            else if (hasHomeContent) ...[
+            if (hasHomeContent) ...[
               if (_loading) const SliverToBoxAdapter(child: LinearProgressIndicator(minHeight: 2)),
               if (_homeShelves.isNotEmpty) ...[
                 // BitChord Home order: Top Picks, Recents, then the live
