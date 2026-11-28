@@ -48,6 +48,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   double? _pendingLyricsLineSpacing;
   String _settingsSearchQuery = '';
   final TextEditingController _settingsSearchController = TextEditingController();
+  String _selectedTabletCategory = 'customization';
 
   @override
   void initState() {
@@ -472,6 +473,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
 
   void _openCategory(String id, {String? searchQuery}) {
+    if (widget.category == null && MediaQuery.sizeOf(context).width >= 840) {
+      setState(() {
+        _selectedTabletCategory = id;
+        if (searchQuery != null) {
+          _settingsSearchQuery = searchQuery;
+          _settingsSearchController.text = searchQuery;
+        }
+      });
+      return;
+    }
     final route = switch (id) {
       'navigation-customize' => _categoryRoute(
           id,
@@ -962,6 +973,115 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Widget _tabletCategoryPage(String id) {
+    switch (id) {
+      case 'navigation-customize':
+        return const NavigationCustomizationScreen();
+      case 'audio':
+      case 'now-playing':
+        return const NowPlayingSettingsScreen();
+      case 'video':
+        return const VideoPlayerSettingsScreen();
+      case 'about':
+        return const AboutScreen();
+      default:
+        return SettingsScreen(
+          key: ValueKey('tablet-settings-$id'),
+          api: widget.api,
+          onOpenSavedServers: widget.onOpenSavedServers,
+          category: switch (id) {
+            'appearance' => 'Appearance',
+            'customization' => 'Customisation',
+            'navigation' => 'Navigation',
+            'dashboard' => 'Dashboard & Shortcuts',
+            'music' => 'Music',
+            'discover' => 'Discover',
+            'storage' => 'Storage',
+            'network' || 'connectivity' => 'Network',
+            'diagnostics' || 'maintenance' => 'Diagnostics',
+            _ => 'Customisation',
+          },
+        );
+    }
+  }
+
+  Widget _buildTabletSettingsPane(BuildContext context, double bottomClearance) {
+    final width = MediaQuery.sizeOf(context).width;
+    final paneWidth = (width * 0.36).clamp(300.0, 400.0);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(
+          width: paneWidth,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 14),
+                child: Text(
+                  'Settings',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontSize: 30,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.6,
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: TextField(
+                  controller: _settingsSearchController,
+                  onChanged: (value) => setState(() => _settingsSearchQuery = value),
+                  textInputAction: TextInputAction.search,
+                  decoration: InputDecoration(
+                    hintText: 'Search settings',
+                    prefixIcon: const Icon(Icons.search_rounded),
+                    suffixIcon: _settingsSearchQuery.isEmpty
+                        ? null
+                        : IconButton(
+                            tooltip: 'Clear search',
+                            onPressed: () {
+                              _settingsSearchController.clear();
+                              setState(() => _settingsSearchQuery = '');
+                            },
+                            icon: const Icon(Icons.close_rounded),
+                          ),
+                    filled: true,
+                    fillColor: Theme.of(context).colorScheme.surfaceContainerLow,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(18),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: ListView(
+                  padding: EdgeInsets.fromLTRB(16, 8, 16, bottomClearance),
+                  children: [
+                    ..._globalSearchResultTiles(),
+                    ..._homeSettingsChildren(),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        VerticalDivider(
+          width: 1,
+          thickness: 1,
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.35),
+        ),
+        Expanded(
+          child: KeyedSubtree(
+            key: ValueKey('tablet-pane-$_selectedTabletCategory'),
+            child: _tabletCategoryPage(_selectedTabletCategory),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   void dispose() {
     _settingsSearchController.dispose();
@@ -997,9 +1117,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               miniPlayerVisible: layoutInsets.hasActiveMiniPlayer,
             );
             final topClearance = layoutInsets.topClearance;
+            final isWideSettings = widget.category == null &&
+                MediaQuery.sizeOf(bodyContext).width >= 840;
             return Stack(
               children: [
-                CustomScrollView(
+                if (isWideSettings)
+                  _buildTabletSettingsPane(bodyContext, bottomClearance),
+                if (!isWideSettings)
+                  CustomScrollView(
                   slivers: [
                     if (widget.category == null)
                       SliverAppBar(
