@@ -37,22 +37,6 @@ class SettingsGroupCard extends StatelessWidget {
   final List<Widget> children;
   final EdgeInsetsGeometry padding;
 
-  List<Widget> _withDividers() {
-    final result = <Widget>[];
-    for (final child in children) {
-      if (result.isNotEmpty &&
-          result.last is! Divider &&
-          child is! Divider) {
-        result.add(const Divider(
-          height: 1,
-          thickness: 1,
-          color: settingsDividerColor,
-        ));
-      }
-      result.add(child);
-    }
-    return result;
-  }
 
   @override
   Widget build(BuildContext context) => ListTileTheme(
@@ -93,7 +77,7 @@ class SettingsGroupCard extends StatelessWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: _withDividers(),
+                    children: children,
                   ),
                 ),
               ),
