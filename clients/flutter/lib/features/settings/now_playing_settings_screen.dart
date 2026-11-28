@@ -5,8 +5,48 @@ import '../../core/widgets/pocketlink_app_bar.dart';
 import 'music_shortcut_customization_screen.dart';
 import 'widgets/settings_components.dart';
 
-class NowPlayingSettingsScreen extends StatelessWidget {
-  const NowPlayingSettingsScreen({super.key});
+class NowPlayingSettingsScreen extends StatefulWidget {
+  const NowPlayingSettingsScreen({this.initialSearchQuery, super.key});
+
+  final String? initialSearchQuery;
+
+  @override
+  State<NowPlayingSettingsScreen> createState() => _NowPlayingSettingsScreenState();
+}
+
+class _NowPlayingSettingsScreenState extends State<NowPlayingSettingsScreen> {
+  late final TextEditingController _searchController;
+  String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _query = widget.initialSearchQuery ?? '';
+    _searchController = TextEditingController(text: _query);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  bool _matches(Widget child) {
+    if (_query.trim().isEmpty) return true;
+    final query = _query.trim().toLowerCase();
+    if (child is SettingsTile) return child.title.toLowerCase().contains(query) ||
+        (child.subtitle?.toLowerCase().contains(query) ?? false);
+    if (child is SwitchListTile) {
+      final title = child.title is Text ? (child.title as Text).data ?? '' : '';
+      final subtitle = child.subtitle is Text ? (child.subtitle as Text).data ?? '' : '';
+      return title.toLowerCase().contains(query) || subtitle.toLowerCase().contains(query);
+    }
+    if (child is _SwipeActionTile) return child.title.toLowerCase().contains(query);
+    return false;
+  }
+
+  List<Widget> _filtered(List<Widget> children) =>
+      children.where(_matches).toList(growable: false);
 
   static const _swipeActions = <String, String>{
     'next': 'Next track',
@@ -24,6 +64,32 @@ class NowPlayingSettingsScreen extends StatelessWidget {
         body: ListView(
           padding: settingsListPadding(context),
           children: [
+            TextField(
+              controller: _searchController,
+              onChanged: (value) => setState(() => _query = value),
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                hintText: 'Search in Music & Player',
+                prefixIcon: const Icon(Icons.search_rounded),
+                suffixIcon: _query.isEmpty
+                    ? null
+                    : IconButton(
+                        tooltip: 'Clear search',
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _query = '');
+                        },
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                filled: true,
+                fillColor: Theme.of(context).colorScheme.surfaceContainerLow,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(18),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
             Padding(
               padding: const EdgeInsets.only(bottom: 18),
               child: Text(
@@ -34,7 +100,7 @@ class NowPlayingSettingsScreen extends StatelessWidget {
               ),
             ),
             const SettingsSectionHeader('Music dock button'),
-            SettingsGroupCard(children: [
+            SettingsGroupCard(children: _filtered([
               const ListTile(
                 leading: Icon(Icons.touch_app_rounded),
                 title: Text('Tap'),
@@ -86,10 +152,10 @@ class NowPlayingSettingsScreen extends StatelessWidget {
                   ),
                 ),
               ),
-            ]),
+            ])),
             const SizedBox(height: 20),
             const SettingsSectionHeader('Now Playing style'),
-            SettingsGroupCard(children: [
+            SettingsGroupCard(children: _filtered([
               SettingsTile(
                 leading: const Icon(Icons.art_track_rounded),
                 title: 'Player style',
@@ -111,10 +177,10 @@ class NowPlayingSettingsScreen extends StatelessWidget {
                   },
                 ),
               ),
-            ]),
+            ])),
             const SizedBox(height: 20),
             const SettingsSectionHeader('Mini-player and playback'),
-            SettingsGroupCard(children: [
+            SettingsGroupCard(children: _filtered([
               SwitchListTile(
                 secondary: const Icon(Icons.picture_in_picture_alt_rounded),
                 title: const Text('Mini-player'),
@@ -142,7 +208,16 @@ class NowPlayingSettingsScreen extends StatelessWidget {
                   statsForNerds: value,
                 ),
               ),
-            ]),
+            ])),
+            if (_query.isNotEmpty && _filtered([
+              const ListTile(title: Text('Music dock button')),
+              const SettingsTile(title: 'Player style'),
+              const SettingsTile(title: 'Mini-player'),
+            ]).isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(20),
+                child: Text('No matching settings found.'),
+              ),
             const SizedBox(height: 12),
             Align(
               alignment: Alignment.centerRight,
