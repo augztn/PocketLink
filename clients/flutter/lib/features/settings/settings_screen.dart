@@ -1295,7 +1295,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                   ),
-                if (widget.category != null) _categoryIntro(widget.category!),
+                if (widget.category != null && !_isSearchActive) _categoryIntro(widget.category!),
                 if (widget.category == 'Navigation')
                   _section('Navigation & Home', [
                     ListTile(
