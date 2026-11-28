@@ -1383,7 +1383,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   }
 
   Widget _shelfHeading(String title, {VoidCallback? onSeeAll}) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 28, 6),
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
         child: Row(
           children: [
             Expanded(
@@ -1900,7 +1900,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           SizedBox(
             height: 190,
             child: ListView.separated(
-              padding: const EdgeInsets.only(left: 20, right: 36),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
               itemCount: _listeningPicks.length,
               separatorBuilder: (_, __) => const SizedBox(width: 15),
@@ -1925,7 +1925,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           SizedBox(
             height: 190,
             child: ListView.separated(
-              padding: const EdgeInsets.only(left: 20, right: 36),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
               itemCount: _recentlyPlayed.length,
               separatorBuilder: (_, __) => const SizedBox(width: 15),
@@ -1980,7 +1980,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           SizedBox(
             height: 4 * 66,
             child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
               itemCount: pageCount,
               separatorBuilder: (_, __) => const SizedBox(width: 10),
@@ -2145,7 +2145,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
                 crossAxisSpacing: 12,
@@ -2180,7 +2180,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
                 crossAxisSpacing: 12,
@@ -2209,7 +2209,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           SizedBox(
             height: 190,
             child: ListView.separated(
-              padding: const EdgeInsets.only(left: 20, right: 36),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
               itemCount: (shelf.items.isNotEmpty
                       ? shelf.items.length
