@@ -83,6 +83,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   bool _loadingMore = false;
   Future<void>? _homeRequest;
   final ScrollController _scrollController = ScrollController();
+  final PageController _spotlightPageController =
+      PageController(viewportFraction: .91);
+  int _spotlightPage = 0;
   late String _lastRegion;
   late bool _lastLocalLossless;
 
@@ -266,6 +269,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     AppSettings.instance.removeListener(_onSettingsChanged);
     _scrollController.removeListener(_onDiscoverScroll);
     _scrollController.dispose();
+    _spotlightPageController.dispose();
     _shimmerController.dispose();
     super.dispose();
   }
@@ -1507,6 +1511,178 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     );
   }
 
+  List<DiscoverTrack> get _spotlightTracks =>
+      buildDiscoverSpotlightTracks(
+        shelves: _homeShelves
+            .map((shelf) => DiscoverHomeShelf(
+                  title: shelf.title,
+                  tracks: shelf.tracks,
+                  items: shelf.items,
+                ))
+            .toList(growable: false),
+        recentlyPlayed: _recentlyPlayed,
+      );
+
+  Widget _spotlightHero() {
+    final tracks = _spotlightTracks;
+    if (tracks.isEmpty) return const SliverToBoxAdapter();
+
+    final activePage = _spotlightPage.clamp(0, tracks.length - 1);
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.only(top: 2, bottom: 22),
+        child: Column(
+          children: [
+            SizedBox(
+              height: 304,
+              child: PageView.builder(
+                controller: _spotlightPageController,
+                itemCount: tracks.length,
+                onPageChanged: (index) {
+                  if (mounted && index != _spotlightPage) {
+                    setState(() => _spotlightPage = index);
+                  }
+                },
+                itemBuilder: (context, index) {
+                  final track = tracks[index];
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 5),
+                    child: Material(
+                      color: const Color(0xFF17181D),
+                      borderRadius: BorderRadius.circular(22),
+                      clipBehavior: Clip.antiAlias,
+                      child: InkWell(
+                        onTap: () => _play(track, queueOverride: tracks),
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            _art(
+                              track,
+                              size: double.infinity,
+                              radius: 0,
+                              fit: BoxFit.cover,
+                            ),
+                            const DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Color(0x08000000),
+                                    Color(0x30000000),
+                                    Color(0xE6000000),
+                                  ],
+                                  stops: [0, .38, 1],
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              left: 18,
+                              right: 18,
+                              bottom: 18,
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 9,
+                                            vertical: 5,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withValues(alpha: .16),
+                                            borderRadius: BorderRadius.circular(20),
+                                            border: Border.all(
+                                              color: Colors.white.withValues(alpha: .18),
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            'YOUR DISCOVER MIX',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.w800,
+                                              letterSpacing: 1,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 11),
+                                        Text(
+                                          track.title,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w800,
+                                            height: 1.04,
+                                            letterSpacing: -.45,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 5),
+                                        Text(
+                                          track.artist,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                            color: Colors.white.withValues(alpha: .82),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  IconButton.filled(
+                                    tooltip: 'Play ${track.title}',
+                                    onPressed: () => _play(track, queueOverride: tracks),
+                                    style: IconButton.styleFrom(
+                                      backgroundColor: Colors.white,
+                                      foregroundColor: Colors.black,
+                                      fixedSize: const Size(52, 52),
+                                    ),
+                                    icon: const Icon(Icons.play_arrow_rounded, size: 30),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            if (tracks.length > 1) ...[
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(tracks.length, (index) {
+                  final selected = index == activePage;
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    width: selected ? 18 : 5,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.onSurface.withValues(alpha: .24),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  );
+                }),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _listeningPicksShelf() {
     if (_listeningPicks.isEmpty) return const SliverToBoxAdapter();
     final cardWidth = ((MediaQuery.sizeOf(context).width - 52) / 2)
@@ -2022,6 +2198,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 // BitChord Home order: Top Picks, Recents, then the live
                 // upstream shelves. Find Your Mood is inserted after the
                 // lead feed shelf rather than before the feed.
+                _spotlightHero(),
+                _spotlightHero(),
                 _listeningPicksShelf(),
                 _recentlyPlayedShelf(),
                 for (var index = 0; index < _homeShelves.length; index++) ...[
