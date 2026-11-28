@@ -80,6 +80,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   List<_DiscoverShelf> _homeShelves = const [];
   List<IndexedFile> _localLibrary = const [];
   bool _loading = false;
+  bool _showSkeletonOverlay = false;
+  bool _skeletonOverlayFading = false;
+  Timer? _skeletonRevealTimer;
   bool _localLibraryLoading = false;
   Future<void>? _localLibraryRequest;
   bool _startingPlayback = false;
@@ -349,6 +352,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     _scrollController.removeListener(_onDiscoverScroll);
     _scrollController.dispose();
     _spotlightAutoAdvanceTimer?.cancel();
+    _skeletonRevealTimer?.cancel();
     _heroScrollProgress.dispose();
     _spotlightPageController.dispose();
     _spotlightWipeCurveController.dispose();
@@ -582,6 +586,23 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         fields: {'generation': generation, 'shelf_count': snapshot.shelves.length,
           'track_count': snapshot.shelves.fold<int>(0, (sum, shelf) => sum + shelf.tracks.length),
           'has_continuation': snapshot.continuation.isNotEmpty});
+      final shouldRevealLoadedFeed = _loading && _homeShelves.isEmpty &&
+          AppSettings.instance.discoverMotion;
+      if (shouldRevealLoadedFeed) {
+        _skeletonRevealTimer?.cancel();
+        setState(() {
+          _showSkeletonOverlay = true;
+          _skeletonOverlayFading = false;
+        });
+        _skeletonRevealTimer = Timer(const Duration(milliseconds: 120), () {
+          if (!mounted) return;
+          setState(() => _skeletonOverlayFading = true);
+          _skeletonRevealTimer = Timer(const Duration(milliseconds: 280), () {
+            if (!mounted) return;
+            setState(() => _showSkeletonOverlay = false);
+          });
+        });
+      }
       setState(() {
         _homeShelves = snapshot.shelves;
         _tracks = shelves.first.tracks;
@@ -1216,11 +1237,14 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   Widget _skeletonLine({required double width, double height = 10}) =>
       _skeletonBlock(width: width, height: height, radius: 6);
 
-  Widget _discoverHomeSkeleton() {
+  Widget _discoverHomeSkeleton() => SliverToBoxAdapter(
+        child: _discoverHomeSkeletonContent(),
+      );
+
+  Widget _discoverHomeSkeletonContent() {
     final screenWidth = MediaQuery.sizeOf(context).width;
     final heroHeight = MediaQuery.sizeOf(context).height * .60;
-    return SliverToBoxAdapter(
-      child: Column(
+    return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
@@ -1279,8 +1303,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             const SizedBox(height: 22),
           ],
         ],
-      ),
-    );
+      );
   }
 
   Widget _artFallback(double size) => Container(
@@ -2583,9 +2606,12 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           onPressed: _loading ? null : _refreshDiscover,
         )],
       ),
-      body: RefreshIndicator(
-        onRefresh: _refreshDiscover,
-        child: CustomScrollView(
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          RefreshIndicator(
+            onRefresh: _refreshDiscover,
+            child: CustomScrollView(
           controller: _scrollController,
           cacheExtent: 600,
           physics: const AlwaysScrollableScrollPhysics(),
@@ -2712,7 +2738,25 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             ),
           SliverToBoxAdapter(child: SizedBox(height: bottom + 16)),
           ],
-        ),
+          ),
+          if (_showSkeletonOverlay)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: AnimatedOpacity(
+                  opacity: _skeletonOverlayFading ? 0 : 1,
+                  duration: const Duration(milliseconds: 280),
+                  curve: const Cubic(0.2, 0, 0, 1),
+                  child: ColoredBox(
+                    color: Theme.of(context).scaffoldBackgroundColor,
+                    child: SingleChildScrollView(
+                      physics: const NeverScrollableScrollPhysics(),
+                      child: _discoverHomeSkeletonContent(),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
