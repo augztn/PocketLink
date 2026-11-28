@@ -1,9 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/widgets/pocketlink_scaffold.dart';
-import '../../../core/widgets/pocketlink_section_header.dart';
 
-const Color settingsSectionColor = Color(0xFFB8C4FF);
 const Color settingsGroupColor = Color(0xFF15161B);
 const Color settingsDividerColor = Color(0x0FFFFFFF);
 
