@@ -1494,7 +1494,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
         velocity: signedVelocity,
         target: -direction * width,
       );
-      if (!mounted) return;
+      if (!mounted || _trackIdentity != previousIdentity) return;
       if (direction > 0) {
         await _persistent.skipToNext();
       } else {
