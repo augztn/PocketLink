@@ -84,6 +84,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
   Set<String> _favorites = <String>{};
   double _trackSwipeDistance = 0;
   bool _trackSwipeActive = false;
+  bool _carouselSkipInFlight = false;
   int _trackChangeDirection = 1;
   late final AnimationController _lyricsController;
   late final AnimationController _carouselSettleController;
@@ -167,78 +168,142 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
         path: _track.path,
       );
 
-  Widget _ambientBackground({bool lyricsMode = false}) {
-    // Keep the same deterministic fallback palette used by the morph sheet
-    // until the sheet reaches its final frame. Artwork extraction can finish
-    // during the 300–400ms transition; revealing it mid-morph caused a
-    // one-frame fallback-to-artwork color flash.
-    final isMorphing = widget.morphAnimation != null &&
-        widget.morphAnimation!.value < 0.999;
-    final palette = isMorphing
-        ? NowPlayingArtworkPalette.fallback(
-            title: _track.title,
-            folderName: _folderName,
-            path: _track.path,
-          )
-        : _trackPalette;
-    final hasArtwork = !isMorphing && _artwork != null && _artworkKey == _trackKey;
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 420),
-      curve: Curves.easeInOutCubic,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color.lerp(palette[0], const Color(0xFFB65D38), 0.22)!,
-            Color.lerp(palette[1], const Color(0xFF6D3427), 0.32)!,
-            Color.lerp(palette[2], palette[1], 0.24)!,
-            Color.lerp(palette[2], palette[1], 0.38)!,
-          ],
-          stops: const [0, 0.34, 0.70, 1],
-        ),
-      ),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          if (hasArtwork)
-            RepaintBoundary(
-              child: ImageFiltered(
-                // A 48px decode keeps the ambient wash inexpensive to rasterize.
-                // The sharp foreground artwork is painted separately below.
-                imageFilter: ui.ImageFilter.blur(
-                  sigmaX: 14,
-                  sigmaY: 14,
-                  tileMode: TileMode.mirror,
+  List<MediaQueueItem> get _carouselQueue =>
+      _persistent.queue.isNotEmpty ? _persistent.queue : widget.queue;
+
+  int get _carouselIndex {
+    final queue = _carouselQueue;
+    final requested = _persistent.queue.isNotEmpty
+        ? _persistent.currentIndex
+        : widget.initialIndex;
+    return queue.isEmpty ? 0 : requested.clamp(0, queue.length - 1).toInt();
+  }
+
+  List<Color> _paletteForQueueItem(MediaQueueItem item) =>
+      NowPlayingArtworkPalette.fallback(
+        title: item.title,
+        folderName: item.path.contains('/')
+            ? item.path.substring(0, item.path.lastIndexOf('/')).split('/').last
+            : 'Music',
+        path: item.path,
+      );
+
+  Widget _ambientTrackLayer({
+    required MediaQueueItem item,
+    required List<Color> palette,
+    required double opacity,
+    required bool lyricsMode,
+    Uint8List? artworkBytes,
+    bool allowArtwork = true,
+  }) {
+    final colors = [
+      Color.lerp(palette[0], const Color(0xFFB65D38), 0.22)!,
+      Color.lerp(palette[1], const Color(0xFF6D3427), 0.32)!,
+      Color.lerp(palette[2], palette[1], 0.24)!,
+      Color.lerp(palette[2], palette[1], 0.38)!,
+    ];
+    final hasArtwork = allowArtwork &&
+        ((artworkBytes?.isNotEmpty ?? false) ||
+            (item.artworkUrl?.trim().isNotEmpty ?? false));
+    return Positioned.fill(
+      child: Opacity(
+        opacity: opacity.clamp(0.0, 1.0).toDouble(),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: colors,
+                  stops: const [0, 0.34, 0.70, 1],
                 ),
-                child: Opacity(
-                  opacity: 0.68,
-                  child: ColorFiltered(
-                    colorFilter: const ColorFilter.matrix([
-                      1.18, -0.09, -0.09, 0, 0,
-                      -0.09, 1.18, -0.09, 0, 0,
-                      -0.09, -0.09, 1.18, 0, 0,
-                      0, 0, 0, 1, 0,
-                    ]),
-                    child: Image(
-                      image: ResizeImage(
-                        MemoryImage(_artwork!),
-                        width: 48,
-                        height: 48,
+              ),
+            ),
+            if (hasArtwork)
+              RepaintBoundary(
+                child: ImageFiltered(
+                  imageFilter: ui.ImageFilter.blur(
+                    sigmaX: 14,
+                    sigmaY: 14,
+                    tileMode: TileMode.mirror,
+                  ),
+                  child: Opacity(
+                    opacity: 0.68,
+                    child: ColorFiltered(
+                      colorFilter: const ColorFilter.matrix([
+                        1.18, -0.09, -0.09, 0, 0,
+                        -0.09, 1.18, -0.09, 0, 0,
+                        -0.09, -0.09, 1.18, 0, 0,
+                        0, 0, 0, 1, 0,
+                      ]),
+                      child: TrackArtworkView(
+                        bytes: artworkBytes,
+                        artworkUrl: item.artworkUrl,
+                        fallbackColors: palette,
+                        fit: BoxFit.cover,
                       ),
-                      fit: BoxFit.cover,
-                      filterQuality: FilterQuality.medium,
-                      gaplessPlayback: true,
                     ),
                   ),
                 ),
               ),
+            ColoredBox(
+              color: Colors.black.withValues(
+                alpha: lyricsMode ? 0.32 : 0.24,
+              ),
             ),
-          // Keep the ambient artwork continuous beneath the full-screen
-          // sharp layer, including the bottom safe area.
-          ColoredBox(color: Colors.black.withValues(alpha: lyricsMode ? 0.32 : 0.24)),
-        ],
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _ambientBackground({bool lyricsMode = false}) {
+    final queue = _carouselQueue;
+    final index = _carouselIndex;
+    final current = _track;
+    final isMorphing = widget.morphAnimation != null &&
+        widget.morphAnimation!.value < 0.999;
+    final currentPalette =
+        isMorphing ? _paletteForQueueItem(current) : _trackPalette;
+    final width = MediaQuery.sizeOf(context).width;
+    return AnimatedBuilder(
+      animation: _carouselSettleController,
+      builder: (context, _) {
+        final drag = _carouselDragOffset(width);
+        final towardNext = (-drag / width).clamp(0.0, 1.0).toDouble();
+        final towardPrevious = (drag / width).clamp(0.0, 1.0).toDouble();
+        final hasPrevious = index > 0;
+        final hasNext = index + 1 < queue.length;
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            _ambientTrackLayer(
+              item: current,
+              palette: currentPalette,
+              opacity: 1,
+              lyricsMode: lyricsMode,
+              artworkBytes: isMorphing ? null : _artwork,
+              allowArtwork: !isMorphing && _artworkKey == _trackKey,
+            ),
+            if (hasPrevious && towardPrevious > 0)
+              _ambientTrackLayer(
+                item: queue[index - 1],
+                palette: _paletteForQueueItem(queue[index - 1]),
+                opacity: towardPrevious,
+                lyricsMode: lyricsMode,
+              ),
+            if (hasNext && towardNext > 0)
+              _ambientTrackLayer(
+                item: queue[index + 1],
+                palette: _paletteForQueueItem(queue[index + 1]),
+                opacity: towardNext,
+                lyricsMode: lyricsMode,
+              ),
+          ],
+        );
+      },
     );
   }
 
@@ -1103,9 +1168,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
         initialDuration: _player.state.duration,
         selectionLoading: () => _persistent.isSelectionLoading,
         hasMultipleTracks: () => _persistent.queue.length > 1,
-        onPrevious: _persistent.skipToPrevious,
+        onPrevious: () => unawaited(_requestTrackSkip(-1)),
         onPlayPause: _player.playOrPause,
-        onNext: _persistent.skipToNext,
+        onNext: () => unawaited(_requestTrackSkip(1)),
       );
 
   Widget _bottomUtilities({bool lyricsActive = false}) => Padding(
@@ -1367,35 +1432,70 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
     final distance = _trackSwipeActive
         ? _trackSwipeDistance
         : _carouselSettleController.value;
-    final queue = _persistent.queue.isNotEmpty ? _persistent.queue : widget.queue;
-    final index = _persistent.queue.isNotEmpty
-        ? _persistent.currentIndex
-        : widget.initialIndex;
-    final hasPrevious = index > 0;
-    final hasNext = index < queue.length - 1;
-    final atBoundary = (distance > 0 && !hasPrevious) ||
-        (distance < 0 && !hasNext);
-    final resisted = atBoundary ? distance * 0.22 : distance;
+    final index = _carouselIndex;
+    final atBoundary = (distance > 0 && index == 0) ||
+        (distance < 0 && index >= _carouselQueue.length - 1);
+    final resisted = atBoundary ? distance * 0.3 : distance;
     return resisted.clamp(-width, width).toDouble();
   }
 
-  void _settleCarousel({double velocity = 0}) {
-    final start = _trackSwipeDistance;
+  Future<void> _settleCarousel({
+    double velocity = 0,
+    double target = 0,
+  }) async {
+    final start = _trackSwipeActive
+        ? _trackSwipeDistance
+        : _carouselSettleController.value;
     _carouselSettleController
       ..stop()
       ..value = start;
-    setState(() {
-      _trackSwipeDistance = 0;
-      _trackSwipeActive = false;
-    });
-    unawaited(_carouselSettleController.animateWith(
-      SpringSimulation(
-        const SpringDescription(mass: 1, stiffness: 420, damping: 34),
-        start,
-        0,
-        velocity,
-      ),
-    ));
+    if (mounted) {
+      setState(() {
+        _trackSwipeDistance = 0;
+        _trackSwipeActive = false;
+      });
+    }
+    try {
+      await _carouselSettleController.animateWith(
+        SpringSimulation(
+          const SpringDescription(mass: 1, stiffness: 324, damping: 36),
+          start,
+          target,
+          velocity.clamp(-5000.0, 5000.0),
+        ),
+      ).orCancel;
+      if (target == 0 && mounted) _carouselSettleController.value = 0;
+    } on TickerCanceled {
+      // A confirmed track change resets the row to the new song's center.
+    }
+  }
+
+  Future<void> _requestTrackSkip(int direction, {double velocity = 0}) async {
+    if (_carouselSkipInFlight || !_persistent.isActive) return;
+    final queue = _carouselQueue;
+    final index = _carouselIndex;
+    final targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= queue.length) return;
+
+    _carouselSkipInFlight = true;
+    final previousIdentity = _trackIdentity;
+    final width = MediaQuery.sizeOf(context).width;
+    try {
+      await _settleCarousel(
+        velocity: velocity,
+        target: direction * width,
+      );
+      if (!mounted) return;
+      if (direction > 0) {
+        await _persistent.skipToNext();
+      } else {
+        await _persistent.skipToPrevious();
+      }
+      if (!mounted) return;
+      if (_trackIdentity == previousIdentity) await _settleCarousel();
+    } finally {
+      _carouselSkipInFlight = false;
+    }
   }
 
   Widget _trackTransition({required Widget child, required String key, bool followDrag = true}) {
@@ -1938,7 +2038,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
                       ? (details) => setState(() {
                             _trackSwipeDistance = (_trackSwipeDistance +
                                     (details.primaryDelta ?? 0))
-                                .clamp(-180.0, 180.0)
+                                .clamp(
+                                  -MediaQuery.sizeOf(context).width * 0.9,
+                                  MediaQuery.sizeOf(context).width * 0.9,
+                                )
                                 .toDouble();
                           })
                       : null,
@@ -1963,15 +2066,18 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
                               : requestedIndex.clamp(0, queue.length - 1).toInt();
                           final canSkipNext = index < queue.length - 1;
                           final canSkipPrevious = index > 0;
+                          final width = MediaQuery.sizeOf(context).width;
+                          final commitDistance = width * 0.5;
                           final skipNext = canSkipNext &&
-                              (distance < -80 || velocity < -500);
+                              (distance < -commitDistance || velocity < -500);
                           final skipPrevious = canSkipPrevious &&
-                              (distance > 80 || velocity > 500);
-                          _settleCarousel(velocity: velocity);
+                              (distance > commitDistance || velocity > 500);
                           if (skipNext) {
-                            unawaited(_persistent.skipToNext());
+                            unawaited(_requestTrackSkip(-1, velocity: velocity));
                           } else if (skipPrevious) {
-                            unawaited(_persistent.skipToPrevious());
+                            unawaited(_requestTrackSkip(1, velocity: velocity));
+                          } else {
+                            unawaited(_settleCarousel(velocity: velocity));
                           }
                         }
                       : null,
