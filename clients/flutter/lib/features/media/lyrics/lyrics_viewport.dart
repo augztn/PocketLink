@@ -200,7 +200,7 @@ class _LyricsViewportState extends State<LyricsViewport> {
                 Widget emphasized = lyricText;
                 final motionEnabled = settings.animationsEnabled &&
                     settings.lyricsAnimationsEnabled &&
-                    !MediaQuery.disableAnimationsOf(context);
+                    !MediaQuery.of(context).disableAnimations;
                 final motionStyle = motionEnabled ? settings.lyricsMotionStyle : 'plain';
                 final inactiveOpacity = motionStyle == 'plain' ? 0.58 : 0.34;
                 if (motionStyle == 'motion') {
