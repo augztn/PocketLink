@@ -24,7 +24,7 @@ class _PocketLinkShimmerState extends State<PocketLinkShimmer>
     super.didUpdateWidget(oldWidget);
     if (widget.enabled && !oldWidget.enabled && !MediaQuery.of(context).disableAnimations) {
       _controller.repeat();
-    } else if (!widget.enabled || MediaQuery.disableAnimationsOf(context)) {
+    } else if (!widget.enabled || MediaQuery.of(context).disableAnimations) {
       _controller.stop();
     }
   }
@@ -37,7 +37,7 @@ class _PocketLinkShimmerState extends State<PocketLinkShimmer>
 
   @override
   Widget build(BuildContext context) {
-    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
     if (!widget.enabled || reduceMotion) return widget.child;
     return AnimatedBuilder(
       animation: _controller,
@@ -82,7 +82,7 @@ class PocketLinkSkeletonLine extends StatelessWidget {
     return Align(
       alignment: Alignment.centerLeft,
       child: FractionallySizedBox(
-        widthFactor: widthFactor.clamp(0.08, 1.0),
+        widthFactor: widthFactor.clamp(0.08, 1.0).toDouble(),
         child: SizedBox(
           height: height,
           child: DecoratedBox(
