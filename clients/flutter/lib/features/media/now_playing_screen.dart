@@ -287,8 +287,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
               palette: currentPalette,
               opacity: 1,
               lyricsMode: lyricsMode,
-              artworkBytes: isMorphing ? null : _artwork,
-              allowArtwork: !isMorphing && _artworkKey == _trackKey,
+              artworkBytes: !isMorphing && _artworkKey == _trackKey
+                  ? _artwork
+                  : null,
+              allowArtwork: !isMorphing,
             ),
             if (hasPrevious && towardPrevious > 0)
               _ambientTrackLayer(
@@ -1646,7 +1648,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
   }
 
   String _queueItemTitle(MediaQueueItem item) {
-    if (identical(item, _track)) return _fileName;
     final pathName = item.path.split('/').last;
     final raw = item.title.trim().isNotEmpty ? item.title : pathName;
     final dot = raw.lastIndexOf('.');
