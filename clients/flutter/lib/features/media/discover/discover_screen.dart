@@ -2175,6 +2175,40 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     );
   }
 
+  bool _isArtistShelf(_DiscoverShelf shelf) =>
+      shelf.items.length >= 4 &&
+      shelf.items.every((item) => item.type == DiscoverHomeItemType.artist);
+
+  Widget _artistHomeShelf(_DiscoverShelf shelf) {
+    final items = shelf.items.take(8).toList(growable: false);
+    final width = (MediaQuery.sizeOf(context).width - 52) / 2;
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.only(top: 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _shelfHeading(shelf.title),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 14,
+                mainAxisExtent: width + 52,
+              ),
+              itemCount: items.length,
+              itemBuilder: (context, index) =>
+                  _homeItemCard(items[index], items, cardWidth: width),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _homeShelf(_DiscoverShelf shelf) {
     return SliverToBoxAdapter(
       child: Padding(
@@ -2399,7 +2433,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                           !_isRecentHomeShelf(_homeShelves[index]))) ...[
                   _isCommunityShelf(_homeShelves[index])
                       ? _communityHomeShelf(_homeShelves[index])
-                      : _isListLayoutShelf(_homeShelves[index]) &&
+                      : _isArtistShelf(_homeShelves[index])
+                          ? _artistHomeShelf(_homeShelves[index])
+                          : _isListLayoutShelf(_homeShelves[index]) &&
                               _homeShelves[index].tracks.isNotEmpty &&
                               (_homeShelves[index].items.isEmpty ||
                                   _homeShelves[index].items.every((item) => item.isPlayableTrack))
