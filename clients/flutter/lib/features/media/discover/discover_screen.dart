@@ -87,9 +87,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   Future<void>? _homeRequest;
   final ScrollController _scrollController = ScrollController();
   final PageController _spotlightPageController =
-      PageController(viewportFraction: 1);
+      PageController(viewportFraction: 1, initialPage: 10000);
   Timer? _spotlightAutoAdvanceTimer;
-  int _spotlightPage = 0;
+  int _spotlightPage = 10000;
   late String _lastRegion;
   late bool _lastLocalLossless;
 
@@ -123,6 +123,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     if (_appResumed == resumed) return;
     _appResumed = resumed;
     if (!resumed) {
+      _spotlightUserDragging = false;
       _spotlightAutoAdvanceTimer?.cancel();
       _spotlightAutoAdvanceTimer = null;
       // MethodChannel resolution already in flight cannot be interrupted, but
@@ -1191,126 +1192,68 @@ class _DiscoverScreenState extends State<DiscoverScreen>
 
   Widget _discoverHomeSkeleton() {
     final screenWidth = MediaQuery.sizeOf(context).width;
-    return SliverList(
-      delegate: SliverChildListDelegate([
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _skeletonLine(width: 142, height: 26),
-              const SizedBox(height: 8),
-              _skeletonLine(width: 178, height: 10),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 238,
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            scrollDirection: Axis.horizontal,
-            itemCount: 3,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemBuilder: (_, __) => SizedBox(
-              width: 168,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _skeletonBlock(width: 168, height: 168, radius: 14),
-                  const SizedBox(height: 9),
-                  _skeletonLine(width: 132, height: 10),
-                  const SizedBox(height: 6),
-                  _skeletonLine(width: 88, height: 8),
-                ],
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 24),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-          child: _skeletonLine(width: 132, height: 12),
-        ),
-        SizedBox(
-          height: 4 * 66,
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            scrollDirection: Axis.horizontal,
-            itemCount: 2,
-            separatorBuilder: (_, __) => const SizedBox(width: 10),
-            itemBuilder: (_, __) => SizedBox(
-              width: screenWidth * .86,
-              child: Column(
-                children: List.generate(4, (_) => Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: Row(children: [
-                      _skeletonBlock(width: 50, height: 50, radius: 10),
-                      const SizedBox(width: 10),
-                      Expanded(child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _skeletonLine(width: 150, height: 11),
-                          const SizedBox(height: 7),
-                          _skeletonLine(width: 92, height: 8),
-                        ],
-                      )),
-                      _skeletonBlock(width: 22, height: 22, radius: 11),
-                    ]),
-                  ),
-                )),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 24),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-          child: _skeletonLine(width: 112, height: 12),
-        ),
-        SizedBox(
-          height: 112,
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            scrollDirection: Axis.horizontal,
-            itemCount: 4,
-            separatorBuilder: (_, __) => const SizedBox(width: 10),
-            itemBuilder: (_, __) => _skeletonBlock(
-              width: (screenWidth - 50) / 2,
-              height: 112,
-              radius: 14,
-            ),
-          ),
-        ),
-        for (var shelf = 0; shelf < 3; shelf++) ...[
-          const SizedBox(height: 24),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-            child: _skeletonLine(width: 118 + shelf * 12, height: 12),
-          ),
+    final heroHeight = MediaQuery.sizeOf(context).height * .60;
+    return SliverToBoxAdapter(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           SizedBox(
-            height: 214,
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              scrollDirection: Axis.horizontal,
-              itemCount: 4,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (_, __) => SizedBox(
-                width: 148,
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Expanded(child: _skeletonBlock(width: 148, radius: 14)),
-                  const SizedBox(height: 9),
-                  _skeletonLine(width: 112, height: 10),
-                  const SizedBox(height: 6),
-                  _skeletonLine(width: 76, height: 8),
-                ]),
-              ),
+            height: heroHeight,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                _skeletonBlock(width: screenWidth, height: heroHeight, radius: 0),
+                Positioned(
+                  left: 36,
+                  bottom: 62,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _skeletonLine(width: 112, height: 10),
+                      const SizedBox(height: 12),
+                      _skeletonLine(width: screenWidth * .62, height: 27),
+                      const SizedBox(height: 8),
+                      _skeletonLine(width: screenWidth * .36, height: 12),
+                      const SizedBox(height: 18),
+                      _skeletonBlock(width: 88, height: 36, radius: 18),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
+          const SizedBox(height: 26),
+          for (var shelf = 0; shelf < 4; shelf++) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(36, 0, 28, 10),
+              child: _skeletonLine(width: 118 + shelf * 12, height: 14),
+            ),
+            SizedBox(
+              height: 190,
+              child: ListView.separated(
+                padding: const EdgeInsets.symmetric(horizontal: 36),
+                scrollDirection: Axis.horizontal,
+                itemCount: 4,
+                separatorBuilder: (_, __) => const SizedBox(width: 15),
+                itemBuilder: (_, __) => SizedBox(
+                  width: 137,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _skeletonBlock(width: 137, height: 137, radius: 14),
+                      const SizedBox(height: 8),
+                      _skeletonLine(width: 112, height: 10),
+                      const SizedBox(height: 6),
+                      _skeletonLine(width: 76, height: 8),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 22),
+          ],
         ],
-      ]),
+      ),
     );
   }
 
@@ -1459,6 +1402,223 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       _homeShelves = const [];
       _homeContinuation = '';
     });
+  }
+
+  List<DiscoverTrack> get _spotlightTracks =>
+      buildDiscoverSpotlightTracks(
+        shelves: _homeShelves
+            .map((shelf) => DiscoverHomeShelf(
+                  title: shelf.title,
+                  tracks: shelf.tracks,
+                  items: shelf.items,
+                ))
+            .toList(growable: false),
+        recentlyPlayed: _recentlyPlayed,
+      );
+
+  void _playRandomSpotlight() {
+    final tracks = _spotlightTracks;
+    if (tracks.isEmpty) return;
+    final selected = tracks[math.Random().nextInt(tracks.length)];
+    _play(selected, queueOverride: tracks);
+  }
+
+  bool _spotlightUserDragging = false;
+
+  void _startSpotlightAutoAdvance() {
+    _spotlightAutoAdvanceTimer?.cancel();
+    if (!mounted || !_appResumed) return;
+    _spotlightAutoAdvanceTimer = Timer.periodic(
+      const Duration(milliseconds: 5500),
+      (_) {
+        final tracks = _spotlightTracks;
+        if (!mounted ||
+            !_appResumed ||
+            ModalRoute.of(context)?.isCurrent == false ||
+            _spotlightUserDragging ||
+            tracks.length < 2 ||
+            !_spotlightPageController.hasClients ||
+            (_scrollController.hasClients && _scrollController.offset > 48)) {
+          return;
+        }
+        final next = _spotlightPage + 1;
+        _spotlightPageController.animateToPage(
+          next,
+          duration: const Duration(milliseconds: 1150),
+          curve: Curves.easeInOutCubic,
+        );
+      },
+    );
+  }
+
+  Widget _spotlightHero() {
+    final tracks = _spotlightTracks;
+    if (tracks.isEmpty) return const SliverToBoxAdapter();
+
+    final activePage = _spotlightPage % tracks.length;
+    final heroHeight = MediaQuery.sizeOf(context).height * .60;
+    return SliverToBoxAdapter(
+      child: SizedBox(
+        height: heroHeight,
+        child: NotificationListener<ScrollNotification>(
+          onNotification: (notification) {
+            if (notification is ScrollStartNotification &&
+                notification.dragDetails != null) {
+              _spotlightUserDragging = true;
+              _spotlightAutoAdvanceTimer?.cancel();
+              _spotlightAutoAdvanceTimer = null;
+            } else if (notification is ScrollEndNotification &&
+                _spotlightUserDragging) {
+              _spotlightUserDragging = false;
+              _startSpotlightAutoAdvance();
+            }
+            return false;
+          },
+          child: PageView.builder(
+            controller: _spotlightPageController,
+            onPageChanged: (index) {
+              if (!mounted) return;
+              if (index != _spotlightPage) {
+                setState(() => _spotlightPage = index);
+              }
+              if (!_spotlightUserDragging) _startSpotlightAutoAdvance();
+            },
+            itemBuilder: (context, index) {
+              final track = tracks[index % tracks.length];
+              return Material(
+                color: const Color(0xFF08090C),
+                child: InkWell(
+                  onTap: () => _play(track, queueOverride: tracks),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      _art(
+                        track,
+                        size: double.infinity,
+                        radius: 0,
+                        fit: BoxFit.cover,
+                      ),
+                      const DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Color(0xB8000000),
+                              Color(0x17000000),
+                              Color(0x28000000),
+                              Color(0xF0000000),
+                            ],
+                            stops: [0, .30, .52, 1],
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        left: 36,
+                        right: 28,
+                        bottom: 62,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'PICKED FOR YOU',
+                              maxLines: 1,
+                              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                color: Colors.white.withValues(alpha: .72),
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1.35,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              track.title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                height: 1.04,
+                                letterSpacing: -.7,
+                              ),
+                            ),
+                            const SizedBox(height: 5),
+                            Text(
+                              track.artist,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Colors.white.withValues(alpha: .68),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 15),
+                            Row(
+                              children: [
+                                FilledButton.icon(
+                                  onPressed: () => _play(track, queueOverride: tracks),
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: Colors.white.withValues(alpha: .88),
+                                    foregroundColor: const Color(0xFF202124),
+                                    minimumSize: const Size(0, 36),
+                                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                                    shape: const StadiumBorder(),
+                                  ),
+                                  icon: const Icon(Icons.play_arrow_rounded, size: 19),
+                                  label: const Text(
+                                    'Play',
+                                    style: TextStyle(fontWeight: FontWeight.w700),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                if (tracks.length > 1)
+                                  IconButton(
+                                    tooltip: 'Shuffle featured tracks',
+                                    onPressed: _playRandomSpotlight,
+                                    style: IconButton.styleFrom(
+                                      backgroundColor: Colors.white.withValues(alpha: .16),
+                                      foregroundColor: Colors.white,
+                                      fixedSize: const Size(38, 38),
+                                    ),
+                                    icon: const Icon(Icons.shuffle_rounded, size: 18),
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (tracks.length > 1)
+                        Positioned(
+                          top: 18,
+                          right: 20,
+                          child: Row(
+                            children: List.generate(tracks.length, (dotIndex) {
+                              final selected = dotIndex == activePage;
+                              return AnimatedContainer(
+                                duration: const Duration(milliseconds: 220),
+                                curve: Curves.easeOutCubic,
+                                margin: const EdgeInsets.only(left: 4),
+                                width: selected ? 18 : 5,
+                                height: 4,
+                                decoration: BoxDecoration(
+                                  color: selected
+                                      ? Colors.white.withValues(alpha: .9)
+                                      : Colors.white.withValues(alpha: .38),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              );
+                            }),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _speedDialShelf() {
@@ -1899,6 +2059,13 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     final hasPersonalContent = _recentlyPlayed.isNotEmpty ||
         _listeningPicks.isNotEmpty;
     final hasHomeContent = hasTracks || _homeShelves.isNotEmpty || hasPersonalContent;
+    final showSpotlightHero = AppSettings.instance.discoverSpotlight &&
+        _spotlightTracks.isNotEmpty &&
+        (_homeShelves.isNotEmpty ||
+            _sectionTitle == 'Top charts in India' ||
+            _sectionTitle.startsWith('Discover in '));
+    final showSpotlightSkeleton = _loading && !hasHomeContent &&
+        AppSettings.instance.discoverSpotlight;
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: PocketLinkAppBar(
@@ -1939,7 +2106,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         slivers: [
           // Keep the scrollable behind the transparent shared app bar so
           // content can feather through it exactly like the other sections.
-          SliverToBoxAdapter(child: SizedBox(height: top)),
+          SliverToBoxAdapter(
+            child: SizedBox(height: showSpotlightHero || showSpotlightSkeleton ? 0 : top),
+          ),
           if (_localLibraryLoading && AppSettings.instance.discoverLocalLossless && widget.api != null)
             SliverToBoxAdapter(
               child: Padding(
