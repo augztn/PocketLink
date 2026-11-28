@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
+import 'dart:ui' as ui show Gradient;
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/rendering.dart';
@@ -1565,7 +1566,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         _spotlightPageController.animateToPage(
           next,
           duration: Duration(milliseconds: AppSettings.instance.discoverMotionDurationMs),
-          curve: Curves.easeInOutCubic,
+          curve: const Cubic(0.32, 0, 0.15, 1),
         );
       },
     );
@@ -1879,15 +1880,57 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                   final distance = (index - page).clamp(-1.0, 1.0).toDouble();
                   final progress = distance.abs();
                   if (!AppSettings.instance.discoverMotion) return child!;
-                  final width = MediaQuery.sizeOf(context).width;
+                  final curve = _spotlightUserDragging ? 1.0 : .04;
                   return ClipRect(
-                    child: Transform.translate(
-                      offset: Offset(distance * width * .12, 0),
-                      child: Transform.scale(
-                        alignment: Alignment.center,
-                        scale: 1 - progress * .045,
-                        child: Opacity(
-                          opacity: 1 - progress * .12,
+                    child: ShaderMask(
+                      blendMode: BlendMode.dstIn,
+                      shaderCallback: (bounds) {
+                        final width = bounds.width;
+                        final height = bounds.height;
+                        if (progress < .001) {
+                          return ui.Gradient.linear(
+                            Offset.zero,
+                            Offset(width, 0),
+                            [Colors.white, Colors.white],
+                          );
+                        }
+                        if (progress >= .999) {
+                          return ui.Gradient.linear(
+                            Offset.zero,
+                            Offset(width, 0),
+                            [Colors.transparent, Colors.transparent],
+                          );
+                        }
+                        const featherShare = .55;
+                        const curveReach = .6;
+                        const wipeTrail = .25;
+                        final feather = width * featherShare;
+                        final offset = width * curveReach / curve;
+                        final center = Offset(width + offset, height / 2);
+                        final farthest = math.sqrt(
+                          center.dx * center.dx + center.dy * center.dy,
+                        );
+                        final wipeProgress = distance > 0 ? 1 - distance : -distance;
+                        final radius = offset - feather +
+                            (farthest - (offset - feather)) * wipeProgress;
+                        final incoming = distance > 0;
+                        final inner = incoming ? radius : radius - feather * wipeTrail;
+                        final outer = inner + feather;
+                        final edge = (inner / outer).clamp(0.0, 1.0);
+                        return ui.Gradient.radial(
+                          center,
+                          outer,
+                          incoming
+                              ? [Colors.white, Colors.white, Colors.transparent]
+                              : [Colors.transparent, Colors.transparent, Colors.white],
+                          stops: [0, edge, 1],
+                        );
+                      },
+                      child: Transform.translate(
+                        offset: Offset(distance * MediaQuery.sizeOf(context).width * .18, 0),
+                        child: Transform.scale(
+                          alignment: Alignment.center,
+                          scale: 1 + progress * .08,
                           child: child,
                         ),
                       ),
