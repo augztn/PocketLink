@@ -110,11 +110,11 @@ class GlobalMiniPlayerBar extends StatelessWidget {
           child: DecoratedBox(
             decoration: BoxDecoration(
               color: const Color(0xFF17181B),
-              borderRadius: BorderRadius.circular(22),
+              borderRadius: BorderRadius.circular(34),
             ),
             child: SmokedGlassSurface(
               key: surfaceKey,
-              radius: BorderRadius.circular(22),
+              radius: BorderRadius.circular(34),
               intensity: surfaceIntensity,
               child: _MiniPlayerGestureSurface(
               onTap: onOpen,
@@ -129,65 +129,81 @@ class GlobalMiniPlayerBar extends StatelessWidget {
               onExpandDragEnd: onExpandDragEnd,
               child: Material(
                   type: MaterialType.transparency,
-                borderRadius: BorderRadius.circular(22),
+                borderRadius: BorderRadius.circular(34),
                 child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       SizedBox(
-                        height: 55,
+                        height: 64,
                         child: Row(
                           children: [
                             const SizedBox(width: 10),
                             Container(
                               key: artworkKey,
-                              width: 34,
-                              height: 34,
+                              width: 42,
+                              height: 42,
                               clipBehavior: Clip.antiAlias,
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(11),
+                                borderRadius: BorderRadius.circular(14),
                               ),
                               child: TrackArtworkView(
                                 bytes: artworkBytes,
                                 artworkUrl: item.artworkUrl,
                                 fallbackColors: artworkPalette,
                                 fallbackIconSize: 19,
-                                borderRadius: BorderRadius.circular(11),
+                                borderRadius: BorderRadius.circular(14),
                               ),
                             ),
                             const SizedBox(width: 8),
                             Expanded(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    item.title,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelLarge
-                                        ?.copyWith(
-                                          color: foreground,
-                                          fontWeight: FontWeight.w800,
-                                        ),
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 260),
+                                switchInCurve: Curves.easeOutCubic,
+                                switchOutCurve: Curves.easeInCubic,
+                                transitionBuilder: (child, animation) => FadeTransition(
+                                  opacity: animation,
+                                  child: SlideTransition(
+                                    position: Tween<Offset>(
+                                      begin: const Offset(0, 0.16),
+                                      end: Offset.zero,
+                                    ).animate(animation),
+                                    child: child,
                                   ),
-                                  Text(
-                                    isPlaying
-                                        ? resolveMediaArtist(artist: item.artist, title: item.title, path: item.path, fallback: item.sourceLabel)
-                                        : 'PAUSED',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelSmall
-                                        ?.copyWith(
-                                          fontSize: 8,
-                                          letterSpacing: 0.45,
-                                          color: secondaryForeground,
-                                        ),
-                                  ),
-                                ],
+                                ),
+                                child: Column(
+                                  key: ValueKey('${item.volume}:${item.path}:${item.title}'),
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      item.title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelLarge
+                                          ?.copyWith(
+                                            color: foreground,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                    ),
+                                    Text(
+                                      isPlaying
+                                          ? resolveMediaArtist(artist: item.artist, title: item.title, path: item.path, fallback: item.sourceLabel)
+                                          : 'PAUSED',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelSmall
+                                          ?.copyWith(
+                                            fontSize: 8,
+                                            letterSpacing: 0.45,
+                                            color: secondaryForeground,
+                                          ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                             IconButton(
@@ -225,11 +241,17 @@ class GlobalMiniPlayerBar extends StatelessWidget {
                                         valueColor: AlwaysStoppedAnimation<Color>(foreground),
                                       ),
                                     )
-                                  : Icon(
-                                      isPlaying
-                                          ? Icons.pause_rounded
-                                          : Icons.play_arrow_rounded,
-                                      size: 22,
+                                  : AnimatedSwitcher(
+                                      duration: const Duration(milliseconds: 180),
+                                      transitionBuilder: (child, animation) => ScaleTransition(
+                                        scale: animation,
+                                        child: FadeTransition(opacity: animation, child: child),
+                                      ),
+                                      child: Icon(
+                                        isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                                        key: ValueKey(isPlaying),
+                                        size: 22,
+                                      ),
                                     ),
                             ),
                             IconButton(
@@ -252,7 +274,7 @@ class GlobalMiniPlayerBar extends StatelessWidget {
                         ),
                       ),
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(19, 0, 19, 3),
+                        padding: const EdgeInsets.fromLTRB(24, 0, 24, 5),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(2),
                           child: LinearProgressIndicator(

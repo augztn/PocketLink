@@ -26,6 +26,17 @@ extension AppSettingsAppearance on AppSettings {
     await preferences.setBool(AppSettings._liquidGlassKey, value);
   }
 
+  Future<void> setNowPlayingPlayerStyle(String value) async {
+    if (!const {'pocketlink', 'poster', 'lyrics'}.contains(value)) {
+      throw ArgumentError.value(value, 'value', 'Unsupported Now Playing style');
+    }
+    if (_nowPlayingPlayerStyle == value) return;
+    _nowPlayingPlayerStyle = value;
+    _notifySettingsChanged();
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(AppSettings._nowPlayingPlayerStyleKey, value);
+  }
+
   Future<void> setAnimationsEnabled(bool value) async {
     if (_animationsEnabled == value) return;
     _animationsEnabled = value;

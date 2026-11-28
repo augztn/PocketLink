@@ -18,6 +18,7 @@ import '../../core/network/offline_file_cache.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/widgets/smoked_glass_popover_menu.dart';
+import '../../core/widgets/pocketlink_skeleton.dart';
 import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
 import '../storage/storage_browser_screen.dart';
@@ -82,6 +83,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
   List<Color>? _artworkPalette;
   int _artworkRequest = 0;
   bool _cached = false;
+  bool _artworkLoading = false;
   Set<String> _favorites = <String>{};
   double _trackSwipeDistance = 0;
   bool _trackSwipeActive = false;
@@ -102,6 +104,19 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
   int _observedQueueSession = 0;
   String? _carouselSwitcherKey;
   final GlobalKey _lyricsViewportKey = GlobalKey();
+  String _configuredPlayerStyle = AppSettings.instance.nowPlayingPlayerStyle;
+
+  void _onAppSettingsChanged() {
+    final next = AppSettings.instance.nowPlayingPlayerStyle;
+    if (next == _configuredPlayerStyle) return;
+    final wasLyrics = _configuredPlayerStyle == 'lyrics';
+    _configuredPlayerStyle = next;
+    if (next == 'lyrics' && _lyricsController.value < 0.999) {
+      unawaited(_lyricsController.forward());
+    } else if (wasLyrics && next != 'lyrics' && _lyricsController.value > 0.001) {
+      unawaited(_lyricsController.reverse());
+    }
+  }
 
 
   MediaQueueItem get _track =>
@@ -323,6 +338,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
     super.initState();
     _lyricsController = AnimationController(vsync: this, duration: const Duration(milliseconds: 350), reverseDuration: const Duration(milliseconds: 350));
     _carouselSettleController = AnimationController.unbounded(vsync: this, value: 0);
+    AppSettings.instance.addListener(_onAppSettingsChanged);
+    if (_configuredPlayerStyle == 'lyrics') _lyricsController.value = 1;
     unawaited(_loadLyricsPreference());
     _persistent = PersistentAudioPlayer.instance;
     _player = _persistent.player;
@@ -499,6 +516,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
   Future<void> _loadArtwork() async {
     final request = ++_artworkRequest;
     final key = _trackKey;
+    if (mounted) setState(() => _artworkLoading = true);
+    try {
     if (_track.localPath == null && (_track.artworkUrl?.isNotEmpty ?? false)) {
       try {
         final bytes = await DiscoverThumbnailCache.load(
@@ -606,6 +625,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
         _artworkPalette = null;
       });
       widget.onArtworkChanged?.call(null);
+    }
+    } finally {
+      if (mounted && request == _artworkRequest) {
+        setState(() => _artworkLoading = false);
+      }
     }
   }
 
@@ -1647,13 +1671,24 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
               folderName: item.path.contains('/') ? item.path.split('/').elementAt(item.path.split('/').length - 2) : 'Music',
               path: item.path,
             );
-      return TrackArtworkView(
-        bytes: current && _artworkKey == _trackKey ? _artwork : null,
-        artworkUrl: item.artworkUrl,
-        fallbackColors: palette,
-        fallbackIconSize: 92,
-        fallbackAlignment: const Alignment(0, -0.42),
-        fit: BoxFit.cover,
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          TrackArtworkView(
+            bytes: current && _artworkKey == _trackKey ? _artwork : null,
+            artworkUrl: item.artworkUrl,
+            fallbackColors: palette,
+            fallbackIconSize: 92,
+            fallbackAlignment: const Alignment(0, -0.42),
+            fit: BoxFit.cover,
+          ),
+          if (current && _artworkLoading)
+            Positioned.fill(
+              child: PocketLinkSkeleton(
+                child: ColoredBox(color: Colors.white.withValues(alpha: 0.12)),
+              ),
+            ),
+        ],
       );
     }
 
@@ -1995,6 +2030,130 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
       );
 
   Widget _playerLayout(double contentOpacity) {
+    final style = AppSettings.instance.nowPlayingPlayerStyle;
+    final child = style == 'poster'
+        ? _posterPlayerLayout(contentOpacity)
+        : _pocketLinkPlayerLayout(contentOpacity);
+    return TweenAnimationBuilder<double>(
+      key: ValueKey(style),
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: MediaQuery.of(context).disableAnimations
+          ? Duration.zero
+          : const Duration(milliseconds: 520),
+      curve: Curves.easeOutCubic,
+      child: child,
+      builder: (context, value, child) {
+        final progress = MediaQuery.of(context).disableAnimations ? 1.0 : value;
+        return Opacity(
+          opacity: progress,
+          child: Transform.scale(
+            scale: 0.975 + 0.025 * progress,
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _posterPlayerLayout(double contentOpacity) {
+    final media = MediaQuery.of(context);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final available = (constraints.maxHeight - _playerChromeHeight - 220)
+            .clamp(160.0, 360.0)
+            .toDouble();
+        final artSize = media.size.width * 0.74 < available
+            ? media.size.width * 0.74
+            : available;
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            Positioned.fill(child: _ambientBackground()),
+            Positioned.fill(
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Colors.black.withValues(alpha: 0.34), Colors.transparent, Colors.black.withValues(alpha: 0.58)],
+                      stops: const [0, 0.42, 1],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            SafeArea(
+              child: Column(
+                children: [
+                  const SizedBox(height: 10),
+                  Text(
+                    'POSTER',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.72),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 2.2,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: Center(
+                      child: SizedBox.square(
+                        dimension: artSize,
+                        child: KeyedSubtree(
+                          key: widget.artworkTargetKey,
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 560),
+                            switchInCurve: Curves.easeOutBack,
+                            switchOutCurve: Curves.easeInCubic,
+                            transitionBuilder: (child, animation) => FadeTransition(
+                              opacity: animation,
+                              child: ScaleTransition(
+                                scale: Tween<double>(begin: 0.90, end: 1).animate(animation),
+                                child: child,
+                              ),
+                            ),
+                            child: ClipOval(
+                              key: ValueKey(_trackIdentity),
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  TrackArtworkView(
+                                    bytes: _artworkKey == _trackKey ? _artwork : null,
+                                    artworkUrl: _track.artworkUrl,
+                                    fallbackColors: _trackPalette,
+                                    fallbackIconSize: 72,
+                                    fit: BoxFit.cover,
+                                    borderRadius: BorderRadius.zero,
+                                  ),
+                                  if (_artworkLoading)
+                                    Positioned.fill(
+                                      child: PocketLinkSkeleton(
+                                        child: ColoredBox(color: Colors.white.withValues(alpha: 0.12)),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _playerDetails(contentOpacity: contentOpacity),
+                  const SizedBox(height: _playerChromeHeight),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _pocketLinkPlayerLayout(double contentOpacity) {
     final heroHeight = MediaQuery.sizeOf(context).height * 0.56;
     return Stack(
       fit: StackFit.expand,
@@ -2334,6 +2493,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
 
   @override
   void dispose() {
+    AppSettings.instance.removeListener(_onAppSettingsChanged);
     unawaited(_playlistSubscription?.cancel());
     _lyricsController.dispose();
     _carouselSettleController.dispose();
@@ -2478,11 +2638,13 @@ class _LyricsSearchingPulseState extends State<_LyricsSearchingPulse>
         opacity: Tween<double>(begin: .48, end: 1).animate(
           CurvedAnimation(parent: _pulse, curve: Curves.easeInOut),
         ),
-        child: const Text(
-          'Searching lyrics…',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600),
+        child: PocketLinkSkeleton(
+          child: const Text(
+            'Searching lyrics…',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600),
+          ),
         ),
       );
 }

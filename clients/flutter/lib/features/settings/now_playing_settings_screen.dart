@@ -88,6 +88,31 @@ class NowPlayingSettingsScreen extends StatelessWidget {
               ),
             ]),
             const SizedBox(height: 20),
+            const SettingsSectionHeader('Now Playing style'),
+            SettingsGroupCard(children: [
+              SettingsTile(
+                leading: const Icon(Icons.art_track_rounded),
+                title: 'Player style',
+                subtitle: switch (settings.nowPlayingPlayerStyle) {
+                  'poster' => 'Poster · circular artwork and expressive track layout',
+                  'lyrics' => 'Lyrics · open the existing synced-lyrics view by default',
+                  _ => 'PocketLink · original player design',
+                },
+                trailing: DropdownButton<String>(
+                  value: settings.nowPlayingPlayerStyle,
+                  underline: const SizedBox.shrink(),
+                  items: const [
+                    DropdownMenuItem(value: 'pocketlink', child: Text('PocketLink')),
+                    DropdownMenuItem(value: 'poster', child: Text('Poster')),
+                    DropdownMenuItem(value: 'lyrics', child: Text('Lyrics')),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) settings.setNowPlayingPlayerStyle(value);
+                  },
+                ),
+              ),
+            ]),
+            const SizedBox(height: 20),
             const SettingsSectionHeader('Mini-player and playback'),
             SettingsGroupCard(children: [
               SwitchListTile(

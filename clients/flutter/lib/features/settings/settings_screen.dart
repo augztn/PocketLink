@@ -394,7 +394,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           id,
           (_) => const NavigationCustomizationScreen(),
         ),
-      'audio' => _categoryRoute(
+      'audio' || 'now-playing' => _categoryRoute(
           id,
           (_) => const NowPlayingSettingsScreen(),
         ),
@@ -475,6 +475,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'Auto-resume': 'resume unfinished downloads launch',
         'Clear cache': 'temporary files image cache clear',
       },
+      'now-playing': {
+        'Player style': 'now playing player layout poster pocketlink lyrics artwork',
+        'Mini-player': 'mini player compact pill artwork playback controls',
+        'Playback gestures': 'swipe dismiss change tracks seek',
+      },
       'music': {
         'Music button and mini-player': 'audio now playing gestures shortcuts mini player',
         'Playback gestures': 'swipe dismiss change tracks seek',
@@ -509,6 +514,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       'navigation': 'navigation bar dock dashboard home fab',
       'storage': 'storage downloads files transfers download location',
       'music': 'music audio playback discover video lyrics playlists',
+      'now-playing': 'now playing player mini-player poster lyrics playback',
       'network': 'network connectivity connection server',
       'diagnostics': 'diagnostics maintenance backup restore logs troubleshooting',
       'about': 'about pocketlink',
@@ -612,11 +618,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           const SizedBox(width: 12),
-          Text(
-            'Settings',
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.7,
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 260),
+            transitionBuilder: (child, animation) => FadeTransition(
+              opacity: animation,
+              child: SlideTransition(
+                position: Tween<Offset>(begin: const Offset(0, 0.12), end: Offset.zero).animate(animation),
+                child: child,
+              ),
+            ),
+            child: Text(
+              'Settings',
+              key: const ValueKey('settings-title'),
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                fontSize: 34,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.7,
+              ),
             ),
           ),
         ],
@@ -672,6 +690,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         tint: const Color(0xFFFBBF24),
         title: 'Storage',
       ),
+    if (_categoryMatches('now-playing'))
+      _categoryTile(
+        id: 'now-playing',
+        icon: Icons.album_rounded,
+        tint: const Color(0xFFDB79A8),
+        title: 'Now Playing',
+      ),
     if (_categoryMatches('music'))
       _categoryTile(
         id: 'music',
@@ -705,6 +730,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         !_categoryMatches('navigation') &&
         !_categoryMatches('storage') &&
         !_categoryMatches('music') &&
+        !_categoryMatches('now-playing') &&
         !_categoryMatches('network') &&
         !_categoryMatches('diagnostics') &&
         !_categoryMatches('about'))
@@ -730,16 +756,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }) {
     final colors = Theme.of(context).colorScheme;
     return TweenAnimationBuilder<double>(
+      key: ValueKey('$id:$_settingsSearchQuery'),
       tween: Tween<double>(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 280),
+      duration: const Duration(milliseconds: 320),
       curve: Curves.easeOutCubic,
       builder: (context, value, child) {
         final progress = MediaQuery.of(context).disableAnimations ? 1.0 : value;
         return Opacity(
           opacity: progress,
           child: Transform.translate(
-            offset: Offset(0, 8 * (1 - progress)),
-            child: child,
+            offset: Offset(0, 12 * (1 - progress)),
+            child: Transform.scale(
+              scale: 0.975 + 0.025 * progress,
+              child: child,
+            ),
           ),
         );
       },

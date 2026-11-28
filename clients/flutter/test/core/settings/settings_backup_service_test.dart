@@ -27,6 +27,7 @@ void main() {
       'settings_discover_audio_quality': 'balanced',
       'settings_discover_resolver_profile': 'player_api_first',
       'settings_discover_region': 'JP',
+      'settings_now_playing_player_style': 'poster',
       'saved_server_profiles': '[{"host":"private"}]',
     });
   });
@@ -52,6 +53,7 @@ void main() {
     expect(settings['settings_discover_audio_quality'], 'balanced');
     expect(settings['settings_discover_resolver_profile'], 'player_api_first');
     expect(settings['settings_discover_region'], 'JP');
+    expect(settings['settings_now_playing_player_style'], 'poster');
     expect(settings.containsKey('saved_server_profiles'), isFalse);
   });
 
@@ -67,19 +69,21 @@ void main() {
         'settings_discover_audio_quality': 'data_saver',
         'settings_discover_resolver_profile': 'newpipe_first',
         'settings_discover_region': 'US',
+        'settings_now_playing_player_style': 'lyrics',
       },
     })));
 
     final restored = await SettingsBackupService.importBackup(bytes);
     final preferences = await SharedPreferences.getInstance();
 
-    expect(restored, 6);
+    expect(restored, 7);
     expect(preferences.getBool('settings_use_liquid_glass'), isFalse);
     expect(preferences.getBool('settings_discover_spotlight'), isFalse);
     expect(preferences.getBool('settings_discover_artist_grid'), isTrue);
     expect(preferences.getString('settings_discover_audio_quality'), 'data_saver');
     expect(preferences.getString('settings_discover_resolver_profile'), 'newpipe_first');
     expect(preferences.getString('settings_discover_region'), 'US');
+    expect(preferences.getString('settings_now_playing_player_style'), 'lyrics');
     expect(preferences.getString('saved_server_profiles'), contains('private'));
   });
 

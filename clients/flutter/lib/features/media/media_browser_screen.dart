@@ -1744,16 +1744,25 @@ tooltip: 'Choose video view',
     return RefreshIndicator(
       onRefresh: _refreshMusic,
       displacement: 48,
-      child: _error != null || (_loading && _media.isEmpty) || visible.isEmpty
-          ? MusicBrowserEmptyState(
-              error: _error,
-              loading: _loading && _media.isEmpty,
-              favoritesView: _libraryView == 'favorites',
-              onRetry: _scan,
-              topPadding: LayoutInsetsScope.of(context).topClearance,
-              bottomPadding: LayoutInsetsScope.of(context).bottomClearance,
+      child: _loading && _media.isEmpty
+          ? PocketLinkSkeleton.fileList(
+              padding: EdgeInsets.fromLTRB(
+                12,
+                LayoutInsetsScope.of(context).topClearance,
+                12,
+                LayoutInsetsScope.of(context).bottomClearance,
+              ),
             )
-          : MusicBrowserTrackList(
+          : _error != null || visible.isEmpty
+              ? MusicBrowserEmptyState(
+                  error: _error,
+                  loading: false,
+                  favoritesView: _libraryView == 'favorites',
+                  onRetry: _scan,
+                  topPadding: LayoutInsetsScope.of(context).topClearance,
+                  bottomPadding: LayoutInsetsScope.of(context).bottomClearance,
+                )
+              : MusicBrowserTrackList(
               controller: _contentScrollController,
               itemCount: visible.length,
               itemBuilder: (context, index) => _musicTrackTile(visible[index], visible),
