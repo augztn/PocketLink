@@ -1369,20 +1369,20 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
           : const Duration(milliseconds: 380),
       curve: Curves.easeOutCubic,
       child: AnimatedSwitcher(
-      duration: const Duration(milliseconds: 420),
-      reverseDuration: const Duration(milliseconds: 360),
-      switchInCurve: Curves.easeOutCubic,
-      switchOutCurve: Curves.easeInCubic,
-      transitionBuilder: (child, animation) {
-        final slide = Tween<Offset>(
-          begin: Offset(direction, 0),
-          end: Offset.zero,
-        ).animate(animation);
-        return FadeTransition(
-          opacity: animation,
-          child: SlideTransition(position: slide, child: child),
-        );
-      },
+        duration: const Duration(milliseconds: 420),
+        reverseDuration: const Duration(milliseconds: 360),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) {
+          final slide = Tween<Offset>(
+            begin: Offset(direction, 0),
+            end: Offset.zero,
+          ).animate(animation);
+          return FadeTransition(
+            opacity: animation,
+            child: SlideTransition(position: slide, child: child),
+          );
+        },
         child: KeyedSubtree(key: ValueKey(key), child: child),
       ),
     );
