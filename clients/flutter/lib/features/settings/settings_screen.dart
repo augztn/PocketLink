@@ -575,8 +575,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
     ),
-    if (_categoryMatches('appearance') || _categoryMatches('customization') || _categoryMatches('navigation'))
-
     if (_categoryMatches('customization') || _categoryMatches('appearance'))
       _categoryTile(
         id: 'customization',
@@ -595,8 +593,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         subtitle: 'Dock, FAB, dashboard sections and shortcuts',
         badge: '${_settings.visibleNavigationItems.length} tabs',
       ),
-    if (_categoryMatches('storage') || _categoryMatches('music'))
-
     if (_categoryMatches('storage'))
       _categoryTile(
         id: 'storage',
@@ -615,8 +611,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         subtitle: 'Library, playback, Discover, lyrics and video',
         badge: _settings.discoverEnabled ? 'Discover On' : 'Discover Off',
       ),
-    if (_categoryMatches('network') || _categoryMatches('diagnostics') || _categoryMatches('about'))
-
     if (_categoryMatches('network'))
       _categoryTile(
         id: 'network',
@@ -874,7 +868,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             min: 0.5,
                             max: 2.0,
                             divisions: 15,
-                            value: (_pendingAnimationSpeed ?? _settings.animationSpeed).clamp(0.5, 2.0),
+                            value: (_pendingAnimationSpeed ?? _settings.animationSpeed).clamp(0.5, 2.0).toDouble(),
                             onChanged: _settings.animationsEnabled
                                 ? (value) => setState(() => _pendingAnimationSpeed = value)
                                 : null,
@@ -963,7 +957,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             min: 0,
                             max: 32,
                             divisions: 32,
-                            value: (_pendingBlurStrength ?? _settings.blurStrength).clamp(0.0, 32.0),
+                            value: (_pendingBlurStrength ?? _settings.blurStrength).clamp(0.0, 32.0).toDouble(),
                             onChanged: _settings.progressiveBlurEnabled
                                 ? (value) => setState(() => _pendingBlurStrength = value)
                                 : null,
@@ -1108,7 +1102,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             min: 0,
                             max: 45,
                             divisions: 45,
-                            value: (_pendingThumbnailCornerRadius ?? _settings.thumbnailCornerRadius).clamp(0.0, 45.0),
+                            value: (_pendingThumbnailCornerRadius ?? _settings.thumbnailCornerRadius).clamp(0.0, 45.0).toDouble(),
                             onChanged: (value) => setState(() => _pendingThumbnailCornerRadius = value),
                             onChangeEnd: (value) async {
                               setState(() => _pendingThumbnailCornerRadius = null);
