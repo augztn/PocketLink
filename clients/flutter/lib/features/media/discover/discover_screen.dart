@@ -1869,7 +1869,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                   final page = _spotlightPageController.hasClients
                       ? (_spotlightPageController.page ?? index.toDouble())
                       : index.toDouble();
-                  final distance = (index - page).clamp(-1.0, 1.0);
+                  final distance = (index - page).clamp(-1.0, 1.0).toDouble();
                   final progress = distance.abs();
                   final width = MediaQuery.sizeOf(context).width;
                   return ClipRect(
