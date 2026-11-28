@@ -600,10 +600,15 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           _skeletonOverlayFading = false;
         });
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) return;
+          if (!mounted ||
+              !_showSkeletonOverlay ||
+              !AppSettings.instance.discoverMotion) {
+            return;
+          }
           setState(() => _skeletonOverlayFading = true);
           _skeletonRevealTimer = Timer(const Duration(milliseconds: 400), () {
-            if (!mounted) return;
+            if (!mounted || !_showSkeletonOverlay) return;
+            _skeletonRevealTimer = null;
             setState(() => _showSkeletonOverlay = false);
           });
         });
