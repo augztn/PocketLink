@@ -39,6 +39,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _exportingSettings = false;
   bool _importingSettings = false;
   double? _pendingAnimationSpeed;
+  double? _pendingBlurStrength;
+  double? _pendingThumbnailCornerRadius;
   String _settingsSearchQuery = '';
   final TextEditingController _settingsSearchController = TextEditingController();
 
@@ -481,6 +483,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (confirmed != true || !mounted) return;
     await _settings.setThemeMode(ThemeMode.system);
     await _settings.setAccentColor(AppSettings.accentColorValues.first);
+    await _settings.setBlurStrength(24.0);
+    await _settings.setThumbnailCornerRadius(10.0);
     await _settings.setUseLiquidGlass(false);
     await _settings.setProgressiveBlurEnabled(true);
     await _settings.setAnimationsEnabled(true);
@@ -945,6 +949,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Expanded(child: Text('Blur strength')),
+                              Text('${(_pendingBlurStrength ?? _settings.blurStrength).round()}'),
+                            ],
+                          ),
+                          Slider(
+                            min: 0,
+                            max: 32,
+                            divisions: 32,
+                            value: (_pendingBlurStrength ?? _settings.blurStrength).clamp(0.0, 32.0),
+                            onChanged: _settings.progressiveBlurEnabled
+                                ? (value) => setState(() => _pendingBlurStrength = value)
+                                : null,
+                            onChangeEnd: _settings.progressiveBlurEnabled
+                                ? (value) async {
+                                    setState(() => _pendingBlurStrength = null);
+                                    await _settings.setBlurStrength(value);
+                                  }
+                                : null,
+                          ),
+                          Text(
+                            'Adjusts the shared header blur. Set to 0 for no blur.',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    Padding(
                       padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1049,6 +1089,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   ),
                                 ),
                             ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Expanded(child: Text('Thumbnail corner radius')),
+                              Text('${(_pendingThumbnailCornerRadius ?? _settings.thumbnailCornerRadius).round()} dp'),
+                            ],
+                          ),
+                          Slider(
+                            min: 0,
+                            max: 45,
+                            divisions: 45,
+                            value: (_pendingThumbnailCornerRadius ?? _settings.thumbnailCornerRadius).clamp(0.0, 45.0),
+                            onChanged: (value) => setState(() => _pendingThumbnailCornerRadius = value),
+                            onChangeEnd: (value) async {
+                              setState(() => _pendingThumbnailCornerRadius = null);
+                              await _settings.setThumbnailCornerRadius(value);
+                            },
+                          ),
+                          Text(
+                            'Applies to music artwork thumbnails.',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
                           ),
                         ],
                       ),
