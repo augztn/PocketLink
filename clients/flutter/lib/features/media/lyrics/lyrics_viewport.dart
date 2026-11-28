@@ -48,7 +48,7 @@ class _LyricsViewportState extends State<LyricsViewport> {
       _lastActive = next;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!_scroll.hasClients || !mounted) return;
-        final target = (next * 66.0 - _scroll.position.viewportDimension * .42)
+        final target = (next * _estimatedLineExtent - _scroll.position.viewportDimension * .42)
             .clamp(0.0, _scroll.position.maxScrollExtent).toDouble();
         _scroll.animateTo(target, duration: const Duration(milliseconds: 420), curve: Curves.easeOutCubic);
       });
@@ -64,11 +64,14 @@ class _LyricsViewportState extends State<LyricsViewport> {
   void _scrollToActive() {
     final index = _activeIndex;
     if (index < 0 || !_scroll.hasClients || !mounted) return;
-    final target = (index * 66.0 - _scroll.position.viewportDimension * .42)
+    final target = (index * _estimatedLineExtent - _scroll.position.viewportDimension * .42)
         .clamp(0.0, _scroll.position.maxScrollExtent).toDouble();
     _scroll.jumpTo(target);
     _lastActive = index;
   }
+
+  double get _estimatedLineExtent =>
+      AppSettings.instance.lyricsTextSize * AppSettings.instance.lyricsLineSpacing + 24;
 
   int get _activeIndex {
     final lines = widget.document?.lines ?? const <LyricsLine>[];
