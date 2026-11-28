@@ -432,6 +432,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
     final indexDelta = nextIndex - _observedQueueIndex;
     final sessionChanged =
         _observedQueueSession != _persistent.queueSession;
+    final previousOffset = _trackSwipeActive
+        ? _trackSwipeDistance
+        : _carouselSettleController.value;
     _observedTrackIdentity = identity;
     _observedQueueIndex = nextIndex;
     _observedQueueSession = _persistent.queueSession;
@@ -447,8 +450,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
     if (!isAdjacentChange) _carouselSwitcherKey = identity;
     _carouselSettleController
       ..stop()
-      ..value = !_carouselSkipInFlight && isAdjacentChange
-          ? direction * MediaQuery.sizeOf(context).width
+      ..value = isAdjacentChange
+          ? previousOffset + direction * MediaQuery.sizeOf(context).width
           : 0;
 
     setState(() {
@@ -463,7 +466,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
       _lyricsProviderStates = const {};
       _lyricsLoading = false;
     });
-    if (!_carouselSkipInFlight && isAdjacentChange) {
+    if (isAdjacentChange && _carouselSettleController.value != 0) {
       unawaited(_settleCarousel());
     }
     widget.onArtworkChanged?.call(null);
