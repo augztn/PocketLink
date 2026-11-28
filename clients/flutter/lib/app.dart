@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/scheduler.dart' show timeDilation;
 import 'package:provider/provider.dart';
 
 import 'features/files/file_browser_state_store.dart';
@@ -188,6 +189,11 @@ class _PocketLinkAppState extends State<PocketLinkApp> {
       darkTheme: _theme(brightness: Brightness.dark, amoled: _settings.amoled),
       home: const ConnectionScreen(),
       builder: (context, child) {
+        final media = MediaQuery.of(context);
+        final reduceMotion = media.disableAnimations || !_settings.animationsEnabled;
+        // Scheduler time dilation affects every Flutter ticker in PocketLink,
+        // not only Discover or route transitions. Playback itself is untouched.
+        timeDilation = reduceMotion ? 0.01 : _settings.animationTimeDilation;
         final isLight = Theme.of(context).brightness == Brightness.light;
         return AnnotatedRegion<SystemUiOverlayStyle>(
           value: SystemUiOverlayStyle(
@@ -197,10 +203,13 @@ class _PocketLinkAppState extends State<PocketLinkApp> {
             systemNavigationBarIconBrightness:
                 isLight ? Brightness.dark : Brightness.light,
           ),
-          child: MaterialUiCompatibilityBridge(
-            child: PersistentOverlayHost(
-              child: GlobalMediaOverlay(
-                child: child ?? const SizedBox.shrink(),
+          child: MediaQuery(
+            data: media.copyWith(disableAnimations: reduceMotion),
+            child: MaterialUiCompatibilityBridge(
+              child: PersistentOverlayHost(
+                child: GlobalMediaOverlay(
+                  child: child ?? const SizedBox.shrink(),
+                ),
               ),
             ),
           ),
