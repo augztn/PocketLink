@@ -1,8 +1,11 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/services.dart' show FontLoader;
 
 import 'app_settings_migrations.dart';
 
@@ -45,6 +48,9 @@ class AppSettings extends ChangeNotifier {
   static const _lyricsTextSizeKey = 'settings_lyrics_text_size';
   static const _lyricsLineSpacingKey = 'settings_lyrics_line_spacing';
   static const _lyricsMotionStyleKey = 'settings_lyrics_motion_style';
+  static const _customFontPathKey = 'settings_custom_font_path';
+  static const _customFontFamilyKey = 'settings_custom_font_family';
+  static const _customFontNameKey = 'settings_custom_font_name';
   static const _navigationOrderKey = 'settings_navigation_order';
   static const _navigationVisibilityKey = 'settings_navigation_visibility';
   static const _homeSearchKey = 'settings_home_search';
@@ -146,6 +152,10 @@ class AppSettings extends ChangeNotifier {
   double _lyricsTextSize = 31.0;
   double _lyricsLineSpacing = 1.22;
   String _lyricsMotionStyle = 'motion';
+  String? _customFontPath;
+  String? _customFontFamily;
+  String? _customFontName;
+  static final Set<String> _loadedCustomFontFamilies = <String>{};
   bool _loaded = false;
   List<String> _navigationOrder = List.of(navigationDefaults);
   Set<String> _visibleNavigationItems = Set.of(navigationDefaults);
@@ -207,6 +217,9 @@ class AppSettings extends ChangeNotifier {
   double get lyricsTextSize => _lyricsTextSize;
   double get lyricsLineSpacing => _lyricsLineSpacing;
   String get lyricsMotionStyle => _lyricsMotionStyle;
+  String? get customFontPath => _customFontPath;
+  String? get customFontFamily => _customFontFamily;
+  String? get customFontName => _customFontName;
   double get animationTimeDilation => _animationsEnabled ? 1.0 / _animationSpeed : 0.01;
   List<String> get navigationOrder => List.unmodifiable(_navigationOrder);
   Set<String> get visibleNavigationItems => Set.unmodifiable(_visibleNavigationItems);
@@ -297,6 +310,21 @@ class AppSettings extends ChangeNotifier {
       _lyricsMotionStyle = const {'motion', 'legacy', 'boring', 'plain'}.contains(storedLyricsMotionStyle)
           ? storedLyricsMotionStyle
           : 'motion';
+      final storedFontPath = preferences.getString(_customFontPathKey);
+      final storedFontFamily = preferences.getString(_customFontFamilyKey);
+      final storedFontName = preferences.getString(_customFontNameKey);
+      if (storedFontPath != null && storedFontFamily != null && storedFontName != null) {
+        try {
+          await _loadCustomFontFile(storedFontPath, storedFontFamily);
+          _customFontPath = storedFontPath;
+          _customFontFamily = storedFontFamily;
+          _customFontName = storedFontName;
+        } catch (_) {
+          await preferences.remove(_customFontPathKey);
+          await preferences.remove(_customFontFamilyKey);
+          await preferences.remove(_customFontNameKey);
+        }
+      }
       _showMiniPlayer = preferences.getBool(_nowPlayingMiniPlayerKey) ?? true;
       _enableNowPlayingGestures = preferences.getBool(_nowPlayingGesturesKey) ?? true;
       _showStatsForNerds = preferences.getBool(_nowPlayingStatsForNerdsKey) ?? true;
@@ -416,6 +444,25 @@ class AppSettings extends ChangeNotifier {
     }
     _loaded = true;
     notifyListeners();
+  }
+
+  static Future<void> _loadCustomFontFile(String path, String family) async {
+    if (_loadedCustomFontFamilies.contains(family)) return;
+    final file = File(path);
+    if (!await file.exists()) throw const FileSystemException('Custom font file is missing');
+    final bytes = await file.readAsBytes();
+    if (bytes.length < 4 || bytes.length > 20 * 1024 * 1024) {
+      throw const FormatException('Custom font must be between 4 bytes and 20 MB');
+    }
+    final signature = String.fromCharCodes(bytes.take(4));
+    final isTrueType = bytes[0] == 0 && bytes[1] == 1 && bytes[2] == 0 && bytes[3] == 0;
+    if (!isTrueType && signature != 'OTTO') {
+      throw const FormatException('Unsupported font file. Select a valid TTF or OTF font.');
+    }
+    final loader = FontLoader(family)
+      ..addFont(Future<ByteData>.value(ByteData.sublistView(bytes)));
+    await loader.load();
+    _loadedCustomFontFamilies.add(family);
   }
 
   static String _validMusicSwipeAction(String? action, String fallback) =>
