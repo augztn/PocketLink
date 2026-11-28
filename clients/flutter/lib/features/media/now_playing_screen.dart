@@ -354,7 +354,13 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
 
     _observedTrackIdentity = identity;
     final requestedDirection = _persistent.takePendingTrackDirection();
+    // A previous track's drag spring must not move the newly selected track.
+    _carouselSettleController
+      ..stop()
+      ..value = 0;
     setState(() {
+      _trackSwipeDistance = 0;
+      _trackSwipeActive = false;
       _trackChangeDirection = requestedDirection ?? 1;
       _artwork = null;
       _artworkKey = null;
