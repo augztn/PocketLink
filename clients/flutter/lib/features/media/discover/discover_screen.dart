@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
 
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -58,6 +59,9 @@ class DiscoverScreen extends StatefulWidget {
 class _DiscoverScreenState extends State<DiscoverScreen>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver,
         AutomaticKeepAliveClientMixin<DiscoverScreen> {
+  final Set<String> _revealedShelfKeys = <String>{};
+  DateTime? _shelfRevealBurstStartedAt;
+  int _shelfRevealBurstCount = 0;
   static final Map<String, List<IndexedFile>> _localLibraryCache = {};
   static final Map<String, DateTime> _localLibraryCacheUpdated = {};
   final DiscoverService _service = DiscoverService();
@@ -1918,26 +1922,25 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     );
   }
 
-  Widget _shelfReveal({required Widget child}) {
-    return AnimatedBuilder(
-      animation: AppSettings.instance,
+  Duration _nextShelfRevealDelay() {
+    final now = DateTime.now();
+    if (_shelfRevealBurstStartedAt == null ||
+        now.difference(_shelfRevealBurstStartedAt!) >
+            const Duration(milliseconds: 120)) {
+      _shelfRevealBurstStartedAt = now;
+      _shelfRevealBurstCount = 0;
+    }
+    final step = math.min(_shelfRevealBurstCount++, 6);
+    return Duration(milliseconds: step * 60);
+  }
+
+  Widget _shelfReveal({required String key, required Widget child}) {
+    return _DiscoverShelfReveal(
+      revealKey: key,
       child: child,
-      builder: (context, content) {
-        if (!AppSettings.instance.discoverMotion) return content!;
-        return TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0, end: 1),
-          duration: Duration(milliseconds: AppSettings.instance.discoverShelfDurationMs),
-          curve: Curves.easeOutCubic,
-          child: content,
-          builder: (context, progress, animatedChild) => Opacity(
-            opacity: progress,
-            child: Transform.translate(
-              offset: Offset(0, 20 * (1 - progress)),
-              child: animatedChild,
-            ),
-          ),
-        );
-      },
+      scrollController: _scrollController,
+      seenKeys: _revealedShelfKeys,
+      revealDelay: _nextShelfRevealDelay,
     );
   }
 
@@ -1945,6 +1948,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     if (_listeningPicks.isEmpty) return const SliverToBoxAdapter();
     return SliverToBoxAdapter(
       child: _shelfReveal(
+        key: 'top_picks',
         child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1972,6 +1976,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     if (_recentlyPlayed.isEmpty) return const SliverToBoxAdapter();
     return SliverToBoxAdapter(
       child: _shelfReveal(
+        key: 'recently_played',
         child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2029,6 +2034,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     final pageCount = (tracks.length / 4).ceil();
     return SliverToBoxAdapter(
       child: _shelfReveal(
+        key: 'track:' + shelf.title,
         child: Padding(
         padding: const EdgeInsets.only(top: 24),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -2194,6 +2200,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     final width = (MediaQuery.sizeOf(context).width - 52) / 2;
     return SliverToBoxAdapter(
       child: _shelfReveal(
+        key: 'community:' + shelf.title,
         child: Padding(
         padding: const EdgeInsets.only(top: 24),
         child: Column(
@@ -2231,6 +2238,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     final width = (MediaQuery.sizeOf(context).width - 52) / 2;
     return SliverToBoxAdapter(
       child: _shelfReveal(
+        key: 'artist:' + shelf.title,
         child: Padding(
         padding: const EdgeInsets.only(top: 24),
         child: Column(
@@ -2261,6 +2269,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   Widget _homeShelf(_DiscoverShelf shelf) {
     return SliverToBoxAdapter(
       child: _shelfReveal(
+        key: 'home:' + shelf.title,
         child: Padding(
         padding: const EdgeInsets.only(top: 24),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -2538,5 +2547,123 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         ),
       ),
     );
+  }
+}
+
+class _DiscoverShelfReveal extends StatefulWidget {
+  const _DiscoverShelfReveal({
+    required this.revealKey,
+    required this.child,
+    required this.scrollController,
+    required this.seenKeys,
+    required this.revealDelay,
+  });
+
+  final String revealKey;
+  final Widget child;
+  final ScrollController scrollController;
+  final Set<String> seenKeys;
+  final Duration Function() revealDelay;
+
+  @override
+  State<_DiscoverShelfReveal> createState() => _DiscoverShelfRevealState();
+}
+
+class _DiscoverShelfRevealState extends State<_DiscoverShelfReveal>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: AppSettings.instance.discoverShelfDurationMs),
+      value: widget.seenKeys.contains(widget.revealKey) ? 1 : 0,
+    );
+    widget.scrollController.addListener(_scheduleVisibilityCheck);
+    AppSettings.instance.addListener(_onSettingsChanged);
+    _scheduleVisibilityCheck();
+  }
+
+  @override
+  void didUpdateWidget(covariant _DiscoverShelfReveal oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.scrollController != widget.scrollController) {
+      oldWidget.scrollController.removeListener(_scheduleVisibilityCheck);
+      widget.scrollController.addListener(_scheduleVisibilityCheck);
+    }
+    if (oldWidget.revealKey != widget.revealKey &&
+        widget.seenKeys.contains(widget.revealKey)) {
+      _controller.value = 1;
+    }
+    _controller.duration =
+        Duration(milliseconds: AppSettings.instance.discoverShelfDurationMs);
+    _scheduleVisibilityCheck();
+  }
+
+  void _onSettingsChanged() {
+    if (!mounted) return;
+    _controller.duration =
+        Duration(milliseconds: AppSettings.instance.discoverShelfDurationMs);
+    setState(() {});
+    _scheduleVisibilityCheck();
+  }
+
+  void _scheduleVisibilityCheck() {
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkVisibility());
+  }
+
+  void _checkVisibility() {
+    if (!mounted ||
+        !AppSettings.instance.discoverMotion ||
+        widget.seenKeys.contains(widget.revealKey) ||
+        !widget.scrollController.hasClients) {
+      return;
+    }
+    final renderObject = context.findRenderObject();
+    if (renderObject is! RenderBox || !renderObject.attached) return;
+    final viewport = RenderAbstractViewport.maybeOf(renderObject);
+    if (viewport == null) return;
+
+    final position = widget.scrollController.position;
+    final top = viewport.getOffsetToReveal(renderObject, 0).offset;
+    final bottom = top + renderObject.size.height;
+    final visible = bottom > position.pixels &&
+        top < position.pixels + position.viewportDimension;
+    if (!visible) return;
+
+    widget.seenKeys.add(widget.revealKey);
+    final delay = widget.revealDelay();
+    Future<void>.delayed(delay, () {
+      if (mounted) _controller.forward();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!AppSettings.instance.discoverMotion ||
+        widget.seenKeys.contains(widget.revealKey) && _controller.isCompleted) {
+      return widget.child;
+    }
+    return AnimatedBuilder(
+      animation: _controller,
+      child: widget.child,
+      builder: (context, child) => Opacity(
+        opacity: _controller.value,
+        child: Transform.translate(
+          offset: Offset(0, 20 * (1 - _controller.value)),
+          child: child,
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    widget.scrollController.removeListener(_scheduleVisibilityCheck);
+    AppSettings.instance.removeListener(_onSettingsChanged);
+    _controller.dispose();
+    super.dispose();
   }
 }
