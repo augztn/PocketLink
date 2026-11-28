@@ -1695,6 +1695,57 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     );
   }
 
+  Widget _spotlightMediaMotion(int index, Widget child) {
+    return AnimatedBuilder(
+      animation: Listenable.merge([
+        _spotlightPageController,
+        AppSettings.instance,
+      ]),
+      child: child,
+      builder: (context, content) {
+        if (!AppSettings.instance.discoverMotion) return content!;
+        final page = _spotlightPageController.hasClients
+            ? (_spotlightPageController.page ?? index.toDouble())
+            : index.toDouble();
+        final distance = (index - page).clamp(-1.0, 1.0).toDouble();
+        final progress = distance.abs();
+        final width = MediaQuery.sizeOf(context).width;
+        return Transform.translate(
+          offset: Offset(distance * width * .18, 0),
+          child: Transform.scale(
+            alignment: Alignment.center,
+            scale: 1 + progress * .36,
+            child: content,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _spotlightTextMotion(int index, Widget child) {
+    return AnimatedBuilder(
+      animation: Listenable.merge([
+        _spotlightPageController,
+        AppSettings.instance,
+      ]),
+      child: child,
+      builder: (context, content) {
+        if (!AppSettings.instance.discoverMotion) return content!;
+        final page = _spotlightPageController.hasClients
+            ? (_spotlightPageController.page ?? index.toDouble())
+            : index.toDouble();
+        final distance = (index - page).clamp(-1.0, 1.0).toDouble();
+        final progress = distance.abs();
+        final width = MediaQuery.sizeOf(context).width;
+        final opacity = (1 - progress * 1.9).clamp(0.0, 1.0).toDouble();
+        return Transform.translate(
+          offset: Offset(distance * width * .60, 0),
+          child: Opacity(opacity: opacity, child: content),
+        );
+      },
+    );
+  }
+
   Widget _spotlightPageMotion(int index, Widget child) {
     return AnimatedBuilder(
       animation: Listenable.merge([
@@ -1768,14 +1819,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 stops,
               );
             },
-            child: Transform.translate(
-              offset: Offset(distance * width * .18, 0),
-              child: Transform.scale(
-                alignment: Alignment.center,
-                scale: 1 + progress * .36,
-                child: child,
-              ),
-            ),
+            child: child,
           ),
           ),
         );
@@ -1835,11 +1879,14 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      _art(
-                        track,
-                        size: double.infinity,
-                        radius: 0,
-                        fit: BoxFit.cover,
+                      _spotlightMediaMotion(
+                        index,
+                        _art(
+                          track,
+                          size: double.infinity,
+                          radius: 0,
+                          fit: BoxFit.cover,
+                        ),
                       ),
                       const DecoratedBox(
                         decoration: BoxDecoration(
@@ -1860,7 +1907,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                         left: 36,
                         right: 28,
                         bottom: 62,
-                        child: Column(
+                        child: _spotlightTextMotion(
+                          index,
+                          Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -1928,6 +1977,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                               ],
                             ),
                           ],
+                          ),
                         ),
                       ),
                       if (pageCount > 1)
