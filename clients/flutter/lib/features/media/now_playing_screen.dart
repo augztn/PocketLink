@@ -116,6 +116,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
 
   String get _trackKey => _trackIdentity;
 
+  String get _trackPositionKey =>
+      '${_persistent.queueSession}:${_carouselIndex}:$_trackIdentity';
+
 
   String get _favoriteId => '${_track.volume ?? 'internal'}:${_track.path}';
 
@@ -1531,7 +1534,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
     if (targetIndex < 0 || targetIndex >= queue.length) return;
 
     _carouselSkipInFlight = true;
-    final previousIdentity = _trackIdentity;
+    final previousPosition = _trackPositionKey;
     final width = MediaQuery.sizeOf(context).width;
     final signedVelocity = direction > 0
         ? velocity.clamp(-5000.0, 0.0).toDouble()
@@ -1543,7 +1546,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
         velocity: signedVelocity,
         target: -direction * width,
       );
-      if (!mounted || _trackIdentity != previousIdentity) return;
+      if (!mounted || _trackPositionKey != previousPosition) return;
       if (direction > 0) {
         await _persistent.skipToNext();
       } else {
@@ -1554,7 +1557,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
         Future<void>.delayed(const Duration(milliseconds: 1200)),
       ]);
       if (!mounted) return;
-      if (_trackIdentity == previousIdentity) await _settleCarousel();
+      if (_trackPositionKey == previousPosition) await _settleCarousel();
     } catch (error, stackTrace) {
       await AppLogger.error(
         'Now Playing carousel skip failed',
