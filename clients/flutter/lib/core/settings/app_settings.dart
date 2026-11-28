@@ -40,6 +40,8 @@ class AppSettings extends ChangeNotifier {
   static const _animationsEnabledKey = 'settings_animations_enabled';
   static const _animationSpeedKey = 'settings_animation_speed';
   static const _accentColorKey = 'settings_accent_color';
+  static const _blurStrengthKey = 'settings_blur_strength';
+  static const _thumbnailCornerRadiusKey = 'settings_thumbnail_corner_radius';
   static const _navigationOrderKey = 'settings_navigation_order';
   static const _navigationVisibilityKey = 'settings_navigation_visibility';
   static const _homeSearchKey = 'settings_home_search';
@@ -136,6 +138,8 @@ class AppSettings extends ChangeNotifier {
   bool _animationsEnabled = true;
   double _animationSpeed = 1.0;
   int _accentColorValue = 0xFF536DFE;
+  double _blurStrength = 24.0;
+  double _thumbnailCornerRadius = 10.0;
   bool _loaded = false;
   List<String> _navigationOrder = List.of(navigationDefaults);
   Set<String> _visibleNavigationItems = Set.of(navigationDefaults);
@@ -192,6 +196,8 @@ class AppSettings extends ChangeNotifier {
   bool get animationsEnabled => _animationsEnabled;
   double get animationSpeed => _animationSpeed;
   int get accentColorValue => _accentColorValue;
+  double get blurStrength => _blurStrength;
+  double get thumbnailCornerRadius => _thumbnailCornerRadius;
   double get animationTimeDilation => _animationsEnabled ? 1.0 / _animationSpeed : 0.01;
   List<String> get navigationOrder => List.unmodifiable(_navigationOrder);
   Set<String> get visibleNavigationItems => Set.unmodifiable(_visibleNavigationItems);
@@ -262,6 +268,14 @@ class AppSettings extends ChangeNotifier {
       _accentColorValue = accentColorValues.contains(storedAccentColor)
           ? storedAccentColor!
           : accentColorValues.first;
+      final storedBlurStrength = preferences.getDouble(_blurStrengthKey) ?? 24.0;
+      _blurStrength = storedBlurStrength.isFinite
+          ? storedBlurStrength.clamp(0.0, 32.0).toDouble()
+          : 24.0;
+      final storedCornerRadius = preferences.getDouble(_thumbnailCornerRadiusKey) ?? 10.0;
+      _thumbnailCornerRadius = storedCornerRadius.isFinite
+          ? storedCornerRadius.clamp(0.0, 45.0).toDouble()
+          : 10.0;
       _showMiniPlayer = preferences.getBool(_nowPlayingMiniPlayerKey) ?? true;
       _enableNowPlayingGestures = preferences.getBool(_nowPlayingGesturesKey) ?? true;
       _showStatsForNerds = preferences.getBool(_nowPlayingStatsForNerdsKey) ?? true;
