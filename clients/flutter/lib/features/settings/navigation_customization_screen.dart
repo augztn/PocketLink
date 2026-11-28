@@ -23,6 +23,7 @@ class _NavigationCustomizationScreenState
   late Set<String> _visibleItems;
   late final TextEditingController _searchController;
   String _query = '';
+  final Map<String, GlobalKey> _destinationKeys = {};
 
   static const _details = <String, ({String label, String description, IconData icon})>{
     'home': (label: 'Home', description: 'Your dashboard', icon: Icons.home_rounded),
@@ -38,6 +39,29 @@ class _NavigationCustomizationScreenState
     _visibleItems = Set.of(_settings.visibleNavigationItems);
     _query = widget.initialSearchQuery ?? '';
     _searchController = TextEditingController(text: _query);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToFirstMatch());
+  }
+
+  void _setQuery(String value) {
+    setState(() => _query = value);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToFirstMatch());
+  }
+
+  void _scrollToFirstMatch() {
+    if (_query.trim().isEmpty || !mounted) return;
+    for (final id in _order) {
+      if (!_matchesDestination(id)) continue;
+      final target = _destinationKeys[id]?.currentContext;
+      if (target != null) {
+        Scrollable.ensureVisible(
+          target,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOutCubic,
+          alignment: 0.18,
+        );
+      }
+      break;
+    }
   }
 
   @override
@@ -127,6 +151,32 @@ class _NavigationCustomizationScreenState
       body: ListView(
         padding: settingsListPadding(context),
         children: [
+          TextField(
+            controller: _searchController,
+            onChanged: _setQuery,
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              hintText: 'Search destinations',
+              prefixIcon: const Icon(Icons.search_rounded),
+              suffixIcon: _query.isEmpty
+                  ? null
+                  : IconButton(
+                      tooltip: 'Clear search',
+                      onPressed: () {
+                        _searchController.clear();
+                        _setQuery('');
+                      },
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+              filled: true,
+              fillColor: Theme.of(context).colorScheme.surfaceContainerLow,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(18),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
           const SettingsSectionHeader('Live preview'),
           Text(
             'Your dock updates as you rearrange or hide destinations.',
@@ -166,10 +216,19 @@ class _NavigationCustomizationScreenState
                 final id = visibleOrder[index];
                 final detail = _details[id]!;
                 final visible = _visibleItems.contains(id);
+                final matches = _query.isNotEmpty && _matchesDestination(id);
                 return Column(
-                  key: ValueKey(id),
+                  key: _destinationKeys.putIfAbsent(id, GlobalKey.new),
                   children: [
-                    ListTile(
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 450),
+                      curve: Curves.easeOutCubic,
+                      decoration: BoxDecoration(
+                        color: matches ? colors.primary.withValues(alpha: 0.13) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(14),
+                        border: matches ? Border.all(color: colors.primary.withValues(alpha: 0.24)) : null,
+                      ),
+                      child: ListTile(
                       contentPadding: const EdgeInsets.symmetric(horizontal: 14),
                       leading: Icon(detail.icon, color: colors.onSurfaceVariant),
                       title: Text(detail.label),
@@ -202,7 +261,8 @@ class _NavigationCustomizationScreenState
                         ],
                       ),
                     ),
-                    if (index != _order.length - 1)
+                    ),
+                    if (index != visibleOrder.length - 1)
                       const Divider(height: 1),
                   ],
                 );
