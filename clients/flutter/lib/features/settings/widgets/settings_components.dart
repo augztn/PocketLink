@@ -364,6 +364,25 @@ class _SettingsNestedGroupState extends State<SettingsNestedGroup> {
       );
 }
 
+/// Mochy-style monochrome icon well used by setting rows.
+class SettingsIcon extends StatelessWidget {
+  const SettingsIcon(this.icon, {super.key});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: 32,
+        height: 32,
+        decoration: const BoxDecoration(
+          color: Color(0xFFE5E5EA),
+          shape: BoxShape.circle,
+        ),
+        alignment: Alignment.center,
+        child: Icon(icon, color: const Color(0xFF1C1C1E), size: 16),
+      );
+}
+
 /// Standard row for Settings content that does not need a specialised control.
 String settingsSearchableText(Widget widget) {
   if (widget is SettingsNestedGroup) {
@@ -413,7 +432,24 @@ class SettingsTile extends StatelessWidget {
   Widget build(BuildContext context) => ListTile(
         contentPadding: contentPadding,
         enabled: enabled,
-        leading: leading,
+        leading: leading is Icon
+            ? Container(
+                width: 32,
+                height: 32,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE5E5EA),
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: IconTheme(
+                  data: const IconThemeData(
+                    color: Color(0xFF1C1C1E),
+                    size: 16,
+                  ),
+                  child: leading!,
+                ),
+              )
+            : leading,
         title: Text(title),
         subtitle: subtitle == null ? null : Text(subtitle!),
         trailing: trailing,
