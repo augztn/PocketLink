@@ -530,6 +530,62 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   bool _categoryMatches(String id) => _matchingSettingLabels(id).isNotEmpty;
 
+  List<Widget> _globalSearchResultTiles() {
+    if (_settingsSearchQuery.trim().isEmpty) return const [];
+    const categories = <String, String>{
+      'appearance': 'Appearance',
+      'customization': 'Customisation',
+      'navigation': 'Navigation',
+      'storage': 'Storage',
+      'now-playing': 'Now Playing',
+      'music': 'Music',
+      'network': 'Network',
+      'diagnostics': 'Diagnostics',
+      'about': 'About',
+    };
+    final query = _settingsSearchQuery.trim().toLowerCase();
+    final results = <Widget>[];
+    for (final entry in categories.entries) {
+      for (final label in _matchingSettingLabels(entry.key)) {
+        if (!label.toLowerCase().contains(query)) continue;
+        results.add(
+          ListTile(
+            key: ValueKey('settings-search-${entry.key}-$label'),
+            dense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+            leading: const Icon(Icons.tune_rounded, size: 20),
+            title: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+            subtitle: Text(entry.value),
+            trailing: const Icon(Icons.north_east_rounded, size: 18),
+            onTap: () => _openCategory(entry.key),
+          ),
+        );
+      }
+    }
+    if (results.isEmpty) {
+      return [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Text(
+            'No matching settings found.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      ];
+    }
+    return [
+      Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: SettingsSectionHeader('Matching settings'),
+      ),
+      SettingsGroupCard(children: results),
+      const SizedBox(height: 18),
+    ];
+  }
+
   Future<void> _resetAppearance() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -600,75 +656,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   List<Widget> _homeSettingsChildren() => [
-    Padding(
-      padding: const EdgeInsets.only(bottom: 18),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.tune_rounded,
-              color: Theme.of(context).colorScheme.onSurface,
-              size: 23,
-            ),
-          ),
-          const SizedBox(width: 12),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 260),
-            transitionBuilder: (child, animation) => FadeTransition(
-              opacity: animation,
-              child: SlideTransition(
-                position: Tween<Offset>(begin: const Offset(0, 0.12), end: Offset.zero).animate(animation),
-                child: child,
-              ),
-            ),
-            child: Text(
-              'Settings',
-              key: const ValueKey('settings-title'),
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontSize: 34,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.7,
-              ),
-            ),
-          ),
-        ],
-      ),
-    ),
-    Padding(
-      padding: const EdgeInsets.only(bottom: 24),
-      child: TextField(
-        controller: _settingsSearchController,
-        onChanged: (value) => setState(() => _settingsSearchQuery = value),
-        textInputAction: TextInputAction.search,
-        decoration: InputDecoration(
-          hintText: 'Search settings',
-          prefixIcon: const Icon(Icons.search_rounded),
-          suffixIcon: _settingsSearchQuery.isEmpty
-              ? null
-              : IconButton(
-                  tooltip: 'Clear search',
-                  onPressed: () {
-                    _settingsSearchController.clear();
-                    setState(() => _settingsSearchQuery = '');
-                  },
-                  icon: const Icon(Icons.close_rounded),
-                ),
-          filled: true,
-          fillColor: Theme.of(context).colorScheme.surfaceContainerLow,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
-          contentPadding: const EdgeInsets.symmetric(vertical: 14),
-        ),
-      ),
-    ),
     if (_categoryMatches('customization') || _categoryMatches('appearance'))
       _categoryTile(
         id: 'customization',
@@ -826,10 +813,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       animation: _settings,
       builder: (context, _) => Scaffold(
         extendBodyBehindAppBar: true,
-        appBar: PocketLinkAppBar(
-          title: widget.category == null
-              ? const SizedBox.shrink()
-              : Text(_pageTitle(widget.category), style: const TextStyle(fontSize: 20)),
+        appBar: widget.category == null
+            ? null
+            : PocketLinkAppBar(
+          title: Text(_pageTitle(widget.category), style: const TextStyle(fontSize: 20)),
           actions: [
             PocketLinkAppBarAction(
               label: 'Return to Home',
@@ -851,16 +838,97 @@ class _SettingsScreenState extends State<SettingsScreen> {
             final topClearance = layoutInsets.topClearance;
             return Stack(
               children: [
-                ListView(
-          padding: EdgeInsets.fromLTRB(
-            16,
-            topClearance,
-            16,
-            bottomClearance,
-          ),
-          children: widget.category == null
-              ? _homeSettingsChildren()
-              : [
+                CustomScrollView(
+                  slivers: [
+                    if (widget.category == null)
+                      SliverAppBar(
+                        pinned: true,
+                        floating: false,
+                        automaticallyImplyLeading: false,
+                        expandedHeight: 148,
+                        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                        surfaceTintColor: Colors.transparent,
+                        elevation: 0,
+                        title: const Text('Settings'),
+                        flexibleSpace: FlexibleSpaceBar(
+                          titlePadding: const EdgeInsetsDirectional.only(start: 20, bottom: 72),
+                          background: Align(
+                            alignment: Alignment.bottomLeft,
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(20, 0, 20, 72),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 42,
+                                    height: 42,
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(Icons.tune_rounded, color: Theme.of(context).colorScheme.onSurface),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    'Settings',
+                                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                      fontSize: 34,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: -0.7,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        bottom: PreferredSize(
+                          preferredSize: const Size.fromHeight(64),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                            child: TextField(
+                              controller: _settingsSearchController,
+                              onChanged: (value) => setState(() => _settingsSearchQuery = value),
+                              textInputAction: TextInputAction.search,
+                              decoration: InputDecoration(
+                                hintText: 'Search settings',
+                                prefixIcon: const Icon(Icons.search_rounded),
+                                suffixIcon: _settingsSearchQuery.isEmpty
+                                    ? null
+                                    : IconButton(
+                                        tooltip: 'Clear search',
+                                        onPressed: () {
+                                          _settingsSearchController.clear();
+                                          setState(() => _settingsSearchQuery = '');
+                                        },
+                                        icon: const Icon(Icons.close_rounded),
+                                      ),
+                                filled: true,
+                                fillColor: Theme.of(context).colorScheme.surfaceContainerLow,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(18),
+                                  borderSide: BorderSide.none,
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    SliverPadding(
+                      padding: EdgeInsets.fromLTRB(
+                        16,
+                        widget.category == null ? 12 : topClearance,
+                        16,
+                        bottomClearance,
+                      ),
+                      sliver: SliverList(
+                        delegate: SliverChildListDelegate(
+                          widget.category == null
+                              ? [
+                                  ..._globalSearchResultTiles(),
+                                  ..._homeSettingsChildren().skip(2),
+                                ]
+                              : [
                 if (widget.category != null) _categoryIntro(widget.category!),
                 if (widget.category == 'Navigation')
                   _section('Navigation & Home', [
@@ -1705,7 +1773,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         onTap: _exportingLogs ? null : _exportLogs,
                       ),
                     ]),
-                ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             );
