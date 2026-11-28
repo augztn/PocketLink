@@ -25,6 +25,7 @@ import 'discover_service.dart';
 import 'discover_cache.dart';
 import 'discover_thumbnail_cache.dart';
 import 'discover_recently_played_store.dart';
+import 'discover_speed_dial_store.dart';
 import 'discover_home_feed_store.dart';
 import 'discover_moods_screen.dart';
 import '../media_metadata.dart';
@@ -63,6 +64,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   late final AnimationController _shimmerController;
   List<DiscoverTrack> _tracks = const [];
   List<DiscoverTrack> _recentlyPlayed = const [];
+  List<DiscoverTrack> _speedDial = const [];
   List<DiscoverTrack> _listeningPicks = const [];
   String _listeningPicksSeed = '';
   int _listeningPicksGeneration = 0;
@@ -110,6 +112,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     AppSettings.instance.addListener(_onSettingsChanged);
     _loadHome();
     unawaited(_loadRecentlyPlayed());
+    unawaited(_loadSpeedDial());
   }
 
   @override
@@ -139,6 +142,32 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       _appResumed &&
       generation == _resolverGeneration &&
       session == player.queueSession;
+
+  Future<void> _loadSpeedDial() async {
+    final tracks = await DiscoverSpeedDialStore.read();
+    if (!mounted) return;
+    setState(() => _speedDial = tracks);
+  }
+
+  bool _isSpeedDialPinned(DiscoverTrack track) =>
+      _speedDial.any((item) => item.videoId == track.videoId);
+
+  Future<void> _toggleSpeedDial(DiscoverTrack track) async {
+    final wasPinned = _isSpeedDialPinned(track);
+    final updated = wasPinned
+        ? await DiscoverSpeedDialStore.remove(track.videoId)
+        : await DiscoverSpeedDialStore.pin(track);
+    if (!mounted) return;
+    setState(() => _speedDial = updated);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(wasPinned
+            ? 'Removed from Speed Dial'
+            : 'Added to Speed Dial'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
 
   Future<void> _loadRecentlyPlayed() async {
     final generation = _recentlyPlayedGeneration;
@@ -1316,12 +1345,19 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                         iconSize: 20,
                         icon: const Icon(Icons.more_horiz_rounded, color: Colors.white),
                         onSelected: (v) {
+                          if (v == 'speed_dial') _toggleSpeedDial(track);
                           if (v == 'play') _play(track, queueOverride: queueOverride);
                           if (v == 'radio') _loadRadio(track);
                           if (v == 'lyrics') _showLyrics(track, local: local);
                         },
                         itemBuilder: (_) => [
                           const PopupMenuItem(value: 'play', child: Text('Play')),
+                          PopupMenuItem(
+                            value: 'speed_dial',
+                            child: Text(_isSpeedDialPinned(track)
+                                ? 'Remove from Speed Dial'
+                                : 'Add to Speed Dial'),
+                          ),
                           const PopupMenuItem(value: 'radio', child: Text('Start radio')),
                           if (AppSettings.instance.discoverLyrics)
                             const PopupMenuItem(value: 'lyrics', child: Text('Lyrics')),
@@ -1446,6 +1482,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                             color: Colors.white,
                           ),
                           onSelected: (value) {
+                            if (value == 'speed_dial') _toggleSpeedDial(track);
                             if (value == 'play') {
                               _play(track, queueOverride: _listeningPicks);
                             }
@@ -1458,6 +1495,12 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                             const PopupMenuItem(
                               value: 'play',
                               child: Text('Play'),
+                            ),
+                            PopupMenuItem(
+                              value: 'speed_dial',
+                              child: Text(_isSpeedDialPinned(track)
+                                  ? 'Remove from Speed Dial'
+                                  : 'Add to Speed Dial'),
                             ),
                             const PopupMenuItem(
                               value: 'radio',
@@ -1712,6 +1755,79 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     );
   }
 
+  Widget _speedDialShelf() {
+    if (_speedDial.isEmpty) return const SliverToBoxAdapter();
+    return SliverToBoxAdapter(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _shelfHeading('Speed Dial'),
+          SizedBox(
+            height: 126,
+            child: ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              scrollDirection: Axis.horizontal,
+              itemCount: _speedDial.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 14),
+              itemBuilder: (context, index) {
+                final track = _speedDial[index];
+                return SizedBox(
+                  width: 84,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Stack(
+                        children: [
+                          InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: () => _play(track, queueOverride: _speedDial),
+                            child: _art(track, size: 78, radius: 16),
+                          ),
+                          Positioned(
+                            top: 1,
+                            right: 1,
+                            child: Material(
+                              color: Colors.black54,
+                              shape: const CircleBorder(),
+                              child: IconButton(
+                                tooltip: 'Remove from Speed Dial',
+                                visualDensity: VisualDensity.compact,
+                                constraints: const BoxConstraints.tightFor(
+                                  width: 30,
+                                  height: 30,
+                                ),
+                                padding: EdgeInsets.zero,
+                                onPressed: () => _toggleSpeedDial(track),
+                                icon: const Icon(
+                                  Icons.close_rounded,
+                                  size: 17,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        track.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.labelSmall,
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 18),
+        ],
+      ),
+    );
+  }
+
   Widget _listeningPicksShelf() {
     if (_listeningPicks.isEmpty) return const SliverToBoxAdapter();
     final cardWidth = ((MediaQuery.sizeOf(context).width - 52) / 2)
@@ -1781,6 +1897,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                           PopupMenuButton<String>(
                             tooltip: 'More actions',
                             onSelected: (value) {
+                              if (value == 'speed_dial') _toggleSpeedDial(track);
                               if (value == 'play') _play(track, queueOverride: _recentlyPlayed);
                               if (value == 'radio') _loadRadio(track);
                               if (value == 'lyrics') _showLyrics(track);
@@ -1810,6 +1927,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         ? DiscoverService.findLocalLosslessMatch(track, _localLibrary) : null;
     return PopupMenuButton<String>(
       onSelected: (value) {
+        if (value == 'speed_dial') _toggleSpeedDial(track);
         if (value == 'play') _play(track);
         if (value == 'radio') _loadRadio(track);
         if (value == 'lyrics') _showLyrics(track, local: local);
@@ -2062,6 +2180,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         maxLines: 1, overflow: TextOverflow.ellipsis),
       trailing: PopupMenuButton<String>(
         onSelected: (v) {
+          if (v == 'speed_dial') _toggleSpeedDial(track);
           if (v == 'play') _play(track);
           if (v == 'radio') _loadRadio(track);
           if (v == 'lyrics') _showLyrics(track, local: local);
@@ -2228,6 +2347,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 // upstream shelves. Find Your Mood is inserted after the
                 // lead feed shelf rather than before the feed.
                 _spotlightHero(),
+                _speedDialShelf(),
                 _listeningPicksShelf(),
                 _recentlyPlayedShelf(),
                 for (var index = 0; index < _homeShelves.length; index++) ...[
@@ -2259,6 +2379,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 ),
                 if (_sectionTitle == 'Top charts in India' ||
                     _sectionTitle.startsWith('Discover in ')) _spotlightHero(),
+                _speedDialShelf(),
                 _listeningPicksShelf(),
                 _recentlyPlayedShelf(),
                 if (_tracks.isNotEmpty) ...[
