@@ -243,8 +243,8 @@ class _LyricsViewportState extends State<LyricsViewport> {
                         children: [
                           emphasized,
                           if (instrumentalGap)
-                            const Padding(
-                              padding: EdgeInsets.only(top: 10),
+                            Padding(
+                              padding: const EdgeInsets.only(top: 10),
                               child: motionEnabled
                                   ? const _InstrumentalDots()
                                   : const Text('•••', style: TextStyle(color: Colors.white70, fontSize: 19, letterSpacing: 4)),
