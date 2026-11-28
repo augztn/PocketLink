@@ -1047,6 +1047,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                 child: TextField(
                   controller: _settingsSearchController,
+
                   focusNode: _settingsSearchFocusNode,
                               focusNode: _settingsSearchFocusNode,
                   onChanged: (value) => setState(() => _settingsSearchQuery = value),
@@ -1219,6 +1220,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
                             child: TextField(
                               controller: _settingsSearchController,
+
+                              focusNode: _settingsSearchFocusNode,
                               onChanged: (value) => setState(() => _settingsSearchQuery = value),
                               textInputAction: TextInputAction.search,
                               decoration: InputDecoration(
@@ -1263,6 +1266,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     padding: const EdgeInsets.only(bottom: 16),
                     child: TextField(
                       controller: _settingsSearchController,
+
+                      focusNode: _settingsSearchFocusNode,
                       onChanged: (value) => setState(() => _settingsSearchQuery = value),
                       textInputAction: TextInputAction.search,
                       decoration: InputDecoration(
