@@ -36,6 +36,11 @@ class _NowPlayingSettingsScreenState extends State<NowPlayingSettingsScreen> {
     final query = _query.trim().toLowerCase();
     if (child is SettingsTile) return child.title.toLowerCase().contains(query) ||
         (child.subtitle?.toLowerCase().contains(query) ?? false);
+    if (child is ListTile) {
+      final title = child.title is Text ? (child.title as Text).data ?? '' : '';
+      final subtitle = child.subtitle is Text ? (child.subtitle as Text).data ?? '' : '';
+      return title.toLowerCase().contains(query) || subtitle.toLowerCase().contains(query);
+    }
     if (child is SwitchListTile) {
       final title = child.title is Text ? (child.title as Text).data ?? '' : '';
       final subtitle = child.subtitle is Text ? (child.subtitle as Text).data ?? '' : '';
@@ -253,7 +258,7 @@ class _SwipeActionTile extends StatelessWidget {
   Widget build(BuildContext context) => SettingsTile(
     title: title,
     trailing: DropdownButton<String>(
-      value: NowPlayingSettingsScreen._swipeActions.containsKey(value)
+      value: _NowPlayingSettingsScreenState._swipeActions.containsKey(value)
           ? value
           : 'none',
       underline: const SizedBox.shrink(),
