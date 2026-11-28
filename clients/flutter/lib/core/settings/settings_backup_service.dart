@@ -43,6 +43,7 @@ class SettingsBackupService {
 
   static const _integerKeys = <String>{
     'settings_download_concurrency',
+    'settings_accent_color',
     'settings_video_seek_seconds',
   };
 
@@ -75,6 +76,7 @@ class SettingsBackupService {
   static bool _isValidSetting(String key, Object? value) {
     if (_booleanKeys.contains(key)) return value is bool;
     if (key == 'settings_download_concurrency') return value is int && const {1, 2, 3, 5}.contains(value);
+    if (key == 'settings_accent_color') return value is int && const {0xFF536DFE, 0xFF8B5CF6, 0xFFEC4899, 0xFFEF4444, 0xFFF97316, 0xFF22C55E, 0xFF14B8A6, 0xFF06B6D4}.contains(value);
     if (key == 'settings_video_seek_seconds') return value is int && const {5, 10, 15, 30}.contains(value);
     if (key == 'settings_video_controls_timeout') return value is num && const [0.0, 2.0, 3.0, 3.5, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0].contains(value);
 
