@@ -68,11 +68,12 @@ class FeatheredGlassHeaderBackground extends StatelessWidget {
                       child: SizedBox.expand(),
                     )
                   : const SizedBox.expand();
-              if (!AppSettings.instance.progressiveBlurEnabled) {
+              final settings = AppSettings.instance;
+              if (!settings.progressiveBlurEnabled || settings.blurStrength <= 0) {
                 return backdrop;
               }
               return ProgressiveBlur(
-                maxSigma: PocketLinkHeaderBlurStyle.sigma,
+                maxSigma: settings.blurStrength,
                 endSigma: 0,
                 strongestAtBottom: false,
                 child: backdrop,
