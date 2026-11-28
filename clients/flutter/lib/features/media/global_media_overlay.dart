@@ -97,6 +97,16 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
       return;
     }
 
+    // A USB remount can change only the volume ID while the same queue item
+    // is being reopened. Do not animate or announce that recovery as a track
+    // transition.
+    final sameItemReopened = currentIndex == previousIndex &&
+        current.path == previous.path &&
+        current.title == previous.title &&
+        current.lyricsVideoId == previous.lyricsVideoId &&
+        current.localPath == previous.localPath;
+    if (sameItemReopened) return;
+
     final queueLength = _player.queue.length;
     final requestedDirection = _player.takePendingTrackDirection();
     final wrappedBackward = queueLength > 1 &&
