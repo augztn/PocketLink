@@ -78,6 +78,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   int _listeningPicksGeneration = 0;
   int _recentlyPlayedGeneration = 0;
   List<_DiscoverShelf> _homeShelves = const [];
+  List<DiscoverTrack> _spotlightFallbackTracks = const [];
+  int _spotlightHydrationGeneration = 0;
+  final Set<String> _spotlightHydrationAttempts = <String>{};
   List<IndexedFile> _localLibrary = const [];
   bool _loading = false;
   bool _showSkeletonOverlay = false;
@@ -225,7 +228,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     final recent = await DiscoverRecentlyPlayedStore.read();
     if (!mounted || generation != _recentlyPlayedGeneration) return;
     setState(() => _recentlyPlayed = recent);
-    if (recent.isNotEmpty) unawaited(_loadListeningPicks(recent.first));
+    if (recent.isNotEmpty) {
+      unawaited(_loadListeningPicks(recent.first));
+    } else if (_homeShelves.isNotEmpty) {
+      _hydrateSpotlightFromShelves(_homeShelves);
+    }
   }
 
   Future<void> _openMood(DiscoverMood mood) async {
@@ -269,6 +276,57 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         return;
       }
     }
+  }
+
+  void _hydrateSpotlightFromShelves(List<_DiscoverShelf> shelves) {
+    if (!mounted || _spotlightTracks.isNotEmpty || shelves.isEmpty) return;
+    final generation = ++_spotlightHydrationGeneration;
+    unawaited(() async {
+      for (final shelf in shelves) {
+        for (final item in shelf.items) {
+          if (item.browseId.isEmpty ||
+              item.type == DiscoverHomeItemType.artist ||
+              !_spotlightHydrationAttempts.add(item.browseId)) {
+            continue;
+          }
+          try {
+            // Cached home shelves can contain valid album/playlist collections
+            // but no directly playable track records. Resolve one collection
+            // through Discover's browse API; never depend on video metadata.
+            final tracks = await _service.browseMood(
+              DiscoverMood(
+                title: item.title,
+                browseId: item.browseId,
+                params: item.params,
+              ),
+              limit: 8,
+            );
+            if (!mounted || generation != _spotlightHydrationGeneration) return;
+            if (tracks.isEmpty) continue;
+            setState(() {
+              _spotlightFallbackTracks = tracks.take(5).toList(growable: false);
+            });
+            AppLogger.event(
+              'discover.spotlight_fallback_hydrated',
+              category: 'discover',
+              component: 'discover_screen',
+              fields: {
+                'track_count': tracks.length,
+                'source': item.type.name,
+              },
+            );
+            return;
+          } catch (error) {
+            AppLogger.warning(
+              'Discover spotlight collection hydration failed',
+              category: 'discover',
+              component: 'discover_screen',
+              fields: {'failure_type': error.runtimeType.toString()},
+            );
+          }
+        }
+      }
+    }());
   }
 
   Future<void> _loadListeningPicks(DiscoverTrack seed) async {
@@ -320,6 +378,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     if (region == _lastRegion) return;
     _lastRegion = region;
     _requestGeneration++;
+    _spotlightHydrationGeneration++;
+    _spotlightHydrationAttempts.clear();
+    _spotlightFallbackTracks = const [];
     _listeningPicksSeed = '';
     final pendingHome = _homeRequest;
     if (pendingHome == null) {
@@ -505,6 +566,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         restore();
       }
       _ensureListeningPicks(cacheEntry.value.shelves);
+      _hydrateSpotlightFromShelves(cacheEntry.value.shelves);
       final stale = persistedStale || DiscoverCache.instance.isStale(cacheEntry);
       AppLogger.event('discover.home_cache_restored', category: 'discover',
         component: 'discover_screen',
@@ -620,6 +682,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         _error = null;
       });
       _ensureListeningPicks(shelves);
+      _hydrateSpotlightFromShelves(shelves);
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _onDiscoverScroll();
       });
@@ -1463,17 +1526,25 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     });
   }
 
-  List<DiscoverTrack> get _spotlightTracks =>
-      buildDiscoverSpotlightTracks(
-        shelves: _homeShelves
-            .map((shelf) => DiscoverHomeShelf(
-                  title: shelf.title,
-                  tracks: shelf.tracks,
-                  items: shelf.items,
-                ))
-            .toList(growable: false),
-        recentlyPlayed: _recentlyPlayed,
-      );
+  List<DiscoverTrack> get _spotlightTracks {
+    final shelves = _homeShelves
+        .map((shelf) => DiscoverHomeShelf(
+              title: shelf.title,
+              tracks: shelf.tracks,
+              items: shelf.items,
+            ))
+        .toList(growable: true);
+    if (_spotlightFallbackTracks.isNotEmpty) {
+      shelves.add(DiscoverHomeShelf(
+        title: 'Continue listening',
+        tracks: _spotlightFallbackTracks,
+      ));
+    }
+    return buildDiscoverSpotlightTracks(
+      shelves: shelves,
+      recentlyPlayed: _recentlyPlayed,
+    );
+  }
 
   void _playRandomSpotlight() {
     final tracks = _spotlightTracks;
@@ -1591,7 +1662,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     _spotlightAutoAdvanceTimer?.cancel();
     if (!mounted || !_appResumed) return;
     _spotlightAutoAdvanceTimer = Timer.periodic(
-      const Duration(milliseconds: 5500),
+      const Duration(milliseconds: 5000),
       (_) {
         final pageCount = _spotlightPageCount;
         if (!mounted ||
@@ -1877,7 +1948,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     if (pageCount == 0) return const SliverToBoxAdapter();
 
     final activePage = ((_spotlightPage - _spotlightInitialPage) % pageCount + pageCount) % pageCount;
-    final heroHeight = MediaQuery.sizeOf(context).height * .60;
+    final heroHeight = (MediaQuery.sizeOf(context).height * .60)
+        .clamp(420.0, 460.0)
+        .toDouble();
     return SliverToBoxAdapter(
       child: SizedBox(
         height: heroHeight,
@@ -1960,7 +2033,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              'PICKED FOR YOU',
+                              'CONTINUE LISTENING',
                               maxLines: 1,
                               style: Theme.of(context).textTheme.labelMedium?.copyWith(
                                 color: Colors.white.withValues(alpha: .72),
