@@ -183,8 +183,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
         : _trackPalette;
     final hasArtwork = !isMorphing && _artwork != null && _artworkKey == _trackKey;
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 650),
-      curve: Curves.easeInOut,
+      duration: const Duration(milliseconds: 420),
+      curve: Curves.easeInOutCubic,
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -1430,7 +1430,12 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
 
   Widget _artworkCarousel() {
     final queue = _persistent.queue.isNotEmpty ? _persistent.queue : widget.queue;
-    final index = _persistent.queue.isNotEmpty ? _persistent.currentIndex : widget.initialIndex;
+    final requestedIndex = _persistent.queue.isNotEmpty
+        ? _persistent.currentIndex
+        : widget.initialIndex;
+    final index = queue.isEmpty
+        ? 0
+        : requestedIndex.clamp(0, queue.length - 1).toInt();
     final width = MediaQuery.sizeOf(context).width;
     final drag = _carouselDragOffset(width);
 
