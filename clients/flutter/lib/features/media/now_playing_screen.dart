@@ -1354,12 +1354,21 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     );
   }
 
-  Widget _trackTransition({required Widget child, required String key}) {
+  double _carouselDragOffset(double width) {
+    final hasPrevious = _persistent.currentIndex > 0;
+    final hasNext = _persistent.currentIndex < _persistent.queue.length - 1;
+    final atBoundary = (_trackSwipeDistance > 0 && !hasPrevious) ||
+        (_trackSwipeDistance < 0 && !hasNext);
+    final resisted = atBoundary ? _trackSwipeDistance * 0.22 : _trackSwipeDistance;
+    return resisted.clamp(-width, width).toDouble();
+  }
+
+  Widget _trackTransition({required Widget child, required String key, bool followDrag = true}) {
     final direction = _trackChangeDirection.toDouble();
     final screenWidth = MediaQuery.sizeOf(context).width;
-    final dragProgress = screenWidth <= 0
+    final dragProgress = !followDrag || screenWidth <= 0
         ? 0.0
-        : (_trackSwipeDistance / screenWidth * 0.42)
+        : (_carouselDragOffset(screenWidth) / screenWidth)
             .clamp(-0.42, 0.42)
             .toDouble();
     return AnimatedSlide(
@@ -1384,6 +1393,62 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
           );
         },
         child: KeyedSubtree(key: ValueKey(key), child: child),
+      ),
+    );
+  }
+
+  Widget _artworkCarousel() {
+    final queue = _persistent.queue;
+    final index = _persistent.currentIndex;
+    final width = MediaQuery.sizeOf(context).width;
+    final drag = _carouselDragOffset(width);
+
+    Widget slot(MediaQueueItem item, {bool current = false}) {
+      final palette = current && _artworkKey == _trackKey && _artworkPalette != null
+          ? _artworkPalette!
+          : NowPlayingArtworkPalette.fallback(
+              title: item.title,
+              folderName: item.path.contains('/') ? item.path.split('/').elementAt(item.path.split('/').length - 2) : 'Music',
+              path: item.path,
+            );
+      return TrackArtworkView(
+        bytes: current && _artworkKey == _trackKey ? _artwork : null,
+        artworkUrl: item.artworkUrl,
+        fallbackColors: palette,
+        fallbackIconSize: 92,
+        fallbackAlignment: const Alignment(0, -0.42),
+        fit: BoxFit.cover,
+      );
+    }
+
+    return ClipRect(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (index > 0)
+            Positioned(
+              left: -width + drag,
+              top: 0,
+              bottom: 0,
+              width: width,
+              child: slot(queue[index - 1]),
+            ),
+          if (index + 1 < queue.length)
+            Positioned(
+              left: width + drag,
+              top: 0,
+              bottom: 0,
+              width: width,
+              child: slot(queue[index + 1]),
+            ),
+          Positioned(
+            left: drag,
+            top: 0,
+            bottom: 0,
+            width: width,
+            child: slot(_track, current: true),
+          ),
+        ],
       ),
     );
   }
@@ -1621,14 +1686,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
               ).createShader(bounds),
               child: _trackTransition(
                 key: _trackIdentity,
-                child: TrackArtworkView(
-                  bytes: hasArtwork ? _artwork : null,
-                  artworkUrl: _track.artworkUrl,
-                  fallbackColors: _trackPalette,
-                  fallbackIconSize: 92,
-                  fallbackAlignment: const Alignment(0, -0.42),
-                  fit: BoxFit.cover,
-                ),
+                followDrag: false,
+                child: _artworkCarousel(),
               ),
             ),
             builder: (context, artwork) {
@@ -1846,8 +1905,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                       ? (details) {
                           final distance = _trackSwipeDistance;
                           final velocity = details.primaryVelocity ?? 0;
-                          final skipNext = distance < -80 || velocity < -500;
-                          final skipPrevious = distance > 80 || velocity > 500;
+                          final canSkipNext = _persistent.currentIndex < _persistent.queue.length - 1;
+                          final canSkipPrevious = _persistent.currentIndex > 0;
+                          final skipNext = canSkipNext && (distance < -80 || velocity < -500);
+                          final skipPrevious = canSkipPrevious && (distance > 80 || velocity > 500);
                           setState(() {
                             _trackSwipeDistance = 0;
                             _trackSwipeActive = false;
