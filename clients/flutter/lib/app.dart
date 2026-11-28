@@ -44,15 +44,15 @@ class _PocketLinkAppState extends State<PocketLinkApp> {
   ThemeData _theme({required Brightness brightness, bool amoled = false}) {
     final isDark = brightness == Brightness.dark;
     final seed = ColorScheme.fromSeed(
-      seedColor: const Color(0xFF536DFE),
+      seedColor: Color(_settings.accentColorValue),
       brightness: brightness,
     );
     final scheme = isDark
         ? seed.copyWith(
-            primary: const Color(0xFF8C9EFF),
-            onPrimary: const Color(0xFF0E153A),
-            primaryContainer: const Color(0xFF1F2A56),
-            onPrimaryContainer: const Color(0xFFDDE1FF),
+            primary: seed.primary,
+            onPrimary: seed.onPrimary,
+            primaryContainer: seed.primaryContainer,
+            onPrimaryContainer: seed.onPrimaryContainer,
             secondary: const Color(0xFF2DD4BF),
             onSecondary: const Color(0xFF002024),
             secondaryContainer: const Color(0xFF12343A),
@@ -74,10 +74,10 @@ class _PocketLinkAppState extends State<PocketLinkApp> {
             error: const Color(0xFFFF6B6B),
           )
         : seed.copyWith(
-            primary: const Color(0xFF4760FA),
-            onPrimary: Colors.white,
-            primaryContainer: const Color(0xFFE0E6FF),
-            onPrimaryContainer: const Color(0xFF131F6B),
+            primary: seed.primary,
+            onPrimary: seed.onPrimary,
+            primaryContainer: seed.primaryContainer,
+            onPrimaryContainer: seed.onPrimaryContainer,
             secondary: const Color(0xFF0E8FA0),
             onSecondary: Colors.white,
             secondaryContainer: const Color(0xFFD4F2F6),
