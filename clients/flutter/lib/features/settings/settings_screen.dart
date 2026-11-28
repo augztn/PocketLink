@@ -441,7 +441,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (tokens.isEmpty) return options.keys.toList(growable: false);
     const categoryTerms = <String, String>{
       'appearance': 'appearance visual effects',
-      'customization': 'customization appearance theme animations motion visual effects blur',
+      'customization': 'customization customisation appearance theme animations motion visual effects blur',
       'navigation': 'navigation bar dock dashboard home fab',
       'storage': 'storage downloads files transfers download location',
       'music': 'music audio playback discover video lyrics playlists',
