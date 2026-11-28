@@ -1300,7 +1300,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (widget.category == 'Navigation')
                   _section('Navigation & Home', [
                     ListTile(
-                      leading: const Icon(Icons.dock_rounded),
+                      leading: const SettingsIcon(Icons.dock_rounded),
                       title: const Text('Customize Navigation Bar'),
                       subtitle: const Text('Choose, show, hide and reorder destinations'),
                       trailing: const Icon(Icons.chevron_right_rounded),
@@ -1308,7 +1308,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     ListTile(
-                      leading: const Icon(Icons.dashboard_customize_rounded),
+                      leading: const SettingsIcon(Icons.dashboard_customize_rounded),
                       title: const Text('Dashboard & Shortcuts'),
                       subtitle: const Text('Home sections, quick actions and floating shortcuts'),
                       trailing: const Icon(Icons.chevron_right_rounded),
@@ -1318,7 +1318,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (widget.category == 'Music')
                   _section('Music & Playback', [
                     ListTile(
-                      leading: const Icon(Icons.graphic_eq_rounded),
+                      leading: const SettingsIcon(Icons.graphic_eq_rounded),
                       title: const Text('Audio & Now Playing'),
                       subtitle: const Text('Music button gestures, shortcuts and mini-player'),
                       trailing: const Icon(Icons.chevron_right_rounded),
@@ -1326,7 +1326,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     ListTile(
-                      leading: const Icon(Icons.explore_rounded),
+                      leading: const SettingsIcon(Icons.explore_rounded),
                       title: const Text('Discover'),
                       subtitle: const Text('Discovery feed, matching, lyrics and playlists'),
                       trailing: const Icon(Icons.chevron_right_rounded),
@@ -1334,7 +1334,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     ListTile(
-                      leading: const Icon(Icons.movie_creation_rounded),
+                      leading: const SettingsIcon(Icons.movie_creation_rounded),
                       title: const Text('Video Player'),
                       subtitle: const Text('Playback gestures, controls, scaling and subtitles'),
                       trailing: const Icon(Icons.chevron_right_rounded),
@@ -1344,7 +1344,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (widget.category == 'Diagnostics')
                   _section('Settings Backup', [
                     ListTile(
-                      leading: const Icon(Icons.file_upload_outlined),
+                      leading: const SettingsIcon(Icons.file_upload_outlined),
                       title: const Text('Export settings'),
                       subtitle: const Text('Create a portable JSON backup of supported preferences'),
                       trailing: _exportingSettings
@@ -1354,7 +1354,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     ListTile(
-                      leading: const Icon(Icons.restore_rounded),
+                      leading: const SettingsIcon(Icons.restore_rounded),
                       title: const Text('Import settings'),
                       subtitle: const Text('Restore preferences from a PocketLink backup'),
                       trailing: _importingSettings
@@ -1373,7 +1373,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _section('Motion', [
                     SettingsNestedGroup(
                       parent: SwitchListTile(
-                        secondary: const Icon(Icons.animation_rounded),
+                        secondary: const SettingsIcon(Icons.animation_rounded),
                         title: const Text('Animations'),
                         subtitle: const Text('Apply motion preferences across PocketLink screens and controls'),
                         value: _settings.animationsEnabled,
@@ -1383,14 +1383,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       searchQuery: _settingsSearchQuery,
                       children: [
                         SwitchListTile(
-                          secondary: const Icon(Icons.screen_share_outlined),
+                          secondary: const SettingsIcon(Icons.screen_share_outlined),
                           title: const Text('Page transitions'),
                           subtitle: const Text('Enable the shared slide and scale transition between screens'),
                           value: _settings.pageTransitionsEnabled,
                           onChanged: _settings.animationsEnabled ? _settings.setPageTransitionsEnabled : null,
                         ),
                         SwitchListTile(
-                          secondary: const Icon(Icons.lyrics_rounded),
+                          secondary: const SettingsIcon(Icons.lyrics_rounded),
                           title: const Text('Lyrics animations'),
                           subtitle: const Text('Control active-line emphasis and instrumental pulse separately'),
                           value: _settings.lyricsAnimationsEnabled,
@@ -1437,7 +1437,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (widget.category == 'Customisation')
                   _section('Typography', [
                     ListTile(
-                      leading: const Icon(Icons.font_download_rounded),
+                      leading: const SettingsIcon(Icons.font_download_rounded),
                       title: const Text('Custom font'),
                       subtitle: Text(_settings.customFontName ?? 'PocketLink default font'),
                       trailing: const Icon(Icons.chevron_right_rounded),
@@ -1445,7 +1445,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     if (_settings.customFontFamily != null)
                       ListTile(
-                        leading: const Icon(Icons.restart_alt_rounded),
+                        leading: const SettingsIcon(Icons.restart_alt_rounded),
                         title: const Text('Restore default font'),
                         subtitle: const Text('Remove the imported font and use PocketLink typography'),
                         onTap: _resetCustomFont,
@@ -1454,7 +1454,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (widget.category == 'Customisation')
                   _section('Lyrics', [
                     ListTile(
-                      leading: const Icon(Icons.lyrics_rounded),
+                      leading: const SettingsIcon(Icons.lyrics_rounded),
                       title: const Text('Lyrics motion style'),
                       subtitle: Text(switch (_settings.lyricsMotionStyle) {
                         'motion' => 'Motion · Fade and scale emphasis',
@@ -1560,7 +1560,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (widget.category == 'Appearance' || widget.category == 'Customisation')
                   _section('Appearance & Theme', [
                     ListTile(
-                      leading: const Icon(Icons.palette_rounded),
+                      leading: const SettingsIcon(Icons.palette_rounded),
                       title: const Text('Theme mode'),
                       subtitle: Text(
                         _settings.amoled
@@ -1591,7 +1591,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
-                      secondary: const Icon(Icons.blur_on_rounded),
+                      secondary: const SettingsIcon(Icons.blur_on_rounded),
                       title: const Text('Liquid Glass UI'),
                       subtitle: const Text(
                         'Frosted blur, glass reflections and refined floating surfaces',
@@ -1601,7 +1601,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
-                      secondary: const Icon(Icons.blur_circular_rounded),
+                      secondary: const SettingsIcon(Icons.blur_circular_rounded),
                       title: const Text('Progressive Blur'),
                       subtitle: const Text(
                         'Enable the continuous blur fade behind shared screen headers',
@@ -1821,7 +1821,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                     ListTile(
-                      leading: const Icon(Icons.restart_alt_rounded),
+                      leading: const SettingsIcon(Icons.restart_alt_rounded),
                       title: const Text('Reset appearance'),
                       subtitle: const Text('Restore default theme and visual effects'),
                       trailing: const Icon(Icons.chevron_right_rounded),
@@ -1831,7 +1831,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (widget.category == 'Dashboard & Shortcuts')
                   _section('Dashboard & Shortcuts', [
                     SwitchListTile(
-                      secondary: const Icon(Icons.dashboard_customize_rounded),
+                      secondary: const SettingsIcon(Icons.dashboard_customize_rounded),
                       title: const Text('Quick actions'),
                       subtitle: const Text('Show the quick-action grid on Home'),
                       value: _settings.showQuickActions,
@@ -1839,7 +1839,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
-                      secondary: const Icon(Icons.grid_view_rounded),
+                      secondary: const SettingsIcon(Icons.grid_view_rounded),
                       title: const Text('Continue browsing'),
                       subtitle: const Text('Show recently opened folders, files and tracks on Home'),
                       value: _settings.showLibrary,
@@ -1847,14 +1847,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
-                      secondary: const Icon(Icons.history_rounded),
+                      secondary: const SettingsIcon(Icons.history_rounded),
                       title: const Text('Recent files'),
                       value: _settings.showRecentFiles,
                       onChanged: (value) => _settings.setHomeSections(recentFiles: value),
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
-                      secondary: const Icon(Icons.search_rounded),
+                      secondary: const SettingsIcon(Icons.search_rounded),
                       title: const Text('Global search'),
                       subtitle: const Text('Show search entry on Home'),
                       value: _settings.showGlobalSearch,
@@ -1862,7 +1862,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
-                      secondary: const Icon(Icons.storage_rounded),
+                      secondary: const SettingsIcon(Icons.storage_rounded),
                       title: const Text('Storage & host health'),
                       subtitle: const Text('Show mounted volumes, device health and media scan status'),
                       value: _settings.showStorageOverview,
@@ -1870,7 +1870,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
-                      secondary: const Icon(Icons.swap_vert_rounded),
+                      secondary: const SettingsIcon(Icons.swap_vert_rounded),
                       title: const Text('Active transfers'),
                       subtitle: const Text('Show live upload and download progress on Home'),
                       value: _settings.showActiveTransfers,
@@ -1878,7 +1878,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     ListTile(
-                      leading: const Icon(Icons.reorder_rounded),
+                      leading: const SettingsIcon(Icons.reorder_rounded),
                       title: const Text('Customize Home'),
                       subtitle: const Text('Choose visible sections and drag to change their order'),
                       trailing: const Icon(Icons.chevron_right_rounded),
@@ -1888,7 +1888,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (widget.category == 'Discover')
                   _section('Discover Customisation', [
                     SwitchListTile(
-                      secondary: const Icon(Icons.explore_rounded),
+                      secondary: const SettingsIcon(Icons.explore_rounded),
                       title: const Text('Enable Discover'),
                       subtitle: const Text('Show YouTube Music Discover in Explore'),
                       value: _settings.discoverEnabled,
@@ -1896,7 +1896,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
-                      secondary: const Icon(Icons.high_quality_rounded),
+                      secondary: const SettingsIcon(Icons.high_quality_rounded),
                       title: const Text('Local lossless matching'),
                       subtitle: const Text('Prefer matching FLAC, ALAC, WAV and other lossless files'),
                       value: _settings.discoverLocalLossless,
@@ -1904,7 +1904,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
-                      secondary: const Icon(Icons.lyrics_rounded),
+                      secondary: const SettingsIcon(Icons.lyrics_rounded),
                       title: const Text('Lyrics'),
                       subtitle: const Text('Show synced or plain lyrics when available'),
                       value: _settings.discoverLyrics,
@@ -1912,7 +1912,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
-                      secondary: const Icon(Icons.queue_music_rounded),
+                      secondary: const SettingsIcon(Icons.queue_music_rounded),
                       title: const Text('Auto-queue remaining results'),
                       subtitle: const Text('Resolve the loaded Discover list progressively after playback starts'),
                       value: _settings.discoverAutoQueue,
@@ -1920,7 +1920,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
-                      secondary: const Icon(Icons.image_outlined),
+                      secondary: const SettingsIcon(Icons.image_outlined),
                       title: const Text('Show artwork'),
                       subtitle: const Text('Display YouTube Music thumbnails in Discover'),
                       value: _settings.discoverArtwork,
@@ -1928,7 +1928,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
-                      secondary: const Icon(Icons.view_carousel_rounded),
+                      secondary: const SettingsIcon(Icons.view_carousel_rounded),
                       title: const Text('Spotlight carousel'),
                       subtitle: const Text('Show the full-width featured hero and Speed Dial page at the top of Discover'),
                       value: _settings.discoverSpotlight,
@@ -1936,14 +1936,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
-                      secondary: const Icon(Icons.animation_rounded),
+                      secondary: const SettingsIcon(Icons.animation_rounded),
                       title: const Text('Discover Animations'),
                       subtitle: const Text('Enable animated hero transitions and staggered Discover content reveals'),
                       value: _settings.discoverMotion,
                       onChanged: _settings.setDiscoverMotion,
                     ),
                     ListTile(
-                      leading: const Icon(Icons.speed_rounded),
+                      leading: const SettingsIcon(Icons.speed_rounded),
                       title: const Text('Animation speed'),
                       subtitle: const Text('Adjust the speed of Discover hero and shelf motion'),
                       trailing: DropdownButton<String>(
@@ -1963,7 +1963,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
-                      secondary: const Icon(Icons.grid_view_rounded),
+                      secondary: const SettingsIcon(Icons.grid_view_rounded),
                       title: const Text('Artist grid layout'),
                       subtitle: const Text('Optional two-column grid; off by default to match the horizontal artist shelves'),
                       value: _settings.discoverArtistGrid,
@@ -1971,7 +1971,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     ListTile(
-                      leading: const Icon(Icons.graphic_eq_rounded),
+                      leading: const SettingsIcon(Icons.graphic_eq_rounded),
                       title: const Text('Audio quality'),
                       subtitle: const Text('Balanced targets 160 kbps; Data saver targets 96 kbps when available.'),
                       trailing: DropdownButton<String>(
@@ -1991,7 +1991,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     ListTile(
-                      leading: const Icon(Icons.route_rounded),
+                      leading: const SettingsIcon(Icons.route_rounded),
                       title: const Text('Resolver profile'),
                       subtitle: const Text('Choose which stream resolver is tried first'),
                       trailing: DropdownButton<String>(
@@ -2011,7 +2011,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     ListTile(
-                      leading: const Icon(Icons.playlist_add_rounded),
+                      leading: const SettingsIcon(Icons.playlist_add_rounded),
                       title: const Text('Import / export playlists'),
                       subtitle: const Text('Import YouTube Music, Spotify, CSV or M3U playlists and export your Discover collection'),
                       trailing: const Icon(Icons.chevron_right_rounded),
@@ -2019,7 +2019,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     ListTile(
-                      leading: const Icon(Icons.public_rounded),
+                      leading: const SettingsIcon(Icons.public_rounded),
                       title: const Text('Content region'),
                       subtitle: const Text('Changes YouTube Music catalogue and playback region'),
                       trailing: DropdownButton<String>(
@@ -2044,7 +2044,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     FutureBuilder<String>(
                       future: DownloadManagerService.instance.defaultDirectory(),
                       builder: (context, snapshot) => ListTile(
-                        leading: const Icon(Icons.folder_open_rounded),
+                        leading: const SettingsIcon(Icons.folder_open_rounded),
                         title: const Text('Download location'),
                         subtitle: Text(
                           _settings.downloadDirectory ??
@@ -2095,7 +2095,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
-                      secondary: const Icon(Icons.wifi_rounded),
+                      secondary: const SettingsIcon(Icons.wifi_rounded),
                       title: const Text('Wi-Fi only'),
                       subtitle: const Text('Hold downloads while connected to mobile data'),
                       value: _settings.downloadWifiOnly,
@@ -2103,7 +2103,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
-                      secondary: const Icon(Icons.restart_alt_rounded),
+                      secondary: const SettingsIcon(Icons.restart_alt_rounded),
                       title: const Text('Auto-resume on launch'),
                       subtitle: const Text('Resume unfinished downloads when PocketLink opens'),
                       value: _settings.downloadAutoResume,
@@ -2111,7 +2111,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     ListTile(
-                      leading: const Icon(Icons.cleaning_services_rounded),
+                      leading: const SettingsIcon(Icons.cleaning_services_rounded),
                       title: const Text('Clear cache'),
                       subtitle: const Text('Remove temporary files and cached images'),
                       trailing: _clearingCache
@@ -2127,7 +2127,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   if (widget.category == 'Network')
                     _section('Server Connections', [
                       ListTile(
-                        leading: const Icon(Icons.dns_outlined),
+                        leading: const SettingsIcon(Icons.dns_outlined),
                         title: const Text('Saved servers'),
                         subtitle: const Text('Manage and switch PocketLink connections'),
                         trailing: const Icon(Icons.chevron_right_rounded),
@@ -2137,7 +2137,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   if (widget.category == 'Diagnostics')
                     _section('Diagnostics', [
                       ListTile(
-                        leading: const Icon(Icons.bug_report_outlined),
+                        leading: const SettingsIcon(Icons.bug_report_outlined),
                         title: const Text('Export diagnostic logs'),
                         subtitle: const Text('Generate and share the app troubleshooting log'),
                         trailing: _exportingLogs
