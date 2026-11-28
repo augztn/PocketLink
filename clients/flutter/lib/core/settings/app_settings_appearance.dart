@@ -78,6 +78,32 @@ extension AppSettingsAppearance on AppSettings {
     await preferences.setDouble(AppSettings._thumbnailCornerRadiusKey, value);
   }
 
+  Future<void> setLyricsOptions({
+    double? textSize,
+    double? lineSpacing,
+    String? motionStyle,
+  }) async {
+    if (textSize != null && (!textSize.isFinite || textSize < 14 || textSize > 44)) {
+      throw ArgumentError.value(textSize, 'textSize', 'Must be between 14 and 44');
+    }
+    if (lineSpacing != null && (!lineSpacing.isFinite || lineSpacing < 0.8 || lineSpacing > 2.0)) {
+      throw ArgumentError.value(lineSpacing, 'lineSpacing', 'Must be between 0.8 and 2.0');
+    }
+    if (motionStyle != null && !const {'motion', 'legacy', 'boring', 'plain'}.contains(motionStyle)) {
+      throw ArgumentError.value(motionStyle, 'motionStyle');
+    }
+    if (textSize != null) _lyricsTextSize = textSize;
+    if (lineSpacing != null) _lyricsLineSpacing = lineSpacing;
+    if (motionStyle != null) _lyricsMotionStyle = motionStyle;
+    _notifySettingsChanged();
+    final preferences = await SharedPreferences.getInstance();
+    await Future.wait([
+      if (textSize != null) preferences.setDouble(AppSettings._lyricsTextSizeKey, textSize),
+      if (lineSpacing != null) preferences.setDouble(AppSettings._lyricsLineSpacingKey, lineSpacing),
+      if (motionStyle != null) preferences.setString(AppSettings._lyricsMotionStyleKey, motionStyle),
+    ]);
+  }
+
   Future<void> setProgressiveBlurEnabled(bool value) async {
     _progressiveBlurEnabled = value;
     _notifySettingsChanged();
