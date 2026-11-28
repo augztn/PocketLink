@@ -6,6 +6,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/services.dart';
 import 'package:flutter/physics.dart';
+import 'package:flutter/scheduler.dart';
 
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -1668,7 +1669,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
   }
 
   Widget _metadataTextForItem(MediaQueueItem item, {required bool current}) {
-    final title = _queueItemTitle(item);
+    final title = current ? _fileName : _queueItemTitle(item);
     final artist = _queueItemArtist(item);
     const titleStyle = TextStyle(
       color: Colors.white,
@@ -1699,11 +1700,34 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
               style: titleStyle,
             ),
           const SizedBox(height: 2),
-          Text(
-            artist,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: artistStyle,
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final painter = TextPainter(
+                text: TextSpan(text: artist, style: artistStyle),
+                maxLines: 1,
+                textDirection: Directionality.of(context),
+              )..layout(maxWidth: constraints.maxWidth);
+              final text = Text(
+                artist,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: artistStyle,
+              );
+              if (!painter.didExceedMaxLines &&
+                  painter.width <= constraints.maxWidth) {
+                return text;
+              }
+              return ShaderMask(
+                blendMode: BlendMode.dstIn,
+                shaderCallback: (bounds) => const LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [Colors.white, Colors.white, Colors.transparent],
+                  stops: [0, 0.72, 1],
+                ).createShader(bounds),
+                child: text,
+              );
+            },
           ),
         ],
       ),
