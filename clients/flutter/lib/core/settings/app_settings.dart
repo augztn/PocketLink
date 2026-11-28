@@ -42,6 +42,9 @@ class AppSettings extends ChangeNotifier {
   static const _accentColorKey = 'settings_accent_color';
   static const _blurStrengthKey = 'settings_blur_strength';
   static const _thumbnailCornerRadiusKey = 'settings_thumbnail_corner_radius';
+  static const _lyricsTextSizeKey = 'settings_lyrics_text_size';
+  static const _lyricsLineSpacingKey = 'settings_lyrics_line_spacing';
+  static const _lyricsMotionStyleKey = 'settings_lyrics_motion_style';
   static const _navigationOrderKey = 'settings_navigation_order';
   static const _navigationVisibilityKey = 'settings_navigation_visibility';
   static const _homeSearchKey = 'settings_home_search';
@@ -140,6 +143,9 @@ class AppSettings extends ChangeNotifier {
   int _accentColorValue = 0xFF536DFE;
   double _blurStrength = 24.0;
   double _thumbnailCornerRadius = 10.0;
+  double _lyricsTextSize = 31.0;
+  double _lyricsLineSpacing = 1.22;
+  String _lyricsMotionStyle = 'motion';
   bool _loaded = false;
   List<String> _navigationOrder = List.of(navigationDefaults);
   Set<String> _visibleNavigationItems = Set.of(navigationDefaults);
@@ -198,6 +204,9 @@ class AppSettings extends ChangeNotifier {
   int get accentColorValue => _accentColorValue;
   double get blurStrength => _blurStrength;
   double get thumbnailCornerRadius => _thumbnailCornerRadius;
+  double get lyricsTextSize => _lyricsTextSize;
+  double get lyricsLineSpacing => _lyricsLineSpacing;
+  String get lyricsMotionStyle => _lyricsMotionStyle;
   double get animationTimeDilation => _animationsEnabled ? 1.0 / _animationSpeed : 0.01;
   List<String> get navigationOrder => List.unmodifiable(_navigationOrder);
   Set<String> get visibleNavigationItems => Set.unmodifiable(_visibleNavigationItems);
@@ -276,6 +285,18 @@ class AppSettings extends ChangeNotifier {
       _thumbnailCornerRadius = storedCornerRadius.isFinite
           ? storedCornerRadius.clamp(0.0, 45.0).toDouble()
           : 10.0;
+      final storedLyricsTextSize = preferences.getDouble(_lyricsTextSizeKey) ?? 31.0;
+      _lyricsTextSize = storedLyricsTextSize.isFinite
+          ? storedLyricsTextSize.clamp(14.0, 44.0).toDouble()
+          : 31.0;
+      final storedLyricsLineSpacing = preferences.getDouble(_lyricsLineSpacingKey) ?? 1.22;
+      _lyricsLineSpacing = storedLyricsLineSpacing.isFinite
+          ? storedLyricsLineSpacing.clamp(0.8, 2.0).toDouble()
+          : 1.22;
+      final storedLyricsMotionStyle = preferences.getString(_lyricsMotionStyleKey) ?? 'motion';
+      _lyricsMotionStyle = const {'motion', 'legacy', 'boring', 'plain'}.contains(storedLyricsMotionStyle)
+          ? storedLyricsMotionStyle
+          : 'motion';
       _showMiniPlayer = preferences.getBool(_nowPlayingMiniPlayerKey) ?? true;
       _enableNowPlayingGestures = preferences.getBool(_nowPlayingGesturesKey) ?? true;
       _showStatsForNerds = preferences.getBool(_nowPlayingStatsForNerdsKey) ?? true;
