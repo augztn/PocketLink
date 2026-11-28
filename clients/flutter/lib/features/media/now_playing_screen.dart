@@ -1712,11 +1712,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   @override
   Widget build(BuildContext context) {
     final animation = widget.morphAnimation;
-    final listenables = <Listenable>[
-      AppSettings.instance,
-      _lyricsController,
-      _persistent,
-    ];
+    final listenables = <Listenable>[AppSettings.instance, _lyricsController];
     if (animation != null) listenables.add(animation);
     return AnimatedBuilder(
       animation: Listenable.merge(listenables),
@@ -1847,47 +1843,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                   ),
                 ),
               ),
-              if (_persistent.storagePlaybackIssue != null)
-                Positioned(
-                  top: MediaQuery.paddingOf(context).top + 48,
-                  left: 16,
-                  right: 16,
-                  child: Material(
-                    color: const Color(0xEE24262C),
-                    borderRadius: BorderRadius.circular(16),
-                    clipBehavior: Clip.antiAlias,
-                    child: InkWell(
-                      onTap: () => unawaited(_persistent.refreshStoragePlayback()),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 15,
-                          vertical: 12,
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.usb_rounded,
-                              color: Colors.white70,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                _persistent.storagePlaybackIssue!,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            const Icon(
-                              Icons.refresh_rounded,
-                              color: Colors.white,
-                              size: 19,
-                            ),
-                          ],
+            ],
                         ),
                       ),
                     ),
