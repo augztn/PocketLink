@@ -325,17 +325,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _ => category ?? 'Settings',
       };
 
-  // Diagnostic isolation: Settings category routes temporarily bypass the
-  // app-wide custom PageTransitionsTheme. If the pop hesitation disappears,
-  // the category route transition is implicated; other app routes are unchanged.
-  PageRoute<void> _categoryRoute(String id, WidgetBuilder builder) => PageRouteBuilder<void>(
+  PageRoute<void> _categoryRoute(String id, WidgetBuilder builder) =>
+      MaterialPageRoute<void>(
         settings: RouteSettings(
           name: PocketLinkRouteNames.settingsCategory(id),
         ),
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            builder(context),
-        transitionDuration: Duration.zero,
-        reverseTransitionDuration: Duration.zero,
+        builder: builder,
       );
 
   void _openCategory(String id) {
