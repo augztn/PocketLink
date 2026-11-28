@@ -602,7 +602,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   void _onDiscoverScroll() {
     if (_scrollController.hasClients) {
       final heroHeight = MediaQuery.sizeOf(context).height * .60;
-      final progress = (_scrollController.offset / heroHeight).clamp(0.0, 1.0);
+      final progress = (_scrollController.offset / heroHeight).clamp(0.0, 1.0).toDouble();
       if ((_heroScrollProgress.value - progress).abs() > .001) {
         _heroScrollProgress.value = progress;
       }
@@ -1628,6 +1628,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
               );
             },
             ),
+          ),
           builder: (context, progress, child) {
             final blur = progress * 8;
             return ClipRect(
