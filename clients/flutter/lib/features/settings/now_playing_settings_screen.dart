@@ -251,35 +251,27 @@ class _NowPlayingSettingsScreenState extends State<NowPlayingSettingsScreen> {
   }
 }
 
-class _SwipeActionTile extends StatelessWidget {
-  const _SwipeActionTile({
-    required this.title,
-    required this.value,
-    required this.onChanged,
-  });
-
-  final String title;
-  final String value;
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) => SettingsTile(
-    title: title,
-    trailing: DropdownButton<String>(
-      value: _NowPlayingSettingsScreenState._swipeActions.containsKey(value)
-          ? value
-          : 'none',
-      underline: const SizedBox.shrink(),
-      items: _NowPlayingSettingsScreenState._swipeActions.entries.map(
-        (entry) => DropdownMenuItem<String>(
-          value: entry.key,
-          child: Text(entry.value),
-        ),
-      ).toList(),
-      onChanged: (next) {
-        if (next != null) onChanged(next);
-      },
-    ),
-  );
+class _SwipeActionTile extends SettingsTile {
+  _SwipeActionTile({
+    required String title,
+    required String value,
+    required ValueChanged<String> onChanged,
+  }) : super(
+          title: title,
+          trailing: DropdownButton<String>(
+            value: _NowPlayingSettingsScreenState._swipeActions.containsKey(value)
+                ? value
+                : 'none',
+            underline: const SizedBox.shrink(),
+            items: _NowPlayingSettingsScreenState._swipeActions.entries.map(
+              (entry) => DropdownMenuItem<String>(
+                value: entry.key,
+                child: Text(entry.value),
+              ),
+            ).toList(),
+            onChanged: (next) {
+              if (next != null) onChanged(next);
+            },
+          ),
+        );
 }
-
