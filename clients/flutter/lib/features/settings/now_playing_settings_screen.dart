@@ -219,7 +219,7 @@ class _NowPlayingSettingsScreenState extends State<NowPlayingSettingsScreen> {
                   },
                 ),
               ),
-            ])),
+            ]),
             const SizedBox(height: 20),
             _group('Mini-player and playback', [
               SwitchListTile(
