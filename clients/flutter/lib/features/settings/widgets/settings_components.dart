@@ -246,7 +246,7 @@ class _SettingsNestedGroupState extends State<SettingsNestedGroup> {
     return tokens.every(text.contains);
   }
 
-  GlobalKey _keyFor(int index, Widget child) {
+  GlobalKey _keyFor(int index) {
     return _rowKeys.putIfAbsent(index, GlobalKey.new);
   }
 
@@ -326,7 +326,7 @@ class _SettingsNestedGroupState extends State<SettingsNestedGroup> {
                       children: [
                         for (var index = 0; index < widget.children.length; index++)
                           AnimatedContainer(
-                            key: _keyFor(index, widget.children[index]),
+                            key: _keyFor(index),
                             duration: const Duration(milliseconds: 450),
                             curve: Curves.easeOutCubic,
                             margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
