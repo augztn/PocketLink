@@ -15,11 +15,15 @@ class SettingsSectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(left: 4, bottom: 8),
-        child: PocketLinkSectionHeader(
+        padding: const EdgeInsets.only(left: 4, bottom: 10),
+        child: Text(
           title,
-          uppercase: true,
-          color: settingsSectionColor,
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            color: Theme.of(context).colorScheme.onSurface,
+            letterSpacing: 0,
+          ),
         ),
       );
 }
