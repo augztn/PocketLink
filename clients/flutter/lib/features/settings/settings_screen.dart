@@ -76,6 +76,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Iterable<String> _searchableText(Widget widget) sync* {
+    if (widget is SettingsNestedGroup) {
+      yield settingsSearchableText(widget);
+      return;
+    }
     if (widget is SettingsTile) {
       yield settingsSearchableText(widget);
       return;
@@ -1367,61 +1371,67 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ]),
                 if (widget.category == 'Appearance' || widget.category == 'Customisation')
                   _section('Motion', [
-                    SwitchListTile(
-                      secondary: const Icon(Icons.animation_rounded),
-                      title: const Text('Animations'),
-                      subtitle: const Text('Apply motion preferences across PocketLink screens and controls'),
-                      value: _settings.animationsEnabled,
-                      onChanged: _settings.setAnimationsEnabled,
-                    ),
-                    SwitchListTile(
-                      secondary: const Icon(Icons.screen_share_outlined),
-                      title: const Text('Page transitions'),
-                      subtitle: const Text('Enable the shared slide and scale transition between screens'),
-                      value: _settings.pageTransitionsEnabled,
-                      onChanged: _settings.animationsEnabled ? _settings.setPageTransitionsEnabled : null,
-                    ),
-                    SwitchListTile(
-                      secondary: const Icon(Icons.lyrics_rounded),
-                      title: const Text('Lyrics animations'),
-                      subtitle: const Text('Control active-line emphasis and instrumental pulse separately'),
-                      value: _settings.lyricsAnimationsEnabled,
-                      onChanged: _settings.animationsEnabled ? _settings.setLyricsAnimationsEnabled : null,
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
+                    SettingsNestedGroup(
+                      parent: SwitchListTile(
+                        secondary: const Icon(Icons.animation_rounded),
+                        title: const Text('Animations'),
+                        subtitle: const Text('Apply motion preferences across PocketLink screens and controls'),
+                        value: _settings.animationsEnabled,
+                        onChanged: _settings.setAnimationsEnabled,
+                      ),
+                      expanded: true,
+                      searchQuery: _settingsSearchQuery,
+                      children: [
+                        SwitchListTile(
+                          secondary: const Icon(Icons.screen_share_outlined),
+                          title: const Text('Page transitions'),
+                          subtitle: const Text('Enable the shared slide and scale transition between screens'),
+                          value: _settings.pageTransitionsEnabled,
+                          onChanged: _settings.animationsEnabled ? _settings.setPageTransitionsEnabled : null,
+                        ),
+                        SwitchListTile(
+                          secondary: const Icon(Icons.lyrics_rounded),
+                          title: const Text('Lyrics animations'),
+                          subtitle: const Text('Control active-line emphasis and instrumental pulse separately'),
+                          value: _settings.lyricsAnimationsEnabled,
+                          onChanged: _settings.animationsEnabled ? _settings.setLyricsAnimationsEnabled : null,
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Expanded(child: Text('Animation speed')),
-                              Text('${(_pendingAnimationSpeed ?? _settings.animationSpeed).toStringAsFixed(1)}×'),
+                              Row(
+                                children: [
+                                  const Expanded(child: Text('Animation speed')),
+                                  Text('${(_pendingAnimationSpeed ?? _settings.animationSpeed).toStringAsFixed(1)}×'),
+                                ],
+                              ),
+                              Slider(
+                                min: 0.5,
+                                max: 2.0,
+                                divisions: 15,
+                                value: (_pendingAnimationSpeed ?? _settings.animationSpeed).clamp(0.5, 2.0).toDouble(),
+                                onChanged: _settings.animationsEnabled
+                                    ? (value) => setState(() => _pendingAnimationSpeed = value)
+                                    : null,
+                                onChangeEnd: _settings.animationsEnabled
+                                    ? (value) async {
+                                        setState(() => _pendingAnimationSpeed = null);
+                                        await _settings.setAnimationSpeed(value);
+                                      }
+                                    : null,
+                              ),
+                              Text(
+                                '0.5× is slower · 1× is normal · 2× is faster. This scales Flutter animations throughout PocketLink.',
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                ),
+                              ),
                             ],
                           ),
-                          Slider(
-                            min: 0.5,
-                            max: 2.0,
-                            divisions: 15,
-                            value: (_pendingAnimationSpeed ?? _settings.animationSpeed).clamp(0.5, 2.0).toDouble(),
-                            onChanged: _settings.animationsEnabled
-                                ? (value) => setState(() => _pendingAnimationSpeed = value)
-                                : null,
-                            onChangeEnd: _settings.animationsEnabled
-                                ? (value) async {
-                                    setState(() => _pendingAnimationSpeed = null);
-                                    await _settings.setAnimationSpeed(value);
-                                  }
-                                : null,
-                          ),
-                          Text(
-                            '0.5× is slower · 1× is normal · 2× is faster. This scales Flutter animations throughout PocketLink.',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ]),
                 if (widget.category == 'Customisation')
