@@ -311,6 +311,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       }
     }
     if (!mounted) return;
+    if (!settings.discoverMotion && _showSkeletonOverlay) {
+      _skeletonRevealTimer?.cancel();
+      _showSkeletonOverlay = false;
+      _skeletonOverlayFading = false;
+    }
     setState(() {});
     if (region == _lastRegion) return;
     _lastRegion = region;
