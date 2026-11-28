@@ -631,7 +631,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
             subtitle: Text(entry.value),
             trailing: const Icon(Icons.north_east_rounded, size: 18),
-            onTap: () => _openCategory(entry.key, searchQuery: label),
+            onTap: () => _openCategory(entry.key, searchQuery: _settingsSearchQuery),
           ),
         );
       }
