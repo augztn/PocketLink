@@ -419,7 +419,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
     }
 
     _observedTrackIdentity = identity;
-    _carouselTrackChangeCompleter?.complete();
+    if (!(_carouselTrackChangeCompleter?.isCompleted ?? true)) {
+      _carouselTrackChangeCompleter!.complete();
+    }
     final requestedDirection = _persistent.takePendingTrackDirection();
     // A previous track's drag spring must not move the newly selected track.
     _carouselSettleController
@@ -1524,39 +1526,48 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
     }
   }
 
-  Widget _trackTransition({required Widget child, required String key, bool followDrag = true}) {
-    final direction = _trackChangeDirection.toDouble();
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    final dragProgress = !followDrag || screenWidth <= 0
-        ? 0.0
-        : (_carouselDragOffset(screenWidth) / screenWidth)
-            .clamp(-0.42, 0.42)
+  Widget _trackTransition({
+    required Widget child,
+    required String key,
+    bool followDrag = true,
+  }) {
+    return AnimatedBuilder(
+      animation: _carouselSettleController,
+      builder: (context, _) {
+        final direction = _trackChangeDirection.toDouble();
+        final screenWidth = MediaQuery.sizeOf(context).width;
+        final dragProgress = !followDrag || screenWidth <= 0
+            ? 0.0
+            : (_carouselDragOffset(screenWidth) / screenWidth)
+                .clamp(-0.42, 0.42)
+                .toDouble();
+        final metadataOpacity = (1 - dragProgress.abs() * 1.5)
+            .clamp(0.0, 1.0)
             .toDouble();
-    final metadataOpacity = (1 - dragProgress.abs() * 1.5)
-        .clamp(0.0, 1.0)
-        .toDouble();
-    return Transform.translate(
-      offset: Offset(dragProgress * screenWidth * 0.75, 0),
-      child: Opacity(
-        opacity: metadataOpacity,
-        child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 420),
-        reverseDuration: const Duration(milliseconds: 360),
-        switchInCurve: Curves.easeOutCubic,
-        switchOutCurve: Curves.easeInCubic,
-        transitionBuilder: (child, animation) {
-          final slide = Tween<Offset>(
-            begin: Offset(direction, 0),
-            end: Offset.zero,
-          ).animate(animation);
-          return FadeTransition(
-            opacity: animation,
-            child: SlideTransition(position: slide, child: child),
-          );
-        },
-        child: KeyedSubtree(key: ValueKey(key), child: child),
-        ),
-      ),
+        return Transform.translate(
+          offset: Offset(dragProgress * screenWidth * 0.75, 0),
+          child: Opacity(
+            opacity: metadataOpacity,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 420),
+              reverseDuration: const Duration(milliseconds: 360),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (child, animation) {
+                final slide = Tween<Offset>(
+                  begin: Offset(direction, 0),
+                  end: Offset.zero,
+                ).animate(animation);
+                return FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(position: slide, child: child),
+                );
+              },
+              child: KeyedSubtree(key: ValueKey(key), child: child),
+            ),
+          ),
+        );
+      },
     );
   }
 
