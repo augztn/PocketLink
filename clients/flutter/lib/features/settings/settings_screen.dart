@@ -40,6 +40,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _importingSettings = false;
   double? _pendingAnimationSpeed;
   double? _pendingBlurStrength;
+  double? _pendingGlassBlurStrength;
+  double? _pendingLyricsInactiveBlur;
   double? _pendingThumbnailCornerRadius;
   double? _pendingLyricsTextSize;
   double? _pendingLyricsLineSpacing;
@@ -442,6 +444,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       'customization': {
         'App animations': 'animations motion transition reduce motion disable global system wide',
         'Animation speed': 'animations motion faster slower speed duration 0.5 2x',
+        'Page transitions': 'screen route navigation transition slide animation',
+        'Lyrics animations': 'lyrics motion animation emphasis pulse',
+        'Glass blur strength': 'liquid glass frosted blur strength sigma',
+        'Lyrics glow': 'lyrics glow light accent effect',
+        'Lyrics bloom': 'lyrics bloom soft light blur effect',
+        'Lyrics soft light': 'lyrics soft light text glow',
+        'Lyrics inactive blur': 'lyrics inactive line blur focus',
         'Lyrics text size': 'lyrics font size text scale typography 14 44',
         'Lyrics line spacing': 'lyrics line height spacing vertical gap',
         'Lyrics motion style': 'lyrics animation motion legacy boring plain transition',
@@ -538,11 +547,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await _settings.setThemeMode(ThemeMode.system);
     await _settings.setAccentColor(AppSettings.accentColorValues.first);
     await _settings.setBlurStrength(24.0);
+    await _settings.setGlassBlurStrength(20.0);
     await _settings.setThumbnailCornerRadius(10.0);
     await _settings.setUseLiquidGlass(false);
     await _settings.setProgressiveBlurEnabled(true);
     await _settings.setAnimationsEnabled(true);
     await _settings.setAnimationSpeed(1.0);
+    await _settings.setPageTransitionsEnabled(true);
+    await _settings.setLyricsAnimationsEnabled(true);
+    await _settings.setLyricsOptions(
+      textSize: 31.0,
+      lineSpacing: 1.22,
+      motionStyle: 'motion',
+      glow: false,
+      bloom: false,
+      softLight: false,
+      inactiveBlur: 1.7,
+    );
     if (mounted) _message('Appearance settings restored to defaults.');
   }
 
@@ -891,6 +912,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       value: _settings.animationsEnabled,
                       onChanged: _settings.setAnimationsEnabled,
                     ),
+                    SwitchListTile(
+                      secondary: const Icon(Icons.screen_share_outlined),
+                      title: const Text('Page transitions'),
+                      subtitle: const Text('Enable the shared slide and scale transition between screens'),
+                      value: _settings.pageTransitionsEnabled,
+                      onChanged: _settings.animationsEnabled ? _settings.setPageTransitionsEnabled : null,
+                    ),
+                    SwitchListTile(
+                      secondary: const Icon(Icons.lyrics_rounded),
+                      title: const Text('Lyrics animations'),
+                      subtitle: const Text('Control active-line emphasis and instrumental pulse separately'),
+                      value: _settings.lyricsAnimationsEnabled,
+                      onChanged: _settings.animationsEnabled ? _settings.setLyricsAnimationsEnabled : null,
+                    ),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                       child: Column(
@@ -1004,6 +1039,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               await _settings.setLyricsOptions(lineSpacing: value);
                             },
                           ),
+                          SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: const Text('Lyrics glow'),
+                            subtitle: const Text('Accent-colour halo on the active line'),
+                            value: _settings.lyricsGlow,
+                            onChanged: (value) => _settings.setLyricsOptions(glow: value),
+                          ),
+                          SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: const Text('Lyrics bloom'),
+                            subtitle: const Text('Soft white bloom around the active line'),
+                            value: _settings.lyricsBloom,
+                            onChanged: (value) => _settings.setLyricsOptions(bloom: value),
+                          ),
+                          SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: const Text('Lyrics soft light'),
+                            subtitle: const Text('Softer active-line white and subtle halo'),
+                            value: _settings.lyricsSoftLight,
+                            onChanged: (value) => _settings.setLyricsOptions(softLight: value),
+                          ),
+                          Row(children: [
+                            const Expanded(child: Text('Inactive line blur')),
+                            Text('${(_pendingLyricsInactiveBlur ?? _settings.lyricsInactiveBlur).toStringAsFixed(1)}'),
+                          ]),
+                          Slider(
+                            min: 0,
+                            max: 4,
+                            divisions: 16,
+                            value: (_pendingLyricsInactiveBlur ?? _settings.lyricsInactiveBlur).clamp(0.0, 4.0).toDouble(),
+                            onChanged: (value) => setState(() => _pendingLyricsInactiveBlur = value),
+                            onChangeEnd: (value) async {
+                              setState(() => _pendingLyricsInactiveBlur = null);
+                              await _settings.setLyricsOptions(inactiveBlur: value);
+                            },
+                          ),
                           Text(
                             'These controls affect the existing Now Playing lyrics view only.',
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -1095,6 +1166,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                           Text(
                             'Adjusts the shared header blur. Set to 0 for no blur.',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(children: [
+                            const Expanded(child: Text('Glass surface blur')),
+                            Text('${(_pendingGlassBlurStrength ?? _settings.glassBlurStrength).round()}'),
+                          ]),
+                          Slider(
+                            min: 0,
+                            max: 32,
+                            divisions: 32,
+                            value: (_pendingGlassBlurStrength ?? _settings.glassBlurStrength).clamp(0.0, 32.0).toDouble(),
+                            onChanged: _settings.useLiquidGlass
+                                ? (value) => setState(() => _pendingGlassBlurStrength = value)
+                                : null,
+                            onChangeEnd: _settings.useLiquidGlass
+                                ? (value) async {
+                                    setState(() => _pendingGlassBlurStrength = null);
+                                    await _settings.setGlassBlurStrength(value);
+                                  }
+                                : null,
+                          ),
+                          Text(
+                            'Controls blur on Liquid Glass surfaces. Enable Liquid Glass to adjust it; 0 removes the blur while keeping the surface.',
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
