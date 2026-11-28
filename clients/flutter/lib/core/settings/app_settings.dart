@@ -74,6 +74,7 @@ class AppSettings extends ChangeNotifier {
   static const _discoverArtworkKey = 'settings_discover_artwork';
   static const _discoverSpotlightKey = 'settings_discover_spotlight';
   static const _discoverArtistGridKey = 'settings_discover_artist_grid';
+  static const _discoverMotionKey = 'settings_discover_motion';
   static const _discoverAudioQualityKey = 'settings_discover_audio_quality';
   static const _discoverResolverProfileKey = 'settings_discover_resolver_profile';
   static const _discoverRegionKey = 'settings_discover_region';
@@ -153,6 +154,7 @@ class AppSettings extends ChangeNotifier {
   bool _discoverArtwork = true;
   bool _discoverSpotlight = true;
   bool _discoverArtistGrid = false;
+  bool _discoverMotion = true;
   String _discoverAudioQuality = 'best_available';
   String _discoverResolverProfile = 'automatic';
   String _discoverRegion = 'IN';
@@ -202,6 +204,7 @@ class AppSettings extends ChangeNotifier {
   bool get discoverArtwork => _discoverArtwork;
   bool get discoverSpotlight => _discoverSpotlight;
   bool get discoverArtistGrid => _discoverArtistGrid;
+  bool get discoverMotion => _discoverMotion;
   String get discoverAudioQuality => _discoverAudioQuality;
   String get discoverResolverProfile => _discoverResolverProfile;
   String get discoverRegion => _discoverRegion;
@@ -248,6 +251,7 @@ class AppSettings extends ChangeNotifier {
       _discoverArtwork = preferences.getBool(_discoverArtworkKey) ?? true;
       _discoverSpotlight = preferences.getBool(_discoverSpotlightKey) ?? true;
       _discoverArtistGrid = preferences.getBool(_discoverArtistGridKey) ?? false;
+      _discoverMotion = preferences.getBool(_discoverMotionKey) ?? true;
       _discoverAudioQuality = const {'best_available', 'balanced', 'data_saver'}
           .contains(preferences.getString(_discoverAudioQualityKey))
           ? preferences.getString(_discoverAudioQualityKey)!
