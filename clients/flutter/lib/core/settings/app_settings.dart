@@ -72,6 +72,8 @@ class AppSettings extends ChangeNotifier {
   static const _discoverLyricsKey = 'settings_discover_lyrics';
   static const _discoverAutoQueueKey = 'settings_discover_auto_queue';
   static const _discoverArtworkKey = 'settings_discover_artwork';
+  static const _discoverSpotlightKey = 'settings_discover_spotlight';
+  static const _discoverArtistGridKey = 'settings_discover_artist_grid';
   static const _discoverAudioQualityKey = 'settings_discover_audio_quality';
   static const _discoverResolverProfileKey = 'settings_discover_resolver_profile';
   static const _discoverRegionKey = 'settings_discover_region';
@@ -149,6 +151,8 @@ class AppSettings extends ChangeNotifier {
   bool _discoverLyrics = true;
   bool _discoverAutoQueue = true;
   bool _discoverArtwork = true;
+  bool _discoverSpotlight = true;
+  bool _discoverArtistGrid = false;
   String _discoverAudioQuality = 'best_available';
   String _discoverResolverProfile = 'automatic';
   String _discoverRegion = 'IN';
@@ -196,6 +200,8 @@ class AppSettings extends ChangeNotifier {
   bool get discoverLyrics => _discoverLyrics;
   bool get discoverAutoQueue => _discoverAutoQueue;
   bool get discoverArtwork => _discoverArtwork;
+  bool get discoverSpotlight => _discoverSpotlight;
+  bool get discoverArtistGrid => _discoverArtistGrid;
   String get discoverAudioQuality => _discoverAudioQuality;
   String get discoverResolverProfile => _discoverResolverProfile;
   String get discoverRegion => _discoverRegion;
@@ -240,6 +246,8 @@ class AppSettings extends ChangeNotifier {
       _discoverLyrics = preferences.getBool(_discoverLyricsKey) ?? true;
       _discoverAutoQueue = preferences.getBool(_discoverAutoQueueKey) ?? true;
       _discoverArtwork = preferences.getBool(_discoverArtworkKey) ?? true;
+      _discoverSpotlight = preferences.getBool(_discoverSpotlightKey) ?? true;
+      _discoverArtistGrid = preferences.getBool(_discoverArtistGridKey) ?? false;
       _discoverAudioQuality = const {'best_available', 'balanced', 'data_saver'}
           .contains(preferences.getString(_discoverAudioQualityKey))
           ? preferences.getString(_discoverAudioQualityKey)!

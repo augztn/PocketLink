@@ -203,6 +203,45 @@ List<DiscoverHomeShelf> mergeDiscoverHomeShelves(
   return List.unmodifiable(merged);
 }
 
+
+/// Builds the Discover hero from real feed and listening-history tracks.
+/// Collection cards are included only when they carry a playable track ID.
+List<DiscoverTrack> buildDiscoverSpotlightTracks({
+  required List<DiscoverHomeShelf> shelves,
+  required List<DiscoverTrack> recentlyPlayed,
+  int limit = 5,
+}) {
+  if (limit <= 0) return const [];
+
+  final result = <DiscoverTrack>[];
+  final seen = <String>{};
+
+  void add(DiscoverTrack track) {
+    if (track.videoId.isEmpty || track.title.trim().isEmpty) return;
+    if (seen.add(track.videoId) && result.length < limit) {
+      result.add(track);
+    }
+  }
+
+  for (final shelf in shelves) {
+    for (final track in shelf.tracks) {
+      add(track);
+    }
+    for (final item in shelf.items) {
+      if (item.isPlayableTrack) add(item.toTrack());
+    }
+    if (result.length >= limit) break;
+  }
+  if (result.length < limit) {
+    for (final track in recentlyPlayed) {
+      add(track);
+      if (result.length >= limit) break;
+    }
+  }
+
+  return List.unmodifiable(result);
+}
+
 class DiscoverMoodSection {
   const DiscoverMoodSection({required this.title, required this.items});
   final String title;

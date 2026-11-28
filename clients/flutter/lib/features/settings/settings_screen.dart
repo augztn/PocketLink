@@ -1070,6 +1070,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onChanged: (value) => _settings.setDiscoverOptions(artwork: value),
                     ),
                     const Divider(height: 1),
+                    SwitchListTile(
+                      secondary: const Icon(Icons.view_carousel_rounded),
+                      title: const Text('Spotlight carousel'),
+                      subtitle: const Text('Show the full-width featured hero and Speed Dial page at the top of Discover'),
+                      value: _settings.discoverSpotlight,
+                      onChanged: (value) => _settings.setDiscoverOptions(spotlight: value),
+                    ),
+                    const Divider(height: 1),
+                    SwitchListTile(
+                      secondary: const Icon(Icons.grid_view_rounded),
+                      title: const Text('Artist grid layout'),
+                      subtitle: const Text('Optional two-column grid; off by default to match the horizontal artist shelves'),
+                      value: _settings.discoverArtistGrid,
+                      onChanged: (value) => _settings.setDiscoverOptions(artistGrid: value),
+                    ),
+                    const Divider(height: 1),
                     ListTile(
                       leading: const Icon(Icons.graphic_eq_rounded),
                       title: const Text('Audio quality'),

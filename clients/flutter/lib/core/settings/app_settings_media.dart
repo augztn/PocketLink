@@ -15,12 +15,16 @@ extension AppSettingsMedia on AppSettings {
     bool? lyrics,
     bool? autoQueue,
     bool? artwork,
+    bool? spotlight,
+    bool? artistGrid,
   }) async {
     if (enabled != null) _discoverEnabled = enabled;
     if (localLossless != null) _discoverLocalLossless = localLossless;
     if (lyrics != null) _discoverLyrics = lyrics;
     if (autoQueue != null) _discoverAutoQueue = autoQueue;
     if (artwork != null) _discoverArtwork = artwork;
+    if (spotlight != null) _discoverSpotlight = spotlight;
+    if (artistGrid != null) _discoverArtistGrid = artistGrid;
     _notifySettingsChanged();
     final preferences = await SharedPreferences.getInstance();
     await Future.wait([
@@ -29,6 +33,8 @@ extension AppSettingsMedia on AppSettings {
       if (lyrics != null) preferences.setBool(AppSettings._discoverLyricsKey, lyrics),
       if (autoQueue != null) preferences.setBool(AppSettings._discoverAutoQueueKey, autoQueue),
       if (artwork != null) preferences.setBool(AppSettings._discoverArtworkKey, artwork),
+      if (spotlight != null) preferences.setBool(AppSettings._discoverSpotlightKey, spotlight),
+      if (artistGrid != null) preferences.setBool(AppSettings._discoverArtistGridKey, artistGrid),
     ]);
   }
 

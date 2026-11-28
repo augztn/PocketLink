@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
@@ -24,9 +26,9 @@ import 'discover_service.dart';
 import 'discover_cache.dart';
 import 'discover_thumbnail_cache.dart';
 import 'discover_recently_played_store.dart';
+import 'discover_speed_dial_store.dart';
 import 'discover_home_feed_store.dart';
 import 'discover_moods_screen.dart';
-import '../media_metadata.dart';
 
 class _DiscoverShelf {
   const _DiscoverShelf(this.title, this.tracks, {this.items = const []});
@@ -62,6 +64,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   late final AnimationController _shimmerController;
   List<DiscoverTrack> _tracks = const [];
   List<DiscoverTrack> _recentlyPlayed = const [];
+  List<DiscoverTrack> _speedDial = const [];
+  int _speedDialGeneration = 0;
   List<DiscoverTrack> _listeningPicks = const [];
   String _listeningPicksSeed = '';
   int _listeningPicksGeneration = 0;
@@ -83,6 +87,14 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   bool _loadingMore = false;
   Future<void>? _homeRequest;
   final ScrollController _scrollController = ScrollController();
+  static const int _spotlightInitialPage = 10000;
+  final PageController _spotlightPageController = PageController(
+    viewportFraction: 1,
+    initialPage: _spotlightInitialPage,
+  );
+  Timer? _spotlightAutoAdvanceTimer;
+  final ValueNotifier<double> _heroScrollProgress = ValueNotifier(0);
+  int _spotlightPage = _spotlightInitialPage;
   late String _lastRegion;
   late bool _lastLocalLossless;
 
@@ -105,7 +117,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     _scrollController.addListener(_onDiscoverScroll);
     AppSettings.instance.addListener(_onSettingsChanged);
     _loadHome();
+    _startSpotlightAutoAdvance();
     unawaited(_loadRecentlyPlayed());
+    unawaited(_loadSpeedDial());
   }
 
   @override
@@ -114,6 +128,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     if (_appResumed == resumed) return;
     _appResumed = resumed;
     if (!resumed) {
+      _spotlightUserDragging = false;
+      _spotlightAutoAdvanceTimer?.cancel();
+      _spotlightAutoAdvanceTimer = null;
       // MethodChannel resolution already in flight cannot be interrupted, but
       // its batch is invalidated so no further tracks are resolved or queued.
       _resolverGeneration++;
@@ -123,6 +140,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         component: 'discover_resolver',
         fields: {'lifecycle_state': state.name},
       );
+    } else {
+      _startSpotlightAutoAdvance();
     }
   }
 
@@ -135,6 +154,56 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       _appResumed &&
       generation == _resolverGeneration &&
       session == player.queueSession;
+
+  Future<void> _loadSpeedDial() async {
+    final generation = ++_speedDialGeneration;
+    try {
+      final tracks = await DiscoverSpeedDialStore.read();
+      if (!mounted || generation != _speedDialGeneration) return;
+      setState(() => _speedDial = tracks);
+    } catch (error) {
+      AppLogger.warning(
+        'Discover Speed Dial could not be restored',
+        category: 'discover',
+        component: 'discover_screen',
+        fields: {'failure_type': error.runtimeType.toString()},
+      );
+    }
+  }
+
+  bool _isSpeedDialPinned(DiscoverTrack track) =>
+      _speedDial.any((item) => item.videoId == track.videoId);
+
+  Future<void> _toggleSpeedDial(DiscoverTrack track) async {
+    ++_speedDialGeneration;
+    final wasPinned = _isSpeedDialPinned(track);
+    try {
+      final updated = wasPinned
+          ? await DiscoverSpeedDialStore.remove(track.videoId)
+          : await DiscoverSpeedDialStore.pin(track);
+      if (!mounted) return;
+      setState(() => _speedDial = updated);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(wasPinned
+              ? 'Removed from Speed Dial'
+              : 'Added to Speed Dial'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } catch (error) {
+      AppLogger.warning(
+        'Discover Speed Dial update failed',
+        category: 'discover',
+        component: 'discover_screen',
+        fields: {'failure_type': error.runtimeType.toString()},
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not update Speed Dial.')),
+      );
+    }
+  }
 
   Future<void> _loadRecentlyPlayed() async {
     final generation = _recentlyPlayedGeneration;
@@ -226,9 +295,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         unawaited(_loadLocalLibrary());
       }
     }
+    if (!mounted) return;
+    setState(() {});
     if (region == _lastRegion) return;
     _lastRegion = region;
-    if (!mounted) return;
     _requestGeneration++;
     _listeningPicksSeed = '';
     final pendingHome = _homeRequest;
@@ -266,6 +336,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     AppSettings.instance.removeListener(_onSettingsChanged);
     _scrollController.removeListener(_onDiscoverScroll);
     _scrollController.dispose();
+    _spotlightAutoAdvanceTimer?.cancel();
+    _heroScrollProgress.dispose();
+    _spotlightPageController.dispose();
     _shimmerController.dispose();
     super.dispose();
   }
@@ -530,6 +603,13 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   }
 
   void _onDiscoverScroll() {
+    if (_scrollController.hasClients) {
+      final heroHeight = MediaQuery.sizeOf(context).height * .60;
+      final progress = (_scrollController.offset / heroHeight).clamp(0.0, 1.0).toDouble();
+      if ((_heroScrollProgress.value - progress).abs() > .001) {
+        _heroScrollProgress.value = progress;
+      }
+    }
     if (!_scrollController.hasClients ||
         _loading ||
         _loadingMore ||
@@ -1125,126 +1205,68 @@ class _DiscoverScreenState extends State<DiscoverScreen>
 
   Widget _discoverHomeSkeleton() {
     final screenWidth = MediaQuery.sizeOf(context).width;
-    return SliverList(
-      delegate: SliverChildListDelegate([
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _skeletonLine(width: 142, height: 26),
-              const SizedBox(height: 8),
-              _skeletonLine(width: 178, height: 10),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 238,
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            scrollDirection: Axis.horizontal,
-            itemCount: 3,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemBuilder: (_, __) => SizedBox(
-              width: 168,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _skeletonBlock(width: 168, height: 168, radius: 14),
-                  const SizedBox(height: 9),
-                  _skeletonLine(width: 132, height: 10),
-                  const SizedBox(height: 6),
-                  _skeletonLine(width: 88, height: 8),
-                ],
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 24),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-          child: _skeletonLine(width: 132, height: 12),
-        ),
-        SizedBox(
-          height: 4 * 66,
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            scrollDirection: Axis.horizontal,
-            itemCount: 2,
-            separatorBuilder: (_, __) => const SizedBox(width: 10),
-            itemBuilder: (_, __) => SizedBox(
-              width: screenWidth * .86,
-              child: Column(
-                children: List.generate(4, (_) => Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: Row(children: [
-                      _skeletonBlock(width: 50, height: 50, radius: 10),
-                      const SizedBox(width: 10),
-                      Expanded(child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _skeletonLine(width: 150, height: 11),
-                          const SizedBox(height: 7),
-                          _skeletonLine(width: 92, height: 8),
-                        ],
-                      )),
-                      _skeletonBlock(width: 22, height: 22, radius: 11),
-                    ]),
-                  ),
-                )),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 24),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-          child: _skeletonLine(width: 112, height: 12),
-        ),
-        SizedBox(
-          height: 112,
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            scrollDirection: Axis.horizontal,
-            itemCount: 4,
-            separatorBuilder: (_, __) => const SizedBox(width: 10),
-            itemBuilder: (_, __) => _skeletonBlock(
-              width: (screenWidth - 50) / 2,
-              height: 112,
-              radius: 14,
-            ),
-          ),
-        ),
-        for (var shelf = 0; shelf < 3; shelf++) ...[
-          const SizedBox(height: 24),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-            child: _skeletonLine(width: 118 + shelf * 12, height: 12),
-          ),
+    final heroHeight = MediaQuery.sizeOf(context).height * .60;
+    return SliverToBoxAdapter(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           SizedBox(
-            height: 214,
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              scrollDirection: Axis.horizontal,
-              itemCount: 4,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (_, __) => SizedBox(
-                width: 148,
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Expanded(child: _skeletonBlock(width: 148, radius: 14)),
-                  const SizedBox(height: 9),
-                  _skeletonLine(width: 112, height: 10),
-                  const SizedBox(height: 6),
-                  _skeletonLine(width: 76, height: 8),
-                ]),
-              ),
+            height: heroHeight,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                _skeletonBlock(width: screenWidth, height: heroHeight, radius: 0),
+                Positioned(
+                  left: 36,
+                  bottom: 62,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _skeletonLine(width: 112, height: 10),
+                      const SizedBox(height: 12),
+                      _skeletonLine(width: screenWidth * .62, height: 27),
+                      const SizedBox(height: 8),
+                      _skeletonLine(width: screenWidth * .36, height: 12),
+                      const SizedBox(height: 18),
+                      _skeletonBlock(width: 88, height: 36, radius: 18),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
+          const SizedBox(height: 26),
+          for (var shelf = 0; shelf < 4; shelf++) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(36, 0, 28, 10),
+              child: _skeletonLine(width: 118 + shelf * 12, height: 14),
+            ),
+            SizedBox(
+              height: 190,
+              child: ListView.separated(
+                padding: const EdgeInsets.symmetric(horizontal: 36),
+                scrollDirection: Axis.horizontal,
+                itemCount: 4,
+                separatorBuilder: (_, __) => const SizedBox(width: 15),
+                itemBuilder: (_, __) => SizedBox(
+                  width: 137,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _skeletonBlock(width: 137, height: 137, radius: 14),
+                      const SizedBox(height: 8),
+                      _skeletonLine(width: 112, height: 10),
+                      const SizedBox(height: 6),
+                      _skeletonLine(width: 76, height: 8),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 22),
+          ],
         ],
-      ]),
+      ),
     );
   }
 
@@ -1259,7 +1281,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   Widget _feedCard(
     DiscoverTrack track, {
     List<DiscoverTrack>? queueOverride,
-    double cardWidth = 168,
+    double cardWidth = 137,
   }) {
     final theme = Theme.of(context);
     final local = AppSettings.instance.discoverLocalLossless
@@ -1267,7 +1289,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     return SizedBox(
       width: cardWidth,
       child: InkWell(
-        borderRadius: BorderRadius.circular(7),
+        borderRadius: BorderRadius.circular(14),
         onTap: () => _play(track, queueOverride: queueOverride),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1277,7 +1299,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  _art(track, size: double.infinity, radius: 7),
+                  _art(track, size: double.infinity, radius: 14),
                   if (local != null)
                     Positioned(
                       left: 7,
@@ -1311,12 +1333,19 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                         iconSize: 20,
                         icon: const Icon(Icons.more_horiz_rounded, color: Colors.white),
                         onSelected: (v) {
+                          if (v == 'speed_dial') _toggleSpeedDial(track);
                           if (v == 'play') _play(track, queueOverride: queueOverride);
                           if (v == 'radio') _loadRadio(track);
                           if (v == 'lyrics') _showLyrics(track, local: local);
                         },
                         itemBuilder: (_) => [
                           const PopupMenuItem(value: 'play', child: Text('Play')),
+                          PopupMenuItem(
+                            value: 'speed_dial',
+                            child: Text(_isSpeedDialPinned(track)
+                                ? 'Remove from Speed Dial'
+                                : 'Add to Speed Dial'),
+                          ),
                           const PopupMenuItem(value: 'radio', child: Text('Start radio')),
                           if (AppSettings.instance.discoverLyrics)
                             const PopupMenuItem(value: 'lyrics', child: Text('Lyrics')),
@@ -1343,7 +1372,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+                color: theme.colorScheme.onSurface.withValues(alpha: .5),
                 fontSize: 12,
               ),
             ),
@@ -1354,12 +1383,28 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   }
 
   Widget _shelfHeading(String title, {VoidCallback? onSeeAll}) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-        child: Row(children: [
-          Expanded(child: PocketLinkSectionHeader(title)),
-          if (onSeeAll != null)
-            TextButton(onPressed: onSeeAll, child: const Text('See all')),
-        ]),
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -.35,
+                ),
+              ),
+            ),
+            if (onSeeAll != null)
+              TextButton(
+                onPressed: onSeeAll,
+                child: const Text('See all'),
+              ),
+          ],
+        ),
       );
 
   void _showShelf(_DiscoverShelf shelf) {
@@ -1372,231 +1417,526 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     });
   }
 
-  Widget _topPickCard(DiscoverTrack track) {
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    final width = ((screenWidth - 52) / 2).clamp(148.0, 220.0).toDouble();
-    final local = AppSettings.instance.discoverLocalLossless
-        ? DiscoverService.findLocalLosslessMatch(track, _localLibrary)
-        : null;
-    return SizedBox(
-      width: width,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Material(
-              color: const Color(0xFF1A1B20),
-              borderRadius: BorderRadius.circular(12),
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                onTap: () => _play(track, queueOverride: _listeningPicks),
-                child: Stack(
-                  fit: StackFit.expand,
+  List<DiscoverTrack> get _spotlightTracks =>
+      buildDiscoverSpotlightTracks(
+        shelves: _homeShelves
+            .map((shelf) => DiscoverHomeShelf(
+                  title: shelf.title,
+                  tracks: shelf.tracks,
+                  items: shelf.items,
+                ))
+            .toList(growable: false),
+        recentlyPlayed: _recentlyPlayed,
+      );
+
+  void _playRandomSpotlight() {
+    final tracks = _spotlightTracks;
+    if (tracks.isEmpty) return;
+    final selected = tracks[math.Random().nextInt(tracks.length)];
+    _play(selected, queueOverride: tracks);
+  }
+
+  int get _spotlightPageCount =>
+      _spotlightTracks.length + (_speedDial.isEmpty ? 0 : 1);
+
+  void _playRandomSpeedDial() {
+    if (_speedDial.isEmpty) return;
+    final selected = _speedDial[math.Random().nextInt(_speedDial.length)];
+    _play(selected, queueOverride: _speedDial);
+  }
+
+  void _openSpeedDialSheet() {
+    final tracks = List<DiscoverTrack>.of(_speedDial);
+    if (tracks.isEmpty) return;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => DraggableScrollableSheet(
+        initialChildSize: .84,
+        minChildSize: .5,
+        maxChildSize: .95,
+        expand: false,
+        builder: (context, scrollController) => Material(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            children: [
+              Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(top: 12, bottom: 14),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: .35),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(22, 0, 16, 12),
+                child: Row(
                   children: [
-                    _art(
-                      track,
-                      size: double.infinity,
-                      radius: 0,
-                      fit: BoxFit.cover,
+                    Expanded(
+                      child: Text(
+                        'Speed Dial',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
                     ),
-                    if (local != null)
-                      Positioned(
-                        left: 10,
-                        top: 10,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.black54,
-                            borderRadius: BorderRadius.circular(5),
-                          ),
-                          child: const Text(
-                            'LOSSLESS',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: .5,
-                            ),
-                          ),
-                        ),
+                    Text(
+                      '${tracks.length} saved',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
-                    Positioned(
-                      top: 2,
-                      right: 2,
-                      child: Material(
-                        color: Colors.black45,
-                        shape: const CircleBorder(),
-                        child: PopupMenuButton<String>(
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(
-                            minWidth: 40,
-                            minHeight: 40,
-                          ),
-                          iconSize: 20,
-                          icon: const Icon(
-                            Icons.more_horiz_rounded,
-                            color: Colors.white,
-                          ),
-                          onSelected: (value) {
-                            if (value == 'play') {
-                              _play(track, queueOverride: _listeningPicks);
-                            }
-                            if (value == 'radio') _loadRadio(track);
-                            if (value == 'lyrics') {
-                              _showLyrics(track, local: local);
-                            }
-                          },
-                          itemBuilder: (_) => [
-                            const PopupMenuItem(
-                              value: 'play',
-                              child: Text('Play'),
-                            ),
-                            const PopupMenuItem(
-                              value: 'radio',
-                              child: Text('Start radio'),
-                            ),
-                            if (AppSettings.instance.discoverLyrics)
-                              const PopupMenuItem(
-                                value: 'lyrics',
-                                child: Text('Lyrics'),
-                              ),
-                          ],
-                        ),
-                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      tooltip: 'Shuffle Speed Dial',
+                      onPressed: () {
+                        Navigator.of(sheetContext).pop();
+                        _playRandomSpeedDial();
+                      },
+                      icon: const Icon(Icons.shuffle_rounded),
                     ),
                   ],
                 ),
               ),
+              Expanded(
+                child: ListView.separated(
+                  controller: scrollController,
+                  padding: const EdgeInsets.only(bottom: 24),
+                  itemCount: tracks.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1, indent: 78),
+                  itemBuilder: (context, index) {
+                    final track = tracks[index];
+                    return ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 3),
+                      leading: _art(track, size: 48, radius: 10),
+                      title: Text(track.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      subtitle: Text(track.artist, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      onTap: () {
+                        Navigator.of(sheetContext).pop();
+                        _play(track, queueOverride: tracks);
+                      },
+                      trailing: IconButton(
+                        tooltip: 'Remove from Speed Dial',
+                        onPressed: () {
+                          _toggleSpeedDial(track);
+                          Navigator.of(sheetContext).pop();
+                        },
+                        icon: const Icon(Icons.remove_circle_outline_rounded),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  bool _spotlightUserDragging = false;
+
+  void _startSpotlightAutoAdvance() {
+    _spotlightAutoAdvanceTimer?.cancel();
+    if (!mounted || !_appResumed) return;
+    _spotlightAutoAdvanceTimer = Timer.periodic(
+      const Duration(milliseconds: 5500),
+      (_) {
+        final pageCount = _spotlightPageCount;
+        if (!mounted ||
+            !_appResumed ||
+            ModalRoute.of(context)?.isCurrent == false ||
+            _spotlightUserDragging ||
+            pageCount < 2 ||
+            !_spotlightPageController.hasClients ||
+            (_scrollController.hasClients && _scrollController.offset > 48)) {
+          return;
+        }
+        final next = _spotlightPage + 1;
+        _spotlightPageController.animateToPage(
+          next,
+          duration: const Duration(milliseconds: 1150),
+          curve: Curves.easeInOutCubic,
+        );
+      },
+    );
+  }
+
+  Widget _speedDialHeroPage() {
+    final tracks = _speedDial;
+    final cover = tracks.first;
+    return Material(
+      color: const Color(0xFF08090C),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          _art(cover, size: double.infinity, radius: 0, fit: BoxFit.cover),
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xB8000000),
+                  Color(0x20000000),
+                  Color(0x3A000000),
+                  Color(0xF0000000),
+                ],
+                stops: [0, .30, .52, 1],
+              ),
             ),
           ),
-          const SizedBox(height: 7),
-          Text(
-            track.title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+          Positioned(
+            top: 84,
+            right: 30,
+            child: Row(
+              children: [
+                for (final track in tracks.take(3))
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: Container(
+                      width: 58,
+                      height: 58,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white.withValues(alpha: .7), width: 1.2),
+                        boxShadow: const [
+                          BoxShadow(color: Colors.black45, blurRadius: 14, offset: Offset(0, 5)),
+                        ],
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: _art(track, size: 58, radius: 0, fit: BoxFit.cover),
+                    ),
+                  ),
+              ],
+            ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            track.artist,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontSize: 11,
+          Positioned(
+            left: 36,
+            right: 28,
+            bottom: 62,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'YOUR SPEED DIAL',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: Colors.white.withValues(alpha: .72),
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.35,
+                  ),
                 ),
+                const SizedBox(height: 10),
+                Text(
+                  'Your saved tracks',
+                  maxLines: 2,
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    height: 1.04,
+                    letterSpacing: -.7,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  '${tracks.length} pinned songs, ready when you are',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.white.withValues(alpha: .68),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 15),
+                Row(
+                  children: [
+                    FilledButton.icon(
+                      onPressed: _openSpeedDialSheet,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.white.withValues(alpha: .88),
+                        foregroundColor: const Color(0xFF202124),
+                        minimumSize: const Size(0, 36),
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        shape: const StadiumBorder(),
+                      ),
+                      icon: const Icon(Icons.queue_music_rounded, size: 18),
+                      label: const Text('Open Speed Dial', style: TextStyle(fontWeight: FontWeight.w700)),
+                    ),
+                    const SizedBox(width: 10),
+                    IconButton(
+                      tooltip: 'Shuffle Speed Dial',
+                      onPressed: _playRandomSpeedDial,
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.white.withValues(alpha: .16),
+                        foregroundColor: Colors.white,
+                        fixedSize: const Size(38, 38),
+                      ),
+                      icon: const Icon(Icons.shuffle_rounded, size: 18),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  TextStyle themeTextStyle(BuildContext context, {bool eyebrow = false}) {
-    return (eyebrow
-        ? Theme.of(context).textTheme.bodySmall
-        : Theme.of(context).textTheme.bodyMedium)!.copyWith(
-      color: eyebrow ? const Color(0xFFFFD2DA) : Colors.white,
-      fontSize: eyebrow ? 10 : 13,
-      fontWeight: eyebrow ? FontWeight.w600 : FontWeight.normal,
-      letterSpacing: eyebrow ? .65 : 0,
+  Widget _spotlightHero() {
+    final tracks = _spotlightTracks;
+    final pageCount = _spotlightPageCount;
+    if (pageCount == 0) return const SliverToBoxAdapter();
+
+    final activePage = ((_spotlightPage - _spotlightInitialPage) % pageCount + pageCount) % pageCount;
+    final heroHeight = MediaQuery.sizeOf(context).height * .60;
+    return SliverToBoxAdapter(
+      child: SizedBox(
+        height: heroHeight,
+        child: ValueListenableBuilder<double>(
+          valueListenable: _heroScrollProgress,
+          child: NotificationListener<ScrollNotification>(
+            onNotification: (notification) {
+              if (notification is ScrollStartNotification &&
+                  notification.dragDetails != null) {
+                _spotlightUserDragging = true;
+                _spotlightAutoAdvanceTimer?.cancel();
+                _spotlightAutoAdvanceTimer = null;
+              } else if (notification is ScrollEndNotification &&
+                  _spotlightUserDragging) {
+                _spotlightUserDragging = false;
+                _startSpotlightAutoAdvance();
+              }
+              return false;
+            },
+            child: PageView.builder(
+            controller: _spotlightPageController,
+            physics: pageCount <= 1
+                ? const NeverScrollableScrollPhysics()
+                : const PageScrollPhysics(),
+            onPageChanged: (index) {
+              if (!mounted) return;
+              if (index != _spotlightPage) {
+                setState(() => _spotlightPage = index);
+              }
+              if (!_spotlightUserDragging) _startSpotlightAutoAdvance();
+            },
+            itemBuilder: (context, index) {
+              final pageIndex =
+                  ((index - _spotlightInitialPage) % pageCount + pageCount) % pageCount;
+              if (_speedDial.isNotEmpty && pageIndex == tracks.length) {
+                return _speedDialHeroPage();
+              }
+              final track = tracks[pageIndex];
+              return Material(
+                color: const Color(0xFF08090C),
+                child: InkWell(
+                  onTap: () => _play(track, queueOverride: tracks),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      _art(
+                        track,
+                        size: double.infinity,
+                        radius: 0,
+                        fit: BoxFit.cover,
+                      ),
+                      const DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Color(0xB8000000),
+                              Color(0x17000000),
+                              Color(0x28000000),
+                              Color(0xF0000000),
+                            ],
+                            stops: [0, .30, .52, 1],
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        left: 36,
+                        right: 28,
+                        bottom: 62,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'PICKED FOR YOU',
+                              maxLines: 1,
+                              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                color: Colors.white.withValues(alpha: .72),
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1.35,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              track.title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                height: 1.04,
+                                letterSpacing: -.7,
+                              ),
+                            ),
+                            const SizedBox(height: 5),
+                            Text(
+                              track.artist,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Colors.white.withValues(alpha: .68),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 15),
+                            Row(
+                              children: [
+                                FilledButton.icon(
+                                  onPressed: () => _play(track, queueOverride: tracks),
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: Colors.white.withValues(alpha: .88),
+                                    foregroundColor: const Color(0xFF202124),
+                                    minimumSize: const Size(0, 36),
+                                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                                    shape: const StadiumBorder(),
+                                  ),
+                                  icon: const Icon(Icons.play_arrow_rounded, size: 19),
+                                  label: const Text(
+                                    'Play',
+                                    style: TextStyle(fontWeight: FontWeight.w700),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                if (tracks.length > 1)
+                                  IconButton(
+                                    tooltip: 'Shuffle featured tracks',
+                                    onPressed: _playRandomSpotlight,
+                                    style: IconButton.styleFrom(
+                                      backgroundColor: Colors.white.withValues(alpha: .16),
+                                      foregroundColor: Colors.white,
+                                      fixedSize: const Size(38, 38),
+                                    ),
+                                    icon: const Icon(Icons.shuffle_rounded, size: 18),
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (pageCount > 1)
+                        Positioned(
+                          top: 18,
+                          right: 20,
+                          child: Row(
+                            children: List.generate(pageCount, (dotIndex) {
+                              final selected = dotIndex == activePage;
+                              return AnimatedContainer(
+                                duration: const Duration(milliseconds: 220),
+                                curve: Curves.easeOutCubic,
+                                margin: const EdgeInsets.only(left: 4),
+                                width: selected ? 18 : 5,
+                                height: 4,
+                                decoration: BoxDecoration(
+                                  color: selected
+                                      ? Colors.white.withValues(alpha: .9)
+                                      : Colors.white.withValues(alpha: .38),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              );
+                            }),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
+            ),
+          ),
+          builder: (context, progress, child) {
+            final blur = progress * 8;
+            return ClipRect(
+              child: Transform.translate(
+                offset: Offset(0, -heroHeight * .14 * progress),
+                child: Transform.scale(
+                  alignment: Alignment.topCenter,
+                  scale: 1 + progress * .08,
+                  child: Opacity(
+                    opacity: 1 - progress * .35,
+                    child: ImageFiltered(
+                      imageFilter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+                      child: child!,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 
   Widget _listeningPicksShelf() {
     if (_listeningPicks.isEmpty) return const SliverToBoxAdapter();
-    final cardWidth = ((MediaQuery.sizeOf(context).width - 52) / 2)
-        .clamp(148.0, 220.0)
-        .toDouble();
     return SliverToBoxAdapter(
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        _shelfHeading('Top Picks for You'),
-        SizedBox(
-          height: cardWidth / (16 / 9) + 52,
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            scrollDirection: Axis.horizontal,
-            itemCount: _listeningPicks.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 14),
-            itemBuilder: (context, index) => _topPickCard(_listeningPicks[index]),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _shelfHeading('Top Picks for You'),
+          SizedBox(
+            height: 190,
+            child: ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              scrollDirection: Axis.horizontal,
+              itemCount: _listeningPicks.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 15),
+              itemBuilder: (context, index) => _feedCard(
+                _listeningPicks[index],
+                queueOverride: _listeningPicks,
+              ),
+            ),
           ),
-        ),
-        const SizedBox(height: 22),
-      ]),
+        ],
+      ),
     );
   }
 
   Widget _recentlyPlayedShelf() {
     if (_recentlyPlayed.isEmpty) return const SliverToBoxAdapter();
-    final columns = <List<DiscoverTrack>>[
-      for (var index = 0; index < _recentlyPlayed.length; index += 4)
-        _recentlyPlayed.skip(index).take(4).toList(growable: false),
-    ];
     return SliverToBoxAdapter(
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        _shelfHeading('Recents'),
-        SizedBox(
-          height: 4 * 58,
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            scrollDirection: Axis.horizontal,
-            itemCount: columns.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 14),
-            itemBuilder: (context, index) => SizedBox(
-              width: MediaQuery.sizeOf(context).width * .78,
-              child: Column(
-                children: [
-                  for (final track in columns[index])
-                    SizedBox(
-                      height: 58,
-                      child: InkWell(
-                        onTap: () => _play(track, queueOverride: _recentlyPlayed),
-                        child: Row(children: [
-                          _art(track, size: 46),
-                          const SizedBox(width: 11),
-                          Expanded(child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(track.title, maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.titleSmall),
-                              Text(formatDiscoverArtist(track.artist), maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                textDirection: Directionality.of(context),
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                )),
-                            ],
-                          )),
-                          PopupMenuButton<String>(
-                            tooltip: 'More actions',
-                            onSelected: (value) {
-                              if (value == 'play') _play(track, queueOverride: _recentlyPlayed);
-                              if (value == 'radio') _loadRadio(track);
-                              if (value == 'lyrics') _showLyrics(track);
-                            },
-                            itemBuilder: (_) => [
-                              const PopupMenuItem(value: 'play', child: Text('Play')),
-                              const PopupMenuItem(value: 'radio', child: Text('Start radio')),
-                              if (AppSettings.instance.discoverLyrics)
-                                const PopupMenuItem(value: 'lyrics', child: Text('Lyrics')),
-                            ],
-                          ),
-                        ]),
-                      ),
-                    ),
-                ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _shelfHeading('Recently Played'),
+          SizedBox(
+            height: 190,
+            child: ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              scrollDirection: Axis.horizontal,
+              itemCount: _recentlyPlayed.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 15),
+              itemBuilder: (context, index) => _feedCard(
+                _recentlyPlayed[index],
+                queueOverride: _recentlyPlayed,
               ),
             ),
           ),
-        ),
-        const SizedBox(height: 22),
-      ]),
+        ],
+      ),
     );
   }
 
@@ -1605,12 +1945,19 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         ? DiscoverService.findLocalLosslessMatch(track, _localLibrary) : null;
     return PopupMenuButton<String>(
       onSelected: (value) {
+        if (value == 'speed_dial') _toggleSpeedDial(track);
         if (value == 'play') _play(track);
         if (value == 'radio') _loadRadio(track);
         if (value == 'lyrics') _showLyrics(track, local: local);
       },
       itemBuilder: (_) => [
         const PopupMenuItem(value: 'play', child: Text('Play')),
+        PopupMenuItem(
+          value: 'speed_dial',
+          child: Text(_isSpeedDialPinned(track)
+              ? 'Remove from Speed Dial'
+              : 'Add to Speed Dial'),
+        ),
         const PopupMenuItem(value: 'radio', child: Text('Start radio')),
         if (AppSettings.instance.discoverLyrics)
           const PopupMenuItem(value: 'lyrics', child: Text('Lyrics')),
@@ -1633,7 +1980,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           SizedBox(
             height: 4 * 66,
             child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
               itemCount: pageCount,
               separatorBuilder: (_, __) => const SizedBox(width: 10),
@@ -1725,14 +2072,14 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   Widget _homeItemCard(
     DiscoverHomeItem item,
     List<DiscoverHomeItem> shelfItems, {
-    double cardWidth = 168,
+    double cardWidth = 137,
   }) {
     final track = item.toTrack();
     final isArtist = item.type == DiscoverHomeItemType.artist;
     return SizedBox(
       width: cardWidth,
       child: InkWell(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(14),
         onTap: () => _openHomeItem(item, shelfItems),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1740,8 +2087,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             AspectRatio(
               aspectRatio: 1,
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(isArtist ? 84 : 8),
-                child: _art(track, size: double.infinity, radius: isArtist ? 84 : 8),
+                borderRadius: BorderRadius.circular(isArtist ? 84 : 14),
+                child: _art(track, size: double.infinity, radius: isArtist ? 84 : 14),
               ),
             ),
             const SizedBox(height: 8),
@@ -1768,7 +2115,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .5),
                 fontSize: 12,
               ),
             ),
@@ -1798,7 +2145,42 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 14,
+                mainAxisExtent: width + 52,
+              ),
+              itemCount: items.length,
+              itemBuilder: (context, index) =>
+                  _homeItemCard(items[index], items, cardWidth: width),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  bool _isArtistShelf(_DiscoverShelf shelf) =>
+      AppSettings.instance.discoverArtistGrid &&
+      shelf.items.length >= 4 &&
+      shelf.items.every((item) => item.type == DiscoverHomeItemType.artist);
+
+  Widget _artistHomeShelf(_DiscoverShelf shelf) {
+    final items = shelf.items.take(8).toList(growable: false);
+    final width = (MediaQuery.sizeOf(context).width - 52) / 2;
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.only(top: 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _shelfHeading(shelf.title),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
                 crossAxisSpacing: 12,
@@ -1825,14 +2207,14 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             onSeeAll: shelf.tracks.isEmpty ? null : () => _showShelf(shelf),
           ),
           SizedBox(
-            height: 214,
+            height: 190,
             child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
               itemCount: (shelf.items.isNotEmpty
                       ? shelf.items.length
                       : shelf.tracks.length).clamp(0, 12),
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              separatorBuilder: (_, __) => const SizedBox(width: 15),
               itemBuilder: (context, index) {
                 if (shelf.items.isNotEmpty) {
                   return _homeItemCard(shelf.items[index], shelf.items);
@@ -1857,12 +2239,19 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         maxLines: 1, overflow: TextOverflow.ellipsis),
       trailing: PopupMenuButton<String>(
         onSelected: (v) {
+          if (v == 'speed_dial') _toggleSpeedDial(track);
           if (v == 'play') _play(track);
           if (v == 'radio') _loadRadio(track);
           if (v == 'lyrics') _showLyrics(track, local: local);
         },
         itemBuilder: (_) => [
           const PopupMenuItem(value: 'play', child: Text('Play')),
+          PopupMenuItem(
+            value: 'speed_dial',
+            child: Text(_isSpeedDialPinned(track)
+                ? 'Remove from Speed Dial'
+                : 'Add to Speed Dial'),
+          ),
           const PopupMenuItem(value: 'radio', child: Text('Start radio')),
           if (AppSettings.instance.discoverLyrics)
             const PopupMenuItem(value: 'lyrics', child: Text('Lyrics')),
@@ -1916,6 +2305,13 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     final hasPersonalContent = _recentlyPlayed.isNotEmpty ||
         _listeningPicks.isNotEmpty;
     final hasHomeContent = hasTracks || _homeShelves.isNotEmpty || hasPersonalContent;
+    final showSpotlightHero = AppSettings.instance.discoverSpotlight &&
+        (_spotlightTracks.isNotEmpty || _speedDial.isNotEmpty) &&
+        (_homeShelves.isNotEmpty ||
+            _sectionTitle == 'Top charts in India' ||
+            _sectionTitle.startsWith('Discover in '));
+    final showSpotlightSkeleton = _loading && !hasHomeContent &&
+        AppSettings.instance.discoverSpotlight;
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: PocketLinkAppBar(
@@ -1956,7 +2352,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         slivers: [
           // Keep the scrollable behind the transparent shared app bar so
           // content can feather through it exactly like the other sections.
-          SliverToBoxAdapter(child: SizedBox(height: top)),
+          SliverToBoxAdapter(
+            child: SizedBox(height: showSpotlightHero || showSpotlightSkeleton ? 0 : top),
+          ),
           if (_localLibraryLoading && AppSettings.instance.discoverLocalLossless && widget.api != null)
             SliverToBoxAdapter(
               child: Padding(
@@ -1995,42 +2393,21 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             else if (hasHomeContent) ...[
               if (_loading) const SliverToBoxAdapter(child: LinearProgressIndicator(minHeight: 2)),
               if (_homeShelves.isNotEmpty) ...[
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Listen now',
-                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.7,
-                          ),
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          'Picked for you in $_regionName',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
                 // BitChord Home order: Top Picks, Recents, then the live
                 // upstream shelves. Find Your Mood is inserted after the
                 // lead feed shelf rather than before the feed.
-                _listeningPicksShelf(),
+                if (AppSettings.instance.discoverSpotlight) _spotlightHero(),
                 _recentlyPlayedShelf(),
+                _listeningPicksShelf(),
                 for (var index = 0; index < _homeShelves.length; index++) ...[
                   if (!_isMoodOrGenreShelf(_homeShelves[index]) &&
                       (_recentlyPlayed.isEmpty ||
                           !_isRecentHomeShelf(_homeShelves[index]))) ...[
                   _isCommunityShelf(_homeShelves[index])
                       ? _communityHomeShelf(_homeShelves[index])
-                      : _isListLayoutShelf(_homeShelves[index]) &&
+                      : _isArtistShelf(_homeShelves[index])
+                          ? _artistHomeShelf(_homeShelves[index])
+                          : _isListLayoutShelf(_homeShelves[index]) &&
                               _homeShelves[index].tracks.isNotEmpty &&
                               (_homeShelves[index].items.isEmpty ||
                                   _homeShelves[index].items.every((item) => item.isPlayableTrack))
@@ -2039,20 +2416,12 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                   ],
                 ],
               ] else ...[
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
-                    child: Text(
-                      'Listen now',
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.7,
-                      ),
-                    ),
-                  ),
-                ),
+                if (_sectionTitle == 'Top charts in India' ||
+                    _sectionTitle.startsWith('Discover in ')) ...[
+                  if (AppSettings.instance.discoverSpotlight) _spotlightHero(),
+                  _recentlyPlayedShelf(),
+                ],
                 _listeningPicksShelf(),
-                _recentlyPlayedShelf(),
                 if (_tracks.isNotEmpty) ...[
                   SliverToBoxAdapter(
                     child: Padding(

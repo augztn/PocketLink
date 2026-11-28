@@ -28,12 +28,15 @@ void main() {
 
   test('Discover preferences persist and reload', () async {
     final settings = AppSettings.instance;
+    expect(settings.discoverArtistGrid, isFalse);
     await settings.setDiscoverOptions(
       enabled: false,
       localLossless: false,
       lyrics: false,
       autoQueue: false,
       artwork: false,
+      spotlight: false,
+      artistGrid: false,
     );
     await settings.setDiscoverPlaybackOptions(
       audioQuality: 'data_saver',
@@ -47,10 +50,14 @@ void main() {
     expect(settings.discoverLyrics, isFalse);
     expect(settings.discoverAutoQueue, isFalse);
     expect(settings.discoverArtwork, isFalse);
+    expect(settings.discoverSpotlight, isFalse);
+    expect(settings.discoverArtistGrid, isFalse);
     expect(settings.discoverAudioQuality, 'data_saver');
     expect(settings.discoverResolverProfile, 'player_api_first');
     expect(settings.discoverRegion, 'JP');
     expect(preferences.getBool('settings_discover_enabled'), isFalse);
+    expect(preferences.getBool('settings_discover_spotlight'), isFalse);
+    expect(preferences.getBool('settings_discover_artist_grid'), isFalse);
     expect(preferences.getString('settings_discover_audio_quality'), 'data_saver');
     expect(preferences.getString('settings_discover_resolver_profile'), 'player_api_first');
     expect(preferences.getString('settings_discover_region'), 'JP');
@@ -61,6 +68,8 @@ void main() {
     expect(settings.discoverLyrics, isFalse);
     expect(settings.discoverAutoQueue, isFalse);
     expect(settings.discoverArtwork, isFalse);
+    expect(settings.discoverSpotlight, isFalse);
+    expect(settings.discoverArtistGrid, isFalse);
     expect(settings.discoverAudioQuality, 'data_saver');
     expect(settings.discoverResolverProfile, 'player_api_first');
     expect(settings.discoverRegion, 'JP');
