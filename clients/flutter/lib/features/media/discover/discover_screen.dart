@@ -599,10 +599,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           _showSkeletonOverlay = true;
           _skeletonOverlayFading = false;
         });
-        _skeletonRevealTimer = Timer(const Duration(milliseconds: 120), () {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
           setState(() => _skeletonOverlayFading = true);
-          _skeletonRevealTimer = Timer(const Duration(milliseconds: 280), () {
+          _skeletonRevealTimer = Timer(const Duration(milliseconds: 400), () {
             if (!mounted) return;
             setState(() => _showSkeletonOverlay = false);
           });
@@ -2084,7 +2084,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       _shelfRevealBurstCount = 0;
     }
     final step = math.min(_shelfRevealBurstCount++, 6).toInt();
-    return Duration(milliseconds: step * 60);
+    final skeletonExitDelay = _showSkeletonOverlay ? 400 : 0;
+    return Duration(milliseconds: skeletonExitDelay + step * 60);
   }
 
   Widget _shelfReveal({required String key, required Widget child}) {
@@ -2108,7 +2109,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       revealKey: key,
       child: child,
       seenKeys: _revealedCardKeys,
-      delay: Duration(milliseconds: math.min(index, 4).toInt() * 60),
+      delay: Duration(
+        milliseconds: (_showSkeletonOverlay ? 400 : 0) +
+            math.min(index, 4).toInt() * 60,
+      ),
     );
   }
 
