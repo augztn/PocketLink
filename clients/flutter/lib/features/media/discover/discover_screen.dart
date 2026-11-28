@@ -1917,13 +1917,23 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                         final inner = incoming ? radius : radius - feather * wipeTrail;
                         final outer = inner + feather;
                         final edge = (inner / outer).clamp(0.0, 1.0);
+                        const featherEase = [0.0, .104, .352, .648, .896, 1.0];
+                        final stops = <double>[0, edge];
+                        final colors = <Color>[
+                          incoming ? Colors.white : Colors.transparent,
+                          incoming ? Colors.white : Colors.transparent,
+                        ];
+                        for (var index = 1; index < featherEase.length; index++) {
+                          final eased = featherEase[index];
+                          stops.add(edge + (1 - edge) * index / (featherEase.length - 1));
+                          final alpha = incoming ? 1 - eased : eased;
+                          colors.add(Colors.white.withValues(alpha: alpha));
+                        }
                         return ui.Gradient.radial(
                           center,
                           outer,
-                          incoming
-                              ? [Colors.white, Colors.white, Colors.transparent]
-                              : [Colors.transparent, Colors.transparent, Colors.white],
-                          [0, edge, 1],
+                          colors,
+                          stops,
                         );
                       },
                       child: Transform.translate(
