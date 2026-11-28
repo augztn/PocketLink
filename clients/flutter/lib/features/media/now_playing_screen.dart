@@ -99,6 +99,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
   bool _lyricsTranslationEnabled = false;
   String? _observedTrackIdentity;
   int _observedQueueIndex = 0;
+  int _observedQueueSession = 0;
   String? _carouselSwitcherKey;
   final GlobalKey _lyricsViewportKey = GlobalKey();
 
@@ -324,6 +325,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
     _player = _persistent.player;
     _observedTrackIdentity = _trackIdentity;
     _observedQueueIndex = _carouselIndex;
+    _observedQueueSession = _persistent.queueSession;
     _carouselSwitcherKey = _trackIdentity;
     unawaited(_loadTrackLyrics());
     unawaited(AppLogger.info('Now Playing screen initialized', fields: {
@@ -428,14 +430,17 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
 
     final nextIndex = _carouselIndex;
     final indexDelta = nextIndex - _observedQueueIndex;
+    final sessionChanged =
+        _observedQueueSession != _persistent.queueSession;
     _observedTrackIdentity = identity;
     _observedQueueIndex = nextIndex;
+    _observedQueueSession = _persistent.queueSession;
     if (!(_carouselTrackChangeCompleter?.isCompleted ?? true)) {
       _carouselTrackChangeCompleter!.complete();
     }
     final requestedDirection = _persistent.takePendingTrackDirection();
     final direction = requestedDirection ?? (indexDelta < 0 ? -1 : 1);
-    final isAdjacentChange = indexDelta.abs() == 1;
+    final isAdjacentChange = !sessionChanged && indexDelta.abs() == 1;
 
     // Adjacent changes use the same three-slot row as a swipe. Non-adjacent
     // queue jumps retain the keyed switcher so the outgoing track can fade.
