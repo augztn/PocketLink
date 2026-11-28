@@ -212,8 +212,164 @@ class _SettingsGroupCardState extends State<SettingsGroupCard> {
       );
 }
 
+/// A parent setting with visually nested dependent controls, matching Mochy's inset clusters.
+class SettingsNestedGroup extends StatefulWidget {
+  const SettingsNestedGroup({
+    required this.parent,
+    required this.children,
+    this.expanded = true,
+    this.searchQuery = '',
+    super.key,
+  });
+
+  final Widget parent;
+  final List<Widget> children;
+  final bool expanded;
+  final String searchQuery;
+
+  @override
+  State<SettingsNestedGroup> createState() => _SettingsNestedGroupState();
+}
+
+class _SettingsNestedGroupState extends State<SettingsNestedGroup> {
+  final Map<String, GlobalKey> _rowKeys = {};
+  Timer? _highlightTimer;
+  int? _activeIndex;
+
+  bool _matches(Widget child) {
+    final tokens = widget.searchQuery
+        .toLowerCase()
+        .split(RegExp(r'[^a-z0-9]+'))
+        .where((token) => token.isNotEmpty);
+    if (tokens.isEmpty) return false;
+    final text = settingsSearchableText(child).toLowerCase();
+    return tokens.every(text.contains);
+  }
+
+  GlobalKey _keyFor(int index, Widget child) {
+    final identity = '$index:${settingsSearchableText(child)}';
+    return _rowKeys.putIfAbsent(identity, GlobalKey.new);
+  }
+
+  void _revealMatch() {
+    final query = widget.searchQuery.trim();
+    if (query.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted || widget.searchQuery.trim() != query || !widget.expanded) return;
+      var index = -1;
+      for (var i = 0; i < widget.children.length; i++) {
+        if (_matches(widget.children[i])) {
+          index = i;
+          break;
+        }
+      }
+      if (index < 0) return;
+      await Future<void>.delayed(const Duration(milliseconds: 320));
+      if (!mounted || widget.searchQuery.trim() != query) return;
+      setState(() => _activeIndex = index);
+      final target = _keyFor(index, widget.children[index]).currentContext;
+      if (target != null) {
+        await Scrollable.ensureVisible(
+          target,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOutCubic,
+          alignment: 0.18,
+        );
+      }
+      _highlightTimer?.cancel();
+      _highlightTimer = Timer(const Duration(milliseconds: 2400), () {
+        if (mounted && _activeIndex == index) setState(() => _activeIndex = null);
+      });
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _revealMatch();
+  }
+
+  @override
+  void didUpdateWidget(covariant SettingsNestedGroup oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.searchQuery != widget.searchQuery ||
+        oldWidget.expanded != widget.expanded) {
+      _highlightTimer?.cancel();
+      _activeIndex = null;
+      _revealMatch();
+    }
+  }
+
+  @override
+  void dispose() {
+    _highlightTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          widget.parent,
+          AnimatedSize(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOutCubic,
+            alignment: Alignment.topCenter,
+            child: widget.expanded
+                ? Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF282830),
+                      borderRadius: BorderRadius.circular(22),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        for (var index = 0; index < widget.children.length; index++)
+                          AnimatedContainer(
+                            key: _keyFor(index, widget.children[index]),
+                            duration: const Duration(milliseconds: 450),
+                            curve: Curves.easeOutCubic,
+                            margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: _activeIndex == index && _matches(widget.children[index])
+                                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.13)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: TweenAnimationBuilder<double>(
+                              key: ValueKey('nested-settings-row-$index'),
+                              tween: Tween<double>(begin: 0, end: 1),
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeOutCubic,
+                              builder: (context, value, child) {
+                                final progress = MediaQuery.of(context).disableAnimations ? 1.0 : value;
+                                return Opacity(
+                                  opacity: progress,
+                                  child: Transform.translate(
+                                    offset: Offset(0, 6 * (1 - progress)),
+                                    child: child,
+                                  ),
+                                );
+                              },
+                              child: widget.children[index],
+                            ),
+                          ),
+                      ],
+                    ),
+                  )
+                : const SizedBox.shrink(),
+          ),
+        ],
+      );
+}
+
 /// Standard row for Settings content that does not need a specialised control.
 String settingsSearchableText(Widget widget) {
+  if (widget is SettingsNestedGroup) {
+    return '${settingsSearchableText(widget.parent)} '
+        '${widget.children.map(settingsSearchableText).join(' ')}';
+  }
   if (widget is SettingsTile) return '${widget.title} ${widget.subtitle ?? ''}';
   if (widget is Text) return widget.data ?? '';
   if (widget is ListTile) {
