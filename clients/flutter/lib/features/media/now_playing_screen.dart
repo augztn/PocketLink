@@ -1635,6 +1635,110 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
     );
   }
 
+  String _queueItemTitle(MediaQueueItem item) {
+    if (identical(item, _track)) return _fileName;
+    final pathName = item.path.split('/').last;
+    final raw = item.title.trim().isNotEmpty ? item.title : pathName;
+    final dot = raw.lastIndexOf('.');
+    return (dot > 0 ? raw.substring(0, dot) : raw)
+        .replaceAll('_', ' ')
+        .trim();
+  }
+
+  String _queueItemArtist(MediaQueueItem item) {
+    final separator = item.path.lastIndexOf('/');
+    final folder = separator > 0
+        ? item.path.substring(0, separator).split('/').last
+        : 'Music';
+    return resolveMediaArtist(
+      artist: item.artist,
+      title: item.title,
+      path: item.path,
+      fallback: folder,
+    );
+  }
+
+  Widget _metadataTextForItem(MediaQueueItem item, {required bool current}) {
+    final title = _queueItemTitle(item);
+    final artist = _queueItemArtist(item);
+    const titleStyle = TextStyle(
+      color: Colors.white,
+      fontSize: 22,
+      height: 1.18,
+      fontWeight: FontWeight.w700,
+    );
+    const artistStyle = TextStyle(
+      color: Colors.white70,
+      fontSize: 18,
+      height: 1.2,
+      fontWeight: FontWeight.w400,
+    );
+    return SizedBox(
+      width: double.infinity,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (current)
+            _ArtworkTitleMarquee(text: title, style: titleStyle)
+          else
+            Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: titleStyle,
+            ),
+          const SizedBox(height: 2),
+          Text(
+            artist,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: artistStyle,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _metadataCarouselText() {
+    final queue = _carouselQueue;
+    final index = _carouselIndex;
+    final width = MediaQuery.sizeOf(context).width;
+    final drag = _carouselDragOffset(width);
+    Widget entry(MediaQueueItem item, double pageOffset, {bool current = false}) {
+      final progress = (pageOffset / width).clamp(-1.0, 1.0).toDouble();
+      final opacity = (1 - progress.abs() * 1.5).clamp(0.0, 1.0).toDouble();
+      return Positioned.fill(
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Transform.translate(
+            offset: Offset(pageOffset * 0.75, 0),
+            child: Opacity(
+              opacity: opacity,
+              child: _metadataTextForItem(item, current: current),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return ClipRect(
+      child: SizedBox(
+        height: 56,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (index > 0) entry(queue[index - 1], -width + drag),
+            if (index + 1 < queue.length)
+              entry(queue[index + 1], width + drag),
+            entry(_track, drag, current: true),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _trackMetadata({double contentOpacity = 1}) {
     final artist = resolveMediaArtist(artist: _track.artist, title: _track.title, path: _track.path, fallback: _folderName);
     return Padding(
@@ -1645,38 +1749,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
           Expanded(
             child: Opacity(
               opacity: contentOpacity,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _ArtworkTitleMarquee(
-                    text: _fileName,
-                    style: const TextStyle(color: Colors.white, fontSize: 22, height: 1.18, fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 2),
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final style = TextStyle(color: Colors.white.withValues(alpha: 0.68), fontSize: 18, height: 1.2, fontWeight: FontWeight.w400);
-                      final painter = TextPainter(
-                        text: TextSpan(text: artist, style: style),
-                        maxLines: 1,
-                        textDirection: Directionality.of(context),
-                      )..layout(maxWidth: constraints.maxWidth);
-                      final child = Text(artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: style);
-                      if (!painter.didExceedMaxLines && painter.width <= constraints.maxWidth) return child;
-                      return ShaderMask(
-                        blendMode: BlendMode.dstIn,
-                        shaderCallback: (bounds) => const LinearGradient(
-                          begin: Alignment.centerLeft, end: Alignment.centerRight,
-                          colors: [Colors.white, Colors.white, Colors.transparent],
-                          stops: [0, 0.72, 1],
-                        ).createShader(bounds),
-                        child: child,
-                      );
-                    },
-                  ),
-                ],
-              ),
+              child: _metadataCarouselText(),
             ),
           ),
           const SizedBox(width: 10),
@@ -1805,6 +1878,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           _trackTransition(
             key: _trackIdentity,
+            followDrag: false,
             child: _trackMetadata(contentOpacity: contentOpacity),
           ),
           const SizedBox(height: 18),
