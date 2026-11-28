@@ -2257,7 +2257,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                     ),
                   ),
                 ),
-                _spotlightHero(),
+                if (_sectionTitle == 'Top charts in India' ||
+                    _sectionTitle.startsWith('Discover in ')) _spotlightHero(),
                 _listeningPicksShelf(),
                 _recentlyPlayedShelf(),
                 if (_tracks.isNotEmpty) ...[
