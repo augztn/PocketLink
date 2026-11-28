@@ -1768,7 +1768,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         final distance = (index - page).clamp(-1.0, 1.0).toDouble();
         final progress = distance.abs();
         if (!AppSettings.instance.discoverMotion) return child!;
-        final curve = .04 + .96 * _spotlightWipeCurveController.value;
+        final curve = .04 + .96 * Curves.easeOutCubic.transform(
+          _spotlightWipeCurveController.value,
+        );
         final width = MediaQuery.sizeOf(context).width;
         return ClipRect(
           child: Transform.translate(
