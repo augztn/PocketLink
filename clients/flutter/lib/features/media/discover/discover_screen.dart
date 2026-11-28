@@ -1560,7 +1560,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         final next = _spotlightPage + 1;
         _spotlightPageController.animateToPage(
           next,
-          duration: const Duration(milliseconds: 1150),
+          duration: Duration(milliseconds: AppSettings.instance.discoverMotionDurationMs),
           curve: Curves.easeInOutCubic,
         );
       },
@@ -1926,7 +1926,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         if (!AppSettings.instance.discoverMotion) return content!;
         return TweenAnimationBuilder<double>(
           tween: Tween(begin: 0, end: 1),
-          duration: const Duration(milliseconds: 520),
+          duration: Duration(milliseconds: AppSettings.instance.discoverShelfDurationMs),
           curve: Curves.easeOutCubic,
           child: content,
           builder: (context, progress, animatedChild) => Opacity(
