@@ -88,7 +88,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   Future<void>? _homeRequest;
   final ScrollController _scrollController = ScrollController();
   final PageController _spotlightPageController =
-      PageController(viewportFraction: .91);
+      PageController(viewportFraction: 1);
+  Timer? _spotlightAutoAdvanceTimer;
   int _spotlightPage = 0;
   late String _lastRegion;
   late bool _lastLocalLossless;
@@ -112,6 +113,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     _scrollController.addListener(_onDiscoverScroll);
     AppSettings.instance.addListener(_onSettingsChanged);
     _loadHome();
+    _startSpotlightAutoAdvance();
     unawaited(_loadRecentlyPlayed());
     unawaited(_loadSpeedDial());
   }
@@ -122,6 +124,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     if (_appResumed == resumed) return;
     _appResumed = resumed;
     if (!resumed) {
+      _spotlightAutoAdvanceTimer?.cancel();
+      _spotlightAutoAdvanceTimer = null;
       // MethodChannel resolution already in flight cannot be interrupted, but
       // its batch is invalidated so no further tracks are resolved or queued.
       _resolverGeneration++;
@@ -131,6 +135,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         component: 'discover_resolver',
         fields: {'lifecycle_state': state.name},
       );
+    } else {
+      _startSpotlightAutoAdvance();
     }
   }
 
@@ -325,6 +331,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     AppSettings.instance.removeListener(_onSettingsChanged);
     _scrollController.removeListener(_onDiscoverScroll);
     _scrollController.dispose();
+    _spotlightAutoAdvanceTimer?.cancel();
     _spotlightPageController.dispose();
     _shimmerController.dispose();
     super.dispose();
@@ -1319,7 +1326,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   Widget _feedCard(
     DiscoverTrack track, {
     List<DiscoverTrack>? queueOverride,
-    double cardWidth = 168,
+    double cardWidth = 137,
   }) {
     final theme = Theme.of(context);
     final local = AppSettings.instance.discoverLocalLossless
@@ -1600,184 +1607,199 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     _play(selected, queueOverride: tracks);
   }
 
+  bool _spotlightUserDragging = false;
+
+  void _startSpotlightAutoAdvance() {
+    _spotlightAutoAdvanceTimer?.cancel();
+    if (!mounted || !_appResumed) return;
+    _spotlightAutoAdvanceTimer = Timer.periodic(
+      const Duration(milliseconds: 5500),
+      (_) {
+        final tracks = _spotlightTracks;
+        if (!mounted ||
+            !_appResumed ||
+            _spotlightUserDragging ||
+            tracks.length < 2 ||
+            !_spotlightPageController.hasClients ||
+            (_scrollController.hasClients && _scrollController.offset > 48)) {
+          return;
+        }
+        final next = (_spotlightPage + 1) % tracks.length;
+        _spotlightPageController.animateToPage(
+          next,
+          duration: const Duration(milliseconds: 1150),
+          curve: Curves.easeInOutCubic,
+        );
+      },
+    );
+  }
+
   Widget _spotlightHero() {
     final tracks = _spotlightTracks;
     if (tracks.isEmpty) return const SliverToBoxAdapter();
 
     final activePage = _spotlightPage.clamp(0, tracks.length - 1);
+    final heroHeight = MediaQuery.sizeOf(context).height * .60;
     return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.only(top: 2, bottom: 22),
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Featured for you',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
+      child: SizedBox(
+        height: heroHeight,
+        child: NotificationListener<ScrollNotification>(
+          onNotification: (notification) {
+            if (notification is ScrollStartNotification &&
+                notification.dragDetails != null) {
+              _spotlightUserDragging = true;
+              _spotlightAutoAdvanceTimer?.cancel();
+              _spotlightAutoAdvanceTimer = null;
+            } else if (notification is ScrollEndNotification &&
+                _spotlightUserDragging) {
+              _spotlightUserDragging = false;
+              _startSpotlightAutoAdvance();
+            }
+            return false;
+          },
+          child: PageView.builder(
+            controller: _spotlightPageController,
+            itemCount: tracks.length,
+            onPageChanged: (index) {
+              if (!mounted) return;
+              if (index != _spotlightPage) {
+                setState(() => _spotlightPage = index);
+              }
+              if (!_spotlightUserDragging) _startSpotlightAutoAdvance();
+            },
+            itemBuilder: (context, index) {
+              final track = tracks[index];
+              return Material(
+                color: const Color(0xFF08090C),
+                child: InkWell(
+                  onTap: () => _play(track, queueOverride: tracks),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      _art(
+                        track,
+                        size: double.infinity,
+                        radius: 0,
+                        fit: BoxFit.cover,
                       ),
-                    ),
-                  ),
-                  if (tracks.length > 1)
-                    TextButton.icon(
-                      onPressed: _playRandomSpotlight,
-                      icon: const Icon(Icons.shuffle_rounded, size: 17),
-                      label: const Text('Shuffle'),
-                    ),
-                ],
-              ),
-            ),
-            SizedBox(
-              height: (MediaQuery.sizeOf(context).height * .46)
-                  .clamp(320.0, 400.0)
-                  .toDouble(),
-              child: PageView.builder(
-                controller: _spotlightPageController,
-                itemCount: tracks.length,
-                onPageChanged: (index) {
-                  if (mounted && index != _spotlightPage) {
-                    setState(() => _spotlightPage = index);
-                  }
-                },
-                itemBuilder: (context, index) {
-                  final track = tracks[index];
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 5),
-                    child: Material(
-                      color: const Color(0xFF17181D),
-                      borderRadius: BorderRadius.circular(22),
-                      clipBehavior: Clip.antiAlias,
-                      child: InkWell(
-                        onTap: () => _play(track, queueOverride: tracks),
-                        child: Stack(
-                          fit: StackFit.expand,
+                      const DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Color(0xB8000000),
+                              Color(0x17000000),
+                              Color(0x28000000),
+                              Color(0xF0000000),
+                            ],
+                            stops: [0, .30, .52, 1],
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        left: 36,
+                        right: 28,
+                        bottom: 62,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            _art(
-                              track,
-                              size: double.infinity,
-                              radius: 0,
-                              fit: BoxFit.cover,
+                            Text(
+                              'PICKED FOR YOU',
+                              maxLines: 1,
+                              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                color: Colors.white.withValues(alpha: .72),
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1.35,
+                              ),
                             ),
-                            const DecoratedBox(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [
-                                    Color(0x08000000),
-                                    Color(0x30000000),
-                                    Color(0xE6000000),
-                                  ],
-                                  stops: [0, .38, 1],
+                            const SizedBox(height: 10),
+                            Text(
+                              track.title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                height: 1.04,
+                                letterSpacing: -.7,
+                              ),
+                            ),
+                            const SizedBox(height: 5),
+                            Text(
+                              track.artist,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Colors.white.withValues(alpha: .68),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 15),
+                            Row(
+                              children: [
+                                FilledButton.icon(
+                                  onPressed: () => _play(track, queueOverride: tracks),
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: Colors.white.withValues(alpha: .88),
+                                    foregroundColor: const Color(0xFF202124),
+                                    minimumSize: const Size(0, 36),
+                                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                                    shape: const StadiumBorder(),
+                                  ),
+                                  icon: const Icon(Icons.play_arrow_rounded, size: 19),
+                                  label: const Text(
+                                    'Play',
+                                    style: TextStyle(fontWeight: FontWeight.w700),
+                                  ),
                                 ),
-                              ),
-                            ),
-                            Positioned(
-                              left: 18,
-                              right: 18,
-                              bottom: 18,
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 9,
-                                            vertical: 5,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white.withValues(alpha: .16),
-                                            borderRadius: BorderRadius.circular(20),
-                                            border: Border.all(
-                                              color: Colors.white.withValues(alpha: .18),
-                                            ),
-                                          ),
-                                          child: const Text(
-                                            'YOUR DISCOVER MIX',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 9,
-                                              fontWeight: FontWeight.w800,
-                                              letterSpacing: 1,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 11),
-                                        Text(
-                                          track.title,
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w800,
-                                            height: 1.04,
-                                            letterSpacing: -.45,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 5),
-                                        Text(
-                                          track.artist,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                            color: Colors.white.withValues(alpha: .82),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  IconButton.filled(
-                                    tooltip: 'Play ${track.title}',
-                                    onPressed: () => _play(track, queueOverride: tracks),
+                                const SizedBox(width: 10),
+                                if (tracks.length > 1)
+                                  IconButton(
+                                    tooltip: 'Shuffle featured tracks',
+                                    onPressed: _playRandomSpotlight,
                                     style: IconButton.styleFrom(
-                                      backgroundColor: Colors.white,
-                                      foregroundColor: Colors.black,
-                                      fixedSize: const Size(52, 52),
+                                      backgroundColor: Colors.white.withValues(alpha: .16),
+                                      foregroundColor: Colors.white,
+                                      fixedSize: const Size(38, 38),
                                     ),
-                                    icon: const Icon(Icons.play_arrow_rounded, size: 30),
+                                    icon: const Icon(Icons.shuffle_rounded, size: 18),
                                   ),
-                                ],
-                              ),
+                              ],
                             ),
                           ],
                         ),
                       ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            if (tracks.length > 1) ...[
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(tracks.length, (index) {
-                  final selected = index == activePage;
-                  return AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    margin: const EdgeInsets.symmetric(horizontal: 3),
-                    width: selected ? 18 : 5,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? Theme.of(context).colorScheme.primary
-                          : Theme.of(context).colorScheme.onSurface.withValues(alpha: .24),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  );
-                }),
-              ),
-            ],
-          ],
+                      if (tracks.length > 1)
+                        Positioned(
+                          top: 18,
+                          right: 20,
+                          child: Row(
+                            children: List.generate(tracks.length, (dotIndex) {
+                              final selected = dotIndex == activePage;
+                              return AnimatedContainer(
+                                duration: const Duration(milliseconds: 220),
+                                curve: Curves.easeOutCubic,
+                                margin: const EdgeInsets.only(left: 4),
+                                width: selected ? 18 : 5,
+                                height: 4,
+                                decoration: BoxDecoration(
+                                  color: selected
+                                      ? Colors.white.withValues(alpha: .9)
+                                      : Colors.white.withValues(alpha: .38),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              );
+                            }),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
         ),
       ),
     );
@@ -1793,7 +1815,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           SizedBox(
             height: 126,
             child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 36),
               scrollDirection: Axis.horizontal,
               itemCount: _speedDial.length,
               separatorBuilder: (_, __) => const SizedBox(width: 14),
@@ -1891,7 +1913,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         SizedBox(
           height: 4 * 58,
           child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 36),
             scrollDirection: Axis.horizontal,
             itemCount: columns.length,
             separatorBuilder: (_, __) => const SizedBox(width: 14),
@@ -2088,7 +2110,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   Widget _homeItemCard(
     DiscoverHomeItem item,
     List<DiscoverHomeItem> shelfItems, {
-    double cardWidth = 168,
+    double cardWidth = 137,
   }) {
     final track = item.toTrack();
     final isArtist = item.type == DiscoverHomeItemType.artist;
@@ -2223,9 +2245,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             onSeeAll: shelf.tracks.isEmpty ? null : () => _showShelf(shelf),
           ),
           SizedBox(
-            height: 214,
+            height: 190,
             child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 36),
               scrollDirection: Axis.horizontal,
               itemCount: (shelf.items.isNotEmpty
                       ? shelf.items.length
@@ -2400,30 +2422,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             else if (hasHomeContent) ...[
               if (_loading) const SliverToBoxAdapter(child: LinearProgressIndicator(minHeight: 2)),
               if (_homeShelves.isNotEmpty) ...[
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Listen now',
-                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.7,
-                          ),
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          'Picked for you in $_regionName',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
                 // BitChord Home order: Top Picks, Recents, then the live
                 // upstream shelves. Find Your Mood is inserted after the
                 // lead feed shelf rather than before the feed.
@@ -2448,18 +2446,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                   ],
                 ],
               ] else ...[
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
-                    child: Text(
-                      'Listen now',
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.7,
-                      ),
-                    ),
-                  ),
-                ),
                 if (_sectionTitle == 'Top charts in India' ||
                     _sectionTitle.startsWith('Discover in ')) ...[
                   if (AppSettings.instance.discoverSpotlight) _spotlightHero(),
