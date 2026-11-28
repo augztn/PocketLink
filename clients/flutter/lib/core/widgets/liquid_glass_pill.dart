@@ -58,19 +58,21 @@ class LiquidGlassSurface extends StatelessWidget {
           data: contentTheme,
           child: DecoratedBox(decoration: decoration, child: child),
         );
+        final blurSigma = AppSettings.instance.glassBlurStrength * value;
+        final glassContent = enabled && blurSigma > 0
+            ? BackdropFilter(
+                filter: ui.ImageFilter.blur(
+                  sigmaX: blurSigma,
+                  sigmaY: blurSigma,
+                  tileMode: ui.TileMode.clamp,
+                ),
+                child: material,
+              )
+            : material;
         final clipped = ClipRRect(
           borderRadius: radius,
           clipBehavior: Clip.antiAlias,
-          child: enabled
-              ? BackdropFilter(
-                  filter: ui.ImageFilter.blur(
-                    sigmaX: (refractive ? 22.0 : 20.0) * value,
-                    sigmaY: (refractive ? 22.0 : 20.0) * value,
-                    tileMode: ui.TileMode.clamp,
-                  ),
-                  child: material,
-                )
-              : material,
+          child: glassContent,
         );
         return enabled
             ? CustomPaint(
