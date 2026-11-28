@@ -1,6 +1,17 @@
 part of 'app_settings.dart';
 
 extension AppSettingsMedia on AppSettings {
+  Future<void> setDiscoverMotionSpeed(String value) async {
+    if (!const {'fast', 'normal', 'slow'}.contains(value)) {
+      throw ArgumentError.value(value, 'value');
+    }
+    if (_discoverMotionSpeed == value) return;
+    _discoverMotionSpeed = value;
+    _notifySettingsChanged();
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(AppSettings._discoverMotionSpeedKey, value);
+  }
+
   Future<void> setDiscoverMotion(bool value) async {
     if (_discoverMotion == value) return;
     _discoverMotion = value;
