@@ -396,7 +396,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'AMOLED mode': 'amoled oled black deep black',
         'Liquid Glass UI': 'liquid glass frosted reflections surfaces',
         'Progressive Blur': 'progressive blur shader fade header',
-        'Blur': 'blur glass frosted quality strength',
+        'Blur': 'blur glass frosted strength',
       },
       'navigation': {
         'Navigation bar and dock': 'navigation dock tabs destinations visible hidden reorder',
