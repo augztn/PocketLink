@@ -688,7 +688,9 @@ class ServerApi {
       return null;
     }
 
-    final available = volumes.where((volume) => volume.available).toList();
+    final available = volumes
+        .where((volume) => volume.available && volume.id != 'internal')
+        .toList();
     return available.length == 1 ? available.single.id : null;
   }
 
