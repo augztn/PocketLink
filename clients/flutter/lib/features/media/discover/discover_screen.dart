@@ -2418,8 +2418,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                   ),
                 ),
                 if (_sectionTitle == 'Top charts in India' ||
-                    _sectionTitle.startsWith('Discover in ')) _spotlightHero(),
-                _speedDialShelf(),
+                    _sectionTitle.startsWith('Discover in ')) ...[
+                  _spotlightHero(),
+                  _speedDialShelf(),
+                ],
                 _listeningPicksShelf(),
                 _recentlyPlayedShelf(),
                 if (_tracks.isNotEmpty) ...[
