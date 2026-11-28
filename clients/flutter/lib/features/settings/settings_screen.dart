@@ -73,7 +73,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return;
     }
     if (widget is SwitchListTile) {
-      yield* _searchableText(widget.title);
+      if (widget.title != null) yield* _searchableText(widget.title!);
       if (widget.subtitle != null) yield* _searchableText(widget.subtitle!);
       if (widget.secondary != null) yield* _searchableText(widget.secondary!);
       return;
