@@ -230,7 +230,7 @@ class _NavigationCustomizationScreenState
                       ),
                       child: ListTile(
                       contentPadding: const EdgeInsets.symmetric(horizontal: 14),
-                      leading: Icon(detail.icon, color: colors.onSurfaceVariant),
+                      leading: SettingsIcon(detail.icon),
                       title: Text(detail.label),
                       subtitle: Text(
                         id == 'home' ? 'Always visible' : detail.description,
