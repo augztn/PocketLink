@@ -103,7 +103,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return;
     }
     if (widget is Align) {
-      yield* _searchableText(widget.child);
+      if (widget.child != null) yield* _searchableText(widget.child!);
       return;
     }
     if (widget is SettingsGroupCard) {
@@ -923,36 +923,61 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
                         surfaceTintColor: Colors.transparent,
                         elevation: 0,
-                        flexibleSpace: FlexibleSpaceBar(
-                          titlePadding: const EdgeInsetsDirectional.only(start: 20, bottom: 16),
-                          background: Align(
-                            alignment: Alignment.bottomLeft,
-                            child: Padding(
-                              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 42,
-                                    height: 42,
-                                    decoration: BoxDecoration(
-                                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                                      shape: BoxShape.circle,
+                        flexibleSpace: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final progress = ((constraints.maxHeight - kToolbarHeight) /
+                                    (148 - kToolbarHeight))
+                                .clamp(0.0, 1.0);
+                            return Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                Align(
+                                  alignment: Alignment.bottomLeft,
+                                  child: Opacity(
+                                    opacity: progress,
+                                    child: Padding(
+                                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            width: 42,
+                                            height: 42,
+                                            decoration: BoxDecoration(
+                                              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: Icon(Icons.tune_rounded, color: Theme.of(context).colorScheme.onSurface),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Text(
+                                            'Settings',
+                                            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                              fontSize: 34,
+                                              fontWeight: FontWeight.w800,
+                                              letterSpacing: -0.7,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                    child: Icon(Icons.tune_rounded, color: Theme.of(context).colorScheme.onSurface),
                                   ),
-                                  const SizedBox(width: 12),
-                                  Text(
-                                    'Settings',
-                                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                      fontSize: 34,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: -0.7,
+                                ),
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Opacity(
+                                    opacity: 1 - progress,
+                                    child: const Padding(
+                                      padding: EdgeInsets.only(left: 20),
+                                      child: Text(
+                                        'Settings',
+                                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                                      ),
                                     ),
                                   ),
-                                ],
-                              ),
-                            ),
-                          ),
+                                ),
+                              ],
+                            );
+                          },
                         ),
                         bottom: PreferredSize(
                           preferredSize: const Size.fromHeight(64),
