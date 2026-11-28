@@ -39,6 +39,7 @@ class AppSettings extends ChangeNotifier {
   static const _progressiveBlurKey = 'settings_progressive_blur_enabled';
   static const _animationsEnabledKey = 'settings_animations_enabled';
   static const _animationSpeedKey = 'settings_animation_speed';
+  static const _accentColorKey = 'settings_accent_color';
   static const _navigationOrderKey = 'settings_navigation_order';
   static const _navigationVisibilityKey = 'settings_navigation_visibility';
   static const _homeSearchKey = 'settings_home_search';
@@ -103,6 +104,16 @@ class AppSettings extends ChangeNotifier {
     'ZA': 'South Africa',
     'NG': 'Nigeria',
   };
+  static const accentColorValues = <int>[
+    0xFF536DFE,
+    0xFF8B5CF6,
+    0xFFEC4899,
+    0xFFEF4444,
+    0xFFF97316,
+    0xFF22C55E,
+    0xFF14B8A6,
+    0xFF06B6D4,
+  ];
   static const homeSectionDefaults = <String>['quick', 'continue', 'recent', 'storage', 'transfers', 'search'];
   static const navigationDefaults = <String>['home', 'explore', 'files', 'browse'];
   static const musicButtonShortcutDefaults =
@@ -124,6 +135,7 @@ class AppSettings extends ChangeNotifier {
   bool _progressiveBlurEnabled = true;
   bool _animationsEnabled = true;
   double _animationSpeed = 1.0;
+  int _accentColorValue = 0xFF536DFE;
   bool _loaded = false;
   List<String> _navigationOrder = List.of(navigationDefaults);
   Set<String> _visibleNavigationItems = Set.of(navigationDefaults);
@@ -179,6 +191,7 @@ class AppSettings extends ChangeNotifier {
   bool get progressiveBlurEnabled => _progressiveBlurEnabled;
   bool get animationsEnabled => _animationsEnabled;
   double get animationSpeed => _animationSpeed;
+  int get accentColorValue => _accentColorValue;
   double get animationTimeDilation => _animationsEnabled ? 1.0 / _animationSpeed : 0.01;
   List<String> get navigationOrder => List.unmodifiable(_navigationOrder);
   Set<String> get visibleNavigationItems => Set.unmodifiable(_visibleNavigationItems);
@@ -245,6 +258,10 @@ class AppSettings extends ChangeNotifier {
       _animationSpeed = storedAnimationSpeed.isFinite
           ? storedAnimationSpeed.clamp(0.5, 2.0).toDouble()
           : 1.0;
+      final storedAccentColor = preferences.getInt(_accentColorKey);
+      _accentColorValue = accentColorValues.contains(storedAccentColor)
+          ? storedAccentColor!
+          : accentColorValues.first;
       _showMiniPlayer = preferences.getBool(_nowPlayingMiniPlayerKey) ?? true;
       _enableNowPlayingGestures = preferences.getBool(_nowPlayingGesturesKey) ?? true;
       _showStatsForNerds = preferences.getBool(_nowPlayingStatsForNerdsKey) ?? true;
