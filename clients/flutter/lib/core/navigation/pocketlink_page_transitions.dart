@@ -1,5 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../settings/app_settings.dart';
+
 /// A subtle shared-axis transition that keeps the incoming route fully opaque.
 class PocketLinkPageTransitionsBuilder extends PageTransitionsBuilder {
   const PocketLinkPageTransitionsBuilder();
@@ -12,7 +14,11 @@ class PocketLinkPageTransitionsBuilder extends PageTransitionsBuilder {
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
-    if (MediaQuery.of(context).disableAnimations) return child;
+    if (MediaQuery.of(context).disableAnimations ||
+        !AppSettings.instance.animationsEnabled ||
+        !AppSettings.instance.pageTransitionsEnabled) {
+      return child;
+    }
 
     final eased = CurvedAnimation(
       parent: animation,
