@@ -643,6 +643,9 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
         token.cancel('Video library is closing');
       }
     }
+    // Music duration metadata uses the same request-token map. Clear its
+    // memoized futures too, so reopening the route can request them again.
+    _musicDurationRequests.clear();
   }
 
   Widget _videoMetadataLabel(MediaFileItem media) => VideoMetadataLabel(
@@ -1206,26 +1209,32 @@ tooltip: 'Choose video view',
     return 'pocketlink.music.duration.${hash.toRadixString(16)}';
   }
 
-  Future<int> _musicDurationFor(MediaFileItem media) =>
-      _musicDurationRequests.putIfAbsent(_favoriteKey(media), () async {
-        if ((media.durationMs ?? 0) > 0) return media.durationMs!;
-        final preferences = await SharedPreferences.getInstance();
-        final preferenceKey = _musicDurationPreferenceKey(media);
-        final cached = preferences.getInt(preferenceKey);
-        if (cached != null && cached > 0) return cached;
+  Future<int> _musicDurationFor(MediaFileItem media) {
+    final key = _favoriteKey(media);
+    return _musicDurationRequests.putIfAbsent(key, () async {
+      if ((media.durationMs ?? 0) > 0) return media.durationMs!;
+      final preferences = await SharedPreferences.getInstance();
+      final preferenceKey = _musicDurationPreferenceKey(media);
+      final cached = preferences.getInt(preferenceKey);
+      if (cached != null && cached > 0) return cached;
+      if (!_routeIsCurrent || !_videoRequestsReady) return 0;
 
-        // The native host resolves duration from Android media metadata for
-        // both internal files and SAF-backed USB/OTG documents.
-        final metadata = await widget.api.videoMetadata(
-          media.path,
-          volume: media.volume,
-        );
-        final durationMs = metadata?.durationMs ?? 0;
-        if (durationMs > 0) {
-          await preferences.setInt(preferenceKey, durationMs);
-        }
-        return durationMs;
-      });
+      // Duration reads are screen-owned and cancellable. Previously these
+      // requests had no token, so a route change left them queued behind
+      // metadata endpoint 404s.
+      final token = _requestToken(_videoMetadataTokens, key);
+      final metadata = await widget.api.videoMetadata(
+        media.path,
+        volume: media.volume,
+        cancelToken: token,
+      );
+      final durationMs = metadata?.durationMs ?? 0;
+      if (durationMs > 0 && !token.isCancelled) {
+        await preferences.setInt(preferenceKey, durationMs);
+      }
+      return durationMs;
+    });
+  }
 
   Widget _musicDurationLabel(MediaFileItem media) => MusicDurationLabel(
         future: _musicDurationFor(media),
