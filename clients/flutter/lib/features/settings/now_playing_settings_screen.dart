@@ -108,7 +108,7 @@ class _NowPlayingSettingsScreenState extends State<NowPlayingSettingsScreen> {
               ),
             ),
             const SettingsSectionHeader('Music dock button'),
-            SettingsGroupCard(children: _filtered([
+            SettingsGroupCard(searchQuery: _query, children: _filtered([
               const ListTile(
                 leading: Icon(Icons.touch_app_rounded),
                 title: Text('Tap'),
