@@ -480,6 +480,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
     if (confirmed != true || !mounted) return;
     await _settings.setThemeMode(ThemeMode.system);
+    await _settings.setAccentColor(AppSettings.accentColorValues.first);
     await _settings.setUseLiquidGlass(false);
     await _settings.setProgressiveBlurEnabled(true);
     await _settings.setAnimationsEnabled(true);
