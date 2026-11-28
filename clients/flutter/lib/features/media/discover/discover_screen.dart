@@ -1433,6 +1433,103 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     _play(selected, queueOverride: tracks);
   }
 
+  int get _spotlightPageCount =>
+      _spotlightTracks.length + (_speedDial.isEmpty ? 0 : 1);
+
+  void _playRandomSpeedDial() {
+    if (_speedDial.isEmpty) return;
+    final selected = _speedDial[math.Random().nextInt(_speedDial.length)];
+    _play(selected, queueOverride: _speedDial);
+  }
+
+  void _openSpeedDialSheet() {
+    final tracks = List<DiscoverTrack>.of(_speedDial);
+    if (tracks.isEmpty) return;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => DraggableScrollableSheet(
+        initialChildSize: .84,
+        minChildSize: .5,
+        maxChildSize: .95,
+        expand: false,
+        builder: (context, scrollController) => Material(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            children: [
+              Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(top: 12, bottom: 14),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: .35),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(22, 0, 16, 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Speed Dial',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '${tracks.length} saved',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      tooltip: 'Shuffle Speed Dial',
+                      onPressed: _playRandomSpeedDial,
+                      icon: const Icon(Icons.shuffle_rounded),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: ListView.separated(
+                  controller: scrollController,
+                  padding: const EdgeInsets.only(bottom: 24),
+                  itemCount: tracks.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1, indent: 78),
+                  itemBuilder: (context, index) {
+                    final track = tracks[index];
+                    return ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 3),
+                      leading: _art(track, size: 48, radius: 10),
+                      title: Text(track.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      subtitle: Text(track.artist, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      onTap: () {
+                        Navigator.of(sheetContext).pop();
+                        _play(track, queueOverride: tracks);
+                      },
+                      trailing: IconButton(
+                        tooltip: 'Remove from Speed Dial',
+                        onPressed: () => _toggleSpeedDial(track),
+                        icon: const Icon(Icons.remove_circle_outline_rounded),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   bool _spotlightUserDragging = false;
 
   void _startSpotlightAutoAdvance() {
@@ -1441,12 +1538,12 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     _spotlightAutoAdvanceTimer = Timer.periodic(
       const Duration(milliseconds: 5500),
       (_) {
-        final tracks = _spotlightTracks;
+        final pageCount = _spotlightPageCount;
         if (!mounted ||
             !_appResumed ||
             ModalRoute.of(context)?.isCurrent == false ||
             _spotlightUserDragging ||
-            tracks.length < 2 ||
+            pageCount < 2 ||
             !_spotlightPageController.hasClients ||
             (_scrollController.hasClients && _scrollController.offset > 48)) {
           return;
@@ -1461,11 +1558,134 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     );
   }
 
+  Widget _speedDialHeroPage() {
+    final tracks = _speedDial;
+    final cover = tracks.first;
+    return Material(
+      color: const Color(0xFF08090C),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          _art(cover, size: double.infinity, radius: 0, fit: BoxFit.cover),
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xB8000000),
+                  Color(0x20000000),
+                  Color(0x3A000000),
+                  Color(0xF0000000),
+                ],
+                stops: [0, .30, .52, 1],
+              ),
+            ),
+          ),
+          Positioned(
+            top: 84,
+            right: 30,
+            child: Row(
+              children: [
+                for (final track in tracks.take(3))
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: Container(
+                      width: 58,
+                      height: 58,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white.withValues(alpha: .7), width: 1.2),
+                        boxShadow: const [
+                          BoxShadow(color: Colors.black45, blurRadius: 14, offset: Offset(0, 5)),
+                        ],
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: _art(track, size: 58, radius: 0, fit: BoxFit.cover),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Positioned(
+            left: 36,
+            right: 28,
+            bottom: 62,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'YOUR SPEED DIAL',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: Colors.white.withValues(alpha: .72),
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Your saved tracks',
+                  maxLines: 2,
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    height: 1.04,
+                    letterSpacing: -.7,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  '${tracks.length} pinned songs, ready when you are',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.white.withValues(alpha: .68),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 15),
+                Row(
+                  children: [
+                    FilledButton.icon(
+                      onPressed: _openSpeedDialSheet,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.white.withValues(alpha: .88),
+                        foregroundColor: const Color(0xFF202124),
+                        minimumSize: const Size(0, 36),
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        shape: const StadiumBorder(),
+                      ),
+                      icon: const Icon(Icons.queue_music_rounded, size: 18),
+                      label: const Text('Open Speed Dial', style: TextStyle(fontWeight: FontWeight.w700)),
+                    ),
+                    const SizedBox(width: 10),
+                    IconButton(
+                      tooltip: 'Shuffle Speed Dial',
+                      onPressed: _playRandomSpeedDial,
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.white.withValues(alpha: .16),
+                        foregroundColor: Colors.white,
+                        fixedSize: const Size(38, 38),
+                      ),
+                      icon: const Icon(Icons.shuffle_rounded, size: 18),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _spotlightHero() {
     final tracks = _spotlightTracks;
-    if (tracks.isEmpty) return const SliverToBoxAdapter();
+    final pageCount = _spotlightPageCount;
+    if (pageCount == 0) return const SliverToBoxAdapter();
 
-    final activePage = _spotlightPage % tracks.length;
+    final activePage = _spotlightPage % pageCount;
     final heroHeight = MediaQuery.sizeOf(context).height * .60;
     return SliverToBoxAdapter(
       child: SizedBox(
@@ -1496,7 +1716,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
               if (!_spotlightUserDragging) _startSpotlightAutoAdvance();
             },
             itemBuilder: (context, index) {
-              final track = tracks[index % tracks.length];
+              final pageIndex = index % pageCount;
+              if (_speedDial.isNotEmpty && pageIndex == tracks.length) {
+                return _speedDialHeroPage();
+              }
+              final track = tracks[pageIndex];
               return Material(
                 color: const Color(0xFF08090C),
                 child: InkWell(
@@ -1599,12 +1823,12 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                           ],
                         ),
                       ),
-                      if (tracks.length > 1)
+                      if (pageCount > 1)
                         Positioned(
                           top: 18,
                           right: 20,
                           child: Row(
-                            children: List.generate(tracks.length, (dotIndex) {
+                            children: List.generate(pageCount, (dotIndex) {
                               final selected = dotIndex == activePage;
                               return AnimatedContainer(
                                 duration: const Duration(milliseconds: 220),
@@ -1649,29 +1873,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             );
           },
         ),
-      ),
-    );
-  }
-
-  Widget _speedDialShelf() {
-    if (_speedDial.isEmpty) return const SliverToBoxAdapter();
-    return SliverToBoxAdapter(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _shelfHeading('Speed Dial'),
-          SizedBox(
-            height: 190,
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 36),
-              scrollDirection: Axis.horizontal,
-              itemCount: _speedDial.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 15),
-              itemBuilder: (context, index) =>
-                  _feedCard(_speedDial[index], queueOverride: _speedDial),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -2092,7 +2293,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         _listeningPicks.isNotEmpty;
     final hasHomeContent = hasTracks || _homeShelves.isNotEmpty || hasPersonalContent;
     final showSpotlightHero = AppSettings.instance.discoverSpotlight &&
-        _spotlightTracks.isNotEmpty &&
+        (_spotlightTracks.isNotEmpty || _speedDial.isNotEmpty) &&
         (_homeShelves.isNotEmpty ||
             _sectionTitle == 'Top charts in India' ||
             _sectionTitle.startsWith('Discover in '));
@@ -2184,7 +2385,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 // lead feed shelf rather than before the feed.
                 if (AppSettings.instance.discoverSpotlight) _spotlightHero(),
                 _recentlyPlayedShelf(),
-                _speedDialShelf(),
                 _listeningPicksShelf(),
                 for (var index = 0; index < _homeShelves.length; index++) ...[
                   if (!_isMoodOrGenreShelf(_homeShelves[index]) &&
@@ -2207,7 +2407,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                     _sectionTitle.startsWith('Discover in ')) ...[
                   if (AppSettings.instance.discoverSpotlight) _spotlightHero(),
                   _recentlyPlayedShelf(),
-                  _speedDialShelf(),
                 ],
                 _listeningPicksShelf(),
                 if (_tracks.isNotEmpty) ...[
