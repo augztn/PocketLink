@@ -117,7 +117,7 @@ class _NowPlayingSettingsScreenState extends State<NowPlayingSettingsScreen> {
               ),
               SettingsNestedGroup(
                 parent: SwitchListTile(
-                  secondary: const Icon(Icons.swipe_rounded),
+                  secondary: const SettingsIcon(Icons.swipe_rounded),
                   title: const Text('Swipe to change tracks'),
                   subtitle: const Text('Swipe left or right on the Music button'),
                   value: settings.musicButtonSwipeEnabled,
@@ -145,7 +145,7 @@ class _NowPlayingSettingsScreenState extends State<NowPlayingSettingsScreen> {
                 ],
               ),
               SwitchListTile(
-                secondary: const Icon(Icons.touch_app_outlined),
+                secondary: const SettingsIcon(Icons.touch_app_outlined),
                 title: const Text('Hold for shortcuts'),
                 subtitle: const Text('Long-press the Music button to show quick destinations'),
                 value: settings.musicButtonLongPressEnabled,
@@ -154,7 +154,7 @@ class _NowPlayingSettingsScreenState extends State<NowPlayingSettingsScreen> {
                 ),
               ),
               SettingsTile(
-                leading: const Icon(Icons.grid_view_rounded),
+                leading: const SettingsIcon(Icons.grid_view_rounded),
                 title: 'Customize shortcut destinations',
                 subtitle: '${settings.musicButtonShortcuts.length} destinations · reorder and choose what appears',
                 trailing: const Icon(Icons.chevron_right_rounded),
@@ -170,7 +170,7 @@ class _NowPlayingSettingsScreenState extends State<NowPlayingSettingsScreen> {
             const SettingsSectionHeader('Now Playing style'),
             SettingsGroupCard(children: _filtered([
               SettingsTile(
-                leading: const Icon(Icons.art_track_rounded),
+                leading: const SettingsIcon(Icons.art_track_rounded),
                 title: 'Player style',
                 subtitle: switch (settings.nowPlayingPlayerStyle) {
                   'poster' => 'Poster · circular artwork and expressive track layout',
@@ -195,7 +195,7 @@ class _NowPlayingSettingsScreenState extends State<NowPlayingSettingsScreen> {
             const SettingsSectionHeader('Mini-player and playback'),
             SettingsGroupCard(children: _filtered([
               SwitchListTile(
-                secondary: const Icon(Icons.picture_in_picture_alt_rounded),
+                secondary: const SettingsIcon(Icons.picture_in_picture_alt_rounded),
                 title: const Text('Mini-player'),
                 subtitle: const Text('Show the compact player above the navigation dock while music is playing'),
                 value: settings.showMiniPlayer,
@@ -204,7 +204,7 @@ class _NowPlayingSettingsScreenState extends State<NowPlayingSettingsScreen> {
                 ),
               ),
               SwitchListTile(
-                secondary: const Icon(Icons.swipe_rounded),
+                secondary: const SettingsIcon(Icons.swipe_rounded),
                 title: const Text('Now Playing screen gestures'),
                 subtitle: const Text('Swipe down to close; swipe left or right to change tracks'),
                 value: settings.enableNowPlayingGestures,
@@ -213,7 +213,7 @@ class _NowPlayingSettingsScreenState extends State<NowPlayingSettingsScreen> {
                 ),
               ),
               SwitchListTile(
-                secondary: const Icon(Icons.query_stats_rounded),
+                secondary: const SettingsIcon(Icons.query_stats_rounded),
                 title: const Text('Show stats for nerds'),
                 subtitle: const Text('Show audio codec, bitrate and sample rate in the player menu'),
                 value: settings.showStatsForNerds,
