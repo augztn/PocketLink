@@ -2743,6 +2743,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             ),
           SliverToBoxAdapter(child: SizedBox(height: bottom + 16)),
           ],
+            ),
           ),
           if (_showSkeletonOverlay)
             Positioned.fill(
