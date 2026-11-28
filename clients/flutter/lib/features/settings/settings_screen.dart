@@ -1073,7 +1073,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     SwitchListTile(
                       secondary: const Icon(Icons.view_carousel_rounded),
                       title: const Text('Spotlight carousel'),
-                      subtitle: const Text('Show the featured, swipeable track cards at the top of Discover'),
+                      subtitle: const Text('Show the full-width featured hero and Speed Dial page at the top of Discover'),
                       value: _settings.discoverSpotlight,
                       onChanged: (value) => _settings.setDiscoverOptions(spotlight: value),
                     ),
