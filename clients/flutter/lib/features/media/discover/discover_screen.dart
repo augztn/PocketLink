@@ -1919,7 +1919,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                         final incoming = distance > 0;
                         final inner = incoming ? radius : radius - feather * wipeTrail;
                         final outer = inner + feather;
-                        final edge = (inner / outer).clamp(0.0, 1.0);
+                        final edge = (inner / outer).clamp(0.0, 1.0).toDouble();
                         const featherEase = [0.0, .104, .352, .648, .896, 1.0];
                         final stops = <double>[0, edge];
                         final colors = <Color>[
@@ -1987,7 +1987,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       _shelfRevealBurstStartedAt = now;
       _shelfRevealBurstCount = 0;
     }
-    final step = math.min(_shelfRevealBurstCount++, 6);
+    final step = math.min(_shelfRevealBurstCount++, 6).toInt();
     return Duration(milliseconds: step * 60);
   }
 
