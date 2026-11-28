@@ -171,7 +171,7 @@ class _SettingsGroupCardState extends State<SettingsGroupCard> {
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 child: Padding(
-                  padding: padding,
+                  padding: widget.padding,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
