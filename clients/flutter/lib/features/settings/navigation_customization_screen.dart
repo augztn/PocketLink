@@ -7,7 +7,9 @@ import '../home/navigation_dock.dart';
 import 'widgets/settings_components.dart';
 
 class NavigationCustomizationScreen extends StatefulWidget {
-  const NavigationCustomizationScreen({super.key});
+  const NavigationCustomizationScreen({this.initialSearchQuery, super.key});
+
+  final String? initialSearchQuery;
 
   @override
   State<NavigationCustomizationScreen> createState() =>
@@ -19,6 +21,8 @@ class _NavigationCustomizationScreenState
   final _settings = AppSettings.instance;
   late List<String> _order;
   late Set<String> _visibleItems;
+  late final TextEditingController _searchController;
+  String _query = '';
 
   static const _details = <String, ({String label, String description, IconData icon})>{
     'home': (label: 'Home', description: 'Your dashboard', icon: Icons.home_rounded),
@@ -32,6 +36,22 @@ class _NavigationCustomizationScreenState
     super.initState();
     _order = List.of(_settings.navigationOrder);
     _visibleItems = Set.of(_settings.visibleNavigationItems);
+    _query = widget.initialSearchQuery ?? '';
+    _searchController = TextEditingController(text: _query);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  bool _matchesDestination(String id) {
+    final query = _query.toLowerCase();
+    if (query.isEmpty) return true;
+    final detail = _details[id]!;
+    final corpus = '${detail.label} ${detail.description} $id'.toLowerCase();
+    return query.split(RegExp(r'[^a-z0-9]+')).where((token) => token.isNotEmpty).every(corpus.contains);
   }
 
   Future<void> _save() async {
@@ -98,6 +118,7 @@ class _NavigationCustomizationScreenState
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final isDefault = _settings.navigationLayoutIsDefault;
+    final visibleOrder = _order.where(_matchesDestination).toList(growable: false);
 
     return Scaffold(
       appBar: const PocketLinkAppBar(
@@ -137,12 +158,12 @@ class _NavigationCustomizationScreenState
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               buildDefaultDragHandles: false,
-              itemCount: _order.length,
-              onReorderItem: _reorder,
+              itemCount: visibleOrder.length,
+              onReorderItem: _query.isEmpty ? _reorder : (_, __) {},
               onReorderStart: (_) => HapticFeedback.selectionClick(),
               onReorderEnd: (_) => HapticFeedback.lightImpact(),
               itemBuilder: (context, index) {
-                final id = _order[index];
+                final id = visibleOrder[index];
                 final detail = _details[id]!;
                 final visible = _visibleItems.contains(id);
                 return Column(
@@ -188,6 +209,11 @@ class _NavigationCustomizationScreenState
               },
             ),
           ]),
+          if (_query.isNotEmpty && visibleOrder.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(20),
+              child: Text('No matching navigation settings found.'),
+            ),
           const SizedBox(height: 12),
           Text(
             'Keep at least two destinations visible. Home cannot be hidden, but it can be moved.',
