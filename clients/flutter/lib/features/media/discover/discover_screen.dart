@@ -1763,7 +1763,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                         ),
                       ),
                       Positioned(
-                        left: 36,
+                        left: 20,
                         right: 28,
                         bottom: 62,
                         child: Column(
