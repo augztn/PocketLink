@@ -683,6 +683,7 @@ class ServerApi {
     if (previousName != null && previousName.trim().isNotEmpty) {
       final matches = volumes.where((volume) =>
           volume.available &&
+          volume.id != 'internal' &&
           volume.name.trim().toLowerCase() == previousName.trim().toLowerCase());
       if (matches.length == 1) return matches.first.id;
       return null;
