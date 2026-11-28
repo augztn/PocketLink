@@ -88,7 +88,16 @@ class PersistentAudioPlayer extends ChangeNotifier {
     _playlistSubscription = player.stream.playlist.listen((playlist) {
       final previousIndex = _currentIndex;
       _currentIndex = playlist.index.clamp(0, _queue.isEmpty ? 0 : _queue.length - 1).toInt();
-      if (previousIndex != _currentIndex) _lastCompletedPlaybackKey = null;
+      if (previousIndex != _currentIndex) {
+        _lastCompletedPlaybackKey = null;
+        if (_storageFailureStreak > 0) {
+          _storageFailureResetTimer?.cancel();
+          _storageFailureResetTimer = Timer(const Duration(seconds: 5), () {
+            _storageFailureStreak = 0;
+            _storageFailureResetTimer = null;
+          });
+        }
+      }
       final signature = playlist.medias.map((media) => media.uri).join('\\u0000');
       if (_lastPlaylistSignature != null &&
           signature == _lastPlaylistSignature &&
