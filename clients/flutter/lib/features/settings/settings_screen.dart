@@ -1053,7 +1053,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   controller: _settingsSearchController,
 
                   focusNode: _settingsSearchFocusNode,
-                              focusNode: _settingsSearchFocusNode,
                   onChanged: (value) => setState(() => _settingsSearchQuery = value),
                   textInputAction: TextInputAction.search,
                   decoration: InputDecoration(
