@@ -82,6 +82,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   bool _cached = false;
   Set<String> _favorites = <String>{};
   double _trackSwipeDistance = 0;
+  bool _trackSwipeActive = false;
   int _trackChangeDirection = 1;
   late final AnimationController _lyricsController;
   static final LyricsRepository _lyricsRepository = LyricsRepository();
@@ -1355,7 +1356,19 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
 
   Widget _trackTransition({required Widget child, required String key}) {
     final direction = _trackChangeDirection.toDouble();
-    return AnimatedSwitcher(
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final dragProgress = screenWidth <= 0
+        ? 0.0
+        : (_trackSwipeDistance / screenWidth * 0.42)
+            .clamp(-0.42, 0.42)
+            .toDouble();
+    return AnimatedSlide(
+      offset: Offset(dragProgress, 0),
+      duration: _trackSwipeActive
+          ? Duration.zero
+          : const Duration(milliseconds: 380),
+      curve: Curves.easeOutCubic,
+      child: AnimatedSwitcher(
       duration: const Duration(milliseconds: 420),
       reverseDuration: const Duration(milliseconds: 360),
       switchInCurve: Curves.easeOutCubic,
@@ -1370,7 +1383,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
           child: SlideTransition(position: slide, child: child),
         );
       },
-      child: KeyedSubtree(key: ValueKey(key), child: child),
+        child: KeyedSubtree(key: ValueKey(key), child: child),
+      ),
     );
   }
 
@@ -1809,10 +1823,18 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                       ? (details) => widget.onDismissDragUpdate(details.primaryDelta ?? 0)
                       : null,
                   onHorizontalDragStart: AppSettings.instance.enableNowPlayingGestures
-                      ? (_) => _trackSwipeDistance = 0
+                      ? (_) => setState(() {
+                            _trackSwipeDistance = 0;
+                            _trackSwipeActive = true;
+                          })
                       : null,
                   onHorizontalDragUpdate: AppSettings.instance.enableNowPlayingGestures
-                      ? (details) => _trackSwipeDistance += details.primaryDelta ?? 0
+                      ? (details) => setState(() {
+                            _trackSwipeDistance = (_trackSwipeDistance +
+                                    (details.primaryDelta ?? 0))
+                                .clamp(-180.0, 180.0)
+                                .toDouble();
+                          })
                       : null,
                   onVerticalDragEnd: AppSettings.instance.enableNowPlayingGestures
                       ? (details) => widget.onDismissDragEnd(details.primaryVelocity ?? 0)
@@ -1824,13 +1846,24 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                       ? (details) {
                           final distance = _trackSwipeDistance;
                           final velocity = details.primaryVelocity ?? 0;
-                          if (distance < -80 || velocity < -500) {
+                          final skipNext = distance < -80 || velocity < -500;
+                          final skipPrevious = distance > 80 || velocity > 500;
+                          setState(() {
+                            _trackSwipeDistance = 0;
+                            _trackSwipeActive = false;
+                          });
+                          if (skipNext) {
                             unawaited(_persistent.skipToNext());
-                          } else if (distance > 80 || velocity > 500) {
+                          } else if (skipPrevious) {
                             unawaited(_persistent.skipToPrevious());
                           }
-                          _trackSwipeDistance = 0;
                         }
+                      : null,
+                  onHorizontalDragCancel: AppSettings.instance.enableNowPlayingGestures
+                      ? () => setState(() {
+                            _trackSwipeDistance = 0;
+                            _trackSwipeActive = false;
+                          })
                       : null,
                   // The artwork remains edge-to-edge; only player controls
                   // are inset by SafeArea inside _playerLayout.
