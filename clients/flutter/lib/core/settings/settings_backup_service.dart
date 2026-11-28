@@ -16,6 +16,7 @@ class SettingsBackupService {
 
   static const _booleanKeys = <String>{
     'settings_use_liquid_glass',
+    'settings_animations_enabled',
     'settings_progressive_blur',
     'settings_download_wifi_only',
     'settings_download_auto_resume',
@@ -49,6 +50,7 @@ class SettingsBackupService {
     'settings_video_controls_timeout',
     'settings_video_default_speed',
     'settings_video_subtitle_font_size',
+    'settings_animation_speed',
   };
 
   static const _stringKeys = <String>{
@@ -77,6 +79,7 @@ class SettingsBackupService {
     if (key == 'settings_video_controls_timeout') return value is num && const [0.0, 2.0, 3.0, 3.5, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0].contains(value);
 
     if (key == 'settings_video_subtitle_font_size') return value is double && value >= 14 && value <= 32;
+    if (key == 'settings_animation_speed') return value is double && value >= 0.5 && value <= 2.0;
     if (key == 'settings_video_default_speed') return value is double && const [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 3.0, 4.0].contains(value);
     if (value is! String || value.length > 16384) return false;
 
