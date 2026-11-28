@@ -7,7 +7,9 @@ import '../home/navigation_dock.dart';
 import 'widgets/settings_components.dart';
 
 class NavigationCustomizationScreen extends StatefulWidget {
-  const NavigationCustomizationScreen({super.key});
+  const NavigationCustomizationScreen({this.initialSearchQuery, super.key});
+
+  final String? initialSearchQuery;
 
   @override
   State<NavigationCustomizationScreen> createState() =>
@@ -19,6 +21,22 @@ class _NavigationCustomizationScreenState
   final _settings = AppSettings.instance;
   late List<String> _order;
   late Set<String> _visibleItems;
+  late final TextEditingController _searchController;
+  final FocusNode _searchFocusNode = FocusNode();
+  String _query = '';
+
+  bool get _isSearchActive => _query.trim().isNotEmpty || _searchFocusNode.hasFocus;
+
+  void _onSearchFocusChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
+    _searchFocusNode.unfocus();
+    setState(() => _query = '');
+  }
+  final Map<String, GlobalKey> _destinationKeys = {};
 
   static const _details = <String, ({String label, String description, IconData icon})>{
     'home': (label: 'Home', description: 'Your dashboard', icon: Icons.home_rounded),
@@ -32,6 +50,48 @@ class _NavigationCustomizationScreenState
     super.initState();
     _order = List.of(_settings.navigationOrder);
     _visibleItems = Set.of(_settings.visibleNavigationItems);
+    _query = widget.initialSearchQuery ?? '';
+    _searchController = TextEditingController(text: _query);
+    _searchFocusNode.addListener(_onSearchFocusChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToFirstMatch());
+  }
+
+  void _setQuery(String value) {
+    setState(() => _query = value);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToFirstMatch());
+  }
+
+  void _scrollToFirstMatch() {
+    if (_query.trim().isEmpty || !mounted) return;
+    for (final id in _order) {
+      if (!_matchesDestination(id)) continue;
+      final target = _destinationKeys[id]?.currentContext;
+      if (target != null) {
+        Scrollable.ensureVisible(
+          target,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOutCubic,
+          alignment: 0.18,
+        );
+      }
+      break;
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchFocusNode.removeListener(_onSearchFocusChanged);
+    _searchFocusNode.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  bool _matchesDestination(String id) {
+    final query = _query.toLowerCase();
+    if (query.isEmpty) return true;
+    final detail = _details[id]!;
+    final corpus = '${detail.label} ${detail.description} destination $id'.toLowerCase();
+    return query.split(RegExp(r'[^a-z0-9]+')).where((token) => token.isNotEmpty).every(corpus.contains);
   }
 
   Future<void> _save() async {
@@ -98,14 +158,44 @@ class _NavigationCustomizationScreenState
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final isDefault = _settings.navigationLayoutIsDefault;
+    final visibleOrder = _order.where(_matchesDestination).toList(growable: false);
 
-    return Scaffold(
+    return PopScope<void>(
+      canPop: !_isSearchActive,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && _isSearchActive) _clearSearch();
+      },
+      child: Scaffold(
       appBar: const PocketLinkAppBar(
         title: Text('Navigation', style: TextStyle(fontSize: 20)),
       ),
       body: ListView(
         padding: settingsListPadding(context),
         children: [
+          TextField(
+            controller: _searchController,
+            focusNode: _searchFocusNode,
+            onChanged: _setQuery,
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              hintText: 'Search destinations',
+              prefixIcon: const Icon(Icons.search_rounded),
+              suffixIcon: _query.isEmpty
+                  ? null
+                  : IconButton(
+                      tooltip: 'Clear search',
+                      onPressed: _clearSearch,
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+              filled: true,
+              fillColor: Theme.of(context).colorScheme.surfaceContainerLow,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(18),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
           const SettingsSectionHeader('Live preview'),
           Text(
             'Your dock updates as you rearrange or hide destinations.',
@@ -137,20 +227,29 @@ class _NavigationCustomizationScreenState
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               buildDefaultDragHandles: false,
-              itemCount: _order.length,
-              onReorderItem: _reorder,
+              itemCount: visibleOrder.length,
+              onReorderItem: _query.isEmpty ? _reorder : (_, __) {},
               onReorderStart: (_) => HapticFeedback.selectionClick(),
               onReorderEnd: (_) => HapticFeedback.lightImpact(),
               itemBuilder: (context, index) {
-                final id = _order[index];
+                final id = visibleOrder[index];
                 final detail = _details[id]!;
                 final visible = _visibleItems.contains(id);
+                final matches = _query.isNotEmpty && _matchesDestination(id);
                 return Column(
-                  key: ValueKey(id),
+                  key: _destinationKeys.putIfAbsent(id, GlobalKey.new),
                   children: [
-                    ListTile(
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 450),
+                      curve: Curves.easeOutCubic,
+                      decoration: BoxDecoration(
+                        color: matches ? colors.primary.withValues(alpha: 0.13) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(14),
+                        border: matches ? Border.all(color: colors.primary.withValues(alpha: 0.24)) : null,
+                      ),
+                      child: ListTile(
                       contentPadding: const EdgeInsets.symmetric(horizontal: 14),
-                      leading: Icon(detail.icon, color: colors.onSurfaceVariant),
+                      leading: SettingsIcon(detail.icon),
                       title: Text(detail.label),
                       subtitle: Text(
                         id == 'home' ? 'Always visible' : detail.description,
@@ -181,13 +280,19 @@ class _NavigationCustomizationScreenState
                         ],
                       ),
                     ),
-                    if (index != _order.length - 1)
+                    ),
+                    if (index != visibleOrder.length - 1)
                       const Divider(height: 1),
                   ],
                 );
               },
             ),
           ]),
+          if (_query.isNotEmpty && visibleOrder.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(20),
+              child: Text('No matching navigation settings found.'),
+            ),
           const SizedBox(height: 12),
           Text(
             'Keep at least two destinations visible. Home cannot be hidden, but it can be moved.',
@@ -200,6 +305,7 @@ class _NavigationCustomizationScreenState
             label: const Text('Reset to Default'),
           ),
         ],
+      ),
       ),
     );
   }

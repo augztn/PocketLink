@@ -5,8 +5,104 @@ import '../../core/widgets/pocketlink_app_bar.dart';
 import 'music_shortcut_customization_screen.dart';
 import 'widgets/settings_components.dart';
 
-class NowPlayingSettingsScreen extends StatelessWidget {
-  const NowPlayingSettingsScreen({super.key});
+class NowPlayingSettingsScreen extends StatefulWidget {
+  const NowPlayingSettingsScreen({this.initialSearchQuery, super.key});
+
+  final String? initialSearchQuery;
+
+  @override
+  State<NowPlayingSettingsScreen> createState() => _NowPlayingSettingsScreenState();
+}
+
+class _NowPlayingSettingsScreenState extends State<NowPlayingSettingsScreen> {
+  late final TextEditingController _searchController;
+  final FocusNode _searchFocusNode = FocusNode();
+  String _query = '';
+
+  bool get _isSearchActive => _query.trim().isNotEmpty || _searchFocusNode.hasFocus;
+
+  void _onSearchFocusChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
+    _searchFocusNode.unfocus();
+    setState(() => _query = '');
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _query = widget.initialSearchQuery ?? '';
+    _searchController = TextEditingController(text: _query);
+    _searchFocusNode.addListener(_onSearchFocusChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchFocusNode.removeListener(_onSearchFocusChanged);
+    _searchFocusNode.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  bool _matches(Widget child) {
+    if (_query.trim().isEmpty) return true;
+    final tokens = _query.toLowerCase().split(RegExp(r'[^a-z0-9]+')).where((token) => token.isNotEmpty);
+    if (tokens.isEmpty) return true;
+    final searchable = <String>[];
+    if (child is SettingsNestedGroup) searchable.add(settingsSearchableText(child));
+    if (child is SettingsTile) {
+      searchable.add(child.title);
+      if (child.subtitle != null) searchable.add(child.subtitle!);
+    }
+    if (child is ListTile) {
+      if (child.title is Text) searchable.add((child.title as Text).data ?? '');
+      if (child.subtitle is Text) searchable.add((child.subtitle as Text).data ?? '');
+    } else if (child is SwitchListTile) {
+      if (child.title is Text) searchable.add((child.title as Text).data ?? '');
+      if (child.subtitle is Text) searchable.add((child.subtitle as Text).data ?? '');
+    } else if (child is _SwipeActionTile) {
+      searchable.add(child.title);
+    }
+    final corpus = searchable.join(' ').toLowerCase();
+    return tokens.every(corpus.contains);
+  }
+
+  List<Widget> _filtered(List<Widget> children) =>
+      children.where(_matches).toList(growable: false);
+
+  Widget _group(String title, List<Widget> children) {
+    final visible = _filtered(children);
+    if (visible.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SettingsSectionHeader(title),
+        SettingsGroupCard(searchQuery: _query, children: visible),
+      ],
+    );
+  }
+
+  bool _hasAnySearchMatches() {
+    final tokens = _query
+        .toLowerCase()
+        .split(RegExp(r'[^a-z0-9]+'))
+        .where((token) => token.isNotEmpty);
+    if (tokens.isEmpty) return true;
+    const searchable = [
+      'tap open current now playing screen',
+      'swipe to change tracks swipe left swipe right next previous no action',
+      'hold for shortcuts long press music button quick destinations',
+      'customize shortcut destinations reorder choose what appears',
+      'player style now playing poster pocketlink lyrics artwork',
+      'mini-player show compact player above navigation dock while music is playing',
+      'now playing screen gestures swipe down close swipe left right change tracks',
+      'show stats for nerds audio codec bitrate sample rate player menu',
+    ];
+    return searchable.any((entry) => tokens.every(entry.contains));
+  }
 
   static const _swipeActions = <String, String>{
     'next': 'Next track',
@@ -19,12 +115,42 @@ class NowPlayingSettingsScreen extends StatelessWidget {
     final settings = AppSettings.instance;
     return AnimatedBuilder(
       animation: settings,
-      builder: (context, _) => Scaffold(
+      builder: (context, _) => PopScope<void>(
+        canPop: !_isSearchActive,
+        onPopInvokedWithResult: (didPop, result) {
+          if (!didPop && _isSearchActive) _clearSearch();
+        },
+        child: Scaffold(
         appBar: PocketLinkAppBar(title: const Text('Music & Player', style: TextStyle(fontSize: 20))),
         body: ListView(
           padding: settingsListPadding(context),
           children: [
-            Padding(
+            TextField(
+              controller: _searchController,
+              focusNode: _searchFocusNode,
+              onChanged: (value) => setState(() => _query = value),
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                hintText: 'Search in Music & Player',
+                prefixIcon: const Icon(Icons.search_rounded),
+                suffixIcon: _query.isEmpty
+                    ? null
+                    : IconButton(
+                        tooltip: 'Clear search',
+                        onPressed: _clearSearch,
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                filled: true,
+                fillColor: Theme.of(context).colorScheme.surfaceContainerLow,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(18),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            if (!_isSearchActive)
+              Padding(
               padding: const EdgeInsets.only(bottom: 18),
               child: Text(
                 'Configure the Music button and mini-player behavior.',
@@ -33,40 +159,43 @@ class NowPlayingSettingsScreen extends StatelessWidget {
                 ),
               ),
             ),
-            const SettingsSectionHeader('Music dock button'),
-            SettingsGroupCard(children: [
+            _group('Music dock button', [
               const ListTile(
                 leading: Icon(Icons.touch_app_rounded),
                 title: Text('Tap'),
                 subtitle: Text('Open the current Now Playing screen'),
               ),
-              SwitchListTile(
-                secondary: const Icon(Icons.swipe_rounded),
-                title: const Text('Swipe to change tracks'),
-                subtitle: const Text('Swipe left or right on the Music button'),
-                value: settings.musicButtonSwipeEnabled,
-                onChanged: (value) => settings.setMusicButtonOptions(
-                  swipeEnabled: value,
+              SettingsNestedGroup(
+                parent: SwitchListTile(
+                  secondary: const SettingsIcon(Icons.swipe_rounded),
+                  title: const Text('Swipe to change tracks'),
+                  subtitle: const Text('Swipe left or right on the Music button'),
+                  value: settings.musicButtonSwipeEnabled,
+                  onChanged: (value) => settings.setMusicButtonOptions(
+                    swipeEnabled: value,
+                  ),
                 ),
+                expanded: settings.musicButtonSwipeEnabled || _query.isNotEmpty,
+                searchQuery: _query,
+                children: [
+                  _SwipeActionTile(
+                    title: 'Swipe left',
+                    value: settings.musicButtonSwipeLeftAction,
+                    onChanged: (value) => settings.setMusicButtonOptions(
+                      swipeLeftAction: value,
+                    ),
+                  ),
+                  _SwipeActionTile(
+                    title: 'Swipe right',
+                    value: settings.musicButtonSwipeRightAction,
+                    onChanged: (value) => settings.setMusicButtonOptions(
+                      swipeRightAction: value,
+                    ),
+                  ),
+                ],
               ),
-              if (settings.musicButtonSwipeEnabled) ...[
-                _SwipeActionTile(
-                  title: 'Swipe left',
-                  value: settings.musicButtonSwipeLeftAction,
-                  onChanged: (value) => settings.setMusicButtonOptions(
-                    swipeLeftAction: value,
-                  ),
-                ),
-                _SwipeActionTile(
-                  title: 'Swipe right',
-                  value: settings.musicButtonSwipeRightAction,
-                  onChanged: (value) => settings.setMusicButtonOptions(
-                    swipeRightAction: value,
-                  ),
-                ),
-              ],
               SwitchListTile(
-                secondary: const Icon(Icons.touch_app_outlined),
+                secondary: const SettingsIcon(Icons.touch_app_outlined),
                 title: const Text('Hold for shortcuts'),
                 subtitle: const Text('Long-press the Music button to show quick destinations'),
                 value: settings.musicButtonLongPressEnabled,
@@ -75,7 +204,7 @@ class NowPlayingSettingsScreen extends StatelessWidget {
                 ),
               ),
               SettingsTile(
-                leading: const Icon(Icons.grid_view_rounded),
+                leading: const SettingsIcon(Icons.grid_view_rounded),
                 title: 'Customize shortcut destinations',
                 subtitle: '${settings.musicButtonShortcuts.length} destinations · reorder and choose what appears',
                 trailing: const Icon(Icons.chevron_right_rounded),
@@ -88,10 +217,9 @@ class NowPlayingSettingsScreen extends StatelessWidget {
               ),
             ]),
             const SizedBox(height: 20),
-            const SettingsSectionHeader('Now Playing style'),
-            SettingsGroupCard(children: [
+            _group('Now Playing style', [
               SettingsTile(
-                leading: const Icon(Icons.art_track_rounded),
+                leading: const SettingsIcon(Icons.art_track_rounded),
                 title: 'Player style',
                 subtitle: switch (settings.nowPlayingPlayerStyle) {
                   'poster' => 'Poster · circular artwork and expressive track layout',
@@ -113,10 +241,9 @@ class NowPlayingSettingsScreen extends StatelessWidget {
               ),
             ]),
             const SizedBox(height: 20),
-            const SettingsSectionHeader('Mini-player and playback'),
-            SettingsGroupCard(children: [
+            _group('Mini-player and playback', [
               SwitchListTile(
-                secondary: const Icon(Icons.picture_in_picture_alt_rounded),
+                secondary: const SettingsIcon(Icons.picture_in_picture_alt_rounded),
                 title: const Text('Mini-player'),
                 subtitle: const Text('Show the compact player above the navigation dock while music is playing'),
                 value: settings.showMiniPlayer,
@@ -125,7 +252,7 @@ class NowPlayingSettingsScreen extends StatelessWidget {
                 ),
               ),
               SwitchListTile(
-                secondary: const Icon(Icons.swipe_rounded),
+                secondary: const SettingsIcon(Icons.swipe_rounded),
                 title: const Text('Now Playing screen gestures'),
                 subtitle: const Text('Swipe down to close; swipe left or right to change tracks'),
                 value: settings.enableNowPlayingGestures,
@@ -134,7 +261,7 @@ class NowPlayingSettingsScreen extends StatelessWidget {
                 ),
               ),
               SwitchListTile(
-                secondary: const Icon(Icons.query_stats_rounded),
+                secondary: const SettingsIcon(Icons.query_stats_rounded),
                 title: const Text('Show stats for nerds'),
                 subtitle: const Text('Show audio codec, bitrate and sample rate in the player menu'),
                 value: settings.showStatsForNerds,
@@ -142,7 +269,12 @@ class NowPlayingSettingsScreen extends StatelessWidget {
                   statsForNerds: value,
                 ),
               ),
-            ]),
+            ])),
+            if (_query.isNotEmpty && !_hasAnySearchMatches())
+              const Padding(
+                padding: EdgeInsets.all(20),
+                child: Text('No matching settings found.'),
+              ),
             const SizedBox(height: 12),
             Align(
               alignment: Alignment.centerRight,
@@ -158,40 +290,33 @@ class NowPlayingSettingsScreen extends StatelessWidget {
             ),
           ],
         ),
+        ),
       ),
     );
   }
 }
 
-class _SwipeActionTile extends StatelessWidget {
-  const _SwipeActionTile({
-    required this.title,
-    required this.value,
-    required this.onChanged,
-  });
-
-  final String title;
-  final String value;
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) => SettingsTile(
-    title: title,
-    trailing: DropdownButton<String>(
-      value: NowPlayingSettingsScreen._swipeActions.containsKey(value)
-          ? value
-          : 'none',
-      underline: const SizedBox.shrink(),
-      items: NowPlayingSettingsScreen._swipeActions.entries.map(
-        (entry) => DropdownMenuItem<String>(
-          value: entry.key,
-          child: Text(entry.value),
-        ),
-      ).toList(),
-      onChanged: (next) {
-        if (next != null) onChanged(next);
-      },
-    ),
-  );
+class _SwipeActionTile extends SettingsTile {
+  _SwipeActionTile({
+    required String title,
+    required String value,
+    required ValueChanged<String> onChanged,
+  }) : super(
+          title: title,
+          trailing: DropdownButton<String>(
+            value: _NowPlayingSettingsScreenState._swipeActions.containsKey(value)
+                ? value
+                : 'none',
+            underline: const SizedBox.shrink(),
+            items: _NowPlayingSettingsScreenState._swipeActions.entries.map(
+              (entry) => DropdownMenuItem<String>(
+                value: entry.key,
+                child: Text(entry.value),
+              ),
+            ).toList(),
+            onChanged: (next) {
+              if (next != null) onChanged(next);
+            },
+          ),
+        );
 }
-

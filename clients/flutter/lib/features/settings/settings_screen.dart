@@ -21,12 +21,13 @@ import '../downloads/download_manager_service.dart';
 import '../media/discover/imported_playlist_manager_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({this.api, this.onOpenSavedServers, this.category, super.key});
+  const SettingsScreen({this.api, this.onOpenSavedServers, this.category, this.initialSearchQuery, super.key});
 
   final ServerApi? api;
 
   final VoidCallback? onOpenSavedServers;
   final String? category;
+  final String? initialSearchQuery;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -47,6 +48,104 @@ class _SettingsScreenState extends State<SettingsScreen> {
   double? _pendingLyricsLineSpacing;
   String _settingsSearchQuery = '';
   final TextEditingController _settingsSearchController = TextEditingController();
+  final FocusNode _settingsSearchFocusNode = FocusNode();
+  String? _selectedTabletCategory;
+
+  bool get _isSearchActive =>
+      _settingsSearchQuery.trim().isNotEmpty || _settingsSearchFocusNode.hasFocus;
+
+  void _onSettingsSearchFocusChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _clearSettingsSearch() {
+    _settingsSearchController.clear();
+    _settingsSearchFocusNode.unfocus();
+    setState(() => _settingsSearchQuery = '');
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _settingsSearchFocusNode.addListener(_onSettingsSearchFocusChanged);
+    final initialQuery = widget.initialSearchQuery;
+    if (initialQuery != null && initialQuery.trim().isNotEmpty) {
+      _settingsSearchQuery = initialQuery;
+      _settingsSearchController.text = initialQuery;
+    }
+  }
+
+  Iterable<String> _searchableText(Widget widget) sync* {
+    if (widget is SettingsNestedGroup) {
+      yield settingsSearchableText(widget);
+      return;
+    }
+    if (widget is SettingsTile) {
+      yield settingsSearchableText(widget);
+      return;
+    }
+    if (widget is Text) {
+      final value = widget.data;
+      if (value != null) yield value;
+      return;
+    }
+    if (widget is ListTile) {
+      if (widget.title != null) yield* _searchableText(widget.title!);
+      if (widget.subtitle != null) yield* _searchableText(widget.subtitle!);
+      if (widget.leading != null) yield* _searchableText(widget.leading!);
+      if (widget.trailing != null) yield* _searchableText(widget.trailing!);
+      return;
+    }
+    if (widget is SwitchListTile) {
+      if (widget.title != null) yield* _searchableText(widget.title!);
+      if (widget.subtitle != null) yield* _searchableText(widget.subtitle!);
+      if (widget.secondary != null) yield* _searchableText(widget.secondary!);
+      return;
+    }
+    if (widget is Padding) {
+      if (widget.child != null) yield* _searchableText(widget.child!);
+      return;
+    }
+    if (widget is Column) {
+      for (final child in widget.children) {
+        yield* _searchableText(child);
+      }
+      return;
+    }
+    if (widget is Row) {
+      for (final child in widget.children) {
+        yield* _searchableText(child);
+      }
+      return;
+    }
+    if (widget is Container && widget.child != null) {
+      yield* _searchableText(widget.child!);
+      return;
+    }
+    if (widget is SizedBox && widget.child != null) {
+      yield* _searchableText(widget.child!);
+      return;
+    }
+    if (widget is Align) {
+      if (widget.child != null) yield* _searchableText(widget.child!);
+      return;
+    }
+    if (widget is SettingsGroupCard) {
+      for (final child in widget.children) {
+        yield* _searchableText(child);
+      }
+    }
+  }
+
+  bool _matchesCategorySearch(Widget child, {String sectionTitle = ''}) {
+    final tokens = _settingsSearchQuery
+        .toLowerCase()
+        .split(RegExp(r'[^a-z0-9]+'))
+        .where((token) => token.isNotEmpty);
+    if (tokens.isEmpty) return true;
+    final corpus = '${sectionTitle.toLowerCase()} ${_searchableText(child).join(' ').toLowerCase()}';
+    return tokens.every(corpus.contains);
+  }
 
   Future<void> _openDiscoverPlaylists() async {
     final api = widget.api;
@@ -356,16 +455,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Widget _section(String title, List<Widget> children) => Padding(
-        padding: const EdgeInsets.only(bottom: 18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SettingsSectionHeader(title),
-            SettingsGroupCard(children: children),
-          ],
-        ),
-      );
+  Widget _section(String title, List<Widget> children) {
+    final visibleChildren = children.where((child) => _matchesCategorySearch(child, sectionTitle: title)).toList(growable: false);
+    if (visibleChildren.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SettingsSectionHeader(title),
+          SettingsGroupCard(children: visibleChildren, searchQuery: _settingsSearchQuery),
+        ],
+      ),
+    );
+  }
 
   String _pageTitle(String? category) => switch (category) {
         'Appearance' => 'Appearance',
@@ -388,19 +491,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
         builder: builder,
       );
 
-  void _openCategory(String id) {
+  void _openCategory(String id, {String? searchQuery}) {
+    if (widget.category == null && MediaQuery.sizeOf(context).width >= 840) {
+      setState(() {
+        _selectedTabletCategory = id;
+        if (searchQuery != null) {
+          _settingsSearchQuery = searchQuery;
+          _settingsSearchController.text = searchQuery;
+        }
+      });
+      return;
+    }
     final route = switch (id) {
       'navigation-customize' => _categoryRoute(
           id,
-          (_) => const NavigationCustomizationScreen(),
+          (_) => NavigationCustomizationScreen(initialSearchQuery: searchQuery),
         ),
       'audio' || 'now-playing' => _categoryRoute(
           id,
-          (_) => const NowPlayingSettingsScreen(),
+          (_) => NowPlayingSettingsScreen(initialSearchQuery: searchQuery),
         ),
       'video' => _categoryRoute(
           id,
-          (_) => const VideoPlayerSettingsScreen(),
+          (_) => VideoPlayerSettingsScreen(initialSearchQuery: searchQuery),
         ),
       'about' => _categoryRoute(id, (_) => const AboutScreen()),
       _ => _categoryRoute(
@@ -408,6 +521,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           (_) => SettingsScreen(
             api: widget.api,
             onOpenSavedServers: widget.onOpenSavedServers,
+            initialSearchQuery: searchQuery,
             category: switch (id) {
               'appearance' => 'Appearance',
               'customization' => 'Customisation',
@@ -480,6 +594,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'Mini-player': 'mini player compact pill artwork playback controls',
         'Playback gestures': 'swipe dismiss change tracks seek',
       },
+      'video': {
+        'Controls auto-hide': 'video player controls hide timeout never seconds',
+        'Double-tap seek': 'video seek seconds fast forward rewind',
+        'Default playback speed': 'video playback speed rate',
+        'Player gestures': 'video gestures horizontal swipe brightness volume seek',
+        'Pinch to zoom': 'video zoom pinch pan enlarge',
+        'Tap to play or pause': 'video tap toggle playback pause',
+        'Open videos in fullscreen': 'video fullscreen automatic start',
+        'Fullscreen orientation': 'video portrait landscape orientation auto rotate',
+        'Video scaling': 'video fit contain cover crop stretch fill',
+        'Subtitle text size': 'subtitle captions font text size',
+        'Subtitle background': 'subtitle captions translucent background',
+      },
+      'navigation-customize': {
+        'Home destination': 'home dashboard navigation tab always visible',
+        'Explore destination': 'explore browse server media navigation tab',
+        'Files destination': 'files storage navigation tab',
+        'Browse / Music destination': 'browse music player shortcut navigation tab',
+      },
       'music': {
         'Music button and mini-player': 'audio now playing gestures shortcuts mini player',
         'Playback gestures': 'swipe dismiss change tracks seek',
@@ -515,6 +648,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       'storage': 'storage downloads files transfers download location',
       'music': 'music audio playback discover video lyrics playlists',
       'now-playing': 'now playing player mini-player poster lyrics playback',
+      'video': 'video player playback controls fullscreen subtitles scaling',
+      'navigation-customize': 'navigation dock destinations home explore files music reorder',
       'network': 'network connectivity connection server',
       'diagnostics': 'diagnostics maintenance backup restore logs troubleshooting',
       'about': 'about pocketlink',
@@ -529,6 +664,115 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   bool _categoryMatches(String id) => _matchingSettingLabels(id).isNotEmpty;
+
+  List<Widget> _globalSearchResultTiles() {
+    if (_settingsSearchQuery.trim().isEmpty) return const [];
+    const categories = <String, String>{
+      'appearance': 'Appearance',
+      'customization': 'Customisation',
+      'navigation': 'Navigation',
+      'storage': 'Storage',
+      'now-playing': 'Now Playing',
+      'video': 'Video Player',
+      'navigation-customize': 'Navigation',
+      'music': 'Music',
+      'network': 'Network',
+      'diagnostics': 'Diagnostics',
+      'about': 'About',
+    };
+    final results = <Widget>[];
+    for (final entry in categories.entries) {
+      for (final label in _matchingSettingLabels(entry.key)) {
+        results.add(
+          TweenAnimationBuilder<double>(
+            key: ValueKey('settings-search-${entry.key}-$label'),
+            tween: Tween<double>(begin: 0, end: 1),
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOutCubic,
+            builder: (context, value, child) => Opacity(
+              opacity: MediaQuery.of(context).disableAnimations ? 1 : value,
+              child: Transform.translate(
+                offset: Offset(0, MediaQuery.of(context).disableAnimations ? 0 : 12 * (1 - value)),
+                child: child,
+              ),
+            ),
+            child: Material(
+              color: const Color(0xFF1C1C1E),
+              borderRadius: BorderRadius.circular(20),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: () => _openCategory(entry.key, searchQuery: _settingsSearchQuery),
+                borderRadius: BorderRadius.circular(20),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF333338),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.tune_rounded, color: Colors.white, size: 18),
+                      ),
+                      const SizedBox(width: 11),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              entry.value,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                fontSize: 12,
+                                color: Colors.white60,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.north_east_rounded, size: 18, color: Colors.white54),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+    }
+    if (results.isEmpty) {
+      return [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Text(
+            'No matching settings found.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      ];
+    }
+    return [
+      Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: SettingsSectionHeader('Matching settings'),
+      ),
+      ...results.expand((result) => [result, const SizedBox(height: 10)]),
+      const SizedBox(height: 8),
+    ];
+  }
 
   Future<void> _resetAppearance() async {
     final confirmed = await showDialog<bool>(
@@ -600,75 +844,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   List<Widget> _homeSettingsChildren() => [
-    Padding(
-      padding: const EdgeInsets.only(bottom: 18),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.tune_rounded,
-              color: Theme.of(context).colorScheme.onSurface,
-              size: 23,
-            ),
-          ),
-          const SizedBox(width: 12),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 260),
-            transitionBuilder: (child, animation) => FadeTransition(
-              opacity: animation,
-              child: SlideTransition(
-                position: Tween<Offset>(begin: const Offset(0, 0.12), end: Offset.zero).animate(animation),
-                child: child,
-              ),
-            ),
-            child: Text(
-              'Settings',
-              key: const ValueKey('settings-title'),
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontSize: 34,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.7,
-              ),
-            ),
-          ),
-        ],
-      ),
-    ),
-    Padding(
-      padding: const EdgeInsets.only(bottom: 24),
-      child: TextField(
-        controller: _settingsSearchController,
-        onChanged: (value) => setState(() => _settingsSearchQuery = value),
-        textInputAction: TextInputAction.search,
-        decoration: InputDecoration(
-          hintText: 'Search settings',
-          prefixIcon: const Icon(Icons.search_rounded),
-          suffixIcon: _settingsSearchQuery.isEmpty
-              ? null
-              : IconButton(
-                  tooltip: 'Clear search',
-                  onPressed: () {
-                    _settingsSearchController.clear();
-                    setState(() => _settingsSearchQuery = '');
-                  },
-                  icon: const Icon(Icons.close_rounded),
-                ),
-          filled: true,
-          fillColor: Theme.of(context).colorScheme.surfaceContainerLow,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
-          contentPadding: const EdgeInsets.symmetric(vertical: 14),
-        ),
-      ),
-    ),
     if (_categoryMatches('customization') || _categoryMatches('appearance'))
       _categoryTile(
         id: 'customization',
@@ -754,7 +929,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required Color tint,
     required String title,
   }) {
-    final colors = Theme.of(context).colorScheme;
     return TweenAnimationBuilder<double>(
       key: ValueKey('$id:$_settingsSearchQuery'),
       tween: Tween<double>(begin: 0, end: 1),
@@ -773,39 +947,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         );
       },
-      child: Material(
-        color: colors.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(22),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: () => _openCategory(id),
-          borderRadius: BorderRadius.circular(22),
-          child: SizedBox(
-            height: 64,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: colors.surfaceContainerHighest,
-                      shape: BoxShape.circle,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Material(
+          color: widget.category == null &&
+                  MediaQuery.sizeOf(context).width >= 840 &&
+                  _selectedTabletCategory == id
+              ? const Color(0xFF3A3A3E)
+              : const Color(0xFF1C1C1E),
+          borderRadius: BorderRadius.circular(20),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () => _openCategory(id),
+            borderRadius: BorderRadius.circular(20),
+            child: SizedBox(
+              height: 66,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF333338),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(icon, color: tint, size: 18),
                     ),
-                    child: Icon(icon, color: tint, size: 20),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
+                    const SizedBox(width: 11),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-                  ),
-                  Icon(Icons.chevron_right_rounded, color: colors.onSurfaceVariant),
-                ],
+                    Icon(Icons.chevron_right_rounded, color: Colors.white54, size: 20),
+                  ],
+                ),
               ),
             ),
           ),
@@ -814,8 +996,148 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Widget _tabletCategoryPage(String? id) {
+    if (id == null) {
+      return ColoredBox(
+        color: Colors.black,
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.tune_rounded, size: 40, color: Colors.white.withValues(alpha: 0.35)),
+              const SizedBox(height: 14),
+              Text(
+                'Choose a settings category',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white.withValues(alpha: 0.5),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    switch (id) {
+      case 'navigation-customize':
+        return NavigationCustomizationScreen(initialSearchQuery: _settingsSearchQuery);
+      case 'audio':
+      case 'now-playing':
+        return NowPlayingSettingsScreen(initialSearchQuery: _settingsSearchQuery);
+      case 'video':
+        return VideoPlayerSettingsScreen(initialSearchQuery: _settingsSearchQuery);
+      case 'about':
+        return const AboutScreen();
+      default:
+        return SettingsScreen(
+          key: ValueKey('tablet-settings-$id-$_settingsSearchQuery'),
+          api: widget.api,
+          onOpenSavedServers: widget.onOpenSavedServers,
+          initialSearchQuery: _settingsSearchQuery,
+          category: switch (id) {
+            'appearance' => 'Appearance',
+            'customization' => 'Customisation',
+            'navigation' => 'Navigation',
+            'dashboard' => 'Dashboard & Shortcuts',
+            'music' => 'Music',
+            'discover' => 'Discover',
+            'storage' => 'Storage',
+            'network' || 'connectivity' => 'Network',
+            'diagnostics' || 'maintenance' => 'Diagnostics',
+            _ => 'Customisation',
+          },
+        );
+    }
+  }
+
+  Widget _buildTabletSettingsPane(BuildContext context, double bottomClearance) {
+    final width = MediaQuery.sizeOf(context).width;
+    final paneWidth = (width * 0.38).clamp(300.0, 400.0).toDouble();
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(
+          width: paneWidth,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.tune_rounded, size: 32, color: Colors.white),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Settings',
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontSize: 34,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.7,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: TextField(
+                  controller: _settingsSearchController,
+
+                  focusNode: _settingsSearchFocusNode,
+                  onChanged: (value) => setState(() => _settingsSearchQuery = value),
+                  textInputAction: TextInputAction.search,
+                  decoration: InputDecoration(
+                    hintText: 'Search settings',
+                    prefixIcon: const Icon(Icons.search_rounded),
+                    suffixIcon: _settingsSearchQuery.isEmpty
+                        ? null
+                        : IconButton(
+                            tooltip: 'Clear search',
+                            onPressed: _clearSettingsSearch,
+                            icon: const Icon(Icons.close_rounded),
+                          ),
+                    filled: true,
+                    fillColor: Theme.of(context).colorScheme.surfaceContainerLow,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(18),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: ListView(
+                  padding: EdgeInsets.fromLTRB(16, 8, 16, bottomClearance),
+                  children: [
+                    ..._globalSearchResultTiles(),
+                    if (!_isSearchActive) ..._homeSettingsChildren(),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        VerticalDivider(
+          width: 1,
+          thickness: 1,
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.35),
+        ),
+        Expanded(
+          child: KeyedSubtree(
+            key: ValueKey('tablet-pane-${_selectedTabletCategory ?? 'empty'}-$_settingsSearchQuery'),
+            child: _tabletCategoryPage(_selectedTabletCategory),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   void dispose() {
+    _settingsSearchFocusNode.removeListener(_onSettingsSearchFocusChanged);
+    _settingsSearchFocusNode.dispose();
     _settingsSearchController.dispose();
     super.dispose();
   }
@@ -824,12 +1146,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _settings,
-      builder: (context, _) => Scaffold(
+      builder: (context, _) => PopScope<Object?>(
+        canPop: !_isSearchActive,
+        onPopInvokedWithResult: (didPop, result) {
+          if (!didPop && _isSearchActive) _clearSettingsSearch();
+        },
+        child: Scaffold(
         extendBodyBehindAppBar: true,
-        appBar: PocketLinkAppBar(
-          title: widget.category == null
-              ? const SizedBox.shrink()
-              : Text(_pageTitle(widget.category), style: const TextStyle(fontSize: 20)),
+        appBar: widget.category == null
+            ? null
+            : PocketLinkAppBar(
+          title: Text(_pageTitle(widget.category), style: const TextStyle(fontSize: 20)),
           actions: [
             PocketLinkAppBarAction(
               label: 'Return to Home',
@@ -849,23 +1176,163 @@ class _SettingsScreenState extends State<SettingsScreen> {
               miniPlayerVisible: layoutInsets.hasActiveMiniPlayer,
             );
             final topClearance = layoutInsets.topClearance;
+            final isWideSettings = widget.category == null &&
+                MediaQuery.sizeOf(bodyContext).width >= 840;
             return Stack(
               children: [
-                ListView(
-          padding: EdgeInsets.fromLTRB(
-            16,
-            topClearance,
-            16,
-            bottomClearance,
-          ),
-          children: widget.category == null
-              ? _homeSettingsChildren()
-              : [
-                if (widget.category != null) _categoryIntro(widget.category!),
+                if (isWideSettings)
+                  _buildTabletSettingsPane(bodyContext, bottomClearance),
+                if (!isWideSettings)
+                  CustomScrollView(
+                  slivers: [
+                    if (widget.category == null)
+                      SliverAppBar(
+                        pinned: true,
+                        floating: false,
+                        automaticallyImplyLeading: false,
+                        expandedHeight: 148,
+                        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                        surfaceTintColor: Colors.transparent,
+                        elevation: 0,
+                        flexibleSpace: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final progress = ((constraints.maxHeight - kToolbarHeight) /
+                                    (148 - kToolbarHeight))
+                                .clamp(0.0, 1.0);
+                            return Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                Align(
+                                  alignment: Alignment.bottomLeft,
+                                  child: Opacity(
+                                    opacity: progress,
+                                    child: Padding(
+                                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            width: 32,
+                                            height: 32,
+                                            decoration: const BoxDecoration(
+                                              color: Color(0xFF333338),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: const Icon(Icons.tune_rounded, color: Colors.white, size: 18),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Text(
+                                            'Settings',
+                                            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                              fontSize: 34,
+                                              fontWeight: FontWeight.w800,
+                                              letterSpacing: -0.7,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Opacity(
+                                    opacity: 1 - progress,
+                                    child: const Padding(
+                                      padding: EdgeInsets.only(left: 20),
+                                      child: Text(
+                                        'Settings',
+                                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                        bottom: PreferredSize(
+                          preferredSize: const Size.fromHeight(64),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                            child: TextField(
+                              controller: _settingsSearchController,
+
+                              focusNode: _settingsSearchFocusNode,
+                              onChanged: (value) => setState(() => _settingsSearchQuery = value),
+                              textInputAction: TextInputAction.search,
+                              decoration: InputDecoration(
+                                hintText: 'Search settings',
+                                prefixIcon: const Icon(Icons.search_rounded),
+                                suffixIcon: _settingsSearchQuery.isEmpty
+                                    ? null
+                                    : IconButton(
+                                        tooltip: 'Clear search',
+                                        onPressed: _clearSettingsSearch,
+                                        icon: const Icon(Icons.close_rounded),
+                                      ),
+                                filled: true,
+                                fillColor: Theme.of(context).colorScheme.surfaceContainerLow,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(18),
+                                  borderSide: BorderSide.none,
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    SliverPadding(
+                      padding: EdgeInsets.fromLTRB(
+                        16,
+                        widget.category == null ? 12 : topClearance,
+                        16,
+                        bottomClearance,
+                      ),
+                      sliver: SliverList(
+                        delegate: SliverChildListDelegate(
+                          widget.category == null
+                              ? [
+                                  ..._globalSearchResultTiles(),
+                                  if (!_isSearchActive) ..._homeSettingsChildren(),
+                                ]
+                              : [
+                if (widget.category != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: TextField(
+                      controller: _settingsSearchController,
+
+                      focusNode: _settingsSearchFocusNode,
+                      onChanged: (value) => setState(() => _settingsSearchQuery = value),
+                      textInputAction: TextInputAction.search,
+                      decoration: InputDecoration(
+                        hintText: 'Search in ${_pageTitle(widget.category)}',
+                        prefixIcon: const Icon(Icons.search_rounded),
+                        suffixIcon: _settingsSearchQuery.isEmpty
+                            ? null
+                            : IconButton(
+                                tooltip: 'Clear search',
+                                onPressed: () {
+                                  _settingsSearchController.clear();
+                                  setState(() => _settingsSearchQuery = '');
+                                },
+                                icon: const Icon(Icons.close_rounded),
+                              ),
+                        filled: true,
+                        fillColor: Theme.of(context).colorScheme.surfaceContainerLow,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(18),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                  ),
+                if (widget.category != null && !_isSearchActive) _categoryIntro(widget.category!),
                 if (widget.category == 'Navigation')
                   _section('Navigation & Home', [
                     ListTile(
-                      leading: const Icon(Icons.dock_rounded),
+                      leading: const SettingsIcon(Icons.dock_rounded),
                       title: const Text('Customize Navigation Bar'),
                       subtitle: const Text('Choose, show, hide and reorder destinations'),
                       trailing: const Icon(Icons.chevron_right_rounded),
@@ -873,7 +1340,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     ListTile(
-                      leading: const Icon(Icons.dashboard_customize_rounded),
+                      leading: const SettingsIcon(Icons.dashboard_customize_rounded),
                       title: const Text('Dashboard & Shortcuts'),
                       subtitle: const Text('Home sections, quick actions and floating shortcuts'),
                       trailing: const Icon(Icons.chevron_right_rounded),
@@ -883,7 +1350,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (widget.category == 'Music')
                   _section('Music & Playback', [
                     ListTile(
-                      leading: const Icon(Icons.graphic_eq_rounded),
+                      leading: const SettingsIcon(Icons.graphic_eq_rounded),
                       title: const Text('Audio & Now Playing'),
                       subtitle: const Text('Music button gestures, shortcuts and mini-player'),
                       trailing: const Icon(Icons.chevron_right_rounded),
@@ -891,7 +1358,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     ListTile(
-                      leading: const Icon(Icons.explore_rounded),
+                      leading: const SettingsIcon(Icons.explore_rounded),
                       title: const Text('Discover'),
                       subtitle: const Text('Discovery feed, matching, lyrics and playlists'),
                       trailing: const Icon(Icons.chevron_right_rounded),
@@ -899,7 +1366,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     ListTile(
-                      leading: const Icon(Icons.movie_creation_rounded),
+                      leading: const SettingsIcon(Icons.movie_creation_rounded),
                       title: const Text('Video Player'),
                       subtitle: const Text('Playback gestures, controls, scaling and subtitles'),
                       trailing: const Icon(Icons.chevron_right_rounded),
@@ -909,7 +1376,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (widget.category == 'Diagnostics')
                   _section('Settings Backup', [
                     ListTile(
-                      leading: const Icon(Icons.file_upload_outlined),
+                      leading: const SettingsIcon(Icons.file_upload_outlined),
                       title: const Text('Export settings'),
                       subtitle: const Text('Create a portable JSON backup of supported preferences'),
                       trailing: _exportingSettings
@@ -919,7 +1386,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     ListTile(
-                      leading: const Icon(Icons.restore_rounded),
+                      leading: const SettingsIcon(Icons.restore_rounded),
                       title: const Text('Import settings'),
                       subtitle: const Text('Restore preferences from a PocketLink backup'),
                       trailing: _importingSettings
@@ -936,67 +1403,73 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ]),
                 if (widget.category == 'Appearance' || widget.category == 'Customisation')
                   _section('Motion', [
-                    SwitchListTile(
-                      secondary: const Icon(Icons.animation_rounded),
-                      title: const Text('Animations'),
-                      subtitle: const Text('Apply motion preferences across PocketLink screens and controls'),
-                      value: _settings.animationsEnabled,
-                      onChanged: _settings.setAnimationsEnabled,
-                    ),
-                    SwitchListTile(
-                      secondary: const Icon(Icons.screen_share_outlined),
-                      title: const Text('Page transitions'),
-                      subtitle: const Text('Enable the shared slide and scale transition between screens'),
-                      value: _settings.pageTransitionsEnabled,
-                      onChanged: _settings.animationsEnabled ? _settings.setPageTransitionsEnabled : null,
-                    ),
-                    SwitchListTile(
-                      secondary: const Icon(Icons.lyrics_rounded),
-                      title: const Text('Lyrics animations'),
-                      subtitle: const Text('Control active-line emphasis and instrumental pulse separately'),
-                      value: _settings.lyricsAnimationsEnabled,
-                      onChanged: _settings.animationsEnabled ? _settings.setLyricsAnimationsEnabled : null,
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
+                    SettingsNestedGroup(
+                      parent: SwitchListTile(
+                        secondary: const SettingsIcon(Icons.animation_rounded),
+                        title: const Text('Animations'),
+                        subtitle: const Text('Apply motion preferences across PocketLink screens and controls'),
+                        value: _settings.animationsEnabled,
+                        onChanged: _settings.setAnimationsEnabled,
+                      ),
+                      expanded: true,
+                      searchQuery: _settingsSearchQuery,
+                      children: [
+                        SwitchListTile(
+                          secondary: const SettingsIcon(Icons.screen_share_outlined),
+                          title: const Text('Page transitions'),
+                          subtitle: const Text('Enable the shared slide and scale transition between screens'),
+                          value: _settings.pageTransitionsEnabled,
+                          onChanged: _settings.animationsEnabled ? _settings.setPageTransitionsEnabled : null,
+                        ),
+                        SwitchListTile(
+                          secondary: const SettingsIcon(Icons.lyrics_rounded),
+                          title: const Text('Lyrics animations'),
+                          subtitle: const Text('Control active-line emphasis and instrumental pulse separately'),
+                          value: _settings.lyricsAnimationsEnabled,
+                          onChanged: _settings.animationsEnabled ? _settings.setLyricsAnimationsEnabled : null,
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Expanded(child: Text('Animation speed')),
-                              Text('${(_pendingAnimationSpeed ?? _settings.animationSpeed).toStringAsFixed(1)}×'),
+                              Row(
+                                children: [
+                                  const Expanded(child: Text('Animation speed')),
+                                  Text('${(_pendingAnimationSpeed ?? _settings.animationSpeed).toStringAsFixed(1)}×'),
+                                ],
+                              ),
+                              Slider(
+                                min: 0.5,
+                                max: 2.0,
+                                divisions: 15,
+                                value: (_pendingAnimationSpeed ?? _settings.animationSpeed).clamp(0.5, 2.0).toDouble(),
+                                onChanged: _settings.animationsEnabled
+                                    ? (value) => setState(() => _pendingAnimationSpeed = value)
+                                    : null,
+                                onChangeEnd: _settings.animationsEnabled
+                                    ? (value) async {
+                                        setState(() => _pendingAnimationSpeed = null);
+                                        await _settings.setAnimationSpeed(value);
+                                      }
+                                    : null,
+                              ),
+                              Text(
+                                '0.5× is slower · 1× is normal · 2× is faster. This scales Flutter animations throughout PocketLink.',
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                ),
+                              ),
                             ],
                           ),
-                          Slider(
-                            min: 0.5,
-                            max: 2.0,
-                            divisions: 15,
-                            value: (_pendingAnimationSpeed ?? _settings.animationSpeed).clamp(0.5, 2.0).toDouble(),
-                            onChanged: _settings.animationsEnabled
-                                ? (value) => setState(() => _pendingAnimationSpeed = value)
-                                : null,
-                            onChangeEnd: _settings.animationsEnabled
-                                ? (value) async {
-                                    setState(() => _pendingAnimationSpeed = null);
-                                    await _settings.setAnimationSpeed(value);
-                                  }
-                                : null,
-                          ),
-                          Text(
-                            '0.5× is slower · 1× is normal · 2× is faster. This scales Flutter animations throughout PocketLink.',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ]),
                 if (widget.category == 'Customisation')
                   _section('Typography', [
                     ListTile(
-                      leading: const Icon(Icons.font_download_rounded),
+                      leading: const SettingsIcon(Icons.font_download_rounded),
                       title: const Text('Custom font'),
                       subtitle: Text(_settings.customFontName ?? 'PocketLink default font'),
                       trailing: const Icon(Icons.chevron_right_rounded),
@@ -1004,7 +1477,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     if (_settings.customFontFamily != null)
                       ListTile(
-                        leading: const Icon(Icons.restart_alt_rounded),
+                        leading: const SettingsIcon(Icons.restart_alt_rounded),
                         title: const Text('Restore default font'),
                         subtitle: const Text('Remove the imported font and use PocketLink typography'),
                         onTap: _resetCustomFont,
@@ -1013,7 +1486,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (widget.category == 'Customisation')
                   _section('Lyrics', [
                     ListTile(
-                      leading: const Icon(Icons.lyrics_rounded),
+                      leading: const SettingsIcon(Icons.lyrics_rounded),
                       title: const Text('Lyrics motion style'),
                       subtitle: Text(switch (_settings.lyricsMotionStyle) {
                         'motion' => 'Motion · Fade and scale emphasis',
@@ -1119,7 +1592,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (widget.category == 'Appearance' || widget.category == 'Customisation')
                   _section('Appearance & Theme', [
                     ListTile(
-                      leading: const Icon(Icons.palette_rounded),
+                      leading: const SettingsIcon(Icons.palette_rounded),
                       title: const Text('Theme mode'),
                       subtitle: Text(
                         _settings.amoled
@@ -1150,7 +1623,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
-                      secondary: const Icon(Icons.blur_on_rounded),
+                      secondary: const SettingsIcon(Icons.blur_on_rounded),
                       title: const Text('Liquid Glass UI'),
                       subtitle: const Text(
                         'Frosted blur, glass reflections and refined floating surfaces',
@@ -1160,7 +1633,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
-                      secondary: const Icon(Icons.blur_circular_rounded),
+                      secondary: const SettingsIcon(Icons.blur_circular_rounded),
                       title: const Text('Progressive Blur'),
                       subtitle: const Text(
                         'Enable the continuous blur fade behind shared screen headers',
@@ -1380,7 +1853,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                     ListTile(
-                      leading: const Icon(Icons.restart_alt_rounded),
+                      leading: const SettingsIcon(Icons.restart_alt_rounded),
                       title: const Text('Reset appearance'),
                       subtitle: const Text('Restore default theme and visual effects'),
                       trailing: const Icon(Icons.chevron_right_rounded),
@@ -1390,7 +1863,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (widget.category == 'Dashboard & Shortcuts')
                   _section('Dashboard & Shortcuts', [
                     SwitchListTile(
-                      secondary: const Icon(Icons.dashboard_customize_rounded),
+                      secondary: const SettingsIcon(Icons.dashboard_customize_rounded),
                       title: const Text('Quick actions'),
                       subtitle: const Text('Show the quick-action grid on Home'),
                       value: _settings.showQuickActions,
@@ -1398,7 +1871,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
-                      secondary: const Icon(Icons.grid_view_rounded),
+                      secondary: const SettingsIcon(Icons.grid_view_rounded),
                       title: const Text('Continue browsing'),
                       subtitle: const Text('Show recently opened folders, files and tracks on Home'),
                       value: _settings.showLibrary,
@@ -1406,14 +1879,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
-                      secondary: const Icon(Icons.history_rounded),
+                      secondary: const SettingsIcon(Icons.history_rounded),
                       title: const Text('Recent files'),
                       value: _settings.showRecentFiles,
                       onChanged: (value) => _settings.setHomeSections(recentFiles: value),
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
-                      secondary: const Icon(Icons.search_rounded),
+                      secondary: const SettingsIcon(Icons.search_rounded),
                       title: const Text('Global search'),
                       subtitle: const Text('Show search entry on Home'),
                       value: _settings.showGlobalSearch,
@@ -1421,7 +1894,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
-                      secondary: const Icon(Icons.storage_rounded),
+                      secondary: const SettingsIcon(Icons.storage_rounded),
                       title: const Text('Storage & host health'),
                       subtitle: const Text('Show mounted volumes, device health and media scan status'),
                       value: _settings.showStorageOverview,
@@ -1429,7 +1902,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
-                      secondary: const Icon(Icons.swap_vert_rounded),
+                      secondary: const SettingsIcon(Icons.swap_vert_rounded),
                       title: const Text('Active transfers'),
                       subtitle: const Text('Show live upload and download progress on Home'),
                       value: _settings.showActiveTransfers,
@@ -1437,7 +1910,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     ListTile(
-                      leading: const Icon(Icons.reorder_rounded),
+                      leading: const SettingsIcon(Icons.reorder_rounded),
                       title: const Text('Customize Home'),
                       subtitle: const Text('Choose visible sections and drag to change their order'),
                       trailing: const Icon(Icons.chevron_right_rounded),
@@ -1447,7 +1920,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (widget.category == 'Discover')
                   _section('Discover Customisation', [
                     SwitchListTile(
-                      secondary: const Icon(Icons.explore_rounded),
+                      secondary: const SettingsIcon(Icons.explore_rounded),
                       title: const Text('Enable Discover'),
                       subtitle: const Text('Show YouTube Music Discover in Explore'),
                       value: _settings.discoverEnabled,
@@ -1455,7 +1928,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
-                      secondary: const Icon(Icons.high_quality_rounded),
+                      secondary: const SettingsIcon(Icons.high_quality_rounded),
                       title: const Text('Local lossless matching'),
                       subtitle: const Text('Prefer matching FLAC, ALAC, WAV and other lossless files'),
                       value: _settings.discoverLocalLossless,
@@ -1463,7 +1936,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
-                      secondary: const Icon(Icons.lyrics_rounded),
+                      secondary: const SettingsIcon(Icons.lyrics_rounded),
                       title: const Text('Lyrics'),
                       subtitle: const Text('Show synced or plain lyrics when available'),
                       value: _settings.discoverLyrics,
@@ -1471,7 +1944,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
-                      secondary: const Icon(Icons.queue_music_rounded),
+                      secondary: const SettingsIcon(Icons.queue_music_rounded),
                       title: const Text('Auto-queue remaining results'),
                       subtitle: const Text('Resolve the loaded Discover list progressively after playback starts'),
                       value: _settings.discoverAutoQueue,
@@ -1479,7 +1952,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
-                      secondary: const Icon(Icons.image_outlined),
+                      secondary: const SettingsIcon(Icons.image_outlined),
                       title: const Text('Show artwork'),
                       subtitle: const Text('Display YouTube Music thumbnails in Discover'),
                       value: _settings.discoverArtwork,
@@ -1487,7 +1960,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
-                      secondary: const Icon(Icons.view_carousel_rounded),
+                      secondary: const SettingsIcon(Icons.view_carousel_rounded),
                       title: const Text('Spotlight carousel'),
                       subtitle: const Text('Show the full-width featured hero and Speed Dial page at the top of Discover'),
                       value: _settings.discoverSpotlight,
@@ -1495,14 +1968,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
-                      secondary: const Icon(Icons.animation_rounded),
+                      secondary: const SettingsIcon(Icons.animation_rounded),
                       title: const Text('Discover Animations'),
                       subtitle: const Text('Enable animated hero transitions and staggered Discover content reveals'),
                       value: _settings.discoverMotion,
                       onChanged: _settings.setDiscoverMotion,
                     ),
                     ListTile(
-                      leading: const Icon(Icons.speed_rounded),
+                      leading: const SettingsIcon(Icons.speed_rounded),
                       title: const Text('Animation speed'),
                       subtitle: const Text('Adjust the speed of Discover hero and shelf motion'),
                       trailing: DropdownButton<String>(
@@ -1522,7 +1995,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
-                      secondary: const Icon(Icons.grid_view_rounded),
+                      secondary: const SettingsIcon(Icons.grid_view_rounded),
                       title: const Text('Artist grid layout'),
                       subtitle: const Text('Optional two-column grid; off by default to match the horizontal artist shelves'),
                       value: _settings.discoverArtistGrid,
@@ -1530,7 +2003,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     ListTile(
-                      leading: const Icon(Icons.graphic_eq_rounded),
+                      leading: const SettingsIcon(Icons.graphic_eq_rounded),
                       title: const Text('Audio quality'),
                       subtitle: const Text('Balanced targets 160 kbps; Data saver targets 96 kbps when available.'),
                       trailing: DropdownButton<String>(
@@ -1550,7 +2023,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     ListTile(
-                      leading: const Icon(Icons.route_rounded),
+                      leading: const SettingsIcon(Icons.route_rounded),
                       title: const Text('Resolver profile'),
                       subtitle: const Text('Choose which stream resolver is tried first'),
                       trailing: DropdownButton<String>(
@@ -1570,7 +2043,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     ListTile(
-                      leading: const Icon(Icons.playlist_add_rounded),
+                      leading: const SettingsIcon(Icons.playlist_add_rounded),
                       title: const Text('Import / export playlists'),
                       subtitle: const Text('Import YouTube Music, Spotify, CSV or M3U playlists and export your Discover collection'),
                       trailing: const Icon(Icons.chevron_right_rounded),
@@ -1578,7 +2051,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     ListTile(
-                      leading: const Icon(Icons.public_rounded),
+                      leading: const SettingsIcon(Icons.public_rounded),
                       title: const Text('Content region'),
                       subtitle: const Text('Changes YouTube Music catalogue and playback region'),
                       trailing: DropdownButton<String>(
@@ -1603,7 +2076,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     FutureBuilder<String>(
                       future: DownloadManagerService.instance.defaultDirectory(),
                       builder: (context, snapshot) => ListTile(
-                        leading: const Icon(Icons.folder_open_rounded),
+                        leading: const SettingsIcon(Icons.folder_open_rounded),
                         title: const Text('Download location'),
                         subtitle: Text(
                           _settings.downloadDirectory ??
@@ -1654,7 +2127,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
-                      secondary: const Icon(Icons.wifi_rounded),
+                      secondary: const SettingsIcon(Icons.wifi_rounded),
                       title: const Text('Wi-Fi only'),
                       subtitle: const Text('Hold downloads while connected to mobile data'),
                       value: _settings.downloadWifiOnly,
@@ -1662,7 +2135,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
-                      secondary: const Icon(Icons.restart_alt_rounded),
+                      secondary: const SettingsIcon(Icons.restart_alt_rounded),
                       title: const Text('Auto-resume on launch'),
                       subtitle: const Text('Resume unfinished downloads when PocketLink opens'),
                       value: _settings.downloadAutoResume,
@@ -1670,7 +2143,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 1),
                     ListTile(
-                      leading: const Icon(Icons.cleaning_services_rounded),
+                      leading: const SettingsIcon(Icons.cleaning_services_rounded),
                       title: const Text('Clear cache'),
                       subtitle: const Text('Remove temporary files and cached images'),
                       trailing: _clearingCache
@@ -1686,7 +2159,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   if (widget.category == 'Network')
                     _section('Server Connections', [
                       ListTile(
-                        leading: const Icon(Icons.dns_outlined),
+                        leading: const SettingsIcon(Icons.dns_outlined),
                         title: const Text('Saved servers'),
                         subtitle: const Text('Manage and switch PocketLink connections'),
                         trailing: const Icon(Icons.chevron_right_rounded),
@@ -1696,7 +2169,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   if (widget.category == 'Diagnostics')
                     _section('Diagnostics', [
                       ListTile(
-                        leading: const Icon(Icons.bug_report_outlined),
+                        leading: const SettingsIcon(Icons.bug_report_outlined),
                         title: const Text('Export diagnostic logs'),
                         subtitle: const Text('Generate and share the app troubleshooting log'),
                         trailing: _exportingLogs
@@ -1705,11 +2178,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         onTap: _exportingLogs ? null : _exportLogs,
                       ),
                     ]),
-                ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             );
           },
+        ),
         ),
       ),
     );
