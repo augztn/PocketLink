@@ -379,6 +379,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         .toList(growable: false);
     const entries = <String, Map<String, String>>{
       'appearance': {
+        'Accent colour': 'accent color theme palette blue purple pink red orange green teal cyan',
         'Theme mode': 'theme light dark system brightness',
         'AMOLED mode': 'amoled oled black deep black',
         'Liquid Glass UI': 'liquid glass frosted reflections surfaces',
@@ -996,6 +997,57 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 const Icon(Icons.chevron_right_rounded),
                               ],
                             ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Accent colour',
+                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 12,
+                            runSpacing: 12,
+                            children: [
+                              for (final value in AppSettings.accentColorValues)
+                                Semantics(
+                                  button: true,
+                                  selected: _settings.accentColorValue == value,
+                                  label: 'Accent colour',
+                                  child: InkWell(
+                                    onTap: () => _settings.setAccentColor(value),
+                                    borderRadius: BorderRadius.circular(24),
+                                    child: Container(
+                                      width: 44,
+                                      height: 44,
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: _settings.accentColorValue == value
+                                              ? Theme.of(context).colorScheme.primary
+                                              : Colors.transparent,
+                                          width: 2,
+                                        ),
+                                      ),
+                                      child: DecoratedBox(
+                                        decoration: BoxDecoration(
+                                          color: Color(value),
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                         ],
                       ),
