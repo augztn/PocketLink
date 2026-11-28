@@ -11,6 +11,7 @@ import '../../../core/settings/app_settings.dart';
 import '../../../core/widgets/pocketlink_app_bar.dart';
 import '../../../core/widgets/pocketlink_scaffold.dart';
 import '../../../core/widgets/smoked_glass_popover_menu.dart';
+import '../../../core/widgets/pocketlink_section_header.dart';
 import '../data/media_library_repository.dart';
 import '../media_library_catalog.dart';
 import '../../../core/navigation/pocketlink_navigation.dart';
@@ -27,7 +28,6 @@ import 'discover_recently_played_store.dart';
 import 'discover_speed_dial_store.dart';
 import 'discover_home_feed_store.dart';
 import 'discover_moods_screen.dart';
-import '../media_metadata.dart';
 
 class _DiscoverShelf {
   const _DiscoverShelf(this.title, this.tracks, {this.items = const []});
