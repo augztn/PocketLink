@@ -104,6 +104,48 @@ extension AppSettingsAppearance on AppSettings {
     ]);
   }
 
+  Future<void> setCustomFont({
+    required String path,
+    required String family,
+    required String name,
+  }) async {
+    if (path.trim().isEmpty || family.trim().isEmpty || name.trim().isEmpty) {
+      throw ArgumentError('Font path, family and display name are required.');
+    }
+    await AppSettings._loadCustomFontFile(path, family);
+    _customFontPath = path;
+    _customFontFamily = family;
+    _customFontName = name;
+    _notifySettingsChanged();
+    final preferences = await SharedPreferences.getInstance();
+    await Future.wait([
+      preferences.setString(AppSettings._customFontPathKey, path),
+      preferences.setString(AppSettings._customFontFamilyKey, family),
+      preferences.setString(AppSettings._customFontNameKey, name),
+    ]);
+  }
+
+  Future<void> clearCustomFont() async {
+    final oldPath = _customFontPath;
+    _customFontPath = null;
+    _customFontFamily = null;
+    _customFontName = null;
+    _notifySettingsChanged();
+    final preferences = await SharedPreferences.getInstance();
+    await Future.wait([
+      preferences.remove(AppSettings._customFontPathKey),
+      preferences.remove(AppSettings._customFontFamilyKey),
+      preferences.remove(AppSettings._customFontNameKey),
+    ]);
+    if (oldPath != null) {
+      try {
+        await File(oldPath).delete();
+      } on FileSystemException {
+        // A missing or inaccessible old font must not block restoring defaults.
+      }
+    }
+  }
+
   Future<void> setProgressiveBlurEnabled(bool value) async {
     _progressiveBlurEnabled = value;
     _notifySettingsChanged();
