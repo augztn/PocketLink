@@ -144,7 +144,7 @@ class _SettingsGroupCardState extends State<SettingsGroupCard> {
                   : null,
             ),
             child: TweenAnimationBuilder<double>(
-            key: ValueKey('settings-row-${widget.children[index].runtimeType}-$index'),
+            key: ValueKey('settings-row-${_rowIdentity(index, widget.children[index])}'),
             tween: Tween<double>(begin: 0, end: 1),
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeOutCubic,
@@ -338,7 +338,7 @@ class _SettingsNestedGroupState extends State<SettingsNestedGroup> {
                               borderRadius: BorderRadius.circular(14),
                             ),
                             child: TweenAnimationBuilder<double>(
-                              key: ValueKey('nested-settings-row-$index'),
+                              key: ValueKey('nested-settings-row-${settingsSearchableText(widget.children[index])}-$index'),
                               tween: Tween<double>(begin: 0, end: 1),
                               duration: const Duration(milliseconds: 300),
                               curve: Curves.easeOutCubic,
