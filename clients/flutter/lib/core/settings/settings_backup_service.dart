@@ -54,6 +54,8 @@ class SettingsBackupService {
     'settings_animation_speed',
     'settings_blur_strength',
     'settings_thumbnail_corner_radius',
+    'settings_lyrics_text_size',
+    'settings_lyrics_line_spacing',
   };
 
   static const _stringKeys = <String>{
@@ -67,6 +69,7 @@ class SettingsBackupService {
     'settings_now_playing_theme',
     'settings_video_fit_mode',
     'settings_video_fullscreen_orientation',
+    'settings_lyrics_motion_style',
     'settings_discover_audio_quality',
     'settings_discover_resolver_profile',
     'settings_discover_region',
@@ -86,6 +89,8 @@ class SettingsBackupService {
     if (key == 'settings_animation_speed') return value is double && value >= 0.5 && value <= 2.0;
     if (key == 'settings_blur_strength') return value is double && value >= 0 && value <= 32;
     if (key == 'settings_thumbnail_corner_radius') return value is double && value >= 0 && value <= 45;
+    if (key == 'settings_lyrics_text_size') return value is double && value >= 14 && value <= 44;
+    if (key == 'settings_lyrics_line_spacing') return value is double && value >= 0.8 && value <= 2.0;
     if (key == 'settings_video_default_speed') return value is double && const [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 3.0, 4.0].contains(value);
     if (value is! String || value.length > 16384) return false;
 
@@ -102,6 +107,9 @@ class SettingsBackupService {
     if (key == 'settings_video_fit_mode') return const {'contain', 'cover', 'fill'}.contains(value);
     if (key == 'settings_video_fullscreen_orientation') {
       return const {'landscape', 'portrait', 'auto'}.contains(value);
+    }
+    if (key == 'settings_lyrics_motion_style') {
+      return const {'motion', 'legacy', 'boring', 'plain'}.contains(value);
     }
     if (key == 'settings_discover_audio_quality') {
       return const {'best_available', 'balanced', 'data_saver'}.contains(value);
