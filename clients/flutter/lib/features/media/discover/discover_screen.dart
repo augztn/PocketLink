@@ -2720,6 +2720,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
 
 class _DiscoverShelfReveal extends StatefulWidget {
   const _DiscoverShelfReveal({
+    super.key,
     required this.revealKey,
     required this.child,
     required this.scrollController,
@@ -2845,6 +2846,7 @@ class _DiscoverShelfRevealState extends State<_DiscoverShelfReveal>
 
 class _DiscoverCardReveal extends StatefulWidget {
   const _DiscoverCardReveal({
+    super.key,
     required this.revealKey,
     required this.child,
     required this.seenKeys,
