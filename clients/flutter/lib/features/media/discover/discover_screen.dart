@@ -87,11 +87,14 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   bool _loadingMore = false;
   Future<void>? _homeRequest;
   final ScrollController _scrollController = ScrollController();
-  final PageController _spotlightPageController =
-      PageController(viewportFraction: 1, initialPage: 10000);
+  static const int _spotlightInitialPage = 10000;
+  final PageController _spotlightPageController = PageController(
+    viewportFraction: 1,
+    initialPage: _spotlightInitialPage,
+  );
   Timer? _spotlightAutoAdvanceTimer;
   final ValueNotifier<double> _heroScrollProgress = ValueNotifier(0);
-  int _spotlightPage = 10000;
+  int _spotlightPage = _spotlightInitialPage;
   late String _lastRegion;
   late bool _lastLocalLossless;
 
@@ -1491,7 +1494,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                     const SizedBox(width: 8),
                     IconButton(
                       tooltip: 'Shuffle Speed Dial',
-                      onPressed: _playRandomSpeedDial,
+                      onPressed: () {
+                        Navigator.of(sheetContext).pop();
+                        _playRandomSpeedDial();
+                      },
                       icon: const Icon(Icons.shuffle_rounded),
                     ),
                   ],
@@ -1516,7 +1522,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                       },
                       trailing: IconButton(
                         tooltip: 'Remove from Speed Dial',
-                        onPressed: () => _toggleSpeedDial(track),
+                        onPressed: () {
+                          _toggleSpeedDial(track);
+                          Navigator.of(sheetContext).pop();
+                        },
                         icon: const Icon(Icons.remove_circle_outline_rounded),
                       ),
                     );
@@ -1685,7 +1694,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     final pageCount = _spotlightPageCount;
     if (pageCount == 0) return const SliverToBoxAdapter();
 
-    final activePage = _spotlightPage % pageCount;
+    final activePage = ((_spotlightPage - _spotlightInitialPage) % pageCount + pageCount) % pageCount;
     final heroHeight = MediaQuery.sizeOf(context).height * .60;
     return SliverToBoxAdapter(
       child: SizedBox(
@@ -1716,7 +1725,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
               if (!_spotlightUserDragging) _startSpotlightAutoAdvance();
             },
             itemBuilder: (context, index) {
-              final pageIndex = index % pageCount;
+              final pageIndex =
+                  ((index - _spotlightInitialPage) % pageCount + pageCount) % pageCount;
               if (_speedDial.isNotEmpty && pageIndex == tracks.length) {
                 return _speedDialHeroPage();
               }
