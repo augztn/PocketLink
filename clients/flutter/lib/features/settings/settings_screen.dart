@@ -847,13 +847,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
                         surfaceTintColor: Colors.transparent,
                         elevation: 0,
-                        title: const Text('Settings'),
                         flexibleSpace: FlexibleSpaceBar(
-                          titlePadding: const EdgeInsetsDirectional.only(start: 20, bottom: 72),
+                          titlePadding: const EdgeInsetsDirectional.only(start: 20, bottom: 16),
                           background: Align(
                             alignment: Alignment.bottomLeft,
                             child: Padding(
-                              padding: const EdgeInsets.fromLTRB(20, 0, 20, 72),
+                              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
                               child: Row(
                                 children: [
                                   Container(
