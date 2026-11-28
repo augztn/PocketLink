@@ -102,6 +102,48 @@ void main() {
     expect(preferences.getBool('settings_use_liquid_glass'), isFalse);
   });
 
+  test('customisation motion, blur and lyrics effects persist and validate', () async {
+    final settings = AppSettings.instance;
+
+    await settings.setPageTransitionsEnabled(false);
+    await settings.setLyricsAnimationsEnabled(false);
+    await settings.setGlassBlurStrength(12);
+    await settings.setLyricsOptions(
+      glow: true,
+      bloom: true,
+      softLight: true,
+      inactiveBlur: 2.5,
+    );
+
+    final preferences = await SharedPreferences.getInstance();
+    expect(settings.pageTransitionsEnabled, isFalse);
+    expect(settings.lyricsAnimationsEnabled, isFalse);
+    expect(settings.glassBlurStrength, 12);
+    expect(settings.lyricsGlow, isTrue);
+    expect(settings.lyricsBloom, isTrue);
+    expect(settings.lyricsSoftLight, isTrue);
+    expect(settings.lyricsInactiveBlur, 2.5);
+    expect(preferences.getBool('settings_page_transitions_enabled'), isFalse);
+    expect(preferences.getBool('settings_lyrics_animations_enabled'), isFalse);
+    expect(preferences.getDouble('settings_glass_blur_strength'), 12);
+    expect(preferences.getBool('settings_lyrics_glow'), isTrue);
+    expect(preferences.getBool('settings_lyrics_bloom'), isTrue);
+    expect(preferences.getBool('settings_lyrics_soft_light'), isTrue);
+    expect(preferences.getDouble('settings_lyrics_inactive_blur'), 2.5);
+
+    await settings.reloadPreferences();
+    expect(settings.pageTransitionsEnabled, isFalse);
+    expect(settings.lyricsAnimationsEnabled, isFalse);
+    expect(settings.glassBlurStrength, 12);
+    expect(settings.lyricsGlow, isTrue);
+    expect(settings.lyricsBloom, isTrue);
+    expect(settings.lyricsSoftLight, isTrue);
+    expect(settings.lyricsInactiveBlur, 2.5);
+
+    await expectLater(settings.setGlassBlurStrength(33), throwsArgumentError);
+    await expectLater(settings.setLyricsOptions(inactiveBlur: 4.1), throwsArgumentError);
+  });
+
   test('media settings persist, validate and reset through the facade', () async {
     final settings = AppSettings.instance;
 
