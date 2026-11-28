@@ -1717,6 +1717,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             },
             child: PageView.builder(
             controller: _spotlightPageController,
+            physics: pageCount <= 1
+                ? const NeverScrollableScrollPhysics()
+                : const PageScrollPhysics(),
             onPageChanged: (index) {
               if (!mounted) return;
               if (index != _spotlightPage) {
