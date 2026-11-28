@@ -2034,20 +2034,24 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
     final child = style == 'poster'
         ? _posterPlayerLayout(contentOpacity)
         : _pocketLinkPlayerLayout(contentOpacity);
-    return AnimatedSwitcher(
+    return TweenAnimationBuilder<double>(
+      key: ValueKey(style),
+      tween: Tween<double>(begin: 0, end: 1),
       duration: MediaQuery.of(context).disableAnimations
           ? Duration.zero
           : const Duration(milliseconds: 520),
-      switchInCurve: Curves.easeOutCubic,
-      switchOutCurve: Curves.easeInCubic,
-      transitionBuilder: (child, animation) => FadeTransition(
-        opacity: animation,
-        child: ScaleTransition(
-          scale: Tween<double>(begin: 0.975, end: 1).animate(animation),
-          child: child,
-        ),
-      ),
-      child: KeyedSubtree(key: ValueKey(style == 'poster' ? 'poster' : 'pocketlink'), child: child),
+      curve: Curves.easeOutCubic,
+      child: child,
+      builder: (context, value, child) {
+        final progress = MediaQuery.of(context).disableAnimations ? 1.0 : value;
+        return Opacity(
+          opacity: progress,
+          child: Transform.scale(
+            scale: 0.975 + 0.025 * progress,
+            child: child,
+          ),
+        );
+      },
     );
   }
 
