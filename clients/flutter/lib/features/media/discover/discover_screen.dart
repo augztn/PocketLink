@@ -1334,7 +1334,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     return SizedBox(
       width: cardWidth,
       child: InkWell(
-        borderRadius: BorderRadius.circular(7),
+        borderRadius: BorderRadius.circular(14),
         onTap: () => _play(track, queueOverride: queueOverride),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1344,7 +1344,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  _art(track, size: double.infinity, radius: 7),
+                  _art(track, size: double.infinity, radius: 14),
                   if (local != null)
                     Positioned(
                       left: 7,
@@ -1428,12 +1428,28 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   }
 
   Widget _shelfHeading(String title, {VoidCallback? onSeeAll}) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-        child: Row(children: [
-          Expanded(child: PocketLinkSectionHeader(title)),
-          if (onSeeAll != null)
-            TextButton(onPressed: onSeeAll, child: const Text('See all')),
-        ]),
+        padding: const EdgeInsets.fromLTRB(36, 0, 28, 6),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -.35,
+                ),
+              ),
+            ),
+            if (onSeeAll != null)
+              TextButton(
+                onPressed: onSeeAll,
+                child: const Text('See all'),
+              ),
+          ],
+        ),
       );
 
   void _showShelf(_DiscoverShelf shelf) {
@@ -1446,365 +1462,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     });
   }
 
-  Widget _topPickCard(DiscoverTrack track) {
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    final width = ((screenWidth - 52) / 2).clamp(148.0, 220.0).toDouble();
-    final local = AppSettings.instance.discoverLocalLossless
-        ? DiscoverService.findLocalLosslessMatch(track, _localLibrary)
-        : null;
-    return SizedBox(
-      width: width,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Material(
-              color: const Color(0xFF1A1B20),
-              borderRadius: BorderRadius.circular(12),
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                onTap: () => _play(track, queueOverride: _listeningPicks),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    _art(
-                      track,
-                      size: double.infinity,
-                      radius: 0,
-                      fit: BoxFit.cover,
-                    ),
-                    if (local != null)
-                      Positioned(
-                        left: 10,
-                        top: 10,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.black54,
-                            borderRadius: BorderRadius.circular(5),
-                          ),
-                          child: const Text(
-                            'LOSSLESS',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: .5,
-                            ),
-                          ),
-                        ),
-                      ),
-                    Positioned(
-                      top: 2,
-                      right: 2,
-                      child: Material(
-                        color: Colors.black45,
-                        shape: const CircleBorder(),
-                        child: PopupMenuButton<String>(
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(
-                            minWidth: 40,
-                            minHeight: 40,
-                          ),
-                          iconSize: 20,
-                          icon: const Icon(
-                            Icons.more_horiz_rounded,
-                            color: Colors.white,
-                          ),
-                          onSelected: (value) {
-                            if (value == 'speed_dial') _toggleSpeedDial(track);
-                            if (value == 'play') {
-                              _play(track, queueOverride: _listeningPicks);
-                            }
-                            if (value == 'radio') _loadRadio(track);
-                            if (value == 'lyrics') {
-                              _showLyrics(track, local: local);
-                            }
-                          },
-                          itemBuilder: (_) => [
-                            const PopupMenuItem(
-                              value: 'play',
-                              child: Text('Play'),
-                            ),
-                            PopupMenuItem(
-                              value: 'speed_dial',
-                              child: Text(_isSpeedDialPinned(track)
-                                  ? 'Remove from Speed Dial'
-                                  : 'Add to Speed Dial'),
-                            ),
-                            const PopupMenuItem(
-                              value: 'radio',
-                              child: Text('Start radio'),
-                            ),
-                            if (AppSettings.instance.discoverLyrics)
-                              const PopupMenuItem(
-                                value: 'lyrics',
-                                child: Text('Lyrics'),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 7),
-          Text(
-            track.title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            track.artist,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontSize: 11,
-                ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  TextStyle themeTextStyle(BuildContext context, {bool eyebrow = false}) {
-    return (eyebrow
-        ? Theme.of(context).textTheme.bodySmall
-        : Theme.of(context).textTheme.bodyMedium)!.copyWith(
-      color: eyebrow ? const Color(0xFFFFD2DA) : Colors.white,
-      fontSize: eyebrow ? 10 : 13,
-      fontWeight: eyebrow ? FontWeight.w600 : FontWeight.normal,
-      letterSpacing: eyebrow ? .65 : 0,
-    );
-  }
-
-  List<DiscoverTrack> get _spotlightTracks =>
-      buildDiscoverSpotlightTracks(
-        shelves: _homeShelves
-            .map((shelf) => DiscoverHomeShelf(
-                  title: shelf.title,
-                  tracks: shelf.tracks,
-                  items: shelf.items,
-                ))
-            .toList(growable: false),
-        recentlyPlayed: _recentlyPlayed,
-      );
-
-  void _playRandomSpotlight() {
-    final tracks = _spotlightTracks;
-    if (tracks.isEmpty) return;
-    final selected = tracks[math.Random().nextInt(tracks.length)];
-    _play(selected, queueOverride: tracks);
-  }
-
-  bool _spotlightUserDragging = false;
-
-  void _startSpotlightAutoAdvance() {
-    _spotlightAutoAdvanceTimer?.cancel();
-    if (!mounted || !_appResumed) return;
-    _spotlightAutoAdvanceTimer = Timer.periodic(
-      const Duration(milliseconds: 5500),
-      (_) {
-        final tracks = _spotlightTracks;
-        if (!mounted ||
-            !_appResumed ||
-            _spotlightUserDragging ||
-            tracks.length < 2 ||
-            !_spotlightPageController.hasClients ||
-            (_scrollController.hasClients && _scrollController.offset > 48)) {
-          return;
-        }
-        final next = (_spotlightPage + 1) % tracks.length;
-        _spotlightPageController.animateToPage(
-          next,
-          duration: const Duration(milliseconds: 1150),
-          curve: Curves.easeInOutCubic,
-        );
-      },
-    );
-  }
-
-  Widget _spotlightHero() {
-    final tracks = _spotlightTracks;
-    if (tracks.isEmpty) return const SliverToBoxAdapter();
-
-    final activePage = _spotlightPage.clamp(0, tracks.length - 1);
-    final heroHeight = MediaQuery.sizeOf(context).height * .60;
-    return SliverToBoxAdapter(
-      child: SizedBox(
-        height: heroHeight,
-        child: NotificationListener<ScrollNotification>(
-          onNotification: (notification) {
-            if (notification is ScrollStartNotification &&
-                notification.dragDetails != null) {
-              _spotlightUserDragging = true;
-              _spotlightAutoAdvanceTimer?.cancel();
-              _spotlightAutoAdvanceTimer = null;
-            } else if (notification is ScrollEndNotification &&
-                _spotlightUserDragging) {
-              _spotlightUserDragging = false;
-              _startSpotlightAutoAdvance();
-            }
-            return false;
-          },
-          child: PageView.builder(
-            controller: _spotlightPageController,
-            itemCount: tracks.length,
-            onPageChanged: (index) {
-              if (!mounted) return;
-              if (index != _spotlightPage) {
-                setState(() => _spotlightPage = index);
-              }
-              if (!_spotlightUserDragging) _startSpotlightAutoAdvance();
-            },
-            itemBuilder: (context, index) {
-              final track = tracks[index];
-              return Material(
-                color: const Color(0xFF08090C),
-                child: InkWell(
-                  onTap: () => _play(track, queueOverride: tracks),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      _art(
-                        track,
-                        size: double.infinity,
-                        radius: 0,
-                        fit: BoxFit.cover,
-                      ),
-                      const DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Color(0xB8000000),
-                              Color(0x17000000),
-                              Color(0x28000000),
-                              Color(0xF0000000),
-                            ],
-                            stops: [0, .30, .52, 1],
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        left: 36,
-                        right: 28,
-                        bottom: 62,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              'PICKED FOR YOU',
-                              maxLines: 1,
-                              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                                color: Colors.white.withValues(alpha: .72),
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 1.35,
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              track.title,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                                height: 1.04,
-                                letterSpacing: -.7,
-                              ),
-                            ),
-                            const SizedBox(height: 5),
-                            Text(
-                              track.artist,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Colors.white.withValues(alpha: .68),
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(height: 15),
-                            Row(
-                              children: [
-                                FilledButton.icon(
-                                  onPressed: () => _play(track, queueOverride: tracks),
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: Colors.white.withValues(alpha: .88),
-                                    foregroundColor: const Color(0xFF202124),
-                                    minimumSize: const Size(0, 36),
-                                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                                    shape: const StadiumBorder(),
-                                  ),
-                                  icon: const Icon(Icons.play_arrow_rounded, size: 19),
-                                  label: const Text(
-                                    'Play',
-                                    style: TextStyle(fontWeight: FontWeight.w700),
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                if (tracks.length > 1)
-                                  IconButton(
-                                    tooltip: 'Shuffle featured tracks',
-                                    onPressed: _playRandomSpotlight,
-                                    style: IconButton.styleFrom(
-                                      backgroundColor: Colors.white.withValues(alpha: .16),
-                                      foregroundColor: Colors.white,
-                                      fixedSize: const Size(38, 38),
-                                    ),
-                                    icon: const Icon(Icons.shuffle_rounded, size: 18),
-                                  ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (tracks.length > 1)
-                        Positioned(
-                          top: 18,
-                          right: 20,
-                          child: Row(
-                            children: List.generate(tracks.length, (dotIndex) {
-                              final selected = dotIndex == activePage;
-                              return AnimatedContainer(
-                                duration: const Duration(milliseconds: 220),
-                                curve: Curves.easeOutCubic,
-                                margin: const EdgeInsets.only(left: 4),
-                                width: selected ? 18 : 5,
-                                height: 4,
-                                decoration: BoxDecoration(
-                                  color: selected
-                                      ? Colors.white.withValues(alpha: .9)
-                                      : Colors.white.withValues(alpha: .38),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              );
-                            }),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _speedDialShelf() {
     if (_speedDial.isEmpty) return const SliverToBoxAdapter();
     return SliverToBoxAdapter(
@@ -1813,66 +1470,16 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         children: [
           _shelfHeading('Speed Dial'),
           SizedBox(
-            height: 126,
+            height: 190,
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 36),
               scrollDirection: Axis.horizontal,
               itemCount: _speedDial.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 14),
-              itemBuilder: (context, index) {
-                final track = _speedDial[index];
-                return SizedBox(
-                  width: 84,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Stack(
-                        children: [
-                          InkWell(
-                            borderRadius: BorderRadius.circular(16),
-                            onTap: () => _play(track, queueOverride: _speedDial),
-                            child: _art(track, size: 78, radius: 16),
-                          ),
-                          Positioned(
-                            top: 1,
-                            right: 1,
-                            child: Material(
-                              color: Colors.black54,
-                              shape: const CircleBorder(),
-                              child: IconButton(
-                                tooltip: 'Remove from Speed Dial',
-                                visualDensity: VisualDensity.compact,
-                                constraints: const BoxConstraints.tightFor(
-                                  width: 30,
-                                  height: 30,
-                                ),
-                                padding: EdgeInsets.zero,
-                                onPressed: () => _toggleSpeedDial(track),
-                                icon: const Icon(
-                                  Icons.close_rounded,
-                                  size: 17,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        track.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.labelSmall,
-                      ),
-                    ],
-                  ),
-                );
-              },
+              separatorBuilder: (_, __) => const SizedBox(width: 15),
+              itemBuilder: (context, index) =>
+                  _feedCard(_speedDial[index], queueOverride: _speedDial),
             ),
           ),
-          const SizedBox(height: 18),
         ],
       ),
     );
@@ -1880,101 +1487,51 @@ class _DiscoverScreenState extends State<DiscoverScreen>
 
   Widget _listeningPicksShelf() {
     if (_listeningPicks.isEmpty) return const SliverToBoxAdapter();
-    final cardWidth = ((MediaQuery.sizeOf(context).width - 52) / 2)
-        .clamp(148.0, 220.0)
-        .toDouble();
     return SliverToBoxAdapter(
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        _shelfHeading('Top Picks for You'),
-        SizedBox(
-          height: cardWidth / (16 / 9) + 52,
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            scrollDirection: Axis.horizontal,
-            itemCount: _listeningPicks.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 14),
-            itemBuilder: (context, index) => _topPickCard(_listeningPicks[index]),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _shelfHeading('Top Picks for You'),
+          SizedBox(
+            height: 190,
+            child: ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: 36),
+              scrollDirection: Axis.horizontal,
+              itemCount: _listeningPicks.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 15),
+              itemBuilder: (context, index) => _feedCard(
+                _listeningPicks[index],
+                queueOverride: _listeningPicks,
+              ),
+            ),
           ),
-        ),
-        const SizedBox(height: 22),
-      ]),
+        ],
+      ),
     );
   }
 
   Widget _recentlyPlayedShelf() {
     if (_recentlyPlayed.isEmpty) return const SliverToBoxAdapter();
-    final columns = <List<DiscoverTrack>>[
-      for (var index = 0; index < _recentlyPlayed.length; index += 4)
-        _recentlyPlayed.skip(index).take(4).toList(growable: false),
-    ];
     return SliverToBoxAdapter(
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        _shelfHeading('Recents'),
-        SizedBox(
-          height: 4 * 58,
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 36),
-            scrollDirection: Axis.horizontal,
-            itemCount: columns.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 14),
-            itemBuilder: (context, index) => SizedBox(
-              width: MediaQuery.sizeOf(context).width * .78,
-              child: Column(
-                children: [
-                  for (final track in columns[index])
-                    SizedBox(
-                      height: 58,
-                      child: InkWell(
-                        onTap: () => _play(track, queueOverride: _recentlyPlayed),
-                        child: Row(children: [
-                          _art(track, size: 46),
-                          const SizedBox(width: 11),
-                          Expanded(child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(track.title, maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.titleSmall),
-                              Text(formatDiscoverArtist(track.artist), maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                textDirection: Directionality.of(context),
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                )),
-                            ],
-                          )),
-                          PopupMenuButton<String>(
-                            tooltip: 'More actions',
-                            onSelected: (value) {
-                              if (value == 'speed_dial') _toggleSpeedDial(track);
-                              if (value == 'play') _play(track, queueOverride: _recentlyPlayed);
-                              if (value == 'radio') _loadRadio(track);
-                              if (value == 'lyrics') _showLyrics(track);
-                            },
-                            itemBuilder: (_) => [
-                              const PopupMenuItem(value: 'play', child: Text('Play')),
-                              PopupMenuItem(
-                                value: 'speed_dial',
-                                child: Text(_isSpeedDialPinned(track)
-                                    ? 'Remove from Speed Dial'
-                                    : 'Add to Speed Dial'),
-                              ),
-                              const PopupMenuItem(value: 'radio', child: Text('Start radio')),
-                              if (AppSettings.instance.discoverLyrics)
-                                const PopupMenuItem(value: 'lyrics', child: Text('Lyrics')),
-                            ],
-                          ),
-                        ]),
-                      ),
-                    ),
-                ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _shelfHeading('Recently Played'),
+          SizedBox(
+            height: 190,
+            child: ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: 36),
+              scrollDirection: Axis.horizontal,
+              itemCount: _recentlyPlayed.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 15),
+              itemBuilder: (context, index) => _feedCard(
+                _recentlyPlayed[index],
+                queueOverride: _recentlyPlayed,
               ),
             ),
           ),
-        ),
-        const SizedBox(height: 22),
-      ]),
+        ],
+      ),
     );
   }
 
@@ -2117,7 +1674,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     return SizedBox(
       width: cardWidth,
       child: InkWell(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(14),
         onTap: () => _openHomeItem(item, shelfItems),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2125,8 +1682,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             AspectRatio(
               aspectRatio: 1,
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(isArtist ? 84 : 8),
-                child: _art(track, size: double.infinity, radius: isArtist ? 84 : 8),
+                borderRadius: BorderRadius.circular(isArtist ? 84 : 14),
+                child: _art(track, size: double.infinity, radius: isArtist ? 84 : 14),
               ),
             ),
             const SizedBox(height: 8),
@@ -2426,9 +1983,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 // upstream shelves. Find Your Mood is inserted after the
                 // lead feed shelf rather than before the feed.
                 if (AppSettings.instance.discoverSpotlight) _spotlightHero(),
+                _recentlyPlayedShelf(),
                 _speedDialShelf(),
                 _listeningPicksShelf(),
-                _recentlyPlayedShelf(),
                 for (var index = 0; index < _homeShelves.length; index++) ...[
                   if (!_isMoodOrGenreShelf(_homeShelves[index]) &&
                       (_recentlyPlayed.isEmpty ||
@@ -2449,10 +2006,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 if (_sectionTitle == 'Top charts in India' ||
                     _sectionTitle.startsWith('Discover in ')) ...[
                   if (AppSettings.instance.discoverSpotlight) _spotlightHero(),
+                  _recentlyPlayedShelf(),
                   _speedDialShelf(),
                 ],
                 _listeningPicksShelf(),
-                _recentlyPlayedShelf(),
                 if (_tracks.isNotEmpty) ...[
                   SliverToBoxAdapter(
                     child: Padding(
