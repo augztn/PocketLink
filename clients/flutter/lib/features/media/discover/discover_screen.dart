@@ -11,7 +11,6 @@ import '../../../core/settings/app_settings.dart';
 import '../../../core/widgets/pocketlink_app_bar.dart';
 import '../../../core/widgets/pocketlink_scaffold.dart';
 import '../../../core/widgets/smoked_glass_popover_menu.dart';
-import '../../../core/widgets/pocketlink_section_header.dart';
 import '../data/media_library_repository.dart';
 import '../media_library_catalog.dart';
 import '../../../core/navigation/pocketlink_navigation.dart';
@@ -1417,7 +1416,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+                color: theme.colorScheme.onSurface.withValues(alpha: .5),
                 fontSize: 12,
               ),
             ),
@@ -1710,7 +1709,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .5),
                 fontSize: 12,
               ),
             ),
@@ -1809,7 +1808,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
               itemCount: (shelf.items.isNotEmpty
                       ? shelf.items.length
                       : shelf.tracks.length).clamp(0, 12),
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              separatorBuilder: (_, __) => const SizedBox(width: 15),
               itemBuilder: (context, index) {
                 if (shelf.items.isNotEmpty) {
                   return _homeItemCard(shelf.items[index], shelf.items);
