@@ -2201,9 +2201,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
                   onHorizontalDragStart: AppSettings.instance.enableNowPlayingGestures
                       ? (_) {
                           if (_carouselSkipInFlight) return;
+                          final currentOffset = _carouselSettleController.value;
                           _carouselSettleController.stop();
                           setState(() {
-                            _trackSwipeDistance = 0;
+                            _trackSwipeDistance = currentOffset;
                             _trackSwipeActive = true;
                           });
                         }
