@@ -57,6 +57,37 @@ class _NowPlayingSettingsScreenState extends State<NowPlayingSettingsScreen> {
   List<Widget> _filtered(List<Widget> children) =>
       children.where(_matches).toList(growable: false);
 
+  Widget _group(String title, List<Widget> children) {
+    final visible = _filtered(children);
+    if (visible.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SettingsSectionHeader(title),
+        SettingsGroupCard(searchQuery: _query, children: visible),
+      ],
+    );
+  }
+
+  bool _hasAnySearchMatches() {
+    final tokens = _query
+        .toLowerCase()
+        .split(RegExp(r'[^a-z0-9]+'))
+        .where((token) => token.isNotEmpty);
+    if (tokens.isEmpty) return true;
+    const searchable = [
+      'tap open current now playing screen',
+      'swipe to change tracks swipe left swipe right next previous no action',
+      'hold for shortcuts long press music button quick destinations',
+      'customize shortcut destinations reorder choose what appears',
+      'player style now playing poster pocketlink lyrics artwork',
+      'mini-player show compact player above navigation dock while music is playing',
+      'now playing screen gestures swipe down close swipe left right change tracks',
+      'show stats for nerds audio codec bitrate sample rate player menu',
+    ];
+    return searchable.any((entry) => tokens.every(entry.contains));
+  }
+
   static const _swipeActions = <String, String>{
     'next': 'Next track',
     'previous': 'Previous track',
@@ -108,8 +139,7 @@ class _NowPlayingSettingsScreenState extends State<NowPlayingSettingsScreen> {
                 ),
               ),
             ),
-            const SettingsSectionHeader('Music dock button'),
-            SettingsGroupCard(searchQuery: _query, children: _filtered([
+            _group('Music dock button', [
               const ListTile(
                 leading: Icon(Icons.touch_app_rounded),
                 title: Text('Tap'),
@@ -165,10 +195,9 @@ class _NowPlayingSettingsScreenState extends State<NowPlayingSettingsScreen> {
                   ),
                 ),
               ),
-            ])),
+            ]),
             const SizedBox(height: 20),
-            const SettingsSectionHeader('Now Playing style'),
-            SettingsGroupCard(children: _filtered([
+            _group('Now Playing style', [
               SettingsTile(
                 leading: const SettingsIcon(Icons.art_track_rounded),
                 title: 'Player style',
@@ -192,8 +221,7 @@ class _NowPlayingSettingsScreenState extends State<NowPlayingSettingsScreen> {
               ),
             ])),
             const SizedBox(height: 20),
-            const SettingsSectionHeader('Mini-player and playback'),
-            SettingsGroupCard(children: _filtered([
+            _group('Mini-player and playback', [
               SwitchListTile(
                 secondary: const SettingsIcon(Icons.picture_in_picture_alt_rounded),
                 title: const Text('Mini-player'),
@@ -222,11 +250,7 @@ class _NowPlayingSettingsScreenState extends State<NowPlayingSettingsScreen> {
                 ),
               ),
             ])),
-            if (_query.isNotEmpty && _filtered([
-              const ListTile(title: Text('Music dock button')),
-              const SettingsTile(title: 'Player style'),
-              const SettingsTile(title: 'Mini-player'),
-            ]).isEmpty)
+            if (_query.isNotEmpty && !_hasAnySearchMatches())
               const Padding(
                 padding: EdgeInsets.all(20),
                 child: Text('No matching settings found.'),
