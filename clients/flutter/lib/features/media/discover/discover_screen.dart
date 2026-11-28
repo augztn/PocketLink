@@ -1904,6 +1904,12 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                             },
                             itemBuilder: (_) => [
                               const PopupMenuItem(value: 'play', child: Text('Play')),
+                              PopupMenuItem(
+                                value: 'speed_dial',
+                                child: Text(_isSpeedDialPinned(track)
+                                    ? 'Remove from Speed Dial'
+                                    : 'Add to Speed Dial'),
+                              ),
                               const PopupMenuItem(value: 'radio', child: Text('Start radio')),
                               if (AppSettings.instance.discoverLyrics)
                                 const PopupMenuItem(value: 'lyrics', child: Text('Lyrics')),
@@ -1934,6 +1940,12 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       },
       itemBuilder: (_) => [
         const PopupMenuItem(value: 'play', child: Text('Play')),
+        PopupMenuItem(
+          value: 'speed_dial',
+          child: Text(_isSpeedDialPinned(track)
+              ? 'Remove from Speed Dial'
+              : 'Add to Speed Dial'),
+        ),
         const PopupMenuItem(value: 'radio', child: Text('Start radio')),
         if (AppSettings.instance.discoverLyrics)
           const PopupMenuItem(value: 'lyrics', child: Text('Lyrics')),
@@ -2187,6 +2199,12 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         },
         itemBuilder: (_) => [
           const PopupMenuItem(value: 'play', child: Text('Play')),
+          PopupMenuItem(
+            value: 'speed_dial',
+            child: Text(_isSpeedDialPinned(track)
+                ? 'Remove from Speed Dial'
+                : 'Add to Speed Dial'),
+          ),
           const PopupMenuItem(value: 'radio', child: Text('Start radio')),
           if (AppSettings.instance.discoverLyrics)
             const PopupMenuItem(value: 'lyrics', child: Text('Lyrics')),
