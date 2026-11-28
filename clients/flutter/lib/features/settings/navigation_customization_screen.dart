@@ -50,7 +50,7 @@ class _NavigationCustomizationScreenState
     final query = _query.toLowerCase();
     if (query.isEmpty) return true;
     final detail = _details[id]!;
-    final corpus = '${detail.label} ${detail.description} $id'.toLowerCase();
+    final corpus = '${detail.label} ${detail.description} destination $id'.toLowerCase();
     return query.split(RegExp(r'[^a-z0-9]+')).where((token) => token.isNotEmpty).every(corpus.contains);
   }
 
