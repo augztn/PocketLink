@@ -453,6 +453,52 @@ class _GlobalMediaOverlayState extends State<GlobalMediaOverlay>
             fit: StackFit.expand,
             children: [
               Positioned.fill(child: navigatorContent),
+              if (player.storagePlaybackIssue != null)
+                Positioned(
+                  top: media.padding.top + 12,
+                  left: 16,
+                  right: 16,
+                  child: Material(
+                    color: const Color(0xEE24262C),
+                    borderRadius: BorderRadius.circular(16),
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      onTap: () => unawaited(player.refreshStoragePlayback()),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 15,
+                          vertical: 12,
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.usb_rounded,
+                              color: Colors.white70,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                player.storagePlaybackIssue!,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Icon(
+                              Icons.refresh_rounded,
+                              color: Colors.white,
+                              size: 19,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               if (onDashboard)
                 Positioned(
                   left: 0,
