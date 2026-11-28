@@ -37,6 +37,8 @@ class AppSettings extends ChangeNotifier {
   static const _recentKey = 'settings_home_recent';
   static const _liquidGlassKey = 'settings_use_liquid_glass';
   static const _progressiveBlurKey = 'settings_progressive_blur_enabled';
+  static const _animationsEnabledKey = 'settings_animations_enabled';
+  static const _animationSpeedKey = 'settings_animation_speed';
   static const _navigationOrderKey = 'settings_navigation_order';
   static const _navigationVisibilityKey = 'settings_navigation_visibility';
   static const _homeSearchKey = 'settings_home_search';
@@ -120,6 +122,8 @@ class AppSettings extends ChangeNotifier {
   List<String> _homeSectionOrder = List.of(homeSectionDefaults);
   bool _useLiquidGlass = false;
   bool _progressiveBlurEnabled = true;
+  bool _animationsEnabled = true;
+  double _animationSpeed = 1.0;
   bool _loaded = false;
   List<String> _navigationOrder = List.of(navigationDefaults);
   Set<String> _visibleNavigationItems = Set.of(navigationDefaults);
@@ -173,6 +177,9 @@ class AppSettings extends ChangeNotifier {
   List<String> get homeSectionOrder => List.unmodifiable(_homeSectionOrder);
   bool get useLiquidGlass => _useLiquidGlass;
   bool get progressiveBlurEnabled => _progressiveBlurEnabled;
+  bool get animationsEnabled => _animationsEnabled;
+  double get animationSpeed => _animationSpeed;
+  double get animationTimeDilation => _animationsEnabled ? 1.0 / _animationSpeed : 0.01;
   List<String> get navigationOrder => List.unmodifiable(_navigationOrder);
   Set<String> get visibleNavigationItems => Set.unmodifiable(_visibleNavigationItems);
   bool get navigationLayoutIsDefault => _navigationOrder.join(',') == navigationDefaults.join(',') && _visibleNavigationItems.length == navigationDefaults.length;
@@ -233,6 +240,11 @@ class AppSettings extends ChangeNotifier {
       final preferences = await SharedPreferences.getInstance();
       _useLiquidGlass = preferences.getBool(_liquidGlassKey) ?? false;
       _progressiveBlurEnabled = preferences.getBool(_progressiveBlurKey) ?? true;
+      _animationsEnabled = preferences.getBool(_animationsEnabledKey) ?? true;
+      final storedAnimationSpeed = preferences.getDouble(_animationSpeedKey) ?? 1.0;
+      _animationSpeed = storedAnimationSpeed.isFinite
+          ? storedAnimationSpeed.clamp(0.5, 2.0).toDouble()
+          : 1.0;
       _showMiniPlayer = preferences.getBool(_nowPlayingMiniPlayerKey) ?? true;
       _enableNowPlayingGestures = preferences.getBool(_nowPlayingGesturesKey) ?? true;
       _showStatsForNerds = preferences.getBool(_nowPlayingStatsForNerdsKey) ?? true;
