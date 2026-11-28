@@ -471,7 +471,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       'audio' || 'now-playing' => _categoryRoute(
           id,
-          (_) => const NowPlayingSettingsScreen(),
+          (_) => NowPlayingSettingsScreen(initialSearchQuery: searchQuery),
         ),
       'video' => _categoryRoute(
           id,
