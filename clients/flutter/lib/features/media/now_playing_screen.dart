@@ -1865,10 +1865,13 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
                 ],
                 stops: [0.0, 0.34, 0.46, 0.56, 0.65, 0.74, 1.0],
               ).createShader(bounds),
-              child: _trackTransition(
-                key: _trackIdentity,
-                followDrag: false,
-                child: _artworkCarousel(),
+              child: AnimatedBuilder(
+                animation: _carouselSettleController,
+                builder: (context, _) => _trackTransition(
+                  key: _trackIdentity,
+                  followDrag: false,
+                  child: _artworkCarousel(),
+                ),
               ),
             ),
             builder: (context, artwork) {
