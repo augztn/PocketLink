@@ -419,7 +419,14 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
   Future<void> _onTrackChanged() async {
     if (!mounted) return;
     final identity = _trackIdentity;
-    if (identity == _observedTrackIdentity) {
+    final nextIndex = _carouselIndex;
+    final nextSession = _persistent.queueSession;
+    final identityChanged = identity != _observedTrackIdentity;
+    final sessionChanged = _observedQueueSession != nextSession;
+    final indexDelta = nextIndex - _observedQueueIndex;
+    final positionChanged = sessionChanged || indexDelta != 0;
+
+    if (!identityChanged && !positionChanged) {
       // Playlist snapshots can be emitted for decoder/metadata changes.
       // Preserve artwork, palette, and lyrics while the same song is active.
       if (_artwork == null && (_track.artworkUrl?.trim().isNotEmpty ?? false)) {
@@ -428,16 +435,12 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
       return;
     }
 
-    final nextIndex = _carouselIndex;
-    final indexDelta = nextIndex - _observedQueueIndex;
-    final sessionChanged =
-        _observedQueueSession != _persistent.queueSession;
     final previousOffset = _trackSwipeActive
         ? _trackSwipeDistance
         : _carouselSettleController.value;
     _observedTrackIdentity = identity;
     _observedQueueIndex = nextIndex;
-    _observedQueueSession = _persistent.queueSession;
+    _observedQueueSession = nextSession;
     if (!(_carouselTrackChangeCompleter?.isCompleted ?? true)) {
       _carouselTrackChangeCompleter!.complete();
     }
@@ -449,6 +452,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
     final direction = indexDelta == 0
         ? (requestedDirection ?? 1)
         : (indexDelta < 0 ? -1 : 1);
+
+    // A replaced queue invalidates queued button taps from the old queue.
+    if (sessionChanged) _queuedCarouselSkips.clear();
 
     // Adjacent changes use the same three-slot row as a swipe. Non-adjacent
     // queue jumps retain the keyed switcher so the outgoing track can fade.
@@ -463,23 +469,27 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
       _trackSwipeDistance = 0;
       _trackSwipeActive = false;
       _trackChangeDirection = direction;
-      _artwork = null;
-      _artworkKey = null;
-      _artworkPalette = null;
-      _lyricsQueryKey = null;
-      _activeLyrics = null;
-      _lyricsProviderStates = const {};
-      _lyricsLoading = false;
+      if (identityChanged) {
+        _artwork = null;
+        _artworkKey = null;
+        _artworkPalette = null;
+        _lyricsQueryKey = null;
+        _activeLyrics = null;
+        _lyricsProviderStates = const {};
+        _lyricsLoading = false;
+      }
     });
     if (isAdjacentChange && _carouselSettleController.value != 0) {
       unawaited(_settleCarousel());
     }
-    widget.onArtworkChanged?.call(null);
-    unawaited(_loadTrackLyrics());
-    await Future.wait([
-      _refreshCacheStatus(),
-      _loadArtwork(),
-    ]);
+    if (identityChanged) {
+      widget.onArtworkChanged?.call(null);
+      unawaited(_loadTrackLyrics());
+      await Future.wait([
+        _refreshCacheStatus(),
+        _loadArtwork(),
+      ]);
+    }
   }
 
   Future<void> _loadArtwork() async {
