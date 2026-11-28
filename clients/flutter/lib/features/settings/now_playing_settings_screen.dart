@@ -36,6 +36,7 @@ class _NowPlayingSettingsScreenState extends State<NowPlayingSettingsScreen> {
     final tokens = _query.toLowerCase().split(RegExp(r'[^a-z0-9]+')).where((token) => token.isNotEmpty);
     if (tokens.isEmpty) return true;
     final searchable = <String>[];
+    if (child is SettingsNestedGroup) searchable.add(settingsSearchableText(child));
     if (child is SettingsTile) {
       searchable.add(child.title);
       if (child.subtitle != null) searchable.add(child.subtitle!);
@@ -114,31 +115,35 @@ class _NowPlayingSettingsScreenState extends State<NowPlayingSettingsScreen> {
                 title: Text('Tap'),
                 subtitle: Text('Open the current Now Playing screen'),
               ),
-              SwitchListTile(
-                secondary: const Icon(Icons.swipe_rounded),
-                title: const Text('Swipe to change tracks'),
-                subtitle: const Text('Swipe left or right on the Music button'),
-                value: settings.musicButtonSwipeEnabled,
-                onChanged: (value) => settings.setMusicButtonOptions(
-                  swipeEnabled: value,
+              SettingsNestedGroup(
+                parent: SwitchListTile(
+                  secondary: const Icon(Icons.swipe_rounded),
+                  title: const Text('Swipe to change tracks'),
+                  subtitle: const Text('Swipe left or right on the Music button'),
+                  value: settings.musicButtonSwipeEnabled,
+                  onChanged: (value) => settings.setMusicButtonOptions(
+                    swipeEnabled: value,
+                  ),
                 ),
+                expanded: settings.musicButtonSwipeEnabled || _query.isNotEmpty,
+                searchQuery: _query,
+                children: [
+                  _SwipeActionTile(
+                    title: 'Swipe left',
+                    value: settings.musicButtonSwipeLeftAction,
+                    onChanged: (value) => settings.setMusicButtonOptions(
+                      swipeLeftAction: value,
+                    ),
+                  ),
+                  _SwipeActionTile(
+                    title: 'Swipe right',
+                    value: settings.musicButtonSwipeRightAction,
+                    onChanged: (value) => settings.setMusicButtonOptions(
+                      swipeRightAction: value,
+                    ),
+                  ),
+                ],
               ),
-              if (settings.musicButtonSwipeEnabled) ...[
-                _SwipeActionTile(
-                  title: 'Swipe left',
-                  value: settings.musicButtonSwipeLeftAction,
-                  onChanged: (value) => settings.setMusicButtonOptions(
-                    swipeLeftAction: value,
-                  ),
-                ),
-                _SwipeActionTile(
-                  title: 'Swipe right',
-                  value: settings.musicButtonSwipeRightAction,
-                  onChanged: (value) => settings.setMusicButtonOptions(
-                    swipeRightAction: value,
-                  ),
-                ),
-              ],
               SwitchListTile(
                 secondary: const Icon(Icons.touch_app_outlined),
                 title: const Text('Hold for shortcuts'),
