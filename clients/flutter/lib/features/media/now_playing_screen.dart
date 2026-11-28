@@ -1398,8 +1398,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   }
 
   Widget _artworkCarousel() {
-    final queue = _persistent.queue;
-    final index = _persistent.currentIndex;
+    final queue = _persistent.queue.isNotEmpty ? _persistent.queue : widget.queue;
+    final index = _persistent.queue.isNotEmpty ? _persistent.currentIndex : widget.initialIndex;
     final width = MediaQuery.sizeOf(context).width;
     final drag = _carouselDragOffset(width);
 
@@ -1659,7 +1659,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
 
   Widget _playerLayout(double contentOpacity) {
     final heroHeight = MediaQuery.sizeOf(context).height * 0.56;
-    final hasArtwork = _artwork != null && _artworkKey == _trackKey;
     return Stack(
       fit: StackFit.expand,
       children: [
