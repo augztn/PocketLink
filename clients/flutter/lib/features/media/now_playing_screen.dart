@@ -2129,7 +2129,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
                                   ),
                                   if (_artworkLoading)
                                     Positioned.fill(
-                                      child: PocketLinkShimmer(
+                                      child: PocketLinkSkeleton(
                                         child: ColoredBox(color: Colors.white.withValues(alpha: 0.12)),
                                       ),
                                     ),
