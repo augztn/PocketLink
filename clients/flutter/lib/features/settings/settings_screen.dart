@@ -64,18 +64,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _importCustomFont() async {
     try {
-      final result = await file_picker.FilePicker.platform.pickFiles(
+      final picked = await file_picker.FilePicker.pickFile(
         type: file_picker.FileType.custom,
         allowedExtensions: ['ttf', 'otf'],
       );
-      if (!mounted || result == null || result.files.isEmpty) return;
-      final picked = result.files.single;
+      if (!mounted || picked == null) return;
       final extension = picked.extension?.toLowerCase();
       if (extension != 'ttf' && extension != 'otf') {
         _message('Select a .ttf or .otf font file.');
         return;
       }
-      if (picked.size > 20 * 1024 * 1024) {
+      final fileLength = picked.lengthSync() ?? await picked.length();
+      if (fileLength != null && fileLength > 20 * 1024 * 1024) {
         _message('Font files must be 20 MB or smaller.');
         return;
       }
