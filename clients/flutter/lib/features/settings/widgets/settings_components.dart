@@ -53,7 +53,7 @@ class _SettingsGroupCardState extends State<SettingsGroupCard> {
   String _rowIdentity(int index, Widget child) =>
       '$index:${child.runtimeType}:${settingsSearchableText(child)}';
 
-  GlobalKey _keyFor(int index, Widget child) =>
+  GlobalKey _keyFor(int index) =>
       _rowKeys.putIfAbsent(index, GlobalKey.new);
 
   bool _matches(Widget child) {
@@ -85,7 +85,7 @@ class _SettingsGroupCardState extends State<SettingsGroupCard> {
       if (!mounted || widget.searchQuery.trim() != query) return;
       setState(() => _activeHighlightIndex = matchIndex);
 
-      final target = _keyFor(matchIndex, widget.children[matchIndex]).currentContext;
+      final target = _keyFor(matchIndex).currentContext;
       if (target != null) {
         await Scrollable.ensureVisible(
           target,
@@ -129,7 +129,7 @@ class _SettingsGroupCardState extends State<SettingsGroupCard> {
   List<Widget> _animatedChildren(BuildContext context) => [
         for (var index = 0; index < widget.children.length; index++)
           AnimatedContainer(
-            key: _keyFor(index, widget.children[index]),
+            key: _keyFor(index),
             duration: const Duration(milliseconds: 450),
             curve: Curves.easeOutCubic,
             decoration: BoxDecoration(
@@ -266,7 +266,7 @@ class _SettingsNestedGroupState extends State<SettingsNestedGroup> {
       await Future<void>.delayed(const Duration(milliseconds: 320));
       if (!mounted || widget.searchQuery.trim() != query) return;
       setState(() => _activeIndex = index);
-      final target = _keyFor(index, widget.children[index]).currentContext;
+      final target = _keyFor(index).currentContext;
       if (target != null) {
         await Scrollable.ensureVisible(
           target,
