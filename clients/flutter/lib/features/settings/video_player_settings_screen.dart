@@ -60,6 +60,28 @@ class _VideoPlayerSettingsScreenState extends State<VideoPlayerSettingsScreen> {
     return tokens.every(corpus.contains);
   }
 
+  bool _hasAnySearchMatches() {
+    final tokens = _query
+        .toLowerCase()
+        .split(RegExp(r'[^a-z0-9]+'))
+        .where((token) => token.isNotEmpty);
+    if (tokens.isEmpty) return true;
+    const searchable = [
+      'controls auto-hide timer timeout seconds',
+      'double-tap seek video fast forward rewind',
+      'default playback speed rate',
+      'player gestures horizontal swipe brightness volume seek',
+      'pinch to zoom video enlarge pan',
+      'tap to play or pause video toggle',
+      'open videos in fullscreen automatic start',
+      'fullscreen orientation portrait landscape auto rotate',
+      'video scaling fit contain cover crop stretch fill',
+      'subtitle text size captions font',
+      'subtitle background captions translucent',
+    ];
+    return searchable.any((entry) => tokens.every(entry.contains));
+  }
+
   static const List<double> _timeouts = [
     2.0, 3.0, 3.5, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0, 0.0,
   ];
@@ -251,6 +273,11 @@ class _VideoPlayerSettingsScreenState extends State<VideoPlayerSettingsScreen> {
                 ),
               ),
             ]),
+            if (_query.isNotEmpty && !_hasAnySearchMatches())
+              const Padding(
+                padding: EdgeInsets.all(20),
+                child: Text('No matching settings found.'),
+              ),
             const SizedBox(height: 12),
             Align(
               alignment: Alignment.centerRight,
