@@ -628,6 +628,9 @@ class _MediaBrowserScreenState extends State<MediaBrowserScreen> {
   }
 
   void _cancelAllVideoRequests() {
+    widget.api.cancelPendingMetadataRequests(
+      reason: 'Media browser is inactive or refreshing',
+    );
     for (final media in _media) {
       widget.api.cancelMediaRequestsFor(media.path, volume: media.volume);
     }
