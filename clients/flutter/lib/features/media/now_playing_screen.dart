@@ -85,6 +85,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
   double _trackSwipeDistance = 0;
   bool _trackSwipeActive = false;
   bool _carouselSkipInFlight = false;
+  Completer<void>? _carouselTrackChangeCompleter;
   int _trackChangeDirection = 1;
   late final AnimationController _lyricsController;
   late final AnimationController _carouselSettleController;
@@ -418,6 +419,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
     }
 
     _observedTrackIdentity = identity;
+    _carouselTrackChangeCompleter?.complete();
     final requestedDirection = _persistent.takePendingTrackDirection();
     // A previous track's drag spring must not move the newly selected track.
     _carouselSettleController
@@ -1480,9 +1482,14 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
     _carouselSkipInFlight = true;
     final previousIdentity = _trackIdentity;
     final width = MediaQuery.sizeOf(context).width;
+    final signedVelocity = direction > 0
+        ? velocity.clamp(-5000.0, 0.0).toDouble()
+        : velocity.clamp(0.0, 5000.0).toDouble();
+    final trackChanged = Completer<void>();
+    _carouselTrackChangeCompleter = trackChanged;
     try {
       await _settleCarousel(
-        velocity: velocity,
+        velocity: signedVelocity,
         target: -direction * width,
       );
       if (!mounted) return;
@@ -1491,9 +1498,28 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
       } else {
         await _persistent.skipToPrevious();
       }
+      await Future.any<void>([
+        trackChanged.future,
+        Future<void>.delayed(const Duration(milliseconds: 1200)),
+      ]);
       if (!mounted) return;
       if (_trackIdentity == previousIdentity) await _settleCarousel();
+    } catch (error, stackTrace) {
+      await AppLogger.error(
+        'Now Playing carousel skip failed',
+        category: 'media',
+        component: 'now_playing_carousel',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      if (mounted) {
+        await _settleCarousel();
+        _message('Could not change track.');
+      }
     } finally {
+      if (identical(_carouselTrackChangeCompleter, trackChanged)) {
+        _carouselTrackChangeCompleter = null;
+      }
       _carouselSkipInFlight = false;
     }
   }
