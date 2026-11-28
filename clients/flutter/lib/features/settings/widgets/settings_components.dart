@@ -2,7 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../core/widgets/pocketlink_scaffold.dart';
 
-const Color settingsGroupColor = Color(0xFF15161B);
+const Color settingsGroupColor = Color(0xFF1C1C1E);
 const Color settingsDividerColor = Color(0x0FFFFFFF);
 
 /// Shared uppercase section label used by every Settings category.
@@ -57,12 +57,16 @@ class SettingsGroupCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ListTileTheme(
         data: const ListTileThemeData(
+          contentPadding: EdgeInsets.symmetric(horizontal: 20),
+          horizontalTitleGap: 16,
+          minLeadingWidth: 32,
+          minVerticalPadding: 14,
           titleTextStyle: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
           ),
           subtitleTextStyle: TextStyle(
-            fontSize: 13.5,
+            fontSize: 12,
             color: Color(0xFF9A9BA3),
           ),
         ),
@@ -75,15 +79,23 @@ class SettingsGroupCard extends StatelessWidget {
           child: Material(
             color: settingsGroupColor,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(28),
             ),
             clipBehavior: Clip.antiAlias,
-            child: Padding(
-              padding: padding,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: _withDividers(),
+            child: AnimatedSize(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOutCubic,
+              alignment: Alignment.topCenter,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Padding(
+                  padding: padding,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: _withDividers(),
+                  ),
+                ),
               ),
             ),
           ),
@@ -101,7 +113,7 @@ class SettingsTile extends StatelessWidget {
     this.trailing,
     this.onTap,
     this.enabled = true,
-    this.contentPadding = const EdgeInsets.symmetric(horizontal: 16),
+    this.contentPadding = const EdgeInsets.symmetric(horizontal: 20),
   });
 
   final String title;
