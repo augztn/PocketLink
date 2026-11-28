@@ -152,7 +152,7 @@ class AppSettings extends ChangeNotifier {
   bool _discoverAutoQueue = true;
   bool _discoverArtwork = true;
   bool _discoverSpotlight = true;
-  bool _discoverArtistGrid = true;
+  bool _discoverArtistGrid = false;
   String _discoverAudioQuality = 'best_available';
   String _discoverResolverProfile = 'automatic';
   String _discoverRegion = 'IN';
@@ -247,7 +247,7 @@ class AppSettings extends ChangeNotifier {
       _discoverAutoQueue = preferences.getBool(_discoverAutoQueueKey) ?? true;
       _discoverArtwork = preferences.getBool(_discoverArtworkKey) ?? true;
       _discoverSpotlight = preferences.getBool(_discoverSpotlightKey) ?? true;
-      _discoverArtistGrid = preferences.getBool(_discoverArtistGridKey) ?? true;
+      _discoverArtistGrid = preferences.getBool(_discoverArtistGridKey) ?? false;
       _discoverAudioQuality = const {'best_available', 'balanced', 'data_saver'}
           .contains(preferences.getString(_discoverAudioQualityKey))
           ? preferences.getString(_discoverAudioQualityKey)!
