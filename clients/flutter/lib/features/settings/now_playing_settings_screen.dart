@@ -149,7 +149,8 @@ class _NowPlayingSettingsScreenState extends State<NowPlayingSettingsScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            Padding(
+            if (!_isSearchActive)
+              Padding(
               padding: const EdgeInsets.only(bottom: 18),
               child: Text(
                 'Configure the Music button and mini-player behavior.',
