@@ -1,6 +1,14 @@
 part of 'app_settings.dart';
 
 extension AppSettingsMedia on AppSettings {
+  Future<void> setDiscoverMotion(bool value) async {
+    if (_discoverMotion == value) return;
+    _discoverMotion = value;
+    _notifySettingsChanged();
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(AppSettings._discoverMotionKey, value);
+  }
+
   Future<void> setShowDiscoverOnWelcome(bool value) async {
     if (_showDiscoverOnWelcome == value) return;
     _showDiscoverOnWelcome = value;
