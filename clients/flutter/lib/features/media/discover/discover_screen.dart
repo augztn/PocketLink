@@ -1735,7 +1735,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
               }
               final track = tracks[pageIndex];
               return AnimatedBuilder(
-                animation: _spotlightPageController,
+                animation: Listenable.merge([
+                  _spotlightPageController,
+                  AppSettings.instance,
+                ]),
                 child: Material(
                 color: const Color(0xFF08090C),
                 child: InkWell(
