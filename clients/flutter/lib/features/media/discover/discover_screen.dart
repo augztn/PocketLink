@@ -58,7 +58,7 @@ class DiscoverScreen extends StatefulWidget {
 }
 
 class _DiscoverScreenState extends State<DiscoverScreen>
-    with SingleTickerProviderStateMixin, WidgetsBindingObserver,
+    with TickerProviderStateMixin, WidgetsBindingObserver,
         AutomaticKeepAliveClientMixin<DiscoverScreen> {
   final Set<String> _revealedShelfKeys = <String>{};
   final Set<String> _revealedCardKeys = <String>{};
@@ -68,6 +68,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   static final Map<String, DateTime> _localLibraryCacheUpdated = {};
   final DiscoverService _service = DiscoverService();
   late final AnimationController _shimmerController;
+  late final AnimationController _spotlightWipeCurveController;
   List<DiscoverTrack> _tracks = const [];
   List<DiscoverTrack> _recentlyPlayed = const [];
   List<DiscoverTrack> _speedDial = const [];
@@ -118,6 +119,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     )..repeat();
+    _spotlightWipeCurveController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 220),
+    );
     _lastRegion = AppSettings.instance.discoverRegion;
     _lastLocalLossless = AppSettings.instance.discoverLocalLossless;
     _scrollController.addListener(_onDiscoverScroll);
@@ -135,6 +140,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     _appResumed = resumed;
     if (!resumed) {
       _spotlightUserDragging = false;
+      _spotlightWipeCurveController.reverse();
       _spotlightAutoAdvanceTimer?.cancel();
       _spotlightAutoAdvanceTimer = null;
       // MethodChannel resolution already in flight cannot be interrupted, but
@@ -345,6 +351,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     _spotlightAutoAdvanceTimer?.cancel();
     _heroScrollProgress.dispose();
     _spotlightPageController.dispose();
+    _spotlightWipeCurveController.dispose();
     _shimmerController.dispose();
     super.dispose();
   }
@@ -1750,6 +1757,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     return AnimatedBuilder(
       animation: Listenable.merge([
         _spotlightPageController,
+        _spotlightWipeCurveController,
         AppSettings.instance,
       ]),
       child: child,
@@ -1760,7 +1768,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         final distance = (index - page).clamp(-1.0, 1.0).toDouble();
         final progress = distance.abs();
         if (!AppSettings.instance.discoverMotion) return child!;
-        final curve = _spotlightUserDragging ? 1.0 : .04;
+        final curve = .04 + .96 * _spotlightWipeCurveController.value;
         final width = MediaQuery.sizeOf(context).width;
         return ClipRect(
           child: Transform.translate(
@@ -1844,11 +1852,13 @@ class _DiscoverScreenState extends State<DiscoverScreen>
               if (notification is ScrollStartNotification &&
                   notification.dragDetails != null) {
                 _spotlightUserDragging = true;
+                _spotlightWipeCurveController.forward();
                 _spotlightAutoAdvanceTimer?.cancel();
                 _spotlightAutoAdvanceTimer = null;
               } else if (notification is ScrollEndNotification &&
                   _spotlightUserDragging) {
                 _spotlightUserDragging = false;
+                _spotlightWipeCurveController.reverse();
                 _startSpotlightAutoAdvance();
               }
               return false;
