@@ -46,7 +46,7 @@ class SettingsGroupCard extends StatefulWidget {
 }
 
 class _SettingsGroupCardState extends State<SettingsGroupCard> {
-  final Map<String, GlobalKey> _rowKeys = {};
+  final Map<int, GlobalKey> _rowKeys = {};
   int? _activeHighlightIndex;
   Timer? _highlightTimer;
 
@@ -54,7 +54,7 @@ class _SettingsGroupCardState extends State<SettingsGroupCard> {
       '$index:${child.runtimeType}:${settingsSearchableText(child)}';
 
   GlobalKey _keyFor(int index, Widget child) =>
-      _rowKeys.putIfAbsent(_rowIdentity(index, child), GlobalKey.new);
+      _rowKeys.putIfAbsent(index, GlobalKey.new);
 
   bool _matches(Widget child) {
     final tokens = widget.searchQuery
@@ -247,8 +247,7 @@ class _SettingsNestedGroupState extends State<SettingsNestedGroup> {
   }
 
   GlobalKey _keyFor(int index, Widget child) {
-    final identity = '$index:${settingsSearchableText(child)}';
-    return _rowKeys.putIfAbsent(identity, GlobalKey.new);
+    return _rowKeys.putIfAbsent(index, GlobalKey.new);
   }
 
   void _revealMatch() {
