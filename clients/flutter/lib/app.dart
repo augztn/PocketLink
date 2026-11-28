@@ -120,7 +120,8 @@ class _PocketLinkAppState extends State<PocketLinkApp> {
       scaffoldBackgroundColor: isDark
           ? Colors.black
           : const Color(0xFFF8FAFC),
-      textTheme: baseTextTheme,
+      textTheme: baseTextTheme.apply(fontFamily: _settings.customFontFamily),
+      fontFamily: _settings.customFontFamily,
       useMaterial3: true,
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
