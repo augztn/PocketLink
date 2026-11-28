@@ -15,6 +15,8 @@ void main() {
       'settings_progressive_blur': true,
       'settings_discover_enabled': false,
       'settings_discover_artwork': false,
+      'settings_discover_spotlight': false,
+      'settings_discover_artist_grid': true,
       'settings_discover_audio_quality': 'balanced',
       'settings_discover_resolver_profile': 'player_api_first',
       'settings_discover_region': 'JP',
@@ -31,6 +33,8 @@ void main() {
     expect(payload['schemaVersion'], 1);
     expect(settings['settings_discover_enabled'], isFalse);
     expect(settings['settings_discover_artwork'], isFalse);
+    expect(settings['settings_discover_spotlight'], isFalse);
+    expect(settings['settings_discover_artist_grid'], isTrue);
     expect(settings['settings_discover_audio_quality'], 'balanced');
     expect(settings['settings_discover_resolver_profile'], 'player_api_first');
     expect(settings['settings_discover_region'], 'JP');
@@ -44,6 +48,8 @@ void main() {
       'createdAt': DateTime.now().toUtc().toIso8601String(),
       'settings': {
         'settings_use_liquid_glass': false,
+        'settings_discover_spotlight': false,
+        'settings_discover_artist_grid': true,
         'settings_discover_audio_quality': 'data_saver',
         'settings_discover_resolver_profile': 'newpipe_first',
         'settings_discover_region': 'US',
@@ -53,8 +59,10 @@ void main() {
     final restored = await SettingsBackupService.importBackup(bytes);
     final preferences = await SharedPreferences.getInstance();
 
-    expect(restored, 4);
+    expect(restored, 6);
     expect(preferences.getBool('settings_use_liquid_glass'), isFalse);
+    expect(preferences.getBool('settings_discover_spotlight'), isFalse);
+    expect(preferences.getBool('settings_discover_artist_grid'), isTrue);
     expect(preferences.getString('settings_discover_audio_quality'), 'data_saver');
     expect(preferences.getString('settings_discover_resolver_profile'), 'newpipe_first');
     expect(preferences.getString('settings_discover_region'), 'US');
