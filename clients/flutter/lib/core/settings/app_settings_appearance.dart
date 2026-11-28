@@ -45,6 +45,17 @@ extension AppSettingsAppearance on AppSettings {
     await preferences.setDouble(AppSettings._animationSpeedKey, value);
   }
 
+  Future<void> setAccentColor(int value) async {
+    if (!AppSettings.accentColorValues.contains(value)) {
+      throw ArgumentError.value(value, 'value', 'Unsupported accent color');
+    }
+    if (_accentColorValue == value) return;
+    _accentColorValue = value;
+    _notifySettingsChanged();
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setInt(AppSettings._accentColorKey, value);
+  }
+
   Future<void> setProgressiveBlurEnabled(bool value) async {
     _progressiveBlurEnabled = value;
     _notifySettingsChanged();
