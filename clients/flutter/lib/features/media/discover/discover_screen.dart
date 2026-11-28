@@ -65,6 +65,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   List<DiscoverTrack> _tracks = const [];
   List<DiscoverTrack> _recentlyPlayed = const [];
   List<DiscoverTrack> _speedDial = const [];
+  int _speedDialGeneration = 0;
   List<DiscoverTrack> _listeningPicks = const [];
   String _listeningPicksSeed = '';
   int _listeningPicksGeneration = 0;
@@ -144,9 +145,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       session == player.queueSession;
 
   Future<void> _loadSpeedDial() async {
+    final generation = ++_speedDialGeneration;
     try {
       final tracks = await DiscoverSpeedDialStore.read();
-      if (!mounted) return;
+      if (!mounted || generation != _speedDialGeneration) return;
       setState(() => _speedDial = tracks);
     } catch (error) {
       AppLogger.warning(
@@ -162,6 +164,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       _speedDial.any((item) => item.videoId == track.videoId);
 
   Future<void> _toggleSpeedDial(DiscoverTrack track) async {
+    ++_speedDialGeneration;
     final wasPinned = _isSpeedDialPinned(track);
     try {
       final updated = wasPinned
