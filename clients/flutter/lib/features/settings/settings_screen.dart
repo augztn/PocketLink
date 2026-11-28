@@ -1028,7 +1028,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           widget.category == null
                               ? [
                                   ..._globalSearchResultTiles(),
-                                  ..._homeSettingsChildren().skip(2),
+                                  ..._homeSettingsChildren(),
                                 ]
                               : [
                 if (widget.category != null)
