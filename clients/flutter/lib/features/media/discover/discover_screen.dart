@@ -1833,8 +1833,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
               child: content,
             ),
           ),
-        ),
-      );
+        );
       },
     );
   }
