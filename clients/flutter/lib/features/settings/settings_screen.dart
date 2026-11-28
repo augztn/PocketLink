@@ -1008,7 +1008,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildTabletSettingsPane(BuildContext context, double bottomClearance) {
     final width = MediaQuery.sizeOf(context).width;
-    final paneWidth = (width * 0.36).clamp(300.0, 400.0);
+    final paneWidth = (width * 0.36).clamp(300.0, 400.0).toDouble();
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
