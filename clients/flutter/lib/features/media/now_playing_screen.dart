@@ -18,7 +18,7 @@ import '../../core/network/offline_file_cache.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/widgets/smoked_glass_popover_menu.dart';
-import '../../core/widgets/pocketlink_shimmer.dart';
+import '../../core/widgets/pocketlink_skeleton.dart';
 import '../../core/network/server_api.dart';
 import '../files/file_manager_screen.dart';
 import '../storage/storage_browser_screen.dart';
@@ -1684,7 +1684,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
           ),
           if (current && _artworkLoading)
             Positioned.fill(
-              child: PocketLinkShimmer(
+              child: PocketLinkSkeleton(
                 child: ColoredBox(color: Colors.white.withValues(alpha: 0.12)),
               ),
             ),
@@ -2638,7 +2638,7 @@ class _LyricsSearchingPulseState extends State<_LyricsSearchingPulse>
         opacity: Tween<double>(begin: .48, end: 1).animate(
           CurvedAnimation(parent: _pulse, curve: Curves.easeInOut),
         ),
-        child: PocketLinkShimmer(
+        child: PocketLinkSkeleton(
           child: const Text(
             'Searching lyrics…',
             maxLines: 1,

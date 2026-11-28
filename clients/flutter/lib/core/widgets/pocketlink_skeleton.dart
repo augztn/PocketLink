@@ -9,6 +9,28 @@ class PocketLinkSkeleton extends StatefulWidget {
 
   final Widget child;
 
+  static Widget textPlaceholder({
+    double widthFactor = 0.58,
+    double height = 14,
+    double radius = 6,
+  }) => PocketLinkSkeleton(
+    child: Align(
+      alignment: Alignment.centerLeft,
+      child: FractionallySizedBox(
+        widthFactor: widthFactor.clamp(0.08, 1.0).toDouble(),
+        child: SizedBox(
+          height: height,
+          child: PocketLinkSkeletonBlock(expand: true, radius: radius),
+        ),
+      ),
+    ),
+  );
+
+  static Widget buttonPlaceholder({double width = 120, double height = 44}) =>
+      PocketLinkSkeleton(
+        child: PocketLinkSkeletonBlock(width: width, height: height, radius: height / 2),
+      );
+
   static Widget musicList({int rows = 6}) => PocketLinkSkeleton(
     child: Column(
       children: List.generate(rows, (index) => Padding(
@@ -186,9 +208,9 @@ class _PocketLinkSkeletonState extends State<PocketLinkSkeleton>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 800),
     )..repeat();
-    unawaited(Future<void>.delayed(const Duration(milliseconds: 120), () {
+    unawaited(Future<void>.delayed(const Duration(milliseconds: 250), () {
       if (mounted) setState(() => _visible = true);
     }));
   }
