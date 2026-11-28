@@ -85,6 +85,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
   double _trackSwipeDistance = 0;
   bool _trackSwipeActive = false;
   bool _carouselSkipInFlight = false;
+  final List<int> _queuedCarouselSkips = <int>[];
   Completer<void>? _carouselTrackChangeCompleter;
   int _trackChangeDirection = 1;
   late final AnimationController _lyricsController;
@@ -1475,7 +1476,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
   }
 
   Future<void> _requestTrackSkip(int direction, {double velocity = 0}) async {
-    if (_carouselSkipInFlight || !_persistent.isActive) return;
+    if (!_persistent.isActive) return;
+    if (_carouselSkipInFlight) {
+      _queuedCarouselSkips.add(direction);
+      return;
+    }
     final queue = _carouselQueue;
     final index = _carouselIndex;
     final targetIndex = index + direction;
@@ -1523,6 +1528,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
         _carouselTrackChangeCompleter = null;
       }
       _carouselSkipInFlight = false;
+      if (mounted && _queuedCarouselSkips.isNotEmpty) {
+        final queuedDirection = _queuedCarouselSkips.removeAt(0);
+        unawaited(_requestTrackSkip(queuedDirection));
+      }
     }
   }
 
