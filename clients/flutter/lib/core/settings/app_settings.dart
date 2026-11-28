@@ -298,6 +298,13 @@ class AppSettings extends ChangeNotifier {
     _homeSectionOrder = List.of(homeSectionDefaults);
     _navigationOrder = List.of(navigationDefaults);
     _visibleNavigationItems = Set.of(navigationDefaults);
+    _pageTransitionsEnabled = true;
+    _lyricsAnimationsEnabled = true;
+    _glassBlurStrength = 20.0;
+    _lyricsGlow = false;
+    _lyricsBloom = false;
+    _lyricsSoftLight = false;
+    _lyricsInactiveBlur = 1.7;
     try {
       final preferences = await SharedPreferences.getInstance();
       _useLiquidGlass = preferences.getBool(_liquidGlassKey) ?? false;
