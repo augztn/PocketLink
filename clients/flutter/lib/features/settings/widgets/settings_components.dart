@@ -37,6 +37,26 @@ class SettingsGroupCard extends StatelessWidget {
   final List<Widget> children;
   final EdgeInsetsGeometry padding;
 
+  List<Widget> _animatedChildren(BuildContext context) => [
+        for (var index = 0; index < children.length; index++)
+          TweenAnimationBuilder<double>(
+            key: ValueKey('settings-row-${children[index].runtimeType}-$index'),
+            tween: Tween<double>(begin: 0, end: 1),
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOutCubic,
+            builder: (context, value, child) {
+              final progress = MediaQuery.of(context).disableAnimations ? 1.0 : value;
+              return Opacity(
+                opacity: progress,
+                child: Transform.translate(
+                  offset: Offset(0, 6 * (1 - progress)),
+                  child: child,
+                ),
+              );
+            },
+            child: children[index],
+          ),
+      ];
 
   @override
   Widget build(BuildContext context) => ListTileTheme(
@@ -77,7 +97,7 @@ class SettingsGroupCard extends StatelessWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: children,
+                    children: _animatedChildren(context),
                   ),
                 ),
               ),
