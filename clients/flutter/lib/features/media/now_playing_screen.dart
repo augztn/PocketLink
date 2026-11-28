@@ -1463,33 +1463,36 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with TickerProvider
       );
     }
 
+    Widget page(
+      MediaQueueItem item, {
+      required double offset,
+      bool current = false,
+    }) {
+      return Positioned(
+        left: offset,
+        top: 0,
+        bottom: 0,
+        width: width,
+        child: ClipRect(
+          child: Transform.translate(
+            // Mochy's cover pages move at full speed while their pictures
+            // drift at 30%, creating depth without exposing adjacent pages.
+            offset: Offset(-offset * 0.3, 0),
+            child: slot(item, current: current),
+          ),
+        ),
+      );
+    }
+
     return ClipRect(
       child: Stack(
         fit: StackFit.expand,
         children: [
           if (index > 0)
-            Positioned(
-              left: -width + drag,
-              top: 0,
-              bottom: 0,
-              width: width,
-              child: slot(queue[index - 1]),
-            ),
+            page(queue[index - 1], offset: -width + drag),
           if (index + 1 < queue.length)
-            Positioned(
-              left: width + drag,
-              top: 0,
-              bottom: 0,
-              width: width,
-              child: slot(queue[index + 1]),
-            ),
-          Positioned(
-            left: drag,
-            top: 0,
-            bottom: 0,
-            width: width,
-            child: slot(_track, current: true),
-          ),
+            page(queue[index + 1], offset: width + drag),
+          page(_track, offset: drag, current: true),
         ],
       ),
     );
